@@ -1247,13 +1247,13 @@
   "Extract dimensions (non-aggregation columns) from a dataset query."
   [dataset-query-str]
   (when dataset-query-str
-    (lib.metadata.jvm/with-metadata-provider-cache
-      (let [dataset-query     ((:out mi/transform-metabase-query) dataset-query-str)
-            metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
-            lib-query         (lib/query metadata-provider dataset-query)
-            columns           (lib/returned-columns lib-query)]
+    (when-some [dataset-query (not-empty ((:out mi/transform-metabase-query) dataset-query-str))]
+      (lib.metadata.jvm/with-metadata-provider-cache
+        (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
+              lib-query         (lib/query metadata-provider dataset-query)
+              columns           (lib/returned-columns lib-query)]
         ;; Dimensions are columns that are not aggregations
-        (remove (comp #{:source/aggregations} :lib/source) columns)))))
+          (remove (comp #{:source/aggregations} :lib/source) columns))))))
 
 (defn extract-non-temporal-dimension-ids
   "Extract list of nontemporal dimension field IDs, stored as JSON string. See PR 60912"
