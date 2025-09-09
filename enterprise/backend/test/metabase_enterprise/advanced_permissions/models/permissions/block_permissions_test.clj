@@ -387,7 +387,6 @@
         ;; rasta has access to the database:
         (is (= [[1]]
                (mt/rows (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id)))))
-
         ;; block a single table on the db:
         (let [tables-in-db (map :id (:tables (t2/hydrate (t2/select-one :model/Database db-id) :tables)))
               table-id (rand-nth tables-in-db)]

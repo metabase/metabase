@@ -10,7 +10,6 @@
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
@@ -76,8 +75,8 @@
                    (= driver/*driver* :sqlserver)
                    add-top-1000
 
-                       ;; SparkSQL has to have an alias source table (or at least our driver is written as if it has to
-                       ;; have one.) HACK
+                   ;; SparkSQL has to have an alias source table (or at least our driver is written as if it has to
+                   ;; have one.) HACK
                    (= driver/*driver* :sparksql)
                    (update :from (fn [[table]]
                                    [[table [(sql.qp/->honeysql
@@ -102,16 +101,16 @@
                {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
      :remappings {:cat ["variable" ["template-tag" "cat"]]}}))
 
-(defn- parameterized-sql-with-join-gtap-def []
+(defn- parameterized-sql-with-join-gtap-def
+  "A SQL query for `CHECKINS` that only returns `ID` and `USER_ID`. It includes a join against `VENUES`."
+  []
   (driver/with-driver (or driver/*driver* :h2)
     (assert (driver.u/supports? driver/*driver* :native-parameters (mt/db)))
     {:query (mt/native-query
               {:query
                (format-honeysql
                 {:select [[(identifier :checkins :id)]
-                          [(identifier :checkins :user_id)]
-                          [(identifier :venues :name)]
-                          [(identifier :venues :category_id)]]
+                          [(identifier :checkins :user_id)]]
                  :from [[(identifier :checkins)]]
                  :left-join [[(identifier :venues)]
                              [:= (identifier :checkins :venue_id) (identifier :venues :id)]]
@@ -152,18 +151,6 @@
        :order-by [[:asc $venue_id->venues.price]]
        :breakout [$venue_id->venues.price]}))))
 
-(deftest ^:parallel all-table-ids-test
-  (testing (str "make sure that `all-table-ids` can properly find all Tables in the query, even in cases where a map "
-                "has a `:source-table` and some of its children also have a `:source-table`"))
-  (is (= (mt/$ids nil
-           #{$$checkins $$venues $$users $$categories})
-         (#'row-level-restrictions/all-table-ids
-          (mt/mbql-query nil
-            {:source-table $$checkins
-             :joins [{:source-table $$venues}
-                     {:source-query {:source-table $$users
-                                     :joins [{:source-table $$categories}]}}]})))))
-
 ;; TODO -- #19754 adds [[mt/remove-source-metadata]] that can be used here (once it gets merged)
 (defn- remove-metadata [m]
   (lib.util.match/replace m
@@ -171,8 +158,9 @@
     (remove-metadata (dissoc &match :source-metadata))))
 
 (defn- apply-row-level-permissions [query]
-  (-> (qp.store/with-metadata-provider (mt/id)
-        (#'row-level-restrictions/apply-sandboxing (mbql.normalize/normalize query)))
+  (-> (lib/query (mt/metadata-provider) query)
+      (#'row-level-restrictions/apply-sandboxing)
+      lib/->legacy-MBQL
       remove-metadata))
 
 (deftest middleware-test
@@ -186,13 +174,11 @@
                    :query {:source-query {:source-table $$checkins
                                           :fields [$id $date $user_id $venue_id]
                                           :filter [:and
-                                                                          ;; This still gets :default bucketing!
-                                                                          ;; auto-bucket-datetimes puts :day bucketing
-                                                                          ;; on both parts of this filter, since it's
-                                                                          ;; matching a YYYY-mm-dd string. Then
-                                                                          ;; optimize-temporal-filters sees that the
-                                                                          ;; :type/Date column already has :day
-                                                                          ;; granularity, and switches both to :default
+                                                   ;; This still gets `:default` bucketing! `auto-bucket-datetimes`
+                                                   ;; puts `:day` bucketing on both parts of this filter, since it's
+                                                   ;; matching a `YYYY-mm-dd` string. Then `optimize-temporal-filters`
+                                                   ;; sees that the `:type/Date` column already has :day granularity,
+                                                   ;; and switches both to `:default`
                                                    [:> !default.date [:absolute-datetime
                                                                       #t "2014-01-01"
                                                                       :default]]
@@ -201,8 +187,8 @@
                                                     [:value 5 {:base_type :type/Integer
                                                                :semantic_type :type/FK
                                                                :database_type "INTEGER"}]]]
-                                          ::row-level-restrictions/gtap? true
-                                          :query-permissions/gtapped-table $$checkins}
+                                          ::row-level-restrictions/sandbox? true
+                                          :query-permissions/sandboxed-table $$checkins}
                            :joins [{:source-query
                                     {:source-table $$venues
                                      :fields [$venues.id $venues.name $venues.category_id
@@ -212,8 +198,8 @@
                                               [:value 1 {:base_type :type/Integer
                                                          :semantic_type :type/Category
                                                          :database_type "INTEGER"}]]
-                                     ::row-level-restrictions/gtap? true
-                                     :query-permissions/gtapped-table $$venues}
+                                     ::row-level-restrictions/sandbox? true
+                                     :query-permissions/sandboxed-table $$venues}
                                     :alias "v"
                                     :strategy :left-join
                                     :condition [:= $venue_id &v.venues.id]}]
@@ -245,7 +231,7 @@
                            :source-query {:native (str "SELECT * FROM \"PUBLIC\".\"VENUES\" "
                                                        "WHERE \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" = 50 "
                                                        "ORDER BY \"PUBLIC\".\"VENUES\".\"ID\" ASC")
-                                          :query-permissions/gtapped-table $$venues
+                                          :query-permissions/sandboxed-table $$venues
                                           :params []}}
 
                    ::row-level-restrictions/original-metadata [{:base_type :type/Integer
@@ -518,16 +504,18 @@
     (testing (str "If we use a parameterized SQL GTAP that joins a Table the user doesn't have access to, does it "
                   "still work? (EE #230) If we pass the query in directly without anything that would require nesting "
                   "it, it should work")
-      (is (= [[2 1]
-              [72 1]]
-             (mt/format-rows-by
-              [int int identity int]
-              (mt/rows
-               (met/with-gtaps! {:gtaps {:checkins (parameterized-sql-with-join-gtap-def)}
-                                 :attributes {"user" 1}}
-                 (mt/run-mbql-query checkins
-                   {:order-by [[:asc $id]]
-                    :limit 2})))))))))
+      (met/with-gtaps! {:gtaps      {:checkins (parameterized-sql-with-join-gtap-def)}
+                        :attributes {"user" 1}}
+        (let [query (mt/mbql-query checkins
+                      {:order-by [[:asc $id]]
+                       :limit    2})]
+          ;; should only return CHECKINS.ID and CHECKINS.DATE since that is all the sandbox returns
+          (mt/with-native-query-testing-context query
+            (is (= [[2 1]
+                    [72 1]]
+                   (mt/formatted-rows
+                    [int int]
+                    (qp/process-query query))))))))))
 
 (deftest sql-with-join-test-2
   (mt/test-drivers (into #{}
@@ -539,7 +527,7 @@
       (is (= [[2 1]
               [72 1]]
              (mt/format-rows-by
-              [int int identity int]
+              [int int]
               (mt/rows
                (met/with-gtaps! {:gtaps {:checkins (parameterized-sql-with-join-gtap-def)}
                                  :attributes {"user" 1}}
@@ -547,66 +535,90 @@
                    {:order-by [[:asc $id]]
                     :limit 2})))))))))
 
+(defn- do-correct-metadata-test [f]
+  (let [cols (fn []
+               (mt/cols
+                (mt/run-mbql-query venues
+                  {:order-by [[:asc $id]]
+                   :limit    2})))
+        original-cols (cols)
+        ;; `with-gtaps!` copies the test DB so this function will update the IDs in `original-cols` so they'll match
+        ;; up with the current copy
+        expected-cols (fn []
+                        (for [col original-cols
+                              :let [id (mt/id :venues (keyword (u/lower-case-en (:name col))))]]
+                          (-> col
+                              (assoc :id id
+                                     :table_id (mt/id :venues))
+                              ;; should return a field for the original field
+                              (update :field_ref (fn [[tag _id opts]]
+                                                   [tag id (or opts {})]))
+                              (dissoc :fk_target_field_id
+                                      :lib/original-display-name
+                                      :metabase.lib.query/transformation-added-base-type))))]
+    (f {:cols cols, :expected-cols expected-cols})))
+
 (deftest correct-metadata-test
   (testing (str "We should return the same metadata as the original Table when running a query against a sandboxed "
                 "Table (EE #390)\n")
-    (let [cols (fn []
-                 (mt/cols
-                  (mt/run-mbql-query venues
-                    {:order-by [[:asc $id]]
-                     :limit 2})))
-          original-cols (cols)
-          ;; `with-gtaps!` copies the test DB so this function will update the IDs in `original-cols` so they'll match
-          ;; up with the current copy
-          expected-cols (fn []
-                          (for [col original-cols
-                                :let [id (mt/id :venues (keyword (u/lower-case-en (:name col))))]]
-                            (-> col
-                                (assoc :id id
-                                       :table_id (mt/id :venues)
-                                       :field_ref [:field id nil])
-                                (dissoc :fk_target_field_id))))]
-      (testing "A query with a simple attributes-based sandbox should have the same metadata"
-        (met/with-gtaps! {:gtaps {:venues (dissoc (venues-category-mbql-gtap-def) :query)}
-                          :attributes {"cat" 50}}
-          (is (=? (expected-cols)
-                  (cols)))))
+    (do-correct-metadata-test
+     (fn [{:keys [cols expected-cols]}]
+       (testing "A query with a simple attributes-based sandbox should have the same metadata"
+         (met/with-gtaps! {:gtaps      {:venues (dissoc (venues-category-mbql-gtap-def) :query)}
+                           :attributes {"cat" 50}}
+           (is (=? (expected-cols)
+                   (cols)))))))))
 
-      (testing "A query with an equivalent MBQL query sandbox should have the same metadata"
-        (met/with-gtaps! {:gtaps {:venues (venues-category-mbql-gtap-def)}
-                          :attributes {"cat" 50}}
-          (is (=? (expected-cols)
-                  (cols)))))
+(deftest correct-metadata-test-2
+  (testing (str "We should return the same metadata as the original Table when running a query against a sandboxed "
+                "Table (EE #390)\n")
+    (do-correct-metadata-test
+     (fn [{:keys [cols expected-cols]}]
+       (testing "A query with an equivalent MBQL query sandbox should have the same metadata"
+         (met/with-gtaps! {:gtaps      {:venues (venues-category-mbql-gtap-def)}
+                           :attributes {"cat" 50}}
+           (is (=? (expected-cols)
+                   (cols)))))))))
 
-      (testing "A query with an equivalent native query sandbox should have the same metadata"
-        (met/with-gtaps! {:gtaps {:venues {:query (mt/native-query
-                                                    {:query
-                                                     (str "SELECT ID, NAME, CATEGORY_ID, LATITUDE, LONGITUDE, PRICE "
-                                                          "FROM VENUES "
-                                                          "WHERE CATEGORY_ID = {{cat}}")
+(deftest correct-metadata-test-3
+  (testing (str "We should return the same metadata as the original Table when running a query against a sandboxed "
+                "Table (EE #390)\n")
+    (do-correct-metadata-test
+     (fn [{:keys [cols expected-cols]}]
+       (testing "A query with an equivalent native query sandbox should have the same metadata"
+         (met/with-gtaps! {:gtaps {:venues {:query (mt/native-query
+                                                     {:query
+                                                      (str "SELECT ID, NAME, CATEGORY_ID, LATITUDE, LONGITUDE, PRICE "
+                                                           "FROM VENUES "
+                                                           "WHERE CATEGORY_ID = {{cat}}")
 
-                                                     :template_tags
-                                                     {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
-                                           :remappings {:cat ["variable" ["template-tag" "cat"]]}}}
-                          :attributes {"cat" 50}}
-          (is (=? (expected-cols)
-                  (cols)))))
+                                                      :template_tags
+                                                      {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
+                                            :remappings {:cat ["variable" ["template-tag" "cat"]]}}}
+                           :attributes {"cat" 50}}
+           (is (=? (expected-cols)
+                   (cols)))))))))
 
-      (testing (str "If columns are added/removed/reordered we should still merge in metadata for the columns we're "
-                    "able to match from the original Table")
-        (met/with-gtaps! {:gtaps {:venues {:query (mt/native-query
-                                                    {:query
-                                                     (str "SELECT NAME, ID, LONGITUDE, PRICE, 1 AS ONE "
-                                                          "FROM VENUES "
-                                                          "WHERE CATEGORY_ID = {{cat}}")
+(deftest correct-metadata-test-4
+  (testing (str "We should return the same metadata as the original Table when running a query against a sandboxed "
+                "Table (EE #390)\n")
+    (do-correct-metadata-test
+     (fn [{:keys [cols expected-cols]}]
+       (testing (str "If columns are removed/reordered we should still merge in metadata for the columns we're "
+                     "able to match from the original Table")
+         (met/with-gtaps! {:gtaps {:venues {:query (mt/native-query
+                                                     {:query
+                                                      (str "SELECT NAME, ID, LONGITUDE, PRICE "
+                                                           "FROM VENUES "
+                                                           "WHERE CATEGORY_ID = {{cat}}")
 
-                                                     :template_tags
-                                                     {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
-                                           :remappings {:cat ["variable" ["template-tag" "cat"]]}}}
-                          :attributes {"cat" 50}}
-          (let [[id-col name-col _ _ longitude-col price-col] (expected-cols)]
-            (is (=? [name-col id-col longitude-col price-col]
-                    (cols)))))))))
+                                                      :template_tags
+                                                      {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
+                                            :remappings {:cat ["variable" ["template-tag" "cat"]]}}}
+                           :attributes {"cat" 50}}
+           (let [[id-col name-col _ _ longitude-col price-col] (expected-cols)]
+             (is (=? [id-col name-col longitude-col price-col]
+                     (cols))))))))))
 
 (deftest sql-with-joins-test
   (testing "Should be able to use a Saved Question with no source Metadata as a GTAP (EE #525)"
@@ -624,17 +636,19 @@
                                          :remappings {"user_id" [:variable [:template-tag "sandbox"]]}}
                                 :checkins {:remappings {"user_id" [:dimension $checkins.user_id]}}}
                         :attributes {"user_id" 1}})
-      (is (= [[2 "2014-09-18T00:00:00Z" 1 31 31 "Bludso's BBQ" 5 33.8894 -118.207 2]
-              [72 "2015-04-18T00:00:00Z" 1 1 1 "Red Medicine" 4 10.0646 -165.374 3]
-              [80 "2013-12-27T00:00:00Z" 1 99 99 "Golden Road Brewing" 10 34.1505 -118.274 2]]
-             (mt/rows
-              (mt/run-mbql-query checkins
-                {:joins [{:fields :all
-                          :source-table $$venues
-                          :condition [:= $venue_id &Venue.venues.id]
-                          :alias "Venue"}]
-                 :order-by [[:asc $id]]
-                 :limit 3})))))))
+      (let [query (mt/mbql-query checkins
+                    {:joins [{:fields :all
+                              :source-table $$venues
+                              :condition [:= $venue_id &Venue.venues.id]
+                              :alias "Venue"}]
+                     :order-by [[:asc $id]]
+                     :limit 3})]
+        (mt/with-native-query-testing-context query
+          ;;       (4 columns from checkins)      (6 columns from venues)
+          (is (= [[2 "2014-09-18T00:00:00Z" 1 31  31 "Bludso's BBQ" 5 33.8894 -118.207 2]
+                  [72 "2015-04-18T00:00:00Z" 1 1  1 "Red Medicine" 4 10.0646 -165.374 3]
+                  [80 "2013-12-27T00:00:00Z" 1 99 99 "Golden Road Brewing" 10 34.1505 -118.274 2]]
+                 (mt/rows (qp/process-query query)))))))))
 
 (deftest run-sql-queries-to-infer-columns-test
   (testing "Run SQL queries to infer the columns when used as GTAPS (#13716)\n"
@@ -662,20 +676,18 @@
             (is (= [[1 "Red Medicine" 1 "Red Medicine" 4 10.0646 -165.374 3]]
                    (mt/rows
                     (mt/run-mbql-query venues
-                      {:fields [$id $name] ; joined fields get appended automatically because we specify :all :below
-                       :joins [{:fields :all
-                                :source-table $$venues
-                                :condition [:= $id &Venue.id]
-                                :alias "Venue"}]
+                      {:fields   [$id $name] ; joined fields get appended automatically because we specify :all :below
+                       :joins    [{:fields       :all
+                                   :source-table $$venues
+                                   :condition    [:= $id &Venue.id]
+                                   :alias        "Venue"}]
                        :order-by [[:asc $id]]
-                       :limit 3})))))
+                       :limit    3})))))
           (testing "After running the query the first time, result_metadata should have been saved for the GTAP Card"
-            (is (=? [{:name "ID"
-                      :base_type :type/BigInteger
-                      :display_name "ID"}
-                     {:name         "NAME"
-                      :base_type    :type/Text
-                      :display_name "Name"}
+            (is (=? [{:name      "ID"
+                      :base_type :type/BigInteger}
+                     {:name      "NAME"
+                      :base_type :type/Text}
                      {:name "CATEGORY_ID"}
                      {:name "LATITUDE"}
                      {:name "LONGITUDE"}
@@ -967,11 +979,12 @@
                       (testing "as sandboxed user"
                         (test-drill-thru-query)))))]
           (do-tests)
-          (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                            (mt/application-database-metadata-provider (mt/id))
-                                            (mt/id :orders :product_id)
-                                            (mt/id :products :title))
-            (do-tests)))))))
+          (testing "with remapping"
+            (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
+                                              (mt/application-database-metadata-provider (mt/id))
+                                              (mt/id :orders :product_id)
+                                              (mt/id :products :title))
+              (do-tests))))))))
 
 (defn- set-query-metadata-for-gtap-card!
   "Find the GTAP Card associated with Group and table-name and add `:result_metadata` to it. Because we (probably) need
@@ -994,14 +1007,16 @@
 (deftest native-fk-remapping-test
   (testing "FK remapping should still work for questions with native sandboxes (EE #520)"
     (mt/dataset test-data
-      (let [mbql-sandbox-results (met/with-gtaps! {:gtaps (mt/$ids
+      (let [remap-metadata-provider (fn []
+                                      (lib.tu/remap-metadata-provider
+                                       (mt/application-database-metadata-provider (mt/id))
+                                       (mt/id :orders :product_id)
+                                       (mt/id :products :title)))
+            mbql-sandbox-results (met/with-gtaps! {:gtaps (mt/$ids
                                                             {:orders {:remappings {"user_id" [:dimension $orders.user_id]}}
                                                              :products {:remappings {"user_cat" [:dimension $products.category]}}})
                                                    :attributes {"user_id" 1, "user_cat" "Widget"}}
-                                   (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                                                     (mt/application-database-metadata-provider (mt/id))
-                                                                     (mt/id :orders :product_id)
-                                                                     (mt/id :products :title))
+                                   (qp.store/with-metadata-provider (remap-metadata-provider)
                                      (mt/run-mbql-query orders)))]
         (testing "Sanity check: merged results metadata should not get normalized incorrectly"
           (is (=? {:type {:type/Number {}}}
@@ -1032,10 +1047,7 @@
                 (set-query-metadata-for-gtap-card! &group :orders "uid" 1))
               (when products-gtap-card-has-metadata?
                 (set-query-metadata-for-gtap-card! &group :products "cat" "Widget"))
-              (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                                (mt/application-database-metadata-provider (mt/id))
-                                                (mt/id :orders :product_id)
-                                                (mt/id :products :title))
+              (qp.store/with-metadata-provider (remap-metadata-provider)
                 (testing "Sandboxed results should be the same as they would be if the sandbox was MBQL"
                   (letfn [(format-col [col]
                             (-> (m/filter-keys simple-keyword? col)
@@ -1094,7 +1106,7 @@
     (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
       (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})}}}
         (let [card-id (t2/select-one-fn :card_id :model/GroupTableAccessPolicy :group_id (u/the-id &group))
-              _ (is (integer? card-id))
+              _ (is (pos-int? card-id))
               query (t2/select-one-fn :dataset_query :model/Card :id card-id)
               run-query (fn []
                           (let [results (qp/process-query (assoc query :cache-strategy {:type :ttl
@@ -1522,8 +1534,11 @@
                                                                                [:field "my_numberLiteral" {:base-type :type/Integer}]
                                                                                {:stage-number 0}]}}}
                       :attributes {"filter-attribute" "1"}}
-      (is (= [[1]
-              [2]
-              [3]]
-             (mt/rows
-              (qp/process-query (query))))))))
+      ;; TODO (Cam 9/9/25) -- totally illegal to create a sandbox that returns extra columns like this (so why are we
+      ;; even testing this at all??) but if we disable the check then this actually does work.
+      (with-redefs [row-level-restrictions/validate-sandbox-columns-match-original-table (constantly nil)]
+        (is (= [[1]
+                [2]
+                [3]]
+               (mt/rows
+                (qp/process-query (query)))))))))

@@ -97,7 +97,7 @@
      If there's no parent-source-card-id, add the source-card id to the card-ids set and
      continue the match setting parent-source-card-id.
 
-  2. Does the stage have a :query-permissions/gtapped-table key?
+  2. Does the stage have a :query-permissions/sandboxed-table key?
 
      This means the stage came from a Sandbox query, so we add the table to the table-ids set.
      If there's no parent-source-card-id, also add it to the table-query-ids set.
@@ -132,12 +132,12 @@
                             {:card-ids #{(:qp/stage-is-from-source-card m)}})
                           (query->source-ids (dissoc m :qp/stage-is-from-source-card) (:qp/stage-is-from-source-card m) in-sandbox?))
 
-              (m :guard (every-pred map? :query-permissions/gtapped-table))
+              (m :guard (every-pred map? :query-permissions/sandboxed-table))
               (merge-with merge-source-ids
-                          {:table-ids #{(:query-permissions/gtapped-table m)}}
+                          {:table-ids #{(:query-permissions/sandboxed-table m)}}
                           (when-not (or parent-source-card-id in-sandbox?)
-                            {:table-query-ids #{(:query-permissions/gtapped-table m)}})
-                          (query->source-ids (dissoc m :query-permissions/gtapped-table :native) parent-source-card-id true))
+                            {:table-query-ids #{(:query-permissions/sandboxed-table m)}})
+                          (query->source-ids (dissoc m :query-permissions/sandboxed-table :native) parent-source-card-id true))
 
               (m :guard (every-pred map? :native))
               (when-not parent-source-card-id

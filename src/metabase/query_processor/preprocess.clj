@@ -112,7 +112,7 @@
    (ensure-legacy #'qp.add-source-metadata/add-source-metadata-for-source-queries)
    (ensure-mbql5 #'qp.middleware.enterprise/apply-impersonation)
    (ensure-mbql5 #'qp.middleware.enterprise/attach-destination-db-middleware)
-   (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
+   (ensure-mbql5 #'qp.middleware.enterprise/apply-sandboxing)
    (ensure-legacy #'qp.persistence/substitute-persisted-query)
    (ensure-legacy #'qp.add-implicit-clauses/add-implicit-clauses) ; #61398
    ;; this needs to be done twice, once before adding remaps (since we want to add remaps inside joins) and then again
@@ -120,7 +120,7 @@
    ;; specific columns.
    (ensure-legacy #'resolve-joins/resolve-joins) ; #61398
    (ensure-mbql5 #'qp.add-remaps/add-remapped-columns)
-   #'qp.resolve-fields/resolve-fields ; this middleware actually works with either MBQL 5 or legacy
+   #'qp.resolve-fields/resolve-fields   ; this middleware actually works with either MBQL 5 or legacy
    (ensure-mbql5 #'binning/update-binning-strategy)
    (ensure-mbql5 #'desugar/desugar)
    (ensure-legacy #'qp.add-default-temporal-unit/add-default-temporal-unit)
@@ -129,7 +129,7 @@
    (ensure-mbql5 #'resolve-joined-fields/resolve-joined-fields)
    (ensure-mbql5 #'qp.remove-inactive-field-refs/remove-inactive-field-refs)
    ;; yes, this is called a second time, because we need to handle any joins that got added
-   (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
+   (ensure-mbql5 #'qp.middleware.enterprise/apply-sandboxing)
    (ensure-legacy #'qp.cumulative-aggregations/rewrite-cumulative-aggregations)
    (ensure-mbql5 #'qp.wrap-value-literals/wrap-value-literals)
    (ensure-mbql5 #'auto-parse-filter-values/auto-parse-filter-values)

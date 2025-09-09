@@ -416,7 +416,7 @@
    {{::keys [original-field-dimension-id new-field-dimension-id]} :options
     :as                                          column} :- :map
    {dimension-id      :id
-    from-name         :field_name
+    from-name         :field-name
     from-display-name :name
     to-name           :human-readable-field-name} :- ::external-remapping]
   (log/trace "Considering column\n"
@@ -482,7 +482,10 @@
 
 ;;;; Transform to add additional cols to results
 
-(defn- create-remapped-col [col-name remapped-from base-type]
+(mu/defn- create-remapped-col
+  [col-name      :- :string
+   remapped-from :- :string
+   base-type     :- ::lib.schema.common/base-type]
   {:description   nil
    :id            nil
    :table_id      nil
@@ -541,7 +544,8 @@
     :as                                                    col} :- ::column-with-optional-base-type]
   (when (seq values)
     (let [remap-from       (:name col)
-          stringified-mask (qp.store/miscellaneous-value [::large-int/column-index-mask])]
+          ;; existing usage -- don't use going forward
+          stringified-mask #_{:clj-kondo/ignore [:deprecated-var]} (qp.store/miscellaneous-value [::large-int/column-index-mask])]
       {:col-index       idx
        :from            remap-from
        :to              remap-to

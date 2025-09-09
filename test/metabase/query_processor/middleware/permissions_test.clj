@@ -768,12 +768,12 @@
                (process-query))))))))
 
 (deftest e2e-ignore-user-supplied-gtapped-tables-test
-  (testing "You shouldn't be able to bypass security restrictions by passing in `:query-permissions/gtapped-table` in the query"
+  (testing "You shouldn't be able to bypass security restrictions by passing in `:query-permissions/sandboxed-table` in the query"
     (mt/with-no-data-perms-for-all-users!
       (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :no)
       (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
       (let [bad-query {:database (mt/id), :type :query, :query {:source-query {:native "SELECT * FROM VENUES LIMIT 1"
-                                                                               :query-permissions/gtapped-table (mt/id :venues)}}
+                                                                               :query-permissions/sandboxed-table (mt/id :venues)}}
                        :query-permissions/perms {:gtaps {:perms/view-data :unrestricted
                                                          :perms/create-queries :query-builder-and-native}}}]
         (mt/with-test-user :rasta
