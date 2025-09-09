@@ -16,6 +16,7 @@ If you're trying to upgrade your Metabase version on Docker, check out these [up
 
 Use this quick start to run the Open Source version of Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
 
+
 Assuming you have [Docker](https://www.docker.com/) installed and running, get the latest Docker image:
 
 ```
@@ -24,11 +25,19 @@ docker pull metabase/metabase:latest
 
 Then start the Metabase container:
 
+> ⚠️ **Important**: The basic command below will lose all your data when the container is stopped. For data persistence, use the version with volume mounting instead.
+
 ```
 docker run -d -p 3000:3000 --name metabase metabase/metabase
 ```
 
 This will launch an Metabase server on port 3000 by default.
+
+With mounting the H2 database into a local directory:
+
+```
+docker run -d -p 3000:3000 -v ./metabase.db:/metabase.db --name metabase metabase/metabase
+```
 
 Optional: to view the logs as your Open Source Metabase initializes, run:
 
