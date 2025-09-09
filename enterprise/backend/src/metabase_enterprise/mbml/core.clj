@@ -171,10 +171,13 @@
 
 (defn- update-source-query
   [{:keys [source body] :as model} database-id]
-  (assoc model :source {:type "query"
-                        :query (if (string? (or body source))
-                                 (lib/native-query (lib.metadata.jvm/application-database-metadata-provider database-id) (or body source))
-                                 (serdes/import-mbql (or body source)))}))
+  (let [raw-query (or body source)
+        metadata-provider (lib.metadata.jvm/application-database-metadata-provider database-id)
+        resolved-query (cond
+                         (string? raw-query) (serdes/import-mbql raw-query)
+                         (map? raw-query) (lib/query metadata-provider raw-query))]
+    (assoc model :source {:type "query"
+                          :query resolved-query})))
 
 (defmethod mbml-file->unsaved-model* :model/Transform:v1
   [{:keys [tags database identifier] :as mbml-map}]

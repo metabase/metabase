@@ -43,24 +43,6 @@
       (for [transform transforms]
         (assoc transform :last_run (get last-runs (:id transform)))))))
 
-(mi/define-batched-hydration-method transform-tag-ids
-  :transform_tag_ids
-  "Add tag_ids to a transform, preserving the order defined by position"
-  [transforms]
-  (if-not (seq transforms)
-    transforms
-    (let [transform-ids         (into #{} (map :id) transforms)
-          tag-associations      (when (seq transform-ids)
-                                  (t2/select [:model/TransformTransformTag :transform_id :tag_id :position]
-                                             :transform_id [:in transform-ids]
-                                             {:order-by [[:position :asc]]}))
-          transform-id->tag-ids (reduce (fn [acc {:keys [transform_id tag_id]}]
-                                          (update acc transform_id (fnil conj []) tag_id))
-                                        {}
-                                        tag-associations)]
-      (for [transform transforms]
-        (assoc transform :tag_ids (vec (get transform-id->tag-ids (:id transform) [])))))))
-
 (defn update-transform-tags!
   "Update the tags associated with a transform using smart diff logic.
    Only modifies what has changed: deletes removed tags, updates positions for moved tags,

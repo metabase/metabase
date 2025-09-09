@@ -70,7 +70,7 @@ export function getParsedParams({
   transformId,
 }: TransformPageParams): TransformPageParsedParams {
   return {
-    transformId: Urls.extractEntityId(transformId),
+    transformId,
   };
 }
 

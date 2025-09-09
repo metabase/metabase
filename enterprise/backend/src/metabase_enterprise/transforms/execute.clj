@@ -11,7 +11,8 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase-enterprise.library.core :as library]))
 
 (set! *warn-on-reflection* true)
 
@@ -28,7 +29,7 @@
 
 (defn- sync-target!
   ([transform-id run-id]
-   (let [{:keys [source target]} (t2/select-one :model/Transform transform-id)
+   (let [{:keys [source target]} (library/select :model/Transform transform-id)
          db (get-in source [:query :database])
          database (t2/select-one :model/Database db)]
      (sync-target! target database run-id)))
