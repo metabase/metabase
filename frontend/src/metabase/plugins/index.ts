@@ -59,6 +59,7 @@ import type {
   Bookmark,
   CacheableDashboard,
   CacheableModel,
+  Card,
   CheckCardUpdateResponse,
   Collection,
   CollectionAuthorityLevelConfig,
@@ -852,11 +853,22 @@ export const PLUGIN_TRANSFORMS: TransformsPlugin = {
 };
 
 type DependenciesPlugin = {
-  ConfirmCardUpdateForm: ComponentType<ConfirmCardUpdateFormProps>;
+  ConfirmUpdateForm: ComponentType<ConfirmUpdateFormProps>;
   ConfirmUpdateModalTitle: ComponentType;
   useCheckCardUpdate: (
     props: UseCheckCardUpdateProps,
   ) => UseCheckCardUpdateResult;
+};
+
+export type CheckUpdateData = {
+  success: boolean;
+  bad_cards?: Card[];
+};
+
+export type ConfirmUpdateFormProps = {
+  checkData: CheckUpdateData;
+  onSave: () => void | Promise<void>;
+  onCancel: () => void;
 };
 
 export type UseCheckCardUpdateProps = {
@@ -871,14 +883,8 @@ export type UseCheckCardUpdateResult = {
   handleSaveAfterConfirmation: () => Promise<void>;
 };
 
-export type ConfirmCardUpdateFormProps = {
-  checkData: CheckCardUpdateResponse;
-  onSave: () => void;
-  onCancel: () => void;
-};
-
 export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
-  ConfirmCardUpdateForm: PluginPlaceholder,
+  ConfirmUpdateForm: PluginPlaceholder,
   ConfirmUpdateModalTitle: PluginPlaceholder,
   useCheckCardUpdate: ({ onSave }) => ({
     isConfirming: false,

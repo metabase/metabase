@@ -4,6 +4,8 @@ import { Modal } from "metabase/ui";
 
 export function ConfirmUpdateModalTitle() {
   return (
-    <Modal.Title>{t`These changes will break some other things. Save anyway?`}</Modal.Title>
+    <Modal.Title fz="h3" lh="h3">
+      {t`These changes will break some other things. Save anyway?`}
+    </Modal.Title>
   );
 }
