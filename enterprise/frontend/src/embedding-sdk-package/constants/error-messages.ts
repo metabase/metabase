@@ -12,7 +12,7 @@ export const SDK_COMPONENT_NOT_YET_AVAILABLE_MESSAGE =
 
 export const SDK_COMPONENT_MISSING_REQUIRED_PROPERTY_MESSAGE =
   // eslint-disable-next-line no-literal-metabase-strings -- console.error message
-  "This property is required by the component. Your Embedded Analytics SDK and Metabase instance are out of sync. Update them to matching versions and adjust props based on the updated TypeScript types.";
+  "this property is required by the component. Your Embedded Analytics SDK and Metabase instance are out of sync. Update them to matching versions and adjust props based on the updated TypeScript types.";
 
 export const SDK_COMPONENT_UNRECOGNIZED_PROPERTY_MESSAGE =
   // eslint-disable-next-line no-literal-metabase-strings -- console.error message
