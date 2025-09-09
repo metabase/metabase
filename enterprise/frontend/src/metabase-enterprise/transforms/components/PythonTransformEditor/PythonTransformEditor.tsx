@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { Flex } from "metabase/ui";
+import { Flex, Stack } from "metabase/ui";
 import type { PythonTransformSource } from "metabase-types/api";
 
 import { PythonDataPicker } from "../PythonDataPicker";
@@ -202,12 +202,12 @@ ${tableAliases
   );
 
   return (
-    <Flex
+    <Stack
       w="100%"
       h="100%"
-      direction="column"
       bg="bg-white"
       data-testid="python-transform-editor"
+      gap={0}
     >
       <EditorHeader
         isNew={isNew}
@@ -216,22 +216,20 @@ ${tableAliases
         onSave={handleSave}
         onCancel={onCancel}
       />
-      <Flex direction="column" style={{ flex: 1 }} p="md">
+      <Flex h="100%" w="100%">
         <PythonDataPicker
           database={source["source-database"]}
           tables={source["source-tables"]}
           onChange={handleDataChange}
         />
 
-        <Flex direction="column" style={{ flex: 1, marginTop: "1rem" }}>
-          <PythonEditor
-            script={source.body}
-            isRunnable={true}
-            onChange={handleScriptChange}
-            tables={source["source-tables"]}
-          />
-        </Flex>
+        <PythonEditor
+          script={source.body}
+          isRunnable={true}
+          onChange={handleScriptChange}
+          tables={source["source-tables"]}
+        />
       </Flex>
-    </Flex>
+    </Stack>
   );
 }

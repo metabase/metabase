@@ -16,6 +16,8 @@ import {
 } from "metabase/ui";
 import type { Database, Table } from "metabase-types/api";
 
+import S from "./PythonDataPicker.module.css";
+
 type TableSelection = {
   id: string; // unique ID for this selection row
   tableId: number | undefined;
@@ -248,7 +250,7 @@ export function PythonDataPicker({
   );
 
   return (
-    <Stack gap="md">
+    <Stack p="md" gap="md" h="100%" className={S.dataPicker}>
       <Box>
         <Text size="sm" fw="bold" mb="xs">
           {t`Source Database`}
