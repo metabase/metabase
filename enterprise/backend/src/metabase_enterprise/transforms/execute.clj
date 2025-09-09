@@ -68,11 +68,12 @@
 
 (defn run-cancelable-transform!
   "Run a compiled transform"
-  [run-id driver {:keys [db-id conn-spec output-schema]} run-transform!]
+  [run-id driver {:keys [db conn-spec output-schema]} run-transform!]
   ;; local run is responsible for status, using canceling lifecycle
   (try
-    (when-not (driver/schema-exists? driver db-id output-schema)
-      (driver/create-schema-if-needed! driver conn-spec output-schema))
+    (when (driver.u/supports? driver :schemas db)
+      (when-not (driver/schema-exists? driver (:id db) output-schema)
+        (driver/create-schema-if-needed! driver conn-spec output-schema)))
     (canceling/chan-start-timeout-vthread! run-id (transforms.settings/transform-timeout))
     (let [cancel-chan (a/promise-chan)
           ret (binding [qp.pipeline/*canceled-chan* cancel-chan]
@@ -109,7 +110,7 @@
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
            feature (transforms.util/required-database-feature transform)
-           transform-details {:db-id db
+           transform-details {:db db
                               :transform-type (keyword (:type target))
                               :conn-spec (driver/connection-spec driver database)
                               :query (transforms.util/compile-source source)
@@ -320,7 +321,7 @@
         (log/info "Executing Python transform" transform-id "with target" (pr-str target))
         (let [start-ms (u/start-timer)
               transform-details
-              {:db-id db
+              {:db db
                :transform-type (keyword (:type target))
                :conn-spec (driver/connection-spec driver db)
                ;; :query (transforms.util/compile-source source)
