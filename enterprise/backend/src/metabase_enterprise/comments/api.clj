@@ -130,7 +130,7 @@
                                                   [:= :parent_comment_id parent_comment_id]]}]}
                        ;; FIXME: add dispatch on different entity types
                        {:where [:= :id (:creator_id entity)]})
-          recipients (-> (t2/select-fn-set :email [:model/User :email] #p clause)
+          recipients (-> (t2/select-fn-set :email [:model/User :email] clause)
                          (disj (:email @api/*current-user*)))
           payload    {:entity_type  target_type
                       :entity_title (:name entity)
