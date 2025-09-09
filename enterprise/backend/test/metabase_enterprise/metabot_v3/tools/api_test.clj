@@ -1148,3 +1148,41 @@
                       (update :structured_output (fn [output]
                                                    (filter #(#{(:id t1) (:id t2) (:id t3)} (:id %))
                                                            output)))))))))))
+
+(deftest get-transform-test
+  (mt/with-premium-features #{:metabot-v3 :transforms}
+    (let [conversation-id (str (random-uuid))
+          rasta-ai-token (ai-session-token)
+          crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))]
+      (mt/with-temp [:model/Transform t1 {:name "People Transform"
+                                          :description "Simple select on People table"
+                                          :source {:type "query"
+                                                   :query (mt/native-query {:query "SELECT * FROM PEOPLE"})}
+                                          :target {:type "table" :name "t1_table" :schema nil}}
+                     ;; TODO make this a Python transform
+                     :model/Transform t2 {:name "Orders Transform"
+                                          :description "Simple select on Orders table"
+                                          :source {:type "query"
+                                                   :query (mt/native-query {:query "SELECT * FROM ORDERS"})}
+                                          :target {:type "table" :name "t2_table" :schema nil}}]
+        (testing "With insufficient permissions"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 "ee/metabot-tools/get-transform-details"
+                                       {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
+                                       {:arguments {:transform_id (:id t1)}
+                                        :conversation_id conversation-id}))))
+        (testing "With non-existent transform"
+          (is (= "Not found."
+                 (mt/user-http-request :rasta :post 404 "ee/metabot-tools/get-transform-details"
+                                       {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
+                                       {:arguments {:transform_id (+ 10000 (:id t2))}
+                                        :conversation_id conversation-id}))))
+        (testing "With superuser permissions"
+          (doseq [transform [t1 t2]]
+            (testing (:name transform)
+              (is (=? {:structured_output transform
+                       :conversation_id conversation-id}
+                      (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-transform-details"
+                                            {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
+                                            {:arguments {:transform_id (:id transform)}
+                                             :conversation_id conversation-id}))))))))))
