@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [macaw.core :as macaw]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.parameters.parse :as params.parse]
@@ -192,6 +193,27 @@
          :tables
          (map :component)
          (into #{} (keep #(find-table-or-transform driver db-tables transforms %))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Transforms                                                        |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn validate-source-column
+  [driver metadata-provider tables {:keys [column] :as source-column}]
+  (when-let [table (-> (find-table-or-transform driver tables #{} source-column)
+                       :table)]
+    (let [fields (driver-api/fields metadata-provider table)
+          normalized-column (normalize-name driver column)]
+      (some #(= normalized-column (:name %)) fields))))
+
+(defmethod driver/validate-native-query-fields :sql
+  [driver metadata-provider query]
+  (let [source-columns (->> query
+                            macaw/parsed-query
+                            macaw/query->components
+                            :source-columns)
+        db-tables (driver-api/tables metadata-provider)]
+    (every? #(validate-source-column driver metadata-provider db-tables %) source-columns)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Convenience Imports                                               |

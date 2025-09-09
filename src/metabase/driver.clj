@@ -1183,6 +1183,10 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti validate-native-query-fields
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti schema-exists?
   "Checks if a schema exists in the given database."
   {:added "0.57.0" :arglists '([driver db-id schema])}
