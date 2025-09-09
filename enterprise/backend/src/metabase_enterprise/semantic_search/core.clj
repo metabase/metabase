@@ -60,6 +60,8 @@
           (analytics/observe! :metabase-search/semantic-results-before-fallback final-count)
           (let [fallback-results (try
                                    (cond->> (search.engine/results (assoc search-ctx :search-engine fallback))
+                                     ;; The in-place engine returns a reducible (but not seqable) result that needs to
+                                     ;; be realized before we concat and dedup with the semantic engine results.
                                      (= :search.engine/in-place fallback)
                                      (into [] (comp (map t2.realize/realize)
                                                     (take (- (semantic.settings/semantic-search-results-limit) final-count)))))
