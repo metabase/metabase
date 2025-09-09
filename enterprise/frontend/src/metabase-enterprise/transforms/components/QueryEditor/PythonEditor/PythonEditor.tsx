@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { color } from "metabase/lib/colors";
-import { Alert, Box, Button, Group, Loader, Text } from "metabase/ui";
+import { Alert, Box, Button, Group, Loader, Stack, Text } from "metabase/ui";
 
 import {
   useCancelPythonMutation,
@@ -129,11 +129,9 @@ export function PythonEditor({
   const { headers, rows } = parseCSV(executionResult?.output || "");
 
   return (
-    <Box h="100%" style={{ display: "flex", flexDirection: "column" }}>
+    <Stack h="100%" gap={0}>
       {/* Python Script Editor */}
-      <Box
-        style={{ flex: "1 1 300px", minHeight: "300px", overflow: "hidden" }}
-      >
+      <Box h="100%">
         <CodeEditor
           value={script}
           onChange={handleScriptChange}
@@ -322,6 +320,6 @@ export function PythonEditor({
           {isRunning && <Loader size="sm" />}
         </Group>
       </Box>
-    </Box>
+    </Stack>
   );
 }
