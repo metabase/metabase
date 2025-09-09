@@ -620,24 +620,28 @@
     [:structured_output ::full-table]]
    [:map [:output :string]]])
 
+(mr/def ::basic-transform
+  [:map
+   {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:name :string]
+   [:description {:optional true} [:maybe :string]]
+   [:entity_id {:optional true} [:maybe :string]]
+   [:source ::metabot-v3.tools.transforms/transform-source]])
+
+(mr/def ::full-transform
+  [:merge
+   ::basic-transform
+   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:created_at ms/TemporalString]
+    [:updated_at ms/TemporalString]
+    [:target ::metabot-v3.tools.transforms/transform-target]]])
+
 (mr/def ::get-transforms-result
   [:or
    [:map
     {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-    [:structured_output [:sequential
-                         [:map
-                          {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-                          [:id :int]
-                          [:entity_id :string]
-                          [:name :string]
-                          [:description :string]
-                          [:source [:or
-                                    [:map
-                                     [:type [:= "query"]]
-                                     [:query :map]]
-                                    [:map
-                                     ;; TODO rest of the spec for python transforms
-                                     [:type [:= "python"]]]]]]]]]
+    [:structured_output [:sequential ::basic-transform]]]
    [:map [:output :string]]])
 
 (mr/def ::get-transform-details-arguments
@@ -647,28 +651,10 @@
    [:map {:encode/tool-api-request
           #(set/rename-keys % {:transform_id :transform-id})}]])
 
-;; TODO factor out common parts with ::get-transforms-result
 (mr/def ::get-transform-details-result
   [:or
    [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-    [:structured_output [:sequential
-                         [:map
-                          {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-                          [:id :int]
-                          [:entity_id :string]
-                          [:name :string]
-                          [:description :string]
-                          [:source [:or
-                                    [:map
-                                     [:type [:= "query"]]
-                                     [:query :map]]
-                                    [:map
-                                     ;; TODO rest of the spec for python transforms
-                                     [:type [:= "python"]]]]]
-                          [:target [:map
-                                    [:type [:enum "table"]]
-                                    [:schema {:optional true} [:or ms/NonBlankString :nil]]
-                                    [:name :string]]]]]]]
+    [:structured_output [:sequential ::full-transform]]]
    [:map [:output :string]]])
 
 (mr/def ::answer-sources-result
