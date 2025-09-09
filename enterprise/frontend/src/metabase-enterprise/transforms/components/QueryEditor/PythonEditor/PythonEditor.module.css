@@ -1,0 +1,8 @@
+.root {
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.editor {
+  width: 100%;
+  height: 100%;
+}
