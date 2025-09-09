@@ -29,42 +29,27 @@
 
 (def TYPE-PREFIX
   "AI SDK type to prefix"
-  {:text           "0:"
-   :data           "2:"
-   :error          "3:"
-   :finish-message "d:"
-   :tool-call      "9:"
-   :tool-result    "a:"})
+  ;; NOTE: if we ever get prefix longer than 2 chars, you need to fix parsing to be more generic
+  {:TEXT           "0:"
+   :DATA           "2:"
+   :ERROR          "3:"
+   :FINISH_MESSAGE "d:"
+   :TOOL_CALL      "9:"
+   :TOOL_RESULT    "a:"})
 
 (def PREFIX-TYPE "AI SDK prefix to type" (set/map-invert TYPE-PREFIX))
 
-(defn aisdk-lines->message
-  "Convert chunks in AI SDK format into a single combined message."
+(defn aisdk-lines->chunks
+  "Convert AI SDK line format into an array of parsed chunks."
   [lines]
-  (let [chunks (mapv (fn [line] [(get PREFIX-TYPE (subs line 0 2))
-                                 (json/decode+kw (subs line 2))])
-                     lines)
-        types  (into #{} (map first chunks))
-        last-c (nth chunks (dec (count chunks)))]
-    (when-not (set/subset? types #{:text :tool-call :finish-message})
-      (log/error "Unhandled chunk types appeared" {:chunk-types types}))
-    (u/remove-nils
-     {:content    (apply str (for [[type c] chunks
-                                   :when    (= type :text)]
-                               c))
-      :tool_calls (-> (for [[type c] chunks
-                            :when    (= type :tool-call)]
-                        {:id        (:toolCallId c)
-                         :name      (:toolName c)
-                         :arguments (:args c)})
-                      vec
-                      not-empty)
-      :data (->> (filter #(= (first %) :data) chunks)
-                 (mapv second)) ;; [{:type :navigate_to :value "xxx"}]
-      #_#_:data       (when-let [navigate-to (first (for [[type c] chunks
-                                                          :when    (and (= type :data)
-                                                                        (= (:type c) :navigate_to))]
-                                                      (:value c)))]
-                        {:navigate_to navigate-to})
-      :metadata   {:usage (when (= (first last-c) :finish-message)
-                            (:usage (second last-c)))}})))
+  (reduce
+   (fn [acc line]
+     ;; NOTE: depends on all prefixes being 2 chars long
+     (let [value (json/decode+kw (subs line 2))
+           type  (get PREFIX-TYPE (subs line 0 2))]
+       (cond
+         (and (string? value) (string? (u/last acc))) (update acc (dec (count acc)) str value)
+         (string? value)                              (conj acc value)
+         :else                                        (conj acc (assoc value :_type type)))))
+   []
+   lines))

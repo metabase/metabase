@@ -109,16 +109,22 @@
 (defn- generate-embeddings-endpoint []
   (str (metabot-v3.settings/ai-service-base-url) "/v1/embeddings"))
 
-(defn- store-message! [conversation-id message]
-  (let [usage (-> message :metadata :usage)]
+(defn- store-message! [conversation-id props chunks]
+  (let [usage  (-> (u/last chunks) :metadata :usage)
+        state  (u/seek #(and (= (:_type %) :DATA)
+                             (= (:type %) "state"))
+                       chunks)
+        chunks (if state (vec (remove #(= % state) chunks)) chunks)]
     (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
-                              (constantly {:user_id api/*current-user-id*}))
+                              (constantly (cond-> {:user_id    api/*current-user-id*
+                                                   :profile_id (:profile_id props)}
+                                            state (assoc :state state))))
     ;; NOTE: this will need to be constrained at some point, see BOT-386
     (t2/insert! :model/MetabotMessage
                 {:conversation_id conversation-id
-                 :data            message
+                 :data            chunks
                  :usage           usage
-                 :role            (:role message)
+                 :role            (:role props)
                  :total_tokens    (->> (vals usage)
                                        ;; NOTE: this filter is supporting backward-compatible usage format, can be
                                        ;; removed when ai-service does not give us `completionTokens` in `usage`
@@ -126,10 +132,8 @@
                                        (map #(+ (:prompt %) (:completion %)))
                                        (apply +))})))
 
-(defn- handle-finish [conversation-id lines]
-  (let [message (-> (metabot-v3.u/aisdk-lines->message lines)
-                    (u/assoc-default :role :assistant))]
-    (store-message! conversation-id message)))
+(defn- handle-finish [conversation-id profile-id lines]
+  (store-message! conversation-id {:role :assistant :profile_id profile-id} (metabot-v3.u/aisdk-lines->chunks lines)))
 
 (mu/defn streaming-request :- :any
   "Make a streaming V2 request to the AI Service
@@ -157,8 +161,7 @@
        [:state :map]]]
   (premium-features/assert-has-feature :metabot-v3 "MetaBot")
   (try
-    (store-message! conversation-id (-> (last messages)
-                                        (u/assoc-default :role :user)))
+    (store-message! conversation-id {:role :user :profile_id profile-id} (last messages))
     (let [url      (ai-url "/v2/agent/stream")
           body     (-> {:messages        messages
                         :context         context
@@ -195,7 +198,7 @@
                   ;; Immediately flush so it feels fluid on the frontend
                   (.flush os)
                   (recur (conj lines line)))
-                (handle-finish conversation-id lines)))))
+                (handle-finish conversation-id profile-id lines)))))
         (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
                         {:request (assoc options :body body)
                          :response response}))))
