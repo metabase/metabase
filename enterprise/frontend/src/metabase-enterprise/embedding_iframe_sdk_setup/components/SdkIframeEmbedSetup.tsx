@@ -63,7 +63,11 @@ const SdkIframeEmbedSetupContent = () => {
       </Button>
     ))
     .otherwise(() => (
-      <Button variant="filled" onClick={handleNext}>
+      <Button
+        variant="filled"
+        onClick={handleNext}
+        disabled={!isSimpleEmbeddingEnabled}
+      >
         {t`Next`}
       </Button>
     ));
