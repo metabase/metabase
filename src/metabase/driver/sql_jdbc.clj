@@ -165,7 +165,7 @@
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (jdbc/execute! conn sql))))
 
-(defmethod driver/rename-tables :sql-jdbc
+(defmethod driver/rename-tables! :sql-jdbc
   [driver db-id rename-map]
   (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
     (doseq [[from-table to-table] (-> rename-map

@@ -196,4 +196,4 @@
    This is a simpler, composable operation that only handles renaming."
   [driver database-id rename-map]
   (log/infof "Renaming tables: %s" (pr-str rename-map))
-  (driver/rename-tables driver database-id rename-map))
+  (driver/rename-tables! driver database-id rename-map))

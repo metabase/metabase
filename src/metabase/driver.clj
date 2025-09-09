@@ -1270,7 +1270,7 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti rename-tables
+(defmulti rename-tables!
   "Rename multiple tables atomically within a transaction. Takes a map of {from-table to-table}.
    Uses topological sorting to determine the correct order to avoid conflicts.
    This is a simpler, composable operation compared to swap-table! that only handles renaming.

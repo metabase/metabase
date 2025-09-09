@@ -324,9 +324,9 @@
           (driver/insert-into! driver db-id qualified-table-2 ["id" "name"] test-data-2)
 
           (testing "basic rename operations work correctly"
-            (driver/rename-tables driver db-id
-                                  {qualified-table-1 qualified-temp-1
-                                   qualified-table-2 qualified-temp-2})
+            (driver/rename-tables! driver db-id
+                                   {qualified-table-1 qualified-temp-1
+                                    qualified-table-2 qualified-temp-2})
 
             (is (driver/table-exists? driver (mt/db) {:name temp-table-1 :schema schema}))
             (is (driver/table-exists? driver (mt/db) {:name temp-table-2 :schema schema}))
@@ -336,9 +336,9 @@
             (is (= test-data-1 (table-rows qualified-temp-1)))
             (is (= test-data-2 (table-rows qualified-temp-2)))
 
-            (driver/rename-tables driver db-id
-                                  {qualified-temp-1 qualified-table-1
-                                   qualified-temp-2 qualified-table-2}))
+            (driver/rename-tables! driver db-id
+                                   {qualified-temp-1 qualified-table-1
+                                    qualified-temp-2 qualified-table-2}))
 
           (testing "failure scenario"
             (let [conflict-table (str test-table-2 "_conflict")
@@ -346,12 +346,12 @@
               (driver/create-table! driver db-id qualified-conflict {"id" "INTEGER"} {})
 
               (is (thrown? Exception
-                           (driver/rename-tables driver db-id
-                                                 {qualified-table-1 qualified-temp-1
-                                                  qualified-table-2 qualified-conflict})))
+                           (driver/rename-tables! driver db-id
+                                                  {qualified-table-1 qualified-temp-1
+                                                   qualified-table-2 qualified-conflict})))
 
               (when (driver/table-exists? driver (mt/db) {:name temp-table-1 :schema schema})
-                (driver/rename-tables driver db-id {qualified-temp-1 qualified-table-1}))
+                (driver/rename-tables! driver db-id {qualified-temp-1 qualified-table-1}))
               (driver/drop-table! driver db-id qualified-conflict)))
 
           (finally
