@@ -136,7 +136,7 @@
      [:RSD (make-currency "din." "Serbian Dinar" "дин." 0 0 "RSD" "Serbian dinars")]
      [:RUB (make-currency "₽" "Russian Ruble" "₽" 2 0 "RUB" "Russian rubles")]
      [:RWF (make-currency "RWF" "Rwandan Franc" "FR" 0 0 "RWF" "Rwandan francs")]
-     [:SAR (make-currency "SR" "Saudi Riyal" "⃁" 2 0 "SAR" "Saudi riyals")]
+     [:SAR (make-currency "⃁" "Saudi Riyal" "⃁" 2 0 "SAR" "Saudi riyals")]
      [:SDG (make-currency "SDG" "Sudanese Pound" "SDG" 2 0 "SDG" "Sudanese pounds")]
      [:SEK (make-currency "kr" "Swedish Krona" "kr" 2 0 "SEK" "Swedish kronor")]
      [:SGD (make-currency "S$" "Singapore Dollar" "$" 2 0 "SGD" "Singapore dollars")]
