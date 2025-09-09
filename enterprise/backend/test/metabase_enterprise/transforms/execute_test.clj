@@ -278,15 +278,14 @@
                                                      "    return pd.DataFrame({'name': ['Charlie', 'Diana', 'Eve'], 'age': [35, 40, 45]})")}}))
 
                   (let [swap-latch (java.util.concurrent.CountDownLatch. 1)
-                        original-swap-table! transforms.util/swap-table!]
-                    (with-redefs [transforms.util/swap-table! (fn [driver db-id target-table-name source-table-name temp-table-name]
-                                                                (.await swap-latch)
-                                                                (original-swap-table! driver db-id target-table-name source-table-name temp-table-name))]
+                        original-rename-tables-atomic! transforms.util/rename-tables!]
+                    (with-redefs [transforms.util/rename-tables! (fn [driver db-id rename-pairs]
+                                                                   (.await swap-latch)
+                                                                   (original-rename-tables-atomic! driver db-id rename-pairs))]
                       (let [transform-future (future
                                                (transforms.execute/execute-python-transform!
                                                 (t2/select-one :model/Transform (:id transform))
                                                 {:run-method :manual}))]
-                        (Thread/sleep 1000)
                         (is (= [["Alice" 25] ["Bob" 30]]
                                (transforms.tu/table-rows table-name))
                             "Original data should still be accessible during transform")

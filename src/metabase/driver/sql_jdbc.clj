@@ -18,6 +18,7 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu])
   (:import
@@ -164,27 +165,17 @@
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (jdbc/execute! conn sql))))
 
-(defmethod driver/swap-table! :sql-jdbc
-  [driver db-id target-table-name source-table-name temp-table-name]
-  ;; Use double renaming technique within a transaction for atomicity:
-  ;; 1. Rename target table to temporary name
-  ;; 2. Rename source table to target table's name
-  ;; 3. Drop the temporary table
+(defmethod driver/rename-tables :sql-jdbc
+  [driver db-id rename-map]
   (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
-    ;; Rename target table to temp name
-    (jdbc/execute! conn (first (sql/format {:alter-table (keyword target-table-name)
-                                            :rename-table (keyword temp-table-name)}
-                                           :quoted true
-                                           :dialect (sql.qp/quote-style driver))))
-    ;; Rename source table to target table's name
-    (jdbc/execute! conn (first (sql/format {:alter-table (keyword source-table-name)
-                                            :rename-table (keyword (name target-table-name))}
-                                           :quoted true
-                                           :dialect (sql.qp/quote-style driver))))
-    ;; Drop the temp table (which contains the old target table data)
-    (jdbc/execute! conn (first (sql/format {:drop-table [:if-exists (keyword temp-table-name)]}
-                                           :quoted true
-                                           :dialect (sql.qp/quote-style driver))))))
+    (doseq [[from-table to-table] (-> rename-map
+                                      (update-vals vector)
+                                      u/topological-sort
+                                      (update-vals first))]
+      (jdbc/execute! conn (first (sql/format {:alter-table (keyword from-table)
+                                              :rename-table (keyword (name to-table))}
+                                             :quoted true
+                                             :dialect (sql.qp/quote-style driver)))))))
 
 (defmethod driver/truncate! :sql-jdbc
   [driver db-id table-name]

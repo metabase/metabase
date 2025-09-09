@@ -1270,12 +1270,12 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti swap-table!
-  "Atomically swap table data within a transaction.
-   The target table is renamed to temp-table-name, the source table is renamed to target-table-name,
-   and then the temp table is dropped. This ensures data consistency during table replacement operations.
+(defmulti rename-tables
+  "Rename multiple tables atomically within a transaction. Takes a map of {from-table to-table}.
+   Uses topological sorting to determine the correct order to avoid conflicts.
+   This is a simpler, composable operation compared to swap-table! that only handles renaming.
    Table names may be qualified by schema e.g. schema.table"
-  {:added "0.57.0", :arglists '([driver db-id target-table-name source-table-name temp-table-name])}
+  {:added "0.57.0", :arglists '([driver db-id rename-map])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

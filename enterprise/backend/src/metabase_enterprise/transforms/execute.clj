@@ -28,11 +28,13 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:const temp-table-suffix-new "new"
-  "Suffix used for temporary tables containing new data during swap operations.")
+(def ^:const temp-table-suffix-new
+  "Suffix used for temporary tables containing new data during swap operations."
+  "new")
 
-(def ^:const temp-table-suffix-old "old"
-  "Suffix used for temporary tables containing old data during swap operations.")
+(def ^:const temp-table-suffix-old
+  "Suffix used for temporary tables containing old data during swap operations."
+  "old")
 
 (mr/def ::transform-details
   [:map
@@ -258,8 +260,11 @@
         (log/info "Existing table detected, Create then swap")
         (try
           (create-table-and-insert-data! driver (:id db) source-table-name metadata data-source)
-          ;; Use the new atomic swap-table! function: target <- source (using temp)
-          (transforms.util/swap-table! driver (:id db) table-name source-table-name temp-table-name)
+          ;; Use the new atomic rename-tables! function: target <- source (using temp)
+          (transforms.util/rename-tables! driver (:id db) {table-name temp-table-name
+                                                           source-table-name table-name})
+          ;; Drop the old table (now stored in temp-table-name) separately
+          (transforms.util/drop-table! driver (:id db) temp-table-name)
           (catch Exception e
             (log/error e "Failed to transfer data to table")
             (try

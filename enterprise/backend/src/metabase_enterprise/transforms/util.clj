@@ -191,10 +191,9 @@
   [base-table-name suffix]
   (keyword (str (u/qualified-name base-table-name) "_" suffix "_" (quot (System/currentTimeMillis) 1000))))
 
-(defn swap-table!
-  "Atomically swap table data within a transaction to ensure consistency. 
-   The target table is renamed to temp-table-name, the source table is renamed to target-table-name,
-   and then the temp table is dropped."
-  [driver database-id target-table-name source-table-name temp-table-name]
-  (log/infof "Swapping table data: %s <- %s (using temp name %s)" target-table-name source-table-name temp-table-name)
-  (driver/swap-table! driver database-id target-table-name source-table-name temp-table-name))
+(defn rename-tables!
+  "Rename multiple tables atomically within a transaction using the new driver/rename-tables method.
+   This is a simpler, composable operation that only handles renaming."
+  [driver database-id rename-map]
+  (log/infof "Renaming tables: %s" (pr-str rename-map))
+  (driver/rename-tables driver database-id rename-map))
