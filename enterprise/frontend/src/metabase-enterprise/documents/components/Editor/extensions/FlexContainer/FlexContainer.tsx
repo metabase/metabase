@@ -8,11 +8,14 @@ import {
 } from "@tiptap/react";
 import cx from "classnames";
 import type React from "react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { Box } from "metabase/ui";
 
 import styles from "./FlexContainer.module.css";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { Decoration, DecorationSet, EditorView } from "@tiptap/pm/view";
+import type { Node as PMNode } from "@tiptap/pm/model";
 
 const COLUMN_MIN_WIDTH = 200;
 
@@ -20,6 +23,8 @@ export interface FlexContainerAttributes {
   class?: string;
   columnWidths?: number[]; // Array of width percentages for each column
 }
+
+let editorViewRef: EditorView | null = null; // This will hold our editor view
 
 export const FlexContainer: Node<{
   HTMLAttributes: FlexContainerAttributes;
@@ -73,6 +78,187 @@ export const FlexContainer: Node<{
     ];
   },
 
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey("silly-drag-handles"),
+
+        view(editorView) {
+          editorViewRef = editorView;
+
+          return {
+            destroy() {
+              // Clean up if needed.
+              editorViewRef = null;
+            },
+          };
+        },
+
+        props: {
+          decorations: (state) => {
+            const handleMouseDown = (
+              handleIndex: number,
+              e: MouseEvent,
+              parent: PMNode,
+            ) => {
+              e.preventDefault();
+
+              if (editorViewRef === null) {
+                return;
+              }
+
+              let pos = 0;
+
+              state.doc.descendants((node, _pos) => {
+                if (node === parent) {
+                  pos = _pos;
+                }
+              });
+
+              const container = e.target?.closest("[data-type=flexContainer]");
+              if (!container) {
+                return;
+              }
+
+              const currentWidths = parent.attrs.columnWidths;
+              const columnWidths =
+                (currentWidths || []).length === parent.childCount
+                  ? currentWidths
+                  : (Array(parent.childCount).fill(
+                      100 / parent.childCount,
+                    ) as number[]);
+
+              const containerRect = container.getBoundingClientRect();
+              const startX = e.clientX;
+              const startWidths = [...columnWidths];
+
+              const handleMouseMove = (e: MouseEvent) => {
+                const deltaX = e.clientX - startX;
+                const containerWidth = containerRect.width;
+                const deltaPercent = (deltaX / containerWidth) * 100;
+
+                const newWidths = [...startWidths];
+
+                // Adjust the current column and next column
+                const leftColumnIndex = handleIndex;
+                const rightColumnIndex = handleIndex + 1;
+
+                // Calculate minimum width percentage based on 200px minimum
+                const minWidthPercent =
+                  (COLUMN_MIN_WIDTH / containerWidth) * 100;
+
+                // Calculate new widths ensuring minimum column width
+                let leftNewWidth = Math.max(
+                  minWidthPercent,
+                  startWidths[leftColumnIndex] + deltaPercent,
+                );
+                let rightNewWidth = Math.max(
+                  minWidthPercent,
+                  startWidths[rightColumnIndex] - deltaPercent,
+                );
+
+                // Ensure the two adjusted columns don't exceed their total original width
+                const originalTotal =
+                  startWidths[leftColumnIndex] + startWidths[rightColumnIndex];
+                const newTotal = leftNewWidth + rightNewWidth;
+
+                if (newTotal !== originalTotal) {
+                  // Adjust proportionally to maintain the original total
+                  const ratio = originalTotal / newTotal;
+                  leftNewWidth *= ratio;
+                  rightNewWidth *= ratio;
+
+                  // Re-check minimum constraints after adjustment
+                  if (
+                    leftNewWidth < minWidthPercent ||
+                    rightNewWidth < minWidthPercent
+                  ) {
+                    return; // Don't update if constraints would be violated
+                  }
+                }
+
+                // Only apply if both columns meet minimum requirements
+                if (
+                  leftNewWidth >= minWidthPercent &&
+                  rightNewWidth >= minWidthPercent
+                ) {
+                  newWidths[leftColumnIndex] = leftNewWidth;
+                  newWidths[rightColumnIndex] = rightNewWidth;
+
+                  // Verify total width is still 100%
+                  const totalWidth = newWidths.reduce(
+                    (sum, width) => sum + width,
+                    0,
+                  );
+
+                  const { state, dispatch } = editorViewRef;
+
+                  if (Math.abs(totalWidth - 100) > 0.01) {
+                    // Normalize to ensure exact 100%
+                    const normalizedWidths = newWidths.map(
+                      (width) => (width / totalWidth) * 100,
+                    );
+
+                    const transaction = state.tr.setNodeMarkup(pos, undefined, {
+                      columnWidths: normalizedWidths,
+                    });
+
+                    dispatch(transaction);
+                    // updateAttributes({ columnWidths: normalizedWidths });
+                  } else {
+                    const transaction = state.tr.setNodeMarkup(pos, undefined, {
+                      columnWidths: newWidths,
+                    });
+                    dispatch(transaction);
+                    // updateAttributes({ columnWidths: newWidths });
+                  }
+                }
+              };
+
+              const handleMouseUp = () => {
+                document.removeEventListener("mousemove", handleMouseMove);
+                document.removeEventListener("mouseup", handleMouseUp);
+              };
+
+              document.addEventListener("mousemove", handleMouseMove);
+              document.addEventListener("mouseup", handleMouseUp);
+            };
+            const decorations: Decoration[] = [];
+
+            const flexContainers: { node: PMNode; pos: number }[] = [];
+
+            state.doc.content.descendants((node, pos) => {
+              // console.log(node);
+              if (node.type.name === "flexContainer") {
+                flexContainers.push({ node, pos });
+                return false;
+              }
+            });
+
+            flexContainers.forEach(({ node, pos }) => {
+              node.forEach((n, offset, index) => {
+                if (index !== 0) {
+                  const widget = document.createElement("div");
+                  widget.classList.add(styles.resizeHandle);
+                  widget.onmousedown = (e: MouseEvent) => {
+                    handleMouseDown(index - 1, e, node);
+                  };
+
+                  const deco = Decoration.widget(pos + offset + 1, widget, {
+                    side: -1,
+                  });
+                  decorations.push(deco);
+                }
+              });
+            });
+
+            return DecorationSet.create(state.doc, decorations);
+          },
+        },
+      }),
+    ];
+  },
+
   addNodeView() {
     return ReactNodeViewRenderer(FlexContainerComponent);
   },
@@ -80,14 +266,9 @@ export const FlexContainer: Node<{
 
 const FlexContainerComponent: React.FC<NodeViewProps> = ({
   node,
-  updateAttributes,
   selected,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isResizing, setIsResizing] = useState(false);
-
-  const dndContext = useDndContext();
-  const isDragging = dndContext.active !== null;
 
   // Get column count and current widths
   const columnCount = node.content.childCount;
@@ -102,135 +283,10 @@ const FlexContainerComponent: React.FC<NodeViewProps> = ({
     return Array(columnCount).fill(100 / columnCount) as number[];
   }, [currentWidths, columnCount]);
 
-  const handleMouseDown = useCallback(
-    (handleIndex: number, e: React.MouseEvent) => {
-      e.preventDefault();
-      setIsResizing(true);
-
-      const container = containerRef.current;
-      if (!container) {
-        return;
-      }
-
-      const containerRect = container.getBoundingClientRect();
-      const startX = e.clientX;
-      const startWidths = [...columnWidths];
-
-      const handleMouseMove = (e: MouseEvent) => {
-        const deltaX = e.clientX - startX;
-        const containerWidth = containerRect.width;
-        const deltaPercent = (deltaX / containerWidth) * 100;
-
-        const newWidths = [...startWidths];
-
-        // Adjust the current column and next column
-        const leftColumnIndex = handleIndex;
-        const rightColumnIndex = handleIndex + 1;
-
-        // Calculate minimum width percentage based on 200px minimum
-        const minWidthPercent = (COLUMN_MIN_WIDTH / containerWidth) * 100;
-
-        // Calculate new widths ensuring minimum column width
-        let leftNewWidth = Math.max(
-          minWidthPercent,
-          startWidths[leftColumnIndex] + deltaPercent,
-        );
-        let rightNewWidth = Math.max(
-          minWidthPercent,
-          startWidths[rightColumnIndex] - deltaPercent,
-        );
-
-        // Ensure the two adjusted columns don't exceed their total original width
-        const originalTotal =
-          startWidths[leftColumnIndex] + startWidths[rightColumnIndex];
-        const newTotal = leftNewWidth + rightNewWidth;
-
-        if (newTotal !== originalTotal) {
-          // Adjust proportionally to maintain the original total
-          const ratio = originalTotal / newTotal;
-          leftNewWidth *= ratio;
-          rightNewWidth *= ratio;
-
-          // Re-check minimum constraints after adjustment
-          if (
-            leftNewWidth < minWidthPercent ||
-            rightNewWidth < minWidthPercent
-          ) {
-            return; // Don't update if constraints would be violated
-          }
-        }
-
-        // Only apply if both columns meet minimum requirements
-        if (
-          leftNewWidth >= minWidthPercent &&
-          rightNewWidth >= minWidthPercent
-        ) {
-          newWidths[leftColumnIndex] = leftNewWidth;
-          newWidths[rightColumnIndex] = rightNewWidth;
-
-          // Verify total width is still 100%
-          const totalWidth = newWidths.reduce((sum, width) => sum + width, 0);
-          if (Math.abs(totalWidth - 100) > 0.01) {
-            // Normalize to ensure exact 100%
-            const normalizedWidths = newWidths.map(
-              (width) => (width / totalWidth) * 100,
-            );
-            updateAttributes({ columnWidths: normalizedWidths });
-          } else {
-            updateAttributes({ columnWidths: newWidths });
-          }
-        }
-      };
-
-      const handleMouseUp = () => {
-        setIsResizing(false);
-        document.removeEventListener("mousemove", handleMouseMove);
-        document.removeEventListener("mouseup", handleMouseUp);
-      };
-
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleMouseUp);
-    },
-    [columnWidths, updateAttributes],
-  );
-
-  const renderResizeHandles = (disabled: boolean) => {
-    if (columnCount <= 1) {
-      return null;
-    }
-
-    const handles = [];
-    for (let i = 0; i < columnCount - 1; i++) {
-      // Calculate the cumulative width of columns before this handle
-      const leftWidth = columnWidths
-        .slice(0, i + 1)
-        .reduce((sum: number, width: number) => sum + width, 0);
-
-      // Account for grid gaps - each gap adds to the left offset
-      // There are i gaps before this handle (gap after each of the first i columns)
-      const gapCount = i;
-      const gapOffset = gapCount * 0.5; // 1rem gap converted to percentage
-
-      handles.push(
-        <div
-          key={i}
-          className={styles.resizeHandle}
-          style={{
-            left: `calc(${leftWidth}% + ${gapOffset}rem)`,
-            pointerEvents: disabled ? "none" : "auto",
-          }}
-          onMouseDown={(e) => handleMouseDown(i, e)}
-        />,
-      );
-    }
-    return handles;
-  };
-
   return (
     <NodeViewWrapper
       className={cx(styles.flexContainer, {
         [styles.selected]: selected,
-        [styles.resizing]: isResizing,
       })}
       data-type="flexContainer"
     >
@@ -242,11 +298,11 @@ const FlexContainerComponent: React.FC<NodeViewProps> = ({
               .map(
                 (width: number) => `minmax(${COLUMN_MIN_WIDTH}px, ${width}%)`,
               )
-              .join(" "),
+              .join(" 0.25rem "),
           }}
         />
 
-        {renderResizeHandles(isDragging)}
+        {/* {renderResizeHandles(isDragging)} */}
       </Box>
     </NodeViewWrapper>
   );

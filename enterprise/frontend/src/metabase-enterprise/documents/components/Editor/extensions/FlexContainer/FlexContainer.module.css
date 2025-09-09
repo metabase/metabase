@@ -17,6 +17,8 @@
   width: 100%;
   gap: 1rem;
   grid-template-columns: var(--mb-card-container-col-widths);
+  justify-content: center;
+  align-items: center;
 }
 
 .flexContent {
@@ -33,8 +35,8 @@
 
 /* Resize handles */
 .resizeHandle {
-  position: absolute;
-  top: calc(50% - 2rem);
+  /* position: absolute;
+  top: calc(50% - 2rem); */
   width: 0.25rem;
   height: 4rem;
   margin-left: -0.125rem;
