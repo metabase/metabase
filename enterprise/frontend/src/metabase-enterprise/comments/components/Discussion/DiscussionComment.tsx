@@ -142,11 +142,14 @@ export function DiscussionComment({
           readonly={!isEditing}
           onEscape={editingHandler.close}
         />
-        <DiscussionReactions
-          comment={comment}
-          onReactionRemove={onReactionRemove}
-          onReaction={onReaction}
-        />
+
+        {comment.reactions.length > 0 && (
+          <DiscussionReactions
+            comment={comment}
+            onReactionRemove={onReactionRemove}
+            onReaction={onReaction}
+          />
+        )}
       </Box>
     </Timeline.Item>
   );
