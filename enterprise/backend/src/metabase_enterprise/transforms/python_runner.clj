@@ -8,6 +8,7 @@
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.query-processor.store :as qp.store]
    [metabase.util.json :as json]
@@ -59,7 +60,8 @@
                   :type     :native
                   :native   native}]
       (qp.store/with-metadata-provider db-id
-        (driver/execute-reducible-query driver query {:canceled-chan cancel-chan} respond)))))
+        (binding [qp.pipeline/*canceled-chan* cancel-chan]
+          (driver/execute-reducible-query driver query {:canceled-chan cancel-chan} respond))))))
 
 (defn- root-type
   [base-type]
