@@ -123,7 +123,7 @@
    #'qp.resolve-fields/resolve-fields ; this middleware actually works with either MBQL 5 or legacy
    (ensure-mbql5 #'binning/update-binning-strategy)
    (ensure-mbql5 #'desugar/desugar)
-   (ensure-legacy #'qp.add-default-temporal-unit/add-default-temporal-unit)
+   (ensure-mbql5 #'qp.add-default-temporal-unit/add-default-temporal-unit)
    (ensure-mbql5 #'qp.add-implicit-joins/add-implicit-joins)
    (ensure-legacy #'resolve-joins/resolve-joins) ; #61398
    (ensure-mbql5 #'resolve-joined-fields/resolve-joined-fields)
