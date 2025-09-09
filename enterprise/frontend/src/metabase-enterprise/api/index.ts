@@ -5,6 +5,7 @@ export * from "./api";
 export * from "./billing-info";
 export * from "./content-translation";
 export * from "./db-routing";
+export * from "./dependency";
 export * from "./gdrive";
 export * from "./metabot";
 export * from "./document";

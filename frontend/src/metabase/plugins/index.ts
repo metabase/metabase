@@ -54,6 +54,7 @@ import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
+  AnalyzeCardUpdateResponse,
   BaseEntityId,
   BaseUser,
   Bookmark,
@@ -848,4 +849,37 @@ export type TransformsPlugin = {
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
   getAdminPaths: () => [],
   getAdminRoutes: () => null,
+};
+
+type DependenciesPlugin = {
+  useAnalyzeQuestionUpdate: (
+    props: UseAnalyzeQuestionUpdateProps,
+  ) => UseAnalyzeQuestionUpdateResult;
+  DependencyListForm: ComponentType<DependencyListFormProps>;
+};
+
+export type UseAnalyzeQuestionUpdateProps = {
+  onSave: (question: Question) => Promise<void>;
+};
+
+export type UseAnalyzeQuestionUpdateResult = {
+  analyzeData?: AnalyzeCardUpdateResponse;
+  isConfirming: boolean;
+  handleInitialSave: (question: Question) => Promise<void>;
+  handleSaveAfterConfirmation: () => Promise<void>;
+};
+
+export type DependencyListFormProps = {
+  data: AnalyzeCardUpdateResponse;
+  onSave: () => void;
+  onCancel: () => void;
+};
+
+export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
+  useAnalyzeQuestionUpdate: ({ onSave }) => ({
+    isConfirming: false,
+    handleInitialSave: onSave,
+    handleSaveAfterConfirmation: () => Promise.resolve(),
+  }),
+  DependencyListForm: PluginPlaceholder,
 };

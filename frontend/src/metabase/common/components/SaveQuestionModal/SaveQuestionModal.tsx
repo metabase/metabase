@@ -5,6 +5,7 @@ import {
 import { SaveQuestionProvider } from "metabase/common/components/SaveQuestionForm/context";
 import type { SaveQuestionProps } from "metabase/common/components/SaveQuestionForm/types";
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Flex, Modal, type ModalProps } from "metabase/ui";
 
 type SaveQuestionModalProps = Omit<SaveQuestionProps, "initialDashboardTabId"> &
@@ -14,6 +15,7 @@ export const SaveQuestionModal = ({
   multiStep,
   onCreate,
   onSave,
+  onClose,
   originalQuestion,
   question,
   closeOnSuccess,
@@ -21,7 +23,14 @@ export const SaveQuestionModal = ({
   targetCollection,
   ...modalProps
 }: SaveQuestionModalProps) => {
-  useEscapeToCloseModal(modalProps.onClose);
+  const {
+    analyzeData,
+    isConfirming,
+    handleInitialSave,
+    handleSaveAfterConfirmation,
+  } = PLUGIN_DEPENDENCIES.useAnalyzeQuestionUpdate({ onSave });
+  useEscapeToCloseModal(onClose);
+
   return (
     <SaveQuestionProvider
       question={question}
@@ -30,17 +39,23 @@ export const SaveQuestionModal = ({
         const newQuestion = await onCreate(question, options);
 
         if (closeOnSuccess) {
-          modalProps.onClose();
+          onClose();
         }
 
         return newQuestion;
       }}
-      onSave={onSave}
+      onSave={handleInitialSave}
+      onCancel={onClose}
       multiStep={multiStep}
       initialCollectionId={initialCollectionId}
       targetCollection={targetCollection}
     >
-      <Modal.Root padding="2.5rem" {...modalProps} closeOnEscape={false}>
+      <Modal.Root
+        padding="2.5rem"
+        {...modalProps}
+        closeOnEscape={false}
+        onClose={onClose}
+      >
         <Modal.Overlay />
         <Modal.Content data-testid="save-question-modal">
           <Modal.Header>
@@ -52,10 +67,18 @@ export const SaveQuestionModal = ({
             </Flex>
           </Modal.Header>
           <Modal.Body>
-            <SaveQuestionForm
-              onSaveSuccess={() => closeOnSuccess && modalProps.onClose()}
-              onCancel={modalProps.onClose}
-            />
+            {analyzeData != null && isConfirming ? (
+              <PLUGIN_DEPENDENCIES.DependencyListForm
+                data={analyzeData}
+                onSave={handleSaveAfterConfirmation}
+                onCancel={onClose}
+              />
+            ) : (
+              <SaveQuestionForm
+                onSaveSuccess={() => closeOnSuccess && onClose()}
+                onCancel={onClose}
+              />
+            )}
           </Modal.Body>
         </Modal.Content>
       </Modal.Root>
