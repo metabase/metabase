@@ -28,7 +28,7 @@ export function EmailSettingsPage() {
     return <LoadingAndErrorWrapper loading />;
   }
   // eslint-disable-next-line no-console
-  console.log("kick ci");
+  console.log("kick ci again");
   return (
     <>
       <SettingsPageWrapper title={t`Email`}>
