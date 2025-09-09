@@ -22,7 +22,10 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import visualizations from "metabase/visualizations";
 import type { Card as ApiCard } from "metabase-types/api";
+
+import S from "./CheckDependenciesForm.module.css";
 
 type DependencyItem = CardDependencyItem;
 
@@ -72,6 +75,7 @@ type DependencyItemLinkProps = {
 function DependencyItemLink({ item }: DependencyItemLinkProps) {
   return (
     <Card
+      className={S.card}
       component={Link}
       to={getItemLink(item)}
       p="md"
@@ -89,7 +93,7 @@ function DependencyItemLink({ item }: DependencyItemLinkProps) {
 function getItemIcon(item: DependencyItem): IconName {
   switch (item.card.type) {
     case "question":
-      return "table2";
+      return visualizations.get(item.card.display)?.iconName ?? "table2";
     case "model":
       return "model";
     case "metric":
@@ -97,10 +101,10 @@ function getItemIcon(item: DependencyItem): IconName {
   }
 }
 
-function getItemName(item: DependencyItem): string {
+function getItemName(item: DependencyItem) {
   return item.card.name;
 }
 
-function getItemLink(item: DependencyItem): string {
+function getItemLink(item: DependencyItem) {
   return Urls.question(item.card);
 }
