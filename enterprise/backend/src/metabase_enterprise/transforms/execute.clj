@@ -28,6 +28,12 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:const temp-table-suffix-new "new"
+  "Suffix used for temporary tables containing new data during swap operations.")
+
+(def ^:const temp-table-suffix-old "old"
+  "Suffix used for temporary tables containing old data during swap operations.")
+
 (mr/def ::transform-details
   [:map
    [:transform-type [:enum {:decode/normalize schema.common/normalize-keyword} :table]]
@@ -247,17 +253,17 @@
                      :file temp-file}]
     (if table-exists?
       ;; Table exists - use temp table + atomic swap pattern
-      (let [temp-table-name (keyword (str (u/qualified-name table-name) "_temp_" (System/currentTimeMillis)))]
-        (log/info "Existing table deletected, Create then swap")
+      (let [source-table-name (transforms.util/temp-table-name table-name temp-table-suffix-new)
+            temp-table-name (transforms.util/temp-table-name table-name temp-table-suffix-old)]
+        (log/info "Existing table detected, Create then swap")
         (try
-          (create-table-and-insert-data! driver (:id db) temp-table-name metadata data-source)
-          ;; TODO: These operations should be within a transaction for atomicity
-          (transforms.util/drop-table! driver (:id db) table-name)
-          (transforms.util/rename-table! driver (:id db) temp-table-name table-name)
+          (create-table-and-insert-data! driver (:id db) source-table-name metadata data-source)
+          ;; Use the new atomic swap-table! function: target <- source (using temp)
+          (transforms.util/swap-table! driver (:id db) table-name source-table-name temp-table-name)
           (catch Exception e
             (log/error e "Failed to transfer data to table")
             (try
-              (transforms.util/drop-table! driver (:id db) temp-table-name)
+              (transforms.util/drop-table! driver (:id db) source-table-name)
               (catch Exception _))
             (throw e))))
       ;; Table doesn't exist - create directly with target name

@@ -277,29 +277,21 @@
                                                      "def transform():\n"
                                                      "    return pd.DataFrame({'name': ['Charlie', 'Diana', 'Eve'], 'age': [35, 40, 45]})")}}))
 
-                  ;; Test atomic swap by intercepting drop operation
-                  (let [drop-latch (java.util.concurrent.CountDownLatch. 1)
-                        original-drop-table! transforms.util/drop-table!]
-                    (with-redefs [transforms.util/drop-table! (fn [driver db-id table-name]
-                                                                ;; Wait for latch before proceeding with drop
-                                                                (.await drop-latch)
-                                                                (original-drop-table! driver db-id table-name))]
-                      ;; Start transform in background
+                  (let [swap-latch (java.util.concurrent.CountDownLatch. 1)
+                        original-swap-table! transforms.util/swap-table!]
+                    (with-redefs [transforms.util/swap-table! (fn [driver db-id target-table-name source-table-name temp-table-name]
+                                                                (.await swap-latch)
+                                                                (original-swap-table! driver db-id target-table-name source-table-name temp-table-name))]
                       (let [transform-future (future
                                                (transforms.execute/execute-python-transform!
                                                 (t2/select-one :model/Transform (:id transform))
                                                 {:run-method :manual}))]
-                        ;; Give transform time to create temp table and reach the drop operation
                         (Thread/sleep 1000)
-                        ;; Verify old table is still accessible during transform
                         (is (= [["Alice" 25] ["Bob" 30]]
                                (transforms.tu/table-rows table-name))
                             "Original data should still be accessible during transform")
-                        ;; Release the latch to allow drop and complete transform
-                        (.countDown drop-latch)
-                        ;; Wait for transform to complete
+                        (.countDown swap-latch)
                         @transform-future
-                        ;; Verify final state
                         (is (= [["Charlie" 35] ["Diana" 40] ["Eve" 45]]
                                (transforms.tu/table-rows table-name))
                             "Table should now contain Charlie, Diana, and Eve")))))))))))))
@@ -322,20 +314,18 @@
                                                         "    return pd.DataFrame({'col1': [1, 2, 3], 'col2': ['a', 'b', 'c']})")}
                                    :target (assoc target :database (mt/id))}]
                 (mt/with-temp [:model/Transform transform transform-def]
-                  ;; Run initial transform
                   (transforms.execute/execute-python-transform! transform {:run-method :manual})
                   (wait-for-table table-name 10000)
 
-                  ;; Run again to trigger temp table creation and swap
                   (transforms.execute/execute-python-transform! transform {:run-method :manual})
 
-                  ;; Check that no temp tables remain
                   (let [db-id (mt/id)
                         tables (t2/select :model/Table :db_id db-id :active true)
-                        temp-table-pattern (re-pattern (str ".*" table-name "_temp_.*"))]
-                    (is (not-any? #(re-matches temp-table-pattern (:name %)) tables)
-                        "No temp tables should remain after successful Python transform")
+                        new-table-pattern (re-pattern (str ".*" table-name "_" transforms.execute/temp-table-suffix-new "_.*"))
+                        old-table-pattern (re-pattern (str ".*" table-name "_" transforms.execute/temp-table-suffix-old "_.*"))]
+                    (is (not-any? #(or (re-matches new-table-pattern (:name %))
+                                       (re-matches old-table-pattern (:name %))) tables)
+                        (str "No temp tables (_" transforms.execute/temp-table-suffix-new "_ or _" transforms.execute/temp-table-suffix-old "_) should remain after successful Python transform"))
 
-                    ;; Verify the final data is correct
                     (is (= [[1 "a"] [2 "b"] [3 "c"]] (transforms.tu/table-rows table-name))
                         "Table should contain the expected data after swap")))))))))))

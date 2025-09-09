@@ -164,14 +164,27 @@
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (jdbc/execute! conn sql))))
 
-(defmethod driver/rename-table! :sql-jdbc
-  [driver db-id old-table-name new-table-name]
-  (let [sql (first (sql/format {:alter-table (keyword old-table-name)
-                                :rename-table (keyword (name new-table-name))}
-                               :quoted true
-                               :dialect (sql.qp/quote-style driver)))]
-    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
-      (jdbc/execute! conn sql))))
+(defmethod driver/swap-table! :sql-jdbc
+  [driver db-id target-table-name source-table-name temp-table-name]
+  ;; Use double renaming technique within a transaction for atomicity:
+  ;; 1. Rename target table to temporary name
+  ;; 2. Rename source table to target table's name
+  ;; 3. Drop the temporary table
+  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+    ;; Rename target table to temp name
+    (jdbc/execute! conn (first (sql/format {:alter-table (keyword target-table-name)
+                                            :rename-table (keyword temp-table-name)}
+                                           :quoted true
+                                           :dialect (sql.qp/quote-style driver))))
+    ;; Rename source table to target table's name
+    (jdbc/execute! conn (first (sql/format {:alter-table (keyword source-table-name)
+                                            :rename-table (keyword (name target-table-name))}
+                                           :quoted true
+                                           :dialect (sql.qp/quote-style driver))))
+    ;; Drop the temp table (which contains the old target table data)
+    (jdbc/execute! conn (first (sql/format {:drop-table [:if-exists (keyword temp-table-name)]}
+                                           :quoted true
+                                           :dialect (sql.qp/quote-style driver))))))
 
 (defmethod driver/truncate! :sql-jdbc
   [driver db-id table-name]
