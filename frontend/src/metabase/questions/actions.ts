@@ -21,12 +21,14 @@ export const loadMetadataForCard =
         card.id,
         dispatch,
         cardApi.endpoints.getCardQueryMetadata,
+        { forceRefetch: false },
       );
     } else if (card.dataset_query.database != null) {
       return entityCompatibleQuery(
         card.dataset_query,
         dispatch,
         datasetApi.endpoints.getAdhocQueryMetadata,
+        { forceRefetch: false },
       );
     }
   };

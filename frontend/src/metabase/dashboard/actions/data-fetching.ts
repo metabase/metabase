@@ -722,6 +722,7 @@ export const fetchDashboard = createAsyncThunk(
             },
             dispatch,
             automagicDashboardsApi.endpoints.getXrayDashboardQueryMetadata,
+            { forceRefetch: false },
           ),
         ]);
         result = {
@@ -751,6 +752,7 @@ export const fetchDashboard = createAsyncThunk(
             { id: dashId, dashboard_load_id: dashboardLoadId },
             dispatch,
             dashboardApi.endpoints.getDashboardQueryMetadata,
+            { forceRefetch: false },
           ),
         ]);
         result = response;
