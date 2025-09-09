@@ -852,14 +852,15 @@ export const PLUGIN_TRANSFORMS: TransformsPlugin = {
 };
 
 type DependenciesPlugin = {
-  CardUpdateForm: ComponentType<CardUpdateFormProps>;
+  ConfirmCardUpdateForm: ComponentType<ConfirmCardUpdateFormProps>;
+  ConfirmUpdateModalTitle: ComponentType;
   useCheckCardUpdate: (
     props: UseCheckCardUpdateProps,
   ) => UseCheckCardUpdateResult;
-  getUpdateFormTitle: () => string;
 };
 
 export type UseCheckCardUpdateProps = {
+  getSubmittableQuestion: (state: State, question: Question) => Question;
   onSave: (question: Question) => Promise<void>;
 };
 
@@ -870,18 +871,18 @@ export type UseCheckCardUpdateResult = {
   handleSaveAfterConfirmation: () => Promise<void>;
 };
 
-export type CardUpdateFormProps = {
+export type ConfirmCardUpdateFormProps = {
   checkData: CheckCardUpdateResponse;
   onSave: () => void;
   onCancel: () => void;
 };
 
 export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
-  CardUpdateForm: PluginPlaceholder,
+  ConfirmCardUpdateForm: PluginPlaceholder,
+  ConfirmUpdateModalTitle: PluginPlaceholder,
   useCheckCardUpdate: ({ onSave }) => ({
     isConfirming: false,
     handleInitialSave: onSave,
     handleSaveAfterConfirmation: () => Promise.resolve(),
   }),
-  getUpdateFormTitle: () => "",
 };

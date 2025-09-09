@@ -6,6 +6,7 @@ import { SaveQuestionProvider } from "metabase/common/components/SaveQuestionFor
 import type { SaveQuestionProps } from "metabase/common/components/SaveQuestionForm/types";
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { getSubmittableQuestion } from "metabase/query_builder/selectors";
 import { Flex, Modal, type ModalProps } from "metabase/ui";
 
 type SaveQuestionModalProps = Omit<SaveQuestionProps, "initialDashboardTabId"> &
@@ -28,7 +29,10 @@ export const SaveQuestionModal = ({
     isConfirming,
     handleInitialSave,
     handleSaveAfterConfirmation,
-  } = PLUGIN_DEPENDENCIES.useCheckCardUpdate({ onSave });
+  } = PLUGIN_DEPENDENCIES.useCheckCardUpdate({
+    getSubmittableQuestion,
+    onSave,
+  });
   useEscapeToCloseModal(onClose);
 
   return (
@@ -72,7 +76,7 @@ export const SaveQuestionModal = ({
           </Modal.Header>
           <Modal.Body>
             {checkData != null && isConfirming ? (
-              <PLUGIN_DEPENDENCIES.CardUpdateForm
+              <PLUGIN_DEPENDENCIES.ConfirmCardUpdateForm
                 checkData={checkData}
                 onSave={handleSaveAfterConfirmation}
                 onCancel={onClose}
