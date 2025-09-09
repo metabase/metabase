@@ -26,8 +26,6 @@ import { SdkFontsGlobalStyles } from "../../private/SdkGlobalFontsStyles";
 import { PortalContainer } from "../../private/SdkPortalContainer";
 import { SdkUsageProblemDisplay } from "../../private/SdkUsageProblem";
 
-import { componentProviderSchema } from "./ComponentProvider.schema";
-
 type ComponentProviderInternalProps = ComponentProviderProps & {
   reduxStore: SdkStore;
 };
@@ -121,29 +119,26 @@ export type ComponentProviderProps = MetabaseProviderProps & {
   reduxStore?: SdkStore;
 };
 
-export const ComponentProvider = Object.assign(
-  memo(function ComponentProvider({
-    children,
-    ...props
-  }: ComponentProviderProps) {
-    const reduxStoreRef = useRef<SdkStore | null>(null);
+export const ComponentProvider = memo(function ComponentProvider({
+  children,
+  ...props
+}: ComponentProviderProps) {
+  const reduxStoreRef = useRef<SdkStore | null>(null);
 
-    if (!reduxStoreRef.current) {
-      reduxStoreRef.current = props.reduxStore ?? getSdkStore();
-    }
+  if (!reduxStoreRef.current) {
+    reduxStoreRef.current = props.reduxStore ?? getSdkStore();
+  }
 
-    return (
-      <MetabaseReduxProvider store={reduxStoreRef.current!}>
-        <MetabotProvider>
-          <ComponentProviderInternal
-            {...props}
-            reduxStore={reduxStoreRef.current!}
-          >
-            {children}
-          </ComponentProviderInternal>
-        </MetabotProvider>
-      </MetabaseReduxProvider>
-    );
-  }),
-  { schema: componentProviderSchema },
-);
+  return (
+    <MetabaseReduxProvider store={reduxStoreRef.current!}>
+      <MetabotProvider>
+        <ComponentProviderInternal
+          {...props}
+          reduxStore={reduxStoreRef.current!}
+        >
+          {children}
+        </ComponentProviderInternal>
+      </MetabotProvider>
+    </MetabaseReduxProvider>
+  );
+});
