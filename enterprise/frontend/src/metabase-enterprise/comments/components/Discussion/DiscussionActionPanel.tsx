@@ -57,8 +57,6 @@ export function DiscussionActionPanel({
   return (
     <Paper
       className={cx(S.actionPanel, {
-        // [S.visibleOnCommentHover]: variant === "comment",
-        // [S.visibleOnDiscussionHover]: variant === "discussion",
         [S.visible]: popoverOpened || emojiPickerOpened,
       })}
       data-testid="comment-action-panel"
