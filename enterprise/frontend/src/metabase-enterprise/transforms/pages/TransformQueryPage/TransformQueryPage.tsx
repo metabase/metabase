@@ -6,6 +6,7 @@ import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/Admi
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   useGetTransformQuery,
@@ -35,6 +36,12 @@ export function TransformQueryPage({ params }: TransformQueryPageProps) {
     isLoading,
     error,
   } = useGetTransformQuery(transformId ?? skipToken);
+
+  useRegisterMetabotContextProvider(async () => {
+    return transform
+      ? { user_is_viewing: [{ type: "transform", ...transform }] }
+      : {};
+  }, [transform]);
 
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
