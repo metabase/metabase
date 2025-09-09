@@ -341,7 +341,7 @@ describe(
         );
       });
 
-      it("should show a console error if SDK Package component not uses a prop that is still expected by SDK bundle", () => {
+      it("should show a console error if SDK Package component does not use a prop that is still expected by SDK bundle", () => {
         sdkBundleCleanup();
 
         cy.window().then((win) => {
