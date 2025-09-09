@@ -927,7 +927,7 @@ H.describeWithSnowplowEE("document comments", () => {
 
       cy.signInAsNormalUser();
       H.visitDocument("@documentId");
-      cy.findByLabelText("Show comments").click();
+      cy.findByLabelText("Show all comments").click();
       Comments.getCommentByText("Main comment").should("be.visible");
       Comments.resolveCommentByText("Main comment");
 
