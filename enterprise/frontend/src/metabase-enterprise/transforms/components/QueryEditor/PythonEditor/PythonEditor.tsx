@@ -115,8 +115,6 @@ export function PythonEditor({
     }
   };
 
-  const { headers, rows } = parseCSV(executionResult?.output || "");
-
   return (
     <Stack h="100%" w="100%" gap={0}>
       <ResizableBox
@@ -147,186 +145,204 @@ export function PythonEditor({
         </Flex>
       </ResizableBox>
 
-      {(executionResult || isRunning) && (
+      <Box p="md">
+        {isRunning && (
+          <Box p="md">
+            <Text c="text-medium">{t`Running Python script...`}</Text>
+          </Box>
+        )}
+        {!isRunning && <ExecutionResult executionResult={executionResult} />}
+      </Box>
+    </Stack>
+  );
+}
+
+function ExecutionResult({
+  executionResult,
+}: {
+  executionResult: ExecutionResult | null;
+}) {
+  const { headers, rows } = parseCSV(executionResult?.output || "");
+
+  if (!executionResult) {
+    return null;
+  }
+
+  if (executionResult.error) {
+    return (
+      <>
+        <Box p="md">
+          <Alert color="red" title={t`Execution Error`}>
+            {executionResult.error}
+          </Alert>
+        </Box>
+        {executionResult.stdout && (
+          <Box
+            mt="md"
+            p="md"
+            bg="bg-light"
+            style={{ maxHeight: "150px", overflow: "auto" }}
+          >
+            <Text fw="bold" mb="xs">{t`Standard Output:`}</Text>
+            <Box
+              style={{
+                fontFamily: "monospace",
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              {executionResult.stdout}
+            </Box>
+          </Box>
+        )}
+        {executionResult.stderr && (
+          <Box
+            mt="md"
+            p="md"
+            bg="bg-light"
+            style={{ maxHeight: "150px", overflow: "auto" }}
+          >
+            <Text fw="bold" mb="xs">{t`Standard Error:`}</Text>
+            <Box
+              style={{
+                fontFamily: "monospace",
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              {executionResult.stderr}
+            </Box>
+          </Box>
+        )}
+      </>
+    );
+  }
+
+  if (!executionResult?.output || headers.length === 0) {
+    return (
+      <>
+        <Box p="md">
+          <Text c="text-medium">{t`No results to display.`}</Text>
+        </Box>
+        {executionResult?.stdout && (
+          <Box
+            mt="md"
+            p="md"
+            bg="bg-light"
+            style={{ maxHeight: "150px", overflow: "auto" }}
+          >
+            <Text fw="bold" mb="xs">{t`Standard Output:`}</Text>
+            <Box
+              style={{
+                fontFamily: "monospace",
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              {executionResult.stdout}
+            </Box>
+          </Box>
+        )}
+        {executionResult?.stderr && (
+          <Box
+            mt="md"
+            p="md"
+            bg="bg-light"
+            style={{ maxHeight: "150px", overflow: "auto" }}
+          >
+            <Text fw="bold" mb="xs">{t`Standard Error:`}</Text>
+            <Box
+              style={{
+                fontFamily: "monospace",
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              {executionResult.stderr}
+            </Box>
+          </Box>
+        )}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {executionResult.stdout && (
         <Box
           mt="md"
-          style={{ flex: "0 0 auto", overflow: "auto", maxHeight: "40%" }}
+          p="md"
+          bg="bg-light"
+          style={{ maxHeight: "150px", overflow: "auto" }}
         >
-          {isRunning ? (
-            <Box p="md">
-              <Text c="text-medium">{t`Running Python script...`}</Text>
-            </Box>
-          ) : executionResult?.error ? (
-            <>
-              <Box p="md">
-                <Alert color="red" title={t`Execution Error`}>
-                  {executionResult.error}
-                </Alert>
-              </Box>
-              {executionResult.stdout && (
-                <Box
-                  mt="md"
-                  p="md"
-                  bg="bg-light"
-                  style={{ maxHeight: "150px", overflow: "auto" }}
-                >
-                  <Text fw="bold" mb="xs">{t`Standard Output:`}</Text>
-                  <Box
-                    style={{
-                      fontFamily: "monospace",
-                      whiteSpace: "pre-wrap",
-                    }}
-                  >
-                    {executionResult.stdout}
-                  </Box>
-                </Box>
-              )}
-              {executionResult.stderr && (
-                <Box
-                  mt="md"
-                  p="md"
-                  bg="bg-light"
-                  style={{ maxHeight: "150px", overflow: "auto" }}
-                >
-                  <Text fw="bold" mb="xs">{t`Standard Error:`}</Text>
-                  <Box
-                    style={{
-                      fontFamily: "monospace",
-                      whiteSpace: "pre-wrap",
-                    }}
-                  >
-                    {executionResult.stderr}
-                  </Box>
-                </Box>
-              )}
-            </>
-          ) : !executionResult?.output || headers.length === 0 ? (
-            <>
-              <Box p="md">
-                <Text c="text-medium">{t`No results to display.`}</Text>
-              </Box>
-              {executionResult?.stdout && (
-                <Box
-                  mt="md"
-                  p="md"
-                  bg="bg-light"
-                  style={{ maxHeight: "150px", overflow: "auto" }}
-                >
-                  <Text fw="bold" mb="xs">{t`Standard Output:`}</Text>
-                  <Box
-                    style={{
-                      fontFamily: "monospace",
-                      whiteSpace: "pre-wrap",
-                    }}
-                  >
-                    {executionResult.stdout}
-                  </Box>
-                </Box>
-              )}
-              {executionResult?.stderr && (
-                <Box
-                  mt="md"
-                  p="md"
-                  bg="bg-light"
-                  style={{ maxHeight: "150px", overflow: "auto" }}
-                >
-                  <Text fw="bold" mb="xs">{t`Standard Error:`}</Text>
-                  <Box
-                    style={{
-                      fontFamily: "monospace",
-                      whiteSpace: "pre-wrap",
-                    }}
-                  >
-                    {executionResult.stderr}
-                  </Box>
-                </Box>
-              )}
-            </>
-          ) : (
-            <>
-              {executionResult.stdout && (
-                <Box
-                  mt="md"
-                  p="md"
-                  bg="bg-light"
-                  style={{ maxHeight: "150px", overflow: "auto" }}
-                >
-                  <Text fw="bold" mb="xs">{t`Standard Output:`}</Text>
-                  <Box
-                    style={{
-                      fontFamily: "monospace",
-                      whiteSpace: "pre-wrap",
-                    }}
-                  >
-                    {executionResult.stdout}
-                  </Box>
-                </Box>
-              )}
-              {executionResult.stderr && (
-                <Box
-                  mt="md"
-                  p="md"
-                  bg="bg-light"
-                  style={{ maxHeight: "150px", overflow: "auto" }}
-                >
-                  <Text fw="bold" mb="xs">{t`Standard Error:`}</Text>
-                  <Box
-                    style={{
-                      fontFamily: "monospace",
-                      whiteSpace: "pre-wrap",
-                    }}
-                  >
-                    {executionResult.stderr}
-                  </Box>
-                </Box>
-              )}
-              <Box mt="md" style={{ maxHeight: "300px", overflow: "auto" }}>
-                <Text fw="bold" mb="md">{t`Results Table:`}</Text>
-                <table
-                  style={{
-                    width: "100%",
-                    borderCollapse: "collapse",
-                    border: `1px solid ${color("border")}`,
-                  }}
-                >
-                  <thead>
-                    <tr style={{ backgroundColor: color("bg-medium") }}>
-                      {headers.map((header, index) => (
-                        <th
-                          key={index}
-                          style={{
-                            padding: "8px",
-                            textAlign: "left",
-                            borderBottom: `2px solid ${color("border")}`,
-                          }}
-                        >
-                          {header}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row, rowIndex) => (
-                      <tr
-                        key={rowIndex}
-                        style={{
-                          borderBottom: `1px solid ${color("border")}`,
-                        }}
-                      >
-                        {row.map((cell, cellIndex) => (
-                          <td key={cellIndex} style={{ padding: "8px" }}>
-                            {cell}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </Box>
-            </>
-          )}
+          <Text fw="bold" mb="xs">{t`Standard Output:`}</Text>
+          <Box
+            style={{
+              fontFamily: "monospace",
+              whiteSpace: "pre-wrap",
+            }}
+          >
+            {executionResult.stdout}
+          </Box>
         </Box>
       )}
-    </Stack>
+      {executionResult.stderr && (
+        <Box
+          mt="md"
+          p="md"
+          bg="bg-light"
+          style={{ maxHeight: "150px", overflow: "auto" }}
+        >
+          <Text fw="bold" mb="xs">{t`Standard Error:`}</Text>
+          <Box
+            style={{
+              fontFamily: "monospace",
+              whiteSpace: "pre-wrap",
+            }}
+          >
+            {executionResult.stderr}
+          </Box>
+        </Box>
+      )}
+      <Box mt="md" style={{ maxHeight: "300px", overflow: "auto" }}>
+        <Text fw="bold" mb="md">{t`Results Table:`}</Text>
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            border: `1px solid ${color("border")}`,
+          }}
+        >
+          <thead>
+            <tr style={{ backgroundColor: color("bg-medium") }}>
+              {headers.map((header, index) => (
+                <th
+                  key={index}
+                  style={{
+                    padding: "8px",
+                    textAlign: "left",
+                    borderBottom: `2px solid ${color("border")}`,
+                  }}
+                >
+                  {header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, rowIndex) => (
+              <tr
+                key={rowIndex}
+                style={{
+                  borderBottom: `1px solid ${color("border")}`,
+                }}
+              >
+                {row.map((cell, cellIndex) => (
+                  <td key={cellIndex} style={{ padding: "8px" }}>
+                    {cell}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Box>
+    </>
   );
 }
