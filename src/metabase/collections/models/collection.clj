@@ -63,6 +63,10 @@
   "The value of the `:type` field for the Trash collection that holds archived items."
   "trash")
 
+(def ^:constant library-collection-type
+  "The value of the `:type` field for Library collections."
+  "library")
+
 (defn- trash-collection* []
   (t2/select-one :model/Collection :type trash-collection-type))
 
@@ -101,6 +105,16 @@
   [collection]
   (str/starts-with? (:location collection) (trash-path)))
 
+(defn library-collection?
+  "Is this a library collection?"
+  [collection-or-id]
+  (let [type (:type collection-or-id ::not-found)]
+    (if (identical? type ::not-found)
+      ;; If no :type field, it's probably an ID - fetch from DB
+      (some->> collection-or-id u/the-id (t2/select-one-fn :type :model/Collection :id) (= library-collection-type))
+      ;; If :type field exists, compare directly
+      (= type library-collection-type))))
+
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
 
 (methodical/defmethod t2/model-for-automagic-hydration [#_model :default #_k :collection]
@@ -136,6 +150,7 @@
 (defmethod mi/can-write? :model/Collection
   ([instance]
    (and (not (default-audit-collection? instance))
+        (not (library-collection? instance))
         (mi/current-user-has-full-permissions? :write instance)))
   ([_model pk]
    (mi/can-write? (t2/select-one :model/Collection pk))))

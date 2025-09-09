@@ -1130,6 +1130,20 @@ databaseChangeLog:
               - column:
                   name: library_identifier
 
+  - changeSet:
+      id: v57.2025-09-09T12:00:00
+      author: johnswanson
+      comment: Create the Library collection
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO collection (name, slug, entity_id, type) VALUES ('Library', 'library', 'librarylibrarylibrary', 'library');
+
+      rollback:
+        - sql:
+            sql: >-
+              DELETE FROM collection WHERE type = 'library';
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
