@@ -1,8 +1,11 @@
 (ns metabase-enterprise.dependencies.models.dependency
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -83,21 +86,39 @@
    (->> (dependents-of entity-type  entity-id source-type source-id)
         resolve-entities)))
 
-(defn upsert-dependency
+(defn upsert-generic-dependency
   "Upsert that the entity specified by `entity-type` and `entity-id` depends on entity specified
   by `target-type` and `target-id`."
   [entity-type entity-id target-type target-id]
-  (let [dependency (zipmap [:from_entity_type :from_entity_id :to_entity_type :to_entity_id]
-                           [entity-type entity-id target-type target-id])]
-    (when (some nil? [entity-type entity-id target-type target-id])
-      (throw (ex-info "Cannot upsert dependency between unknown entities."
-                      dependency)))
+  (let [dependency {:from_entity_type entity-type :from_entity_id entity-id
+                    :to_entity_type   target-type :to_entity_id   target-id}]
     (try
       (t2/insert! :model/Dependency dependency)
-      (catch java.sql.SQLException e
-        (case (.getSQLState e)
-          ;; 23000 - MySQL integrity constraint violation (good enough,
-          ;; because we have no checks and we're not inserting NULL values)
-          ;; 23505 - PostgreSQL/H2 unique constraint violation
-          ("23000" "23505") 0
-          (throw e))))))
+      (catch clojure.lang.ExceptionInfo e
+        (let [cause ^SQLException (ex-cause e)]
+          (case (when (instance? SQLException cause)
+                  (.getSQLState cause))
+            ;; 23505 - PostgreSQL/H2 unique constraint violation
+            "23505" 0
+            ;; 23000 - MySQL integrity constraint violation
+            "23000" (if (and (= (mdb/db-type) :mysql)
+                             (re-find #"(?i)idx_unique_dependency" (ex-message e)))
+                      0
+                      (throw e))
+            (throw e)))))))
+
+(defn- entity-type
+  [instance]
+  (case (t2/model instance)
+    :model/Card               :card
+    :model/Table              :table
+    :model/Transform          :transform
+    :model/NativeQuerySnippet :snippet))
+
+(defn upsert-dependency
+  "Upser that `dependent-instance` depends on `depended-on-instance`."
+  [dependent-instance depended-on-instance]
+  (let [dependent-type (entity-type dependent-instance)
+        depended-on-type (entity-type depended-on-instance)]
+    (upsert-generic-dependency dependent-type (:id dependent-instance)
+                               depended-on-type (:id depended-on-instance))))
