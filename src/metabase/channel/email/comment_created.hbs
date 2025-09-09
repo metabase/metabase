@@ -1,16 +1,55 @@
-{{> metabase/channel/email/_header.hbs }}
-  <div style="padding-bottom: 2em; padding-top: 1em; text-align: center;">
-    <img width="32" height="40" src="{{context.application_logo_url}}"/>
-  </div>
-  <div style="text-align: center; margin: 0 auto; max-width: 500px">
-    <div style="text-align: left">
-      <h2 style="font-weight: normal; color: #4C545B; line-height: 34px;">New comment on {{payload.event_info.entity_type}}: {{payload.event_info.entity_title}}</h2>
-      <p style="line-height: 22px; margin-bottom: 20px"><strong>{{payload.event_info.author}}</strong> commented:</p>
-      <div style="background-color: #F8F9FA; border-left: 4px solid #509EE3; padding: 16px; margin-bottom: 20px; border-radius: 4px;">
-        <p style="line-height: 22px; margin: 0; color: #4C545B;">{{payload.event_info.comment}}</p>
-      </div>
-      <p style="line-height: 22px; margin-bottom: 40px; color: #74838F; font-size: 14px;">Posted on {{payload.event_info.created_at}}</p>
-    </div>
-    <a style="{{context.style.button}}" href="{{context.site_url}}{{payload.event_info.path}}">View {{payload.event_info.entity_type}}</a>
-  </div>
-{{> metabase/channel/email/_footer.hbs }}
+{{> metabase/channel/email/_dashsub_alert_header.hbs }}
+  <body style="padding: 0px; margin: 0px">
+    <table class="background" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #F9F9F9; padding: 20px; table-layout: fixed;">
+      <tr>
+        <td>
+          <div class="container" style="background-color: white; max-width: 555px; border-radius: 24px; margin: 0 auto; padding: 30px; border: 1px solid rgba(7, 23, 34, 0.14)">
+            <div style="text-align: center; height: 28px; margin-bottom: 16px;">
+              <img width="22.4" height="28" src="{{context.application_logo_url}}" alt="Metabase logo"/>
+            </div>
+
+            <h1 style="text-align: center; font-size: 22px; line-height: 28px; font-weight: 400; margin: 0 0 12px 0; color: {{payload.style.color_text_dark}};">
+              {{payload.event_info.author}} left a comment on a {{payload.event_info.entity_type}}:
+            </h1>
+
+            {{!-- Document link --}}
+            <div style="text-align: center; margin-bottom: 16px;">
+              <a href="{{context.site_url}}{{payload.event_info.path}}" style="font-size: 14px; font-weight: 700; color: {{context.application_color}}; text-decoration: none;">
+                <span style="vertical-align: middle;">{{payload.event_info.entity_title}}</span>
+              </a>
+            </div>
+
+            {{!-- Comment block --}}
+            <div style="background-color: #FAFAFB; border-radius: 12px; padding: 16px; margin: 0 auto 20px auto;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse;">
+                <tr>
+                  <td width="40" valign="top" style="padding-right: 12px;">
+                    <div style="width: 36px; height: 36px; border-radius: 50%; background: #A6CF57; color: #ffffff; font-weight: 700; font-size: 12px; line-height: 36px; text-align: center; text-transform: uppercase; overflow: hidden;">
+                      {{initials payload.event_info.author}}
+                    </div>
+                  </td>
+                  <td valign="top">
+                    <div style="font-weight: 700; font-size: 0.875rem; color: {{payload.style.color_text_dark}}; margin-bottom: 6px;">{{payload.event_info.author}}</div>
+                    <div style="font-size: 0.875rem; color: {{payload.style.color_text_medium}}; line-height: 20px;">{{payload.event_info.comment}}</div>
+                  </td>
+                </tr>
+              </table>
+            </div>
+
+            {{!-- CTA button --}}
+            <div style="text-align: center; margin: 12px 0 20px 0;">
+              <a href="{{context.site_url}}{{payload.event_info.path}}"
+                 style="display: inline-block; background-color: {{context.application_color}}; color: #ffffff !important; font-weight: 700; font-size: 14px; border-radius: 8px; padding: 10px 18px;">
+                 Open in Metabase
+              </a>
+            </div>
+            <hr>
+            <div class="footer" style="font-size: 11px; width: max-content; margin: 0 auto; color: {{payload.style.color_text_medium}};">
+              Sent from <a href="{{context.site_url}}" style="color: {{context.application_color}}">{{context.site_url}}</a>.
+            </div>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
