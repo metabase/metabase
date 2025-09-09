@@ -17,6 +17,7 @@ import {
   provideSegmentTags,
   tag,
 } from "./tags";
+import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const segmentApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -26,12 +27,10 @@ export const segmentApi = Api.injectEndpoints({
         url: "/api/segment",
       }),
       providesTags: (segments = []) => provideSegmentListTags(segments),
-      onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
-        const { data } = await queryFulfilled;
-        if (data != null) {
-          dispatch(updateMetadata(data, [SegmentSchema]));
-        }
-      },
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, [SegmentSchema])),
+        ),
     }),
     getSegment: builder.query<Segment, SegmentId>({
       query: (id) => ({
@@ -39,12 +38,10 @@ export const segmentApi = Api.injectEndpoints({
         url: `/api/segment/${id}`,
       }),
       providesTags: (segment) => (segment ? provideSegmentTags(segment) : []),
-      onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
-        const { data } = await queryFulfilled;
-        if (data != null) {
-          dispatch(updateMetadata(data, SegmentSchema));
-        }
-      },
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, SegmentSchema)),
+        ),
     }),
     createSegment: builder.mutation<Segment, CreateSegmentRequest>({
       query: (body) => ({

@@ -13,6 +13,7 @@ import {
   provideDashboardQueryMetadataTags,
   provideDatabaseCandidateListTags,
 } from "./tags";
+import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const automagicDashboardsApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -45,12 +46,10 @@ export const automagicDashboardsApi = Api.injectEndpoints({
           params,
         };
       },
-      onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
-        const { data } = await queryFulfilled;
-        if (data != null) {
-          dispatch(updateMetadata(data, QueryMetadataSchema));
-        }
-      },
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, QueryMetadataSchema)),
+        ),
     }),
   }),
 });

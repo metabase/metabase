@@ -16,6 +16,7 @@ import {
   provideSnippetListTags,
   provideSnippetTags,
 } from "./tags";
+import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const snippetApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -29,12 +30,10 @@ export const snippetApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (snippets = []) => provideSnippetListTags(snippets),
-      onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
-        const { data } = await queryFulfilled;
-        if (data != null) {
-          dispatch(updateMetadata(data, [SnippetSchema]));
-        }
-      },
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, [SnippetSchema])),
+        ),
     }),
     getSnippet: builder.query<NativeQuerySnippet, NativeQuerySnippetId>({
       query: (id) => ({
@@ -42,12 +41,10 @@ export const snippetApi = Api.injectEndpoints({
         url: `/api/native-query-snippet/${id}`,
       }),
       providesTags: (snippet) => (snippet ? provideSnippetTags(snippet) : []),
-      onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
-        const { data } = await queryFulfilled;
-        if (data != null) {
-          dispatch(updateMetadata(data, SnippetSchema));
-        }
-      },
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, SnippetSchema)),
+        ),
     }),
     createSnippet: builder.mutation<NativeQuerySnippet, CreateSnippetRequest>({
       query: (body) => ({

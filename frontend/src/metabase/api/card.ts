@@ -32,6 +32,7 @@ import {
   provideCardTags,
   provideParameterValuesTags,
 } from "./tags";
+import { handleQueryFulfilled } from "./utils/lifecycle";
 
 const PERSISTED_MODEL_REFRESH_DELAY = 200;
 
@@ -62,12 +63,10 @@ export const cardApi = Api.injectEndpoints({
           params,
         }),
         providesTags: (cards = []) => provideCardListTags(cards),
-        onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
-          const { data } = await queryFulfilled;
-          if (data != null) {
-            dispatch(updateMetadata(data, [QuestionSchema]));
-          }
-        },
+        onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+          handleQueryFulfilled(queryFulfilled, (data) =>
+            dispatch(updateMetadata(data, [QuestionSchema])),
+          ),
       }),
       getCard: builder.query<Card, GetCardRequest>({
         query: ({ id, ignore_error, ...params }) => ({
@@ -77,12 +76,10 @@ export const cardApi = Api.injectEndpoints({
           noEvent: ignore_error,
         }),
         providesTags: (card) => (card ? provideCardTags(card) : []),
-        onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
-          const { data } = await queryFulfilled;
-          if (data != null) {
-            dispatch(updateMetadata(data, QuestionSchema));
-          }
-        },
+        onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+          handleQueryFulfilled(queryFulfilled, (data) =>
+            dispatch(updateMetadata(data, QuestionSchema)),
+          ),
       }),
       getCardQueryMetadata: builder.query<CardQueryMetadata, CardId>({
         query: (id) => ({
@@ -91,12 +88,10 @@ export const cardApi = Api.injectEndpoints({
         }),
         providesTags: (metadata, _error, id) =>
           metadata ? provideCardQueryMetadataTags(id, metadata) : [],
-        onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
-          const { data } = await queryFulfilled;
-          if (data != null) {
-            dispatch(updateMetadata(data, QueryMetadataSchema));
-          }
-        },
+        onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+          handleQueryFulfilled(queryFulfilled, (data) =>
+            dispatch(updateMetadata(data, QueryMetadataSchema)),
+          ),
       }),
       getCardQuery: builder.query<Dataset, CardQueryRequest>({
         query: ({ cardId, ...body }) => ({
@@ -203,19 +198,19 @@ export const cardApi = Api.injectEndpoints({
           method: "POST",
           url: `/api/persist/card/${id}/persist`,
         }),
-        async onQueryStarted(id, { dispatch, queryFulfilled }) {
-          await queryFulfilled;
-          // we wait to invalidate this tag so the cache refresh has time to start before we refetch
-          setTimeout(() => {
-            dispatch(
-              Api.util.invalidateTags([
-                idTag("card", id),
-                idTag("persisted-model", id),
-                listTag("persisted-info"),
-              ]),
-            );
-          }, PERSISTED_MODEL_REFRESH_DELAY);
-        },
+        onQueryStarted: (id, { dispatch, queryFulfilled }) =>
+          handleQueryFulfilled(queryFulfilled, () => {
+            // we wait to invalidate this tag so the cache refresh has time to start before we refetch
+            setTimeout(() => {
+              dispatch(
+                Api.util.invalidateTags([
+                  idTag("card", id),
+                  idTag("persisted-model", id),
+                  listTag("persisted-info"),
+                ]),
+              );
+            }, PERSISTED_MODEL_REFRESH_DELAY);
+          }),
       }),
       unpersistModel: builder.mutation<void, CardId>({
         query: (id) => ({
@@ -234,19 +229,19 @@ export const cardApi = Api.injectEndpoints({
           method: "POST",
           url: `/api/persist/card/${id}/refresh`,
         }),
-        async onQueryStarted(id, { dispatch, queryFulfilled }) {
-          await queryFulfilled;
-          // we wait to invalidate this tag so the cache refresh has time to start before we refetch
-          setTimeout(() => {
-            dispatch(
-              Api.util.invalidateTags([
-                idTag("card", id),
-                idTag("persisted-model", id),
-                listTag("persisted-info"),
-              ]),
-            );
-          }, PERSISTED_MODEL_REFRESH_DELAY);
-        },
+        onQueryStarted: (id, { dispatch, queryFulfilled }) =>
+          handleQueryFulfilled(queryFulfilled, () => {
+            // we wait to invalidate this tag so the cache refresh has time to start before we refetch
+            setTimeout(() => {
+              dispatch(
+                Api.util.invalidateTags([
+                  idTag("card", id),
+                  idTag("persisted-model", id),
+                  listTag("persisted-info"),
+                ]),
+              );
+            }, PERSISTED_MODEL_REFRESH_DELAY);
+          }),
       }),
       listEmbeddableCards: builder.query<GetEmbeddableCard[], void>({
         query: (params) => ({

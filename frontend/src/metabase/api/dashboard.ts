@@ -36,6 +36,7 @@ import {
   provideValidDashboardFilterFieldTags,
   tag,
 } from "./tags";
+import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const dashboardApi = Api.injectEndpoints({
   endpoints: (builder) => {
@@ -85,12 +86,10 @@ export const dashboardApi = Api.injectEndpoints({
         }),
         providesTags: (metadata) =>
           metadata ? provideDashboardQueryMetadataTags(metadata) : [],
-        onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
-          const { data } = await queryFulfilled;
-          if (data != null) {
-            dispatch(updateMetadata(data, QueryMetadataSchema));
-          }
-        },
+        onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+          handleQueryFulfilled(queryFulfilled, (data) =>
+            dispatch(updateMetadata(data, QueryMetadataSchema)),
+          ),
       }),
       getRemappedDashboardParameterValue: builder.query<
         FieldValue,
