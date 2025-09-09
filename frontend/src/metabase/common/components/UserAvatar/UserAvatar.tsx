@@ -7,7 +7,7 @@ interface UserAvatarProps extends AvatarProps {
   user: User;
 }
 
-interface GroupProps {
+interface GroupProps extends AvatarProps {
   user: Group;
 }
 

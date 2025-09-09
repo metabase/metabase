@@ -2,9 +2,11 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
+import UserAvatar from "metabase/common/components/UserAvatar";
 import { useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
-import { Avatar, Stack, Timeline, rem } from "metabase/ui";
+import { Stack, rem } from "metabase/ui";
+import { Timeline } from "metabase/ui/components/data-display/Timeline";
 import {
   useCreateCommentMutation,
   useDeleteCommentMutation,
@@ -15,9 +17,9 @@ import { getCommentsUrl } from "metabase-enterprise/comments/utils";
 import type {
   Comment,
   CommentEntityType,
-  DocumentContent,
   EntityId,
-} from "metabase-types/api";
+} from "metabase-types/api/comments";
+import type { DocumentContent } from "metabase-types/api/document";
 
 import { CommentEditor } from "../CommentEditor";
 
@@ -114,7 +116,7 @@ export const Discussion = ({
         {!comments[0]?.is_resolved && (
           <Timeline.Item
             className={S.commentRoot}
-            bullet={<Avatar name={currentUser.common_name} />}
+            bullet={<UserAvatar user={currentUser} />}
           >
             <CommentEditor
               active={false}

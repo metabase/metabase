@@ -6,13 +6,16 @@ import { useLocation } from "react-use";
 import { t } from "ttag";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
+import UserAvatar from "metabase/common/components/UserAvatar";
 import { useSelector } from "metabase/lib/redux";
-import { Avatar, Box, Group, Icon, Text, Timeline, Tooltip } from "metabase/ui";
+import { Box, Group, Icon, Text, Tooltip } from "metabase/ui";
+import { Timeline } from "metabase/ui/components/data-display/Timeline";
 import {
   formatCommentDate,
   getCommentNodeId,
 } from "metabase-enterprise/comments/utils";
-import type { Comment, DocumentContent } from "metabase-types/api";
+import type { Comment } from "metabase-types/api/comments";
+import type { DocumentContent } from "metabase-types/api/document";
 
 import { CommentEditor } from "../CommentEditor";
 
@@ -96,7 +99,7 @@ export function DiscussionComment({
       className={cx(S.commentRoot, {
         [S.target]: isTarget,
       })}
-      bullet={<Avatar name={comment.creator?.common_name} />}
+      bullet={<UserAvatar user={comment.creator} />}
       aria-current={isTarget ? "location" : undefined}
       data-testid="discussion-comment"
       id={getCommentNodeId(comment)}
