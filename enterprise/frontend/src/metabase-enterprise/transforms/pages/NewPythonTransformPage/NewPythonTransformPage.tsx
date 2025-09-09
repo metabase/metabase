@@ -20,7 +20,7 @@ import pandas as pd
 def transform():
     """
     Your transformation function.
-    
+
     Select tables above to add them as function parameters.
 
     Returns:
