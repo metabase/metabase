@@ -26,13 +26,13 @@ export function Reaction({ reaction, onReaction, onReactionRemove }: Props) {
     [reaction.users],
   );
 
-  const handleReactionClick = useCallback(
-    () =>
-      isCurrentUserReaction
-        ? onReactionRemove?.(reaction.emoji)
-        : onReaction?.(reaction.emoji),
-    [isCurrentUserReaction, onReactionRemove, onReaction, reaction],
-  );
+  const handleReactionClick = useCallback(() => {
+    if (isCurrentUserReaction) {
+      onReactionRemove(reaction.emoji);
+    } else {
+      onReaction(reaction.emoji);
+    }
+  }, [isCurrentUserReaction, onReactionRemove, onReaction, reaction]);
 
   return (
     <Tooltip label={reactionLabel}>
