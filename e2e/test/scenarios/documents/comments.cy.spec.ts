@@ -18,6 +18,8 @@ const BLOCKQUOTE_ID = "e785b000-1651-c154-e0bd-7313f839bb50";
 const ORDERED_LIST_ID = "12fd2bdb-76f7-d07a-b61e-b2d2eee127b5";
 const CODE_BLOCK_ID = "b9fec4be-4b44-2c24-7073-10f23522cfd3";
 const CARD_EMBED_ID = "cce109c3-4cec-caf1-a569-89fa15410ae1";
+const FIRST_REACTION_EMOJI = "😀";
+const SECOND_REACTION_EMOJI = "😃";
 
 H.describeWithSnowplowEE("document comments", () => {
   beforeEach(() => {
@@ -1082,6 +1084,117 @@ H.describeWithSnowplowEE("document comments", () => {
       Comments.openAllComments();
 
       Comments.getNewThreadInput().should("not.exist");
+    });
+  });
+
+  describe("comment reactions", () => {
+    it("should allow to add multiple reactions to a comment", () => {
+      create1ParagraphDocument();
+      cy.get<DocumentId>("@documentId").then((documentId) => {
+        createParagraphComment(documentId, "Test 1");
+      });
+
+      H.visitDocumentComment("@documentId", PARAGRAPH_ID);
+
+      Comments.reactToComment("Test 1", FIRST_REACTION_EMOJI);
+      Comments.reactToComment("Test 1", SECOND_REACTION_EMOJI);
+      H.modal().within(() => {
+        cy.findByTestId("discussion-reactions").within((el) => {
+          cy.wrap(el).should("contain", `${FIRST_REACTION_EMOJI}1`);
+          cy.wrap(el).should("contain", `${SECOND_REACTION_EMOJI}1`);
+        });
+      });
+    });
+
+    it("should allow to remove own reactions from a comment", () => {
+      create1ParagraphDocument();
+      cy.get<DocumentId>("@documentId").then((documentId) => {
+        createParagraphComment(documentId, "Test 1");
+      });
+
+      H.visitDocumentComment("@documentId", PARAGRAPH_ID);
+
+      Comments.reactToComment("Test 1", FIRST_REACTION_EMOJI);
+      Comments.reactToComment("Test 1", SECOND_REACTION_EMOJI);
+      H.modal().within(() => {
+        cy.findByTestId("discussion-reactions").within(() => {
+          cy.findByText(`${FIRST_REACTION_EMOJI}`).should("exist");
+          cy.findByText(`${FIRST_REACTION_EMOJI}`).click();
+          cy.findByText(`${FIRST_REACTION_EMOJI}`).should("not.exist");
+        });
+      });
+    });
+
+    it("should allow to react on other people's reactions", () => {
+      create1ParagraphDocument();
+      cy.get<DocumentId>("@documentId").then((documentId) => {
+        createParagraphComment(documentId, "Test 1").then((comment) => {
+          const { id } = comment.body;
+          H.createReaction({ comment_id: id, emoji: FIRST_REACTION_EMOJI });
+          H.createReaction({ comment_id: id, emoji: SECOND_REACTION_EMOJI });
+        });
+      });
+
+      cy.signInAsNormalUser();
+      H.visitDocumentComment("@documentId", PARAGRAPH_ID);
+
+      Comments.reactToComment("Test 1", FIRST_REACTION_EMOJI);
+      Comments.reactToComment("Test 1", SECOND_REACTION_EMOJI);
+
+      H.modal().within(() => {
+        cy.findByTestId("discussion-reactions").within((el) => {
+          cy.wrap(el).should("contain", `${FIRST_REACTION_EMOJI}2`);
+          cy.wrap(el).should("contain", `${SECOND_REACTION_EMOJI}2`);
+          cy.findByText(`${FIRST_REACTION_EMOJI}`).click();
+          cy.wrap(el).should("contain", `${FIRST_REACTION_EMOJI}1`);
+        });
+      });
+    });
+
+    it("should allow to react on resolved comments", () => {
+      create1ParagraphDocument();
+      cy.get<DocumentId>("@documentId").then((documentId) => {
+        createParagraphComment(documentId, "Test 1").then((comment) => {
+          H.updateComment({ id: comment.body.id, is_resolved: true });
+        });
+      });
+
+      H.visitDocumentComment("@documentId", PARAGRAPH_ID);
+
+      cy.findByRole("tab", { name: "Resolved (1)" }).click();
+
+      Comments.reactToComment("Test 1", FIRST_REACTION_EMOJI);
+      Comments.reactToComment("Test 1", SECOND_REACTION_EMOJI);
+
+      H.modal().within(() => {
+        cy.findByTestId("discussion-reactions").within((el) => {
+          cy.wrap(el).should("contain", `${FIRST_REACTION_EMOJI}1`);
+          cy.wrap(el).should("contain", `${SECOND_REACTION_EMOJI}1`);
+        });
+      });
+    });
+
+    it("should not allow to react on deleted comments", () => {
+      create1ParagraphDocument();
+      cy.get<DocumentId>("@documentId").then((documentId) => {
+        createParagraphComment(documentId, "Test 1").then((comment) => {
+          createParagraphComment(documentId, "Test II", comment.body.id);
+          deleteComment(comment.body.id);
+        });
+      });
+
+      H.visitDocumentComment("@documentId", PARAGRAPH_ID);
+
+      H.modal().within(() => {
+        cy.findByTestId("discussion-comment-deleted")
+          .realHover()
+          .within(() => {
+            cy.findByTestId("comment-action-panel").should("be.visible");
+            cy.findByRole("button", { name: "Add reaction" }).should(
+              "not.exist",
+            );
+          });
+      });
     });
   });
 });

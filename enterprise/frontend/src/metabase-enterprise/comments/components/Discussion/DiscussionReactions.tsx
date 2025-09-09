@@ -24,7 +24,7 @@ export function DiscussionReactions({
   }
 
   return (
-    <Flex p="0" mt="sm" gap="sm" wrap="wrap">
+    <Flex p="0" mt="sm" gap="sm" wrap="wrap" data-testid="discussion-reactions">
       {comment.reactions.map((reaction) => (
         <Reaction
           key={reaction.emoji}

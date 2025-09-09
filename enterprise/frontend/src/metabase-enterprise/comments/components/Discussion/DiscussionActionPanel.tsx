@@ -56,6 +56,7 @@ export function DiscussionActionPanel({
 
   return (
     <Paper
+      data-testid="comment-action-panel"
       className={cx(S.actionPanel, {
         // [S.visibleOnCommentHover]: variant === "comment",
         // [S.visibleOnDiscussionHover]: variant === "discussion",
@@ -74,6 +75,7 @@ export function DiscussionActionPanel({
             <Popover.Target>
               <Tooltip label={t`Add reaction`} disabled={emojiPickerOpened}>
                 <ActionIcon
+                  aria-label={t`Add reaction`}
                   size={ACTION_ICON_SIZE}
                   onClick={() => setEmojiPickerOpened((opened) => !opened)}
                 >
