@@ -2,6 +2,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 import { getIsEmbedding } from "metabase/selectors/embed";
+import { getLocation } from "metabase/selectors/routing";
 
 import {
   FIXED_METABOT_IDS,
@@ -128,17 +129,31 @@ export const getProfileOverride = createSelector(
   (metabot) => metabot.experimental.profileOverride,
 );
 
+export const getProfile = createSelector(
+  getProfileOverride,
+  getLocation,
+  (profileOverride, location) => {
+    if (profileOverride) {
+      return profileOverride;
+    }
+
+    return location.pathname.startsWith("/admin/transforms")
+      ? "transforms_codegen"
+      : undefined;
+  },
+);
+
 export const getAgentRequestMetadata = createSelector(
   getHistory,
   getMetabotState,
-  getProfileOverride,
-  (history, state, profileId) => ({
+  getProfile,
+  (history, state, profile) => ({
     state,
     // NOTE: need end to end support for ids on messages as BE will error if ids are present
     history: history.map((h) =>
       h.id && h.id.startsWith(`msg_`) ? _.omit(h, "id") : h,
     ),
-    ...(profileId ? { profile_id: profileId } : {}),
+    ...(profile ? { profile_id: profile } : {}),
   }),
 );
 
