@@ -20,6 +20,7 @@
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
    [metabase-enterprise.metabot-v3.tools.search :as metabot-v3.tools.search]
    [metabase-enterprise.metabot-v3.tools.search-data-sources :as metabot-v3.tools.search-data-sources]
+   [metabase-enterprise.metabot-v3.tools.transforms :as metabot-v3.tools.transforms]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.macros :as api.macros]
    [metabase.api.response :as api.response]
@@ -620,6 +621,26 @@
     [:structured_output ::full-table]]
    [:map [:output :string]]])
 
+(mr/def ::get-transforms-result
+  [:or
+   [:map
+    {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output [:sequential
+                         [:map
+                          {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+                          [:id :int]
+                          [:entity_id :string]
+                          [:name :string]
+                          [:description :string]
+                          [:source [:or
+                                    [:map
+                                     [:type [:= "query"]]
+                                     [:query :map]]
+                                    [:map
+                                     ;; TODO rest of the spec for python transforms
+                                     [:type [:= "python"]]]]]]]]]
+   [:map [:output :string]]])
+
 (mr/def ::answer-sources-result
   [:or
    [:map
@@ -922,6 +943,18 @@
                          (mtx/transformer {:name :tool-api-response}))
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
+
+(api.macros/defendpoint :get "/get-transforms" :- [:merge ::get-transforms-result ::tool-request]
+  "Get a list of all known transforms."
+  [_route-params
+   _query-params
+   {:keys [conversation_id] :as body} :- ::tool-request]
+  (metabot-v3.context/log (assoc body :api :get-transforms) :llm.log/llm->be)
+  (doto (-> (mc/decode ::get-transforms-result
+                       (metabot-v3.tools.transforms/get-transforms)
+                       (mtx/transformer {:name :tool-api-response}))
+            (assoc :conversation_id conversation_id))
+    (metabot-v3.context/log :llm.log/be->llm)))
 
 (api.macros/defendpoint :post "/query-metric" :- [:merge ::filtering-result ::tool-request]
   "Construct a query from a metric."

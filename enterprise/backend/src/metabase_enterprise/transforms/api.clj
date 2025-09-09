@@ -73,14 +73,19 @@
     (api/check-400 (not (transforms.util/db-routing-enabled? database))
                    (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
 
-(api.macros/defendpoint :get "/"
+(defn get-transforms
   "Get a list of transforms."
-  [_route-params
-   _query-params]
+  []
   (api/check-superuser)
   (-> (t2/select :model/Transform)
       (t2/hydrate :last_run :transform_tag_ids)
       (->> (map #(update % :last_run transforms.util/localize-run-timestamps)))))
+
+(api.macros/defendpoint :get "/"
+  "Get a list of transforms."
+  [_route-params
+   _query-params]
+  (get-transforms))
 
 (api.macros/defendpoint :post "/"
   "Create a new transform."
