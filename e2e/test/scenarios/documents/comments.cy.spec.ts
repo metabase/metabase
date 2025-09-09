@@ -1198,6 +1198,93 @@ H.describeWithSnowplowEE("document comments", () => {
     });
   });
 
+  describe("top level blocks", () => {
+    describe("with markdown", () => {
+      it("should support blockquotes", () => {
+        startNewCommentIn1ParagraphDocument();
+
+        cy.realType("> blockquote");
+        cy.realPress([META_KEY, "Enter"]);
+
+        getBlockquote("blockquote", H.modal()).should("be.visible");
+      });
+
+      it("should support ordered lists", () => {
+        startNewCommentIn1ParagraphDocument();
+
+        cy.realType("1. one");
+        cy.realPress("Enter");
+        cy.realType("two");
+        cy.realPress([META_KEY, "Enter"]);
+
+        getOrderedList("one", H.modal()).should("be.visible");
+        getOrderedList("two", H.modal()).should("be.visible");
+      });
+
+      it("should support unordered lists", () => {
+        startNewCommentIn1ParagraphDocument();
+
+        cy.realType("- a");
+        cy.realPress("Enter");
+        cy.realType("b");
+        cy.realPress([META_KEY, "Enter"]);
+
+        getBulletList("a", H.modal()).should("be.visible");
+        getBulletList("b", H.modal()).should("be.visible");
+      });
+
+      it("should support code blocks", () => {
+        startNewCommentIn1ParagraphDocument();
+
+        cy.realType("```");
+        cy.realPress("Enter");
+        cy.realType("code");
+        cy.realPress([META_KEY, "Enter"]);
+
+        getCodeBlock("code", H.modal()).should("be.visible");
+      });
+    });
+
+    describe("with shortcuts", () => {
+      it("should support ordered list", () => {
+        startNewCommentIn1ParagraphDocument();
+
+        cy.realType("ol");
+        cy.realPress([META_KEY, "Shift", "7"]);
+
+        getOrderedList("ol", H.modal()).should("be.visible");
+      });
+
+      it("should support bullet list", () => {
+        startNewCommentIn1ParagraphDocument();
+
+        cy.realType("ul");
+        cy.realPress([META_KEY, "Shift", "8"]);
+
+        getBulletList("ul", H.modal()).should("be.visible");
+      });
+
+      it("should support code block", () => {
+        startNewCommentIn1ParagraphDocument();
+
+        cy.realType("code");
+        cy.realPress([META_KEY, "Alt", "c"]);
+
+        getCodeBlock("code", H.modal()).should("be.visible");
+      });
+
+      // explicitly disabled in CustomStarterKit to keep default browser behavior
+      it.skip("should support blockquote", () => {
+        startNewCommentIn1ParagraphDocument();
+
+        cy.realType("blockquote");
+        cy.realPress([META_KEY, "Shift", "k"]);
+
+        getBlockquote("blockquote", H.modal()).should("be.visible");
+      });
+    });
+  });
+
   it("should remove ?new=true from the url after creating a comment", () => {
     startNewCommentIn1ParagraphDocument();
 
@@ -1563,20 +1650,26 @@ function getParagraph(text = "Lorem ipsum dolor sit amet.") {
   return H.documentContent().findByText(text).parent();
 }
 
-function getBulletList(text = "Bullet A") {
-  return H.documentContent().findByText(text).closest("ul");
+function getBulletList(text = "Bullet A", container = H.documentContent()) {
+  return container.findByText(text).closest("ul");
 }
 
-function getBlockquote(text = "A famous quote") {
-  return H.documentContent().findByText(text).closest("blockquote");
+function getBlockquote(
+  text = "A famous quote",
+  container = H.documentContent(),
+) {
+  return container.findByText(text).closest("blockquote");
 }
 
-function getOrderedList(text = "Item 1") {
-  return H.documentContent().findByText(text).closest("ol");
+function getOrderedList(text = "Item 1", container = H.documentContent()) {
+  return container.findByText(text).closest("ol");
 }
 
-function getCodeBlock(text = "while (true) {}") {
-  return H.documentContent().findByText(text).closest("pre");
+function getCodeBlock(
+  text = "while (true) {}",
+  container = H.documentContent(),
+) {
+  return container.findByText(text).closest("pre");
 }
 
 function getEmbed() {
