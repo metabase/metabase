@@ -770,4 +770,4 @@
 
 (deftest ^:parallel absolute-datetime-raw-temporal-bucket-test
   (is (= :day
-         (lib/raw-temporal-bucket [:absolute-datetime {:lib/uuid "6360380d-137a-4197-b517-9af9eebde16b"} #t "2025-09-08" :day]))))
+         (lib/raw-temporal-bucket [:absolute-datetime {:lib/uuid "6360380d-137a-4197-b517-9af9eebde16b"} "2025-09-08" :day]))))
