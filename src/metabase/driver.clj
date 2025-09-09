@@ -1278,6 +1278,15 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti rename-tables!
+  "Rename multiple tables atomically within a transaction. Takes a map of {from-table to-table}.
+   Uses topological sorting to determine the correct order to avoid conflicts.
+   This is a simpler, composable operation compared to swap-table! that only handles renaming.
+   Table names may be qualified by schema e.g. schema.table"
+  {:added "0.57.0", :arglists '([driver db-id rename-map])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti insert-into!
   "Insert `values` into a table named `table-name`. `values` is a lazy sequence of rows, where each row's order matches
    `column-names`.
