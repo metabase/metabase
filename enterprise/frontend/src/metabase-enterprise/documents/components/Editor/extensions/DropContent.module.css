@@ -1,8 +1,24 @@
 .wrapper {
-  padding-bottom: 1rem;
+  padding: 1rem;
   border: 1px solid grey;
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+
+  & > :global(.node-cardEmbed) {
+    flex-grow: 1;
+    flex-basis: 0;
+  }
 }
 
-.dragOver {
+.isDragging {
   border: 1px solid blue;
+
+  :global(.node-cardEmbed) {
+    pointer-events: none;
+  }
+}
+
+.root {
+  position: relative;
 }
