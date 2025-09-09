@@ -20,6 +20,7 @@ export interface MentionCommandProps {
   id?: number | string;
   model?: string;
   document?: Document | null;
+  label?: string;
 }
 
 export const MentionPluginKey = new PluginKey("mention");
@@ -57,6 +58,7 @@ export const MentionExtension = Extension.create<MentionOptions>({
                 attrs: {
                   entityId: props.id,
                   model: props.model,
+                  label: props.label,
                 },
               })
               .run();

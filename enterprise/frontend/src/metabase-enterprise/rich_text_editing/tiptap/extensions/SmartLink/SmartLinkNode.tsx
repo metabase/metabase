@@ -149,6 +149,10 @@ export const SmartLink = Node.create<{
         default: null,
         parseHTML: (element) => element.getAttribute("data-model"),
       },
+      label: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-label"),
+      },
     };
   },
 
@@ -175,6 +179,7 @@ export const SmartLink = Node.create<{
           "data-type": "smart-link",
           "data-entity-id": entityId,
           "data-model": model,
+          "data-label": node.attrs.label ?? undefined,
         },
         this.options.HTMLAttributes,
       ),

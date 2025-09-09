@@ -10,7 +10,11 @@ import { useEntitySearch } from "./useEntitySearch";
 interface UseEntitySuggestionsOptions {
   query: string;
   editor: Editor;
-  onSelectEntity: (item: { id: number | string; model: string }) => void;
+  onSelectEntity: (item: {
+    id: number | string;
+    model: string;
+    label?: string;
+  }) => void;
   enabled?: boolean;
   searchModels?: SuggestionModel[];
 }
@@ -50,6 +54,7 @@ export function useEntitySuggestions({
       onSelectEntity({
         id: item.id,
         model: item.model,
+        label: "display_name" in item ? item.display_name : item.name,
       });
     },
     [onSelectEntity],
@@ -60,6 +65,7 @@ export function useEntitySuggestions({
       onSelectEntity({
         id: item.id,
         model: item.model,
+        label: item.name,
       });
     },
     [onSelectEntity],
@@ -70,6 +76,7 @@ export function useEntitySuggestions({
       onSelectEntity({
         id: item.id,
         model: "user",
+        label: item.common_name,
       });
     },
     [onSelectEntity],
