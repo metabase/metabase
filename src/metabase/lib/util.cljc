@@ -702,7 +702,7 @@
 
 (mu/defn normalized-query-type :- [:maybe [:enum #_MLv2 :mbql/query #_legacy :query :native #_audit :internal]]
   "Get the `:lib/type` or `:type` from `query`, even if it is not-yet normalized."
-  [query :- [:maybe :map]]
+  [query]
   (when (map? query)
     (when-let [query-type (some-> (some #(get query %)
                                         [:lib/type :type "lib/type" "type"])
@@ -716,7 +716,7 @@
   (not-empty
    (into #{}
          (comp cat (filter some?))
-         (lib.util.match/match coll [:field opts (id :guard int?)] [id (:source-field opts)]))))
+         (lib.util.match/match coll [:field opts (id :guard pos-int?)] [id (:source-field opts)]))))
 
 (defn collect-source-tables
   "Return sequence of source tables from `query`."
