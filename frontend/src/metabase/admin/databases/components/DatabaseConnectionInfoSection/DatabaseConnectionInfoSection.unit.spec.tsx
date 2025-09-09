@@ -101,6 +101,28 @@ describe("DatabaseConnectionInfoSection", () => {
       });
     });
 
+    it("shows an error when a schema sync fails", async () => {
+      setup();
+      fetchMock.modifyRoute(`database-sync-schema`, {
+        response: 500,
+      });
+
+      await userEvent.click(screen.getByText(/Sync database schema/i));
+      expect(await screen.findByText(/Failed to sync/i)).toBeInTheDocument();
+    });
+
+    it("shows an error when a field sync fails", async () => {
+      setup();
+      fetchMock.modifyRoute(`database-rescan-values`, {
+        response: 500,
+      });
+
+      await userEvent.click(screen.getByText(/Re-scan field values/i));
+      expect(
+        await screen.findByText(/failed to start scan/i),
+      ).toBeInTheDocument();
+    });
+
     it("re-scans database field values", async () => {
       const { database } = setup();
       await userEvent.click(screen.getByText(/Re-scan field values/i));
