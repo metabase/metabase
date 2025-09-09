@@ -6,6 +6,7 @@ import type {
   DatasetQuery,
   PaginationResponse,
   RowValue,
+  Transform,
   UnsavedCard,
   Version,
 } from ".";
@@ -133,11 +134,16 @@ export type MetabotDocumentInfo = {
   id: number;
 };
 
+export type MetabotTransformInfo = Transform & {
+  type: "transform";
+};
+
 export type MetabotEntityInfo =
   | MetabotCardInfo
   | MetabotDashboardInfo
   | MetabotAdhocQueryInfo
-  | MetabotDocumentInfo;
+  | MetabotDocumentInfo
+  | MetabotTransformInfo;
 
 /* Metabot v3 - API Request Types */
 
