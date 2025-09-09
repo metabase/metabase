@@ -11,7 +11,7 @@ import {
 } from "metabase-lib/v1/types/constants";
 import {
   getFieldType,
-  isDataMeasure,
+  isDataSize,
   isDimension,
   isInteger,
   isMetric,
@@ -208,21 +208,21 @@ describe("isa", () => {
     });
   });
 
-  describe("isDataMeasure", () => {
-    it("should detect file size semantic type", () => {
-      expect(isDataMeasure({ semantic_type: TYPE.DataMeasure })).toBe(true);
-      expect(isDataMeasure({ semantic_type: TYPE.Bandwidth })).toBe(true);
-      expect(isDataMeasure({ semantic_type: TYPE.DataTransfer })).toBe(true);
-      expect(isDataMeasure({ semantic_type: TYPE.StorageCapacity })).toBe(true);
+  describe("isDataSize", () => {
+    it("should detect data size semantic type", () => {
+      expect(isDataSize({ semantic_type: TYPE.DataSize })).toBe(true);
+      expect(isDataSize({ semantic_type: TYPE.Bandwidth })).toBe(true);
+      expect(isDataSize({ semantic_type: TYPE.DataTransfer })).toBe(true);
+      expect(isDataSize({ semantic_type: TYPE.StorageCapacity })).toBe(true);
     });
 
-    it("should return false for non-file-size types", () => {
-      expect(isDataMeasure({ semantic_type: TYPE.Text })).toBe(false);
-      expect(isDataMeasure({ semantic_type: TYPE.Integer })).toBe(false);
-      expect(isDataMeasure({ semantic_type: TYPE.Currency })).toBe(false);
-      expect(isDataMeasure({})).toBe(false);
+    it("should return false for non-data-size types", () => {
+      expect(isDataSize({ semantic_type: TYPE.Text })).toBe(false);
+      expect(isDataSize({ semantic_type: TYPE.Integer })).toBe(false);
+      expect(isDataSize({ semantic_type: TYPE.Currency })).toBe(false);
+      expect(isDataSize({})).toBe(false);
       // Following the existing pattern in the codebase, null returns null (falsy)
-      expect(isDataMeasure(null)).toBeFalsy();
+      expect(isDataSize(null)).toBeFalsy();
     });
   });
 });

@@ -271,7 +271,7 @@
 
 (deftest ^:parallel datameasure-test
   (testing "Binary units (default)"
-    (are [s n] (= s (numbers/format-number n {:number-style "datameasure"}))
+    (are [s n] (= s (numbers/format-number n {:number-style "datasize"}))
       "0 B"         0
       "512 B"       512
       "1023 B"      1023
@@ -288,7 +288,7 @@
       "1.5 PiB"     1688849860263936))
 
   (testing "Decimal units"
-    (are [s n] (= s (numbers/format-number n {:number-style "datameasure" :datameasure-unit-system "decimal"}))
+    (are [s n] (= s (numbers/format-number n {:number-style "datasize" :datasize-unit-system "decimal"}))
       "0 B"    0
       "1 KB"   1000
       "1.5 KB" 1500
@@ -302,20 +302,20 @@
       "1.5 PB" 1500000000000000))
 
   (testing "Decimals control"
-    (are [s n d] (= s (numbers/format-number n {:number-style "datameasure" :decimals d}))
+    (are [s n d] (= s (numbers/format-number n {:number-style "datasize" :decimals d}))
       "2 KiB"   1536 0   ; 1.5 rounded up to 2
       "1.5 KiB" 1536 3   ; 1.500 simplified to 1.5
       "1.5 KiB" 1536 1
       "512 B"   512  2)) ; bytes should never show decimals
 
   (testing "Negative values"
-    (are [s n] (= s (numbers/format-number n {:number-style "datameasure"}))
+    (are [s n] (= s (numbers/format-number n {:number-style "datasize"}))
       "-1 KiB"   -1024
       "-1.5 KiB" -1536
       "-1 MiB"   -1048576))
 
   (testing "Edge cases"
-    (are [s n] (= s (numbers/format-number n {:number-style "datameasure"}))
+    (are [s n] (= s (numbers/format-number n {:number-style "datasize"}))
       "1000 PiB" (* 1125899906842624 1000) ; Very large
       "0 B"      0.1                       ; Fractional bytes round down to 0
       "1 B"      0.5)))                    ; Fractional bytes round to nearest

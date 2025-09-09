@@ -6,10 +6,10 @@ import { COMPACT_CURRENCY_OPTIONS, getCurrencySymbol } from "./currency";
 const DISPLAY_COMPACT_DECIMALS_CUTOFF = 1000;
 
 // File size formatting constants
-const FILESIZE_UNITS_BINARY = ["B", "KiB", "MiB", "GiB", "TiB", "PiB"];
-const FILESIZE_UNITS_DECIMAL = ["B", "KB", "MB", "GB", "TB", "PB"];
-const FILESIZE_BASE_BINARY = 1024;
-const FILESIZE_BASE_DECIMAL = 1000;
+const DATASIZE_UNITS_BINARY = ["B", "KiB", "MiB", "GiB", "TiB", "PiB"];
+const DATASIZE_UNITS_DECIMAL = ["B", "KB", "MB", "GB", "TB", "PB"];
+const DATASIZE_BASE_BINARY = 1024;
+const DATASIZE_BASE_DECIMAL = 1000;
 
 const FIXED_NUMBER_FORMATTER = new Intl.NumberFormat("en", {
   useGrouping: true,
@@ -22,7 +22,7 @@ const PRECISION_NUMBER_FORMATTER = new Intl.NumberFormat("en", {
   maximumFractionDigits: 2,
 });
 
-export type DataMeasureUnitSystem = "binary" | "decimal";
+export type DataSizeUnitSystem = "binary" | "decimal";
 
 export type FormatNumberOptions = {
   _numberFormatter?: Intl.NumberFormat | null;
@@ -31,8 +31,8 @@ export type FormatNumberOptions = {
   currency_in_header?: boolean;
   currency_style?: string;
   decimals?: string | number;
-  datameasure_unit_system?: DataMeasureUnitSystem;
-  datameasure_unit_in_header?: boolean;
+  datasize_unit_system?: DataSizeUnitSystem;
+  datasize_unit_in_header?: boolean;
   maximumFractionDigits?: number;
   minimumFractionDigits?: number;
   minimumIntegerDigits?: number;
@@ -106,8 +106,8 @@ export function formatNumber(
 
   if (options.compact) {
     return formatNumberCompact(number, options);
-  } else if (options.number_style === "datameasure") {
-    return formatNumberDataMeasure(number, options);
+  } else if (options.number_style === "datasize") {
+    return formatNumberDataSize(number, options);
   } else if (options.number_style === "scientific") {
     return formatNumberScientific(number, options);
   } else {
@@ -210,7 +210,7 @@ export function numberFormatterForOptions(
 
   // datameasure is a custom format, not supported by Intl.NumberFormat
   // Return null for datameasure - formatNumber will handle it specially
-  if (options.number_style === "datameasure") {
+  if (options.number_style === "datasize") {
     return null;
   }
 
@@ -272,22 +272,22 @@ function formatNumberCompact(
       minimumFractionDigits: 1,
     });
   }
-  if (options.number_style === "datameasure") {
-    // Compact data measures should still show units but with abbreviated numbers
-    return formatNumberDataMeasure(value, options);
+  if (options.number_style === "datasize") {
+    // Compact data sizes should still show units but with abbreviated numbers
+    return formatNumberDataSize(value, options);
   }
   return _formatNumberCompact(value, options);
 }
 
-function formatNumberDataMeasure(
+function formatNumberDataSize(
   value: number | bigint,
   options: FormatNumberJsxOptions,
 ): string {
-  const unitSystem = options.datameasure_unit_system || "binary";
+  const unitSystem = options.datasize_unit_system || "binary";
   const units =
-    unitSystem === "binary" ? FILESIZE_UNITS_BINARY : FILESIZE_UNITS_DECIMAL;
+    unitSystem === "binary" ? DATASIZE_UNITS_BINARY : DATASIZE_UNITS_DECIMAL;
   const base =
-    unitSystem === "binary" ? FILESIZE_BASE_BINARY : FILESIZE_BASE_DECIMAL;
+    unitSystem === "binary" ? DATASIZE_BASE_BINARY : DATASIZE_BASE_DECIMAL;
 
   const absValue = abs(value);
   let unitIndex = 0;
@@ -327,7 +327,7 @@ function formatNumberDataMeasure(
 
   // Handle unit display
   const unit = units[unitIndex];
-  if (options.type === "cell" && options.datameasure_unit_in_header) {
+  if (options.type === "cell" && options.datasize_unit_in_header) {
     // Unit will be shown in header, just return the number
     return (value < 0 ? "-" : "") + formatted;
   }

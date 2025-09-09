@@ -15,11 +15,11 @@
                             ["latitude"      :type/Float]   :type/Latitude
                             ["foo_latitude"  :type/Float]   :type/Latitude
                             ["foo_lat"       :type/Float]   :type/Latitude
-                            ;; FileSize semantic type tests
-                            ["file_size"     :type/Integer] :type/DataMeasure
-                            ["total_bytes"   :type/Integer] :type/DataMeasure
-                            ["download_size" :type/Integer] :type/DataMeasure
-                            ["upload_data"   :type/Integer] :type/DataMeasure
+                            ;; DataSize semantic type tests
+                            ["file_size"     :type/Integer] :type/DataSize
+                            ["total_bytes"   :type/Integer] :type/DataSize
+                            ["download_size" :type/Integer] :type/DataSize
+                            ["upload_data"   :type/Integer] :type/DataSize
                             ["bandwidth"     :type/Integer] :type/Bandwidth
                             ["network_traffic" :type/Integer] :type/DataTransfer
                             ["data_transfer" :type/Integer] :type/DataTransfer

@@ -25,7 +25,7 @@
    [1000000       "M"]
    [1000          "k"]])
 
-(def ^:private datameasure-units-binary
+(def ^:private datasize-units-binary
   [[1125899906842624 "PiB"]  ; 2^50
    [1099511627776    "TiB"]  ; 2^40
    [1073741824       "GiB"]  ; 2^30
@@ -33,7 +33,7 @@
    [1024             "KiB"]  ; 2^10
    [1                "B"]])
 
-(def ^:private datameasure-units-decimal
+(def ^:private datasize-units-decimal
   [[1000000000000000 "PB"]   ; 10^15
    [1000000000000    "TB"]   ; 10^12
    [1000000000       "GB"]   ; 10^9
@@ -72,9 +72,9 @@
 (defmethod format-number-compact* "scientific" [number options]
   (internal/format-number-scientific number (merge options {:maximum-fraction-digits 1 :minimum-fraction-digits 1})))
 
-(defmethod format-number-compact* "datameasure" [number options]
-  (let [binary? (= (:datameasure-unit-system options "binary") "binary")
-        units (if binary? datameasure-units-binary datameasure-units-decimal)
+(defmethod format-number-compact* "datasize" [number options]
+  (let [binary? (= (:datasize-unit-system options "binary") "binary")
+        units (if binary? datasize-units-binary datasize-units-decimal)
         abs-value (abs number)
         [threshold unit] (first (filter #(>= abs-value (first %)) units))
         ; Default to Bytes if no unit found (for values < 1)
@@ -174,11 +174,11 @@
   - `:negative-in-parentheses` boolean: True wraps negative values in parentheses; false (the default) uses minus signs.
   - `:number-serpators` string: A two-character string \"ab\" where `a` is the decimal symbol and `b` is the grouping.
     Default is American-style \".,\".
-  - `:number-style` \"currency\" | \"decimal\" | \"scientific\" | \"percent\" | \"datameasure\": The fundamental type to display.
+  - `:number-style` \"currency\" | \"decimal\" | \"scientific\" | \"percent\" | \"datasize\": The fundamental type to display.
       - \"currency\" renders as eg. \"$123.45\" based on the `:currency` value.
       - \"percent\" renders eg. 0.432 as \"43.2%\".
       - \"scientific\" renders in scientific notation with 1 integer digit: eg. 0.00432 as \"4.32e-3\".
-      - \"datameasure\" renders bytes with appropriate units: eg. 1024 as \"1 KiB\" or \"1 KB\".
+      - \"datasize\" renders bytes with appropriate units: eg. 1024 as \"1 KiB\" or \"1 KB\".
       - \"decimal\" (the default) is basic numeric notation.
   - `:scale` number: Gives a factor by which to multiply the value before rendering it."
   [number options]
@@ -194,5 +194,5 @@
       compact                        (format-number-compact number options)
       (= (keyword number-style)
          :scientific)                (internal/format-number-scientific number options)
-      (= number-style "datameasure")    (format-number-compact* number options)
+      (= number-style "datasize")    (format-number-compact* number options)
       :else                          (format-number-standard   number options))))

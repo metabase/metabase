@@ -21,8 +21,8 @@ import {
   getDefaultCurrency,
   getDefaultCurrencyInHeader,
   getDefaultCurrencyStyle,
-  getDefaultFileSizeUnitInHeader,
-  getDefaultFileSizeUnitSystem,
+  getDefaultDataSizeUnitInHeader,
+  getDefaultDataSizeUnitSystem,
   getDefaultNumberSeparators,
   getDefaultNumberStyle,
 } from "metabase/visualizations/shared/settings/column";
@@ -256,7 +256,7 @@ export const NUMBER_COLUMN_SETTINGS = {
           get name() {
             return t`Data size`;
           },
-          value: "datameasure",
+          value: "datasize",
         },
       ],
     },
@@ -324,7 +324,7 @@ export const NUMBER_COLUMN_SETTINGS = {
     },
     readDependencies: ["number_style"],
   },
-  datameasure_unit_system: {
+  datasize_unit_system: {
     get title() {
       return t`Unit system`;
     },
@@ -337,11 +337,11 @@ export const NUMBER_COLUMN_SETTINGS = {
         ],
       };
     },
-    getDefault: getDefaultFileSizeUnitSystem,
-    getHidden: (column, settings) => settings["number_style"] !== "datameasure",
+    getDefault: getDefaultDataSizeUnitSystem,
+    getHidden: (column, settings) => settings["number_style"] !== "datasize",
     readDependencies: ["number_style"],
   },
-  datameasure_unit_in_header: {
+  datasize_unit_in_header: {
     get title() {
       return t`Where to display the unit`;
     },
@@ -355,13 +355,13 @@ export const NUMBER_COLUMN_SETTINGS = {
         ],
       };
     },
-    getDefault: getDefaultFileSizeUnitInHeader,
+    getDefault: getDefaultDataSizeUnitInHeader,
     getHidden: (_column, settings, { series, forAdminSettings }) => {
       if (forAdminSettings === true) {
         return false;
       }
       return (
-        settings["number_style"] !== "datameasure" ||
+        settings["number_style"] !== "datasize" ||
         series[0].card.display !== "table"
       );
     },
@@ -430,7 +430,7 @@ export const NUMBER_COLUMN_SETTINGS = {
   _numberFormatter: {
     getValue: (column, settings) => {
       // datameasure doesn't use Intl.NumberFormat, so return null
-      if (settings["number_style"] === "datameasure") {
+      if (settings["number_style"] === "datasize") {
         return null;
       }
       return numberFormatterForOptions(settings);
@@ -454,8 +454,8 @@ export const NUMBER_COLUMN_SETTINGS = {
         }
         return getCurrency(settings["currency"], settings["currency_style"]);
       } else if (
-        settings["number_style"] === "datameasure" &&
-        settings["datameasure_unit_in_header"]
+        settings["number_style"] === "datasize" &&
+        settings["datasize_unit_in_header"]
       ) {
         return t`Bytes`;
       }
@@ -466,7 +466,7 @@ export const NUMBER_COLUMN_SETTINGS = {
       "currency",
       "currency_style",
       "currency_header_only",
-      "datameasure_unit_in_header",
+      "datasize_unit_in_header",
     ],
   },
 };

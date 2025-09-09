@@ -6,7 +6,7 @@ export type NumberFormatOptions = {
     | "decimal"
     | "scientific"
     | "percentage"
-    | "datameasure";
+    | "datasize";
   currency?: string;
   currency_style?: "symbol" | "code" | "name";
   number_separators?: ".,";
@@ -15,7 +15,7 @@ export type NumberFormatOptions = {
   prefix?: string;
   suffix?: string;
   compact?: boolean;
-  filesize_unit_system?: "binary" | "decimal";
+  datasize_unit_system?: "binary" | "decimal";
 };
 
 const DEFAULT_OPTIONS = {
