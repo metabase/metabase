@@ -14,7 +14,12 @@ import { staticDashboardSchema } from "./StaticDashboard.schema";
  * @expand
  * @category Dashboard
  */
-export type StaticDashboardProps = SdkDashboardProps;
+export type StaticDashboardProps = Omit<
+  SdkDashboardProps,
+  | "drillThroughQuestionProps"
+  | "drillThroughQuestionHeight"
+  | "renderDrillThroughQuestion"
+>;
 
 const StaticDashboardInner = (props: StaticDashboardProps) => {
   const getClickActionMode: ClickActionModeGetter = ({ question }) =>

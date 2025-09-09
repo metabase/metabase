@@ -1,5 +1,7 @@
 type ValidateTypeAgainstInferredSchema<TType, TSchemaInferType> =
-  Required<TType> extends Required<TSchemaInferType> ? TType : TSchemaInferType;
+  Required<TType> extends Required<TSchemaInferType>
+    ? TType
+    : Required<TSchemaInferType>;
 
 type ValidateInferredSchemaAgainstType<TType, TSchemaInferType> =
   Required<TSchemaInferType> extends Required<TType>
