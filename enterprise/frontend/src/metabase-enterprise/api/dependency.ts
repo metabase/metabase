@@ -13,7 +13,7 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
     >({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/dependency/check_card",
+        url: "/api/ee/dependencies/check_card",
         body,
       }),
     }),

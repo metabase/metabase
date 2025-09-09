@@ -2,7 +2,7 @@ import type { Card } from "./card";
 
 export type CheckCardDependenciesRequest = Pick<
   Card,
-  "id" | "dataset_query" | "result_metadata"
+  "id" | "type" | "dataset_query"
 >;
 
 export type CheckCardDependenciesResponse = {

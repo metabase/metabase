@@ -16,7 +16,6 @@
 (mr/def ::card-body
   [:map
    [:id            {:optional false} ms/PositiveInt]
-   [:database_id   {:optional false} ms/PositiveInt]
    [:dataset_query {:optional true}  [:maybe ms/Map]]
    [:type          {:optional true}  [:maybe ::queries.schema/card-type]]])
 
@@ -25,14 +24,15 @@
   [_route-params
    _query-params
    body :- ::card-body]
-  (let [base-provider (lib-be.metadata.jvm/application-database-metadata-provider (:database_id body))
+  (let [database-id   (-> body :dataset_query :database)
+        base-provider (lib-be.metadata.jvm/application-database-metadata-provider database-id)
         original      (lib.metadata/card base-provider (:id body))
         card          (-> original
                           (assoc :dataset-query (:dataset_query body)
                                  :type          (:type body (:type original)))
                           (dissoc :result-metadata))
         ;; TODO: This sucks - it's getting all cards for the same database_id, which is slow and over-reaching.
-        all-cards     (t2/select-fn-set :id :model/Card :database_id (:database_id body))
+        all-cards     (t2/select-fn-set :id :model/Card :database_id database-id)
         breakages     (dependencies/check-cards-have-sound-refs base-provider [card] all-cards)
         broken-ids    (keys breakages)
         broken-cards  (when (seq broken-ids)

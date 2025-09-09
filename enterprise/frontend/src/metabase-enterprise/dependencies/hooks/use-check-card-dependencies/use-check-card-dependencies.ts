@@ -23,8 +23,11 @@ export function useCheckCardDependencies({
         store.getState(),
         question,
       );
-      const { id, dataset_query, result_metadata } = submittableQuestion.card();
-      const { data } = await checkCard({ id, dataset_query, result_metadata });
+      const data = await checkCard({
+        id: submittableQuestion.id(),
+        type: submittableQuestion.type(),
+        dataset_query: submittableQuestion.datasetQuery(),
+      }).unwrap();
       if (data != null && !data.success) {
         setQuestion(question);
         setIsConfirming(true);
