@@ -13,8 +13,8 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Database as ApiDatabase,
+  PythonTransformSource,
   RecentItem,
-  TransformSource,
 } from "metabase-types/api";
 
 import { PythonEditor } from "../PythonEditor";
@@ -28,7 +28,7 @@ type EditorBodyProps = {
   question: Question;
   isNative: boolean;
   isPython?: boolean;
-  pythonSource?: TransformSource & { type: "python" };
+  pythonSource?: PythonTransformSource;
   isRunnable: boolean;
   isRunning: boolean;
   isResultDirty: boolean;
