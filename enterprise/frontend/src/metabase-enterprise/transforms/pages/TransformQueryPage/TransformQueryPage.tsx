@@ -3,6 +3,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
+import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -85,15 +86,17 @@ export function TransformQueryPageBody({
   const clearProposed = () => setProposedQuery(undefined);
 
   return (
-    <QueryEditor
-      initialQuery={initialQuery}
-      isNew={false}
-      isSaving={isLoading}
-      onSave={handleSave}
-      onCancel={handleCancel}
-      proposedQuery={proposedQuery}
-      clearProposed={clearProposed}
-    />
+    <AdminSettingsLayout fullWidthContent>
+      <QueryEditor
+        initialQuery={initialQuery}
+        isNew={false}
+        isSaving={isLoading}
+        onSave={handleSave}
+        onCancel={handleCancel}
+        proposedQuery={proposedQuery}
+        clearProposed={clearProposed}
+      />
+    </AdminSettingsLayout>
   );
 }
 

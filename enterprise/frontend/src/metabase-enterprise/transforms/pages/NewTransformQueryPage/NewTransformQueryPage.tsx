@@ -3,6 +3,7 @@ import { useState } from "react";
 import { push } from "react-router-redux";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
+import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -73,7 +74,7 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
   const clearProposed = () => setProposedQuery(undefined);
 
   return (
-    <>
+    <AdminSettingsLayout fullWidthContent>
       <QueryEditor
         initialQuery={initialQuery}
         isNew
@@ -89,7 +90,7 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
           onClose={closeModal}
         />
       )}
-    </>
+    </AdminSettingsLayout>
   );
 }
 
