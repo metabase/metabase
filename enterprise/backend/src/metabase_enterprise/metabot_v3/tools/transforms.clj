@@ -31,3 +31,12 @@
                                       (native-query-transform? %))))))}
     (catch Exception e
       (metabot-v3.tools.u/handle-agent-error e))))
+
+(defn get-transform-details
+  "Get information about a transform."
+  [transform-id]
+  (try
+    {:structured_output
+     (api.transforms/get-transform transform-id)}
+    (catch Exception e
+      (metabot-v3.tools.u/handle-agent-error e))))
