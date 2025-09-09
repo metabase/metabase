@@ -25,7 +25,7 @@
   Returns a map `{card-id [bad refs...]}`, which will be empty if there are no bad refs detected."
   [base-provider  :- ::lib.schema.metadata/metadata-provider
    updated-cards  :- [:sequential ::lib.schema.metadata/card]
-   check-card-ids :- [:sequential ::lib.schema.id/card]]
+   check-card-ids :- [:maybe [:set ::lib.schema.id/card]]]
   (let [provider (provider-with-updated-cards base-provider updated-cards)]
     (reduce (fn [errors card-id]
               (let [card     (lib.metadata/card provider card-id)
