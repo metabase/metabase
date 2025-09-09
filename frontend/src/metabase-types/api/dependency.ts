@@ -1,10 +1,10 @@
 import type { Card } from "./card";
 
-export type AnalyzeCardUpdateRequest = {
+export type CheckCardUpdateRequest = {
   card: Card;
 };
 
-export type AnalyzeCardUpdateResponse = {
+export type CheckCardUpdateResponse = {
   success: boolean;
-  cards: Card[];
+  bad_cards: Card[];
 };

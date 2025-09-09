@@ -1,15 +1,15 @@
 import type {
-  AnalyzeCardUpdateRequest,
-  AnalyzeCardUpdateResponse,
+  CheckCardUpdateRequest,
+  CheckCardUpdateResponse,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
 
 export const dependencyApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    analyzeCardUpdate: builder.mutation<
-      AnalyzeCardUpdateResponse,
-      AnalyzeCardUpdateRequest
+    checkCardUpdate: builder.query<
+      CheckCardUpdateResponse,
+      CheckCardUpdateRequest
     >({
       query: (body) => ({
         method: "POST",
@@ -20,4 +20,4 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
   }),
 });
 
-export const { useAnalyzeCardUpdateMutation } = dependencyApi;
+export const { useLazyCheckCardUpdateQuery } = dependencyApi;

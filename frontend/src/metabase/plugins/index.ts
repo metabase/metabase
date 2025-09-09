@@ -54,12 +54,12 @@ import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
-  AnalyzeCardUpdateResponse,
   BaseEntityId,
   BaseUser,
   Bookmark,
   CacheableDashboard,
   CacheableModel,
+  CheckCardUpdateResponse,
   Collection,
   CollectionAuthorityLevelConfig,
   CollectionEssentials,
@@ -852,36 +852,36 @@ export const PLUGIN_TRANSFORMS: TransformsPlugin = {
 };
 
 type DependenciesPlugin = {
-  AnalyzeConfirmForm: ComponentType<AnalyzeConfirmFormProps>;
-  useAnalyzeQuestionUpdate: (
-    props: UseAnalyzeQuestionUpdateProps,
-  ) => UseAnalyzeQuestionUpdateResult;
-  getAnalyzeConfirmTitle: () => string;
+  CardUpdateForm: ComponentType<CardUpdateFormProps>;
+  useCheckCardUpdate: (
+    props: UseCheckCardUpdateProps,
+  ) => UseCheckCardUpdateResult;
+  getUpdateFormTitle: () => string;
 };
 
-export type UseAnalyzeQuestionUpdateProps = {
+export type UseCheckCardUpdateProps = {
   onSave: (question: Question) => Promise<void>;
 };
 
-export type UseAnalyzeQuestionUpdateResult = {
-  analyzeData?: AnalyzeCardUpdateResponse;
+export type UseCheckCardUpdateResult = {
+  checkData?: CheckCardUpdateResponse;
   isConfirming: boolean;
   handleInitialSave: (question: Question) => Promise<void>;
   handleSaveAfterConfirmation: () => Promise<void>;
 };
 
-export type AnalyzeConfirmFormProps = {
-  data: AnalyzeCardUpdateResponse;
+export type CardUpdateFormProps = {
+  checkData: CheckCardUpdateResponse;
   onSave: () => void;
   onCancel: () => void;
 };
 
 export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
-  AnalyzeConfirmForm: PluginPlaceholder,
-  useAnalyzeQuestionUpdate: ({ onSave }) => ({
+  CardUpdateForm: PluginPlaceholder,
+  useCheckCardUpdate: ({ onSave }) => ({
     isConfirming: false,
     handleInitialSave: onSave,
     handleSaveAfterConfirmation: () => Promise.resolve(),
   }),
-  getAnalyzeConfirmTitle: () => "",
+  getUpdateFormTitle: () => "",
 };

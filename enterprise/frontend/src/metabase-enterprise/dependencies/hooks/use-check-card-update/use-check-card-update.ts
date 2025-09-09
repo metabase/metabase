@@ -1,26 +1,26 @@
 import { useState } from "react";
 
 import type {
-  UseAnalyzeQuestionUpdateProps,
-  UseAnalyzeQuestionUpdateResult,
+  UseCheckCardUpdateProps,
+  UseCheckCardUpdateResult,
 } from "metabase/plugins";
-import { useAnalyzeCardUpdateMutation } from "metabase-enterprise/api";
+import { useLazyCheckCardUpdateQuery } from "metabase-enterprise/api";
 import type Question from "metabase-lib/v1/Question";
 
-export function useAnalyzeQuestionUpdate({
+export function useCheckCardUpdate({
   onSave,
-}: UseAnalyzeQuestionUpdateProps): UseAnalyzeQuestionUpdateResult {
-  const [question, setQuestion] = useState<Question>();
+}: UseCheckCardUpdateProps): UseCheckCardUpdateResult {
+  const [question, setQuestion] = useState<Question | null>(null);
   const [isConfirming, setIsConfirming] = useState(false);
-  const [analyzeCard, { data }] = useAnalyzeCardUpdateMutation();
+  const [checkCard, { data }] = useLazyCheckCardUpdateQuery();
 
   const handleInitialSave = async (question: Question) => {
-    const { data } = await analyzeCard({ card: question.card() });
+    const { data } = await checkCard({ card: question.card() });
     if (data != null && !data.success) {
       setQuestion(question);
       setIsConfirming(true);
     } else {
-      setQuestion(undefined);
+      setQuestion(null);
       setIsConfirming(false);
       await onSave(question);
     }
@@ -33,7 +33,7 @@ export function useAnalyzeQuestionUpdate({
   };
 
   return {
-    analyzeData: data,
+    checkData: data,
     isConfirming,
     handleInitialSave,
     handleSaveAfterConfirmation,

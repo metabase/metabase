@@ -24,11 +24,11 @@ export const SaveQuestionModal = ({
   ...modalProps
 }: SaveQuestionModalProps) => {
   const {
-    analyzeData,
+    checkData,
     isConfirming,
     handleInitialSave,
     handleSaveAfterConfirmation,
-  } = PLUGIN_DEPENDENCIES.useAnalyzeQuestionUpdate({ onSave });
+  } = PLUGIN_DEPENDENCIES.useCheckCardUpdate({ onSave });
   useEscapeToCloseModal(onClose);
 
   return (
@@ -61,7 +61,7 @@ export const SaveQuestionModal = ({
           <Modal.Header>
             <Modal.Title>
               {isConfirming ? (
-                PLUGIN_DEPENDENCIES.getAnalyzeConfirmTitle()
+                PLUGIN_DEPENDENCIES.getUpdateFormTitle()
               ) : (
                 <SaveQuestionTitle />
               )}
@@ -71,9 +71,9 @@ export const SaveQuestionModal = ({
             </Flex>
           </Modal.Header>
           <Modal.Body>
-            {analyzeData != null && isConfirming ? (
-              <PLUGIN_DEPENDENCIES.AnalyzeConfirmForm
-                data={analyzeData}
+            {checkData != null && isConfirming ? (
+              <PLUGIN_DEPENDENCIES.CardUpdateForm
+                checkData={checkData}
                 onSave={handleSaveAfterConfirmation}
                 onCancel={onClose}
               />
