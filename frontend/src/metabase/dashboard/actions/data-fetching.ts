@@ -722,7 +722,6 @@ export const fetchDashboard = createAsyncThunk(
             },
             dispatch,
             automagicDashboardsApi.endpoints.getXrayDashboardQueryMetadata,
-            { forceRefetch: false },
           ),
         ]);
         result = {
