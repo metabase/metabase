@@ -18,14 +18,27 @@ import { ResizableBoxHandle } from "./ResizableBoxHandle";
 
 const EDITOR_HEIGHT = 400;
 
+const NATIVE_EDITOR_SIDEBAR_FEATURES = {
+  dataReference: true,
+  variables: false,
+  snippets: true,
+  promptInput: true,
+  formatQuery: true,
+  aiGeneration: true,
+};
+
 type EditorBodyProps = {
   question: Question;
   isNative: boolean;
   isRunnable: boolean;
   isRunning: boolean;
   isResultDirty: boolean;
+  isShowingDataReference: boolean;
+  isShowingSnippetSidebar: boolean;
   onChange: (newQuestion: Question) => void;
   onRunQuery: () => Promise<void>;
+  onToggleDataReference: () => void;
+  onToggleSnippetSidebar: () => void;
   onCancelQuery: () => void;
   databases: ApiDatabase[];
 };
@@ -36,9 +49,13 @@ export function EditorBody({
   isRunnable,
   isRunning,
   isResultDirty,
+  isShowingDataReference,
+  isShowingSnippetSidebar,
   onChange,
   onRunQuery,
   onCancelQuery,
+  onToggleDataReference,
+  onToggleSnippetSidebar,
   databases,
 }: EditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
@@ -80,16 +97,20 @@ export function EditorBody({
       isRunning={isRunning}
       isResultDirty={isResultDirty}
       isInitiallyOpen
+      isShowingDataReference={isShowingDataReference}
+      isShowingSnippetSidebar={isShowingSnippetSidebar}
       isNativeEditorOpen
       hasTopBar
       hasRunButton
       readOnly={false}
-      hasEditingSidebar={false}
       hasParametersList={false}
       handleResize={handleResize}
       runQuery={onRunQuery}
       cancelQuery={onCancelQuery}
       setDatasetQuery={handleNativeQueryChange}
+      sidebarFeatures={NATIVE_EDITOR_SIDEBAR_FEATURES}
+      toggleDataReference={onToggleDataReference}
+      toggleSnippetSidebar={onToggleSnippetSidebar}
       databaseIsDisabled={(db: Database) => {
         const database = databases.find((database) => database.id === db.id);
         return !doesDatabaseSupportTransforms(database);

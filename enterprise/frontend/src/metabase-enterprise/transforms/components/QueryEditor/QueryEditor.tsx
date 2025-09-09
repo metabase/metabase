@@ -1,7 +1,7 @@
-import { useHotkeys } from "@mantine/hooks";
+import { useDisclosure, useHotkeys } from "@mantine/hooks";
 
 import { useListDatabasesQuery } from "metabase/api";
-import { Center, Flex, Loader } from "metabase/ui";
+import { Center, Flex, Loader, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetQuery } from "metabase-types/api";
@@ -12,6 +12,7 @@ import { useQueryState } from "../../hooks/use-query-state";
 
 import { EditorBody } from "./EditorBody";
 import { EditorHeader } from "./EditorHeader";
+import { EditorSidebar } from "./EditorSidebar";
 import { EditorVisualization } from "./EditorVisualization";
 import S from "./QueryEditor.module.css";
 
@@ -60,7 +61,26 @@ export function QueryEditor({
     }
   };
 
+  const [
+    isDataReferenceOpen,
+    { toggle: toggleDataReference, close: closeDataReference },
+  ] = useDisclosure();
+  const [
+    isSnippetSidebarOpen,
+    { toggle: toggleSnippetSidebar, close: closeSnippetSidebar },
+  ] = useDisclosure();
+
   useHotkeys([["mod+Enter", handleCmdEnter]], []);
+
+  const handleToggleDataReference = () => {
+    closeSnippetSidebar();
+    toggleDataReference();
+  };
+
+  const handleToggleSnippetSidebar = () => {
+    closeDataReference();
+    toggleSnippetSidebar();
+  };
 
   const { data: databases, isLoading } = useListDatabasesQuery({
     include_analytics: true,
@@ -75,13 +95,13 @@ export function QueryEditor({
   }
 
   return (
-    <Flex
+    <Stack
       className={S.root}
       w="100%"
       h="100%"
-      direction="column"
       bg="bg-white"
       data-testid="transform-query-editor"
+      gap={0}
     >
       <EditorHeader
         isNew={isNew}
@@ -90,28 +110,44 @@ export function QueryEditor({
         onSave={handleSave}
         onCancel={onCancel}
       />
-      <EditorBody
-        question={question}
-        isNative={isNative}
-        isRunnable={isRunnable}
-        isRunning={isRunning}
-        isResultDirty={isResultDirty}
-        onChange={handleChange}
-        onRunQuery={runQuery}
-        onCancelQuery={cancelQuery}
-        databases={databases?.data ?? []}
-      />
-      <EditorVisualization
-        question={question}
-        result={result}
-        rawSeries={rawSeries}
-        isNative={isNative}
-        isRunnable={isRunnable}
-        isRunning={isRunning}
-        isResultDirty={isResultDirty}
-        onRunQuery={runQuery}
-        onCancelQuery={() => undefined}
-      />
-    </Flex>
+      <Flex h="100%" w="100%">
+        <Stack flex="2 1 100%">
+          <EditorBody
+            question={question}
+            isNative={isNative}
+            isRunnable={isRunnable}
+            isRunning={isRunning}
+            isResultDirty={isResultDirty}
+            isShowingDataReference={isDataReferenceOpen}
+            isShowingSnippetSidebar={isSnippetSidebarOpen}
+            onChange={handleChange}
+            onRunQuery={runQuery}
+            onCancelQuery={cancelQuery}
+            databases={databases?.data ?? []}
+            onToggleDataReference={handleToggleDataReference}
+            onToggleSnippetSidebar={handleToggleSnippetSidebar}
+          />
+          <EditorVisualization
+            question={question}
+            result={result}
+            rawSeries={rawSeries}
+            isNative={isNative}
+            isRunnable={isRunnable}
+            isRunning={isRunning}
+            isResultDirty={isResultDirty}
+            onRunQuery={runQuery}
+            onCancelQuery={() => undefined}
+          />
+        </Stack>
+        <EditorSidebar
+          question={question}
+          isNative={isNative}
+          isDataReferenceOpen={isDataReferenceOpen}
+          isSnippetSidebarOpen={isSnippetSidebarOpen}
+          onToggleDataReference={toggleDataReference}
+          onToggleSnippetSidebar={toggleSnippetSidebar}
+        />
+      </Flex>
+    </Stack>
   );
 }
