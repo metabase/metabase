@@ -1121,8 +1121,13 @@
                                           :source {:type "query"
                                                    :query (mt/native-query {:query "SELECT * FROM PEOPLE"})}
                                           :target {:type "table" :name "t1_table" :schema nil}}
+                     :model/Transform t2 {:name "MBQL Transform"
+                                          :description "Simple MQBL query on Products table"
+                                          :source {:type "query"
+                                                   :query (mt/mbql-query products)}
+                                          :target {:type "table" :name "t2_table" :schema nil}}
                      ;; TODO make this a Python transform
-                     :model/Transform t2 {:name "Orders Transform"
+                     :model/Transform t3 {:name "Orders Transform"
                                           :description "Simple select on Orders table"
                                           :source {:type "query"
                                                    :query (mt/native-query {:query "SELECT * FROM ORDERS"})}
@@ -1134,11 +1139,12 @@
                                        {:conversation_id conversation-id}))))
         (testing "With superuser permissions"
           (is (=? {:structured_output [(select-keys t1 [:id :entity_id :name :description :source])
-                                       (select-keys t2 [:id :entity_id :name :description :source])]
+                                       ;; note: t2 not included because it's a (non-native) MBQL query
+                                       (select-keys t3 [:id :entity_id :name :description :source])]
                    :conversation_id conversation-id}
                   (-> (mt/user-http-request :rasta :get 200 "ee/metabot-tools/get-transforms"
                                             {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
                                             {:conversation_id conversation-id})
                       (update :structured_output (fn [output]
-                                                   (filter #(#{(:id t1) (:id t2)} (:id %))
+                                                   (filter #(#{(:id t1) (:id t2) (:id t3)} (:id %))
                                                            output)))))))))))
