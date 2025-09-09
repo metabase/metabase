@@ -2,16 +2,16 @@ import { useCallback, useState } from "react";
 
 import { useStore } from "metabase/lib/redux";
 import type {
-  UseCheckCardUpdateProps,
-  UseCheckCardUpdateResult,
+  UseCheckCardDependenciesProps,
+  UseCheckCardDependenciesResult,
 } from "metabase/plugins";
 import { useLazyCheckCardUpdateQuery } from "metabase-enterprise/api";
 import type Question from "metabase-lib/v1/Question";
 
-export function useCheckCardUpdate({
+export function useCheckCardDependencies({
   getSubmittableQuestion,
   onSave,
-}: UseCheckCardUpdateProps): UseCheckCardUpdateResult {
+}: UseCheckCardDependenciesProps): UseCheckCardDependenciesResult {
   const store = useStore();
   const [question, setQuestion] = useState<Question | null>(null);
   const [isConfirming, setIsConfirming] = useState(false);

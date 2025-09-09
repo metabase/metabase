@@ -853,30 +853,30 @@ export const PLUGIN_TRANSFORMS: TransformsPlugin = {
 };
 
 type DependenciesPlugin = {
-  ConfirmUpdateForm: ComponentType<ConfirmUpdateFormProps>;
-  ConfirmUpdateModalTitle: ComponentType;
-  useCheckCardUpdate: (
-    props: UseCheckCardUpdateProps,
-  ) => UseCheckCardUpdateResult;
+  CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
+  CheckDependenciesTitle: ComponentType;
+  useCheckCardDependencies: (
+    props: UseCheckCardDependenciesProps,
+  ) => UseCheckCardDependenciesResult;
 };
 
-export type CheckUpdateData = {
+export type CheckDependenciesData = {
   success: boolean;
   bad_cards?: Card[];
 };
 
-export type ConfirmUpdateFormProps = {
-  checkData: CheckUpdateData;
+export type CheckDependenciesFormProps = {
+  checkData: CheckDependenciesData;
   onSave: () => void | Promise<void>;
   onCancel: () => void;
 };
 
-export type UseCheckCardUpdateProps = {
+export type UseCheckCardDependenciesProps = {
   getSubmittableQuestion: (state: State, question: Question) => Question;
   onSave: (question: Question) => Promise<void>;
 };
 
-export type UseCheckCardUpdateResult = {
+export type UseCheckCardDependenciesResult = {
   checkData?: CheckCardUpdateResponse;
   isConfirming: boolean;
   handleInitialSave: (question: Question) => Promise<void>;
@@ -884,9 +884,9 @@ export type UseCheckCardUpdateResult = {
 };
 
 export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
-  ConfirmUpdateForm: PluginPlaceholder,
-  ConfirmUpdateModalTitle: PluginPlaceholder,
-  useCheckCardUpdate: ({ onSave }) => ({
+  CheckDependenciesForm: PluginPlaceholder,
+  CheckDependenciesTitle: PluginPlaceholder,
+  useCheckCardDependencies: ({ onSave }) => ({
     isConfirming: false,
     handleInitialSave: onSave,
     handleSaveAfterConfirmation: () => Promise.resolve(),

@@ -29,7 +29,7 @@ export const SaveQuestionModal = ({
     isConfirming,
     handleInitialSave,
     handleSaveAfterConfirmation,
-  } = PLUGIN_DEPENDENCIES.useCheckCardUpdate({
+  } = PLUGIN_DEPENDENCIES.useCheckCardDependencies({
     getSubmittableQuestion,
     onSave,
   });
@@ -65,7 +65,7 @@ export const SaveQuestionModal = ({
           <Modal.Header>
             <Modal.Title>
               {isConfirming ? (
-                PLUGIN_DEPENDENCIES.getUpdateFormTitle()
+                <PLUGIN_DEPENDENCIES.CheckDependenciesTitle />
               ) : (
                 <SaveQuestionTitle />
               )}
@@ -76,7 +76,7 @@ export const SaveQuestionModal = ({
           </Modal.Header>
           <Modal.Body>
             {checkData != null && isConfirming ? (
-              <PLUGIN_DEPENDENCIES.ConfirmCardUpdateForm
+              <PLUGIN_DEPENDENCIES.CheckDependenciesForm
                 checkData={checkData}
                 onSave={handleSaveAfterConfirmation}
                 onCancel={onClose}

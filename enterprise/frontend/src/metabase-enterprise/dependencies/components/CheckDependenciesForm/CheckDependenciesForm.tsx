@@ -6,13 +6,13 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import type { ConfirmUpdateFormProps } from "metabase/plugins";
+import type { CheckDependenciesFormProps } from "metabase/plugins";
 import { Box, Button, Group } from "metabase/ui";
 
-export function ConfirmUpdateForm({
+export function CheckDependenciesForm({
   onSave,
   onCancel,
-}: ConfirmUpdateFormProps) {
+}: CheckDependenciesFormProps) {
   return (
     <FormProvider initialValues={{}} onSubmit={onSave}>
       <Form>
