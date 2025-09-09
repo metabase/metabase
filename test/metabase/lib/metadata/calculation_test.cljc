@@ -13,6 +13,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
+   [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
