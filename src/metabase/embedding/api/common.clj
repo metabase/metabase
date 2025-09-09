@@ -153,8 +153,7 @@
   Also, any param values that are blank strings should be parsed as nil, representing the absence of a value."
   [query-params]
   (-> query-params
-      (update-keys keyword)
-      (update-vals (fn [v] (if (= v "") nil v)))))
+      (update-keys keyword)))
 
 (mu/defn validate-and-merge-params :- [:map-of :keyword :any]
   "Validate that the `token-params` passed in the JWT and the `user-params` (passed as part of the URL) are allowed, and
@@ -189,7 +188,7 @@
         slug-query-params  (normalize-query-params slug-query-params)
         merged-slug->value (validate-and-merge-params embedding-params token-params slug-query-params)]
     (into {} (for [[slug value] merged-slug->value
-                   :when        value]
+                   :when (not (nil? value))]
                [(get slug->id (name slug)) value]))))
 
 ;;; ---------------------------------------------- Other Param Util Fns ----------------------------------------------
