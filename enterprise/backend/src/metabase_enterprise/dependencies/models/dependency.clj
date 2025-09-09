@@ -1,8 +1,11 @@
 (ns metabase-enterprise.dependencies.models.dependency
   (:require
+   [clojure.core.cache.wrapped :as cache.wrapped]
+   [clojure.set :as set]
    [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
+   [potemkin :as p]
    [toucan2.core :as t2])
   (:import
    (java.sql SQLException)))
@@ -64,24 +67,24 @@
   (mapcat (fn [[model refs]] (t2/select model :id [:in (map :id refs)]))
           (group-by entity-ref->model entity-refs)))
 
-(defn dependencies
+(defn entity-dependencies
   "Return the dependencies of the entity with type `entity-type` and id `entity-id`.
   Optionally, the type and the id of the entity depended on can be specified."
   ([entity-type entity-id]
-   (dependencies entity-type entity-id nil))
+   (entity-dependencies entity-type entity-id nil))
   ([entity-type  entity-id target-type]
-   (dependencies entity-type entity-id target-type nil))
+   (entity-dependencies entity-type entity-id target-type nil))
   ([entity-type entity-id target-type target-id]
    (->> (dependencies-of entity-type  entity-id target-type target-id)
         resolve-entities)))
 
-(defn dependents
+(defn entity-dependents
   "Return the dependents of the entity with type `entity-type` and id `entity-id`.
   Optionally, the type and the id of the dependent entity can be specified."
   ([entity-type entity-id]
-   (dependents entity-type entity-id nil))
+   (entity-dependents entity-type entity-id nil))
   ([entity-type entity-id source-type]
-   (dependents entity-type entity-id source-type nil))
+   (entity-dependents entity-type entity-id source-type nil))
   ([entity-type entity-id source-type source-id]
    (->> (dependents-of entity-type  entity-id source-type source-id)
         resolve-entities)))
@@ -122,3 +125,129 @@
         depended-on-type (entity-type depended-on-instance)]
     (upsert-generic-dependency dependent-type (:id dependent-instance)
                                depended-on-type (:id depended-on-instance))))
+
+(p/defprotocol+ GraphNavigation
+  (children [graph node]
+    "Returns the children of `node` in `graph`"))
+
+(defrecord Graph [neighbors-fn cache]
+  GraphNavigation
+  (children [_this node]
+    (cache.wrapped/lookup-or-miss
+     cache
+     (t2/instance (t2/model node) (select-keys node [:id]))
+     neighbors-fn)))
+
+(defn- graph
+  [neighbors-fn]
+  (->Graph neighbors-fn (cache.wrapped/basic-cache-factory {})))
+
+(defn dependencies
+  "Get the dependencies of an Metabase `instance`."
+  [instance]
+  (entity-dependencies (entity-type instance) (:id instance)))
+
+(defn dependents
+  "Get the dependents of an Metabase `instance`."
+  [instance]
+  (entity-dependents (entity-type instance) (:id instance)))
+
+(defn dependency-graph
+  "Returns an on-demand constructed graph of dependencies (upstream graph)."
+  []
+  (graph dependencies))
+
+(defn dependents-graph
+  "Returns an on-demand constructed graph of dependents (downstream graph)."
+  []
+  (graph dependents))
+
+(comment
+  (let [node (t2/select-one :model/Table)]
+    (t2/instance (t2/model node) (select-keys node [:id])))
+  -)
+
+(defn- resolve-keys
+  [entity-keys]
+  (->> entity-keys
+       (group-by (comp entity-type->model first))
+       (mapcat (fn [[model refs]] (t2/select model :id [:in (map second refs)])))))
+
+(defn key-dependencies
+  "Get the dependency entity keys for the entity keys in `entity-keys`.
+  Entity keys are [entity-type, entity-id] pairs. See [[entity-type->model]]."
+  [entity-keys]
+  (->> entity-keys
+       (group-by first)
+       (mapcat (fn [[entity-type entity-keys]] (t2/select-fn-vec (juxt :to_entity_type :to_entity_id)
+                                                                 [:model/Dependency :to_entity_type :to_entity_id]
+                                                                 :from_entity_type entity-type
+                                                                 :from_entity_id [:in (map second entity-keys)])))))
+
+(defn key-dependents
+  "Get the dependent entity keys for the entity keys in `entity-keys`.
+  Entity keys are [entity-type, entity-id] pairs. See [[entity-type->model]]."
+  [entity-keys]
+  (->> entity-keys
+       (group-by first)
+       (mapcat (fn [[entity-type entity-keys]] (t2/select-fn-vec (juxt :from_entity_type :from_entity_id)
+                                                                 [:model/Dependency  :from_entity_type :from_entity_id]
+                                                                 :to_entity_type entity-type
+                                                                 :to_entity_id [:in (map second entity-keys)])))))
+
+(defn bfs-nodes
+  "Return a topologically ordered vector of instances linked to the instances in `start-nodes`.
+  `children-fn` determines the direction of the search.  Use [[key-dependencies]] to search upstream,
+  [[key-dependents]] to search downstream."
+  [children-fn start-nodes]
+  (let [all-nodes (java.util.LinkedHashSet.)
+        new? #(not (.contains all-nodes %))
+        instance-key (juxt entity-type :id)]
+    (loop [new-nodes (map instance-key start-nodes)]
+      (if (seq new-nodes)
+        (let [new-children (filter new? (children-fn new-nodes))]
+          (.addAll all-nodes new-children)
+          (recur new-children))
+        (let [other-keys (drop (count start-nodes) all-nodes)
+              key->instance (->> (resolve-keys other-keys)
+                                 (group-by instance-key))]
+          (into (vec start-nodes)
+                (map key->instance)
+                other-keys))))))
+
+(defn replace-dependencies
+  "Replace the dependencies of the entity of type `entity-type` with id `entity-id` with
+  the ones specified in `dependencies-by-type`. "
+  [entity-type entity-id dependencies-by-type]
+  (let [current-dependencies (t2/select [:model/Dependency :id :to_entity_type :to_entity_id]
+                                        :from_entity_type entity-type
+                                        :from_entity_id entity-id)
+        to-remove (keep (fn [{:keys [id to_entity_type to_entity_id]}]
+                          (when-not (get-in dependencies-by-type [to_entity_type to_entity_id])
+                            id))
+                        current-dependencies)
+        current-by-type (-> (group-by :to_entity_type current-dependencies)
+                            (update-vals #(into #{} (map :to_entity_id) %)))
+        to-add (for [[to-entity-type ids] dependencies-by-type
+                     to-entity-id (set/difference ids (current-by-type to-entity-type))]
+                 {:from_entity_type entity-type
+                  :from_entity_id   entity-id
+                  :to_entity_type   to-entity-type
+                  :to_entity_id     to-entity-id})]
+    (t2/with-transaction [_conn]
+      (when (seq to-remove)
+        (t2/delete! :model/Dependency :id [:in to-remove]))
+      (when (seq to-add)
+        (t2/insert! :model/Dependency to-add)))))
+
+(comment
+  (set/difference #{3} nil)
+  (def card-ids (t2/select-fn-set :id :model/Card))
+  (def table-ids (t2/select-fn-set :id :model/Table))
+  (replace-dependencies :card 31 {:card (disj card-ids 31) :table table-ids})
+  (replace-dependencies :card 31 {:table #{3 4}})
+  (replace-dependencies :table 31 {})
+  (t2/select :model/Dependency)
+  (upsert-generic-dependency :card 31 :table 1)
+  (bfs-nodes key-dependencies (t2/select :model/Card 31))
+  -)
