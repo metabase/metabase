@@ -14,7 +14,7 @@ const TYPES = new Set([
  * @param title {string}
  */
 function isConventionalTitle(title) {
-  const match = /^(\w+)\(([^)]+)\):/.exec(title);
+  const match = /^(?<type>\w+)\((?<rawScopes>[^)]+)\):/.exec(title);
 
   if (!match) {
     return false;
