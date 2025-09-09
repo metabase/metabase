@@ -20,6 +20,7 @@
     background: transparent;
     font-size: 18px;
     overflow: hidden;
+
     &::before {
       display: flex;
       content: var(--emoji);
@@ -40,14 +41,17 @@
   &:not(:has(.pickerSearch:focus)) {
     [aria-rowindex="0"] [aria-colindex="0"] {
       background: light-dark(rgb(245 245 245 / 80%), rgb(38 38 38 / 80%));
+
       &::before {
         visibility: visible;
       }
     }
   }
+
   &:focus-within {
     [data-active] {
       background: light-dark(rgb(245 245 245 / 80%), rgb(38 38 38 / 80%));
+
       &::before {
         visibility: visible;
       }
