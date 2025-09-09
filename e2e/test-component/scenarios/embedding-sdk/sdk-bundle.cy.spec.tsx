@@ -26,8 +26,11 @@ const sdkBundleCleanup = () => {
 
 describe(
   "scenarios > embedding-sdk > sdk-bundle",
-  // These test in some cases load a new SDK Bundle that in combination with the Component Testing is memory-consuming
-  { numTestsKeptInMemory: 1 },
+  {
+    tags: ["@skip-backward-compatibility"],
+    // These test in some cases load a new SDK Bundle that in combination with the Component Testing is memory-consuming
+    numTestsKeptInMemory: 1,
+  },
   () => {
     beforeEach(() => {
       signInAsAdminAndEnableEmbeddingSdk();
