@@ -18,7 +18,7 @@ import {
   getTabs,
   getValuePopulatedParameters,
 } from "../selectors";
-import { createTabSlug } from "../utils";
+import { createTabSlug, quoteParameters } from "../utils";
 
 export function useDashboardUrlQuery(
   router: InjectedRouter,
@@ -134,5 +134,5 @@ function parseTabId(location: Location) {
 }
 
 function toLocationQuery(object: Record<string, any>) {
-  return _.mapObject(object, (value) => (value == null ? "" : value));
+  return quoteParameters(object);
 }

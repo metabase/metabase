@@ -24,6 +24,7 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { DashboardContextProvider } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
 import { useAutoScrollToDashcard } from "metabase/dashboard/hooks/use-auto-scroll-to-dashcard";
+import { unquoteParameters } from "metabase/dashboard/utils";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -86,7 +87,8 @@ export const DashboardApp = ({
 
   const [error, setError] = useState<string>();
 
-  const parameterQueryParams = location.query;
+  const parameterQueryParams = unquoteParameters(location.query);
+
   const dashboardId =
     _dashboardId || (Urls.extractEntityId(params.slug) as DashboardId);
 
