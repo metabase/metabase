@@ -1,4 +1,4 @@
-(ns metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
+(ns metabase-enterprise.sandbox.query-processor.middleware.sandboxing
   "Apply segmented a.k.a. sandboxing anti-permissions to the query, i.e. replace sandboxed Tables with the
   appropriate [[metabase-enterprise.sandbox.models.group-table-access-policy]]s (Sandboxes). See dox
   for [[metabase.permissions.models.permissions]] for a high-level overview of the Metabase permissions system.

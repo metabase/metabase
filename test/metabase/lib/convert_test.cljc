@@ -806,7 +806,7 @@
                               :display_name    "ID"
                               :base_type       :type/Integer}]}
 
-                 :metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/original-metadata
+                 :metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata
                  [{:base-type       :type/Text
                    :semantic-type   :type/Category
                    :table-id        32600

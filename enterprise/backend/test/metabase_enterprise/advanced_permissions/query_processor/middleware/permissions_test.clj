@@ -3,7 +3,7 @@
    [clojure.data.csv :as csv]
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-permissions.query-processor.middleware.permissions :as ee.qp.perms]
-   [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions :as row-level-restrictions]
+   [metabase-enterprise.sandbox.query-processor.middleware.sandboxing :as sandboxing]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.util.match :as lib.util.match]
@@ -37,7 +37,7 @@
 
 (defn- apply-row-level-permissions [query]
   (-> (qp.store/with-metadata-provider (mt/id)
-        (#'row-level-restrictions/apply-sandboxing (mbql.normalize/normalize query)))
+        (#'sandboxing/apply-sandboxing (mbql.normalize/normalize query)))
       remove-metadata))
 
 (defmacro ^:private with-download-perms!

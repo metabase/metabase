@@ -1,8 +1,7 @@
 (ns metabase-enterprise.sandbox.models.params.field-values
   (:require
    [metabase-enterprise.sandbox.api.table :as table]
-   [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
-    :as row-level-restrictions]
+   [metabase-enterprise.sandbox.query-processor.middleware.sandboxing :as sandboxing]
    [metabase.api.common :as api]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -27,7 +26,7 @@
                              :group_id [:in group-ids]
                              :table_id table-id)]
     (when sandboxes
-      (row-level-restrictions/assert-one-sandbox-per-table sandboxes)
+      (sandboxing/assert-one-sandbox-per-table sandboxes)
       ;; there shold be only one gtap per table and we only need one table here
       ;; see docs in [[metabase.permissions.models.permissions]] for more info
       (t2/hydrate (first sandboxes) :card))))

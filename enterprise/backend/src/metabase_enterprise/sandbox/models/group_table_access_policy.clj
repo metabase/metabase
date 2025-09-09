@@ -66,7 +66,7 @@
                          ::lib.schema.metadata/column
                          ::mbql.s/legacy-column-metadata]]]
   ;; These errors might get triggered by API endpoints or by the QP (this code is used in the
-  ;; `row-level-restrictions` middleware). So include `:type` and `:status-code` information in the ExceptionInfo
+  ;; `sandboxing` middleware). So include `:type` and `:status-code` information in the ExceptionInfo
   ;; data so it can be passed along if applicable.
   (when-let [table-col-base-type ((some-fn :base-type :base_type) table-col)]
     (let [col-base-type ((some-fn :base-type :base_type) col)]

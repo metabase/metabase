@@ -1,10 +1,10 @@
-(ns ^:mb/driver-tests metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test
+(ns ^:mb/driver-tests metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions :as row-level-restrictions]
+   [metabase-enterprise.sandbox.query-processor.middleware.sandboxing :as sandboxing]
    [metabase-enterprise.test :as met]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
@@ -159,7 +159,7 @@
 
 (defn- apply-row-level-permissions [query]
   (-> (lib/query (mt/metadata-provider) query)
-      (#'row-level-restrictions/apply-sandboxing)
+      (#'sandboxing/apply-sandboxing)
       lib/->legacy-MBQL
       remove-metadata))
 
@@ -187,7 +187,7 @@
                                                     [:value 5 {:base_type :type/Integer
                                                                :semantic_type :type/FK
                                                                :database_type "INTEGER"}]]]
-                                          ::row-level-restrictions/sandbox? true
+                                          ::sandboxing/sandbox? true
                                           :query-permissions/sandboxed-table $$checkins}
                            :joins [{:source-query
                                     {:source-table $$venues
@@ -198,19 +198,19 @@
                                               [:value 1 {:base_type :type/Integer
                                                          :semantic_type :type/Category
                                                          :database_type "INTEGER"}]]
-                                     ::row-level-restrictions/sandbox? true
+                                     ::sandboxing/sandbox? true
                                      :query-permissions/sandboxed-table $$venues}
                                     :alias "v"
                                     :strategy :left-join
                                     :condition [:= $venue_id &v.venues.id]}]
                            :aggregation [[:count]]}
 
-                   ::row-level-restrictions/original-metadata [{:base_type :type/Integer
-                                                                :semantic_type :type/Quantity
-                                                                :name          "count"
-                                                                :display_name  "Count"
-                                                                :source        :aggregation
-                                                                :field_ref     [:aggregation 0]}]})
+                   ::sandboxing/original-metadata [{:base_type :type/Integer
+                                                    :semantic_type :type/Quantity
+                                                    :name          "count"
+                                                    :display_name  "Count"
+                                                    :source        :aggregation
+                                                    :field_ref     [:aggregation 0]}]})
                 (apply-row-level-permissions
                  (mt/mbql-query checkins
                    {:aggregation [[:count]]
@@ -234,12 +234,12 @@
                                           :query-permissions/sandboxed-table $$venues
                                           :params []}}
 
-                   ::row-level-restrictions/original-metadata [{:base_type :type/Integer
-                                                                :semantic_type :type/Quantity
-                                                                :name          "count"
-                                                                :display_name  "Count"
-                                                                :source        :aggregation
-                                                                :field_ref     [:aggregation 0]}]})
+                   ::sandboxing/original-metadata [{:base_type :type/Integer
+                                                    :semantic_type :type/Quantity
+                                                    :name          "count"
+                                                    :display_name  "Count"
+                                                    :source        :aggregation
+                                                    :field_ref     [:aggregation 0]}]})
                 (apply-row-level-permissions
                  (mt/mbql-query venues
                    {:aggregation [[:count]]}))))))))
@@ -404,18 +404,18 @@
 ;; Test that we can follow FKs to related tables and breakout by columns on those related tables. This test has
 ;; several things wrapped up which are detailed below
 
-(defn- row-level-restrictions-fk-drivers
+(defn- sandboxing-fk-drivers
   "Drivers to test row-level restrictions against foreign keys with."
   []
   (mt/normal-drivers-with-feature :nested-queries :left-join))
 
-(defn- row-level-restrictions-fk-sql-drivers
+(defn- sandboxing-fk-sql-drivers
   "SQL drivers to test row-level restrictions against foreign keys with."
   []
-  (into #{} (filter #(isa? driver/hierarchy % :sql)) (row-level-restrictions-fk-drivers)))
+  (into #{} (filter #(isa? driver/hierarchy % :sql)) (sandboxing-fk-drivers)))
 
 (deftest e2e-fks-test
-  (mt/test-drivers (row-level-restrictions-fk-drivers)
+  (mt/test-drivers (sandboxing-fk-drivers)
     (testing (str "1 - Creates a GTAP filtering question, looking for any checkins happening on or after 2014\n"
                   "2 - Apply the `user` attribute, looking for only our user (i.e. `user_id` =  5)\n"
                   "3 - Checkins are related to Venues, query for checkins, grouping by the Venue's price\n"
@@ -427,7 +427,7 @@
                (run-checkins-count-broken-out-by-price-query)))))))
 
 (deftest e2e-fks-test-2
-  (mt/test-drivers (row-level-restrictions-fk-drivers)
+  (mt/test-drivers (sandboxing-fk-drivers)
     (testing (str "Test that we're able to use a GTAP for an FK related table. For this test, the user has segmented "
                   "permissions on checkins and venues, so we need to apply a GTAP to the original table (checkins) in "
                   "addition to the related table (venues). This test uses a GTAP question for both tables")
@@ -438,7 +438,7 @@
                (set (run-checkins-count-broken-out-by-price-query))))))))
 
 (deftest e2e-fks-test-3
-  (mt/test-drivers (row-level-restrictions-fk-drivers)
+  (mt/test-drivers (sandboxing-fk-drivers)
     (testing "Test that the FK related table can be a \"default\" GTAP, i.e. a GTAP where the `card_id` is nil"
       (met/with-gtaps! {:gtaps {:checkins (checkins-user-mbql-gtap-def)
                                 :venues (dissoc (venues-price-mbql-gtap-def) :query)}
@@ -447,7 +447,7 @@
                (set (run-checkins-count-broken-out-by-price-query))))))))
 
 (deftest e2e-fks-test-4
-  (mt/test-drivers (row-level-restrictions-fk-drivers)
+  (mt/test-drivers (sandboxing-fk-drivers)
     (testing (str "Test that we have multiple FK related, segmented tables. This test has checkins with a GTAP "
                   "question with venues and users having the default GTAP and segmented permissions")
       (met/with-gtaps! {:gtaps {:checkins (checkins-user-mbql-gtap-def)
@@ -485,7 +485,7 @@
                 (mt/user-http-request :rasta :post "dataset" (mt/mbql-query venues {:aggregation [[:count]]})))))))))
 
 (deftest breakouts-test
-  (mt/test-drivers (row-level-restrictions-fk-sql-drivers)
+  (mt/test-drivers (sandboxing-fk-sql-drivers)
     (testing "Make sure that if a GTAP is in effect we can still do stuff like breakouts (#229)"
       (met/with-gtaps! {:gtaps {:venues (venues-category-native-gtap-def)}
                         :attributes {"cat" 50}}
@@ -500,7 +500,7 @@
 (deftest sql-with-join-test
   (mt/test-drivers (into #{}
                          (filter #(driver.u/supports? % :parameterized-sql nil))
-                         (row-level-restrictions-fk-sql-drivers))
+                         (sandboxing-fk-sql-drivers))
     (testing (str "If we use a parameterized SQL GTAP that joins a Table the user doesn't have access to, does it "
                   "still work? (EE #230) If we pass the query in directly without anything that would require nesting "
                   "it, it should work")
@@ -520,7 +520,7 @@
 (deftest sql-with-join-test-2
   (mt/test-drivers (into #{}
                          (filter #(driver.u/supports? % :parameterized-sql nil))
-                         (row-level-restrictions-fk-sql-drivers))
+                         (sandboxing-fk-sql-drivers))
     (testing (str "If we use a parameterized SQL GTAP that joins a Table the user doesn't have access to, does it "
                   "still work? (EE #230) If we pass the query in directly without anything that would require nesting "
                   "it, it should work")
@@ -1065,7 +1065,7 @@
                          (mt/rows (mt/run-mbql-query orders {:limit 1})))))))))))))
 
 (deftest pivot-query-test
-  (mt/test-drivers (row-level-restrictions-fk-drivers)
+  (mt/test-drivers (sandboxing-fk-drivers)
     (testing "Pivot table queries should work with sandboxed users (#14969)"
       (mt/dataset test-data
         (met/with-gtaps! {:gtaps (mt/$ids
@@ -1333,7 +1333,7 @@
 
 (deftest jwt-login-attributes-merge-test
   (testing "Verify attribute merging behavior between jwt_attributes and login_attributes"
-    (mt/test-drivers (row-level-restrictions-fk-drivers)
+    (mt/test-drivers (sandboxing-fk-drivers)
       (met/with-gtaps! {:gtaps {:checkins (checkins-user-mbql-gtap-def)
                                 :venues (venues-price-mbql-gtap-def)}}
         (testing "attributes from different sources are properly merged"
@@ -1446,7 +1446,7 @@
                    (run-venues-count-query)))))))))
 
 (deftest jwt-attributes-fk-relationships-test
-  (mt/test-drivers (row-level-restrictions-fk-drivers)
+  (mt/test-drivers (sandboxing-fk-drivers)
     (testing "FK relationships and joins work correctly with jwt_attributes"
       (met/with-gtaps! {:gtaps {:checkins (checkins-user-mbql-gtap-def)
                                 :venues (dissoc (venues-price-mbql-gtap-def) :query)
@@ -1479,7 +1479,7 @@
 (deftest jwt-attributes-parameterized-sql-test
   (mt/test-drivers (into #{}
                          (filter #(driver.u/supports? % :parameterized-sql nil))
-                         (row-level-restrictions-fk-sql-drivers))
+                         (sandboxing-fk-sql-drivers))
     (testing "Parameterized SQL GTAPs work with jwt_attributes"
       (met/with-gtaps! {:gtaps {:checkins (parameterized-sql-with-join-gtap-def)}}
         (tu/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:jwt_attributes {"user" 1}
@@ -1536,7 +1536,7 @@
                       :attributes {"filter-attribute" "1"}}
       ;; TODO (Cam 9/9/25) -- totally illegal to create a sandbox that returns extra columns like this (so why are we
       ;; even testing this at all??) but if we disable the check then this actually does work.
-      (with-redefs [row-level-restrictions/validate-sandbox-columns-match-original-table (constantly nil)]
+      (with-redefs [sandboxing/validate-sandbox-columns-match-original-table (constantly nil)]
         (is (= [[1]
                 [2]
                 [3]]

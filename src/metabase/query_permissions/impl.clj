@@ -281,7 +281,7 @@
 (defn- has-perm-for-table?
   "Checks that the current user has the permissions for tables specified in `table-id->perm`. This can be satisfied via
   the user's permissions stored in the database, or permissions in `gtap-table-perms` which are supplied by the
-  row-level-restrictions QP middleware when sandboxing is in effect. Returns true if access is allowed, otherwise false."
+  `sandboxing` QP middleware when sandboxing is in effect. Returns true if access is allowed, otherwise false."
   [perm-type table-id->required-perm gtap-table-perms db-id]
   (let [table-id->has-perm?
         (into {} (for [[table-id required-perm] table-id->required-perm]

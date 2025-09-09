@@ -1516,7 +1516,7 @@
       (t/is (= fingerprint
                (mbql.normalize/normalize fingerprint)))
       (doseq [path [[:query :source-metadata]
-                    [:metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/original-metadata]
+                    [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata]
                     [:info :metadata/model-metadata]
                     [:info :pivot/result-metadata]
                     [:query :joins 0 :source-metadata]]]

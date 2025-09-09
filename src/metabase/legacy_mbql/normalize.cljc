@@ -471,7 +471,7 @@
    ;;
    ;; HACK TODO (Cam 7/17/25) -- seems icky for the legacy MBQL schema to have to know about namespaced keys like
    ;; this. I guess this can go away once we stop converting back and forth between MBQL 4 and 5 inside the QP
-   :metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/original-metadata
+   :metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata
    identity})
 
 (defn normalize-tokens
