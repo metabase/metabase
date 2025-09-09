@@ -1,6 +1,5 @@
 (ns metabase.lib.filter.negate
   (:require
-   [metabase.lib.core :as lib]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.desugar :as lib.filter.desugar]
@@ -62,4 +61,4 @@
     (if (= expression' boolean-expression)
       boolean-expression
       ;; preserve the options of the original clause, in case it has something important like `:lib/expression-name`
-      (lib.options/update-options expression' merge (dissoc (lib/options boolean-expression) :lib/uuid)))))
+      (lib.options/update-options expression' merge (dissoc (lib.options/options boolean-expression) :lib/uuid)))))
