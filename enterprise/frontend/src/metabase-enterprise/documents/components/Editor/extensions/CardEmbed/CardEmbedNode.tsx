@@ -39,6 +39,7 @@ import { EDITOR_STYLE_BOUNDARY_CLASS } from "../../constants";
 import styles from "./CardEmbedNode.module.css";
 import { ModifyQuestionModal } from "./ModifyQuestionModal";
 import { NativeQueryModal } from "./NativeQueryModal";
+import { Plugin } from "@tiptap/pm/state";
 
 interface DropZoneProps {
   id: string;
@@ -102,6 +103,7 @@ export const CardEmbed: Node<{
   group: "block",
   atom: true,
   selectable: true,
+  draggable: true,
 
   addAttributes() {
     return {
@@ -152,6 +154,31 @@ export const CardEmbed: Node<{
 
   addNodeView() {
     return ReactNodeViewRenderer(CardEmbedComponent);
+  },
+
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: "simp",
+
+        props: {
+          handleDOMEvents: {
+            dragstart: (view, event) => {
+              console.log("dragstart", { view, event });
+
+              const { pos } = view.posAtCoords({
+                left: event.clientX,
+                top: event.clientY,
+              });
+              const node = view.state.doc.nodeAt(pos);
+
+              view.draggingNode = node;
+              return false;
+            },
+          },
+        },
+      }),
+    ];
   },
 });
 
@@ -437,6 +464,46 @@ export const CardEmbedComponent = memo(
         className={styles.embedWrapper}
         data-testid="document-card-embed"
         style={{ position: "relative" }}
+        data-drag-handle
+        onDragOver={(e) => {
+          // console.log("dragging over");
+          e.preventDefault();
+        }}
+        onDrop={(e) => {
+          const target = node;
+          const dropped = editor.view.draggingNode;
+          const pos = getPos();
+
+          const resolvedPos = editor.state.doc.resolve(pos);
+          const { parent } = resolvedPos;
+
+          if (
+            dropped.type.name === "cardEmbed" &&
+            pos !== undefined &&
+            parent.type.name === "doc"
+          ) {
+            const wrapper = editor.state.schema.nodes.flexContainer.create({}, [
+              target.copy(),
+              dropped.copy(),
+            ]);
+
+            editor.view.dispatch(
+              editor.state.tr.replaceWith(pos, pos + target.nodeSize, wrapper),
+            );
+
+            // find the dropped nodes position, and remove it
+
+            editor.state.doc.descendants((node, pos) => {
+              if (node === dropped) {
+                editor.view.dispatch(
+                  editor.state.tr.delete(pos, pos + dropped.nodeSize),
+                );
+
+                return false;
+              }
+            });
+          }
+        }}
       >
         {canWrite && id && (
           <>

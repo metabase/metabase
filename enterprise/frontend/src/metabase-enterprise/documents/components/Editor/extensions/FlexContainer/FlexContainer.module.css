@@ -5,6 +5,7 @@
   border-radius: var(--mantine-radius-md);
   position: relative;
   max-width: 900px;
+  outline: 2px solid var(--mb-color-brand);
 }
 
 .flexContainer.selected {

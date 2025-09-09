@@ -41,6 +41,7 @@ import {
   useQuestionSelection,
 } from "./hooks";
 import type { CardEmbedRef } from "./types";
+import { Node } from "@tiptap/pm/model";
 
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
   CardEmbed.name,
@@ -171,6 +172,29 @@ export const Editor: React.FC<EditorProps> = ({
           onChange(currentContent);
         }
       },
+      // TODO: Fix me
+      onDrop(event, slice, moved) {
+        console.log(slice);
+        editor?.state.doc.descendants((node, pos, parent) => {
+          if (node === slice.content.child(0)) {
+            console.log("found slice. parent is:", parent);
+            if (parent?.childCount === 2) {
+              parent.descendants((pNode, pPos) => {
+                if (pNode !== node) {
+                  console.log("replacing", parent, "with", pNode);
+                  editor.view.dispatch(
+                    editor.state.tr.replaceWith(
+                      pPos,
+                      pPos + parent.nodeSize,
+                      pNode,
+                    ),
+                  );
+                }
+              });
+            }
+          }
+        });
+      },
     },
     [],
   );
@@ -205,7 +229,6 @@ export const Editor: React.FC<EditorProps> = ({
 
   useCardEmbedsTracking(editor, onCardEmbedsChange);
   useQuestionSelection(editor, onQuestionSelect);
-  const { handleDragEnd } = useCardEmbedDnD(editor);
 
   if (!editor) {
     return null;
@@ -220,46 +243,46 @@ export const Editor: React.FC<EditorProps> = ({
   }
 
   return (
-    <DndContext onDragEnd={handleDragEnd} collisionDetection={pointerWithin}>
-      <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
-        <Box
-          className={S.editorContent}
-          onClick={(e) => {
-            // Focus editor when clicking on empty space
-            const target = e.target as HTMLElement;
-            if (
-              target.classList.contains(S.editorContent) ||
-              target.classList.contains("ProseMirror")
-            ) {
-              const clickY = e.clientY;
-              const proseMirrorElement = target.querySelector(".ProseMirror");
+    // <DndContext onDragEnd={handleDragEnd} collisionDetection={pointerWithin}>
+    <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
+      <Box
+        className={S.editorContent}
+        onClick={(e) => {
+          // Focus editor when clicking on empty space
+          const target = e.target as HTMLElement;
+          if (
+            target.classList.contains(S.editorContent) ||
+            target.classList.contains("ProseMirror")
+          ) {
+            const clickY = e.clientY;
+            const proseMirrorElement = target.querySelector(".ProseMirror");
 
-              if (proseMirrorElement) {
-                const proseMirrorRect =
-                  proseMirrorElement.getBoundingClientRect();
-                const isClickBelowContent = clickY > proseMirrorRect.bottom;
+            if (proseMirrorElement) {
+              const proseMirrorRect =
+                proseMirrorElement.getBoundingClientRect();
+              const isClickBelowContent = clickY > proseMirrorRect.bottom;
 
-                if (isClickBelowContent) {
-                  // Only move to end if clicking below the actual content
-                  editor.commands.focus("end");
-                } else {
-                  // Just focus without changing cursor position for clicks in padding areas
-                  editor.commands.focus();
-                }
+              if (isClickBelowContent) {
+                // Only move to end if clicking below the actual content
+                editor.commands.focus("end");
               } else {
-                // Fallback: just focus without position change
+                // Just focus without changing cursor position for clicks in padding areas
                 editor.commands.focus();
               }
+            } else {
+              // Fallback: just focus without position change
+              editor.commands.focus();
             }
-          }}
-        >
-          <EditorContent data-testid="document-content" editor={editor} />
-          <EditorBubbleMenu
-            editor={editor}
-            disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
-          />
-        </Box>
+          }
+        }}
+      >
+        <EditorContent data-testid="document-content" editor={editor} />
+        <EditorBubbleMenu
+          editor={editor}
+          disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
+        />
       </Box>
-    </DndContext>
+    </Box>
+    // </DndContext>
   );
 };
