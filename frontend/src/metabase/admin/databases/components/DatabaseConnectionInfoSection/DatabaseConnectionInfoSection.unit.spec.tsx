@@ -102,8 +102,8 @@ describe("DatabaseConnectionInfoSection", () => {
     });
 
     it("shows an error when a schema sync fails", async () => {
-      setup();
-      fetchMock.modifyRoute(`database-sync-schema`, {
+      const { database } = setup();
+      fetchMock.modifyRoute(`database-${database.id}-sync-schema`, {
         response: 500,
       });
 
@@ -112,8 +112,8 @@ describe("DatabaseConnectionInfoSection", () => {
     });
 
     it("shows an error when a field sync fails", async () => {
-      setup();
-      fetchMock.modifyRoute(`database-rescan-values`, {
+      const { database } = setup();
+      fetchMock.modifyRoute(`database-${database.id}-rescan-values`, {
         response: 500,
       });
 

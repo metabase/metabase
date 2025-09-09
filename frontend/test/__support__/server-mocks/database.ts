@@ -13,12 +13,12 @@ export function setupDatabaseEndpoints(db: Database) {
   fetchMock.post(
     `path:/api/database/${db.id}/sync_schema`,
     {},
-    { name: "database-sync-schema" },
+    { name: `database-${db.id}-sync-schema` },
   );
   fetchMock.post(
     `path:/api/database/${db.id}/rescan_values`,
     {},
-    { name: "database-rescan-values" },
+    { name: `database-${db.id}-rescan-values` },
   );
   fetchMock.post(`path:/api/database/${db.id}/discard_values`, {});
   fetchMock.get(
