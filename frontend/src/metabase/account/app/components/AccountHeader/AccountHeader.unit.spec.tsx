@@ -66,4 +66,48 @@ describe("AccountHeader", () => {
     fireEvent.click(screen.getByText("Profile"));
     expect(onChangeLocation).toHaveBeenCalledWith("/account/profile");
   });
+
+  describe("Avatar functionality", () => {
+    it("should show edit avatar button", () => {
+      const user = getUser();
+
+      render(<AccountHeader user={user} />);
+
+      expect(screen.getByTestId("edit-avatar-button")).toBeInTheDocument();
+    });
+
+    it("should open avatar modal when edit button is clicked", () => {
+      const user = getUser();
+
+      render(<AccountHeader user={user} />);
+
+      fireEvent.click(screen.getByTestId("edit-avatar-button"));
+
+      expect(screen.getByText("Edit Avatar")).toBeInTheDocument();
+      expect(screen.getByText("Upload Avatar")).toBeInTheDocument();
+    });
+
+    it("should show avatar image when user has avatar_url", () => {
+      const user = getUser();
+      user.avatar_url = "data:image/jpeg;base64,test-image-data";
+
+      render(<AccountHeader user={user} />);
+
+      const avatarImage = screen.getByAltText("John Doe avatar");
+      expect(avatarImage).toBeInTheDocument();
+      expect(avatarImage).toHaveAttribute(
+        "src",
+        "data:image/jpeg;base64,test-image-data",
+      );
+    });
+
+    it("should show initials when user has no avatar_url", () => {
+      const user = getUser();
+      user.avatar_url = null;
+
+      render(<AccountHeader user={user} />);
+
+      expect(screen.getByText("JD")).toBeInTheDocument();
+    });
+  });
 });

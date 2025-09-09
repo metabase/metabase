@@ -111,6 +111,23 @@ export const userApi = Api.injectEndpoints({
         dispatch(userUpdated(user));
       },
     }),
+    updateUserAvatar: builder.mutation<
+      User,
+      { id: UserId; avatar_url: string | null }
+    >({
+      query: ({ id, avatar_url }) => ({
+        method: "PUT",
+        url: `/api/user/${id}/avatar`,
+        body: { avatar_url },
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [listTag("user"), idTag("user", id)]),
+      onQueryStarted: async (_request, { dispatch, queryFulfilled }) => {
+        // used to keep current user state in sync
+        const { data: user } = await queryFulfilled;
+        dispatch(userUpdated(user));
+      },
+    }),
     listUserAttributes: builder.query<string[], void>({
       query: () => "/api/mt/user/attributes",
       providesTags: (response) => (response ? [listTag("user")] : []),
@@ -131,5 +148,6 @@ export const {
   useDeactivateUserMutation,
   useReactivateUserMutation,
   useUpdateUserMutation,
+  useUpdateUserAvatarMutation,
   useListUserAttributesQuery,
 } = userApi;

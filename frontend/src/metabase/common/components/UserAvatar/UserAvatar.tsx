@@ -16,6 +16,7 @@ interface User {
   last_name: string | null;
   common_name: string;
   email?: string;
+  avatar_url?: string | null;
 }
 
 interface Group {
@@ -27,6 +28,24 @@ export default function UserAvatar({
   user,
   ...props
 }: UserAvatarProps | GroupProps) {
+  // Check if user has an avatar image
+  if ("avatar_url" in user && user.avatar_url) {
+    return (
+      <StyledAvatar {...props}>
+        <img
+          src={user.avatar_url}
+          alt={`${user.common_name} avatar`}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            borderRadius: "50%",
+          }}
+        />
+      </StyledAvatar>
+    );
+  }
+
   return <StyledAvatar {...props}>{userInitials(user) || "?"}</StyledAvatar>;
 }
 

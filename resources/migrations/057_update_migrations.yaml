@@ -1147,40 +1147,25 @@ databaseChangeLog:
               - column:
                   name: creator_id
                   type: int
-                  remarks: User who created this comment
-                  constraints:
-                    nullable: false
+
+  - changeSet:
+      id: v57.2025-01-27T10:00:00
+      author: assistant
+      comment: Add avatar_url field to core_user table for profile images
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: core_user
+                columnName: avatar_url
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
               - column:
-                  name: content
+                  name: avatar_url
                   type: ${text.type}
-                  remarks: The comment content
-                  constraints:
-                    nullable: false
-              - column:
-                  name: is_resolved
-                  type: ${boolean.type}
-                  remarks: Whether this comment thread is resolved
-                  defaultValueBoolean: false
-                  constraints:
-                    nullable: false
-              - column:
-                  name: created_at
-                  type: ${timestamp_type}
-                  remarks: Timestamp when comment was created
-                  defaultValueComputed: current_timestamp
-                  constraints:
-                    nullable: false
-              - column:
-                  name: updated_at
-                  type: ${timestamp_type}
-                  remarks: Timestamp when comment was last updated
-                  defaultValueComputed: current_timestamp
-                  constraints:
-                    nullable: false
-              - column:
-                  name: deleted_at
-                  type: ${timestamp_type}
-                  remarks: Soft delete timestamp (null if not deleted)
+                  remarks: Data URI or URL for user's profile avatar image
                   constraints:
                     nullable: true
 
