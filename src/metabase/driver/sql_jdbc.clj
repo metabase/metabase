@@ -162,6 +162,18 @@
                                :dialect (sql.qp/quote-style driver)))]
     (driver-api/execute-write-sql! db-id sql)))
 
+(defmethod driver/rename-tables! :sql-jdbc
+  [driver db-id rename-map]
+  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+    (doseq [[from-table to-table] (-> rename-map
+                                      (update-vals vector)
+                                      u/topological-sort
+                                      (update-vals first))]
+      (jdbc/execute! conn (first (sql/format {:alter-table (keyword from-table)
+                                              :rename-table (keyword (name to-table))}
+                                             :quoted true
+                                             :dialect (sql.qp/quote-style driver)))))))
+
 (defmethod driver/truncate! :sql-jdbc
   [driver db-id table-name]
   (let [table-name (keyword table-name)
