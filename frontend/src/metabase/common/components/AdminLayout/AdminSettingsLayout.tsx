@@ -1,6 +1,9 @@
 import type React from "react";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_METABOT } from "metabase/plugins";
+import { getLocation } from "metabase/selectors/routing";
 import { Box } from "metabase/ui";
 
 import { NotFound } from "../ErrorPages";
@@ -16,6 +19,10 @@ export const AdminSettingsLayout = ({
   children?: React.ReactNode;
   maw?: string;
 }) => {
+  const location = useSelector(getLocation);
+  const isMetabotEnabledForRoute =
+    location.pathname.startsWith("/admin/transforms");
+
   return (
     <Box className={S.Wrapper}>
       <Box className={S.Main}>
@@ -31,6 +38,8 @@ export const AdminSettingsLayout = ({
             </Box>
           </Box>
         </Box>
+
+        <PLUGIN_METABOT.Metabot hide={!isMetabotEnabledForRoute} />
       </Box>
     </Box>
   );
