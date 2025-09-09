@@ -2245,8 +2245,8 @@ function assertOptionSelected(name: string) {
 
 function assertOptionNotSelected(name: string) {
   cy.findByRole("option", { name }).should(
-    "not.have.attr",
+    "have.attr",
     "aria-selected",
-    "true",
+    "false",
   );
 }
