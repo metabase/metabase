@@ -49,6 +49,12 @@ export function getCommentThreads(
   return threads;
 }
 
+export function getCommentsCount(comments: Comment[]): number {
+  return getCommentThreads(comments)
+    .flatMap((thread) => thread.comments)
+    .filter((comment) => !comment.deleted_at).length;
+}
+
 export function getTargetChildCommentThreads(
   comments: Comment[] | undefined,
   childTargetId: Comment["child_target_id"] | undefined,

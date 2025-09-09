@@ -16,6 +16,7 @@ import { Discussions } from "metabase-enterprise/comments/components/Discussions
 import {
   deleteNewParamFromURLIfNeeded,
   getCommentNodeId,
+  getCommentsCount,
 } from "metabase-enterprise/comments/utils";
 import { useDocumentState } from "metabase-enterprise/documents/hooks/use-document-state";
 import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
@@ -97,14 +98,16 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
 
   const [createComment] = useCreateCommentMutation();
 
+  const resolvedCommentsCount = getCommentsCount(resolvedComments);
+
   const availableTabs = useMemo<SidesheetTab[]>(() => {
     // Only show tabs if there are resolved comments
-    if (resolvedComments.length > 0) {
+    if (resolvedCommentsCount > 0) {
       return ["open", "resolved"];
     }
 
     return [];
-  }, [resolvedComments.length]);
+  }, [resolvedCommentsCount]);
 
   // Update active tab if current tab is not available
   useEffect(() => {
@@ -212,7 +215,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
                   {t`Open`}
                 </Tabs.Tab>
                 <Tabs.Tab value="resolved" data-testid="comments-resolved-tab">
-                  {t`Resolved (${resolvedComments.length})`}
+                  {t`Resolved (${resolvedCommentsCount})`}
                 </Tabs.Tab>
               </Tabs.List>
             )}
@@ -258,10 +261,6 @@ function getFilteredComments(
   comments: Comment[],
   condition: (comment: Comment) => boolean,
 ) {
-  if (!comments) {
-    return [];
-  }
-
   const parentComments = comments.filter(
     (comment) => !comment.parent_comment_id && condition(comment),
   );
