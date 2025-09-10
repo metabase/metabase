@@ -876,6 +876,7 @@ export type CheckDependenciesFormProps = {
 
 export type CheckDependenciesModalProps = {
   checkData: CheckDependenciesData;
+  opened: boolean;
   onSave: () => void | Promise<void>;
   onClose: () => void;
 };

@@ -6,11 +6,12 @@ import { CheckDependenciesTitle } from "../CheckDependenciesTitle";
 
 export function CheckDependenciesModal({
   checkData,
+  opened,
   onSave,
   onClose,
 }: CheckDependenciesModalProps) {
   return (
-    <Modal.Root opened size="xl" padding="xl" onClose={onClose}>
+    <Modal.Root size="xl" padding="xl" opened={opened} onClose={onClose}>
       <Modal.Overlay />
       <Modal.Content>
         <Modal.Header px="xl">

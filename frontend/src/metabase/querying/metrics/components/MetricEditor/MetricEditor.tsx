@@ -2,6 +2,8 @@ import { forwardRef, useState } from "react";
 
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { getSubmittableQuestion } from "metabase/query_builder/selectors";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -29,7 +31,7 @@ type MetricEditorProps = {
 };
 
 export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
-  function MetricEditorInner(
+  function MetricEditor(
     {
       question,
       result,
@@ -49,6 +51,15 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
   ) {
     const [modalType, setModalType] = useState<MetricModalType>();
     const isRunnable = Lib.canRun(question.query(), "metric");
+    const {
+      checkData,
+      isConfirming,
+      handleInitialSave,
+      handleSaveAfterConfirmation,
+    } = PLUGIN_DEPENDENCIES.useCheckCardDependencies({
+      getSubmittableQuestion,
+      onSave,
+    });
 
     const handleCreate = (question: Question) => {
       return onCreate(question.setDefaultDisplay());
@@ -59,7 +70,7 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
     };
 
     const handleSave = async (question: Question) => {
-      await onSave(question.setDefaultDisplay());
+      await handleInitialSave(question.setDefaultDisplay());
     };
 
     const handleConfirmCancel = () => {
@@ -121,6 +132,14 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
           <LeaveConfirmModal
             opened
             onConfirm={handleConfirmCancel}
+            onClose={handleModalClose}
+          />
+        )}
+        {isConfirming && checkData != null && (
+          <PLUGIN_DEPENDENCIES.CheckDependenciesModal
+            checkData={checkData}
+            opened
+            onSave={handleSaveAfterConfirmation}
             onClose={handleModalClose}
           />
         )}
