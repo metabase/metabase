@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashboardModal";
 import { AddDataModal } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal";
-import { Group, Stack, Text, Title } from "metabase/ui";
+import { Stack, Text, Title } from "metabase/ui";
 
 import { useCompletedEmbeddingHubSteps } from "../hooks";
 import type { EmbeddingHubModalToTrigger } from "../types/embedding-checklist";
@@ -63,14 +63,14 @@ export const EmbeddingHub = () => {
 
   return (
     <Stack mx="auto" py="xl" gap="xl" maw={800}>
-      <Group align="center" gap="sm" ml="3rem">
+      <Stack gap="xs" ml="3rem">
         <Title
           order={1}
           c="var(--mb-color-text-dark)"
         >{t`Embedding setup guide`}</Title>
 
         <Text c="var(--mb-color-text-medium)">{t`Follow the guide to get started with Embedded Analytics JS`}</Text>
-      </Group>
+      </Stack>
       <StepperWithCards steps={stepperSteps} />
       <AddDataModal
         opened={openedModal?.type === "add-data"}
