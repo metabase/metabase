@@ -1088,6 +1088,36 @@ H.describeWithSnowplowEE("document comments", () => {
 
       Comments.getNewThreadInput().should("not.exist");
     });
+
+    it("should render placeholder when no comments", () => {
+      create1ParagraphDocument();
+      H.visitDocument("@documentId");
+
+      cy.location().then((loc) => {
+        cy.visit(`${loc.pathname}/comments/all`);
+
+        H.modal()
+          .should("contain", "All comments")
+          .should("contain", "No comments");
+      });
+    });
+
+    it("should render placeholder when no open comments, but resolved", () => {
+      create1ParagraphDocument();
+      cy.get<DocumentId>("@documentId").then((documentId) => {
+        createParagraphComment(documentId, "Test 1");
+      });
+
+      H.visitDocument("@documentId");
+
+      Comments.getDocumentNodeButtons().eq(0).click();
+      Comments.resolveCommentByText("Test 1");
+      Comments.openAllComments();
+
+      H.modal()
+        .should("contain", "All comments")
+        .should("contain", "No comments");
+    });
   });
 
   describe("comment reactions", () => {

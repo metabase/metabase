@@ -4,10 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLatest, useLocation } from "react-use";
 import { t } from "ttag";
 
+import noResultsSource from "assets/img/no_results.svg";
 import { useToast } from "metabase/common/hooks";
 import Animation from "metabase/css/core/animation.module.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Box, Modal, Tabs, rem } from "metabase/ui";
+import { Box, Flex, Image, Modal, Tabs, Text, rem } from "metabase/ui";
 import {
   useCreateCommentMutation,
   useListCommentsQuery,
@@ -227,13 +228,30 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
             )}
 
             <Tabs.Panel value="open">
-              <Discussions
-                childTargetId={childTargetId === "all" ? null : childTargetId}
-                comments={activeComments}
-                showLastDivider
-                targetId={document.id}
-                targetType="document"
-              />
+              {activeComments.length > 0 && (
+                <Discussions
+                  childTargetId={childTargetId === "all" ? null : childTargetId}
+                  comments={activeComments}
+                  showLastDivider
+                  targetId={document.id}
+                  targetType="document"
+                />
+              )}
+
+              {activeComments.length === 0 && (
+                <Flex
+                  p="xl"
+                  pt="5rem"
+                  align="center"
+                  color="muted"
+                  direction="column"
+                  gap="md"
+                >
+                  <Image w={120} h={120} src={noResultsSource} />
+
+                  <Text fw="700" c="text-light">{t`No comments`}</Text>
+                </Flex>
+              )}
 
               {childTargetId !== "all" && (
                 <Box p="xl">
