@@ -1,8 +1,9 @@
 (ns metabase-enterprise.dependencies.core
   "API namespace for the `metabase-enterprise.dependencies` module."
   (:require
-   [clojure.set :as set]
+   [metabase-enterprise.dependencies.models.dependency :as deps.graph]
    [metabase-enterprise.dependencies.native-validation :as deps.native]
+   [metabase.lib-be.metadata.jvm :as lib-be.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
@@ -11,7 +12,9 @@
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -65,12 +68,33 @@
     :native (upstream-deps:native-card metadata-provider toucan-card)
     (throw (ex-info "Unhandled kind of card query" {:card toucan-card}))))
 
+(defenterprise replace-upstream-deps:card!
+  "Enterprise version.
+
+  Given a Toucan `:model/Card`, compute its upstream dependencies and update the deps graph to reflect it.
+
+  Should be called from post-insert or post-update; the card must already have an ID.
+
+  Returns nil."
+  :feature :dependencies
+  [toucan-card]
+  (log/infof "Updating deps for card %d" (:id toucan-card))
+  (let [metadata-provider (lib-be.metadata.jvm/application-database-metadata-provider (:database_id toucan-card))]
+    (deps.graph/replace-dependencies :card (:id toucan-card) (upstream-deps:card metadata-provider toucan-card))))
+
+(defenterprise delete-deps!
+  "Enterprise version. Deletes all dependencies for the given entity."
+  :feature :dependencies
+  [entity-type id]
+  (log/infof "Deleting deps for deleted %s %d" entity-type id)
+  (deps.graph/replace-dependencies entity-type id {}))
+
 (comment
   ;; This should work on any fresh-ish Metabase instance; these are the built-in example questions.
   (let [card-ids [1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20
                   21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37]
         base-mp  #_{:clj-kondo/ignore [:unresolved-namespace]}
-        (metabase.lib-be.metadata.jvm/application-database-metadata-provider 1)
+        (lib-be.metadata.jvm/application-database-metadata-provider 1)
         card     (lib.metadata/card base-mp 1)
         card'    (update-in card [:dataset-query :query :expressions]
                             ;; Replacing the expression Age with Duration - this breaks downstream uses!
@@ -78,5 +102,5 @@
     (check-cards-have-sound-refs base-mp [card'] card-ids))
 
   (let [card (toucan2.core/select-one :model/Card :id 121)
-        mp   (metabase.lib-be.metadata.jvm/application-database-metadata-provider (:database_id card))]
+        mp   (lib-be.metadata.jvm/application-database-metadata-provider (:database_id card))]
     (upstream-deps:card mp card)))

@@ -33,12 +33,17 @@
   ;; not implemented for the simple graph metadata provider.
   nil)
 
+(defn- graph-snippet [_metadata-graph _card-id]
+  ;; not implemented for the simple graph metadata provider.
+  nil)
+
 (defn- graph-metadatas [metadata-graph metadata-type ids]
   (let [f (case metadata-type
             :metadata/table         graph-table
             :metadata/column        graph-field
             :metadata/segment       graph-segment
-            :metadata/card          graph-card)]
+            :metadata/card          graph-card
+            :metadata/native-query-snippet graph-snippet)]
     (into []
           (keep (fn [id]
                   (f metadata-graph id)))
