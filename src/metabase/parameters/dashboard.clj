@@ -98,9 +98,6 @@
                        (nil? (:resolved-params dashboard)) (t2/hydrate :resolved-params))
          constraints (chain-filter-constraints dashboard constraint-param-key->value)
          param       (get-in dashboard [:resolved-params param-key])
-         _           (when (empty? (:mappings param))
-                       (println "(metabase.util/cprint-to-str param):" (metabase.util/cprint-to-str param)) ; NOCOMMIT
-                       (println "Param has no mappings... this will not work... NOCOMMIT"))
          field-ids   (into #{} (map :field-id (param->fields param)))]
      (if (empty? field-ids)
        (or (filter-values-from-field-refs dashboard param-key)
