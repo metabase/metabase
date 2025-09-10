@@ -76,7 +76,7 @@ export function DiscussionActionPanel({
                   size={ACTION_ICON_SIZE}
                   onClick={() => setEmojiPickerOpened((opened) => !opened)}
                 >
-                  <Icon name="thumbs_up" />
+                  <Icon name="smile" />
                 </ActionIcon>
               </Tooltip>
             </Popover.Target>
