@@ -39,6 +39,8 @@
     Field$Mode
     FieldValue
     FieldValueList
+    InsertAllRequest
+    InsertAllResponse
     QueryJobConfiguration
     Schema
     Table
@@ -46,6 +48,7 @@
     TableId
     TableResult)
    (com.google.common.collect ImmutableMap)
+   (com.google.gson JsonParser JsonArray JsonObject)
    (java.util Iterator)))
 
 (set! *warn-on-reflection* true)
@@ -877,10 +880,74 @@
   (let [sql (driver/compile-drop-table driver table-name)]
     (driver/execute-raw-queries! driver (t2/select-one :model/Database database-id) [sql])))
 
+(defn- convert-value-for-insertion
+  [base-type value]
+  (when value
+    (if-not (string? value)
+      value
+      (case base-type
+        :type/JSON
+        (.toString (JsonParser/parseString value))
+
+        (:type/Dictionary :type/Array)
+        (JsonParser/parseString value)
+
+        :type/Integer
+        (parse-long value)
+
+        :type/Float
+        (parse-double value)
+
+        ;; Boolean type
+        :type/Boolean
+        (parse-boolean value)
+
+        value))))
+
+(defn- prepare-row-with-field-types
+  "Convert a row using field type information to properly type values."
+  [field-types column-names row-values]
+  (into {}
+        (map (fn [col-name value]
+               (let [base-type (get field-types col-name :type/Text)]
+                 [col-name (convert-value-for-insertion base-type value)]))
+             column-names
+             row-values)))
+
 (defmethod driver/insert-into! :bigquery-cloud-sdk
-  [driver db-id table-name column-names values]
-  (let [sqls (#'driver.sql-jdbc/insert-into!-sqls driver table-name column-names values true)]
-    (driver/execute-raw-queries! driver (t2/select-one :model/Database db-id) sqls)))
+  [_driver db-id table-name column-names values]
+  (let [database (t2/select-one :model/Database db-id)
+        details (:details database)
+        client (database-details->client details)
+        project-id (get-project-id details)
+
+        [dataset-id actual-table-name] [(namespace table-name) (name table-name)]
+
+        ^Table bq-table (if dataset-id
+                          (get-table client project-id dataset-id actual-table-name)
+                          (throw (ex-info "Table name must include dataset" {:table-name table-name})))
+
+        schema (.getSchema (.getDefinition bq-table))
+        table-id (.getTableId bq-table)
+
+        field-types (into {}
+                          (map (fn [^Field field]
+                                 (let [[_db-type base-type] (field->database+base-type field)]
+                                   [(.getName field) base-type])))
+                          (.getFields schema))
+
+        prepared-rows (map #(prepare-row-with-field-types field-types column-names %) values)]
+
+    (doseq [chunk (partition-all 1000 prepared-rows)]
+      (let [insert-request-builder (InsertAllRequest/newBuilder table-id)]
+        (doseq [row chunk]
+          (.addRow insert-request-builder ^java.util.Map row))
+        (let [insert-request (.build insert-request-builder)
+              ^InsertAllResponse response (.insertAll client insert-request)]
+          (when (.hasErrors response)
+            (let [errors (.getInsertErrors response)]
+              (throw (ex-info "BigQuery insert failed"
+                              {:errors (def e (into [] (map str errors)))})))))))))
 
 (defmethod driver/execute-raw-queries! :bigquery-cloud-sdk
   [_driver connection-details queries]
