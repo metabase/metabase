@@ -6,6 +6,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import {
   useGetTransformQuery,
   useUpdateTransformMutation,
@@ -51,23 +52,27 @@ export function TransformQueryPageBody({
 }: TransformQueryPageBodyProps) {
   const [updateTransform, { isLoading }] = useUpdateTransformMutation();
   const dispatch = useDispatch();
-  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
+  const { sendSuccessToast } = useMetadataToasts();
 
-  const handleSave = async (query: DatasetQuery) => {
-    const { error } = await updateTransform({
-      id: transform.id,
-      source: {
-        type: "query",
-        query,
-      },
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update transform query`);
-    } else {
+  const {
+    checkData,
+    isConfirmationShown,
+    handleInitialSave,
+    handleSaveAfterConfirmation,
+    handleCancelSave,
+  } = PLUGIN_DEPENDENCIES.useCheckTransformDependencies({
+    onSave: async (patch) => {
+      await updateTransform(patch).unwrap();
       sendSuccessToast(t`Transform query updated`);
       dispatch(push(getTransformUrl(transform.id)));
-    }
+    },
+  });
+
+  const handleSaveQuery = async (query: DatasetQuery) => {
+    await handleInitialSave({
+      id: transform.id,
+      source: { type: "query", query },
+    });
   };
 
   const handleCancel = () => {
@@ -75,12 +80,22 @@ export function TransformQueryPageBody({
   };
 
   return (
-    <QueryEditor
-      initialQuery={transform.source.query}
-      isNew={false}
-      isSaving={isLoading}
-      onSave={handleSave}
-      onCancel={handleCancel}
-    />
+    <>
+      <QueryEditor
+        initialQuery={transform.source.query}
+        isNew={false}
+        isSaving={isLoading}
+        onSave={handleSaveQuery}
+        onCancel={handleCancel}
+      />
+      {isConfirmationShown && checkData != null && (
+        <PLUGIN_DEPENDENCIES.CheckDependenciesModal
+          checkData={checkData}
+          opened
+          onSave={handleSaveAfterConfirmation}
+          onClose={handleCancelSave}
+        />
+      )}
+    </>
   );
 }

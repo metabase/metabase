@@ -60,7 +60,7 @@ import type {
   CacheableDashboard,
   CacheableModel,
   Card,
-  CheckCardDependenciesResponse,
+  CheckDependenciesResponse,
   Collection,
   CollectionAuthorityLevelConfig,
   CollectionEssentials,
@@ -87,6 +87,7 @@ import type {
   Timeline,
   TimelineEvent,
   Transform,
+  UpdateTransformRequest,
   User,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -860,6 +861,9 @@ type DependenciesPlugin = {
   useCheckCardDependencies: (
     props: UseCheckCardDependenciesProps,
   ) => UseCheckCardDependenciesResult;
+  useCheckTransformDependencies: (
+    props: UseCheckTransformDependenciesProps,
+  ) => UseCheckTransformDependenciesResult;
 };
 
 export type CheckDependenciesData = {
@@ -887,9 +891,21 @@ export type UseCheckCardDependenciesProps = {
 };
 
 export type UseCheckCardDependenciesResult = {
-  checkData?: CheckCardDependenciesResponse;
+  checkData?: CheckDependenciesResponse;
   isConfirmationShown: boolean;
   handleInitialSave: (question: Question) => Promise<void>;
+  handleSaveAfterConfirmation: () => Promise<void>;
+  handleCancelSave: () => void;
+};
+
+export type UseCheckTransformDependenciesProps = {
+  onSave: (patch: UpdateTransformRequest) => Promise<void>;
+};
+
+export type UseCheckTransformDependenciesResult = {
+  checkData?: CheckDependenciesResponse;
+  isConfirmationShown: boolean;
+  handleInitialSave: (patch: UpdateTransformRequest) => Promise<void>;
   handleSaveAfterConfirmation: () => Promise<void>;
   handleCancelSave: () => void;
 };
@@ -899,6 +915,12 @@ export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
   CheckDependenciesModal: PluginPlaceholder,
   CheckDependenciesTitle: PluginPlaceholder,
   useCheckCardDependencies: ({ onSave }) => ({
+    isConfirmationShown: false,
+    handleInitialSave: onSave,
+    handleSaveAfterConfirmation: () => Promise.resolve(),
+    handleCancelSave: () => undefined,
+  }),
+  useCheckTransformDependencies: ({ onSave }) => ({
     isConfirmationShown: false,
     handleInitialSave: onSave,
     handleSaveAfterConfirmation: () => Promise.resolve(),
