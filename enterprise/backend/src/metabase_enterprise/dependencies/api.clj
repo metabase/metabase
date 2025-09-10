@@ -51,6 +51,22 @@
                                           (update :dashboard #(some-> % (select-keys [:id :name])))))))
                       broken-cards)}))
 
+(api.macros/defendpoint :post "/check_transform"
+  "Check a proposed edit to a transform, and return the card, transform, etc. IDs for things that will break."
+  [_route-params
+   _query-params
+   _body :- [:map [:id ms/PositiveInt]]]
+  ;; FIXME: This is just a stub - implement it!
+  {:success true})
+
+(api.macros/defendpoint :post "/check_snippet"
+  "Check a proposed edit to a native snippet, and return the cards, etc. which will be broken."
+  [_route-params
+   _query-params
+   _body :- [:map [:id ms/PositiveInt]]]
+  ;; FIXME: This is just a stub - implement it!
+  {:success true})
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."
   (handlers/routes
