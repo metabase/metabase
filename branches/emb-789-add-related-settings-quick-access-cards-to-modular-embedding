@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-788-move-embedding-settings-into-its-own-top-level-menu",
-    "hash": "ee78deb08aef13c4e6b7af2546772d6c4b7b5228"
+    "hash": "d8d763968ac576e71c5fafd2e7cd235fdb37ea77"
   },
   "upstream": {
     "branch": "emb-789-add-related-settings-quick-access-cards-to-modular-embedding"
