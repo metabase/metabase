@@ -254,7 +254,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
               )}
 
               {childTargetId !== "all" && (
-                <Box p="xl">
+                <Box px="lg" py="xs">
                   <CommentEditor
                     autoFocus={shouldAutoOpenNewComment}
                     data-testid="new-thread-editor"
