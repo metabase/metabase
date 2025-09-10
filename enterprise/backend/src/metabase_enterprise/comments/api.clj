@@ -30,8 +30,9 @@
     :model/Document (str "/document/" (:id entity))))
 
 (defn- content->str [content]
-  (or (:text content)
-      (pr-str content)))
+  (when content
+    (or (:text content)
+        (pr-str content))))
 
 ;;; schemas
 

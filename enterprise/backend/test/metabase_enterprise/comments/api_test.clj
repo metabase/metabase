@@ -1,6 +1,7 @@
 (ns metabase-enterprise.comments.api-test
   "Tests for /api/ee/comment/ endpoints."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -8,8 +9,8 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- relaxed-re [s]
-  (re-pattern (str "(?s).*" s ".*")))
+(defn- relaxed-re [& s]
+  (re-pattern (str "(?s).*" (str/join ".*" s) ".*")))
 
 ;;; tiptap helpers
 
@@ -83,9 +84,11 @@
               (testing "document creator receives notifications for top-level comments"
                 (is (=? {(:email (mt/fetch-user :lucky))
                          [{:subject "Comment on New Document"
-                           :body    [{:content (relaxed-re (format "http://localhost:3000/document/%s#comment-%s"
-                                                                   doc-id
-                                                                   (:id created)))}]}]}
+                           :body    [{:content (relaxed-re
+                                                (str (:common_name (mt/fetch-user :rasta)) " left a comment")
+                                                (format "http://localhost:3000/document/%s#comment-%s"
+                                                        doc-id
+                                                        (:id created)))}]}]}
                         (first (swap-vals! mt/inbox empty)))))
 
               (testing "creates a reply to an existing comment"
@@ -108,8 +111,26 @@
                                                 :target_id doc-id)))
                   (testing "participants in the thread receive notifications for new replies"
                     (is (=? {(:email (mt/fetch-user :rasta))
-                             [{:subject "Comment on New Document"}]}
-                            (first (swap-vals! mt/inbox empty)))))))))
+                             [{:subject "Comment on New Document"
+                               :body    [{:content (relaxed-re
+                                                    (str (:common_name (mt/fetch-user :crowberto)) " replied to a thread"))}]}]}
+                            (first (swap-vals! mt/inbox empty)))))))
+
+              (testing "comment in a thread should send emails to all participants of the thread"
+                (let [_another (mt/user-http-request :lucky :post 200 "ee/comment/"
+                                                     {:target_type       "document"
+                                                      :target_id         doc-id
+                                                      :parent_comment_id (:id created)
+                                                      :content           {:text "Third comment in a thread"}})]
+                  (is (=? {(:email (mt/fetch-user :rasta))
+                           [{:subject "Comment on New Document"
+                             :body    [{:content (relaxed-re
+                                                  (str (:common_name (mt/fetch-user :lucky)) " replied to a thread"))}]}]
+                           (:email (mt/fetch-user :crowberto))
+                           [{:subject "Comment on New Document"
+                             :body    [{:content (relaxed-re
+                                                  (str (:common_name (mt/fetch-user :lucky)) " replied to a thread"))}]}]}
+                          (first (swap-vals! mt/inbox empty))))))))
 
           (testing "creates a comment for part of an entity"
             (let [part-id (-> doc :content first :attrs :_id)
