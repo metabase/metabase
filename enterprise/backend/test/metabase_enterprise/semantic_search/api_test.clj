@@ -13,14 +13,15 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
+;; TODO: This ns' test seem not to run from cli. Figure out why!
+
 (use-fixtures :once (compose-fixtures
                      (fixtures/initialize :db)
                      #'semantic.tu/once-fixture))
 
 (defmacro with-mock-index-metadata!
   [& body]
-  `(with-redefs [semantic.env/get-pgvector-datasource! (constantly semantic.tu/db)
-                 semantic.embedding/get-configured-model (constantly semantic.tu/mock-embedding-model)
+  `(with-redefs [semantic.embedding/get-configured-model (constantly semantic.tu/mock-embedding-model)
                  semantic.env/get-index-metadata (constantly semantic.tu/mock-index-metadata)]
      ~@body))
 
@@ -76,12 +77,13 @@
               original-table-name (:table-name original-index)
               new-index           (with-redefs [semantic.index/model-table-suffix (constantly 345)]
                                     (#'semantic.pgvector-api/fresh-index semantic.tu/mock-index-metadata semantic.tu/mock-embedding-model :force-reset? true))
-              new-table-name      (:table-name new-index)]
+              new-table-name      (:table-name new-index)
+              pgvector (semantic.env/get-pgvector-datasource!)]
 
           (is (semantic.tu/table-exists-in-db? original-table-name))
           (is (not (semantic.tu/table-exists-in-db? new-table-name)))
 
-          (let [best-index (semantic.index-metadata/find-compatible-index! semantic.tu/db semantic.tu/mock-index-metadata semantic.tu/mock-embedding-model)]
+          (let [best-index (semantic.index-metadata/find-compatible-index! pgvector semantic.tu/mock-index-metadata semantic.tu/mock-embedding-model)]
             (is (=? original-index (:index best-index)))
             (is (:active best-index)))
 
@@ -96,7 +98,7 @@
 
             (is (zero? (semantic.tu/index-count new-index))))
 
-          (let [best-index (semantic.index-metadata/find-compatible-index! semantic.tu/db semantic.tu/mock-index-metadata semantic.tu/mock-embedding-model)]
+          (let [best-index (semantic.index-metadata/find-compatible-index! pgvector semantic.tu/mock-index-metadata semantic.tu/mock-embedding-model)]
             (is (=? new-index (:index best-index)))
             (is (:active best-index)))
 

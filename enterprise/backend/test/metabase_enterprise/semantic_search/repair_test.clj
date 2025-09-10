@@ -60,9 +60,7 @@
     (mt/with-premium-features #{:semantic-search}
       (semantic.tu/with-index!
         (let [pgvector       (semantic.env/get-pgvector-datasource!)
-              #_#_pgvector semantic.tu/db
               index-metadata (semantic.env/get-index-metadata)
-              #_#_index-metadata semantic.tu/mock-index-metadata
               gate-table     (:gate-table-name index-metadata)
               _              (clear-gate-table! pgvector gate-table)
               initial-docs   [(create-test-document "card" 1 "Dog Training Guide")
@@ -95,7 +93,7 @@
   (testing "The repair table gets cleaned up properly at the end of a repair-index! job"
     (mt/with-premium-features #{:semantic-search}
       (semantic.tu/with-index!
-        (let [pgvector       semantic.tu/db
+        (let [pgvector       (semantic.env/get-pgvector-datasource!)
               index-metadata semantic.tu/mock-index-metadata
               gate-table     (:gate-table-name index-metadata)
               initial-docs   [(create-test-document "card" 6 "Dog Training Guide")]]

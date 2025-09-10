@@ -9,6 +9,7 @@
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.db.migration :as semantic.db.migration]
    [metabase-enterprise.semantic-search.db.migration.impl :as semantic.db.migration.impl]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
@@ -126,7 +127,7 @@
           (semantic.core/init! (semantic.tu/mock-documents) nil)
           (testing "migration table has expected columns"
             (is (map-contains-keys?
-                 (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                 (jdbc/execute-one! (semantic.env/get-pgvector-datasource!)
                                     (sql/format {:select [:*]
                                                  :from [:migration]}))
                  (qualify :migration [:migrated_at
@@ -134,7 +135,7 @@
                                       :version]))))
           (testing "control table has expected columns"
             (is (map-contains-keys?
-                 (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                 (jdbc/execute-one! (semantic.env/get-pgvector-datasource!)
                                     (sql/format {:select [:*]
                                                  :from [:index_control]}))
                  (qualify :index_control [:active_id
@@ -143,7 +144,7 @@
                                           :version]))))
           (testing "metadata table has expected columns"
             (is  (map-contains-keys?
-                  (jdbc/execute-one! semantic.tu/db
+                  (jdbc/execute-one! (semantic.env/get-pgvector-datasource!)
                                      (sql/format {:select [:*]
                                                   :from [:index_metadata]}))
                   (qualify :index_metadata [:id
@@ -190,7 +191,7 @@
                         "text_search_with_native_query_vector"
                         "verified"
                         "view_count"}
-                      (->>  (jdbc/execute! semantic.tu/db
+                      (->>  (jdbc/execute! (semantic.env/get-pgvector-datasource!)
                                            (sql/format {:select [:column_name]
                                                         :from [:information_schema.columns]
                                                         :where [[:= :table_name [:inline index-table]]]}))
@@ -198,7 +199,7 @@
                             set)))))
           (testing "index table has expected columns"
             (is (= ["document" "document_hash" "gated_at" "id" "model" "model_id" "updated_at"]
-                   (->> (jdbc/execute! semantic.tu/db
+                   (->> (jdbc/execute! (semantic.env/get-pgvector-datasource!)
                                        (sql/format {:select [:column_name]
                                                     :from [:information_schema.columns]
                                                     :where [[:= :table_name [:inline "index_gate"]]]}))
