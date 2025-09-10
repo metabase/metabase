@@ -7,8 +7,10 @@
   height: 100%;
 }
 
-.output {
+.logs {
   white-space: pre;
+  border: 1px solid var(--mb-color-border);
+  font-family: var(--mb-default-monospace-font-family);
 }
 
 .visualization {
@@ -23,11 +25,33 @@
 }
 
 .tableHeader {
-  background-color: var(--mb-color-bg-medium);
+  background-color: var(--mb-color-bg-light);
   padding: var(--mantine-spacing-sm);
 }
 
 .tableCell {
-  border: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border);
   padding: var(--mantine-spacing-sm);
+}
+
+.error {
+  color: var(--mb-color-error);
+  background-color: var(--mb-color-bg-error);
+  border: 1px solid var(--mb-color-error);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
+}
+
+.info {
+  color: var(--mb-color-text-dark);
+  border: 1px solid var(--mb-color-bg-medium);
+  background-color: var(--mb-color-bg-light);
+}
+
+.loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background-color: rgba(255, 255, 255, 0.5);
 }
