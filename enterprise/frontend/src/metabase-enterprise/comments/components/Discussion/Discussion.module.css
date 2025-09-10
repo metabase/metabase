@@ -61,7 +61,7 @@
   background-color: var(--mb-color-bg-medium);
   padding: 0 0.5rem;
   border-radius: 1rem;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-dark);
 
   &:hover {
     background-color: var(--mb-color-background-hover);
@@ -69,8 +69,8 @@
 }
 
 .currentUserReaction {
-  background-color: var(--mb-color-brand);
-  color: var(--mb-color-text-white);
+  background-color: var(--mb-color-focus);
+  border: 1px solid var(--mb-color-brand);
 
   &:hover {
     background-color: var(--mb-color-brand-alpha-88);
