@@ -1104,6 +1104,17 @@ export function formatDateTimeWithUnit(
     return String(value);
   }
 
+  // handle day of year as DDD format adds leading zeroes
+  if (unit === "day-of-year") {
+    return m.dayOfYear();
+  }
+
+  if (unit === "week-of-year") {
+    const weekNumber = m.isoWeek();
+    const ordinal = getOrdinal(weekNumber);
+    return `${weekNumber}${ordinal}`;
+  }
+
   // expand "week" into a range in specific contexts
   if (unit === "week") {
     if (
@@ -1212,4 +1223,10 @@ function timeStyleOption(style: string, description: string) {
       EXAMPLE_DATE.format(format) + (description ? ` (${description})` : ``),
     value: style,
   };
+}
+
+function getOrdinal(number: number): string {
+  const ordinals = ["th", "st", "nd", "rd"];
+  const v = number % 100;
+  return ordinals[(v - 20) % 10] || ordinals[v] || ordinals[0];
 }

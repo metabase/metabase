@@ -134,7 +134,7 @@ export function timezoneToUTCOffset(timezone: string) {
   return dayjs().tz(timezone).format("Z");
 }
 
-export function parseTime(value: dayjs.Dayjs | string) {
+export function parseTime(value: Dayjs | string) {
   if (dayjs.isDayjs(value)) {
     return value;
   } else if (typeof value === "string") {
