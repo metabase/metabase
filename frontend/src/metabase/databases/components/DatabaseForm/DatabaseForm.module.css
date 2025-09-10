@@ -3,3 +3,10 @@
   grid-template-columns: 3fr 1fr;
   column-gap: 1rem;
 }
+
+.FormField {
+  background-color: var(--mb-color-background-info);
+  padding: var(--mantine-spacing-lg);
+  border-radius: var(--mantine-radius-md);
+  margin-bottom: var(--mantine-spacing-md);
+}
