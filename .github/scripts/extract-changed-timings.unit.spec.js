@@ -54,8 +54,8 @@ describe("extractChangedTimings", () => {
 
     const newTimings = {
       durations: [
-        { spec: "test1.cy.js", duration: 1000 }, // No change
-        { spec: "test2.cy.js", duration: 2200 }, // Changed
+        { spec: "test1.cy.js", duration: 1000 },
+        { spec: "test2.cy.js", duration: 2200 },
       ],
     };
 

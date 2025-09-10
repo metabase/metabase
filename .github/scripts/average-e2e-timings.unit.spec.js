@@ -28,7 +28,7 @@ describe("averageTimings", () => {
     });
   });
 
-  it("should calculate average across multiple timing data sets", () => {
+  it("should calculate average for multiple specs", () => {
     const input = [
       {
         durations: [
@@ -97,7 +97,7 @@ describe("averageTimings", () => {
     });
   });
 
-  it("should handle timing data with different specs", () => {
+  it("should handle merging different specs", () => {
     const input = [
       {
         durations: [
