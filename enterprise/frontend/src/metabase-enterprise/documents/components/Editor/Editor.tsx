@@ -1,4 +1,3 @@
-import { DndContext, pointerWithin } from "@dnd-kit/core";
 import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extension-placeholder";
@@ -35,13 +34,8 @@ import { MetabotMentionExtension } from "./extensions/MetabotMention/MetabotMent
 import { MetabotMentionSuggestion } from "./extensions/MetabotMention/MetabotSuggestion";
 import { SmartLink } from "./extensions/SmartLink/SmartLinkNode";
 import { createSuggestionRenderer } from "./extensions/suggestionRenderer";
-import {
-  useCardEmbedDnD,
-  useCardEmbedsTracking,
-  useQuestionSelection,
-} from "./hooks";
+import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 import type { CardEmbedRef } from "./types";
-import { Node } from "@tiptap/pm/model";
 
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
   CardEmbed.name,
@@ -172,29 +166,26 @@ export const Editor: React.FC<EditorProps> = ({
           onChange(currentContent);
         }
       },
-      // TODO: Fix me
-      onDrop(event, slice, moved) {
-        console.log(slice);
-        editor?.state.doc.descendants((node, pos, parent) => {
-          if (node === slice.content.child(0)) {
-            console.log("found slice. parent is:", parent);
-            if (parent?.childCount === 2) {
-              parent.descendants((pNode, pPos) => {
-                if (pNode !== node) {
-                  console.log("replacing", parent, "with", pNode);
-                  editor.view.dispatch(
-                    editor.state.tr.replaceWith(
-                      pPos,
-                      pPos + parent.nodeSize,
-                      pNode,
-                    ),
-                  );
-                }
-              });
-            }
-          }
-        });
-      },
+      // // TODO: Fix me
+      // onDrop(event, slice, moved) {
+      //   editor?.state.doc.descendants((node, pos, parent) => {
+      //     if (node === slice.content.child(0)) {
+      //       if (parent?.childCount === 2) {
+      //         parent.descendants((pNode, pPos) => {
+      //           if (pNode !== node) {
+      //             editor.view.dispatch(
+      //               editor.state.tr.replaceWith(
+      //                 pPos,
+      //                 pPos + parent.nodeSize,
+      //                 pNode,
+      //               ),
+      //             );
+      //           }
+      //         });
+      //       }
+      //     }
+      //   });
+      // },
     },
     [],
   );
@@ -243,7 +234,6 @@ export const Editor: React.FC<EditorProps> = ({
   }
 
   return (
-    // <DndContext onDragEnd={handleDragEnd} collisionDetection={pointerWithin}>
     <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
       <Box
         className={S.editorContent}
@@ -283,6 +273,5 @@ export const Editor: React.FC<EditorProps> = ({
         />
       </Box>
     </Box>
-    // </DndContext>
   );
 };
