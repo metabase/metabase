@@ -1143,8 +1143,8 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       getCancelButton().click();
       H.modal().button("Yes").click();
 
-      getRunButton().should("have.text", "Canceling run…");
-      getRunStatus().should("have.text", "Canceling run…");
+      getRunButton().should("have.text", "Canceling…");
+      getRunStatus().should("have.text", "Canceling…");
 
       // We need to pass a timeout here since canceling a transform can
       // take a while on the back end

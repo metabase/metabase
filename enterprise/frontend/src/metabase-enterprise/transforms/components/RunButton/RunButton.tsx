@@ -104,7 +104,7 @@ function getRunButtonInfo({
 
   if (run?.status === "canceling" || isCanceling) {
     return {
-      label: t`Canceling run…`,
+      label: t`Canceling…`,
       leftSection: <Loader size="sm" />,
       color: "text-secondary",
       isDisabled: true,

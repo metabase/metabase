@@ -141,7 +141,7 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
       return (
         <Group gap="sm" data-testid="run-status">
           <Icon c="text-secondary" name="close" />
-          <Box>{t`Canceling run…`}</Box>
+          <Box>{t`Canceling…`}</Box>
         </Group>
       );
     case "canceled":
