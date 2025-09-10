@@ -12,13 +12,9 @@ import { Box, Flex, Icon, Stack, Text, Title } from "metabase/ui";
 
 import { ResizableBoxHandle } from "../EditorBody/ResizableBoxHandle";
 
+import { ExecutionOutputTable } from "./ExecutionOutputTable";
 import S from "./PythonEditor.module.css";
-import {
-  type ExecutionResult,
-  completion,
-  parseCSV,
-  useTestPythonScript,
-} from "./utils";
+import { type ExecutionResult, completion, useTestPythonScript } from "./utils";
 
 type PythonEditorProps = {
   script: string;
@@ -127,7 +123,7 @@ function ExecutionResult({
   const message = getMessageForExecutionResult(executionResult);
 
   return (
-    <Stack gap="md" p="md">
+    <Stack gap={0}>
       {message}
 
       <ExecutionLogs
@@ -139,7 +135,7 @@ function ExecutionResult({
         content={executionResult.stderr}
       />
 
-      <ExecutionOutput output={executionResult.output} />
+      <ExecutionOutputTable output={executionResult.output} />
     </Stack>
   );
 }
@@ -147,11 +143,16 @@ function ExecutionResult({
 function getMessageForExecutionResult(executionResult: ExecutionResult) {
   if (executionResult.error) {
     return (
-      <Box className={S.error} p="sm" bdrs="xs">
-        <Title order={5} mb="xs">
-          {t`An error occurred while executing your Python script`}
-        </Title>
-        {executionResult.error}
+      <Box className={S.error} p="sm">
+        <Flex gap="sm">
+          <Icon name="warning" />
+          <Stack gap={0}>
+            <Title order={5} mb="xs">
+              {t`An error occurred while executing your Python script`}
+            </Title>
+            {executionResult.error}
+          </Stack>
+        </Flex>
       </Box>
     );
   }
@@ -160,12 +161,17 @@ function getMessageForExecutionResult(executionResult: ExecutionResult) {
     return (
       <Flex className={S.info} p="sm" bdrs="xs" gap="sm" align="center">
         <Icon name="info" />
-        <Text c="text-medium">{t`No results to display.`}</Text>
+        {t`No results to display.`}
       </Flex>
     );
   }
 
-  return null;
+  return (
+    <Flex className={S.success} p="sm" gap="sm" align="center">
+      <Icon name="check" />
+      {t`Script executed successfully.`}
+    </Flex>
+  );
 }
 
 function ExecutionLogs({
@@ -184,41 +190,6 @@ function ExecutionLogs({
       <Box p="sm" bg="bg-light" mah="150px" bdrs="xs" className={S.logs}>
         {content}
       </Box>
-    </Section>
-  );
-}
-
-function ExecutionOutput({ output }: { output?: string }) {
-  const { headers, rows } = parseCSV(output || "");
-
-  if (!output || headers.length === 0) {
-    return null;
-  }
-
-  return (
-    <Section title={t`Results:`}>
-      <table className={S.results}>
-        <thead>
-          <tr>
-            {headers.map((header, index) => (
-              <th key={index} className={S.tableHeader}>
-                {header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, rowIndex) => (
-            <tr key={rowIndex}>
-              {row.map((cell, cellIndex) => (
-                <td key={cellIndex} className={S.tableCell}>
-                  {cell}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </Section>
   );
 }
