@@ -969,3 +969,10 @@
   [driver conn-spec schema]
   (let [sql [[(format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA [%s];');" schema schema)]]]
     (driver/execute-raw-queries! driver conn-spec sql)))
+
+(defmethod driver/compile-rename-table :sqlserver
+  [_driver old-name new-name]
+  (let [schema (namespace old-name)
+        old-table (cond->> (name old-name)
+                    schema (str schema "."))]
+    [(format "EXEC sp_rename '%s', '%s';" old-table new-name)]))

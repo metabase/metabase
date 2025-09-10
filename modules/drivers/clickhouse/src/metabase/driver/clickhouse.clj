@@ -323,3 +323,12 @@
   [driver conn-spec schema]
   (let [sql [[(format "CREATE DATABASE IF NOT EXISTS `%s`;" schema)]]]
     (driver/execute-raw-queries! driver conn-spec sql)))
+
+(defmethod driver/compile-rename-table :clickhouse
+  [_driver old-name new-name]
+  (let [schema (namespace old-name)
+        old-table (cond->> (name old-name)
+                    schema (str schema "."))
+        new-table (cond->> new-name
+                    schema (str schema "."))]
+    [(format "RENAME TABLE %s TO %s;" old-table new-table)]))

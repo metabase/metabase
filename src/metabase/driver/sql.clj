@@ -124,10 +124,12 @@
         {schema :schema table-name :name} target
         output-table (keyword schema table-name)]
     (if (driver/table-exists? driver db target)
-      (let [tmp-table (keyword schema (str table-name "__metabase_transform_tmp_name"))
-            renamed-table (str table-name "__metabase_transform_renamed")
+      (let [tmp-name (str table-name "__metabase_transform_tmp_name")
+            tmp-table (keyword schema tmp-name)
+            renamed-name (str table-name "__metabase_transform_renamed")
+            renamed-table (keyword schema renamed-name)
             create-and-rename-queries [(driver/compile-transform driver tmp-table query)
-                                       (driver/compile-rename-table driver output-table renamed-table)
+                                       (driver/compile-rename-table driver output-table renamed-name)
                                        (driver/compile-rename-table driver tmp-table table-name)]
             rows-affected (first (driver/execute-raw-queries! driver conn-spec create-and-rename-queries))
             drop-renamed-query [(driver/compile-drop-table driver renamed-table)]]
