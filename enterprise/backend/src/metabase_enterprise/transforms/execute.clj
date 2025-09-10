@@ -206,15 +206,6 @@
       Closeable
       (close [_] (cleanup)))))
 
-(defn call-python-runner-api!
-  "Call the Python runner API endpoint to execute Python code.
-   Returns the result map or throws on error."
-  [code table-name->id run-id cancel-chan]
-  ;; TODO probably don't need this hack anymore, double check
-  (transforms.instrumentation/with-python-api-timing [run-id]
-    (update (python-runner/execute-python-code run-id code table-name->id cancel-chan)
-            :body #(if (string? %) json/decode+kw %))))
-
 (defn- debug-info-str [{:keys [exit-code events]}]
   (str/join "\n"
             ;; todo this was temporary before the log stuff, needs a rethink at some point
@@ -231,9 +222,11 @@
   "Create a table from metadata and insert data from source."
   [driver db-id table-name metadata data-source]
   (let [table-schema {:name (if (keyword? table-name) table-name (keyword table-name))
-                      :columns (mapv (fn [{:keys [name dtype]}]
+                      :columns (mapv (fn [{:keys [name dtype base_type database_type]}]
                                        {:name name
-                                        :type (transforms.util/dtype->base-type dtype)
+                                        :type (or (some->> base_type (keyword "type"))
+                                                  (transforms.util/dtype->base-type dtype))
+                                        :database-type database_type
                                         :nullable? true})
                                      (:fields metadata))}]
     (transforms.util/create-table-from-schema! driver db-id table-schema)
@@ -264,39 +257,76 @@
         (log/info "New table")
         (create-table-and-insert-data! driver (:id db) table-name metadata data-source)))))
 
+(defn test-python-transform!
+  "Execute a transform in test mode (does not write result into a table)."
+  [code tables->id run-id cancel-chan]
+  (with-open [shared-storage-ref (python-runner/open-s3-shared-storage! tables->id)]
+    (let [server-url              (transforms.settings/python-execution-server-url)
+          _                       (python-runner/copy-tables-to-s3! {:run-id         run-id
+                                                                     :shared-storage @shared-storage-ref
+                                                                     :table-name->id tables->id
+                                                                     :cancel-chan    cancel-chan})
+          _                       (python-runner/open-cancellation-process! server-url run-id cancel-chan) ; inherits lifetime of cancel-chan
+          response
+          (python-runner/execute-python-code-http-call!
+           {:server-url     server-url
+            :code           code
+            :run-id         run-id
+            :table-name->id tables->id
+            :shared-storage @shared-storage-ref})
+          {:keys [output events]} (python-runner/read-output-objects @shared-storage-ref)]
+      {:response response
+       :events   events
+       :output   output})))
+
 (defn- run-python-transform! [{:keys [source] :as transform} db run-id cancel-chan message-log]
-  (with-open [log-thread-ref (open-log-thread! run-id message-log)]
-    (let [driver                           (:engine db)
-          {:keys [source-tables body]}     source
-          {:keys [body status] :as result} (call-python-runner-api! body source-tables run-id cancel-chan)
-          {:keys [events]}   body]
+  (with-open [log-thread-ref     (open-log-thread! run-id message-log)
+              shared-storage-ref (python-runner/open-s3-shared-storage! (:source-tables source))]
+    (let [driver     (:engine db)
+          server-url (transforms.settings/python-execution-server-url)
+          _          (python-runner/copy-tables-to-s3! {:run-id                  run-id
+                                                        :shared-storage @shared-storage-ref
+                                                        :table-name->id (:source-tables source)
+                                                        :cancel-chan    cancel-chan})
+          _          (python-runner/open-cancellation-process! server-url run-id cancel-chan) ; inherits lifetime of cancel-chan
+          {:keys [status body] :as response}
+          (python-runner/execute-python-code-http-call!
+           {:server-url     server-url
+            :code           (:body source)
+            :run-id         run-id
+            :table-name->id (:source-tables source)
+            :shared-storage @shared-storage-ref})
+          {:keys [exit_code]} body
+          ;; TODO temporary to keep more code stable while refactoring
+          ;; no need to materialize these early (i.e output we can stream directly into a tmp file or db if small)
+          {:keys [output output-manifest events]} (python-runner/read-output-objects @shared-storage-ref)]
       (.close log-thread-ref)           ; early close to force any writes to flush
       (when (seq events)
         (replace-python-logs! message-log events))
       (if (not= 200 status)
-        (throw (ex-info (debug-info-str body)
+        (throw (ex-info (debug-info-str {:exit-code exit_code :events events}) ;; todo do better here
                         {:status-code     400
                          :api-status-code status
                          :body            body
+                         :events          events
                          :error           (:error body)}))
         (try
-          (let [temp-file (File/createTempFile "transform-output-" ".csv")
-                csv-data  (:output body)
-                metadata  (-> body :metadata json/decode+kw)]
-            (when-not (seq (:fields metadata))
+          (let [temp-file (File/createTempFile "transform-output-" ".csv")]
+            (when-not (seq (:fields output-manifest))
               (throw (ex-info "No fields in metadata"
-                              {:metadata metadata
-                               :raw-body body})))
+                              {:metadata output-manifest
+                               :raw-body body
+                               :events   events})))
             (try
               (with-open [writer (io/writer temp-file)]
-                (.write writer ^String csv-data))
+                (.write writer ^String output))
               (let [file-size (.length temp-file)]
                 (transforms.instrumentation/with-stage-timing [run-id :data-transfer :file-to-dwh]
-                  (transfer-file-to-db driver db transform metadata temp-file))
+                  (transfer-file-to-db driver db transform output-manifest temp-file))
                 (transforms.instrumentation/record-data-transfer! run-id :file-to-dwh file-size nil))
               (finally
                 (.delete temp-file))))
-          result
+          response
           (catch Exception e
             (log/error e "Failed to to create resulting table")
             (throw (ex-info "Failed to create the resulting table" {:error (.getMessage e)}))))))))

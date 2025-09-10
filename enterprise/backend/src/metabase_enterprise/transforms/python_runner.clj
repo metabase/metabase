@@ -15,11 +15,11 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.io BufferedWriter File OutputStream OutputStreamWriter)
+   (clojure.lang IDeref)
+   (java.io BufferedWriter Closeable File OutputStream OutputStreamWriter)
    (java.net URI)
    (java.nio.charset StandardCharsets)
    (java.time Duration)
-   (java.util.concurrent CancellationException)
    (software.amazon.awssdk.auth.credentials AwsBasicCredentials StaticCredentialsProvider)
    (software.amazon.awssdk.auth.credentials DefaultCredentialsProvider)
    (software.amazon.awssdk.core.sync RequestBody)
@@ -106,19 +106,25 @@
    :table_metadata {:table_id table-id}})
 
 (defn- write-table-data-to-file! [id temp-file cancel-chan]
-  (let [db-id       (t2/select-one-fn :db_id (t2/table-name :model/Table) :id id)
-        driver      (t2/select-one-fn :engine :model/Database db-id)
-        fields-meta (t2/select [:model/Field :id :name :base_type :effective_type :semantic_type :database_type :database_position]
-                               :table_id id
-                               :active true
-                               {:order-by [[:database_position :asc]]})
-        ;; TODO: limit
-        query       {:source-table id}
-        manifest    (generate-manifest  id fields-meta)]
+  (let [db-id           (t2/select-one-fn :db_id (t2/table-name :model/Table) :id id)
+        driver          (t2/select-one-fn :engine :model/Database db-id)
+        all-fields-meta (t2/select [:model/Field :id :name :base_type :effective_type :semantic_type :database_type :database_position :nfc_path :parent_id]
+                                   :table_id id
+                                   :active true
+                                   {:order-by [[:database_position :asc]]})
+        fields-meta (filter #(and (nil? (:parent_id %)) (nil? (:nfc_path %))) all-fields-meta)
+        query {:source-table id}
+        manifest (generate-manifest id fields-meta)]
     (execute-mbql-query driver db-id query
                         (fn [{cols-meta :cols} reducible-rows]
                           (with-open [os (io/output-stream temp-file)]
-                            (write-to-stream! os (mapv :name cols-meta) reducible-rows)))
+                            (let [filtered-col-names (set (map :name fields-meta))
+                                  filtered-cols (filter #(contains? filtered-col-names (:name %)) cols-meta)
+                                  col-name->index (into {} (map-indexed (fn [i col] [(:name col) i]) cols-meta))
+                                  filtered-indices (mapv #(col-name->index (:name %)) filtered-cols)
+                                  filtered-rows (eduction (map (fn [row] (mapv #(nth row %) filtered-indices)))
+                                                          reducible-rows)]
+                              (write-to-stream! os (mapv :name filtered-cols) filtered-rows))))
                         cancel-chan)
     manifest))
 
@@ -267,20 +273,20 @@
 (defn- cleanup-s3-objects [^S3Client s3-client bucket-name s3-keys]
   (run! (partial delete-s3-object s3-client bucket-name) s3-keys))
 
-(defn- read-from-s3 [^S3Client s3-client ^String bucket-name ^String key & [fallback-content]]
-  (try
-    (let [^GetObjectRequest request (build-get-object-request bucket-name key)
-          response                  (.getObject s3-client request)]
-      (slurp response))
-    (catch NoSuchKeyException e
-      (if fallback-content
-        fallback-content
-        (throw e)))))
+(defn- read-from-s3
+  ([s3-client bucket-name key] (read-from-s3 s3-client bucket-name key ::throw))
+  ([^S3Client s3-client ^String bucket-name ^String key not-found]
+   (try
+     (let [^GetObjectRequest request (build-get-object-request bucket-name key)
+           response                  (.getObject s3-client request)]
+       (slurp response))
+     (catch NoSuchKeyException e
+       (if (identical? ::throw not-found)
+         (throw e)
+         not-found)))))
 
 (defn get-logs
   "Return the logs of the current running python process"
-  ;; TODO: we should be given an id for the expected job, se we don't return unrelated logs
-  ;;       if the job has already finished, we could fethc the logs from the db instead
   [run-id]
   (let [server-url (transforms.settings/python-execution-server-url)]
     (http/get (str server-url "/logs")
@@ -290,130 +296,128 @@
                :as               :json
                :query-params     {:request_id run-id}})))
 
-(defn execute-python-code
-  "Execute Python code using the Python execution server."
-  [run-id code table-name->id cancel-chan]
-  (let [prefix        (some-> (transforms.settings/python-storage-s-3-prefix) (str "/"))
-        work-dir-name (str prefix "run-" (System/nanoTime) "-" (rand-int 10000))]
+(defn- s3-shared-storage [table-name->id]
+  (let [prefix              (some-> (transforms.settings/python-storage-s-3-prefix) (str "/"))
+        work-dir-name       (str prefix "run-" (System/nanoTime) "-" (rand-int 10000))
+        container-presigner (create-s3-presigner-for-container)
+        bucket-name         (transforms.settings/python-storage-s-3-bucket)
+        loc
+        (fn [method relative-path]
+          (let [path (str work-dir-name "/" relative-path)]
+            {:path   path
+             :method method
+             :url    (case method :put (generate-presigned-put-url container-presigner bucket-name path)
+                           :get (generate-presigned-get-url container-presigner bucket-name path))}))]
+    {:s3-client   (create-s3-client)                        ;; do not like mixing interactive things with descriptions, but its damn convenient to have it here for now
+     :bucket-name bucket-name
+     :objects
+     (into
+      {:output          (loc :put "output.csv")
+       :output-manifest (loc :put "output-manifest.json")
+       :events          (loc :put "events.jsonl")}
+      (for [[table-name id] table-name->id]
+        {[:table id :manifest] (loc :get (str "-table-" (name table-name) "-" id ".manifest.json"))
+         [:table id :data]     (loc :get (str "-table-" (name table-name) "-" id ".jsonl"))}))}))
 
-    (try
-      (let [server-url               (transforms.settings/python-execution-server-url)
-            bucket-name              (transforms.settings/python-storage-s-3-bucket)
-            s3-client                (create-s3-client)
-            container-presigner      (create-s3-presigner-for-container)
+(defn open-s3-shared-storage!
+  "Returns a deref'able shared storage value, (.close) will cleanup any s3 objects named in storage (data files for tables and so on)."
+  ^Closeable [table-name->id]
+  (let [shared-storage (s3-shared-storage table-name->id)]
+    (reify IDeref
+      (deref [_] shared-storage)
+      Closeable
+      (close [_] (cleanup-s3-objects (:s3-client shared-storage) (:bucket-name shared-storage) (map :path (vals (:objects shared-storage))))))))
 
-            ;; Generate S3 keys for output files
-            output-key               (str work-dir-name "/output.csv")
-            output-manifest-key      (str work-dir-name "/output.manifest.json")
-            events-key               (str work-dir-name "/events.jsonl")
-            ;; Generate presigned URLs for writing (using container client)
-            output-url               (generate-presigned-put-url container-presigner bucket-name output-key)
-            output-manifest-url      (generate-presigned-put-url container-presigner bucket-name output-manifest-key)
-            events-url               (generate-presigned-put-url container-presigner bucket-name events-key)
-            ;; Upload input table data (write to disk first, then upload to S3)
-            table-results            (for [[table-name id] table-name->id]
-                                       (let [temp-file       (File/createTempFile
-                                                              (str work-dir-name "-table-" (name table-name) "-" id)
-                                                              ".jsonl")
-                                             manifest-file   (File/createTempFile
-                                                              (str work-dir-name "-table-" (name table-name) "-" id)
-                                                              ".manifest.json")
-                                             s3-key          (str work-dir-name "/" (.getName temp-file))
-                                             manifest-s3-key (str work-dir-name "/" (.getName manifest-file))]
-                                         (try
-                                           ;; Write table data to temporary file and get manifest
-                                           (let [manifest (transforms.instrumentation/with-stage-timing [run-id :data-transfer :dwh-to-file]
-                                                            (write-table-data-to-file! id temp-file cancel-chan))]
-                                             ;; Write manifest to file
-                                             (with-open [writer (io/writer manifest-file)]
-                                               (json/encode-to manifest writer {}))
-                                             (let [file-size (.length temp-file)
-                                                   manifest-size (.length manifest-file)]
-                                               (transforms.instrumentation/record-data-transfer! run-id :dwh-to-file file-size nil)
+(defn copy-tables-to-s3!
+  "Writes table content to their corresponding objects named in shared-storage, see (open-shared-storage!).
+  Blocks until all tables are fully written and committed to shared storage."
+  [{:keys [run-id
+           shared-storage
+           table-name->id
+           cancel-chan]}]
+  (doseq [id (vals table-name->id)
+          :let [{:keys [s3-client bucket-name objects]} shared-storage
+                {data-path :path}     (get objects [:table id :data])
+                {manifest-path :path} (get objects [:table id :manifest])]]
+    (let [temp-file       (File/createTempFile data-path "")
+          manifest-file   (File/createTempFile manifest-path "")]
+      (try
+        ;; Write table data to temporary file and get manifest
+        (let [manifest (transforms.instrumentation/with-stage-timing [run-id :data-transfer :dwh-to-file]
+                         (write-table-data-to-file! id temp-file cancel-chan))]
+          ;; Write manifest to file
+          (with-open [writer (io/writer manifest-file)]
+            (json/encode-to manifest writer {}))
+          (let [file-size (.length temp-file)
+                manifest-size (.length manifest-file)]
+            (transforms.instrumentation/record-data-transfer! run-id :dwh-to-file file-size nil)
 
-                                               ;; Upload both files to S3
-                                               (transforms.instrumentation/with-stage-timing [run-id :data-transfer :file-to-s3]
-                                                 (upload-file-to-s3 s3-client bucket-name s3-key temp-file)
-                                                 (upload-file-to-s3 s3-client bucket-name manifest-s3-key manifest-file))
+            ;; Upload both files to S3
+            (transforms.instrumentation/with-stage-timing [run-id :data-transfer :file-to-s3]
+              (upload-file-to-s3 s3-client bucket-name data-path temp-file)
+              (upload-file-to-s3 s3-client bucket-name manifest-path manifest-file))
 
-                                               (let [data-url     (generate-presigned-get-url container-presigner bucket-name s3-key)
-                                                     manifest-url (generate-presigned-get-url container-presigner bucket-name manifest-s3-key)]
-                                                 (transforms.instrumentation/record-data-transfer! run-id :file-to-s3 (+ file-size manifest-size) nil)
-                                                 {:table-name      (name table-name)
-                                                  :url             data-url
-                                                  :manifest-url    manifest-url
-                                                  :s3-key          s3-key
-                                                  :manifest-s3-key manifest-s3-key})))
-                                           (finally
-                                             ;; Clean up temporary files
-                                             (safe-delete temp-file)
-                                             (safe-delete manifest-file)))))
-            table-name->url          (into {} (map (juxt :table-name :url) table-results))
-            table-name->manifest-url (into {} (map (juxt :table-name :manifest-url) table-results))
-            all-s3-keys              (concat [output-key output-manifest-key events-key]
-                                             (map :s3-key table-results)
-                                             (map :manifest-s3-key table-results))
-            canc                     (a/go (when (a/<! cancel-chan)
-                                             (http/post (str server-url "/cancel")
-                                                        {:content-type :json
-                                                         :body         (json/encode {:request_id run-id})
-                                                         :async?       true}
-                                                        identity identity)))
-            payload                  {:code                code
-                                      :timeout             30
-                                      :request_id          run-id
-                                      :output_url          output-url
-                                      :output_manifest_url output-manifest-url
-                                      :events_url          events-url
-                                      :table_mapping       table-name->url
-                                      :manifest_mapping    table-name->manifest-url}
-            response                 (http/post (str server-url "/execute")
-                                                {:content-type     :json
-                                                 :accept           :json
-                                                 :body             (json/encode payload)
-                                                 :throw-exceptions false
-                                                 :as               :json})
-            _                        (a/close! canc)
+            (transforms.instrumentation/record-data-transfer! run-id :file-to-s3 (+ file-size manifest-size) nil)))
+        (finally
+          ;; Clean up temporary files
+          (safe-delete temp-file)
+          (safe-delete manifest-file))))))
 
-            result                   (:body response)
-            ;; TODO look into why some tests return json and others strings
-            result                   (if (string? result) (json/decode result keyword) result)]
+(defn execute-python-code-http-call!
+  "Calls the /execute endpoint of the python runner. Blocks until the run either succeeds or fails and returns
+  the response from the server."
+  [{:keys [server-url code run-id table-name->id shared-storage]}]
+  (let [{:keys [objects]} shared-storage
+        {:keys [output output-manifest events]} objects
 
-        (try
-          (if (and (= 200 (:status response))
-                   (zero? (:exit_code result)))
-           ;; Success - read the output from S3
-            (let [output-content  (read-from-s3 s3-client bucket-name output-key)
-                  output-manifest (read-from-s3 s3-client bucket-name output-manifest-key "{}")
-                  events-content  (read-from-s3 s3-client bucket-name events-key "[]")]
-              (if (not (str/blank? output-content))
-                {:status 200
-                 :body   {:output output-content
-                          :metadata output-manifest
-                          :events (mapv json/decode+kw (str/split-lines events-content))}}
-                {:status 500
-                 :body   {:error  "Transform did not produce output CSV"
-                          :events (mapv json/decode+kw (str/split-lines events-content))}}))
-           ;; Error from execution server - read events .jsonl (including stderr/stdout) from S3
-            (let [events-content (read-from-s3 s3-client bucket-name events-key "[]")]
-              {:status 500
-               :body
-               {:error       (or (:error result) "Execution failed")
-                :exit-code   (:exit_code result)
-                :status-code (:status response)
-                :timeout     (:timeout result)
-                :events      (mapv json/decode+kw (str/split-lines events-content))}}))
-          (finally
-            ;; Clean up S3 objects
-            (try
-              (cleanup-s3-objects s3-client bucket-name all-s3-keys)
-              (catch Exception _)))))
+        table-name->url          (update-vals table-name->id (comp :url #(get objects [:table % :data])))
+        table-name->manifest-url (update-vals table-name->id (comp :url #(get objects [:table % :manifest])))
 
-      (catch CancellationException _
-        {:status 408
-         :body   {:error "Interrupted"}})
+        payload                  {:code                code
+                                  :timeout             30
+                                  :request_id          run-id
+                                  :output_url          (:url output)
+                                  :output_manifest_url (:url output-manifest)
+                                  :events_url          (:url events)
+                                  :table_mapping       table-name->url
+                                  :manifest_mapping    table-name->manifest-url}
 
-      (catch Exception e
-        (.printStackTrace e)
-        {:status 500
-         :body   {:error (str "Failed to connect to Python execution server: " (.getMessage e))}}))))
+        response                 (transforms.instrumentation/with-python-api-timing [run-id]
+                                   (http/post (str server-url "/execute")
+                                              {:content-type     :json
+                                               :accept           :json
+                                               :body             (json/encode payload)
+                                               :throw-exceptions false
+                                               :as               :json}))]
+    ;; when a 500 is returned we observe a string in the body (despite the python returning json)
+    ;; always try to parse the returned string as json before yielding (could tighten this up at some point)
+    (update response :body (fn [string-if-error]
+                             (if (string? string-if-error)
+                               (try
+                                 (json/decode+kw string-if-error)
+                                 (catch Exception _
+                                   {:error string-if-error}))
+                               string-if-error)))))
+
+(defn open-cancellation-process!
+  "Starts a core.async process that optimistically sends a cancellation request to the python executor if cancel-chan receives a value.
+  Returns a channel that will receive either the async http call j.u.c.FutureTask in the case of cancellation, or nil when the cancel-chan is closed."
+  [server-url run-id cancel-chan]
+  (a/go (when (a/<! cancel-chan)
+          (http/post (str server-url "/cancel")
+                     {:content-type :json
+                      :body         (json/encode {:request_id run-id})
+                      :async?       true}
+                     identity identity))))
+
+;; temporary, we should not need to realize data/events files into memory longer term
+(defn read-output-objects
+  "Temporary function that strings/jsons stuff in S3 and returns it for compatibility."
+  [{:keys [s3-client bucket-name objects]}]
+  (let [{:keys [output output-manifest events]} objects
+        output-content          (read-from-s3 s3-client bucket-name (:path output) nil)
+        output-manifest-content (read-from-s3 s3-client bucket-name (:path output-manifest) "{}")
+        events-content          (read-from-s3 s3-client bucket-name (:path events))]
+    {:output output-content
+     :output-manifest (json/decode+kw output-manifest-content)
+     :events (mapv json/decode+kw (str/split-lines events-content))}))
