@@ -147,7 +147,9 @@
                  {:ssl true
                   :host "server.clickhouseconnect.test"
                   :port 8443
-                  :dbname "default system"
+                  :enable-multiple-db true
+                  :db-filters-patterns "default, system"
+                  :db-filters-type "inclusion"
                   :additional-options additional-options}))))))))
 
 (deftest ^:parallel clickhouse-nippy
