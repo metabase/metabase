@@ -23,10 +23,13 @@ export function useCheckCardDependencies({
         store.getState(),
         question,
       );
+      const { id, type, dataset_query, result_metadata } =
+        submittableQuestion.card();
       const data = await checkCard({
-        id: submittableQuestion.id(),
-        type: submittableQuestion.type(),
-        dataset_query: submittableQuestion.datasetQuery(),
+        id,
+        type,
+        dataset_query,
+        result_metadata,
       }).unwrap();
       if (data != null && !data.success) {
         setQuestion(question);
@@ -46,10 +49,15 @@ export function useCheckCardDependencies({
     }
   }, [question, onSave]);
 
+  const handleCancelSave = useCallback(() => {
+    setIsConfirming(false);
+  }, []);
+
   return {
     checkData: data,
     isConfirming,
     handleInitialSave,
     handleSaveAfterConfirmation,
+    handleCancelSave,
   };
 }

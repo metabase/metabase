@@ -21,6 +21,7 @@ import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { connect, useDispatch } from "metabase/lib/redux";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import {
   setDatasetEditorTab,
   setUIControls,
@@ -38,6 +39,7 @@ import {
   getIsResultDirty,
   getMetadataDiff,
   getResultsMetadata,
+  getSubmittableQuestion,
   getVisualizationSettings,
   isResultsMetadataDirty,
 } from "metabase/query_builder/selectors";
@@ -474,6 +476,21 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     }
   };
 
+  const {
+    checkData,
+    isConfirming,
+    handleInitialSave,
+    handleSaveAfterConfirmation,
+    handleCancelSave,
+  } = PLUGIN_DEPENDENCIES.useCheckCardDependencies({
+    getSubmittableQuestion,
+    onSave: async (question) => {
+      await onSave(question, { rerunQuery: true });
+      await setQueryBuilderMode("view");
+      runQuestionQuery();
+    },
+  });
+
   const handleSave = useCallback(async () => {
     const canBeDataset = checkCanBeModel(question);
     const isBrandNewDataset = !question.id();
@@ -495,9 +512,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
       });
       onOpenModal(MODAL_TYPES.SAVE);
     } else if (canBeDataset) {
-      await onSave(questionWithMetadata, { rerunQuery: true });
-      await setQueryBuilderMode("view");
-      runQuestionQuery();
+      await handleInitialSave(questionWithMetadata);
     } else {
       onOpenModal(MODAL_TYPES.CAN_NOT_CREATE_MODEL);
       throw new Error(t`Variables in models aren't supported yet`);
@@ -510,9 +525,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     dispatch,
     updateQuestion,
     onOpenModal,
-    onSave,
-    setQueryBuilderMode,
-    runQuestionQuery,
+    handleInitialSave,
   ]);
 
   const handleColumnSelect = useCallback(
@@ -744,6 +757,15 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
         onConfirm={handleCancelEdit}
         onClose={closeModal}
       />
+
+      {isConfirming && checkData != null && (
+        <PLUGIN_DEPENDENCIES.CheckDependenciesModal
+          checkData={checkData}
+          opened
+          onSave={handleSaveAfterConfirmation}
+          onClose={handleCancelSave}
+        />
+      )}
     </>
   );
 };
