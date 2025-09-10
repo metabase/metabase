@@ -294,6 +294,35 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       });
     });
   });
+
+  it("should navigate to Modular Embedding when clicking Embedding in admin and show sidebar links", () => {
+    cy.log("Navigate to Embedding admin section");
+    cy.visit("/admin/embedding");
+
+    cy.log("Check that we're on the modular embedding page");
+    cy.url().should("include", "/admin/embedding/modular");
+    cy.get("main").findByText("Modular embedding").should("be.visible");
+
+    cy.log("Verify sidebar contains static smbedding link");
+    cy.findByTestId("admin-layout-sidebar")
+      .findByRole("link", { name: /Static/ })
+      .should("have.attr", "href", "/admin/embedding/static");
+
+    cy.log("Verify sidebar does not contain interactive embedding");
+    cy.findByTestId("admin-layout-sidebar")
+      .findByRole("link", { name: /Interactive/ })
+      .should("not.exist");
+
+    cy.log("Verify sidebar does not contain setup guide");
+    cy.findByTestId("admin-layout-sidebar")
+      .findByRole("link", { name: /Setup/ })
+      .should("not.exist");
+
+    cy.log("Verify upsell icon is present in sidebar");
+    cy.findByTestId("admin-layout-sidebar")
+      .findByLabelText("gem icon")
+      .should("exist");
+  });
 });
 
 function resetEmbedding() {
