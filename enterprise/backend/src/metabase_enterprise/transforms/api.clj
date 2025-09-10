@@ -46,7 +46,7 @@
 
 (mr/def ::transform-target
   [:map
-   [:database :int]
+   [:database {:optional true} :int]
    [:type [:enum "table"]]
    [:schema {:optional true} [:or ms/NonBlankString :nil]]
    [:name :string]])

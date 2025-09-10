@@ -72,7 +72,7 @@
   ;; local run is responsible for status, using canceling lifecycle
   (try
     (when (driver.u/supports? driver :schemas db)
-      (when-not (driver/schema-exists? driver (:id db) output-schema)
+      (when-not (driver/schema-exists? driver db output-schema)
         (driver/create-schema-if-needed! driver conn-spec output-schema)))
     (canceling/chan-start-timeout-vthread! run-id (transforms.settings/transform-timeout))
     (let [cancel-chan (a/promise-chan)

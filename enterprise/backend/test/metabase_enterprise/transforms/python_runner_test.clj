@@ -111,7 +111,7 @@
                                                  "    raise ValueError('Something went wrong')")})
           expected-template (str "ERROR: Transform function failed: Something went wrong\n"
                                  "Traceback (most recent call last):\n"
-                                 "  File \"/app/transform_runner.py\", line ___LINE___, in main\n"
+                                 "  File \"/app/external/transform_runner.py\", line ___LINE___, in main\n"
                                  "    result = script.transform()\n"
                                  "             ^^^^^^^^^^^^^^^^^^\n"
                                  "  File \"___PATH___/script.py\", line 2, in transform\n"
@@ -170,52 +170,51 @@
                                        :tables {"students" (mt/id :students)}})]
 
           (is (=? {:output   "id,name,score\n1,Alice,85\n2,Bob,92\n3,Charlie,88\n4,Dana,90\n"
-                   :metadata #(= (json/decode+kw %)
-                                 {:version         "0.1.0"
-                                  :fields          [{:base_type      "Integer",
-                                                     :dtype          "int64",
-                                                     :database_type  "int4",
-                                                     :effective_type "int4",
-                                                     :name           "id",
-                                                     :semantic_type  nil,
-                                                     :root_type      "Integer"}
-                                                    {:base_type      "Text",
-                                                     :dtype          "object",
-                                                     :database_type  "varchar",
-                                                     :effective_type "varchar",
-                                                     :name           "name",
-                                                     :semantic_type  nil,
-                                                     :root_type      "Text"}
-                                                    {:base_type      "Integer",
-                                                     :dtype          "int64",
-                                                     :database_type  "int4",
-                                                     :effective_type "int4",
-                                                     :name           "score",
-                                                     :semantic_type  nil,
-                                                     :root_type      "Integer"}],
-                                  :source_metadata {:fields         [{:base_type      "Integer",
-                                                                      :dtype          "int64",
-                                                                      :database_type  "int4",
-                                                                      :effective_type "int4",
-                                                                      :name           "id",
-                                                                      :semantic_type  nil,
-                                                                      :root_type      "Integer"}
-                                                                     {:base_type      "Text",
-                                                                      :dtype          "object",
-                                                                      :database_type  "varchar",
-                                                                      :effective_type "varchar",
-                                                                      :name           "name",
-                                                                      :semantic_type  nil,
-                                                                      :root_type      "Text"}
-                                                                     {:base_type      "Integer",
-                                                                      :dtype          "int64",
-                                                                      :database_type  "int4",
-                                                                      :effective_type "int4",
-                                                                      :name           "score",
-                                                                      :semantic_type  nil,
-                                                                      :root_type      "Integer"}],
-                                                    :table_metadata {:table_id (mt/id :students)},
-                                                    :version        "0.1.0"}})
+                   :output-manifest {:fields [{:base_type "Integer",
+                                               :database_type "int4",
+                                               :dtype "int64",
+                                               :effective_type "Integer",
+                                               :name "id",
+                                               :root_type "Integer",
+                                               :semantic_type "PK"}
+                                              {:base_type "Text",
+                                               :database_type "varchar",
+                                               :dtype "object",
+                                               :effective_type "Text",
+                                               :name "name",
+                                               :root_type "Text",
+                                               :semantic_type "Name"}
+                                              {:base_type "Integer",
+                                               :database_type "int4",
+                                               :dtype "int64",
+                                               :effective_type "Integer",
+                                               :name "score",
+                                               :root_type "Integer",
+                                               :semantic_type "Score"}],
+                                     :source_metadata {:fields [{:base_type "Integer",
+                                                                 :database_type "int4",
+                                                                 :dtype "int64",
+                                                                 :effective_type "Integer",
+                                                                 :name "id",
+                                                                 :root_type "Integer",
+                                                                 :semantic_type "PK"}
+                                                                {:base_type "Text",
+                                                                 :database_type "varchar",
+                                                                 :dtype "object",
+                                                                 :effective_type "Text",
+                                                                 :name "name",
+                                                                 :root_type "Text",
+                                                                 :semantic_type "Name"}
+                                                                {:base_type "Integer",
+                                                                 :database_type "int4",
+                                                                 :dtype "int64",
+                                                                 :effective_type "Integer",
+                                                                 :name "score",
+                                                                 :root_type "Integer",
+                                                                 :semantic_type "Score"}],
+                                                       :table_metadata {:table_id (mt/malli=? int?)},
+                                                       :version "0.1.0"},
+                                     :version "0.1.0"}
                    :stdout   (str "Successfully saved 4 rows to CSV\n"
                                   "Successfully saved output manifest with 3 fields")
                    :stderr   ""}
@@ -246,10 +245,9 @@
                                        :tables {"students" (mt/id :students)}})]
 
           (is (=? {:output   "student_count,average_score\n4,88.75\n"
-                   :metadata #(= (json/decode+kw %)
-                                 {:version        "0.1.0",
-                                  :fields         [{:name "student_count", :dtype "int64"}
-                                                   {:name "average_score", :dtype "float64"}]})
+                   :output-manifest {:version "0.1.0",
+                                     :fields  [{:name "student_count", :dtype "int64"}
+                                               {:name "average_score", :dtype "float64"}]}
                    :stdout   (str "Successfully saved 1 rows to CSV\n"
                                   "Successfully saved output manifest with 2 fields")
                    :stderr   ""}
@@ -301,7 +299,7 @@
             [row1 row2 row3] rows
             header-to-index (zipmap headers (range))
             get-col (fn [row col-name] (nth row (header-to-index col-name)))
-            metadata (some-> (:metadata result) json/decode+kw)]
+            metadata (:output-manifest result)]
 
         (is (= (set ["id" "name" "description" "count" "price" "is_active" "created_date" "updated_at" "scheduled_for"])
                (set headers)))
