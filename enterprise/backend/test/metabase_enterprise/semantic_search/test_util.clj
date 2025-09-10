@@ -82,6 +82,7 @@
       (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model)
       (thunk))))
 
+;; TODO: declare with macro (the do- less version) throws weird errors -- investigate!
 (declare do-with-indexable-documents!)
 
 (defmethod do-with-setup-test-db! :mock-gated
