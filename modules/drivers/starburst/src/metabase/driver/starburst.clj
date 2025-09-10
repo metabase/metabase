@@ -446,23 +446,16 @@
                   rs (.executeQuery stmt)]
         (.next rs)))
     (catch SQLException e
-      ;; The actual exception thorwn is TrinoException with error code UNSUPPORTED_TABLE_TYPE,
+      ;; The actual exception thrown is TrinoException with error code UNSUPPORTED_TABLE_TYPE (133001),
       ;; but we can't check the type directly since the relevant io.trino.spi.* classes are not
-      ;; included in trino-jdbc.
-      ;; As a workaround, we check for specific error message patterns that indicate this issue.
+      ;; included in trino-jdbc. We check the vendor-specific error code instead.
       ;; See HiveMetadata.java and UnknownTableTypeException.java in trinodb/trino
-      (let [message (.getMessage e)
-            unsupported-table-type? (fn [message]
-                                      (and message
-                                           (or
-                                            (re-find #"Cannot query \w+ table" message)
-                                            (re-find #"Not an Iceberg table" message))))]
-        (if-not (unsupported-table-type? message)
-          (throw e) ; This is an unexpected SQLException - rethrow it
-          (do
-            (log/debugf e "Table %s.%s is not accessible through this catalog (mixed catalog table type)"
-                        table-schema table-name)
-            false))))))
+      (if (= 133001 (.getErrorCode e))
+        (do
+          (log/debugf e "Table %s.%s is not accessible through this catalog (mixed catalog table type)"
+                      table-schema table-name)
+          false)
+        (throw e)))))
 
 (defn- describe-schema
   "Gets a set of maps for all tables in the given `catalog` and `schema`."

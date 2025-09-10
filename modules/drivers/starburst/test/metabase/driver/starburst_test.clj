@@ -50,7 +50,7 @@
         (is (true? (sql-jdbc.sync.interface/have-select-privilege?
                     :starburst mock-conn "sales_data" "hive_table")))))
 
-    (testing "Returns false when DESCRIBE fails (incompatible table type like Iceberg in Hive catalog)"
+    (testing "Returns false when DESCRIBE fails with UNSUPPORTED_TABLE_TYPE error (incompatible table type like Iceberg in Hive catalog)"
       (let [mock-conn (reify Connection
                         (getCatalog [_] "hive")
                         (prepareStatement [_ sql]
@@ -58,8 +58,8 @@
                           (reify PreparedStatement
                             (executeQuery [_]
                               ;; This simulates the actual Trino error when Hive catalog tries to describe an Iceberg table
-                              ;; See HiveMetadata.java and UnknownTableTypeException.java in trinodb/trino
-                              (throw (SQLException. "Cannot query Iceberg table 'sales_data.iceberg_table'")))
+                              ;; The error code 133001 corresponds to UNSUPPORTED_TABLE_TYPE in Trino's StandardErrorCode
+                              (throw (SQLException. "Cannot query Iceberg table 'sales_data.iceberg_table'" nil 133001)))
                             (close [_] nil))))]
         (is (false? (sql-jdbc.sync.interface/have-select-privilege?
                      :starburst mock-conn "sales_data" "iceberg_table")))))
@@ -71,8 +71,8 @@
                           (is (= "DESCRIBE \"hive\".\"sales_data\".\"restricted_table\"" sql))
                           (reify PreparedStatement
                             (executeQuery [_]
-                              ;; This is a regular permission error, not a mixed catalog issue
-                              (throw (SQLException. "Access Denied: Cannot access table restricted_table")))
+                              ;; This is a regular permission error, not a mixed catalog issue (different error code)
+                              (throw (SQLException. "Access Denied: Cannot access table restricted_table" nil 42000)))
                             (close [_] nil))))]
         ;; This should throw the exception rather than returning false
         (is (thrown? SQLException
