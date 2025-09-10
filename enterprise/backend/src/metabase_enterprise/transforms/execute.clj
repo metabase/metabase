@@ -14,7 +14,6 @@
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -36,24 +35,6 @@
 (mr/def ::transform-opts
   [:map
    [:overwrite? :boolean]])
-
-(defmacro with-transform-lifecycle
-  "Macro to manage transform run lifecycle. Starts a run, executes body,
-   and handles success/failure appropriately.
-
-   Usage:
-   (with-transform-lifecycle [run-id transform-id opts]
-     ;; body that returns result on success or throws on failure
-     )"
-  [[run-id-sym [transform-id opts]] & body]
-  `(let [{~run-id-sym :id} (transform-run/start-run! ~transform-id ~opts)]
-     (try
-       (let [result# (do ~@body)]
-         (transform-run/succeed-started-run! ~run-id-sym)
-         result#)
-       (catch Throwable t#
-         (transform-run/fail-started-run! ~run-id-sym {:message (.getMessage t#)})
-         (throw t#)))))
 
 (defn- sync-target!
   ([transform-id run-id]
@@ -354,7 +335,6 @@
               {:db db
                :transform-type (keyword (:type target))
                :conn-spec (driver/connection-spec driver db)
-               ;; :query (transforms.util/compile-source source)
                :output-schema (:schema target)
                :output-table (transforms.util/qualified-table-name driver target)}
               result   (run-cancelable-transform! run-id driver transform-details (fn [cancel-chan] (run-python-transform! transform db run-id cancel-chan message-log)))]
