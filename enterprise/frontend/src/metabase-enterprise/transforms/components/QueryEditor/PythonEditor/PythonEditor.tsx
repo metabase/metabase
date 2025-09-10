@@ -90,8 +90,7 @@ export function PythonEditor({
     } catch (error: any) {
       // The API returns error data directly in error.data
       const errorData = error?.data || {};
-      const errorMessage =
-        errorData.error || error?.message || "Failed to execute Python script";
+      const errorMessage = error?.message || "Failed to execute Python script";
       const stdout = errorData.stdout || "";
       const stderr = errorData.stderr || "";
 
