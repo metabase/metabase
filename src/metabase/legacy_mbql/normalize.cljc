@@ -42,6 +42,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf]
    [metabase.util.time :as u.time]))
 
@@ -1054,11 +1055,12 @@
   "Replaces legacy filter clauses with modern alternatives."
   [query]
   (try
-    (lib.util.match/replace query
-      (filter-clause :guard mbql.preds/Filter?)
-      (-> filter-clause
-          replace-relative-date-filters
-          replace-exclude-date-filters))
+    (let [filter? (mr/validator ::mbql.s/Filter)]
+     (lib.util.match/replace query
+       (filter-clause :guard filter? #_ mbql.preds/Filter?)
+       (-> filter-clause
+           replace-relative-date-filters
+           replace-exclude-date-filters)))
     (catch #?(:clj Throwable :cljs :default) e
       (throw (ex-info (i18n/tru "Error replacing legacy filters")
                       {:query query}

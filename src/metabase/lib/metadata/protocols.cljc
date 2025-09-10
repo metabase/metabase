@@ -77,7 +77,7 @@
   "Schema for something that satisfies the [[metabase.lib.metadata.protocols/MetadataProvider]] protocol."
   [:fn
    {:error/message "Valid MetadataProvider"}
-   #'metadata-provider?])
+   metadata-provider?])
 
 (defn metadata-providerable?
   "Whether `x` is a [[metadata-provider?]], or has one attached at `:lib/metadata` (i.e., a query)."
