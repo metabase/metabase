@@ -2,7 +2,12 @@ import { useMemo } from "react";
 
 import { useListPopularItemsQuery, useListRecentsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDatabaseListQuery, useSetting } from "metabase/common/hooks";
+import {
+  useDatabaseListQuery,
+  useHasTokenFeature,
+  useSetting,
+} from "metabase/common/hooks";
+import { EmbeddingHub } from "metabase/embedding/embedding-hub";
 import { useSelector } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { getUser } from "metabase/selectors/user";
@@ -19,6 +24,7 @@ import { HomeXraySection } from "../HomeXraySection";
 export const HomeContent = (): JSX.Element | null => {
   const user = useSelector(getUser);
   const embeddingHomepage = useSetting("embedding-homepage");
+  const isEmbeddingFeatureEnabled = useHasTokenFeature("embedding");
   const isXrayEnabled = useSelector(getIsXrayEnabled);
   const { data: databases, error: databasesError } = useDatabaseListQuery();
   const { data: recentItemsRaw, error: recentItemsError } = useListRecentsQuery(
@@ -43,6 +49,10 @@ export const HomeContent = (): JSX.Element | null => {
   }
 
   if (embeddingHomepage === "visible" && user.is_superuser) {
+    if (isEmbeddingFeatureEnabled) {
+      return <EmbeddingHub />;
+    }
+
     return <EmbedHomepage />;
   }
 

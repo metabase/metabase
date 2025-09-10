@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getLandingPageIllustration } from "metabase/selectors/whitelabel";
@@ -25,6 +26,13 @@ export const HomeLayout = ({ children }: HomeLayoutProps): JSX.Element => {
   const [showModal, setShowModal] = useState(false);
   const isAdmin = useSelector(getUserIsAdmin);
   const landingPageIllustration = useSelector(getLandingPageIllustration);
+  const embeddingHomepage = useSetting("embedding-homepage");
+  const isEmbeddingFeatureEnabled = useHasTokenFeature("embedding");
+
+  // for embedding hub -- will be removed before merging the integration branch.
+  if (embeddingHomepage === "visible" && isAdmin && isEmbeddingFeatureEnabled) {
+    return <>{children}</>;
+  }
 
   return (
     <LayoutRoot data-testid="home-page">

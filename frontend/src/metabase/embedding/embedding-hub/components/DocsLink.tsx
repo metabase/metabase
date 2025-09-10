@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks/use-docs-url";
+import CS from "metabase/css/core/index.css";
 import type { UtmProps } from "metabase/selectors/settings";
-import { Button, Icon } from "metabase/ui";
 
 interface DocsLinkProps {
   docsPath: string;
@@ -23,13 +23,8 @@ export const DocsLink = ({ docsPath, utm, children }: DocsLinkProps) => {
   });
 
   return (
-    <Button
-      variant="outline"
-      component={ExternalLink}
-      href={url}
-      rightSection={<Icon name="external" />}
-    >
+    <ExternalLink href={url} className={CS.noDecoration}>
       {children}
-    </Button>
+    </ExternalLink>
   );
 };
