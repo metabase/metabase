@@ -45,8 +45,10 @@
         (comp cat (keep :id))
         (lib.util.match/match (:query query) {:source-metadata source-metadata} source-metadata)))
 
+;;; TODO (Cam 9/10/25) -- give this a more accurate name like `prefetch-all-fields` or
+;;; `warm-metadata-provider-cache-with-all-fields` or something.
 (defn resolve-fields
-  "Resolve all field referenced in the `query`, and store them in the QP Store."
+  "Resolve all field referenced in the `query`, and store them in the Metadata Provider."
   [query]
   (let [ids (field-ids query)]
     (try

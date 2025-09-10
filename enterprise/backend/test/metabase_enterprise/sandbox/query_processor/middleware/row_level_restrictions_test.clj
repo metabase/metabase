@@ -891,7 +891,7 @@
 
                             test-preprocessing
                             (fn []
-                              (testing "`resolve-joined-fields` middleware should infer `:field` `:join-alias` correctly"
+                              (testing "`fix-bad-field-id-refs` middleware should infer `:field` `:join-alias` correctly"
                                 (is (= [:=
                                         [:field (mt/id :products :category) {:join-alias "products"}]
                                         [:value "Widget" {:base_type :type/Text

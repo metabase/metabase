@@ -6,6 +6,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
@@ -42,11 +43,29 @@
    table-id              :- ::lib.schema.id/table]
   (lib.metadata.protocols/table (->metadata-provider metadata-providerable) table-id))
 
+(defn- fields* [metadata-providerable table-id {:keys [only-active?]}]
+  (-> (lib.metadata.protocols/fields (->metadata-provider metadata-providerable) table-id)
+      (cond->> only-active?
+        (remove (fn [col]
+                  (or (false? (:active col))
+                      (#{:sensitive :retired} (:visibility-type col))))))
+      (->> (sort-by (juxt #(:position % 0) #(u/lower-case-en (:name % "")))))))
+
 (mu/defn fields :- [:sequential ::lib.schema.metadata/column]
   "Get metadata about all the Fields belonging to a specific Table."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    table-id              :- ::lib.schema.id/table]
-  (lib.metadata.protocols/fields (->metadata-provider metadata-providerable) table-id))
+  (fields* metadata-providerable table-id {:only-active? false}))
+
+(mu/defn active-fields :- [:sequential ::lib.schema.metadata/column]
+  "Like [[fields]], but filters out any Fields that are not `:active` or with `:visibility-type`s that mean they
+  should not be included in queries.
+
+  These fields are the ones we use for default `:fields`, which becomes the default `SELECT ...` (or equivalent) when
+  building a query."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   table-id              :- ::lib.schema.id/table]
+  (fields* metadata-providerable table-id {:only-active? true}))
 
 (mu/defn metadatas-for-table :- [:sequential [:or
                                               ::lib.schema.metadata/column

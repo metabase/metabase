@@ -828,7 +828,7 @@
                 (-> (lib.tu.macros/mbql-query orders
                       {:expressions {"double_total" [:* $total 2]}
                        ;; this is a broken field ref! It should use the join alias `p`. Luckily
-                       ;; the [[metabase.query-processor.middleware.resolve-joined-fields]] middleware should fix it
+                       ;; the [[metabase.query-processor.middleware.fix-bad-field-id-refs]] middleware should fix it
                        ;; for us.
                        :breakout    [!hour-of-day.people.created-at
                                      [:expression "double_total"]]

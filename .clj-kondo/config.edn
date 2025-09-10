@@ -228,7 +228,7 @@
     (clojure.core.logic/fresh)
     (clojure.core.logic/matcha)
     (clojure.core.logic/run)
-    (clojure.test/is [query= =? malli= qv=])
+    (clojure.test/is [=? malli= qv=])
     (clojure.tools.macro/macrolet)
     instaparse.core/transform
     (metabase.server.streaming-response/streaming-response)

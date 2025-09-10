@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.resolve-joined-fields-test
+(ns metabase.query-processor.middleware.fix-bad-field-id-refs-test
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
@@ -7,7 +7,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.resolve-joined-fields :as resolve-joined-fields]
+   [metabase.query-processor.middleware.fix-bad-field-id-refs :as fix-bad-field-id-refs]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -17,7 +17,7 @@
 
   ([metadata-provider query]
    (-> (lib/query metadata-provider query)
-       resolve-joined-fields/resolve-joined-fields
+       fix-bad-field-id-refs/fix-bad-field-id-refs
        lib/->legacy-MBQL)))
 
 (deftest ^:parallel wrap-fields-in-joined-field-test
@@ -49,7 +49,7 @@
                                                :condition    [:= $user-id &u.users.id]}]}}))))))
 
 (deftest ^:parallel deduplicate-fields-test
-  (testing "resolve-joined-fields should deduplicate :fields after resolving stuff"
+  (testing "fix-bad-field-id-refs should deduplicate :fields after resolving stuff"
     (is (=? (lib.tu.macros/mbql-query checkins
               {:fields [[:field %users.name {:join-alias "u"}]]
                :filter [:!= [:field %users.name {:join-alias "u"}] nil]
@@ -65,7 +65,7 @@
                           :alias        "u"
                           :condition    [:= $user-id &u.users.id]}]}))))))
 
-(deftest ^:parallel resolve-joined-fields-in-source-queries-test
+(deftest ^:parallel fix-bad-field-id-refs-in-source-queries-test
   (testing "Should be able to resolve joined fields at any level of the query (#13642)"
     (testing "simple query"
       (let [query (lib.tu.macros/mbql-query nil
@@ -81,7 +81,7 @@
           (is (=? {:query {:filter (lib.tu.macros/$ids [:= [:field %products.category {:join-alias "products"}] "Widget"])}}
                   (wrap-joined-fields query))))))))
 
-(deftest ^:parallel resolve-joined-fields-in-source-queries-test-2
+(deftest ^:parallel fix-bad-field-id-refs-in-source-queries-test-2
   (testing "Should be able to resolve joined fields at any level of the query (#13642)"
     (testing "nested query"
       (let [nested-query (lib.tu.macros/mbql-query nil
@@ -98,7 +98,7 @@
                                                     [:= [:field %products.category {:join-alias "products"}] "Widget"])}}}
                   (wrap-joined-fields nested-query))))))))
 
-(deftest ^:parallel resolve-joined-fields-in-source-queries-e2e-test
+(deftest ^:parallel fix-bad-field-id-refs-in-source-queries-e2e-test
   (testing "Should be able to resolve joined fields at any level of the query (#13642)"
     (testing "joins in joins query"
       (let [joins-in-joins-query
@@ -125,7 +125,7 @@
             (is (=? {:status :completed, :row_count 1}
                     (qp/process-query (assoc-in joins-in-joins-query [:query :limit] 1))))))))))
 
-(deftest ^:parallel resolve-joined-fields-in-source-queries-test-4
+(deftest ^:parallel fix-bad-field-id-refs-in-source-queries-test-4
   (testing "Should be able to resolve joined fields at any level of the query (#13642)"
     (testing "multiple joins in joins query"
       (let [joins-in-joins-query
@@ -328,4 +328,4 @@
                                                 [:field {:join-alias "B"} 4] ; join alias should get added here
                                                 [:field {:join-alias "C"}
                                                  5]]]}]}]}
-              (resolve-joined-fields/resolve-joined-fields query))))))
+              (fix-bad-field-id-refs/fix-bad-field-id-refs query))))))

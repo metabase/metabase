@@ -578,7 +578,7 @@
   (log/debugf "Resolving %s from previous stage, source table, or source card" (pr-str id-or-name))
   (let [col (or (resolve-from-previous-stage-or-source* query stage-number id-or-name)
                 (do
-                  (log/infof "Failed to resolve Field %s in stage %s" (pr-str id-or-name) (pr-str stage-number))
+                  (log/debugf "Failed to resolve Field %s in stage %s. Trying other methods..." (pr-str id-or-name) (pr-str stage-number))
                   (resolve-ref-missing-join-alias query stage-number id-or-name))
                 ;; if we haven't found a match yet try getting metadata from the metadata provider if this is a
                 ;; Field ID ref. It's likely a ref that makes little or no sense (e.g. wrong table) but we can
