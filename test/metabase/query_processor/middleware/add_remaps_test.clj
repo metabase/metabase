@@ -809,7 +809,10 @@
                                               [:field {} (meta/id :orders :discount)]
                                               [:field {} (meta/id :orders :created-at)]
                                               [:field {} (meta/id :orders :quantity)]]}]}]}
-                (-> (qp.preprocess/preprocess query) :stages first))))
+                (-> (qp.preprocess/preprocess query)
+                    (->> (lib/query mp))
+                    :stages
+                    first))))
       (testing `qp.preprocess/query->expected-cols
         (is (= ["ID"
                 "Orders → ID"]
