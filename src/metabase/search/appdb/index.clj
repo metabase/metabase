@@ -290,11 +290,14 @@
    Context should be :search/updating or :search/reindexing to help control how to manage the updates"
   [context document-reducible]
   ;; New connection used for performing the updates which commit periodically without impacting any outer transactions.
-  (t2/with-connection [_conn (if search.ingestion/*force-sync* nil (mdb/data-source))]
-    (transduce (comp (partition-all insert-batch-size)
-                     (map (partial batch-update! context)))
-               (partial merge-with +)
-               document-reducible)))
+  (letfn [(do-index []
+            (transduce (comp (partition-all insert-batch-size)
+                             (map (partial batch-update! context)))
+                       (partial merge-with +)
+                       document-reducible))]
+    (if search.ingestion/*force-sync*
+      (do-index)
+      (t2/with-connection [_conn (mdb/data-source)] (do-index)))))
 
 (defmethod search.engine/update! :search.engine/appdb [_engine document-reducible]
   (index-docs! :search/updating document-reducible))
