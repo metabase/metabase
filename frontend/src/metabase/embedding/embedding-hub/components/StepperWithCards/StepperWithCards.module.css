@@ -10,7 +10,7 @@
 
 .verticalSeparator {
   --stepper-outline-thickness: 0.0625rem;
-  --stepper-outline-color: rgba(240, 240, 240, 1);
+  --stepper-outline-color: var(--mb-color-border);
 }
 
 .stepCompletedIcon > svg {
