@@ -82,7 +82,7 @@
                               "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")
           result         (execute {:code transform-code})]
       (is (=? {:output "name,age\nAlice,25\nBob,30\n"
-               :stdout "Successfully saved 2 rows to CSV\nSuccessfully saved output manifest with 2 fields"
+               :stdout "Successfully saved 2 rows to S3\nSuccessfully saved output manifest with 2 fields"
                :stderr ""}
               result)))))
 
@@ -133,7 +133,7 @@
                               "    return pd.DataFrame(data)")
           result         (execute {:code transform-code})]
       (is (=? {:output "x,y,z\n1,10,a\n2,20,b\n3,30,c\n"
-               :stdout "Successfully saved 3 rows to CSV\nSuccessfully saved output manifest with 3 fields"
+               :stdout "Successfully saved 3 rows to S3\nSuccessfully saved output manifest with 3 fields"
                :stderr ""}
               result)))))
 
@@ -147,7 +147,7 @@
                                 "    return pd.DataFrame(data)")
             result         (execute {:code transform-code})]
         (is (=? {:output "name,score\nCharlie,85\nDana,92\n"
-                 :stdout "Successfully saved 2 rows to CSV\nSuccessfully saved output manifest with 2 fields"
+                 :stdout "Successfully saved 2 rows to S3\nSuccessfully saved output manifest with 2 fields"
                  :stderr ""}
                 result))))))
 
@@ -215,7 +215,7 @@
                                                        :table_metadata {:table_id (mt/malli=? int?)},
                                                        :version "0.1.0"},
                                      :version "0.1.0"}
-                   :stdout   (str "Successfully saved 4 rows to CSV\n"
+                   :stdout   (str "Successfully saved 4 rows to S3\n"
                                   "Successfully saved output manifest with 3 fields")
                    :stderr   ""}
                   result)))))))
@@ -248,7 +248,7 @@
                    :output-manifest {:version "0.1.0",
                                      :fields  [{:name "student_count", :dtype "int64"}
                                                {:name "average_score", :dtype "float64"}]}
-                   :stdout   (str "Successfully saved 1 rows to CSV\n"
+                   :stdout   (str "Successfully saved 1 rows to S3\n"
                                   "Successfully saved output manifest with 2 fields")
                    :stderr   ""}
                   result)))))))
