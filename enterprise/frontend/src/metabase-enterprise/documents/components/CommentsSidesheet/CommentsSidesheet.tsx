@@ -235,6 +235,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
                   showLastDivider
                   targetId={document.id}
                   targetType="document"
+                  enableHoverHighlight={childTargetId === "all"}
                 />
               )}
 

@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useToast } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Avatar, Stack, Timeline, rem } from "metabase/ui";
 import {
   useCreateCommentMutation,
@@ -12,12 +12,13 @@ import {
   useUpdateCommentMutation,
 } from "metabase-enterprise/api";
 import { getCommentsUrl } from "metabase-enterprise/comments/utils";
+import { setHoveredChildTargetId } from "metabase-enterprise/documents/documents.slice";
+import type { DocumentContent } from "metabase-types/api";
 import type {
   Comment,
   CommentEntityType,
-  DocumentContent,
   EntityId,
-} from "metabase-types/api";
+} from "metabase-types/api/comments";
 
 import { CommentEditor } from "../CommentEditor";
 
@@ -29,6 +30,7 @@ export interface DiscussionProps {
   comments: Comment[];
   targetId: EntityId;
   targetType: CommentEntityType;
+  enableHoverHighlight?: boolean;
 }
 
 export const Discussion = ({
@@ -36,8 +38,10 @@ export const Discussion = ({
   comments,
   targetId,
   targetType,
+  enableHoverHighlight = false,
 }: DiscussionProps) => {
   const currentUser = useSelector(getCurrentUser);
+  const dispatch = useDispatch();
   const [, setNewComment] = useState<DocumentContent>();
   const parentCommentId = comments[0].id;
   const [sendToast] = useToast();
@@ -162,9 +166,27 @@ export const Discussion = ({
     }
   };
 
+  const handleMouseEnter = () => {
+    if (enableHoverHighlight && effectiveChildTargetId) {
+      dispatch(setHoveredChildTargetId(String(effectiveChildTargetId)));
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (enableHoverHighlight) {
+      dispatch(setHoveredChildTargetId(undefined));
+    }
+  };
+
   return (
     <Stack>
-      <Timeline bulletSize={rem(24)} lineWidth={1} className={S.discussionRoot}>
+      <Timeline
+        bulletSize={rem(24)}
+        lineWidth={1}
+        className={S.discussionRoot}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         {comments.map((comment, index) => (
           <DiscussionComment
             key={comment.id}
