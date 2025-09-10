@@ -179,17 +179,13 @@ jobs:
 
       - name: Extract chunk-specific changed timings
         id: extract-timings
-        if: inputs.split_index >= 0
+        if: inputs.split_index >= 0 && github.ref == 'refs/heads/master'
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
             const oldTimingsPath = "./e2e/support/timings.json";
             const newTimingsPath = "./e2e/support/newTimes.json";
-
-            console.log(`Checking for files:`);
-            console.log(`- ${oldTimingsPath}: ${fs.existsSync(oldTimingsPath)}`);
-            console.log(`- ${newTimingsPath}: ${fs.existsSync(newTimingsPath)}`);
 
             if (!fs.existsSync(newTimingsPath)) {
               throw new Error(`newTimes.json not found - cypress-split may not have generated it`);

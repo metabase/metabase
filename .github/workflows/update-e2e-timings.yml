@@ -3,7 +3,6 @@ name: Update E2E Timings
 permissions:
   contents: write
   pull-requests: write
-  actions: write
 
 on:
   workflow_dispatch:
@@ -12,11 +11,6 @@ on:
         description: "Number of days to look back for timing artifacts"
         type: number
         default: 7
-        required: false
-      delete_artifacts:
-        description: "Delete all merged-e2e-timings artifacts (one-time cleanup)"
-        type: boolean
-        default: false
         required: false
   schedule:
     # Run weekly on Sundays at 6 AM UTC
@@ -38,29 +32,7 @@ jobs:
         with:
           node-version: 22
 
-      - name: Delete merged-e2e-timings artifacts (if requested)
-        if: ${{ inputs.delete_artifacts == true }}
-        id: delete-artifacts
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { deleteAllMergedTimingArtifacts } = require('${{ github.workspace }}/.github/scripts/average-e2e-timings.js');
-            const result = await deleteAllMergedTimingArtifacts({
-              github,
-              context
-            });
-            
-            core.setOutput('deleted-count', result.deletedCount);
-            
-            if (result.deletedCount > 0) {
-              core.summary.addHeading('🗑️ Artifact Cleanup Results');
-              core.summary.addRaw(`Successfully deleted **${result.deletedCount}** merged-e2e-timings artifacts with absolute paths.`);
-              core.summary.addRaw('\nThese artifacts contained absolute paths that would cause issues when downloaded on different systems.');
-              await core.summary.write();
-            }
-
       - name: Collect and average timing data
-        if: ${{ inputs.delete_artifacts != true }}
         id: collect-timings
         uses: actions/github-script@v7
         with:
@@ -77,7 +49,6 @@ jobs:
             core.setOutput('artifact-count', result.artifactCount);
 
       - name: Set up git configuration
-        if: ${{ inputs.delete_artifacts != true }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -86,7 +57,6 @@ jobs:
           echo "Branch name will be: $BRANCH_NAME"
 
       - name: Create Pull Request
-        if: ${{ inputs.delete_artifacts != true }}
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -117,4 +87,6 @@ jobs:
             The timing data helps cypress-split optimize test distribution across parallel jobs.
 
             Co-Authored-By: GitHub Actions <actions@github.com>
+          labels: |
+            .CI & Tests
           add-paths: e2e/support/timings.json
