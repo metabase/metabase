@@ -31,7 +31,7 @@
   "Populate the index with the given documents."
   {:style/indent :defn}
   [documents & body]
-  `(with-open [_# (semantic.tu/open-temp-index!)]
+  `(semantic.tu/with-test-db! {:mode :mock-initialized}
      (semantic.tu/upsert-index! (map add-doc-defaults ~documents))
      ~@body))
 
