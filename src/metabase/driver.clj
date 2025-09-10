@@ -1289,6 +1289,14 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti rename-tables!
+  "Rename multiple tables atomically. Takes a map of {from-table to-table}.
+   Implementations should use transactions, compound operations, or metadata locks as supported by the database.
+   Table names may be qualified by schema e.g. :schema/table"
+  {:added "0.57.0", :arglists '([driver db-id rename-map])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti insert-into!
   "Insert `values` into a table named `table-name`. `values` is a lazy sequence of rows, where each row's order matches
    `column-names`.
