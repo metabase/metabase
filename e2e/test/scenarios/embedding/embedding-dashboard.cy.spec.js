@@ -1,7 +1,11 @@
 const { H } = cy;
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-import { createMockParameter } from "metabase-types/api/mocks";
+import {
+  createMockDashboardCard,
+  createMockParameter,
+} from "metabase-types/api/mocks";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
@@ -317,12 +321,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         cy.contains("Alycia McCullough");
       });
 
-      // close the suggestions popover
-      H.popover()
-        .first()
-        .within(() => {
-          H.fieldValuesCombobox().blur();
-        });
+      closePopover();
 
       cy.log("should allow searching PEOPLE.NAME by PEOPLE.NAME");
 
@@ -332,12 +331,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         cy.findByText("Alycia McCullough").should("be.visible");
       });
 
-      // close the suggestions popover
-      H.popover()
-        .first()
-        .within(() => {
-          H.fieldValuesCombobox().blur();
-        });
+      closePopover();
 
       cy.log("should show values for PEOPLE.SOURCE");
 
@@ -352,12 +346,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         cy.contains("Alycia McCullough");
       });
 
-      // close the suggestions popover
-      H.popover()
-        .first()
-        .within(() => {
-          H.fieldValuesCombobox().blur();
-        });
+      closePopover();
 
       cy.log("should accept url parameters");
 
@@ -1215,6 +1204,14 @@ function openFilterOptions(name) {
   H.filterWidget().contains(name).click();
 }
 
+function closePopover() {
+  H.popover()
+    .first()
+    .within(() => {
+      H.fieldValuesCombobox().blur();
+    });
+}
+
 function getDashboardFilter(name) {
   return cy
     .findByTestId("edit-dashboard-parameters-widget-container")
@@ -1225,3 +1222,137 @@ function assertRequiredEnabledForName({ name, enabled }) {
   getDashboardFilter(name).click();
   H.getRequiredToggle().should(enabled ? "be.enabled" : "not.be.enabled");
 }
+
+describe("scenarios > embedding > dashboard with custom dataset", () => {
+  beforeEach(() => {
+    H.restore("postgres-writable");
+
+    cy.signInAsAdmin();
+
+    H.queryWritableDB("DROP TABLE IF EXISTS test_users");
+    H.queryWritableDB(
+      "CREATE TABLE IF NOT EXISTS test_users (id INT PRIMARY KEY, first_name VARCHAR, last_name VARCHAR, email VARCHAR, phone VARCHAR, age INT, status VARCHAR)",
+    );
+    H.queryWritableDB(
+      `INSERT INTO test_users (id, first_name, last_name, email, phone, age, status) VALUES
+        (1, 'John', 'Smith', 'john.smith@email.com', '555-0101', 28, 'active'),
+        (2, 'Jane', '', 'jane.doe@email.com', '555-0102', 32, 'active'),
+        (3, '', 'Johnson', 'm.johnson@email.com', '555-0103', 45, 'inactive'),
+        (4, 'Mike', 'O''Connor', 'mike.oconnor@email.com', '555-0104', 29, 'active'),
+        (5, 'Sarah', 'D''Angelo', 'sarah.dangelo@email.com', '555-0105', 34, 'active'),
+        (6, 'José', 'García', 'jose.garcia@email.com', '555-0106', 41, 'active'),
+        (7, 'François', 'Müller', 'francois.muller@email.com', '555-0107', 26, 'inactive'),
+        (8, 'Anna-Maria', 'Smith-Jones', 'anna.smith@email.com', '', 35, 'active'),
+        (9, 'Bob', 'Test User', 'bob@test.com', '', 22, 'pending'),
+        (10, 'Alice', 'Wonder', 'alice@wonderland', '555-0110', 999, 'active'),
+        (11, 'Charlie', 'Brown', 'charlie@email', '555-0111', -5, 'suspended'),
+        (12, 'Diana', 'Prince', 'diana.prince@email.com', '+1-555-0112', 30, 'active'),
+        (13, 'Eve', 'Adams', 'eve.adams@email.com', '+44-20-7946-0958', 27, 'active'),
+        (14, 'Frank', '', 'frank@email.com', '555-0114', NULL, 'active'),
+        (15, 'Grace', 'Hopper', 'grace.hopper@email.com', '555-0115', 85, 'active'),
+        (16, 'Henry', 'Smith', 'henry.smith@email.com', '5550116', 19, 'active'),
+        (17, 'Ivy', 'League', 'ivy.league@email.com', '555.0117', 23, 'inactive'),
+        (18, 'Jack', '', 'jack@email.com', '555/0118', 31, 'active'),
+        (19, '', '', 'admin@system.com', '555-0119', 0, 'system'),
+        (20, 'Kate', 'O''Brian', 'kate.obrian@email.com', '(555) 120', 33, 'active')`,
+    );
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "test_users" });
+    cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("cardQuery");
+  });
+
+  it("should allow empty string parameter to populate linked parameter (metabase#40292)", () => {
+    const _dashboardDetails = {
+      enable_embedding: true,
+      embedding_params: {
+        first_name: "enabled",
+        last_name: "enabled",
+      },
+      parameters: [
+        createMockParameter({
+          id: "first_name",
+          slug: "first_name",
+          name: "First Name",
+          type: "string/=",
+          sectionId: "string",
+          values_query_type: "list",
+          filteringParameters: ["last_name"],
+        }),
+        createMockParameter({
+          id: "last_name",
+          slug: "last_name",
+          name: "Last Name",
+          type: "string/=",
+          sectionId: "string",
+          values_query_type: "list",
+        }),
+      ],
+    };
+
+    H.getTableId({ name: "test_users" }).then((tableId) => {
+      const _questionDetails = {
+        database: WRITABLE_DB_ID,
+        name: "Mock users",
+        query: { "source-table": tableId },
+      };
+
+      H.createDashboard(_dashboardDetails)
+        .then(({ body: dashboard }) => {
+          return H.createQuestion(_questionDetails).then(({ body: card }) => {
+            return cy
+              .request("PUT", `/api/dashboard/${dashboard.id}`, {
+                dashcards: [
+                  createMockDashboardCard({
+                    card_id: card.id,
+                    parameter_mappings: [
+                      {
+                        parameter_id: "first_name",
+                        card_id: card.id,
+                        target: [
+                          "dimension",
+                          ["field", 1264, { "base-type": "type/Text" }],
+                          { "stage-number": 0 },
+                        ],
+                      },
+                      {
+                        parameter_id: "last_name",
+                        card_id: card.id,
+                        target: [
+                          "dimension",
+                          ["field", 1262, { "base-type": "type/Text" }],
+                          { "stage-number": 0 },
+                        ],
+                      },
+                    ],
+                    size_x: 12,
+                    size_y: 8,
+                  }),
+                ],
+              })
+              .then(() => dashboard);
+          });
+        })
+        .then((dashboard) => {
+          const payload = {
+            resource: { dashboard: dashboard.id },
+            params: {},
+          };
+
+          H.visitEmbeddedPage(payload);
+          cy.wait("@cardQuery");
+
+          // Selecting the empty string
+          openFilterOptions("Last Name");
+          H.popover().within(() => {
+            cy.findByTestId("-filter-value").click();
+            cy.get("[type=submit]").click();
+          });
+
+          // Checking that only the relevant options are shown
+          openFilterOptions("First Name");
+          H.popover().within(() => {
+            cy.contains("Bob").should("not.exist");
+          });
+        });
+    });
+  });
+});
