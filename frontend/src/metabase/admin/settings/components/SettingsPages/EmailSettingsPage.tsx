@@ -24,6 +24,9 @@ export function EmailSettingsPage() {
     "email_restrict_recipients",
   );
 
+  // eslint-disable-next-line no-console
+  console.log("kick ci");
+
   if (isLoading) {
     return <LoadingAndErrorWrapper loading />;
   }
