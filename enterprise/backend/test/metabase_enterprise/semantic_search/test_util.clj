@@ -125,10 +125,10 @@
   (with-temp-datasource! "postgres"
     (try
       (when (#{:before :both} cleanup)
-        (jdbc/execute! (semantic.db.datasource/ensure-initialized-data-source!)
+        (jdbc/execute! (semantic.env/get-pgvector-datasource!)
                        [(str "DROP DATABASE IF EXISTS " dbname " (FORCE)")]))
       (log/debugf "Creating database %s" dbname)
-      (jdbc/execute! (semantic.db.datasource/ensure-initialized-data-source!)
+      (jdbc/execute! (semantic.env/get-pgvector-datasource!)
                      [(str "CREATE DATABASE " dbname)])
       (log/debugf "Created test pgvector database %s" dbname)
       (catch java.sql.SQLException e
@@ -141,7 +141,7 @@
   (when (#{:after :both} cleanup)
     (with-temp-datasource! "postgres"
       (try
-        (jdbc/execute! (semantic.db.datasource/ensure-initialized-data-source!)
+        (jdbc/execute! (semantic.env/get-pgvector-datasource!)
                        [(str "DROP DATABASE IF EXISTS " dbname " (FORCE)")])
         (catch java.sql.SQLException e
           (log/debugf "Test pgvector database teardown %s failed" dbname)
@@ -172,33 +172,17 @@
   `(with-weights {:rrf 1}
      ~@body))
 
-(def ^:private init-delay
-  (delay
-    (when-not @semantic.db.datasource/data-source
-      (semantic.db.datasource/init-db!))))
-
+;; TODO: remove
 (defn once-fixture [f]
   (when semantic.db.datasource/db-url
-    @init-delay
     (f)))
 
-(declare db)
-
-;; Reminder: This may become redundant.
+;; TODO: remove
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn ensure-no-migration-table-fixture [f]
-  (semantic.db.migration/drop-migration-table! db)
+  (semantic.db.migration/drop-migration-table! (semantic.env/get-pgvector-datasource!))
   (f)
-  (semantic.db.migration/drop-migration-table! db))
-
-(def db
-  "Proxies the semantic.db.datasource/data-source, avoids the deref and prettifies a little"
-  ;; proxy because semantic.db.datasource/data-source is not initialised until the fixture runs
-  (reify jdbc.protocols/Sourceable
-    (get-datasource [_] (jdbc.protocols/get-datasource @semantic.db.datasource/data-source))))
-
-(comment
-  (jdbc/execute! db ["select 1"]))
+  (semantic.db.migration/drop-migration-table! (semantic.env/get-pgvector-datasource!)))
 
 (def mock-embeddings
   "Static mapping from strings to (made-up) 4-dimensional embedding vectors for testing. Each pair of strings represents a
@@ -275,13 +259,13 @@
 (defmethod semantic.embedding/pull-model           "mock" [_])
 
 (defn query-index [search-context]
-  (:results (semantic.index/query-index db mock-index search-context)))
+  (:results (semantic.index/query-index (semantic.env/get-pgvector-datasource!) mock-index search-context)))
 
 (defn upsert-index! [documents & {:keys [index] :or {index mock-index} :as opts}]
-  (semantic.index/upsert-index! db index documents opts))
+  (semantic.index/upsert-index! (semantic.env/get-pgvector-datasource!) index documents opts))
 
 (defn delete-from-index! [model ids]
-  (semantic.index/delete-from-index! db mock-index model ids))
+  (semantic.index/delete-from-index! (semantic.env/get-pgvector-datasource!) mock-index model ids))
 
 (defn dog-training-native-query []
   (mt/native-query {:query "SELECT AVG(tricks) FROM dogs WHERE age > 7 GROUP BY breed"}))
@@ -326,11 +310,11 @@
 
 (defn open-temp-index! ^Closeable [& {:keys [index] :or {index mock-index}}]
   (closeable
-   (do (semantic.index/create-index-table-if-not-exists! db index {:force-reset? true})
+   (do (semantic.index/create-index-table-if-not-exists! (semantic.env/get-pgvector-datasource!) index {:force-reset? true})
        index)
    (fn cleanup-temp-index-table! [{:keys [table-name] :as index}]
      (try
-       (semantic.index/drop-index-table! db index)
+       (semantic.index/drop-index-table! (semantic.env/get-pgvector-datasource!) index)
        (catch Exception e
          (log/error e "Warning: failed to clean up test table" table-name))))))
 
@@ -340,12 +324,13 @@
   "First ensure that db is empty. Then perform initialization, including migration. Do the cleanup on close."
   ^Closeable []
   (closeable
-   (do (cleanup-index-metadata! db mock-index-metadata)
-       (semantic.pgvector-api/init-semantic-search! db mock-index-metadata mock-embedding-model)
+   (do (cleanup-index-metadata! (semantic.env/get-pgvector-datasource!) mock-index-metadata)
+       (semantic.pgvector-api/init-semantic-search! (semantic.env/get-pgvector-datasource!)
+                                                    mock-index-metadata mock-embedding-model)
        mock-index-metadata)
    (fn cleanup-temp-index-and-metadata! [index-metadata]
      (try
-       (cleanup-index-metadata! db index-metadata)
+       (cleanup-index-metadata! (semantic.env/get-pgvector-datasource!) index-metadata)
        (catch Exception e
          (log/error e "Warning: failed to clean up index and metadata" index-metadata))))))
 
@@ -485,19 +470,21 @@
   [& body]
   `(do-with-index! (fn [] ~@body)))
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn table-exists-in-db?
   "Check if a table actually exists in the database"
   [table-name]
   (when table-name
     (try
-      (semantic.util/table-exists? db (name table-name))
+      (semantic.util/table-exists? (semantic.env/get-pgvector-datasource!) (name table-name))
       (catch Exception _ false))))
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn table-has-index?
   [table-name index-name]
   (when table-name
     (try
-      (let [result (jdbc/execute! db
+      (let [result (jdbc/execute! (semantic.env/get-pgvector-datasource!)
                                   ["SELECT EXISTS (SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname = ?)"
                                    (name table-name)
                                    (name index-name)])]
@@ -572,7 +559,7 @@
 (defn index-count
   "Count the number of documents in the index."
   [index]
-  (let [result (jdbc/execute-one! db
+  (let [result (jdbc/execute-one! (semantic.env/get-pgvector-datasource!)
                                   (-> (sql.helpers/select [:%count.* :count])
                                       (sql.helpers/from (keyword (:table-name index)))
                                       semantic.index/sql-format-quoted)
@@ -584,7 +571,7 @@
   "Query the full index table and return all documents with decoded embeddings.
   Not used in tests, but useful for debugging."
   []
-  (->> (jdbc/execute! db
+  (->> (jdbc/execute! (semantic.env/get-pgvector-datasource!)
                       (-> (sql.helpers/select :model :model_id :content :creator_id :embedding)
                           (sql.helpers/from (keyword (:table-name mock-index)))
                           semantic.index/sql-format-quoted)
@@ -594,7 +581,7 @@
 (defn query-embeddings
   "Query the `mock-index` table and return the decoded `:embedding`s for the given `model`"
   [{:keys [model model_id]}]
-  (->> (jdbc/execute! db
+  (->> (jdbc/execute! (semantic.env/get-pgvector-datasource!)
                       (-> (sql.helpers/select :model :model_id :content :creator_id :embedding)
                           (sql.helpers/from (keyword (:table-name mock-index)))
                           (sql.helpers/where :and
@@ -607,7 +594,7 @@
 (defn query-tsvectors
   "Query the `mock-index` table and return the unwrapped tsvector columns for the given `model`"
   [{:keys [model model_id]}]
-  (->> (jdbc/execute! db
+  (->> (jdbc/execute! (semantic.env/get-pgvector-datasource!)
                       (-> (sql.helpers/select :model :model_id :content :creator_id
                                               :text_search_vector :text_search_with_native_query_vector)
                           (sql.helpers/from (keyword (:table-name mock-index)))
@@ -633,7 +620,7 @@
 (defn check-index-has-no-mock-docs []
   (let [{:keys [table-name]}     mock-index
         table-exists-sql         "select exists(select * from information_schema.tables where table_name = ?) table_exists"
-        [{:keys [table_exists]}] (jdbc/execute! db [table-exists-sql table-name])]
+        [{:keys [table_exists]}] (jdbc/execute! (semantic.env/get-pgvector-datasource!) [table-exists-sql table-name])]
     (when table_exists
       (check-index-has-no-mock-card)
       (check-index-has-no-mock-dashboard))))
