@@ -131,9 +131,9 @@
    (param-values dashboard param-key constraint-param-key->value nil))
 
   ([dashboard                   :- :map
-    param-key                   :- ms/NonBlankString
+    param-key                   :- ::parameters.schema/parameter.id
     constraint-param-key->value :- [:map-of string? any?]
-    query                       :- [:maybe ms/NonBlankString]]
+    query-string                :- [:maybe ms/NonBlankString]]
    (let [dashboard (t2/hydrate dashboard :resolved-params)
          param     (get (:resolved-params dashboard) param-key)]
      (when-not param
@@ -142,8 +142,8 @@
                         :status-code     400})))
      (custom-values/parameter->values
       param
-      query
-      (fn [] (chain-filter dashboard param-key constraint-param-key->value query))))))
+      query-string
+      (fn [] (chain-filter dashboard param-key constraint-param-key->value query-string))))))
 
 (defn- find-common-remapping-target
   "Check if ALL field-ids have identical remappings to the same display field.

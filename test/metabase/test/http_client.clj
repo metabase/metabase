@@ -339,7 +339,7 @@
                           (log/debug e method-name url)
                           (ex-data e))
                         (catch Exception e
-                          (throw (ex-info (.getMessage e)
+                          (throw (ex-info (ex-message e)
                                           {:method  method-name
                                            :url     url
                                            :request request}
