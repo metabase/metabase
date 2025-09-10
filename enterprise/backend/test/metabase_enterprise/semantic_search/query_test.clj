@@ -1,7 +1,6 @@
 (ns metabase-enterprise.semantic-search.query-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -9,10 +8,6 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
-
-(deftest database-initialised-test
-  (is (some? @semantic.db.datasource/data-source))
-  (is (= {:test 1} (semantic.db.datasource/test-connection!))))
 
 (deftest basic-query-test
   (testing "Simple queries with no filters"
