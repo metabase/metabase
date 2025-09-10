@@ -106,3 +106,19 @@ export function formatFrame(frame: "first" | "last" | "mid") {
 export function timezoneToUTCOffset(timezone: string) {
   return dayjs().tz(timezone).format("Z");
 }
+
+export function parseTime(value: dayjs.Dayjs | string) {
+  if (dayjs.isDayjs(value)) {
+    return value;
+  } else if (typeof value === "string") {
+    // removing the timezone part if it exists, so we can parse the time correctly
+    return dayjs(value.split(/[+-]/)[0], [
+      "HH:mm:ss.SSSZ",
+      "HH:mm:ss.SSS",
+      "HH:mm:ss",
+      "HH:mm",
+    ]);
+  }
+
+  return dayjs.utc(value);
+}
