@@ -117,6 +117,7 @@
   --mb-color-syntax-parameters: var(--mb-base-color-mango-40);
   --mb-color-syntax-parameters-active: var(--mb-base-color-mango-10);
   --mb-color-switch-off: var(--mb-base-color-orion-10);
+  --mb-color-shadow-embedding-hub-card: rgba(162, 197, 228, 0.7);
 
   /**
     * Base colors
