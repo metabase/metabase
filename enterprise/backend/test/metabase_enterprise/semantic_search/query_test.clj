@@ -20,7 +20,7 @@
   (testing "Simple queries with no filters"
     (mt/with-premium-features #{:semantic-search}
       (mt/as-admin
-        (semantic.tu/with-index!
+        (semantic.tu/with-test-db! {:mode :mock-indexed}
           (semantic.tu/with-only-semantic-weights
             (testing "Dog-related query finds dog content"
               (let [results (-> (semantic.tu/query-index {:search-string "puppy"})
