@@ -52,13 +52,15 @@ export function CheckDependenciesForm({
   return (
     <FormProvider initialValues={{}} onSubmit={onSave}>
       <Form>
-        <Text mb="md">{t`The items below will break because of these changes:`}</Text>
-        <Stack mb="xl">
+        <Text mb="md" px="xl">
+          {t`The items below will break because of these changes:`}
+        </Text>
+        <Stack className={S.list} mb="xl" px="xl">
           {items.map((item, index) => (
             <DependencyItemCard key={index} item={item} />
           ))}
         </Stack>
-        <Group>
+        <Group px="xl">
           <Box flex={1}>
             <FormErrorMessage />
           </Box>

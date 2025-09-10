@@ -55,7 +55,7 @@ export const SaveQuestionModal = ({
       targetCollection={targetCollection}
     >
       <Modal.Root
-        padding="2.5rem"
+        padding="xl"
         {...modalProps}
         size={isConfirming ? "xl" : undefined}
         closeOnEscape={false}
@@ -63,7 +63,7 @@ export const SaveQuestionModal = ({
       >
         <Modal.Overlay />
         <Modal.Content data-testid="save-question-modal">
-          <Modal.Header>
+          <Modal.Header px={isConfirming ? "xl" : undefined}>
             <Modal.Title>
               {isConfirming ? (
                 <PLUGIN_DEPENDENCIES.CheckDependenciesTitle />
@@ -71,11 +71,11 @@ export const SaveQuestionModal = ({
                 <SaveQuestionTitle />
               )}
             </Modal.Title>
-            <Flex align="center" justify="flex-end" gap="sm">
+            <Flex justify="flex-end">
               <Modal.CloseButton />
             </Flex>
           </Modal.Header>
-          <Modal.Body>
+          <Modal.Body px={isConfirming ? 0 : undefined}>
             {checkData != null && isConfirming ? (
               <PLUGIN_DEPENDENCIES.CheckDependenciesForm
                 checkData={checkData}
