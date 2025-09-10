@@ -21,11 +21,15 @@
 (defn- provider-with-updated-cards [base-provider cards]
   (-> base-provider
       lib.metadata.cached-provider/cached-metadata-provider
-      (doto (lib.metadata.protocols/store-metadatas! (map #(dissoc % :result-metadata) cards)))))
+      (doto (lib.metadata.protocols/store-metadatas! cards))))
 
 (mu/defn check-cards-have-sound-refs :- [:map-of ::lib.schema.id/card [:sequential ::lib.schema.mbql-clause/clause]]
   "Given a list `updated-cards` of `:metadata/card`s which may have changes vs. AppDB, and a list `check-cards` of
   cards to check, return any bad clauses found in the `check-cards`.
+
+  Note that if `:result-metadata` is present on the `updated-cards`, it **will be used!** The only case where that is
+  actually useful is with a native query which has been executed, so the caller has driver metadata to send us. Any
+  old, pre-update `:result-metadata` should be dropped before calling this function.
 
   May return false positives: that is, if one of the `check-cards` has a bad ref in it, then it will be returned
   even if that bad ref has nothing to do with the `updated-cards`.
