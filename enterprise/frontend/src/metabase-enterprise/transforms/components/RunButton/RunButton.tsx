@@ -46,6 +46,11 @@ export const RunButton = forwardRef(function RunButton(
 
   const isStartingOrStarted = run?.status === "started" || isStarting;
 
+  run = {
+    id: 12,
+    status: "canceled" as const,
+  };
+
   return (
     <Button.Group>
       <Button
@@ -130,9 +135,9 @@ function getRunButtonInfo({
 
   if (run.status === "canceled") {
     return {
-      label: t`Run canceled`,
-      color: "text-secondary",
-      leftSection: <Icon name="check" aria-hidden />,
+      label: t`Canceled`,
+      color: "var(--mb-base-color-dubloon-30)",
+      leftSection: <Icon name="close" color="white" aria-hidden />,
       isDisabled,
     };
   }
