@@ -8,7 +8,7 @@ import {
 } from "metabase/admin/components/RelatedSettingsSection";
 import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashboardModal";
 import { AddDataModal } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal";
-import { Stack, Text, Title } from "metabase/ui";
+import { Group, Stack, Text, Title } from "metabase/ui";
 
 import { useCompletedEmbeddingHubSteps } from "../hooks";
 import type { EmbeddingHubModalToTrigger } from "../types/embedding-checklist";
