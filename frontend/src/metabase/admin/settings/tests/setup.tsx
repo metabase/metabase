@@ -60,18 +60,6 @@ export const ossRoutes: RouteMap = {
     path: "/public-sharing",
     testPattern: /Enable Public Sharing/i,
   },
-  embedding: {
-    path: "/embedding-in-other-applications",
-    testPattern: /Embed dashboards, questions, or the entire Metabase app/i,
-  },
-  staticEmbedding: {
-    path: "/embedding-in-other-applications/standalone",
-    testPattern: /Embedding secret key/i,
-  },
-  embeddingSdk: {
-    path: "/embedding-in-other-applications/sdk",
-    testPattern: /SDK for React/i,
-  },
   license: { path: "/license", testPattern: /Looking for more/i },
   appearance: {
     path: "/appearance",
