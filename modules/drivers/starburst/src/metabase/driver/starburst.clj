@@ -31,6 +31,7 @@
     PreparedStatement
     ResultSet
     ResultSetMetaData
+    SQLException
     SQLType
     Time
     Types)
@@ -431,16 +432,37 @@
     base-type))
 
 (defmethod sql-jdbc.sync.interface/have-select-privilege? :starburst
-  [_driver ^Connection conn table-schema table-name]
+  [driver ^Connection conn table-schema table-name]
   (try
-    (let [sql (str "SHOW TABLES FROM \"" table-schema "\" LIKE '" table-name "'")]
-      ;; if the query completes without throwing an Exception, we can SELECT from this table
+    ;; Both Hive and Iceberg plugins for Trino expose one another's tables
+    ;; at the metadata level, even though they are not queryable through that catalog.
+    ;; So rather than using SHOW TABLES, we will DESCRIBE the table to check for
+    ;; queryability. If the table is not queryable for this reason, we will return
+    ;; false. It's a slight stretch of the concept of "permissions," but it is true
+    ;; that we cannot query these tables...
+    (let [catalog (some-> conn .getCatalog)
+          sql (describe-table-sql driver catalog table-schema table-name)]
       (with-open [stmt (.prepareStatement conn sql)
                   rs (.executeQuery stmt)]
         (.next rs)))
-    (catch Throwable e
-      (log/fatal e "ERROR WITH QUERY ")
-      false)))
+    (catch SQLException e
+      ;; The actual exception thorwn is TrinoException with error code UNSUPPORTED_TABLE_TYPE,
+      ;; but we can't check the type directly since the relevant io.trino.spi.* classes are not
+      ;; included in trino-jdbc.
+      ;; As a workaround, we check for specific error message patterns that indicate this issue.
+      ;; See HiveMetadata.java and UnknownTableTypeException.java in trinodb/trino
+      (let [message (.getMessage e)
+            unsupported-table-type? (fn [message]
+                                      (and message
+                                           (or
+                                            (re-find #"Cannot query \w+ table" message)
+                                            (re-find #"Not an Iceberg table" message))))]
+        (if-not (unsupported-table-type? message)
+          (throw e) ; This is an unexpected SQLException - rethrow it
+          (do
+            (log/debugf e "Table %s.%s is not accessible through this catalog (mixed catalog table type)"
+                        table-schema table-name)
+            false))))))
 
 (defn- describe-schema
   "Gets a set of maps for all tables in the given `catalog` and `schema`."
