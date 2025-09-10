@@ -4,6 +4,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib-be.metadata.jvm :as lib-be.metadata.jvm]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
@@ -36,13 +37,18 @@
         breakages     (dependencies/check-cards-have-sound-refs base-provider [card] all-cards)
         broken-ids    (keys breakages)
         broken-cards  (when (seq broken-ids)
-                        (t2/select :model/Card :id [:in broken-ids]))]
+                        (-> (t2/select :model/Card :id [:in broken-ids])
+                            (t2/hydrate [:collection :effective_ancestors] :dashboard)))]
     {:success   (empty? breakages)
-     :bad_cards (into [] (filter (fn [card]
-                                   (if (mi/can-read? card)
-                                     card
-                                     (do (log/warnf "Eliding broken card %d - not readable by the user" (:id card))
-                                         nil))))
+     :bad_cards (into [] (comp (filter (fn [card]
+                                         (if (mi/can-read? card)
+                                           card
+                                           (do (log/warnf "Eliding broken card %d - not readable by the user" (:id card))
+                                               nil))))
+                               (map (fn [card]
+                                      (-> card
+                                          collection.root/hydrate-root-collection
+                                          (update :dashboard #(some-> % (select-keys [:id :name])))))))
                       broken-cards)}))
 
 (def ^{:arglists '([request respond raise])} routes

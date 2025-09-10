@@ -1,5 +1,0 @@
-.card {
-  &:hover {
-    background-color: var(--mb-color-background-light);
-  }
-}
