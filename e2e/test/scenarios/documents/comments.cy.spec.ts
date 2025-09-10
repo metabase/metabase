@@ -1347,17 +1347,36 @@ H.describeWithSnowplowEE("document comments", () => {
               const emails = response.body;
               expect(emails).to.have.length(2);
 
-              // verifyEmail({
-              //   email: emails[0],
-              //   expected: {
-              //     address: "admin@metabase.test",
-              //     subject: "Comment on Lorem ipsum",
-              //     heading: "User Impersonated left a comment on a document",
-              //     documentTitle: "Lorem ipsum",
-              //     documentHref: `http://localhost:4000/document/${documentId}`,
-              //     commentHref: `http://localhost:4000/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${comment.id}`,
-              //   },
-              // });
+              const emailToAdmin = emails.find(
+                (email: any) => email.to.address === "admin@metabase.test",
+              );
+              const emailToNormalUser = emails.find(
+                (email: any) => email.to.address === "normal@metabase.test",
+              );
+
+              verifyEmail({
+                email: emailToAdmin,
+                expected: {
+                  address: "admin@metabase.test",
+                  subject: "Comment on Lorem ipsum",
+                  heading: "User Impersonated left a comment on a document",
+                  documentTitle: "Lorem ipsum",
+                  documentHref: `http://localhost:4000/document/${documentId}`,
+                  commentHref: `http://localhost:4000/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${comment.id}`,
+                },
+              });
+
+              verifyEmail({
+                email: emailToNormalUser,
+                expected: {
+                  address: "normal@metabase.test",
+                  subject: "Comment on Lorem ipsum",
+                  heading: "User Impersonated left a comment on a document",
+                  documentTitle: "Lorem ipsum",
+                  documentHref: `http://localhost:4000/document/${documentId}`,
+                  commentHref: `http://localhost:4000/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${comment.id}`,
+                },
+              });
             });
           },
         );
@@ -1771,7 +1790,6 @@ function verifyEmail({
   const parser = new DOMParser();
   const document = parser.parseFromString(html, "text/html");
 
-  console.log(html, expected.commentHref);
   cy.log("heading");
   expect(document.querySelector("h1")).to.contain.text(expected.heading);
 
