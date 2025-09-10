@@ -280,7 +280,8 @@
         pending-updated? (safe-batch-upsert! (pending-table) entries)]
     (when (or active-updated? pending-updated?)
       (u/prog1 (->> entries (map :model) frequencies)
-        (t2/query ["commit"])
+        (when (or false (not search.ingestion/*force-sync*))
+          (t2/query ["commit"]))
         (log/trace "indexed documents for " <>)
         (when active-updated?
           (analytics/set! :metabase-search/appdb-index-size (t2/count (name active-table))))))))
@@ -352,18 +353,22 @@
   []
   (log/infof "Resetting appdb index for version %s, active table: %s" *index-version-id*
              (pr-str (active-table)))
-  ;; Creates and tracks tables with a unique transaction so the empty tables are available to other threads
-  ;; even while the initial startup and data load may be happening
-  (t2/with-connection [_ (.getConnection (mdb/data-source))]
-    ;; stop tracking any pending table
-    (when-let [table-name (pending-table)]
-      (when-not *mocking-tables*
-        (let [deleted (search-index-metadata/delete-index! :appdb *index-version-id* table-name)]
-          (when (pos? deleted)
-            (log/infof "Deleted %d pending indices" deleted))))
-      (swap! *indexes* assoc :pending nil))
-    (maybe-create-pending!)
-    (activate-table!)))
+  (letfn [(reset-logic []
+              ;; stop tracking any pending table
+            (when-let [table-name (pending-table)]
+              (when-not *mocking-tables*
+                (let [deleted (search-index-metadata/delete-index! :appdb *index-version-id* table-name)]
+                  (when (pos? deleted)
+                    (log/infof "Deleted %d pending indices" deleted))))
+              (swap! *indexes* assoc :pending nil))
+            (maybe-create-pending!)
+            (activate-table!))]
+    (if (or true search.ingestion/*force-sync*)
+      (reset-logic)
+      ;; Creates and tracks tables with a unique transaction so the empty tables are available to other threads
+      ;; even while the initial startup and data load may be happening
+      (t2/with-connection [_ (mdb/data-source)]
+        (reset-logic)))))
 
 (defn ensure-ready!
   "Ensure the index is ready to be populated. Return false if it was already ready."
