@@ -14,6 +14,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [potemkin :as p]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
@@ -118,6 +119,19 @@
 ;;; |                                              Transforms                                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:const tmp-transform-suffix
+  "Suffix used for a temporary transform table that will be renamed to the final transform table."
+  "__metabase_transform_tmp_name")
+
+(def ^:const renamed-transform-suffix
+  "Suffix used to rename the existing transform table while the new transform table is created."
+  "__metabase_transform_renamed")
+
+(defn- get-tmp-transform-name [table-name suffix]
+  (str (driver.impl/truncate-alias (str table-name "__" (str/replace (random-uuid) "-" ""))
+                                   (- driver.impl/default-alias-max-length-bytes (count suffix)))
+       suffix))
+
 ;; TODO(rileythomp, 2025-09-09): This probably doesn't need to be a driver multi-method
 (defmethod driver/run-transform! [:sql :table]
   [driver {:keys [db-id query target conn-spec]}]
@@ -125,16 +139,19 @@
         {schema :schema table-name :name} target
         output-table (keyword schema table-name)]
     (if (driver/table-exists? driver db target)
-      (let [tmp-name (driver.impl/truncate-alias (str table-name "__metabase_transform_tmp_name"))
+      (let [tmp-name (get-tmp-transform-name table-name tmp-transform-suffix)
             tmp-table (keyword schema tmp-name)
-            renamed-name (driver.impl/truncate-alias (str table-name "__metabase_transform_renamed"))
+            renamed-name (get-tmp-transform-name table-name renamed-transform-suffix)
             renamed-table (keyword schema renamed-name)
             create-and-rename-queries [(driver/compile-transform driver tmp-table query)
                                        (driver/compile-rename-table driver output-table renamed-name)
                                        (driver/compile-rename-table driver tmp-table table-name)]
             rows-affected (first (driver/execute-raw-queries! driver conn-spec create-and-rename-queries))
             drop-renamed-query [(driver/compile-drop-table driver renamed-table)]]
-        (driver/execute-raw-queries! driver conn-spec drop-renamed-query)
+        (try
+          (driver/execute-raw-queries! driver conn-spec drop-renamed-query)
+          (catch Exception e
+            (log/warnf e "Failed to drop renamed transform table %s" renamed-table)))
         {:rows-affected rows-affected})
       (let [queries [(driver/compile-transform driver output-table query)]]
         {:rows-affected (last (driver/execute-raw-queries! driver conn-spec queries))}))))
