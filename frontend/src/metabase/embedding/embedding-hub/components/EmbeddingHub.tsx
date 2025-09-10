@@ -6,7 +6,7 @@ import { t } from "ttag";
 =======
 import {
   RelatedSettingsSection,
-  getEmbeddingRelatedSettingItems,
+  getModularEmbeddingRelatedSettingItems,
 } from "metabase/admin/components/RelatedSettingsSection";
 import MetabotLogo from "metabase/common/components/MetabotLogo";
 >>>>>>> 229a09bd6d4 (fix related card sizing)
@@ -84,13 +84,10 @@ export const EmbeddingHub = () => {
          with Embedded Analytics JS and SDK for React`}</Text>
         </Group>
         <StepperWithCards steps={stepperSteps} />
-        <Stack gap="md">
-          <Text size="lg" fw="bold" lh="xs">
-            {t`Related settings`}
-          </Text>
 
-          <RelatedSettingsSection items={getEmbeddingRelatedSettingItems()} />
-        </Stack>
+        <RelatedSettingsSection
+          items={getModularEmbeddingRelatedSettingItems()}
+        />
         <AddDataModal
           opened={openedModal?.type === "add-data"}
           onClose={closeModal}

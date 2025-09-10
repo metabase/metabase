@@ -4,7 +4,7 @@ import { c, jt, t } from "ttag";
 
 import {
   RelatedSettingsSection,
-  getEmbeddingRelatedSettingItems,
+  getModularEmbeddingRelatedSettingItems,
 } from "metabase/admin/components/RelatedSettingsSection";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellDevInstances } from "metabase/admin/upsells";
@@ -322,7 +322,9 @@ export function EmbeddingSdkSettings() {
           {t`Related settings`}
         </Text>
 
-        <RelatedSettingsSection items={getEmbeddingRelatedSettingItems()} />
+        <RelatedSettingsSection
+          items={getModularEmbeddingRelatedSettingItems()}
+        />
       </Stack>
     </SettingsPageWrapper>
   );

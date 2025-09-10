@@ -1,6 +1,10 @@
 import { t } from "ttag";
 
 import {
+  RelatedSettingsSection,
+  getInteractiveEmbeddingRelatedSettingItems,
+} from "metabase/admin/components/RelatedSettingsSection";
+import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
@@ -10,7 +14,7 @@ import { AdminSettingInput } from "metabase/admin/settings/components/widgets/Ad
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import { Box, Button } from "metabase/ui";
+import { Box, Button, Stack, Text } from "metabase/ui";
 
 import { EmbeddingAppOriginDescription } from "./EmbeddingAppOriginDescription";
 import { SameSiteSelectWidget } from "./EmbeddingAppSameSiteCookieDescription";
@@ -60,6 +64,16 @@ export function InteractiveEmbeddingSettings() {
 
         <SameSiteSelectWidget />
       </SettingsSection>
+
+      <Stack gap="md">
+        <Text size="lg" fw="bold" lh="xs">
+          {t`Related settings`}
+        </Text>
+
+        <RelatedSettingsSection
+          items={getInteractiveEmbeddingRelatedSettingItems()}
+        />
+      </Stack>
     </SettingsPageWrapper>
   );
 }
