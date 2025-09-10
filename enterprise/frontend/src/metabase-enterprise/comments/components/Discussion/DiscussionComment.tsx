@@ -1,6 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import dayjs from "dayjs";
 import { useCallback } from "react";
 import { useLocation } from "react-use";
 import { t } from "ttag";
@@ -31,6 +30,11 @@ type DiscussionCommentProps = {
   onEdit?: (comment: Comment, newContent: DocumentContent) => void;
   onCopyLink?: (comment: Comment) => void;
 };
+
+const TOOLTIP_DATE_FORMAT = new Intl.DateTimeFormat(undefined, {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
 
 export function DiscussionComment({
   canResolve,
@@ -91,6 +95,8 @@ export function DiscussionComment({
     );
   }
 
+  const commentDate = new Date(comment.created_at);
+
   return (
     <Timeline.Item
       className={cx(S.commentRoot, {
@@ -119,16 +125,14 @@ export function DiscussionComment({
           {comment.creator?.common_name}
         </Text>
 
-        <Tooltip
-          label={dayjs(comment.created_at).format("MMM D, YYYY, h:mm A")}
-        >
+        <Tooltip label={TOOLTIP_DATE_FORMAT.format(commentDate)}>
           <Text
             size="xs"
             c="text-medium"
             lh={1.1}
             style={{ whiteSpace: "nowrap" }}
           >
-            {formatCommentDate(comment.created_at)}
+            {formatCommentDate(commentDate)}
           </Text>
         </Tooltip>
       </Group>

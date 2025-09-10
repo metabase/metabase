@@ -99,8 +99,9 @@ export function getCommentsUrl({
     .exhaustive();
 }
 
-export function formatCommentDate(dateStr: string) {
-  const date = new Date(dateStr);
+export function formatCommentDate(dateOrString: string | Date) {
+  const date =
+    dateOrString instanceof Date ? dateOrString : new Date(dateOrString);
   const now = new Date();
 
   const oneDay = 24 * 60 * 60 * 1000;
@@ -110,7 +111,16 @@ export function formatCommentDate(dateStr: string) {
     return dayjs(date).fromNow();
   }
 
-  return dayjs(date).format("MMM D");
+  if (date.getFullYear() === now.getFullYear()) {
+    return new Intl.DateTimeFormat(undefined, {
+      month: "short",
+      day: "numeric",
+    }).format(date);
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+  }).format(date);
 }
 
 export function deleteNewParamFromURLIfNeeded(
