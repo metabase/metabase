@@ -2480,7 +2480,7 @@ msgstr "Yeni koleksiyon"
 #: frontend/src/metabase/components/CopyButton/CopyButton.tsx:32
 #: frontend/src/metabase/query_builder/components/view/NativeCodePanel/NativeCodePanel.tsx:33
 msgid "Copied!"
-msgstr "Kopyalanan!"
+msgstr "Kopyalandı!"
 
 #: frontend/src/metabase/entities/databases/forms.js:15
 msgid "Use an SSH-tunnel for database connections"
@@ -2571,7 +2571,7 @@ msgstr "Bu soruyu düzenle"
 #: frontend/src/metabase/components/EntityMenu.info.js:84
 #: frontend/src/metabase/components/EntityMenu.info.js:101
 msgid "Action type"
-msgstr "Eylem Türü"
+msgstr "Aksiyon Türü"
 
 #: frontend/src/metabase/components/EntityMenu.info.js:30
 #: frontend/src/metabase/components/EntityMenu.info.js:86
@@ -3103,7 +3103,7 @@ msgstr "Açıklama"
 #: frontend/src/metabase/entities/questions/forms.js:13
 #: frontend/src/metabase/query_builder/components/template_tags/SnippetForm/SnippetForm.tsx:171
 msgid "It's optional but oh, so helpful"
-msgstr "İsteğe bağlı ama, çok yararlı"
+msgstr "İsteğe bağlı"
 
 #: frontend/src/metabase/containers/SaveQuestionModal/SaveQuestionModal.tsx:270
 #: frontend/src/metabase/dashboard/containers/CreateDashboardForm.tsx:121
@@ -4738,7 +4738,7 @@ msgstr "Tehlikeli bölge"
 
 #: frontend/src/metabase/public/components/widgets/AdvancedSettingsPane.jsx:109
 msgid "This will disable embedding for this {0}."
-msgstr "Bu, bu {0} için gömülmeyi devre dışı bırakacaktır."
+msgstr "Bu, {0} için gömme özelliğini devre dışı bırakacaktır."
 
 #: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/EmbedModalContentStatusBar.tsx:58
 msgid "Unpublish"
@@ -5561,7 +5561,7 @@ msgstr "Soru taşı"
 #: frontend/src/metabase/models/components/ModelDetailPage/ModelDetailHeader/ModelDetailHeader.tsx:73
 #: frontend/src/metabase/query_builder/components/QueryModals.tsx:240
 msgid "Which collection should this be in?"
-msgstr "Which collection should this be in?"
+msgstr "Bu hangi koleksiyona eklenmeli?"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp/TagEditorHelp.tsx:268
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorSidebar.tsx:93
@@ -6082,7 +6082,7 @@ msgstr "Varsayılan filtre widget değeri"
 
 #: frontend/src/metabase/questions/containers/ArchiveQuestionModal.jsx:20
 msgid "Archive this question?"
-msgstr "Bu soruyu arşivlediniz mi?"
+msgstr "Bu soru arşivlensin mi?"
 
 #: frontend/src/metabase/questions/containers/ArchiveQuestionModal.jsx:21
 msgid "This question will be removed from any dashboards or pulses using it."
@@ -8924,7 +8924,7 @@ msgstr "Kişisel Koleksiyonunuzu silemezsiniz!"
 
 #: metabase/models/collection.clj:1084 metabase/models/collection.clj:1087
 msgid "{0} {1}''s Personal Collection"
-msgstr "{0} {1} 'ın Kişisel Koleksiyonu"
+msgstr "{0} {1}'ın Kişisel Koleksiyonu"
 
 #: src/metabase/models/collection_revision.clj
 msgid "You cannot update a CollectionRevision!"
@@ -13114,7 +13114,7 @@ msgstr "Yanlış talimat"
 
 #: frontend/src/metabase/components/ArchiveModal/ArchiveModal.jsx:33
 msgid "Archive this?"
-msgstr "Arşiv"
+msgstr "Arşivlensin mi?"
 
 #: frontend/src/metabase/browse/components/BrowseApp.tsx:177
 msgid "Learn about our data"
@@ -13365,7 +13365,7 @@ msgstr "İlk {0} değer gösteriliyor"
 #: frontend/src/metabase/query_builder/components/view/QuestionRowCount/QuestionRowCount.tsx:165
 #: frontend/src/metabase/query_builder/components/view/QuestionRowCount/QuestionRowCount.tsx:178
 msgid "Showing {0}"
-msgstr "{0} adet gösteriliyor"
+msgstr "{0} gösteriliyor"
 
 #: frontend/src/metabase/query_builder/components/view/QuestionSummaries.jsx:23
 msgid "Summarized"
@@ -13385,7 +13385,7 @@ msgstr "Görmek istediğiniz metriği seçiniz"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/ChartSettingsSidebar.jsx:32
 msgid "{0} options"
-msgstr "{0} seçenek"
+msgstr "{0} ayarları"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/ChartTypeSidebar.jsx:48
 msgid "Choose a visualization"
@@ -19503,7 +19503,7 @@ msgstr "Sürücü kullanımdan kaldırıldı"
 
 #: frontend/src/metabase/components/LastEditInfoLabel/LastEditInfoLabel.tsx:77
 msgid "you"
-msgstr "sen"
+msgstr "senin"
 
 #: frontend/src/metabase/lib/revisions.js:24
 msgid "{0} created this"
@@ -22305,7 +22305,7 @@ msgstr "Zil"
 
 #: frontend/src/metabase/lib/timelines.ts:36
 msgid "{0} events"
-msgstr "{0} olay"
+msgstr "{0} olayları"
 
 #: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/data-model-permission.ts:18
 msgid "Data model access requires full data access."
@@ -25151,7 +25151,7 @@ msgstr "Sipariş edilecek bir şey yok"
 #: frontend/src/metabase/actions/containers/ActionCreator/ActionCreatorHeader.tsx:27
 #: frontend/src/metabase/actions/containers/ActionCreator/ActionCreatorView.tsx:94
 msgid "New Action"
-msgstr "Yeni Eylem"
+msgstr "Yeni Aksiyon"
 
 #: frontend/src/metabase/models/components/ModelDetailPage/ModelActionDetails/ModelActionDetails.tsx:164
 #: frontend/src/metabase/palette/hooks/useCommandPaletteBasicActions.tsx:138
@@ -25172,11 +25172,11 @@ msgstr "Beni tıklayın"
 #: frontend/src/metabase/components/NewItemMenu/NewItemMenu.tsx:115
 #: frontend/src/metabase/dashboard/components/ActionSidebar/ActionSidebar.tsx:108
 msgid "Action"
-msgstr "Eylem"
+msgstr "Aksiyon"
 
 #: frontend/src/metabase/actions/components/ActionViz/ActionViz.tsx:42
 msgid "Action Form Display"
-msgstr "Eylem Formu Ekranı"
+msgstr "Aksiyon Formu Ekranı"
 
 #: frontend/src/metabase/actions/components/ActionViz/ActionViz.tsx:47
 msgid "Form"
@@ -25468,7 +25468,7 @@ msgstr "{0} kayıt başarıyla silindi"
 
 #: frontend/src/metabase/dashboard/actions/writeback.ts:256
 msgid "Successfully executed the action"
-msgstr "Eylem başarıyla gerçekleştirildi"
+msgstr "Aksiyon başarıyla gerçekleştirildi"
 
 #: frontend/src/metabase/actions/utils.ts:182
 msgid "Successfully saved"
@@ -25481,11 +25481,11 @@ msgstr "Başarıyla silindi"
 
 #: frontend/src/metabase/actions/utils.ts:201
 msgid "Success! The action returned: {0}"
-msgstr "Başarılı! Eylem geri döndü: {0}"
+msgstr "Başarılı! Aksiyon geri döndü: {0}"
 
 #: frontend/src/metabase/actions/utils.ts:209
 msgid "Something went wrong while executing the action"
-msgstr "Eylem yürütülürken bir şeyler yanlış gitti"
+msgstr "Aksiyon yürütülürken bir şeyler yanlış gitti"
 
 #: frontend/src/metabase/nav/utils/model-names.ts:4
 #: frontend/src/metabase/search/components/InfoText.jsx:33
@@ -25662,7 +25662,7 @@ msgstr "Sayfanız hazır"
 
 #: frontend/src/metabase/dashboard/components/DashCard.jsx:279
 msgid "Action button"
-msgstr "Eylem düğmesi"
+msgstr "Aksiyon düğmesi"
 
 #: frontend/src/metabase/dashboard/components/DashboardMoveModal.tsx:35
 msgid "Move dashboard to…"
@@ -25841,7 +25841,7 @@ msgstr "Değer etiketleri biçimlendirmesi"
 
 #: metabase/actions.clj:89
 msgid "Action {0} is not supported for {1} Databases."
-msgstr "Eylem {0}, {1} için desteklenmiyor Veritabanları."
+msgstr "Aksiyon {0}, {1} için desteklenmiyor Veritabanları."
 
 #: metabase/actions.clj:122
 msgid "{0} Database {1} does not support actions."
@@ -25849,7 +25849,7 @@ msgstr "{0} Veritabanı {1} eylemleri desteklemiyor."
 
 #: metabase/actions.clj:84
 msgid "Unknown Action {0}. Valid Actions are: {1}"
-msgstr "Bilinmeyen Eylem {0}. Geçerli Eylemler şunlardır: {1}"
+msgstr "Bilinmeyen Aksiyon {0}. Geçerli Eylemler şunlardır: {1}"
 
 #: metabase/actions.clj:25
 msgid "Whether to enable using the new experimental Actions for a specific Database."
@@ -25865,7 +25865,7 @@ msgstr "Eksik birincil anahtar parametresi: {0}"
 
 #: metabase/actions/execution.clj:42
 msgid "Error executing Action: {0}"
-msgstr "Eylem yürütülürken hata oluştu: {0}"
+msgstr "Aksiyon yürütülürken hata oluştu: {0}"
 
 #: metabase/actions/execution.clj:124
 msgid "Must execute implicit action on a table with a single primary key."
@@ -25873,7 +25873,7 @@ msgstr "Tek bir birincil anahtarı olan bir tablo üzerinde örtük eylem yürü
 
 #: metabase/actions/execution.clj:27
 msgid "No Card found for Action {0}."
-msgstr "Eylem {0} için Kart bulunamadı."
+msgstr "Aksiyon {0} için Kart bulunamadı."
 
 #: metabase/actions/execution.clj:74
 msgid "No destination parameter found for id {0}. Found: {1}"
@@ -25885,7 +25885,7 @@ msgstr "Bilinmeyen eylem türü {0}."
 
 #: metabase/actions/execution.clj:30
 msgid "Cannot execute Action {0}: Card {1} is not marked as `is_write`"
-msgstr "Eylem {0} yürütülemiyor: Kart {1} `is_write` olarak işaretlenmemiş"
+msgstr "Aksiyon {0} yürütülemiyor: Kart {1} `is_write` olarak işaretlenmemiş"
 
 #: metabase/actions/execution.clj:121
 msgid "Cannot execute implicit action on a table with ambiguous column names."
@@ -26567,7 +26567,7 @@ msgstr "Bu alan zorunludur"
 
 #: frontend/src/metabase/actions/components/ActionViz/ActionDashcardSettings.tsx:88
 msgid "Action Library"
-msgstr "Eylem Kütüphanesi"
+msgstr "Aksiyon Kütüphanesi"
 
 #: frontend/src/metabase/actions/components/ActionViz/ActionDashcardSettings.tsx:97
 msgid "Where should the values for '{0}' come from?"
@@ -26601,7 +26601,7 @@ msgstr "Bu işlem geri alınamaz."
 #: frontend/src/metabase/actions/containers/ActionCreator/InlineActionSettings.tsx:66
 #: frontend/src/metabase/actions/containers/ActionCreator/InlineActionSettings.tsx:124
 msgid "Action settings"
-msgstr "Eylem ayarları"
+msgstr "Aksiyon ayarları"
 
 #: frontend/src/metabase/actions/containers/ActionCreator/InlineActionSettings.tsx:128
 msgid "Make public"
@@ -26621,7 +26621,7 @@ msgstr "Başarı mesajı"
 
 #: frontend/src/metabase/actions/containers/ActionCreator/InlineActionSettings.tsx:162
 msgid "Action ran successfully"
-msgstr "Eylem başarıyla gerçekleştirildi"
+msgstr "Aksiyon başarıyla gerçekleştirildi"
 
 #: frontend/src/metabase/actions/containers/ActionCreator/FormCreator/EmptyFormPlaceholder/EmptyFormPlaceholder.tsx:27
 msgid "Build custom forms and business logic."
@@ -26687,11 +26687,11 @@ msgstr "Değişim eylemi"
 
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/ActionSettingsButton/ActionSettingsButton.tsx:29
 msgid "Action Settings"
-msgstr "Eylem Ayarları"
+msgstr "Aksiyon Ayarları"
 
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx:148
 msgid "Action Button"
-msgstr "Eylem Düğmesi"
+msgstr "Aksiyon Düğmesi"
 
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx:149
 msgid "Text Card"
@@ -26845,7 +26845,7 @@ msgstr "Bağlantıyı iptal et"
 
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.jsx:172
 msgid "Public Action Form Listing"
-msgstr "Kamu Eylem Formu Listesi"
+msgstr "Kamu Aksiyon Formu Listesi"
 
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.jsx:177
 msgid "No actions have been publicly shared yet."
@@ -26881,7 +26881,7 @@ msgstr "Kaydedilmiş bir soru ekleyin"
 
 #: frontend/src/metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState.tsx:40
 msgid ", or "
-msgstr "veya "
+msgstr " veya "
 
 #: frontend/src/metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState.tsx:52
 msgid "ask a new one"
@@ -26908,7 +26908,7 @@ msgstr "Model detayları"
 
 #: frontend/src/metabase/entities/actions/actions.ts:154
 msgid "action"
-msgstr "eylem"
+msgstr "aksiyon"
 
 #: frontend/src/metabase/actions/utils.ts:129
 msgid "{0} ran successfully"
@@ -26916,7 +26916,7 @@ msgstr "{0} başarıyla çalıştırıldı"
 
 #: frontend/src/metabase/actions/utils.ts:167
 msgid "Action form"
-msgstr "Eylem formu"
+msgstr "Aksiyon formu"
 
 #: frontend/src/metabase/actions/utils.ts:185
 msgid "Successfully updated"
@@ -26924,11 +26924,11 @@ msgstr "Başarıyla güncellendi"
 
 #: frontend/src/metabase/actions/utils.ts:190
 msgid "Successfully ran the action"
-msgstr "Eylem başarıyla çalıştırıldı"
+msgstr "Aksiyon başarıyla çalıştırıldı"
 
 #: frontend/src/metabase/admin/settings/selectors.js:434
 msgid "Shared Action Forms"
-msgstr "Paylaşılan Eylem Formları"
+msgstr "Paylaşılan Aksiyon Formları"
 
 #: frontend/src/metabase/dashboard/actions/cards.js:21
 msgid "Click Me"
@@ -26940,7 +26940,7 @@ msgstr "Bağlantı kartı ekle"
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader/DashboardHeader.tsx:474
 msgid "Add action button"
-msgstr "Eylem düğmesi ekle"
+msgstr "Aksiyon düğmesi ekle"
 
 #: frontend/src/metabase/search/components/InfoText.tsx:52
 msgid "for {0}"
@@ -26979,7 +26979,7 @@ msgstr "Seçenekleri değiştirin"
 
 #: frontend/src/metabase/actions/containers/ActionCreator/FormCreator/FormCreator.tsx:160
 msgid "Action parameters"
-msgstr "Eylem parametreleri"
+msgstr "Aksiyon parametreleri"
 
 #: frontend/src/metabase/actions/containers/ActionCreator/FormCreator/FormCreator.tsx:176
 msgid "Configure your parameters' types and properties here. The values for these parameters can come from user input, or from a dashboard filter. {0}"
@@ -27105,7 +27105,7 @@ msgstr "Çalışan Eylemler {0} veritabanı için etkinleştirilmedi"
 
 #: frontend/src/metabase/models/components/ModelDetailPage/ModelActionDetails/ModelActionDetails.tsx:180
 msgid "Action list"
-msgstr "Eylem listesi"
+msgstr "Aksiyon listesi"
 
 #: frontend/src/metabase/models/components/ModelDetailPage/ModelActionDetails/ModelActionDetails.tsx:203
 msgid "No actions have been created yet."
@@ -27166,7 +27166,7 @@ msgstr "Değerler yalnızca Birincil Anahtar gerektiren eylemler için getirileb
 
 #: metabase/actions/execution.clj:85
 msgid "Error executing action."
-msgstr "Eylem yürütülürken hata oluştu."
+msgstr "Aksiyon yürütülürken hata oluştu."
 
 #: metabase/analytics/prometheus.clj:127
 msgid "C3P0 Number of threads awaiting checkout"
@@ -28173,7 +28173,7 @@ msgstr "Başlık veya metin ekleme"
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader/DashboardHeader.tsx:477
 msgid "Add action"
-msgstr "Eylem ekle"
+msgstr "Aksiyon ekle"
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader/DashboardHeader.tsx:530
 msgid "Export tab as PDF"
@@ -28867,7 +28867,7 @@ msgstr "{0}'ı {1}'e taşıdı"
 
 #: metabase/models/revision/diff.clj:74
 msgid "disabled collection preview"
-msgstr "engelli koleksiyonu önizlemesi"
+msgstr "devre dışı koleksiyonu önizlemesi"
 
 #: metabase/models/revision/diff.clj:134
 msgid "this {0}"
@@ -29891,7 +29891,7 @@ msgstr "Kart taşındı: {0}"
 
 #: frontend/src/metabase/dashboard/actions/utils.ts:70
 msgid "Action card moved"
-msgstr "Eylem kartı taşındı"
+msgstr "Aksiyon kartı taşındı"
 
 #: frontend/src/metabase/dashboard/actions/utils.ts:79
 msgid "Text card moved"
