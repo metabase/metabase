@@ -9,8 +9,8 @@
     (let [eval-count   (atom 0)
           cached-value (fn []
                          (driver-api/cached :value
-                           (swap! eval-count inc)
-                           :ok))]
+                                            (swap! eval-count inc)
+                                            :ok))]
       (driver-api/with-metadata-provider meta/metadata-provider
         (is (= :ok (cached-value)))
         (is (= :ok (cached-value)))
