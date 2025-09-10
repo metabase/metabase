@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLatest, useLocation } from "react-use";
 import { t } from "ttag";
 
+import { useToast } from "metabase/common/hooks";
 import Animation from "metabase/css/core/animation.module.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Modal, Tabs, rem } from "metabase/ui";
@@ -46,6 +47,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
   );
   const comments = commentsData?.comments;
   const dispatch = useDispatch();
+  const [sendToast] = useToast();
 
   // Check if we should auto-open the new comment form
   const shouldAutoOpenNewComment = useMemo(() => {
@@ -158,18 +160,22 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
       return;
     }
 
-    try {
-      await createComment({
-        child_target_id: childTargetId,
-        target_id: document.id,
-        target_type: "document",
-        content: doc,
-        parent_comment_id: null,
-      });
+    const { error } = await createComment({
+      child_target_id: childTargetId,
+      target_id: document.id,
+      target_type: "document",
+      content: doc,
+      parent_comment_id: null,
+    });
 
+    if (error) {
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
+        message: t`Failed to send comment`,
+      });
+    } else {
       deleteNewParamFromURLIfNeeded(location, dispatch);
-    } catch (error) {
-      console.error("Failed to create comment:", error);
     }
   };
 

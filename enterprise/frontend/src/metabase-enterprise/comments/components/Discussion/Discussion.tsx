@@ -48,30 +48,82 @@ export const Discussion = ({
   const [deleteComment] = useDeleteCommentMutation();
   const [toggleReaction] = useToggleReactionMutation();
 
-  const handleSubmit = (doc: DocumentContent) => {
-    createComment({
+  const handleSubmit = async (doc: DocumentContent) => {
+    const { error } = await createComment({
       child_target_id: effectiveChildTargetId,
       target_id: targetId,
       target_type: targetType,
       content: doc,
       parent_comment_id: parentCommentId,
     });
+
+    if (error) {
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
+        message: t`Failed to send comment`,
+      });
+    }
   };
 
-  const handleDeleteComment = (comment: Comment) => {
-    deleteComment(comment.id);
+  const handleDeleteComment = async (comment: Comment) => {
+    const { error } = await deleteComment(comment.id);
+
+    if (error) {
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
+        message: t`Failed to delete comment`,
+      });
+    }
   };
 
-  const handleResolveComment = (comment: Comment) => {
-    updateComment({ id: comment.id, is_resolved: true });
+  const handleResolveComment = async (comment: Comment) => {
+    const { error } = await updateComment({
+      id: comment.id,
+      is_resolved: true,
+    });
+
+    if (error) {
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
+        message: t`Failed to resolve comment`,
+      });
+    }
   };
 
-  const handleReopenComment = (comment: Comment) => {
-    updateComment({ id: comment.id, is_resolved: false });
+  const handleReopenComment = async (comment: Comment) => {
+    const { error } = await updateComment({
+      id: comment.id,
+      is_resolved: false,
+    });
+
+    if (error) {
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
+        message: t`Failed to unresolve comment`,
+      });
+    }
   };
 
-  const handleEditComment = (comment: Comment, newContent: DocumentContent) => {
-    updateComment({ id: comment.id, content: newContent });
+  const handleEditComment = async (
+    comment: Comment,
+    newContent: DocumentContent,
+  ) => {
+    const { error } = await updateComment({
+      id: comment.id,
+      content: newContent,
+    });
+
+    if (error) {
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
+        message: t`Failed to update comment`,
+      });
+    }
   };
 
   const handleCopyLink = (comment: Comment) => {
@@ -86,12 +138,28 @@ export const Discussion = ({
     sendToast({ icon: "check", message: t`Copied link` });
   };
 
-  const handleReaction = (comment: Comment, emoji: string) => {
-    toggleReaction({ id: comment.id, emoji });
+  const handleReaction = async (comment: Comment, emoji: string) => {
+    const { error } = await toggleReaction({ id: comment.id, emoji });
+
+    if (error) {
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
+        message: t`Failed to add reaction`,
+      });
+    }
   };
 
-  const handleReactionRemove = (comment: Comment, emoji: string) => {
-    toggleReaction({ id: comment.id, emoji });
+  const handleReactionRemove = async (comment: Comment, emoji: string) => {
+    const { error } = await toggleReaction({ id: comment.id, emoji });
+
+    if (error) {
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
+        message: t`Failed to remove reaction`,
+      });
+    }
   };
 
   return (
