@@ -1,6 +1,7 @@
 import {
   type FieldsetHTMLAttributes,
   type MouseEvent,
+  type ReactNode,
   type Ref,
   forwardRef,
 } from "react";
@@ -21,7 +22,7 @@ import S from "./FilterFieldSet.module.css";
 type FilterButtonProps = FieldsetHTMLAttributes<HTMLFieldSetElement> & {
   label: string;
   icon: IconName;
-  displayValue: string | null;
+  displayValue: ReactNode | null;
   onRemove: () => void;
 };
 

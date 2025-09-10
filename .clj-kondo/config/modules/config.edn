@@ -516,6 +516,7 @@
            public-sharing
            queries
            query-processor
+           server
            settings
            tiles
            util}}
@@ -1097,6 +1098,7 @@
    :api  #{metabase.server.core
            metabase.server.init
            metabase.server.middleware.session
+           metabase.server.settings
            metabase.server.streaming-response} ; TODO -- too many API namespaces
    :uses #{analytics
            api
