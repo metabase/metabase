@@ -1,6 +1,6 @@
 import * as Yup from "yup";
 
-import type { DatasetQuery } from "metabase-types/api";
+import type { SuggestedTransform } from "metabase-types/api";
 
 export const dataPartSchema = Yup.object({
   type: Yup.string().required(),
@@ -8,12 +8,16 @@ export const dataPartSchema = Yup.object({
   value: Yup.mixed(),
 });
 
-export const knownDataPartTypes = ["state", "navigate_to", "transform_query"];
+export const knownDataPartTypes = [
+  "state",
+  "navigate_to",
+  "transform_suggestion",
+];
 
 export type KnownDataPart =
   | { type: "state"; version: 1; value: Record<string, any> }
   | { type: "navigate_to"; version: 1; value: string }
-  | { type: "transform_query"; version: 1; value: DatasetQuery };
+  | { type: "transform_query"; version: 1; value: SuggestedTransform };
 
 export const toolCallPartSchema = Yup.object({
   toolCallId: Yup.string().required(),
