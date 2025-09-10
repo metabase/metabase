@@ -285,6 +285,7 @@
   join-condition-update-temporal-bucketing
   join-conditions
   join-fields
+  join-fields-to-add-to-parent-stage
   join-lhs-display-name
   join-strategy
   joinable-columns
