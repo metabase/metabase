@@ -61,8 +61,7 @@
               original-maybe-migrate @#'semantic.db.migration/maybe-migrate!
               results (atom {:executed-migrations 0
                              :log []})]
-          (with-redefs-fn {;; TODO: why in ci init index won't succeed -- http on embedding
-                           #'semantic.pgvector-api/index-documents! (constantly nil)
+          (with-redefs-fn {#'semantic.pgvector-api/index-documents! (constantly nil)
                            #'semantic.db.connection/do-with-migrate-tx
                            (fn [& args]
                              (let [tid (.getId (Thread/currentThread))]
