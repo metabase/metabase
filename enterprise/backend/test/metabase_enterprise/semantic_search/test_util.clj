@@ -450,9 +450,6 @@
           (index-all!)
           (thunk))))))
 
-;; TODO: When we are parallelizing tests, we'd have to make 
-;;       - `with-test-db!` use thread-safe version of with-redefs or similar,
-;;       - instead of `default-test-db` we could make unique database per test by means of eg. some counter.
 (defmacro with-index!
   "Wrapper for [[do-with-index!]]."
   [& body]
