@@ -1,6 +1,7 @@
 (ns metabase-enterprise.dependencies.api
   (:require
    [metabase-enterprise.dependencies.core :as dependencies]
+   [metabase.analyze.core :as analyze]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
@@ -16,9 +17,10 @@
 
 (mr/def ::card-body
   [:map
-   [:id            {:optional false} ms/PositiveInt]
-   [:dataset_query {:optional true}  [:maybe ms/Map]]
-   [:type          {:optional true}  [:maybe ::queries.schema/card-type]]])
+   [:id              {:optional false} ms/PositiveInt]
+   [:dataset_query   {:optional true}  [:maybe ms/Map]]
+   [:type            {:optional true}  [:maybe ::queries.schema/card-type]]
+   [:result_metadata {:optional true}  [:maybe analyze/ResultsMetadata]]])
 
 (api.macros/defendpoint :post "/check_card"
   "Check a proposed edit to a card, and return the card IDs for those cards this edit will break."
@@ -31,9 +33,11 @@
         card          (-> original
                           (assoc :dataset-query (:dataset_query body)
                                  :type          (:type body (:type original)))
-                          (dissoc :result-metadata))
+                          (dissoc :result-metadata)
+                          (cond-> #_card
+                           (:result_metadata body) (assoc :result-metadata (:result_metadata body))))
         ;; TODO: This sucks - it's getting all cards for the same database_id, which is slow and over-reaching.
-        all-cards     (t2/select-fn-set :id :model/Card :database_id database-id)
+        all-cards     (t2/select-fn-set :id :model/Card :database_id database-id :archived false)
         breakages     (dependencies/check-cards-have-sound-refs base-provider [card] all-cards)
         broken-ids    (keys breakages)
         broken-cards  (when (seq broken-ids)

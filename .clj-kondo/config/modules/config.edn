@@ -1689,12 +1689,15 @@
   {:team "Querying"
    :api  #{metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init}
-   :uses #{app-db
+   :uses #{analyze
+           app-db
            api
+           collections
            driver
            lib
            lib-be
            models
+           premium-features
            queries
            query-processor
            util}}
