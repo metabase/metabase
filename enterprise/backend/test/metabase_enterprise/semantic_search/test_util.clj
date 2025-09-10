@@ -336,12 +336,12 @@
 (defmacro with-index!
   "Ensure a clean, small index for testing populated with a few collections, cards, and dashboards."
   [& body]
-  `(with-indexable-documents!
-     (with-redefs [semantic.embedding/get-configured-model        (fn [] mock-embedding-model)
-                   semantic.index-metadata/default-index-metadata mock-index-metadata
-                   semantic.index/model-table-suffix              mock-table-suffix]
-       (with-open [_# (open-temp-index-and-metadata!)]
-         (binding [search.ingestion/*force-sync* true]
+  `(binding [search.ingestion/*disable-updates* true]
+     (with-indexable-documents!
+       (with-redefs [semantic.embedding/get-configured-model        (fn [] mock-embedding-model)
+                     semantic.index-metadata/default-index-metadata mock-index-metadata
+                     semantic.index/model-table-suffix              mock-table-suffix]
+         (with-open [_# (open-temp-index-and-metadata!)]
            (blocking-index!
             (semantic.pgvector-api/gate-updates! (semantic.env/get-pgvector-datasource!)
                                                  mock-index-metadata
