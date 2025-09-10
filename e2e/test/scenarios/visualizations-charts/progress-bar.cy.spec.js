@@ -122,7 +122,7 @@ describe("scenarios > visualizations > progress chart", () => {
     });
   });
 
-  it("should exclude value column from goal column options", () => {
+  it("should exclude value column from goal column options and include Custom value option", () => {
     const questionDetails = {
       name: "Exclusion Test Progress",
       query: {
@@ -154,8 +154,9 @@ describe("scenarios > visualizations > progress chart", () => {
       cy.findByText("Goal").parent().parent().icon("chevrondown").click();
     });
 
-    // Should show Count and Average of Quantity, but not Sum of Total
+    // Should show Custom value, Count and Average of Quantity, but not Sum of Total
     H.popover().within(() => {
+      cy.findByText("Custom value").should("be.visible");
       cy.findByText("Count").should("be.visible");
       cy.findByText("Average of Quantity").should("be.visible");
       cy.findByText("Sum of Total").should("not.exist");
@@ -189,6 +190,54 @@ describe("scenarios > visualizations > progress chart", () => {
     H.queryBuilderMain().within(() => {
       cy.findByText("18,760").should("be.visible");
       cy.contains("Goal 1,000").should("exist");
+    });
+  });
+
+  it("should allow switching between custom value and column reference via dropdown", () => {
+    const questionDetails = {
+      name: "Custom Value Toggle Test",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"], ["sum", ["field", ORDERS.TOTAL, null]]],
+      },
+      display: "progress",
+    };
+
+    H.createQuestion(questionDetails, { visitQuestion: true });
+
+    H.openVizSettingsSidebar();
+    H.vizSettingsSidebar().within(() => {
+      cy.findByText("Display").click();
+
+      // Initially should show number input with placeholder
+      cy.findByPlaceholderText("Enter goal value").should("exist");
+
+      // Click dropdown to select a column
+      cy.findByText("Goal").parent().parent().icon("chevrondown").click();
+    });
+
+    H.popover().within(() => {
+      // Select Sum of Total column
+      cy.findByText("Sum of Total").click();
+    });
+
+    // Should now show the column name in a read-only text input
+    H.vizSettingsSidebar().within(() => {
+      cy.findByText("Sum of Total").should("exist");
+
+      // Click dropdown again to switch back to custom value
+      cy.findByText("Goal").parent().parent().icon("chevrondown").click();
+    });
+
+    H.popover().within(() => {
+      cy.findByText("Custom value").click();
+    });
+
+    // Should be back to number input and it should be focused
+    H.vizSettingsSidebar().within(() => {
+      cy.findByPlaceholderText("Enter goal value")
+        .should("exist")
+        .should("have.focus");
     });
   });
 });

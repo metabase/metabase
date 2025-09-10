@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { ActionIcon, Icon, Menu, NumberInput, TextInput } from "metabase/ui";
@@ -13,9 +13,6 @@ interface ChartSettingGoalInputProps {
   valueField?: string;
 }
 
-const RIGHT_SECTION_BUTTON_WIDTH = 22;
-const RIGHT_SECTION_BUTTON_PADDING = 10;
-
 export const ChartSettingGoalInput = ({
   id,
   value,
@@ -24,6 +21,7 @@ export const ChartSettingGoalInput = ({
   valueField,
 }: ChartSettingGoalInputProps) => {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const numberInputRef = useRef<HTMLInputElement>(null);
 
   const numericColumns = useMemo(() => {
     if (!columns?.length) {
@@ -49,60 +47,46 @@ export const ChartSettingGoalInput = ({
     ? numericColumns.find((col) => col.value === value)
     : null;
 
-  const handleColumnSelect = (selectedColumnValue: string) => {
-    onChange(selectedColumnValue);
+  const handleMenuItemSelect = (selectedValue: string | number) => {
+    onChange(selectedValue);
     setIsPopoverOpen(false);
+    if (typeof selectedValue === "number") {
+      setTimeout(() => {
+        numberInputRef.current?.focus();
+        numberInputRef.current?.select();
+      }, 0);
+    }
   };
 
-  const handleClearColumn = () => {
-    onChange(0);
-  };
-
-  const rightSectionWidth =
-    [hasNumericColumns, isColumnReference].filter(Boolean).length *
-      RIGHT_SECTION_BUTTON_WIDTH +
-    RIGHT_SECTION_BUTTON_PADDING;
-
-  const rightSection = (
-    <>
-      {isColumnReference && (
-        <ActionIcon
-          c="text-medium"
-          size="sm"
-          radius="xl"
-          p={0}
-          onClick={handleClearColumn}
-          title={t`Clear column selection`}
-        >
-          <Icon name="close" />
+  const rightSection = hasNumericColumns ? (
+    <Menu
+      opened={isPopoverOpen}
+      onChange={setIsPopoverOpen}
+      position="bottom-end"
+      withArrow
+    >
+      <Menu.Target>
+        <ActionIcon c="text-medium" size="sm" radius="xl" p={0}>
+          <Icon name="chevrondown" />
         </ActionIcon>
-      )}
-      {hasNumericColumns && (
-        <Menu
-          opened={isPopoverOpen}
-          onChange={setIsPopoverOpen}
-          position="bottom-end"
-          withArrow
-        >
-          <Menu.Target>
-            <ActionIcon c="text-medium" size="sm" radius="xl" p={0}>
-              <Icon name="chevrondown" />
-            </ActionIcon>
-          </Menu.Target>
-          <Menu.Dropdown miw={320}>
-            {availableColumns.map((column) => (
-              <Menu.Item
-                key={column.value}
-                onClick={() => handleColumnSelect(column.value)}
-              >
-                {column.label}
-              </Menu.Item>
-            ))}
-          </Menu.Dropdown>
-        </Menu>
-      )}
-    </>
-  );
+      </Menu.Target>
+      <Menu.Dropdown miw={320}>
+        <Menu.Item onClick={() => handleMenuItemSelect(numericValue)} fw="bold">
+          {t`Custom value`}
+        </Menu.Item>
+        <Menu.Divider />
+        {availableColumns.map((column) => (
+          <Menu.Item
+            key={column.value}
+            onClick={() => handleMenuItemSelect(column.value)}
+            fw="bold"
+          >
+            {column.label}
+          </Menu.Item>
+        ))}
+      </Menu.Dropdown>
+    </Menu>
+  ) : null;
 
   if (isColumnReference) {
     return (
@@ -111,36 +95,23 @@ export const ChartSettingGoalInput = ({
         value={selectedColumn?.label || value}
         readOnly
         placeholder={selectedColumn?.label || value}
+        fw="bold"
         rightSection={rightSection}
         rightSectionPointerEvents="all"
-        rightSectionProps={{
-          style: { width: rightSectionWidth },
-        }}
-        styles={{
-          input: {
-            paddingRight: rightSectionWidth,
-          },
-        }}
       />
     );
   }
 
   return (
     <NumberInput
+      ref={numberInputRef}
       id={id}
       value={numericValue}
       onChange={(val) => onChange(val ?? 0)}
       placeholder={t`Enter goal value`}
+      fw="bold"
       rightSection={rightSection}
       rightSectionPointerEvents="all"
-      rightSectionProps={{
-        style: { width: rightSectionWidth },
-      }}
-      styles={{
-        input: {
-          paddingRight: rightSectionWidth,
-        },
-      }}
     />
   );
 };
