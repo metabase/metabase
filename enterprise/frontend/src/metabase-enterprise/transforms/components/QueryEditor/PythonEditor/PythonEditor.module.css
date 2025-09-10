@@ -7,6 +7,27 @@
   height: 100%;
 }
 
+.output {
+  white-space: pre;
+}
+
 .visualization {
   flex: 1 0 auto;
+}
+
+.results {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+}
+
+.tableHeader {
+  background-color: var(--mb-color-bg-medium);
+  padding: var(--mantine-spacing-sm);
+}
+
+.tableCell {
+  border: 1px solid var(--mb-color-border);
+  padding: var(--mantine-spacing-sm);
 }
