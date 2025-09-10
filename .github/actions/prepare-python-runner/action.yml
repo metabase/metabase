@@ -10,6 +10,13 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Initialize python-runner submodule
+      shell: bash
+      run: |
+        echo "📦 Initializing python-runner submodule..."
+        git submodule update --init --recursive python-runner
+        echo "✅ Submodule initialized successfully"
+    
     - name: Check if python-runner directory exists
       id: check-python-runner
       shell: bash
