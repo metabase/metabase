@@ -1206,6 +1206,11 @@ describe("scenarios > admin > transforms > jobs", () => {
 
     cy.intercept("POST", "/api/ee/transform-job").as("createJob");
     cy.intercept("PUT", "/api/ee/transform-job/*").as("updateJob");
+    cy.intercept("GET", "/api/ee/transform-job/*").as("getTransformJob");
+    cy.intercept("GET", "/api/ee/transform-job/*/transforms").as(
+      "getJobTransforms",
+    );
+
     cy.intercept("DELETE", "/api/ee/transform-job/*").as("deleteJob");
   });
 
@@ -1327,23 +1332,24 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("tags", () => {
-    it("should be able to add and remove tags", { tags: "@flaky" }, () => {
+    it("should be able to add and remove tags", () => {
       H.createTransformJob({ name: "New job" }, { visitTransformJob: true });
       getTagsInput().click();
 
       H.popover().within(() => {
         cy.findByRole("option", { name: "hourly" }).click();
-        cy.wait("@updateJob");
+        cy.wait(["@updateJob", "@getTransformJob", "@getJobTransforms"]);
         assertOptionSelected("hourly");
+        // cy.pause();
         assertOptionNotSelected("daily");
 
         cy.findByRole("option", { name: "daily" }).click();
-        cy.wait("@updateJob");
+        cy.wait(["@updateJob", "@getTransformJob", "@getJobTransforms"]);
         assertOptionSelected("hourly");
         assertOptionSelected("daily");
 
         cy.findByRole("option", { name: "hourly" }).click();
-        cy.wait("@updateJob");
+        cy.wait(["@updateJob", "@getTransformJob", "@getJobTransforms"]);
         assertOptionNotSelected("hourly");
         assertOptionSelected("daily");
       });
