@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-752-integration-branch-for-embedding-hub",
-    "hash": "05ac3562bb8220770874ea6e5a1ed21a21b4b8b7"
+    "hash": "38d29b414dacc017c025db45bd7770e27cbe9b34"
   },
   "upstream": {
     "branch": "emb-788-move-embedding-settings-into-its-own-top-level-menu"
