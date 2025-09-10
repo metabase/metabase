@@ -12,6 +12,7 @@ import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
+import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 import {
   getMetabotSuggestedTransform,
   setSuggestedTransform,
@@ -65,6 +66,8 @@ export function TransformQueryPageBody({
   const dispatch = useDispatch();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
+  const metabot = useMetabotAgent();
+
   const handleSave = async (query: DatasetQuery) => {
     const { error } = await updateTransform({
       id: transform.id,
@@ -77,6 +80,9 @@ export function TransformQueryPageBody({
     if (error) {
       sendErrorToast(t`Failed to update transform query`);
     } else {
+      metabot.submitInput(
+        "HIDDEN MESSAGE: user has accepted your changes, move to the next step!",
+      );
       sendSuccessToast(t`Transform query updated`);
       dispatch(push(getTransformUrl(transform.id)));
     }
