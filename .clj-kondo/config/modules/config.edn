@@ -1615,7 +1615,7 @@
            enterprise/harbormaster}}
 
   enterprise/comments
-  {:team "UX East"
+  {:team "Workflows"
    :api  #{metabase-enterprise.comments.api
            metabase-enterprise.comments.init}
    :uses #{api

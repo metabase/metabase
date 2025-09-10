@@ -3,12 +3,52 @@
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (defn- relaxed-re [s]
   (re-pattern (str "(?s).*" s ".*")))
+
+;;; tiptap helpers
+
+(defn- render-tiptap [node]
+  (if (string? node)
+    {:type "text" :text node}
+    (let [tag     (case (first node)
+                    :p "paragraph"
+                    (name (first node)))
+          block?  #{"paragraph"}
+          attrs   (when (map? (second node)) (second node))
+          content (if attrs (drop 2 node) (drop 1 node))]
+      (u/remove-nils
+       {:type    tag
+        :attrs   (cond-> attrs
+                   (block? tag) (assoc :_id (str (random-uuid)))
+                   true         not-empty)
+        :content (when (seq content)
+                   (mapv render-tiptap content))}))))
+
+(defn tiptap
+  "Little helpers to generate tiptap docs"
+  [& content]
+  {:type    "doc"
+   :content (mapv render-tiptap content)})
+
+(deftest tiptap-helpers-test
+  (testing "can generate some content but less verbose"
+    (is (=? {:type "doc"
+             :content
+             [{:type  "paragraph"
+               :attrs {:_id string?},
+               :content
+               [{:type "text" :text "omg is that you? "}
+                {:type  "smartLink"
+                 :attrs {:entityId 6 :model "user"}}]}]}
+            (tiptap [:p
+                     "omg is that you? "
+                     [:smartLink {:entityId 6 :model "user"}]])))))
 
 (deftest basic-comments-test
   (testing "GET /api/ee/comment/"
@@ -42,9 +82,10 @@
                                             :target_id doc-id)))
               (testing "document creator receives notifications for top-level comments"
                 (is (=? {(:email (mt/fetch-user :lucky))
-                         [{:to      [(:email (mt/fetch-user :lucky))]
-                           :subject "Comment on New Document"
-                           :body    [{:content (relaxed-re (str "http://localhost:3000/document/" doc-id))}]}]}
+                         [{:subject "Comment on New Document"
+                           :body    [{:content (relaxed-re (format "http://localhost:3000/document/%s#comment-%s"
+                                                                   doc-id
+                                                                   (:id created)))}]}]}
                         (first (swap-vals! mt/inbox empty)))))
 
               (testing "creates a reply to an existing comment"
@@ -66,7 +107,8 @@
                                                 :target_type "document"
                                                 :target_id doc-id)))
                   (testing "participants in the thread receive notifications for new replies"
-                    (is (=? {"rasta@metabase.com" [{:subject "Comment on New Document"}]}
+                    (is (=? {(:email (mt/fetch-user :rasta))
+                             [{:subject "Comment on New Document"}]}
                             (first (swap-vals! mt/inbox empty)))))))))
 
           (testing "creates a comment for part of an entity"
@@ -85,8 +127,24 @@
                        :reactions       []}
                       created))
               (testing "Comments on concrete paragraphs are also sent as notifications"
-                (is (=? {"lucky@metabase.com" [{:subject "Comment on New Document"}]}
-                        (first (swap-vals! mt/inbox empty))))))))))))
+                (is (=? {(:email (mt/fetch-user :lucky))
+                         [{:subject "Comment on New Document"
+                           :body    [{:content (relaxed-re (format "http://localhost:3000/document/%s/comment/%s#comment-%s"
+                                                                   doc-id
+                                                                   part-id
+                                                                   (:id created)))}]}]}
+                        (first (swap-vals! mt/inbox empty)))))))
+
+          (testing "Comments with mentions send notification emails"
+            (let [_created (mt/user-http-request :rasta :post 200 "ee/comment/"
+                                                 {:target_type "document"
+                                                  :target_id   doc-id
+                                                  :content     (tiptap
+                                                                [:smartLink {:model    "user"
+                                                                             :entityId (mt/user->id :crowberto)}])})]
+              (is (=? {(:email (mt/fetch-user :lucky))     [{:subject "Comment on New Document"}]
+                       (:email (mt/fetch-user :crowberto)) [{:subject "Comment on New Document"}]}
+                      (first (swap-vals! mt/inbox empty)))))))))))
 
 (deftest update-comment-test
   (testing "PUT /api/ee/comment/:comment-id"

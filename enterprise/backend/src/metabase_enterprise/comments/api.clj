@@ -1,7 +1,9 @@
 (ns metabase-enterprise.comments.api
   "`/api/ee/comment/` routes"
   (:require
-   [clojure.string :as str]
+   [honey.sql :as sql]
+   [honey.sql.helpers :as sql.helpers]
+   [metabase-enterprise.comments.models.comment :as comment]
    [metabase-enterprise.comments.models.comment-reaction :as comment-reaction]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -21,12 +23,6 @@
   [entity]
   (case (t2/model entity)
     :model/Document (:archived entity)))
-
-(defn- urlpath-for
-  "Generate an URL to an entity"
-  [entity]
-  (case (t2/model entity)
-    :model/Document (str "/document/" (:id entity))))
 
 (defn- content->str [content]
   (or (:text content)
@@ -100,47 +96,51 @@
   [_route-params
    _query-params
    {:keys [target_type target_id child_target_id parent_comment_id content]} :- CreateComment]
-  (let [entity (-> (api/read-check (TYPE->MODEL target_type) target_id)
-                   (u/prog1 (api/check-400 (not (entity-archived? <>))
-                                           "Cannot comment on archived entities")))]
-
-    ;; If this is a reply, validate the parent comment exists and belongs to same entity
-    (when parent_comment_id
-      (let [parent (api/check-404 (t2/select-one :model/Comment :id parent_comment_id))]
-        (api/check-400 (and (= (:target_type parent) target_type)
-                            (= (:target_id parent) target_id)
-                            (= (:child_target_id parent) child_target_id))
-                       "Parent comment doesn't belong to the same entity")))
-
-    (let [comment    (-> (t2/insert-returning-instance! :model/Comment
-                                                        {:target_type       target_type
-                                                         :target_id         target_id
-                                                         :child_target_id   child_target_id
-                                                         :parent_comment_id parent_comment_id
-                                                         :content           content
-                                                         :creator_id        api/*current-user-id*})
-                         (t2/hydrate :creator)
-                         ;; New comments always have empty reactions map
-                         (assoc :reactions []))
-          clause     (if parent_comment_id
-                       {:where [:in :id {:from   [:comment]
-                                         :select [:creator_id]
-                                         :where  [:or
-                                                  [:= :id parent_comment_id]
-                                                  [:= :parent_comment_id parent_comment_id]]}]}
-                       ;; FIXME: add dispatch on different entity types
-                       {:where [:= :id (:creator_id entity)]})
-          recipients (-> (t2/select-fn-set :email [:model/User :email] clause)
-                         (disj (:email @api/*current-user*)))
-          payload    {:entity_type  target_type
-                      :entity_title (:name entity)
-                      :path         (urlpath-for entity)
-                      :author       (:common_name @api/*current-user*)
-                      :comment      (content->str content)
-                      :created_at   (:created_at comment)}]
-      (doseq [email recipients]
-        (events/publish-event! :event/comment-created (assoc payload :email email)))
-      comment)))
+  (let [entity     (-> (api/read-check (TYPE->MODEL target_type) target_id)
+                       (u/prog1 (api/check-400 (not (entity-archived? <>))
+                                               "Cannot comment on archived entities")))
+        ;; If this is a reply, validate the parent comment exists and belongs to same entity
+        parent     (when parent_comment_id
+                     (-> (api/check-404 (t2/select-one :model/Comment :id parent_comment_id))
+                         (u/prog1 (api/check-400 (and (= (:target_type <>) target_type)
+                                                      (= (:target_id <>) target_id)
+                                                      (= (:child_target_id <>) child_target_id))
+                                                 "Parent comment doesn't belong to the same entity"))
+                         (t2/hydrate :creator)))
+        comment    (-> (t2/insert-returning-instance! :model/Comment
+                                                      {:target_type       target_type
+                                                       :target_id         target_id
+                                                       :child_target_id   child_target_id
+                                                       :parent_comment_id parent_comment_id
+                                                       :content           content
+                                                       :creator_id        api/*current-user-id*})
+                       (t2/hydrate :creator)
+                       ;; New comments always have empty reactions map
+                       (assoc :reactions []))
+        clause     (if parent_comment_id
+                     {:where [:in :id {:from   [:comment]
+                                       :select [:creator_id]
+                                       :where  [:or
+                                                [:= :id parent_comment_id]
+                                                [:= :parent_comment_id parent_comment_id]]}]}
+                     ;; FIXME: add dispatch on different entity types
+                     {:where [:= :id (:creator_id entity)]})
+        mentions   (comment/mentions content)
+        recipients (-> (t2/select-fn-set :email [:model/User :email]
+                                         (cond-> clause
+                                           (seq mentions) (sql.helpers/where :or [:in :id mentions])))
+                       (disj (:email @api/*current-user*)))
+        payload    {:entity_type    target_type
+                    :entity_title   (:name entity)
+                    :path           (comment/url entity comment)
+                    :created_at     (:created_at comment)
+                    :author         (:common_name (:creator comment))
+                    :comment        (content->str (:content comment))
+                    :parent_author  (:common_name (:creator parent))
+                    :parent_comment (content->str (:content parent))}]
+    (doseq [email recipients]
+      (events/publish-event! :event/comment-created (assoc payload :email email)))
+    comment))
 
 (api.macros/defendpoint :put "/:comment-id"
   "Update a comment"
