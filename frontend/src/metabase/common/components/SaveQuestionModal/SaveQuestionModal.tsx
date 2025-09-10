@@ -57,6 +57,7 @@ export const SaveQuestionModal = ({
       <Modal.Root
         padding="2.5rem"
         {...modalProps}
+        size={isConfirming ? "xl" : undefined}
         closeOnEscape={false}
         onClose={onClose}
       >
