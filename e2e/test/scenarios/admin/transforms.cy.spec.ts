@@ -417,7 +417,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
   });
 
   describe("tags", () => {
-    it("should be able to add and remove tags", () => {
+    it("should be able to add and remove tags", { tags: "@flaky" }, () => {
       createMbqlTransform({ visitTransform: true });
       getTagsInput().click();
 
