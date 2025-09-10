@@ -4,7 +4,11 @@ import _ from "underscore";
 
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import type { HoveredObject } from "metabase/visualizations/types";
-import type { DictionaryArray, Series } from "metabase-types/api";
+import type {
+  DictionaryArray,
+  Series,
+  TranslatedSeries,
+} from "metabase-types/api";
 
 import { hasTranslations, useTranslateContent } from "./use-translate-content";
 
@@ -116,7 +120,7 @@ export const useTranslateFieldValuesInHoveredObject = (
 export const translateFieldValuesInSeries = (
   series: Series,
   tc: ContentTranslationFunction,
-) => {
+): TranslatedSeries => {
   if (!hasTranslations(tc)) {
     return series;
   }

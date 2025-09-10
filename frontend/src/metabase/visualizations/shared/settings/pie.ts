@@ -21,6 +21,7 @@ import type {
   RawSeries,
   RowValue,
   RowValues,
+  TranslatedSeries,
 } from "metabase-types/api";
 
 export function getPieDimensions(settings: ComputedVisualizationSettings) {
@@ -179,7 +180,7 @@ export function getColors(
 }
 
 export function getPieRows(
-  rawSeries: RawSeries,
+  rawSeries: TranslatedSeries,
   settings: ComputedVisualizationSettings,
   formatter: Formatter,
 ) {
