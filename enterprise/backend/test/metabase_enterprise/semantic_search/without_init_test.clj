@@ -8,8 +8,6 @@
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.test :as mt]))
 
-(use-fixtures :once #'semantic.tu/once-fixture)
-
 ;; When booting a new install from a fresh app db, we can wind up getting calls into the search backend from things
 ;; like loading the sample or audit db content before search has been initialized, and therefore before receiving an
 ;; init! call. These tests ensure that we can handle such calls and don't throw if it does happen.

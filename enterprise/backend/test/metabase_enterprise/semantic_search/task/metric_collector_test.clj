@@ -1,6 +1,6 @@
 (ns metabase-enterprise.semantic-search.task.metric-collector-test
   (:require
-   [clojure.test :refer [deftest is testing use-fixtures]]
+   [clojure.test :refer [deftest is testing]]
    [honey.sql :as sql]
    [java-time.api :as t]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
@@ -12,8 +12,6 @@
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.test :as mt]
    [next.jdbc :as jdbc]))
-
-(use-fixtures :once #'semantic.tu/once-fixture)
 
 (defn- create-test-tables!
   [pgvector index-metadata model]

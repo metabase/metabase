@@ -10,8 +10,6 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(use-fixtures :once #'semantic.tu/once-fixture)
-
 (deftest database-initialised-test
   (is (some? @semantic.db.datasource/data-source))
   (is (= {:test 1} (semantic.db.datasource/test-connection!))))

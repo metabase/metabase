@@ -11,12 +11,7 @@
    [metabase.search.in-place.legacy :as in-place.legacy]
    [metabase.search.in-place.scoring :as in-place.scoring]
    [metabase.search.settings :as search.settings]
-   [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
-
-(use-fixtures :once (compose-fixtures
-                     (fixtures/initialize :db)
-                     #'semantic.tu/once-fixture))
+   [metabase.test :as mt]))
 
 (deftest fallback-engine-available-with-semantic-test
   (mt/with-premium-features #{:semantic-search}

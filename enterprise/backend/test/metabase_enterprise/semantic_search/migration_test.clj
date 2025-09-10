@@ -21,7 +21,6 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once #'semantic.tu/once-fixture)
 (use-fixtures :each #'semantic.tu/ensure-no-migration-table-fixture)
 
 (deftest migration-table-versions-test

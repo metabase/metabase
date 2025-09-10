@@ -10,14 +10,7 @@
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.search.ingestion :as search.ingestion]
-   [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
-
-;; TODO: This ns' test seem not to run from cli. Figure out why!
-
-(use-fixtures :once (compose-fixtures
-                     (fixtures/initialize :db)
-                     #'semantic.tu/once-fixture))
+   [metabase.test :as mt]))
 
 (defmacro with-mock-index-metadata!
   [& body]
