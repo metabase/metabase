@@ -65,7 +65,7 @@
 (deftest re-init-endpoint-test
   (testing "POST /api/search/re-init with semantic search support"
     (mt/with-premium-features #{:semantic-search}
-      (semantic.tu/with-index!
+      (semantic.tu/with-test-db! {:mode :mock-indexed}
         (let [original-index      semantic.tu/mock-index
               original-table-name (:table-name original-index)
               new-index           (with-redefs [semantic.index/model-table-suffix (constantly 345)]

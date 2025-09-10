@@ -56,7 +56,7 @@
 (deftest repair-index-integration-test
   (testing "repair-index! properly handles document additions and deletions via gate table"
     (mt/with-premium-features #{:semantic-search}
-      (semantic.tu/with-index!
+      (semantic.tu/with-test-db! {:mode :mock-indexed}
         (let [pgvector       (semantic.env/get-pgvector-datasource!)
               index-metadata (semantic.env/get-index-metadata)
               gate-table     (:gate-table-name index-metadata)
@@ -90,7 +90,7 @@
 (deftest repair-table-cleanup-test
   (testing "The repair table gets cleaned up properly at the end of a repair-index! job"
     (mt/with-premium-features #{:semantic-search}
-      (semantic.tu/with-index!
+      (semantic.tu/with-test-db! {:mode :mock-indexed}
         (let [pgvector       (semantic.env/get-pgvector-datasource!)
               index-metadata semantic.tu/mock-index-metadata
               gate-table     (:gate-table-name index-metadata)

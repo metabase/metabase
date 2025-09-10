@@ -19,7 +19,7 @@
       (with-open [_ (semantic.tu/open-temp-index!)]
         (semantic.tu/cleanup-index-metadata! (semantic.env/get-pgvector-datasource!)
                                              semantic.tu/mock-index-metadata)
-        (semantic.tu/with-index!
+        (semantic.tu/with-test-db! {:mode :mock-indexed}
           (is (search.engine/supported-engine? (if (= :mysql (mdb/db-type))
                                                  ;; appdb is not supported on :mysql, should fallback to in-place
                                                  :search.engine/in-place
