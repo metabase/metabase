@@ -1,11 +1,11 @@
 import { Api } from "metabase/api";
 
-interface ExecutePythonRequest {
+export interface ExecutePythonRequest {
   code: string;
   tables: Record<string, number>;
 }
 
-interface ExecutePythonResponse {
+export interface ExecutePythonResponse {
   output?: string;
   stdout?: string;
   stderr?: string;
