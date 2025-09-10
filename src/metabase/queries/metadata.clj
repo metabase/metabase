@@ -88,8 +88,8 @@
 (defn- batch-fetch-query-metadata*
   "Fetch dependent metadata for ad-hoc queries."
   [queries]
-  (let [{source-table-ids :metadata/table
-         source-card-ids  :metadata/card} (lib.util/source-tables-and-cards queries)
+  (let [{source-table-ids :table
+         source-card-ids  :card}  (lib.util/source-tables-and-cards queries)
         source-tables             (concat (schema.table/batch-fetch-table-query-metadatas source-table-ids)
                                           (schema.table/batch-fetch-card-query-metadatas source-card-ids
                                                                                          {:include-database? false}))

@@ -1686,10 +1686,12 @@
            metabase-enterprise.dependencies.init}
    :uses #{app-db
            api
+           driver
            lib
            lib-be
            models
            queries
+           query-processor
            util}}
 
   enterprise/documents

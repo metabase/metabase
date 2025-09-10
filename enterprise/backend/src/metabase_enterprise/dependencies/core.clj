@@ -1,6 +1,8 @@
 (ns metabase-enterprise.dependencies.core
   "API namespace for the `metabase-enterprise.dependencies` module."
   (:require
+   [clojure.set :as set]
+   [metabase-enterprise.dependencies.native-validation :as deps.native]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
@@ -9,6 +11,7 @@
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -41,21 +44,25 @@
 (defn- upstream-deps:mbql-card [legacy-query]
   (lib.util/source-tables-and-cards [legacy-query]))
 
-(defn- upstream-deps:native-card [_legacy-query]
-  ;; FIXME: Wire this up with William's SQL parsing when available.
-  {})
+(defn- upstream-deps:native-card [metadata-provider card]
+  (let [engine (:engine (lib.metadata/database metadata-provider))
+        deps   (deps.native/native-query-deps engine metadata-provider (:dataset_query card))]
+    ;; The deps are in #{{:table 7} ...} form and need conversion to ::upstream-deps form.
+    (u/group-by ffirst (comp second first) conj #{} deps)))
 
 (mr/def ::upstream-deps
   [:map
-   [:metadata/card  {:optional true} [:set ::lib.schema.id/card]]
-   [:metadata/table {:optional true} [:set ::lib.schema.id/table]]])
+   [:card    {:optional true} [:set ::lib.schema.id/card]]
+   [:table   {:optional true} [:set ::lib.schema.id/table]]
+   [:snippet {:optional true} [:set ::lib.schema.id/snippet]]])
 
 (mu/defn upstream-deps:card :- ::upstream-deps
   "Given a Toucan `:model/Card`, return its upstream dependencies as a map from the kind to a set of IDs."
-  [{query :dataset_query :as toucan-card}]
+  [metadata-provider                      :- ::lib.schema.metadata/metadata-provider
+   {query :dataset_query :as toucan-card}]
   (case (:type query)
     :query  (upstream-deps:mbql-card query)
-    :native (upstream-deps:native-card query)
+    :native (upstream-deps:native-card metadata-provider toucan-card)
     (throw (ex-info "Unhandled kind of card query" {:card toucan-card}))))
 
 (comment
@@ -70,4 +77,6 @@
                             update-keys (constantly "Duration"))]
     (check-cards-have-sound-refs base-mp [card'] card-ids))
 
-  (upstream-deps:card (toucan2.core/select-one :model/Card :id 1)))
+  (let [card (toucan2.core/select-one :model/Card :id 121)
+        mp   (metabase.lib-be.metadata.jvm/application-database-metadata-provider (:database_id card))]
+    (upstream-deps:card mp card)))

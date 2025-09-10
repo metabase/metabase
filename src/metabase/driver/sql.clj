@@ -137,6 +137,14 @@
   ;; honeysql, and accepts a keyword too. This way we delegate proper escaping and qualification to honeysql.
   (driver/drop-table! driver (:id database) (qualified-name target)))
 
+(defmulti normalize-unquoted-name
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod normalize-unquoted-name :sql
+  [_ name-str]
+  (u/lower-case-en name-str))
+
 (defn normalize-name
   "Normalizes the (primarily table/column) name passed in.
   Should return a value that matches the name listed in the appdb."
@@ -150,7 +158,7 @@
         (-> name-str
             (subs 1 (dec (count name-str)))
             (str/replace quote-quote quote)))
-      (u/lower-case-en name-str))))
+      (normalize-unquoted-name driver name-str))))
 
 (defmulti default-schema
   "Returns the default schema for a given database driver.
