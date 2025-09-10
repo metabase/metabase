@@ -1,3 +1,5 @@
+import type { Extension } from "@uiw/react-codemirror";
+
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 
 import type { CodeLanguage } from "./types";
@@ -12,6 +14,7 @@ type Props = {
   readOnly?: boolean;
   value: string;
   onChange?: (value: string) => void;
+  extensions?: Extension[];
 };
 
 export function CodeEditor({
@@ -23,8 +26,12 @@ export function CodeEditor({
   readOnly,
   value,
   onChange,
+  extensions: externalExtensions,
 }: Props) {
-  const extensions = useExtensions({ language });
+  const extensions = useExtensions({
+    language,
+    extensions: externalExtensions,
+  });
 
   return (
     <CodeMirror
