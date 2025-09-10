@@ -2,6 +2,10 @@ import cx from "classnames";
 import { match } from "ts-pattern";
 import { c, jt, t } from "ttag";
 
+import {
+  RelatedSettingsSection,
+  getEmbeddingRelatedSettingItems,
+} from "metabase/admin/components/RelatedSettingsSection";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import { UpsellEmbeddingButton } from "metabase/admin/upsells/UpsellEmbeddingButton";
@@ -312,6 +316,14 @@ export function EmbeddingSdkSettings() {
           </Text>
         </Flex>
       </Alert>
+
+      <Stack gap="md">
+        <Text size="lg" fw="bold" lh="xs">
+          {t`Related settings`}
+        </Text>
+
+        <RelatedSettingsSection items={getEmbeddingRelatedSettingItems()} />
+      </Stack>
     </SettingsPageWrapper>
   );
 }
