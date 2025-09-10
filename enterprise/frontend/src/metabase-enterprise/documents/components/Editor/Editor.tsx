@@ -113,7 +113,7 @@ export const Editor: React.FC<EditorProps> = ({
         },
       }),
       Placeholder.configure({
-        placeholder: t`Start writing, press "/" to open command palette, or "@" to insert a link...`,
+        placeholder: t`Start writing, type "/" to list commands, or "@" to mention an item...`,
       }),
       CardEmbed,
       MentionExtension.configure({
