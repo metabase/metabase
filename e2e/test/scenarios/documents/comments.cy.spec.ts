@@ -1295,6 +1295,57 @@ H.describeWithSnowplowEE("document comments", () => {
 
     cy.url().should("not.include", "?new=true");
   });
+
+  describe("email notifications", () => {
+    beforeEach(() => {
+      H.setupSMTP();
+    });
+
+    it("a new thread group notifies the owner of the document", () => {
+      create1ParagraphDocument();
+
+      cy.get<DocumentId>("@documentId").then((documentId) => {
+        cy.signInAsNormalUser();
+        createParagraphComment(documentId, "Test 1");
+
+        H.getInbox().then((response: any) => {
+          const emails = response.body;
+          expect(emails).to.have.length(1);
+
+          const { html, subject } = emails[0];
+
+          expect(subject).to.eq("Comment on Lorem ipsum");
+
+          const parser = new DOMParser();
+          const document = parser.parseFromString(html, "text/html");
+
+          cy.log("heading");
+          expect(document.querySelector("h1")).to.contain.text(
+            "Robert Tableton left a comment on a document",
+          );
+
+          cy.log("link to the document");
+          expect(
+            document.querySelector(
+              `a[href="http://localhost:4000/document/${documentId}"]`,
+            ),
+          ).to.contain.text("Lorem ipsum");
+
+          cy.log("link to the comment");
+          expect(
+            document.querySelector(
+              `a[href="http://localhost:4000/document/${documentId}/comments/"]`, // TODO: update this assertion
+            ),
+          ).to.contain.text("Open in Metabase");
+
+          cy.log("link to the instance");
+          expect(
+            document.querySelector('a[href="http://localhost:4000"]'),
+          ).to.contain.text("http://localhost:4000");
+        });
+      });
+    });
+  });
 });
 
 function selectCharactersLeft(count: number) {
