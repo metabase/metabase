@@ -1,6 +1,6 @@
 (ns metabase-enterprise.library.settings
   (:require
-   [metabase-enterprise.library.git :as git]
+   [metabase-enterprise.library.source.git :as git]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
