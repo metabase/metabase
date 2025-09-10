@@ -9,7 +9,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import {
   getMetabotSuggestedTransform,
-  setTransformQuery,
+  setSuggestedTransform,
 } from "metabase-enterprise/metabot/state";
 import Question from "metabase-lib/v1/Question";
 import type { Card, CardId, DatasetQuery, Transform } from "metabase-types/api";
@@ -71,11 +71,12 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
     dispatch(push(getTransformListUrl()));
   };
 
-  const { transformQuery: proposedQuery } = useSelector(
+  const suggestedTransform = useSelector(
     getMetabotSuggestedTransform as any,
   ) as ReturnType<typeof getMetabotSuggestedTransform>;
+  const proposedQuery = suggestedTransform?.source.query;
 
-  const clearProposed = () => dispatch(setTransformQuery(undefined));
+  const clearProposed = () => dispatch(setSuggestedTransform(undefined));
 
   return (
     <AdminSettingsLayout fullWidthContent>
