@@ -229,9 +229,6 @@
                (mt/rows (qp/process-query q))))))))
 
 (deftest ^:parallel comment-question-mark-test
-  ;; broken in 0.8.3, fixed in 0.8.4
-  ;; https://github.com/metabase/metabase/issues/56690
-  ;; https://github.com/ClickHouse/clickhouse-java/issues/2290
   (mt/test-driver :clickhouse
     (testing "a query with a question mark in the comment and has a variable should work correctly"
       (let [query "SELECT *
@@ -252,9 +249,6 @@
                                 :value  "African"}]}))))))))
 
 (deftest ^:parallel select-question-mark-test
-  ;; broken in 0.8.3, fixed in 0.8.4
-  ;; https://github.com/metabase/metabase/issues/56690
-  ;; https://github.com/ClickHouse/clickhouse-java/issues/2290
   (mt/test-driver :clickhouse
     (testing "a query that selects a question mark and has a variable should work correctly"
       (let [query "SELECT *, '?'
