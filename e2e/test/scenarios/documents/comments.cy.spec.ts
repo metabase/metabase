@@ -1206,9 +1206,12 @@ H.describeWithSnowplowEE("document comments", () => {
       it("should support blockquotes", () => {
         startNewCommentIn1ParagraphDocument();
 
+        cy.log("verify blockquote is rendered during typing");
         cy.realType("> blockquote");
-        cy.realPress([META_KEY, "Enter"]);
+        getBlockquote("blockquote", H.modal()).should("be.visible");
 
+        cy.log("verify blockquote is rendered after submitting");
+        cy.realPress([META_KEY, "Enter"]);
         getBlockquote("blockquote", H.modal()).should("be.visible");
       });
 
@@ -1218,6 +1221,11 @@ H.describeWithSnowplowEE("document comments", () => {
         cy.realType("1. one");
         cy.realPress("Enter");
         cy.realType("two");
+        cy.log("verify ordered list is rendered during typing");
+        getOrderedList("one", H.modal()).should("be.visible");
+        getOrderedList("two", H.modal()).should("be.visible");
+
+        cy.log("verify ordered list is rendered after submitting");
         cy.realPress([META_KEY, "Enter"]);
 
         getOrderedList("one", H.modal()).should("be.visible");
@@ -1230,6 +1238,11 @@ H.describeWithSnowplowEE("document comments", () => {
         cy.realType("- a");
         cy.realPress("Enter");
         cy.realType("b");
+        cy.log("verify bullet list is rendered during typing");
+        getBulletList("a", H.modal()).should("be.visible");
+        getBulletList("b", H.modal()).should("be.visible");
+
+        cy.log("verify bullet list is rendered after submitting");
         cy.realPress([META_KEY, "Enter"]);
 
         getBulletList("a", H.modal()).should("be.visible");
@@ -1241,7 +1254,11 @@ H.describeWithSnowplowEE("document comments", () => {
 
         cy.realType("```");
         cy.realPress("Enter");
+        cy.log("verify code block is rendered during typing");
         cy.realType("code");
+        getCodeBlock("code", H.modal()).should("be.visible");
+
+        cy.log("verify code block is rendered after submitting");
         cy.realPress([META_KEY, "Enter"]);
 
         getCodeBlock("code", H.modal()).should("be.visible");
@@ -1285,6 +1302,35 @@ H.describeWithSnowplowEE("document comments", () => {
 
         getBlockquote("blockquote", H.modal()).should("be.visible");
       });
+    });
+
+    it("should render saved top level blocks", () => {
+      startNewCommentIn1ParagraphDocument();
+
+      cy.realType("> blockquote");
+      cy.realPress([META_KEY, "Enter"]);
+
+      Comments.getNewThreadInput().type("1. ol");
+      cy.realPress("Enter");
+      cy.realType("two");
+      cy.realPress([META_KEY, "Enter"]);
+
+      Comments.getNewThreadInput().type("- ul");
+      cy.realPress("Enter");
+      cy.realType("b");
+      cy.realPress([META_KEY, "Enter"]);
+
+      Comments.getNewThreadInput().type("```");
+      cy.realPress("Enter");
+      cy.realType("code");
+      cy.realPress([META_KEY, "Enter"]);
+
+      cy.reload();
+
+      getBlockquote("blockquote", H.modal()).should("be.visible");
+      getOrderedList("ol", H.modal()).should("be.visible");
+      getBulletList("ul", H.modal()).should("be.visible");
+      getCodeBlock("code", H.modal()).should("be.visible");
     });
   });
 
