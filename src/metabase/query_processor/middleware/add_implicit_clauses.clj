@@ -11,11 +11,12 @@
    [metabase.util.malli :as mu]))
 
 (mu/defn- should-add-implicit-fields?
-  "Whether we should add implicit Fields to this query. True if all of the following are true:
+  "Whether we should add implicit Fields to a `stage`. True if all of the following are true:
 
-  *  The query has either a `:source-table`, *or* a `:source-query` with `:source-metadata` for it
-  *  The query has no breakouts
-  *  The query has no aggregations"
+  *  The stage is an MBQL stage
+  *  The stage has no breakouts
+  *  The stage has no aggregations
+  *  The stage does not already have `:fields`"
   [{:keys        [fields]
     breakouts    :breakout
     aggregations :aggregation, :as stage} :- ::lib.schema/stage]
@@ -23,8 +24,8 @@
        (every? empty? [aggregations breakouts fields])))
 
 (mu/defn- add-implicit-fields :- [:maybe ::lib.schema/stage]
-  "For MBQL queries with no aggregation, add a `:fields` key containing all Fields in the source Table as well as any
-  expressions definied in the query."
+  "For stages with no aggregation, add a `:fields` key containing all Fields in the source Table as well as any
+  expressions defined in the stage."
   [query                                      :- ::lib.schema/query
    path                                       :- ::lib.walk/path
    {source-table-id :source-table, :as stage} :- ::lib.schema/stage]
@@ -32,23 +33,25 @@
     (let [cols        (if source-table-id
                         (lib/returned-columns query (lib.metadata/table query source-table-id))
                         (for [col (lib.walk/apply-f-for-stage-at-path
-                                   ;; TODO -- include remaps? or no?
                                    lib/returned-columns
                                    query
-                                   (lib.walk/previous-path path))]
+                                   (or (lib.walk/previous-path path)
+                                       (throw (ex-info "Expected :source-card to be spliced into the query by now"
+                                                       {:type qp.error-type/invalid-query}))))]
                           (lib/update-keys-for-col-from-previous-stage col)))
           ;; generate a new expression ref clause for each expression defined in the query.
           expressions (lib.walk/apply-f-for-stage-at-path lib/expressions-metadata query path)]
       ;; if the Table has no Fields, throw an Exception, because there is no way for us to proceed
-      (when-not (seq cols)
-        (throw (ex-info (tru "Table ''{0}'' has no Fields associated with it."
-                             (:name (lib.metadata/table query source-table-id)))
+      (when (and (empty? cols)
+                 source-table-id)
+        (throw (ex-info (tru "Table ''{0}'' has no Fields associated with it." (:name (lib.metadata/table query source-table-id)))
                         {:type qp.error-type/invalid-query})))
       ;; add the fields & expressions under the `:fields` clause
-      (letfn [(updated-stage [query stage-number]
-                (-> (lib/with-fields query stage-number (concat cols expressions))
-                    (lib/query-stage stage-number)))]
-        (lib.walk/apply-f-for-stage-at-path updated-stage (assoc-in query path stage) path)))))
+      (when (seq cols)
+        (letfn [(updated-stage [query stage-number]
+                  (-> (lib/with-fields query stage-number (concat cols expressions))
+                      (lib/query-stage stage-number)))]
+          (lib.walk/apply-f-for-stage-at-path updated-stage (assoc-in query path stage) path))))))
 
 (defn- has-window-function-aggregations? [stage]
   (or (lib.util.match/match (mapcat stage [:aggregation :expressions])
