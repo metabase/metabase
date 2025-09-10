@@ -8,6 +8,7 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.common.parameters.values :as params.values]
+   [metabase.driver.impl :as driver.impl]
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -124,9 +125,9 @@
         {schema :schema table-name :name} target
         output-table (keyword schema table-name)]
     (if (driver/table-exists? driver db target)
-      (let [tmp-name (str table-name "__metabase_transform_tmp_name")
+      (let [tmp-name (driver.impl/truncate-alias (str table-name "__metabase_transform_tmp_name"))
             tmp-table (keyword schema tmp-name)
-            renamed-name (str table-name "__metabase_transform_renamed")
+            renamed-name (driver.impl/truncate-alias (str table-name "__metabase_transform_renamed"))
             renamed-table (keyword schema renamed-name)
             create-and-rename-queries [(driver/compile-transform driver tmp-table query)
                                        (driver/compile-rename-table driver output-table renamed-name)
