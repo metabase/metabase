@@ -100,7 +100,3 @@
               (is (== 0 (mt/metric-value system :metabase-search/semantic-dlq-size))))
             (finally
               (drop-test-tables! pgvector index-metadata))))))))
-
-(deftest test-test
-  (semantic.tu/with-index!
-    (is true)))
