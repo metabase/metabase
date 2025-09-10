@@ -607,6 +607,7 @@
     3
     (let [[_ field unit] clause]
       (-> (canonicalize-implicit-field-id field)
+          #_{:clj-kondo/ignore [:deprecated-var]}
           (mbql.u/with-temporal-unit unit)))
 
     4
