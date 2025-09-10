@@ -1312,57 +1312,17 @@ H.describeWithSnowplowEE("document comments", () => {
           const emails = response.body;
           expect(emails).to.have.length(1);
 
-          const { html, subject, to } = emails[0];
-
-          expect(subject).to.eq("Comment on Lorem ipsum");
-          expect(to).to.have.length(1);
-          expect(to[0].address).to.eq("admin@metabase.test");
-
-          const parser = new DOMParser();
-          const document = parser.parseFromString(html, "text/html");
-
-          cy.log("heading");
-          expect(document.querySelector("h1")).to.contain.text(
-            "Robert Tableton left a comment on a document",
-          );
-
-          cy.log("link to the document");
-          expect(
-            document.querySelector(
-              `a[href="http://localhost:4000/document/${documentId}"]`,
-            ),
-          ).to.contain.text("Lorem ipsum");
-
-          cy.log("link to the comment");
-          expect(
-            document.querySelector(
-              `a[href="http://localhost:4000/document/${documentId}/comments/"]`, // TODO: update this assertion
-            ),
-          ).to.contain.text("Open in Metabase");
-
-          cy.log("link to the instance");
-          expect(
-            document.querySelector('a[href="http://localhost:4000"]'),
-          ).to.contain.text("http://localhost:4000");
-
-          cy.log("Metabase company name");
-          const hasCompanyName = [...document.querySelectorAll("*")].some(
-            (element) => element.textContent === "Metabase, Inc.",
-          );
-          expect(hasCompanyName).to.be.true;
-
-          cy.log("Metabase company address");
-          const hasCompanyAddress = [...document.querySelectorAll("*")].some(
-            (element) =>
-              element.textContent ===
-              "9740 Campo Rd., Suite 1029, Spring Valley, CA 91977",
-          );
-          expect(hasCompanyAddress).to.be.true;
-
-          cy.log("Metabase website");
-          expect(
-            document.querySelector('a[href="https://www.metabase.com"]'),
-          ).to.contain.text("www.metabase.com");
+          verifyEmail({
+            email: emails[0],
+            expected: {
+              address: "admin@metabase.test",
+              subject: "Comment on Lorem ipsum",
+              heading: "Robert Tableton left a comment on a document",
+              documentTitle: "Lorem ipsum",
+              documentHref: `http://localhost:4000/document/${documentId}`,
+              commentHref: `http://localhost:4000/document/${documentId}/comments/`,
+            },
+          });
         });
       });
     });
@@ -1746,4 +1706,68 @@ function getCodeBlock(
 
 function getEmbed() {
   return H.documentContent().findByTestId("document-card-embed");
+}
+
+function verifyEmail({
+  email,
+  expected,
+}: {
+  email: {
+    subject: string;
+    to: { address: string }[];
+    html: string;
+  };
+  expected: {
+    subject: string;
+    address: string;
+    heading: string;
+    documentHref: string;
+    documentTitle: string;
+    commentHref: string;
+  };
+}) {
+  const { subject, to, html } = email;
+  expect(subject).to.eq(expected.subject);
+  expect(to).to.have.length(1);
+  expect(to[0].address).to.eq(expected.address);
+
+  const parser = new DOMParser();
+  const document = parser.parseFromString(html, "text/html");
+
+  cy.log("heading");
+  expect(document.querySelector("h1")).to.contain.text(expected.heading);
+
+  cy.log("link to the document");
+  expect(
+    document.querySelector(`a[href="${expected.documentHref}"]`),
+  ).to.contain.text(expected.documentTitle);
+
+  cy.log("link to the comment");
+  expect(
+    document.querySelector(`a[href="${expected.commentHref}"]`),
+  ).to.contain.text("Open in Metabase");
+
+  cy.log("link to the instance");
+  expect(
+    document.querySelector('a[href="http://localhost:4000"]'),
+  ).to.contain.text("http://localhost:4000");
+
+  cy.log("Metabase company name");
+  const hasCompanyName = [...document.querySelectorAll("*")].some(
+    (element) => element.textContent === "Metabase, Inc.",
+  );
+  expect(hasCompanyName).to.be.true;
+
+  cy.log("Metabase company address");
+  const hasCompanyAddress = [...document.querySelectorAll("*")].some(
+    (element) =>
+      element.textContent ===
+      "9740 Campo Rd., Suite 1029, Spring Valley, CA 91977",
+  );
+  expect(hasCompanyAddress).to.be.true;
+
+  cy.log("Metabase website");
+  expect(
+    document.querySelector('a[href="https://www.metabase.com"]'),
+  ).to.contain.text("www.metabase.com");
 }
