@@ -14,7 +14,6 @@
     width: calc(100% + var(--padding));
     height: calc(100% + var(--padding));
     background-color: var(--mb-color-brand-alpha-04);
-    border: 1px solid var(--mb-color-brand);
     border-radius: 8px;
     pointer-events: none;
   }
