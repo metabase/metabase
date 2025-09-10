@@ -4,12 +4,12 @@ import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
+import Alert from "metabase/common/components/Alert";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import DebouncedFrame from "metabase/common/components/DebouncedFrame";
 import { isMac } from "metabase/lib/browser";
-import { color } from "metabase/lib/colors";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
-import { Alert, Box, Flex, Stack, Text } from "metabase/ui";
+import { Box, Flex, Stack, Text } from "metabase/ui";
 
 import {
   useCancelPythonMutation,
@@ -194,187 +194,102 @@ function ExecutionResult({
 }: {
   executionResult: ExecutionResult | null;
 }) {
-  const { headers, rows } = parseCSV(executionResult?.output || "");
-
   if (!executionResult) {
     return null;
   }
 
-  if (executionResult.error) {
-    return (
-      <>
-        <Box p="md">
-          <Alert color="red" title={t`Execution Error`}>
-            {executionResult.error}
-          </Alert>
-        </Box>
-        {executionResult.stdout && (
-          <Box
-            mt="md"
-            p="md"
-            bg="bg-light"
-            style={{ maxHeight: "150px", overflow: "auto" }}
-          >
-            <Text fw="bold" mb="xs">{t`Standard Output:`}</Text>
-            <Box
-              style={{
-                fontFamily: "monospace",
-                whiteSpace: "pre-wrap",
-              }}
-            >
-              {executionResult.stdout}
-            </Box>
-          </Box>
-        )}
-        {executionResult.stderr && (
-          <Box
-            mt="md"
-            p="md"
-            bg="bg-light"
-            style={{ maxHeight: "150px", overflow: "auto" }}
-          >
-            <Text fw="bold" mb="xs">{t`Standard Error:`}</Text>
-            <Box
-              style={{
-                fontFamily: "monospace",
-                whiteSpace: "pre-wrap",
-              }}
-            >
-              {executionResult.stderr}
-            </Box>
-          </Box>
-        )}
-      </>
-    );
-  }
-
-  if (!executionResult?.output || headers.length === 0) {
-    return (
-      <>
-        <Box p="md">
-          <Text c="text-medium">{t`No results to display.`}</Text>
-        </Box>
-        {executionResult?.stdout && (
-          <Box
-            mt="md"
-            p="md"
-            bg="bg-light"
-            style={{ maxHeight: "150px", overflow: "auto" }}
-          >
-            <Text fw="bold" mb="xs">{t`Standard Output:`}</Text>
-            <Box
-              style={{
-                fontFamily: "monospace",
-                whiteSpace: "pre-wrap",
-              }}
-            >
-              {executionResult.stdout}
-            </Box>
-          </Box>
-        )}
-        {executionResult?.stderr && (
-          <Box
-            mt="md"
-            p="md"
-            bg="bg-light"
-            style={{ maxHeight: "150px", overflow: "auto" }}
-          >
-            <Text fw="bold" mb="xs">{t`Standard Error:`}</Text>
-            <Box
-              style={{
-                fontFamily: "monospace",
-                whiteSpace: "pre-wrap",
-              }}
-            >
-              {executionResult.stderr}
-            </Box>
-          </Box>
-        )}
-      </>
-    );
-  }
+  const message = getMessageForExecutionResult(executionResult);
 
   return (
     <>
-      {executionResult.stdout && (
-        <Box
-          mt="md"
-          p="md"
-          bg="bg-light"
-          style={{ maxHeight: "150px", overflow: "auto" }}
-        >
-          <Text fw="bold" mb="xs">{t`Standard Output:`}</Text>
-          <Box
-            style={{
-              fontFamily: "monospace",
-              whiteSpace: "pre-wrap",
-            }}
-          >
-            {executionResult.stdout}
-          </Box>
-        </Box>
-      )}
-      {executionResult.stderr && (
-        <Box
-          mt="md"
-          p="md"
-          bg="bg-light"
-          style={{ maxHeight: "150px", overflow: "auto" }}
-        >
-          <Text fw="bold" mb="xs">{t`Standard Error:`}</Text>
-          <Box
-            style={{
-              fontFamily: "monospace",
-              whiteSpace: "pre-wrap",
-            }}
-          >
-            {executionResult.stderr}
-          </Box>
-        </Box>
-      )}
-      <Box mt="md" style={{ maxHeight: "300px", overflow: "auto" }}>
-        <Text fw="bold" mb="md">{t`Results Table:`}</Text>
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            border: `1px solid ${color("border")}`,
-          }}
-        >
-          <thead>
-            <tr style={{ backgroundColor: color("bg-medium") }}>
-              {headers.map((header, index) => (
-                <th
-                  key={index}
-                  style={{
-                    padding: "8px",
-                    textAlign: "left",
-                    borderBottom: `2px solid ${color("border")}`,
-                  }}
-                >
-                  {header}
-                </th>
+      {message}
+
+      <ExecutionLogs
+        label={t`Standard Output:`}
+        content={executionResult.stdout}
+      />
+      <ExecutionLogs
+        label={t`Standard Error:`}
+        content={executionResult.stderr}
+      />
+
+      <ExecutionOutput output={executionResult.output} />
+    </>
+  );
+}
+
+function getMessageForExecutionResult(executionResult: ExecutionResult) {
+  if (executionResult.error) {
+    return (
+      <Alert variant="error">
+        <Text fw="bold">{t`Execution Error`}</Text>
+        {executionResult.error}
+      </Alert>
+    );
+  }
+  if (!executionResult.output) {
+    return (
+      <Box p="md">
+        <Text c="text-medium">{t`No results to display.`}</Text>
+      </Box>
+    );
+  }
+  return null;
+}
+
+function ExecutionLogs({
+  label,
+  content,
+}: {
+  label: string;
+  content?: string | null;
+}) {
+  if (!content) {
+    return null;
+  }
+
+  return (
+    <Box p="md" bg="bg-light" mah="150px">
+      <Text fw="bold" mb="xs">
+        {label}
+      </Text>
+      <Text className={S.output}>{content}</Text>
+    </Box>
+  );
+}
+
+function ExecutionOutput({ output }: { output?: string }) {
+  const { headers, rows } = parseCSV(output || "");
+
+  if (!output || headers.length === 0) {
+    return null;
+  }
+
+  return (
+    <Box p="md">
+      <Text fw="bold" mb="xs">{t`Results:`}</Text>
+      <table className={S.results}>
+        <thead>
+          <tr>
+            {headers.map((header, index) => (
+              <th key={index} className={S.tableHeader}>
+                {header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, rowIndex) => (
+            <tr key={rowIndex}>
+              {row.map((cell, cellIndex) => (
+                <td key={cellIndex} className={S.tableCell}>
+                  {cell}
+                </td>
               ))}
             </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, rowIndex) => (
-              <tr
-                key={rowIndex}
-                style={{
-                  borderBottom: `1px solid ${color("border")}`,
-                }}
-              >
-                {row.map((cell, cellIndex) => (
-                  <td key={cellIndex} style={{ padding: "8px" }}>
-                    {cell}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Box>
-    </>
+          ))}
+        </tbody>
+      </table>
+    </Box>
   );
 }
