@@ -29,6 +29,7 @@ export const EmbeddingHub = () => {
 
   const stepperSteps: StepperStep[] = useMemo(() => {
     return embeddingSteps.map((step) => ({
+      id: step.id,
       title: step.title,
       cards: step.actions.map((action) => {
         const stepId = action.stepId ?? step.id;
@@ -47,6 +48,7 @@ export const EmbeddingHub = () => {
           .otherwise(() => undefined);
 
         return {
+          id: `${stepId}-${action.title}`,
           title: action.title,
           description: action.description,
           optional: action.optional,

@@ -13,11 +13,13 @@ import { DocsLink } from "../DocsLink";
 import S from "./StepperWithCards.module.css";
 
 export interface StepperStep {
+  id: string;
   title: string;
   cards: StepperCard[];
 }
 
 export interface StepperCard {
+  id: string;
   title: string;
   description: string;
 
@@ -60,9 +62,9 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
       }}
       iconSize={28}
     >
-      {steps.map((step, index) => (
+      {steps.map((step) => (
         <Stepper.Step
-          key={index}
+          key={step.id}
           label={step.title}
           color="var(--mb-color-success-darker)"
           description={
@@ -74,7 +76,7 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                     : undefined;
 
                 return (
-                  <CardAction card={card} key={card.title}>
+                  <CardAction card={card} key={card.id}>
                     <Card
                       className={cx(S.stepCard, {
                         [S.optionalStepCard]: card.optional,
