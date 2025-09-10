@@ -338,6 +338,11 @@ jobs:
     name: H2
     steps:
     - uses: actions/checkout@v4
+      with:
+        submodules: true
+        token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+    - name: Prepare Python Runner
+      uses: ./.github/actions/prepare-python-runner
     - name: Test H2 driver
       uses: ./.github/actions/test-driver
       with:
@@ -442,6 +447,11 @@ jobs:
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+      - name: Prepare Python Runner
+        uses: ./.github/actions/prepare-python-runner
       - name: Test ${{ matrix.version.name }}
         uses: ./.github/actions/test-driver
         with:
@@ -745,6 +755,11 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+      - name: Prepare Python Runner
+        uses: ./.github/actions/prepare-python-runner
       - name: Test ${{ matrix.version.name }} (${{ matrix.job.name }})
         uses: ./.github/actions/test-driver
         with:
