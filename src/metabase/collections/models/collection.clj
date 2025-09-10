@@ -6,7 +6,6 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common
     :as api
@@ -152,7 +151,6 @@
 (defmethod mi/can-write? :model/Collection
   ([instance]
    (and (not (default-audit-collection? instance))
-        (not (library-collection? instance))
         (mi/current-user-has-full-permissions? :write instance)))
   ([_model pk]
    (mi/can-write? (t2/select-one :model/Collection pk))))
@@ -239,7 +237,7 @@
   (unchecked-location-path->ids location-path))
 
 (mu/defn location-path->parent-id :- [:maybe ms/PositiveInt]
-  "Given a `location-path` fetch the ID of the direct of a Collection.
+  "Given a `location-path` fetch the ID of the direct parent of a Collection.
 
      (location-path->parent-id \"/10/20/\") ; -> 20"
   [location-path :- LocationPath]
@@ -1163,9 +1161,13 @@
     (archive-collection! collection)
     (unarchive-collection! collection updates)))
 
+(declare check-non-library-dependencies)
+
 (mu/defn move-collection!
   "Move a Collection and all its descendant Collections from its current `location` to a `new-location`."
-  [collection :- CollectionWithLocationAndIDOrRoot, new-location :- LocationPath]
+  [collection :- CollectionWithLocationAndIDOrRoot
+   new-location :- LocationPath
+   & [into-library? :- :boolean]]
   (let [orig-children-location (children-location collection)
         new-children-location  (children-location (assoc collection :location new-location))
         will-be-in-trash? (str/starts-with? new-location (trash-path))]
@@ -1179,12 +1181,16 @@
     (events/publish-event! :event/collection-touch {:collection-id (:id collection) :user-id api/*current-user-id*})
     (t2/with-transaction [_conn]
       (t2/update! :model/Collection (u/the-id collection)
-                  {:location new-location})
+                  (cond-> {:location new-location}
+                    into-library? (assoc :type "library")))
       ;; we need to update all the descendant collections as well...
-      (t2/query-one
-       {:update :collection
-        :set    {:location [:replace :location orig-children-location new-children-location]}
-        :where  [:like :location (str orig-children-location "%")]}))))
+      (u/prog1 (t2/query-one
+                {:update :collection
+                 :set    (cond-> {:location [:replace :location orig-children-location new-children-location]}
+                           into-library? (assoc :type "library"))
+                 :where  [:like :location (str orig-children-location "%")]})
+        (when into-library?
+          (check-non-library-dependencies collection))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Toucan IModel & Perms Method Impls                                       |
@@ -1423,33 +1429,66 @@
   [{:keys [collection]}]
   (library-collection? collection))
 
+(defn- descendants-recur
+  [{:keys [id] :as model}]
+  (let [deps (->> (serdes/descendants (name (t2/model model)) id)
+                  keys
+                  (reduce (fn [accum [model id]] (update accum model conj id)) {})
+                  (mapcat (fn [[model ids]]
+                            (case model
+                       ;; Don't check these models for library membership because their library member is transitive through
+                       ;; the model being checked for non-library dependendencies, or it is a database type that cannot belong
+                       ;; to a library
+                              ("Collection" "Table" "Database" "Field") nil
+                              "Action" (->> (t2/hydrate (t2/select (t2.model/resolve-model (symbol model)) :id [:in ids]) [:model :collection])
+                                            (map #(assoc % :in-library? (in-library? (:model %)))))
+                              (->> (t2/hydrate (t2/select (t2.model/resolve-model (symbol model)) :id [:in ids]) :collection)
+                                   (map #(assoc % :in-library? (in-library? %))))))))]
+    (concat deps (mapcat descendants-recur deps))))
+
 (defn non-library-dependencies
   "Find dependencies of a model -- that are possible to contain in the >ibrary -- that are not contained the in Library
   collection or in subcollections of the Library collection. Uses serdes/descendants to list dependencies of a model.
-
-  Does not check the dependencies of its own dependencies assuming deps already in the library have their own dependencies
-  in the library.
 
   Args:
     model: the model to check dependencies for
 
   Returns:
     sequence of models pairs for depedendencies of the given model that are not in the Library"
-  [{:keys [id] :as model}]
-  (let [descendants (serdes/descendants (name (t2/model model)) id)]
-    (->> (keys descendants)
-         (reduce (fn [accum [model id]] (update accum model conj id)) {})
-         (mapcat (fn [[model ids]]
-                   (case model
-                     ;; Don't check these models for library membership because their library member is transitive through
-                     ;; the model being checked for non-library dependendencies, or it is a database type that cannot belong
-                     ;; to a library
-                     ("Collection" "Table" "Database" "Field") nil
-                     "Action" (->> (t2/hydrate (t2/select (t2.model/resolve-model (symbol model)) :id [:in ids]) [:model :collection])
-                                   (map #(assoc % :in-library? (in-library? (:model %)))))
-                     (->> (t2/hydrate (t2/select (t2.model/resolve-model (symbol model)) :id [:in ids]) :collection)
-                          (map #(assoc % :in-library? (in-library? %)))))))
-         (remove :in-library?))))
+  [model]
+  (remove :in-library? #p (descendants-recur model)))
+
+(defn check-non-library-dependencies
+  "Throws if a model has non-library-dependencies.
+
+  Args:
+    model: the model to check depedencies for
+
+  Returns:
+    nil
+
+  Raises:
+    ex-info object with non-library-dependencies and a 400 status code  "
+  [model]
+  (when-let [non-library-deps (not-empty (non-library-dependencies model))]
+    (throw (ex-info (str (deferred-tru "Model has non-library dependencies")) {:non-library-models non-library-deps
+                                                                               :status-code 400}))))
+
+(defn moving-into-library?
+  "Tests if a move from old-collection-id to new-collection-id means the object is moving from a non-library collection
+  to a library collection.
+
+  Args:
+    old-collection-id: id of the collection the object is being moved from
+    new-collection-id: id of the collection the object is being moved to
+
+  Returns:
+    true if the old collection is not part of the library and the new collection is."
+  [old-collection-id new-collection-id]
+  (and (not (nil? new-collection-id))
+       (t2/exists? :model/Collection {:where [:and [:= :id new-collection-id] [:= :type "library"]]})
+       (or (nil? old-collection-id)
+           (t2/exists? :model/Collection {:where [:and [:= :id old-collection-id] [:or [:<> :type "library"] [:= :type nil]]]}))))
 
 ;;; -------------------------------------------------- IModel Impl ---------------------------------------------------
 
