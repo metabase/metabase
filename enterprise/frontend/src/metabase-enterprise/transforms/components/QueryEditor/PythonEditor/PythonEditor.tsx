@@ -1,8 +1,12 @@
 import { useState } from "react";
 import { ResizableBox } from "react-resizable";
-import { t } from "ttag";
+import { match } from "ts-pattern";
+import { c, t } from "ttag";
 
+import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
+import DebouncedFrame from "metabase/common/components/DebouncedFrame";
+import { isMac } from "metabase/lib/browser";
 import { color } from "metabase/lib/colors";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 import { Alert, Box, Flex, Stack, Text } from "metabase/ui";
@@ -145,15 +149,43 @@ export function PythonEditor({
         </Flex>
       </ResizableBox>
 
-      <Box p="md">
-        {isRunning && (
-          <Box p="md">
-            <Text c="text-medium">{t`Running Python script...`}</Text>
-          </Box>
-        )}
-        {!isRunning && <ExecutionResult executionResult={executionResult} />}
-      </Box>
+      <DebouncedFrame className={S.visualization}>
+        {match({ isRunning, executionResult })
+          .with({ isRunning: true }, () => <LoadingState />)
+          .with({ executionResult: null }, () => <EmptyState />)
+          .otherwise(() => (
+            <ExecutionResult executionResult={executionResult} />
+          ))}
+      </DebouncedFrame>
     </Stack>
+  );
+}
+
+function getRunQueryShortcut() {
+  return isMac() ? t`⌘ + return` : t`Ctrl + enter`;
+}
+
+function LoadingState() {
+  return <Text c="text-medium">{t`Running Python script...`}</Text>;
+}
+
+function EmptyState() {
+  const keyboardShortcut = getRunQueryShortcut();
+
+  return (
+    <Flex h="100%" align="center" justify="center">
+      <Stack maw="25rem" gap={0} ta="center" align="center">
+        <Box maw="3rem" mb="0.75rem">
+          <img src={EmptyCodeResult} alt="Code prompt icon" />
+        </Box>
+        <Text c="text-medium">
+          {c("{0} refers to the keyboard shortcut")
+            .jt`To run your code, click on the Run button or type ${(
+            <b key="shortcut">({keyboardShortcut})</b>
+          )}`}
+        </Text>
+      </Stack>
+    </Flex>
   );
 }
 
