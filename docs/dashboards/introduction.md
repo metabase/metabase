@@ -15,7 +15,7 @@ redirect_from:
 A dashboard comprises a set of cards arranged on a grid. These cards can be:
 
 - [Questions](../questions/introduction.md). You can add questions from collections, or saved questions directly to a dashboard.
-- [Text and header cards](#adding-headings-or-descriptions-with-text-cards)
+- [Text and header cards](markdown.md)
 - [Iframe cards](#iframe-cards)
 - [Link cards](#link-cards)
 
@@ -49,52 +49,13 @@ Adding a question to a dashboard does not save the question to the dashboard.
 
 If a question is saved to your personal collection, you'll only be able to add that question to dashboards _in_ your personal collection. If you want to add the question to a dashboard in a public collection, you'll need to move your question out of your personal collection.
 
-## Adding headings or descriptions with text cards
+### Adding headings or descriptions with text cards
 
-Another neat thing you can do is add heading and text cards to your dashboards. Text cards allow you to include descriptions, explanations, notes, or even images and GIFs to your dashboards. You can also use text cards to create separations between sections of charts in your dashboards, or include links to other dashboards, questions, or websites.
-
-To add a new text card, create a new dashboard (or edit an existing one) and click on the text card button, **T**, in the top-right:
-
-![Text card button](images/text-card-button.png)
-
-You have two options:
-
-- **Heading**: a preformatted heading text card that spans the width of the dashboard.
-- **Text**: a customizable text card that will render Markdown-formatted text.
-
-Each text card has two modes: writing and previewing. When you click to focus on the card, the card will enter editing mode. When you click away from the card, Metabase will render the card to show you what it will look like on the live dashboard.
-
-![Markdown](images/markdown.png)
-
-You can use [Markdown](http://commonmark.org/help/) to format the text in your text card, create inline tables or code snippets, or even embed linked images (easy on the GIFs, friends). To preview the rendered card, just click away from the card.
-
-![Result](images/result.png)
-
-To learn more, see [Fun with Markdown in your dashboards](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/markdown).
+ADD LINK
 
 ### Including variables in text cards
 
-You can include a variable in a text card, then wire that variable up to a dashboard filter. All you need to do to create a variable is to wrap a word in double braces, `{% raw %}{{{% endraw %}` and `{% raw %}}}{%endraw%}` (the variable can't contain any spaces). For example, you could add a text card with the following text:
-
-```
-{% raw %}
-# {{state}} orders
-{% endraw %}
-```
-
-And connect that variable to a dashboard filter widget that filters for states. If someone selected `WI` in the state filter, the text in the markdown card would read: **WI orders**.
-
-You can also make text optional by wrapping the text in double brackets, `[[` and `]]`:
-
-```
-{% raw %}
-# Orders [[from {{state}}]
-{% endraw %}
-```
-
-In this case, the phrase `{% raw %}from {{state}}{%endraw%}` would only display if someone selected a value (or values) in the filter widget.
-
-To see how to wire up a filter to a card, see [dashboard filters](./filters.md).
+ADD LINK
 
 ## Link cards
 
@@ -258,7 +219,7 @@ If you want to revert a dashboard card to its original visualization settings (i
 
 1. Go to your dashboard and click the **pencil icon** to go into edit mode.
 2. Hover over the card (question) that you want to edit.
-3. Click the **palette icon** to bring up the visualization settings for that card. 
+3. Click the **palette icon** to bring up the visualization settings for that card.
 4. Click **Reset to defaults** (bottom right).
 5. Click **Done** to save the card's visualization settings.
 6. Click **Save** to save the dashboard.
