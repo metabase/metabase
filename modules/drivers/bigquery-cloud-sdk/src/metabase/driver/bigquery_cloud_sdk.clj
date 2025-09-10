@@ -872,8 +872,23 @@
   (let [sql (#'driver.sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)]
     (driver/execute-raw-queries! driver (t2/select-one :model/Database database-id) [sql])))
 
-(defmethod driver/rename-table! :bigquery-cloud-sdk [& args]
-  (apply (get-method driver/rename-table! :sql-jdbc) args))
+(defmethod driver/rename-table! :bigquery-cloud-sdk
+  [driver db-id old-table-name new-table-name]
+  (let [database (t2/select-one :model/Database db-id)
+        old-table-str (get-table-str old-table-name)
+        new-table-str (name new-table-name)]
+    (try
+      (let [sql (format "ALTER TABLE %s RENAME TO %s" old-table-str new-table-str)]
+        (driver/execute-raw-queries! driver database [sql]))
+      (catch Exception e
+        (if (and (instance? com.google.cloud.bigquery.BigQueryException e)
+                 (str/includes? (.getMessage e) "streaming data"))
+          ;; rename failed, we must create + drop
+          (let [create-sql (driver/compile-transform driver {:query (format "SELECT * FROM %s" old-table-str)
+                                                             :output-table new-table-name})
+                drop-sql (driver/compile-drop-table driver old-table-name)]
+            (driver/execute-raw-queries! driver database (concat create-sql drop-sql)))
+          (throw e))))))
 
 (defmethod driver/drop-table! :bigquery-cloud-sdk
   [driver database-id table-name]
