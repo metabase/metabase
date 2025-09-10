@@ -42,6 +42,13 @@
       (set/rename-keys {:native :query})
       (m/update-existing :parameters (fn [parameters]
                                        (mapv lib/->legacy-MBQL parameters)))
+      ;; Normalize template tag keys by trimming whitespace
+      #_(m/update-existing :template-tags (fn [tags]
+                                            (into {}
+                                                  (map (fn [[k v]]
+                                                         [(clojure.string/trim k)
+                                                          (update v :name clojure.string/trim)])
+                                                       tags))))
       (m/update-existing :template-tags update-vals lib/->legacy-MBQL)
       (->> (driver/substitute-native-parameters driver/*driver*))
       (set/rename-keys {:query :native})))

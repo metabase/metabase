@@ -24,7 +24,7 @@
   #"\{\{\s*([A-Za-z0-9_\.]+)\s*\}\}")
 
 (def ^:private snippet-tag-regex
-  #"\{\{\s*(snippet:\s*[^}]+)\s*\}\}")
+  #"\{\{\s*(snippet:\s*[^}]*[^}\s])\s*\}\}")
 
 (def ^:private card-tag-regex
   #"\{\{\s*(#([0-9]*)(-[a-z0-9-]*)?)\s*\}\}")
@@ -68,10 +68,13 @@
         [_ :guard string?] (recur found more)
 
         [{:type ::lib.parse/param, :name tag-name}]
-        (let [full-tag         (str "{{" tag-name "}}")
+        ;; Trim the tag-name to match what params.parse does
+        (let [trimmed-name (str/trim tag-name)
+              full-tag (str "{{" trimmed-name "}}")
               [_ matched-name] (some #(re-matches % full-tag) tag-regexes)]
           (recur (cond-> found
-                   (and matched-name (not (found matched-name))) (assoc matched-name (fresh-tag matched-name)))
+                   (and matched-name (not (found matched-name)))
+                   (assoc trimmed-name (fresh-tag trimmed-name)))
                  more))
 
         [{:type     ::lib.parse/optional
