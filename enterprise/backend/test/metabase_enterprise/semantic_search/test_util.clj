@@ -22,7 +22,6 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
-   [next.jdbc.protocols :as jdbc.protocols]
    [next.jdbc.result-set :as jdbc.rs])
   (:import
    (clojure.lang IDeref)
@@ -61,6 +60,7 @@
 
 (defmulti do-with-setup-test-db!
   "Setup pgvector database for tests."
+  {:arglists '([mode thunk])}
   (fn [mode _thunk] mode))
 
 (defmethod do-with-setup-test-db! :blank
@@ -246,6 +246,7 @@
 (defmethod semantic.embedding/get-embeddings-batch "mock" [_ texts] (get-mock-embeddings-batch texts))
 (defmethod semantic.embedding/pull-model           "mock" [_])
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn query-index [search-context]
   (:results (semantic.index/query-index (semantic.env/get-pgvector-datasource!) mock-index search-context)))
 
@@ -305,22 +306,6 @@
        (semantic.index/drop-index-table! (semantic.env/get-pgvector-datasource!) index)
        (catch Exception e
          (log/error e "Warning: failed to clean up test table" table-name))))))
-
-(declare cleanup-index-metadata!)
-
-(defn open-temp-index-and-metadata!
-  "First ensure that db is empty. Then perform initialization, including migration. Do the cleanup on close."
-  ^Closeable []
-  (closeable
-   (do (cleanup-index-metadata! (semantic.env/get-pgvector-datasource!) mock-index-metadata)
-       (semantic.pgvector-api/init-semantic-search! (semantic.env/get-pgvector-datasource!)
-                                                    mock-index-metadata mock-embedding-model)
-       mock-index-metadata)
-   (fn cleanup-temp-index-and-metadata! [index-metadata]
-     (try
-       (cleanup-index-metadata! (semantic.env/get-pgvector-datasource!) index-metadata)
-       (catch Exception e
-         (log/error e "Warning: failed to clean up index and metadata" index-metadata))))))
 
 (defn do-with-indexable-documents!
   "Wrap the thunk into with-temp, creating entities used throughout semantic search test.
@@ -435,26 +420,6 @@
         step (fn [] (semantic.indexer/indexing-step pgvector mock-index-metadata mock-index indexing-state))]
     (while (do (step) (pos? (:last-novel-count @indexing-state))))))
 
-(defn do-with-index!
-  "Ensure a clean, small index for testing populated with a few collections, cards, and dashboards."
-  [thunk]
-  (with-test-db-defaults!
-    (with-indexable-documents!
-      (with-redefs [semantic.embedding/get-configured-model        (fn [] mock-embedding-model)
-                    semantic.index-metadata/default-index-metadata mock-index-metadata
-                    semantic.index/model-table-suffix              mock-table-suffix]
-        (with-open [_# (open-temp-index-and-metadata!)]
-          (semantic.pgvector-api/gate-updates! (semantic.env/get-pgvector-datasource!)
-                                               mock-index-metadata
-                                               (search.ingestion/searchable-documents))
-          (index-all!)
-          (thunk))))))
-
-(defmacro with-index!
-  "Wrapper for [[do-with-index!]]."
-  [& body]
-  `(do-with-index! (fn [] ~@body)))
-
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn table-exists-in-db?
   "Check if a table actually exists in the database"
@@ -563,6 +528,7 @@
                       {:builder-fn jdbc.rs/as-unqualified-lower-maps})
        (mapv decode-embedding)))
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn query-embeddings
   "Query the `mock-index` table and return the decoded `:embedding`s for the given `model`"
   [{:keys [model model_id]}]
@@ -576,6 +542,7 @@
                       {:builder-fn jdbc.rs/as-unqualified-lower-maps})
        (mapv decode-embedding)))
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn query-tsvectors
   "Query the `mock-index` table and return the unwrapped tsvector columns for the given `model`"
   [{:keys [model model_id]}]
@@ -602,6 +569,7 @@
            (query-embeddings {:model "dashboard"
                               :model_id "456"})))))
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn check-index-has-no-mock-docs []
   (let [{:keys [table-name]}     mock-index
         table-exists-sql         "select exists(select * from information_schema.tables where table_name = ?) table_exists"
