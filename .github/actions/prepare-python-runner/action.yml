@@ -30,3 +30,48 @@ runs:
         echo "🚀 Starting python-runner using make run-all..."
         make run-all
         echo "✅ Python runner started successfully!"
+    
+    - name: Wait for Python Runner
+      if: steps.check-python-runner.outputs.exists == 'true'  
+      uses: ./.github/actions/await-port
+      with:
+        port: 5001
+      timeout-minutes: 5
+        
+    - name: Wait for LocalStack
+      if: steps.check-python-runner.outputs.exists == 'true'
+      uses: ./.github/actions/await-port
+      with:
+        port: 4566
+      timeout-minutes: 5
+      
+    - name: Verify LocalStack S3 is ready
+      if: steps.check-python-runner.outputs.exists == 'true'
+      shell: bash
+      run: |
+        echo "🔍 Verifying LocalStack S3 is accessible..."
+        # First try with AWS CLI if available
+        if command -v aws >/dev/null 2>&1; then
+          echo "Using AWS CLI to check LocalStack..."
+          for i in {1..30}; do
+            if AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_DEFAULT_REGION=us-east-1 aws --endpoint-url=http://localhost:4566 s3 ls 2>/dev/null; then
+              echo "✅ LocalStack S3 is ready!"
+              exit 0
+            fi
+            echo "  Waiting for LocalStack S3... ($i/30)"
+            sleep 2
+          done
+        else
+          # Fall back to curl if AWS CLI is not available
+          echo "AWS CLI not found, using curl to check LocalStack..."
+          for i in {1..30}; do
+            if curl -s -f -X GET "http://localhost:4566/_localstack/health" | grep -q '"s3":\s*"available"'; then
+              echo "✅ LocalStack S3 is ready!"
+              exit 0
+            fi
+            echo "  Waiting for LocalStack S3... ($i/30)"
+            sleep 2
+          done
+        fi
+        echo "❌ LocalStack S3 failed to become ready"
+        exit 1
