@@ -1328,6 +1328,41 @@ H.describeWithSnowplowEE("document comments", () => {
         );
       });
     });
+
+    it("a new reply in a thread notifies anyone in the thread", () => {
+      create1ParagraphDocument();
+
+      cy.get<DocumentId>("@documentId").then((documentId) => {
+        createParagraphComment(documentId, "Test 1");
+
+        cy.signInAsNormalUser();
+        createParagraphComment(documentId, "Test 2");
+
+        H.clearInbox();
+
+        cy.signInAsImpersonatedUser();
+        createParagraphComment(documentId, "Test 3").then(
+          ({ body: comment }) => {
+            H.getInbox(2).then((response: any) => {
+              const emails = response.body;
+              expect(emails).to.have.length(2);
+
+              // verifyEmail({
+              //   email: emails[0],
+              //   expected: {
+              //     address: "admin@metabase.test",
+              //     subject: "Comment on Lorem ipsum",
+              //     heading: "User Impersonated left a comment on a document",
+              //     documentTitle: "Lorem ipsum",
+              //     documentHref: `http://localhost:4000/document/${documentId}`,
+              //     commentHref: `http://localhost:4000/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${comment.id}`,
+              //   },
+              // });
+            });
+          },
+        );
+      });
+    });
   });
 });
 
@@ -1736,6 +1771,7 @@ function verifyEmail({
   const parser = new DOMParser();
   const document = parser.parseFromString(html, "text/html");
 
+  console.log(html, expected.commentHref);
   cy.log("heading");
   expect(document.querySelector("h1")).to.contain.text(expected.heading);
 
