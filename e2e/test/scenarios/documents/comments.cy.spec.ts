@@ -1306,24 +1306,26 @@ H.describeWithSnowplowEE("document comments", () => {
 
       cy.get<DocumentId>("@documentId").then((documentId) => {
         cy.signInAsNormalUser();
-        createParagraphComment(documentId, "Test 1");
+        createParagraphComment(documentId, "Test 1").then(
+          ({ body: comment }) => {
+            H.getInbox().then((response: any) => {
+              const emails = response.body;
+              expect(emails).to.have.length(1);
 
-        H.getInbox().then((response: any) => {
-          const emails = response.body;
-          expect(emails).to.have.length(1);
-
-          verifyEmail({
-            email: emails[0],
-            expected: {
-              address: "admin@metabase.test",
-              subject: "Comment on Lorem ipsum",
-              heading: "Robert Tableton left a comment on a document",
-              documentTitle: "Lorem ipsum",
-              documentHref: `http://localhost:4000/document/${documentId}`,
-              commentHref: `http://localhost:4000/document/${documentId}/comments/`,
-            },
-          });
-        });
+              verifyEmail({
+                email: emails[0],
+                expected: {
+                  address: "admin@metabase.test",
+                  subject: "Comment on Lorem ipsum",
+                  heading: "Robert Tableton left a comment on a document",
+                  documentTitle: "Lorem ipsum",
+                  documentHref: `http://localhost:4000/document/${documentId}`,
+                  commentHref: `http://localhost:4000/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${comment.id}`,
+                },
+              });
+            });
+          },
+        );
       });
     });
   });
