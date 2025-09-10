@@ -5390,3 +5390,175 @@
                                                                               })]
     (is (partial= {:name       "Test Dashboard"
                    :creator_id (mt/user->id :crowberto)} response))))
+
+(deftest api-update-dashboard-collection-id-library-dependency-checking-success-test
+  (testing "PUT /api/dashboard/:id with collection_id in library succeeds when all dependencies are in library"
+    (mt/with-temp [:model/Collection {library-id :id} {:name "Library" :location "/" :type "library"}
+                   :model/Collection {target-id :id} {:name "Target" :location (format "/%d/" library-id) :type "library"}
+                   :model/Collection {source-id :id} {:name "Source" :location "/" :type nil}
+                   :model/Dashboard {dash-id :id} {:name "Dashboard to Move"
+                                                   :collection_id source-id}
+                   :model/Card {library-card-id :id} {:name "Library Card"
+                                                      :collection_id library-id
+                                                      :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
+                                                        :collection_id library-id
+                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" library-card-id)})}
+                   :model/DashboardCard _ {:dashboard_id dash-id
+                                           :card_id dependent-card-id}]
+      ;; This should succeed because the dependency (library-card) is in a library collection
+      (let [response (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id)
+                                           {:collection_id target-id})]
+        ;; Verify the dashboard was moved
+        (is (= target-id (:collection_id response))
+            "Dashboard should be moved to library collection")))))
+
+(deftest api-update-dashboard-collection-id-library-dependency-checking-failure-test
+  (testing "PUT /api/dashboard/:id with collection_id in library throws 400 when dependencies exist outside library"
+    (mt/with-temp [:model/Collection {non-library-id :id} {:name "Non-Library" :location "/" :type nil}
+                   :model/Collection {library-id :id} {:name "Library" :location "/" :type "library"}
+                   :model/Collection {target-id :id} {:name "Target" :location (format "/%d/" library-id) :type "library"}
+                   :model/Collection {source-id :id} {:name "Source" :location "/" :type nil}
+                   :model/Dashboard {dash-id :id} {:name "Dashboard to Move"
+                                                   :collection_id source-id}
+                   :model/Card {non-library-card-id :id} {:name "Non-Library Card"
+                                                          :collection_id non-library-id
+                                                          :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
+                                                        :collection_id source-id
+                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-library-card-id)})}
+                   :model/DashboardCard _ {:dashboard_id dash-id
+                                           :card_id dependent-card-id}]
+      ;; This should return 400 because the dependency (non-library-card) is not in a library collection
+      (let [response (mt/user-http-request :crowberto :put 400 (str "dashboard/" dash-id)
+                                           {:collection_id target-id})]
+        ;; Verify error response contains dependency information
+        (is (str/includes? (:message response) "non-library dependencies")
+            "Error message should mention non-library dependencies"))
+
+      ;; Verify the transaction was rolled back - dashboard should not be moved
+      (let [unchanged-dash (t2/select-one :model/Dashboard :id dash-id)]
+        (is (= source-id (:collection_id unchanged-dash))
+            "Dashboard collection_id should remain unchanged after failed move")))))
+
+(deftest api-update-dashboard-collection-id-library-dependency-checking-transaction-rollback-test
+  (testing "PUT /api/dashboard/:id transaction rollback when dependency check fails"
+    (mt/with-temp [:model/Collection {non-library-id :id} {:name "Non-Library" :location "/" :type nil}
+                   :model/Collection {library-id :id} {:name "Library" :location "/" :type "library"}
+                   :model/Collection {target-id :id} {:name "Target" :location (format "/%d/" library-id) :type "library"}
+                   :model/Collection {source-id :id} {:name "Source" :location "/" :type nil}
+                   :model/Dashboard {dash-id :id} {:name "Dashboard to Move"
+                                                   :collection_id source-id}
+                   :model/Card {non-library-card-id :id} {:name "Non-Library Card"
+                                                          :collection_id non-library-id
+                                                          :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
+                                                        :collection_id source-id
+                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-library-card-id)})}
+                   :model/DashboardCard _ {:dashboard_id dash-id
+                                           :card_id dependent-card-id}]
+      ;; This should return 400 with transaction rollback
+      (mt/user-http-request :crowberto :put 400 (str "dashboard/" dash-id)
+                            {:collection_id target-id})
+
+      ;; Verify the transaction was completely rolled back
+      (let [unchanged-dash (t2/select-one :model/Dashboard :id dash-id)]
+        (is (= source-id (:collection_id unchanged-dash))
+            "Dashboard collection_id should remain unchanged after transaction rollback")))))
+
+(deftest api-update-dashboard-outside-library-no-dependency-checking-test
+  (testing "PUT /api/dashboard/:id to non-library collection does not check dependencies"
+    (mt/with-temp [:model/Collection {non-library-id :id} {:name "Non-Library" :location "/" :type nil}
+                   :model/Collection {target-id :id} {:name "Target" :location "/" :type nil}
+                   :model/Collection {source-id :id} {:name "Source" :location "/" :type nil}
+                   :model/Dashboard {dash-id :id} {:name "Dashboard to Move"
+                                                   :collection_id source-id}
+                   :model/Card {non-library-card-id :id} {:name "Non-Library Card"
+                                                          :collection_id non-library-id
+                                                          :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
+                                                        :collection_id source-id
+                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-library-card-id)})}
+                   :model/DashboardCard _ {:dashboard_id dash-id
+                                           :card_id dependent-card-id}]
+      ;; This should succeed because we're not moving into a library collection
+      (let [response (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id)
+                                           {:collection_id target-id})]
+        ;; Verify the dashboard was moved
+        (is (= target-id (:collection_id response))
+            "Dashboard should be moved to new collection")))))
+
+(deftest api-copy-dashboard-into-library-dependency-checking-success-test
+  (testing "POST /api/dashboard/:id/copy into library succeeds when all dependencies are in library"
+    (mt/with-temp [:model/Collection {library-id :id} {:name "Library" :location "/" :type "library"}
+                   :model/Collection {target-id :id} {:name "Target" :location (format "/%d/" library-id) :type "library"}
+                   :model/Collection {source-id :id} {:name "Source" :location "/" :type nil}
+                   :model/Dashboard {dash-id :id} {:name "Dashboard to Copy"
+                                                   :collection_id source-id}
+                   :model/Card {library-card-id :id} {:name "Library Card"
+                                                      :collection_id library-id
+                                                      :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
+                                                        :collection_id source-id
+                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" library-card-id)})}
+                   :model/DashboardCard _ {:dashboard_id dash-id
+                                           :card_id dependent-card-id}]
+      ;; This should succeed because the dependency (library-card) is in a library collection
+      (let [response (mt/user-http-request :crowberto :post 200 (format "dashboard/%d/copy" dash-id)
+                                           {:collection_id target-id})]
+        ;; Verify the copied dashboard is in the library collection
+        (is (= target-id (:collection_id response))
+            "Copied dashboard should be in library collection")
+        (is (not= dash-id (:id response))
+            "Copied dashboard should have different ID")))))
+
+(deftest api-copy-dashboard-into-library-dependency-checking-failure-test
+  (testing "POST /api/dashboard/:id/copy into library throws 400 when dependencies exist outside library"
+    (mt/with-temp [:model/Collection {non-library-id :id} {:name "Non-Library" :location "/" :type nil}
+                   :model/Collection {library-id :id} {:name "Library" :location "/" :type "library"}
+                   :model/Collection {target-id :id} {:name "Target" :location (format "/%d/" library-id) :type "library"}
+                   :model/Collection {source-id :id} {:name "Source" :location "/" :type nil}
+                   :model/Dashboard {dash-id :id} {:name "Dashboard to Copy"
+                                                   :collection_id source-id}
+                   :model/Card {non-library-card-id :id} {:name "Non-Library Card"
+                                                          :collection_id non-library-id
+                                                          :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
+                                                        :collection_id source-id
+                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-library-card-id)})}
+                   :model/DashboardCard _ {:dashboard_id dash-id
+                                           :card_id dependent-card-id}]
+      ;; This should return 400 because the dependency (non-library-card) is not in a library collection
+      (let [response (mt/user-http-request :crowberto :post 400 (format "dashboard/%d/copy" dash-id)
+                                           {:collection_id target-id})]
+        ;; Verify error response contains dependency information
+        (is (str/includes? (:message response) "non-library dependencies")
+            "Error message should mention non-library dependencies"))
+
+      ;; Verify no dashboard was created
+      (is (= 1 (t2/count :model/Dashboard :name "Dashboard to Copy"))
+          "No new dashboard should be created after failed copy"))))
+
+(deftest api-copy-dashboard-outside-library-no-dependency-checking-test
+  (testing "POST /api/dashboard/:id/copy to non-library collection does not check dependencies"
+    (mt/with-temp [:model/Collection {non-library-id :id} {:name "Non-Library" :location "/" :type nil}
+                   :model/Collection {target-id :id} {:name "Target" :location "/" :type nil}
+                   :model/Collection {source-id :id} {:name "Source" :location "/" :type nil}
+                   :model/Dashboard {dash-id :id} {:name "Dashboard to Copy"
+                                                   :collection_id source-id}
+                   :model/Card {non-library-card-id :id} {:name "Non-Library Card"
+                                                          :collection_id non-library-id
+                                                          :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
+                                                        :collection_id source-id
+                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-library-card-id)})}
+                   :model/DashboardCard _ {:dashboard_id dash-id
+                                           :card_id dependent-card-id}]
+      ;; This should succeed because we're not copying into a library collection
+      (let [response (mt/user-http-request :crowberto :post 200 (format "dashboard/%d/copy" dash-id)
+                                           {:collection_id target-id})]
+        ;; Verify the copied dashboard is in the target collection
+        (is (= target-id (:collection_id response))
+            "Copied dashboard should be in target collection")
+        (is (not= dash-id (:id response))
+            "Copied dashboard should have different ID")))))

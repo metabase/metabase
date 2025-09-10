@@ -9,6 +9,7 @@
 
 (p/import-vars
  [metabase.collections.models.collection
+  library-collection?
   check-non-library-dependencies
   moving-into-library?
   non-library-dependencies])

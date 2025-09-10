@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
@@ -40,6 +41,7 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
+  (derive :hook/library)
   (derive :hook/entity-id)
   (derive :hook/git-sync-protected))
 
@@ -305,38 +307,39 @@
 (defn save-transient-dashboard!
   "Save a denormalized description of `dashboard`."
   [dashboard parent-collection-id]
-  (let [{dashcards      :dashcards
-         tabs           :tabs
-         :keys          [description] :as dashboard} (i18n/localized-strings->strings dashboard)
-        dashboard  (first (t2/insert-returning-instances!
-                           :model/Dashboard
-                           (-> dashboard
-                               (dissoc :dashcards :tabs :rule :related
-                                       :transient_name :transient_filters :param_fields :more)
-                               (assoc :description description
-                                      :collection_id parent-collection-id))))
-        {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)]
-    (add-dashcards! dashboard
-                    (for [dashcard dashcards]
-                      (let [card     (some-> dashcard :card
-                                             (assoc :dashboard_id (:id dashboard)
-                                                    :collection_id parent-collection-id)
-                                             save-card!)
-                            series   (some->> dashcard
-                                              :series
-                                              (mapv (fn [card]
-                                                      (-> card
-                                                          (assoc :collection_id parent-collection-id)
-                                                          save-card!))))
-                            dashcard (-> dashcard
-                                         (dissoc :card :id :creator_id)
-                                         (update :parameter_mappings
-                                                 (partial map #(assoc % :card_id (:id card))))
-                                         (assoc :series series)
-                                         (update :dashboard_tab_id (or old->new-tab-id {}))
-                                         (assoc :card_id (:id card)))]
-                        dashcard)))
-    dashboard))
+  (t2/with-transaction [_conn]
+    (let [{dashcards      :dashcards
+           tabs           :tabs
+           :keys          [description] :as dashboard} (i18n/localized-strings->strings dashboard)
+          dashboard  (first (t2/insert-returning-instances!
+                             :model/Dashboard
+                             (-> dashboard
+                                 (dissoc :dashcards :tabs :rule :related
+                                         :transient_name :transient_filters :param_fields :more)
+                                 (assoc :description description
+                                        :collection_id parent-collection-id))))
+          {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)]
+      (add-dashcards! dashboard
+                      (for [dashcard dashcards]
+                        (let [card     (some-> dashcard :card
+                                               (assoc :dashboard_id (:id dashboard)
+                                                      :collection_id parent-collection-id)
+                                               save-card!)
+                              series   (some->> dashcard
+                                                :series
+                                                (mapv (fn [card]
+                                                        (-> card
+                                                            (assoc :collection_id parent-collection-id)
+                                                            save-card!))))
+                              dashcard (-> dashcard
+                                           (dissoc :card :id :creator_id)
+                                           (update :parameter_mappings
+                                                   (partial map #(assoc % :card_id (:id card))))
+                                           (assoc :series series)
+                                           (update :dashboard_tab_id (or old->new-tab-id {}))
+                                           (assoc :card_id (:id card)))]
+                          dashcard)))
+      (collections/check-non-library-dependencies dashboard))))
 
 (def ^:private ParamWithMapping
   [:map

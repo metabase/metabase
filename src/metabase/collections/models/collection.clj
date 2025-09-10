@@ -1443,15 +1443,15 @@
                   (reduce (fn [accum [model id]] (update accum model conj id)) {})
                   (mapcat (fn [[model ids]]
                             (case model
-                       ;; Don't check these models for library membership because their library member is transitive through
-                       ;; the model being checked for non-library dependendencies, or it is a database type that cannot belong
-                       ;; to a library
+                              ;; Don't check these models for library membership because their library member is transitive through
+                              ;; the model being checked for non-library dependendencies, or it is a database type that cannot belong
+                              ;; to a library
                               ("Collection" "Table" "Database" "Field") nil
                               "Action" (->> (t2/hydrate (t2/select (t2.model/resolve-model (symbol model)) :id [:in ids]) [:model :collection])
                                             (map #(assoc % :in-library? (in-library? (:model %)))))
                               (->> (t2/hydrate (t2/select (t2.model/resolve-model (symbol model)) :id [:in ids]) :collection)
                                    (map #(assoc % :in-library? (in-library? %))))))))]
-    (concat deps (mapcat descendants-recur deps))))
+    #p (concat deps (mapcat descendants-recur deps))))
 
 (defn non-library-dependencies
   "Find dependencies of a model -- that are possible to contain in the >ibrary -- that are not contained the in Library
@@ -1463,7 +1463,7 @@
   Returns:
     sequence of models pairs for depedendencies of the given model that are not in the Library"
   [model]
-  (remove :in-library? #p (descendants-recur model)))
+  (remove :in-library? (descendants-recur model)))
 
 (defn check-non-library-dependencies
   "Throws if a model has non-library-dependencies.
@@ -1479,7 +1479,8 @@
   [model]
   (when-let [non-library-deps (not-empty (non-library-dependencies model))]
     (throw (ex-info (str (deferred-tru "Model has non-library dependencies")) {:non-library-models non-library-deps
-                                                                               :status-code 400}))))
+                                                                               :status-code 400})))
+  model)
 
 (defn moving-into-library?
   "Tests if a move from old-collection-id to new-collection-id means the object is moving from a non-library collection
