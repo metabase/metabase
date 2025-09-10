@@ -28,14 +28,25 @@ import type {
   Transform,
 } from "metabase-types/api";
 
+const NEW_TRANSFORM_SCHEMA = Yup.object({
+  name: Yup.string().required(Errors.required),
+  description: Yup.string().nullable(),
+  targetName: Yup.string().required(Errors.required),
+  targetSchema: Yup.string().nullable(),
+});
+
+type NewTransformValues = Yup.InferType<typeof NEW_TRANSFORM_SCHEMA>;
+
 type CreateTransformModalProps = {
   query: DatasetQuery;
+  initValues?: Partial<NewTransformValues>;
   onCreate: (transform: Transform) => void;
   onClose: () => void;
 };
 
 export function CreateTransformModal({
   query,
+  initValues,
   onCreate,
   onClose,
 }: CreateTransformModalProps) {
@@ -44,6 +55,7 @@ export function CreateTransformModal({
       <FocusTrap.InitialFocus />
       <CreateTransformForm
         query={query}
+        initValues={initValues}
         onCreate={onCreate}
         onClose={onClose}
       />
@@ -53,26 +65,14 @@ export function CreateTransformModal({
 
 type CreateTransformFormProps = {
   query: DatasetQuery;
+  initValues?: Partial<NewTransformValues>;
   onCreate: (transform: Transform) => void;
   onClose: () => void;
 };
 
-type NewTransformValues = {
-  name: string;
-  description: string | null;
-  targetName: string;
-  targetSchema: string | null;
-};
-
-const NEW_TRANSFORM_SCHEMA = Yup.object({
-  name: Yup.string().required(Errors.required),
-  description: Yup.string().nullable(),
-  targetName: Yup.string().required(Errors.required),
-  targetSchema: Yup.string().nullable(),
-});
-
 function CreateTransformForm({
   query,
+  initValues,
   onCreate,
   onClose,
 }: CreateTransformFormProps) {
@@ -99,8 +99,8 @@ function CreateTransformForm({
   const supportsSchemas = database && hasFeature(database, "schemas");
 
   const initialValues: NewTransformValues = useMemo(
-    () => getInitialValues(schemas),
-    [schemas],
+    () => getInitialValues(schemas, initValues),
+    [schemas, initValues],
   );
 
   if (isLoading || error != null) {
@@ -161,12 +161,16 @@ function CreateTransformForm({
   );
 }
 
-function getInitialValues(schemas: string[]): NewTransformValues {
+function getInitialValues(
+  schemas: string[],
+  initValues?: Partial<NewTransformValues>,
+): NewTransformValues {
   return {
     name: "",
     description: null,
     targetName: "",
     targetSchema: schemas?.[0] || null,
+    ...initValues,
   };
 }
 
