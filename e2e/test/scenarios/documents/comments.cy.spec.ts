@@ -1359,7 +1359,7 @@ H.describeWithSnowplowEE("document comments", () => {
                 expected: {
                   address: "admin@metabase.test",
                   subject: "Comment on Lorem ipsum",
-                  heading: "User Impersonated left a comment on a document",
+                  heading: "User Impersonated replied to a thread",
                   documentTitle: "Lorem ipsum",
                   documentHref: `http://localhost:4000/document/${documentId}`,
                   commentHref: `http://localhost:4000/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${comment.id}`,
@@ -1371,7 +1371,7 @@ H.describeWithSnowplowEE("document comments", () => {
                 expected: {
                   address: "normal@metabase.test",
                   subject: "Comment on Lorem ipsum",
-                  heading: "User Impersonated left a comment on a document",
+                  heading: "User Impersonated replied to a thread",
                   documentTitle: "Lorem ipsum",
                   documentHref: `http://localhost:4000/document/${documentId}`,
                   commentHref: `http://localhost:4000/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${comment.id}`,

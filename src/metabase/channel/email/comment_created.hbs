@@ -9,7 +9,11 @@
             </div>
 
             <h1 style="text-align: center; font-size: 27px; line-height: 36px; font-weight: 400; margin: 0 0 12px 0; color: {{payload.style.color_text_dark}};">
-              {{payload.event_info.author}} left a comment on a {{payload.event_info.entity_type}}
+              {{#if payload.event_info.parent_comment}}
+                {{payload.event_info.author}} replied to a thread
+              {{else}}
+                {{payload.event_info.author}} left a comment on a {{payload.event_info.entity_type}}
+              {{/if}}
             </h1>
 
             {{!-- Document link --}}
