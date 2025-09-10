@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Fragment } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -18,7 +18,6 @@ import {
   Box,
   Button,
   Card,
-  Flex,
   Group,
   Icon,
   type IconName,
@@ -27,6 +26,8 @@ import {
 } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type { Card as ApiCard } from "metabase-types/api";
+
+import S from "./CheckDependenciesForm.module.css";
 
 type DependencyItem = CardDependencyItem;
 
@@ -75,30 +76,24 @@ type DependencyItemCardProps = {
 
 function DependencyItemCard({ item }: DependencyItemCardProps) {
   return (
-    <Card p="md" shadow="none" withBorder>
+    <Card
+      className={S.card}
+      component={Link}
+      to={getItemLink(item)}
+      p="md"
+      shadow="none"
+      withBorder
+    >
       <Stack gap="xs">
-        <Anchor component={Link} to={getItemLink(item)}>
-          <Flex c="brand" align="center" gap="sm">
-            <Icon name={getItemIcon(item)} />
-            <Box fw="bold">{getItemName(item)}</Box>
-          </Flex>
-        </Anchor>
+        <Group c="brand" gap="sm">
+          <Icon name={getItemIcon(item)} />
+          <Box fw="bold" lh="h4">
+            {getItemName(item)}
+          </Box>
+        </Group>
         {getItemDescription(item)}
       </Stack>
     </Card>
-  );
-}
-
-type ContainerLinkProps = {
-  to: string;
-  children?: ReactNode;
-};
-
-function ContainerLink({ to, children }: ContainerLinkProps) {
-  return (
-    <Anchor component={Link} to={to} c="inherit">
-      {children}
-    </Anchor>
   );
 }
 
@@ -122,28 +117,65 @@ function getItemLink({ card }: DependencyItem) {
 }
 
 function getItemDescription({ card }: DependencyItem) {
-  if (card.collection != null) {
+  const { collection, dashboard } = card;
+
+  if (collection != null) {
+    const ancestors = collection.effective_ancestors ?? [];
+    const breadcrumbs = [
+      ...ancestors.map((ancestor) => ({
+        title: ancestor.name,
+        to: Urls.collection(ancestor),
+      })),
+      { title: collection.name, to: Urls.collection(collection) },
+      ...(dashboard != null
+        ? [{ title: dashboard.name, to: Urls.dashboard(dashboard) }]
+        : []),
+    ];
+
     return (
-      <Group c="text-secondary" align="center" gap="sm">
-        <Icon name="folder" />
-        {card.collection.effective_ancestors?.map((parent) => (
-          <>
-            <ContainerLink key={parent.id} to={Urls.collection(parent)}>
-              {parent.name}
-            </ContainerLink>
-            <Icon name="chevronright" size={8} />
-          </>
-        ))}
-        <ContainerLink
-          to={
-            card.dashboard != null
-              ? Urls.dashboard(card.dashboard)
-              : Urls.collection(card.collection)
-          }
-        >
-          {card.dashboard != null ? card.dashboard.name : card.collection.name}
-        </ContainerLink>
+      <Group gap="sm">
+        <Icon
+          c="text-secondary"
+          name={dashboard != null ? "dashboard" : "collection"}
+        />
+        <BreadcrumbList items={breadcrumbs} />
       </Group>
     );
   }
+}
+
+type BreadcrumbItem = {
+  title: string;
+  to: string;
+};
+
+type BreadcrumbProps = {
+  item: BreadcrumbItem;
+};
+
+function Breadcrumb({ item }: BreadcrumbProps) {
+  return (
+    <Anchor component={Link} to={item.to} c="text-secondary" fz="sm" lh="h5">
+      {item.title}
+    </Anchor>
+  );
+}
+
+type BreadcrumbListProps = {
+  items: BreadcrumbItem[];
+};
+
+function BreadcrumbList({ items }: BreadcrumbListProps) {
+  return (
+    <Group align="center" gap="xs">
+      {items.map((item, itemIndex) => (
+        <Fragment key={itemIndex}>
+          {itemIndex > 0 && (
+            <Icon name="chevronright" c="text-secondary" size={8} />
+          )}
+          <Breadcrumb item={item} />
+        </Fragment>
+      ))}
+    </Group>
+  );
 }
