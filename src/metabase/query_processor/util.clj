@@ -144,11 +144,12 @@
 
 (defn query->source-card-id
   "Return the ID of the Card used as the \"source\" query of this query, if applicable; otherwise return `nil`."
-  ^Integer [outer-query]
+  {:deprecated "0.57.0"}
+  ^Long [outer-query]
   (let [source-table (get-in outer-query [:query :source-table])]
     (when (string? source-table)
       (when-let [[_ card-id-str] (re-matches #"^card__(\d+$)" source-table)]
-        (Integer/parseInt card-id-str)))))
+        (parse-long card-id-str)))))
 
 ;;; ------------------------------------------- Metadata Combination Utils --------------------------------------------
 

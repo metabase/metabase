@@ -30,7 +30,12 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.lib.core :as lib]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.util :as lib.util]))
 
 (set! *warn-on-reflection* true)
 
@@ -69,15 +74,6 @@
             (assoc-in [:target 2 :stage-number] -1)))
         parameters))
 
-(defn- last-stage-number
-  [outer-query]
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  (mbql.u/legacy-last-stage-number (:query outer-query)))
-
-(defn- nest-query
-  [query]
-  (assoc query :query {:source-query (:query query)}))
-
 (defn- add-stage-to-temporal-unit-parameters
   "Points temporal-unit parameters to the penultimate stage unless the stage is specified."
   [parameters]
@@ -104,7 +100,7 @@
         ;; at the last stage can be filtered on the summary results. We know
         ;; this happened if we get a reference to one above the last stage.
         filter-stage-added? (and explicit-stage-numbers?
-                                 (= (inc (last-stage-number dataset-query))
+                                 (= (inc (lib.util/canonical-stage-index dataset-query -1))
                                     (apply max stage-numbers)))
         query (cond-> dataset-query
                 (and explicit-stage-numbers?
@@ -113,7 +109,7 @@
                       (not= card-type :question)
                       ;; the FE assumed an extra stage, so we add it
                       filter-stage-added?))
-                nest-query)
+                lib/append-stage)
         query (-> query
                   ;; don't want default constraints overridding anything that's already there
                   (m/dissoc-in [:middleware :add-default-userland-constraints?])
@@ -154,7 +150,8 @@
     (into
      {}
      (comp
-      (map (fn [[param-name {widget-type :widget-type, tag-type :type}]]
+      (map (fn [{param-name :lib.walk/template-tag-name, widget-type :widget-type, tag-type :type}]
+             (assert (string? param-name))
              ;; Field Filter parameters have a `:type` of `:dimension` and the widget type that should be used is
              ;; specified by `:widget-type`. Non-Field-filter parameters just have `:type`. So prefer
              ;; `:widget-type` if available but fall back to `:type` if not.
@@ -167,7 +164,7 @@
                    (= tag-type :temporal-unit))
                [param-name tag-type])))
       (filter some?))
-     (get-in query [:native :template-tags]))))
+     (lib/all-template-tags query))))
 
 (defn- allowed-parameter-type-for-template-tag-widget-type? [parameter-type widget-type]
   (when-let [allowed-template-tag-types (get-in lib.schema.parameter/types [parameter-type :allowed-for])]
@@ -223,7 +220,7 @@
               :let              [parameter-name (infer-parameter-name request-parameter)]]
         (let [matching-widget-type (or (get template-tags parameter-name)
                                        (throw (ex-info (tru "Invalid parameter: Card {0} does not have a template tag named {1}."
-                                                            card-id
+                                                            (pr-str card-id)
                                                             (pr-str parameter-name))
                                                        {:type               qp.error-type/invalid-parameter
                                                         :invalid-parameter  request-parameter

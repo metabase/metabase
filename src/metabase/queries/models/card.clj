@@ -50,7 +50,9 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.tools.hydrate :as t2.hydrate]))
+   [toucan2.tools.hydrate :as t2.hydrate]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema :as lib.schema]))
 
 (set! *warn-on-reflection* true)
 
@@ -214,17 +216,18 @@
 (defn- source-card-id
   [query]
   (when (map? query)
-    (let [query-type (lib/normalized-query-type query)]
+    (let [query-type (lib/normalized-mbql-version query)]
       (case query-type
-        :query      (-> query mbql.normalize/normalize qp.util/query->source-card-id)
-        :mbql/query (-> query lib/normalize lib.util/source-card-id)
+        :mbql-version/legacy (-> query mbql.normalize/normalize qp.util/query->source-card-id)
+        :mbql-version/mbql5  (-> query lib/normalize lib.util/source-card-id)
         nil))))
 
-(defn- card->integer-table-ids
+(mu/defn- card->integer-table-ids :- [:maybe [:set {:min 1} ::lib.schema.id/table]]
   "Return integer source table ids for card's :dataset_query."
-  [card]
-  (when-some [query (-> card :dataset_query :query)]
-    (not-empty (filter pos-int? (lib.util/collect-source-tables query)))))
+  [card :- [:map
+            [:dataset_query
+             [:map [:lib/type [:= :mbql/query]]]]]]
+  (lib/all-source-table-ids (:dataset_query card)))
 
 (defn- prefetch-tables-for-cards!
   "Collect tables from `dataset-cards` and prefetch metadata. Should be used only with metdata provider caching
@@ -373,7 +376,7 @@
 
 (defn- maybe-normalize-query [card]
   (cond-> card
-    (seq (:dataset_query card)) (update :dataset_query #(mi/maybe-normalize-query :in %))))
+    (seq (:dataset_query card)) (update :dataset_query #(mi/maybe-normalize-query :out %))))
 
 ;;; TODO -- move this to [[metabase.query-processor.card]] or MLv2 so the logic can be shared between the backend and
 ;;; frontend (?)
@@ -387,10 +390,10 @@
   An older style was to not include `:template-tags` onto cards as parameters. I think this is a mistake and they
   should always be there. Apparently lots of e2e tests are sloppy about this so this is included as a convenience."
   [card]
-  (for [[_ {tag-type :type, widget-type :widget-type, :as tag}] (get-in card [:dataset_query :native :template-tags])
-        :when                         (and tag-type
-                                           (or (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
-                                               (and (= tag-type :dimension) widget-type (not= widget-type :none))))]
+  (for [{tag-type :type, widget-type :widget-type, :as tag} (lib/all-template-tags (:dataset_query card))
+        :when (and tag-type
+                   (or (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
+                       (and (= tag-type :dimension) widget-type (not= widget-type :none))))]
     {:id       (:id tag)
      :type     (or widget-type (cond (= tag-type :date)   :date/single
                                      (= tag-type :string) :string/=
@@ -427,7 +430,7 @@
                                                                      :where     [:in :field.id (set field-ids)]})]
         (when-not (= field-db-id query-db-id)
           (throw (ex-info (letfn [(describe-database [db-id]
-                                    (format "%d %s" db-id (pr-str (t2/select-one-fn :name 'Database :id db-id))))]
+                                    (format "%d %s" db-id (pr-str (t2/select-one-fn :name :model/Database :id db-id))))]
                             (tru "Invalid Field Filter: Field {0} belongs to Database {1}, but the query is against Database {2}"
                                  (format "%d %s.%s" field-id (pr-str table-name) (pr-str field-name))
                                  (describe-database field-db-id)
@@ -507,25 +510,6 @@
   (cond-> card
     (dashboard-internal-card? card) check-dashboard-internal-card-insert))
 
-;; TODO -- consider whether we should validate the Card query when you save/update it?? (#40013)
-;;
-;; TODO (Cam 7/18/25) -- weird/offputting to have half of the before-insert logic live here and then the other half live
-;; in `define-before-insert`... we should consolidate it so it all lives in one or the other.
-(defn- pre-insert [card]
-  (let [defaults {:parameters         []
-                  :parameter_mappings []
-                  :card_schema        current-schema-version}
-        card     (maybe-check-dashboard-internal-card
-                  (merge defaults card))]
-    (u/prog1 card
-      (check-field-filter-fields-are-from-correct-database card)
-      ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters (#40013)
-      (assert-valid-type card)
-
-      (params/assert-valid-parameters card)
-      (params/assert-valid-parameter-mappings card)
-      (collection/check-collection-namespace :model/Card (:collection_id card)))))
-
 (defenterprise pre-update-check-sandbox-constraints
   "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
   metabase-enterprise.sandbox.models.group-table-access-policy
@@ -592,56 +576,6 @@
                                                                    [:= :action.id :implicit_action.action_id]]
                                                           :where  [:= :action.model_id model-id]})]
     (t2/delete! :model/Action :id [:in action-ids])))
-
-;;; TODO (Cam 7/21/25) -- icky to have some of the before-update stuff live in the before-update method below and then
-;;; some but not all of it live in this `pre-update` function... all of the before-update stuff should live in a single
-;;; function. We should move it all here or move it all there. Weird to split it up between two places.
-(defn- pre-update [{id :id :as card} changes]
-  ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
-  ;; does that happen in the `PUT` endpoint? (#40013)
-  (u/prog1 card
-    (let [;; Fetch old card data if necessary, and share the data between multiple checks.
-          old-card-info (when (or (contains? changes :type)
-                                  (:dataset_query changes)
-                                  (get-in changes [:dataset_query :native]))
-                          (t2/select-one [:model/Card :dataset_query :type :result_metadata :card_schema]
-                                         :id (u/the-id id)))]
-      ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
-      ;; On-Demand DB Fields
-      (when (get-in changes [:dataset_query :native])
-        (let [old-param-field-ids (params/card->template-tag-field-ids old-card-info)
-              new-param-field-ids (params/card->template-tag-field-ids changes)]
-          (when (and (seq new-param-field-ids)
-                     (not= old-param-field-ids new-param-field-ids))
-            (let [newly-added-param-field-ids (set/difference new-param-field-ids old-param-field-ids)]
-              (log/info "Referenced Fields in Card params have changed. Was:" old-param-field-ids
-                        "Is Now:" new-param-field-ids
-                        "Newly Added:" newly-added-param-field-ids)
-              ;; Now update the FieldValues for the Fields referenced by this Card.
-              (field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids)))))
-      ;; updating a model dataset query to not support implicit actions will disable implicit actions if they exist
-      (when (and (:dataset_query changes)
-                 (= (:type old-card-info) :model)
-                 (not (model-supports-implicit-actions? changes)))
-        (disable-implicit-action-for-model! id))
-      ;; Changing from a Model to a Question: archive associated actions
-      (when (and (= (:type changes) :question)
-                 (= (:type old-card-info) :model))
-        (t2/update! :model/Action {:model_id id :type [:not= :implicit]} {:archived true})
-        (t2/delete! :model/Action :model_id id, :type :implicit))
-      ;; Make sure any native query template tags match the DB in the query.
-      (check-field-filter-fields-are-from-correct-database changes)
-      ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection
-      ;; namespace)
-      (collection/check-collection-namespace :model/Card (:collection_id changes))
-      (params/assert-valid-parameters changes)
-      (params/assert-valid-parameter-mappings changes)
-      (update-parameters-using-card-as-values-source card changes)
-      (when (:parameters changes)
-        (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes)))
-      ;; additional checks (Enterprise Edition only)
-      (pre-update-check-sandbox-constraints card changes)
-      (assert-valid-type (merge old-card-info changes)))))
 
 (defn- add-query-description-to-metric-card
   "Add `:query_description` key to returned card.
@@ -723,6 +657,17 @@
       ;; At this point, the card should be at schema version 20 or higher.
       upgrade-card-schema-to-latest))
 
+(defn- validate-insert [card]
+  (u/prog1 card
+    (maybe-check-dashboard-internal-card card)
+    (check-field-filter-fields-are-from-correct-database card)
+    ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters (#40013)
+    (assert-valid-type card)
+    (params/assert-valid-parameters card)
+    (params/assert-valid-parameter-mappings card)
+    (collection/check-collection-namespace :model/Card (:collection_id card))))
+
+;; TODO -- consider whether we should validate the Card query when you save/update it?? (#40013)
 (t2/define-before-insert :model/Card
   [card]
   (-> card
@@ -733,7 +678,11 @@
       ;; since we're removing `:ident`s; we can probably remove this now.
       (u/assoc-default :entity_id (u/generate-nano-id))
       card.metadata/populate-result-metadata
-      pre-insert
+      (as-> $card (let [defaults {:parameters         []
+                                  :parameter_mappings []
+                                  :card_schema        current-schema-version}]
+                    (merge defaults $card)))
+      validate-insert
       populate-query-fields))
 
 (t2/define-after-insert :model/Card
@@ -764,16 +713,68 @@
         (card.metadata/populate-result-metadata changes))
       (m/update-existing :result_metadata #(some->> % (lib.normalize/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column])))))
 
+(defn- validate-update [{:keys [id], :as card} old-card-info changes]
+  ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
+  ;; does that happen in the `PUT` endpoint? (#40013)
+  (u/prog1 card
+    ;; Make sure any native query template tags match the DB in the query.
+    (check-field-filter-fields-are-from-correct-database changes)
+    ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection
+    ;; namespace)
+    (collection/check-collection-namespace :model/Card (:collection_id changes))
+    (params/assert-valid-parameters changes)
+    (params/assert-valid-parameter-mappings changes)
+    (update-parameters-using-card-as-values-source card changes)
+    (when (:parameters changes)
+      (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes)))
+    ;; additional checks (Enterprise Edition only)
+    (pre-update-check-sandbox-constraints card changes)
+    (assert-valid-type (merge old-card-info changes))))
+
 (t2/define-before-update :model/Card
-  [{:keys [verified-result-metadata?] :as card}]
-  (let [changes (t2/changes card)]
+  [{:keys [verified-result-metadata? id] :as card}]
+  (let [changes       (t2/changes card)
+        ;; Fetch old card data if necessary, and share the data between multiple checks.
+        old-card-info (when (or (contains? changes :type)
+                                (:dataset_query changes)
+                                (get-in changes [:dataset_query :native]))
+                        (t2/select-one [:model/Card :dataset_query :type :result_metadata :card_schema]
+                                       :id (u/the-id id)))
+        changes       (cond-> changes
+                        (contains? changes :dataset_query)
+                        (update :dataset_query #(mi/maybe-normalize-query :out %)))]
     (-> card
         (dissoc :verified-result-metadata?)
         (assoc :card_schema current-schema-version)
         (apply-dashboard-question-updates changes)
         maybe-normalize-query
         (populate-result-metadata changes verified-result-metadata?)
-        (pre-update changes)
+        (validate-update old-card-info changes)
+        (u/prog1
+          ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
+          ;; On-Demand DB Fields
+          (when (get-in changes [:dataset_query :native])
+            (let [old-param-field-ids (params/card->template-tag-field-ids old-card-info)
+                  new-param-field-ids (params/card->template-tag-field-ids changes)]
+              (when (and (seq new-param-field-ids)
+                         (not= old-param-field-ids new-param-field-ids))
+                (let [newly-added-param-field-ids (set/difference new-param-field-ids old-param-field-ids)]
+                  (log/info "Referenced Fields in Card params have changed. Was:" old-param-field-ids
+                            "Is Now:" new-param-field-ids
+                            "Newly Added:" newly-added-param-field-ids)
+                  ;; Now update the FieldValues for the Fields referenced by this Card.
+                  (field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids)))))
+          ;; updating a model dataset query to not support implicit actions will disable implicit actions if they
+          ;; exist
+          (when (and (:dataset_query changes)
+                     (= (:type old-card-info) :model)
+                     (not (model-supports-implicit-actions? changes)))
+            (disable-implicit-action-for-model! id))
+          ;; Changing from a Model to a Question: archive associated actions
+          (when (and (= (:type changes) :question)
+                     (= (:type old-card-info) :model))
+            (t2/update! :model/Action {:model_id id :type [:not= :implicit]} {:archived true})
+            (t2/delete! :model/Action :model_id id, :type :implicit)))
         populate-query-fields
         maybe-populate-initially-published-at)))
 
@@ -1226,15 +1227,16 @@
 
 (defmethod serdes/descendants "Card" [_model-name id]
   (let [card               (t2/select-one :model/Card :id id)
-        source-table       (some->  card :dataset_query :query :source-table)
-        template-tags      (some->> card :dataset_query :native :template-tags vals (keep :card-id))
+        query              (not-empty (:dataset_query card))
+        source-cards       (some->  query lib/all-source-card-ids)
+        template-tags      (some->> query lib/all-template-tags)
+        template-tag-cards (some->> template-tags (keep :card-id))
         parameters-card-id (some->> card :parameters (keep (comp :card_id :values_source_config)))
-        snippets           (some->> card :dataset_query :native :template-tags vals (keep :snippet-id))]
+        snippets           (some->> template-tags (keep :snippet-id))]
     (into {} (concat
-              (when (and (string? source-table)
-                         (str/starts-with? source-table "card__"))
-                {["Card" (parse-long (subs source-table 6))] {"Card" id}})
-              (for [card-id template-tags]
+              (for [source-card source-cards]
+                {["Card" source-card] {"Card" id}})
+              (for [card-id template-tag-cards]
                 {["Card" card-id] {"Card" id}})
               (for [card-id parameters-card-id]
                 {["Card" card-id] {"Card" id}})
@@ -1248,12 +1250,13 @@
   [dataset-query-str]
   (when dataset-query-str
     (lib.metadata.jvm/with-metadata-provider-cache
-      (let [dataset-query     ((:out mi/transform-metabase-query) dataset-query-str)
-            metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
-            lib-query         (lib/query metadata-provider dataset-query)
-            columns           (lib/returned-columns lib-query)]
-        ;; Dimensions are columns that are not aggregations
-        (remove (comp #{:source/aggregations} :lib/source) columns)))))
+      (let [dataset-query ((:out mi/transform-metabase-query) dataset-query-str)]
+        (when (pos-int? (:database dataset-query))
+          (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
+                lib-query         (lib/query metadata-provider dataset-query)
+                columns           (lib/returned-columns lib-query)]
+            ;; Dimensions are columns that are not aggregations
+            (remove (comp #{:source/aggregations} :lib/source) columns)))))))
 
 (defn extract-non-temporal-dimension-ids
   "Extract list of nontemporal dimension field IDs, stored as JSON string. See PR 60912"

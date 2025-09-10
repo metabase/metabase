@@ -915,6 +915,7 @@
   Also handles unwrapped integers for legacy compatibility.
 
     (unwrap-field-clause [:field 100 nil]) ; -> [:field 100 nil]"
+  {:deprecated "0.57.0"}
   [field-form]
   (if (integer? field-form)
     [:field field-form nil]
@@ -923,6 +924,7 @@
 (mu/defn unwrap-field-or-expression-clause :- mbql.s/Field
   "Unwrap a `:field` clause or expression clause, such as a template tag. Also handles unwrapped integers for
   legacy compatibility."
+  {:deprecated "0.57.0"}
   [field-or-ref-form]
   (or (unwrap-field-clause field-or-ref-form)
       (lib.util.match/match-lite-recursive field-or-ref-form :expression field-or-ref-form)))

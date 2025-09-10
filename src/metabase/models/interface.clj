@@ -197,7 +197,7 @@
   "Saving MBQL 5 queries​ we can assume MBQL 5 queries are normalized enough already, but remove the metadata provider
   before saving it, because it's not something that lends itself well to serialization."
   [query]
-  (dissoc query :lib/metadata))
+  (lib/prepare-for-serialization query))
 
 (defn- deserialize-mbql5-query
   "Reading MBQL 5 queries​: normalize them, then attach a MetadataProvider based on their Database."
@@ -215,16 +215,24 @@
   [in-or-out :- [:enum :in :out]
    query]
   (letfn [(normalize [query]
-            (let [f (if (= (lib/normalized-query-type query) :mbql/query)
-                      ;; MBQL 5 queries
-                      (case in-or-out
-                        :in  serialize-mbql5-query
-                        :out deserialize-mbql5-query)
-                      ;; legacy queries: just normalize them with the legacy normalization code for now... in the near
-                      ;; future we'll probably convert to MBQL 5 before saving so everything in the app DB is MBQL 5
-                      (case in-or-out
-                        :in  mbql.normalize/normalize
-                        :out mbql.normalize/normalize))]
+            (when-let [f (case (lib/normalized-mbql-version query)
+                           :mbql-version/mbql5
+                           (case in-or-out
+                             :in  serialize-mbql5-query
+                             :out deserialize-mbql5-query)
+                           ;; legacy queries: just normalize them with the legacy normalization code for now... in the
+                           ;; near future we'll probably convert to MBQL 5 before saving so everything in the app DB
+                           ;; is MBQL 5
+                           :mbql-version/legacy
+                           (case in-or-out
+                             :in  mbql.normalize/normalize
+                             ;; convert to MBQL 5 on the way out
+                             :out deserialize-mbql5-query)
+
+                           #_else
+                           (do
+                             (log/errorf "Invalid query: %s" (pr-str query))
+                             nil))]
               (f query)))]
     (cond-> query
       (and (map? query) (seq query))

@@ -111,19 +111,22 @@
   (mt/with-actions-enabled
     (testing "when updating a model to include any clauses will disable implicit actions if they exist\n"
       (testing "happy paths\n"
-        (let [base (mt/mbql-query users)]
-          (doseq [query-change [{:limit 1}
-                                {:expressions {"id + 1" [:+ (mt/$ids $users.id) 1]}}
-                                {:filter [:> (mt/$ids $users.id) 2]}
-                                {:breakout [(mt/$ids !month.users.last_login)]}
-                                {:aggregation [[:count]]}
-                                {:joins [{:fields       :all
-                                          :source-table (mt/id :checkins)
-                                          :condition    [:= (mt/$ids $users.id) (mt/$ids $checkins.user_id)]
-                                          :alias        "People"}]}
-                                {:order-by [[(mt/$ids $users.id) :asc]]}
-                                {:fields [(mt/$ids $users.id)]}]]
-            (testing (format "when adding %s to the query" (first (keys query-change)))
+        (let [mp   (mt/metadata-provider)
+              base (lib/query
+                    mp
+                    (mt/mbql-query users))]
+          (doseq [[f & args] [[#'lib/limit 1]
+                              [#'lib/expression "id + 1" (lib/+ (lib.metadata/field mp (mt/id :users :id)) 1)]
+                              [#'lib/filter (lib/> (lib.metadata/field mp (mt/id :users :id)) 2)]
+                              [#'lib/breakout (-> (lib.metadata/field mp (mt/id :users :last_login))
+                                                  (lib/with-temporal-bucket :month))]
+                              [#'lib/aggregate (lib/count)]
+                              [#'lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :checkins)))
+                                              (lib/with-join-fields :all)
+                                              (lib/with-join-alias "People"))]
+                              [#'lib/order-by (lib.metadata/field mp (mt/id :users :id))]
+                              [#'lib/with-fields [(lib.metadata/field mp (mt/id :users :id))]]]]
+            (testing (format "when applying %s to the query" (pr-str f))
               (mt/with-actions [{model-id :id
                                  query    :dataset_query}   {:type :model, :dataset_query base}
                                 {action-id-1 :action-id} {:type :implicit
@@ -132,13 +135,13 @@
                                                           :kind "row/update"}]
                 ;; make sure we have thing exists to start with
                 (is (= 2 (t2/count :model/Action :id [:in [action-id-1 action-id-2]])))
-                (is (= 1 (t2/update! :model/Card :id model-id {:dataset_query (update query :query merge query-change)})))
+                (is (= 1 (t2/update! :model/Card :id model-id {:dataset_query (apply f query args)})))
                 ;; should be gone by now
                 (is (= 0 (t2/count :model/Action :id [:in [action-id-1 action-id-2]])))
                 (is (= 0 (t2/count :model/ImplicitAction :action_id [:in [action-id-1 action-id-2]])))
-                ;; call it twice to make we don't get delete error if no actions are found
-                ;; Returns zero because there are no actual changes happening here
-                (is (= 0 (t2/update! :model/Card :id model-id {:dataset_query (update query :query merge query-change)})))))))))))
+                ;; call it twice to make we don't get delete error if no actions are found Returns either zero or one
+                ;; depending on the change because the query will possibly have different UUIDs
+                (is (#{0 1} (t2/update! :model/Card :id model-id {:dataset_query (apply f query args)})))))))))))
 
 (deftest disable-implicit-actions-if-needed-test-2
   (mt/with-actions-enabled
@@ -372,16 +375,18 @@
           bird-counts-db-id (mt/dataset daily-bird-counts (mt/id))
           card-data         (fn [database-id]
                               {:database_id   database-id
-                               :dataset_query {:database database-id
-                                               :type     :native
-                                               :native   {:query         "SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}"
-                                                          :template-tags {"FILTER" {:id           "_FILTER_"
-                                                                                    :name         "FILTER"
-                                                                                    :display-name "Filter"
-                                                                                    :type         :dimension
-                                                                                    :dimension    [:field (mt/id :venues :name) nil]
-                                                                                    :widget-type  :string/=
-                                                                                    :default      nil}}}}})
+                               :dataset_query (lib/query
+                                               (mt/application-database-metadata-provider database-id)
+                                               {:database database-id
+                                                :type     :native
+                                                :native   {:query         "SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}"
+                                                           :template-tags {"FILTER" {:id           "_FILTER_"
+                                                                                     :name         "FILTER"
+                                                                                     :display-name "Filter"
+                                                                                     :type         :dimension
+                                                                                     :dimension    [:field (mt/id :venues :name) nil]
+                                                                                     :widget-type  :string/=
+                                                                                     :default      nil}}}})})
           good-card-data  (card-data test-data-db-id)
           bad-card-data   (card-data bird-counts-db-id)]
       (testing "Should not be able to create new Card with a filter with the wrong Database ID"
@@ -623,9 +628,12 @@
 
 (deftest ^:parallel descendants-test-2
   (testing "cards which have another card as the source depend on that card"
-    (mt/with-temp [:model/Card card1 {:name "base card"}
-                   :model/Card card2 {:name "derived card"
-                                      :dataset_query {:query {:source-table (str "card__" (:id card1))}}}]
+    (mt/with-temp [:model/Card card1 {:name          "base card"
+                                      :dataset_query (mt/mbql-query venues)}
+                   :model/Card card2 {:name          "derived card"
+                                      :dataset_query {:type     :query
+                                                      :database (mt/id)
+                                                      :query    {:source-table (str "card__" (:id card1))}}}]
       (is (empty? (serdes/descendants "Card" (:id card1))))
       (is (= {["Card" (:id card1)] {"Card" (:id card2)}}
              (serdes/descendants "Card" (:id card2)))))))
@@ -635,12 +643,14 @@
     (mt/with-temp [:model/NativeQuerySnippet snippet {:name "category" :content "category = 'Gizmo'"}
                    :model/Card               card
                    {:name          "Business Card"
-                    :dataset_query {:native
-                                    {:template-tags {:snippet {:name         "snippet"
-                                                               :type         :snippet
-                                                               :snippet-name "snippet"
-                                                               :snippet-id   (:id snippet)}}
-                                     :query "select * from products where {{snippet}}"}}}]
+                    :dataset_query {:database (mt/id)
+                                    :type     :native
+                                    :native   {:template-tags {:snippet {:name         "snippet"
+                                                                         :display-name "snippet"
+                                                                         :type         :snippet
+                                                                         :snippet-name "snippet"
+                                                                         :snippet-id   (:id snippet)}}
+                                               :query         "select * from products where {{snippet}}"}}}]
       (is (= {["NativeQuerySnippet" (:id snippet)] {"Card" (:id card)}}
              (serdes/descendants "Card" (:id card)))))))
 
@@ -854,9 +864,9 @@
             (is (false? (mi/can-read? card)))
             (is (false? (mi/can-write? card)))))))))
 
-(deftest breakouts-->identifier->action-fn-test
-  (are [b1 b2 expected--identifier->action] (= expected--identifier->action
-                                               (#'card/breakouts-->identifier->action b1 b2))
+(deftest ^:parallel breakouts-->identifier->action-fn-test
+  (are [b1 b2 expected-identifier->action] (= expected-identifier->action
+                                              (#'card/breakouts-->identifier->action b1 b2))
     [[:field 10 {:temporal-unit :day}]]
     nil
     nil
@@ -881,7 +891,7 @@
     [[:field 10 {:temporal-unit :year}]]
     nil))
 
-(deftest update-for-dashcard-fn-test
+(deftest ^:parallel update-for-dashcard-fn-test
   (are [indetifier->action quasi-dashcards expected-quasi-dashcards]
        (= expected-quasi-dashcards
           (#'card/updates-for-dashcards indetifier->action quasi-dashcards))
@@ -1029,8 +1039,8 @@
         (t2/update! :model/Card card-id {:dataset_query unnormalized-query})
         ;; Verify the query was normalized (field-id -> field)
         (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id card-id)]
-          (is (= [:= [:field (mt/id :venues :name) nil] "Test"]
-                 (get-in updated-query [:query :filter]))))))))
+          (is (=? [:= {} [:field {} (mt/id :venues :name)] "Test"]
+                 (get-in updated-query [:stages 0 :filters 0]))))))))
 
 (deftest before-update-query-fields-population-test
   (testing "populate-query-fields is called"

@@ -196,6 +196,8 @@
     (walk/postwalk
      (fn [form]
        (when (map? form)
+         ;; TODO (Cam 9/8/25) -- seems fragile that this only gets populated by the `:sql` driver implementation for
+         ;; metabase.driver/substitute-native-parameters
          (when-let [ids (not-empty (:query-permissions/referenced-card-ids form))]
            (swap! all-ids set/union ids)))
        form)
@@ -203,6 +205,7 @@
     (not-empty @all-ids)))
 
 (defn- native-query-perms
+  {:deprecated "0.57.0"}
   [query]
   (merge
    {:perms/create-queries :query-builder-and-native
@@ -214,6 +217,7 @@
                    card-ids)})))
 
 (defn- legacy-mbql-required-perms
+  {:deprecated "0.57.0"}
   [query {:keys [throw-exceptions? already-preprocessed?]}]
   (try
     (let [query (mbql.normalize/normalize query)]

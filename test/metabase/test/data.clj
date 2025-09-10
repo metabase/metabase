@@ -131,6 +131,7 @@
   ([table-name & body]
    (mbql-query-impl/parse-tokens table-name `(do ~@body))))
 
+;;; TODO (Cam 9/8/25) -- rename this to `legacy-mbql-query`
 (defmacro mbql-query
   "Macro for easily building MBQL queries for test purposes.
 

@@ -29,7 +29,9 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.lib.walk :as lib.walk]
+   [metabase.lib.schema :as lib.schema]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     SHARED                                                     |
@@ -350,31 +352,20 @@
 ;;; |                                                 CARD-SPECIFIC                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn- card->template-tag-param-id->field-clauses :- [:map-of
-                                                         ::lib.schema.common/non-blank-string
-                                                         [:set mbql.s/field]]
-  "Return a set of `:field` clauses referenced in template tag parameters in `card`."
-  [card]
-  (into {} (for [[_ {param-id  :id
-                     dimension :dimension}] (get-in card [:dataset_query :native :template-tags])
-                 :when                      dimension
-                 :let                       [field (mbql.u/unwrap-field-clause dimension)]
-                 :when                      field]
-             [param-id #{field}])))
-
-(mu/defn- card->template-tag-param-id->field-ids :- [:map-of
-                                                     ::lib.schema.common/non-blank-string
-                                                     [:set ::lib.schema.id/field]]
+(mu/defn- card->template-tag-param-id->field-ids :- [:maybe
+                                                     [:map-of
+                                                      ::lib.schema.common/non-blank-string
+                                                      [:set ::lib.schema.id/field]]]
   "Return a map of Param IDs to sets of Field IDs referenced by each template tag parameter in this `card`.
 
   Mostly used for determining Fields referenced by Cards for purposes other than processing queries. Filters out
   `:field` clauses which use names."
-  [card]
-  (-> card
-      card->template-tag-param-id->field-clauses
-      (update-vals #(set (lib.util.match/match (seq %)
-                           [:field (id :guard integer?) _]
-                           id)))))
+  [{query :dataset_query, :as _card}]
+  (when query
+    (case (lib/normalized-mbql-version query)
+      :mbql-version/mbql5  (lib/all-template-tags-id->field-ids query)
+      :mbql-version/legacy (throw (ex-info "Only MBQL 5 queries are supported" {:query query}))
+      nil)))
 
 (defmethod param-fields :model/Card [card]
   (-> card card->template-tag-param-id->field-ids param-field-ids->fields))

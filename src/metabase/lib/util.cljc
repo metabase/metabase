@@ -710,6 +710,13 @@
       (when (#{:mbql/query :query :native :internal} query-type)
         query-type))))
 
+(defn normalized-mbql-version [query]
+  (case (normalized-query-type query)
+    :mbql/query      :mbql-version/mbql5
+    (:query :native) :mbql-version/legacy
+    ;; otherwise, this is not a valid MBQL query.
+    nil))
+
 (mu/defn referenced-field-ids :- [:maybe [:set ::lib.schema.id/field]]
   "Find all the integer field IDs in `coll`, Which can arbitrarily be anything that is part of MLv2 query schema."
   [coll]
@@ -719,7 +726,10 @@
          (lib.util.match/match coll [:field opts (id :guard int?)] [id (:source-field opts)]))))
 
 (defn collect-source-tables
-  "Return sequence of source tables from `query`."
+  "Return sequence of source tables from `query`.
+
+  DEPRECATED: Use [[metabase.lib.walk.util/all-source-table-ids]] going forward."
+  {:deprecated "0.57.0"}
   [query]
   (let [from-joins (mapcat collect-source-tables (:joins query))]
     (if-let [source-query (:source-query query)]

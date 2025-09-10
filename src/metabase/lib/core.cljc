@@ -40,6 +40,7 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema.util]
+   [metabase.lib.serialize]
    [metabase.lib.segment :as lib.segment]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.swap :as lib.swap]
@@ -47,6 +48,7 @@
    [metabase.lib.template-tags :as lib.template-tags]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.walk.util]
    [metabase.util.namespaces :as shared.ns]))
 
 (comment lib.aggregation/keep-me
@@ -85,12 +87,14 @@
          lib.remove-replace/keep-me
          metabase.lib.schema.util/keep-me
          lib.segment/keep-me
+         metabase.lib.serialize/keep-me
          lib.stage/keep-me
          lib.swap/keep-me
          lib.table/keep-me
          lib.template-tags/keep-me
          lib.temporal-bucket/keep-me
-         lib.util/keep-me)
+         lib.util/keep-me
+         metabase.lib.walk.util/keep-me)
 
 (shared.ns/import-fns
  [lib.aggregation
@@ -383,6 +387,8 @@
  [metabase.lib.schema.util]
  [lib.segment
   available-segments]
+ [metabase.lib.serialize
+  prepare-for-serialization]
  [lib.stage
   append-stage
   drop-stage
@@ -407,8 +413,15 @@
   fresh-uuids
   native-stage?
   normalized-query-type
+  normalized-mbql-version
   previous-stage
   previous-stage-number
   query-stage
   source-table-id
-  update-query-stage])
+  source-card-id
+  update-query-stage]
+ [metabase.lib.walk.util
+  all-source-card-ids
+  all-source-table-ids
+  all-template-tags
+  all-template-tags-id->field-ids])
