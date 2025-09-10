@@ -1,0 +1,35 @@
+name: Prepare Python Runner
+description: |
+  Prepare the Python runner environment for tests. This action starts the python-runner
+  service using the Makefile, making it available for Python transform tests and driver tests.
+inputs:
+  submodules-token:
+    description: 'GitHub token for accessing private submodules'
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check if python-runner directory exists
+      id: check-python-runner
+      shell: bash
+      run: |
+        if [ -d "python-runner" ]; then
+          echo "exists=true" >> $GITHUB_OUTPUT
+          echo "✅ python-runner directory found"
+        else
+          echo "exists=false" >> $GITHUB_OUTPUT
+          echo "⚠️  python-runner directory not found - skipping Python runner setup"
+        fi
+    
+    - name: Start python-runner using Makefile
+      if: steps.check-python-runner.outputs.exists == 'true'
+      shell: bash
+      working-directory: python-runner
+      run: |
+        echo "🚀 Starting python-runner using make run..."
+        
+        # Use the official make run command
+        make run
+        
+        echo "✅ Python runner started successfully!"
