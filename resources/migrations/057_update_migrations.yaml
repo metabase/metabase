@@ -1196,6 +1196,7 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_comment_creator_id
             onDelete: CASCADE
+      rollback: # will be removed along the table
 
   - changeSet:
       id: v57.2025-08-24T10:02:00
@@ -1209,6 +1210,7 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_comment_parent_comment_id
             onDelete: CASCADE
+      rollback: # will be removed along the table
 
   - changeSet:
       id: v57.2025-08-24T10:03:00
@@ -1223,6 +1225,7 @@ databaseChangeLog:
                   name: target_type
               - column:
                   name: target_id
+      rollback: # will be removed along the table
 
   - changeSet:
       id: v57.2025-08-24T10:04:00
@@ -1235,6 +1238,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: creator_id
+      rollback: # will be removed along the table
 
   - changeSet:
       id: v57.2025-08-24T10:05:00
@@ -1247,6 +1251,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: parent_comment_id
+      rollback: # will be removed along the table
 
   - changeSet:
       id: v57.2025-09-01T17:15:00
@@ -1308,6 +1313,7 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_comment_reaction_comment_id
             onDelete: CASCADE
+      rollback: # will be removed along the table
 
   - changeSet:
       id: v57.2025-09-01T17:17:00
@@ -1321,6 +1327,7 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_comment_reaction_user_id
             onDelete: CASCADE
+      rollback: # will be removed along the table
 
   - changeSet:
       id: v57.2025-09-01T17:18:00
@@ -1331,6 +1338,7 @@ databaseChangeLog:
             tableName: comment_reaction
             columnNames: comment_id, user_id, emoji
             constraintName: unique_user_comment_emoji
+      rollback: # will be removed along the table
 
   - changeSet:
       id: v57.2025-09-01T17:19:00
@@ -1343,6 +1351,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: comment_id
+      rollback: # will be removed along the table
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
