@@ -1339,7 +1339,27 @@ H.describeWithSnowplowEE("document comments", () => {
         createParagraphComment(documentId, "Test 1");
 
         cy.signInAsNormalUser();
-        createParagraphComment(documentId, "Test 2");
+        createParagraphComment(documentId, "Test 2").then(
+          ({ body: comment }) => {
+            H.getInbox(1).then((response: any) => {
+              const emails = response.body;
+              cy.log("you should not get notified about your own comments");
+              expect(emails).to.have.length(1);
+
+              verifyEmail({
+                email: emails[0],
+                expected: {
+                  address: "admin@metabase.test",
+                  subject: "Comment on Lorem ipsum",
+                  heading: "Robert Tableton replied to a thread",
+                  documentTitle: "Lorem ipsum",
+                  documentHref: `http://localhost:4000/document/${documentId}`,
+                  commentHref: `http://localhost:4000/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${comment.id}`,
+                },
+              });
+            });
+          },
+        );
 
         H.clearInbox();
 
