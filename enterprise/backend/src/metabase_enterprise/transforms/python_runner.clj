@@ -20,7 +20,6 @@
    (java.net URI)
    (java.nio.charset StandardCharsets)
    (java.time Duration)
-   (java.util.concurrent CancellationException)
    (software.amazon.awssdk.auth.credentials AwsBasicCredentials StaticCredentialsProvider)
    (software.amazon.awssdk.auth.credentials DefaultCredentialsProvider)
    (software.amazon.awssdk.core.sync RequestBody)
@@ -312,13 +311,13 @@
     {:s3-client   (create-s3-client)                        ;; do not like mixing interactive things with descriptions, but its damn convenient to have it here for now
      :bucket-name bucket-name
      :objects
-     (-> (into
-          {:output          (loc :put "output.csv")
-           :output-manifest (loc :put "output-manifest.json")
-           :events          (loc :put "events.jsonl")}
-          (for [[table-name id] table-name->id]
-            {[:table id :manifest] (loc :get (str "-table-" (name table-name) "-" id ".manifest.json"))
-             [:table id :data]     (loc :get (str "-table-" (name table-name) "-" id ".jsonl"))})))}))
+     (into
+      {:output          (loc :put "output.csv")
+       :output-manifest (loc :put "output-manifest.json")
+       :events          (loc :put "events.jsonl")}
+      (for [[table-name id] table-name->id]
+        {[:table id :manifest] (loc :get (str "-table-" (name table-name) "-" id ".manifest.json"))
+         [:table id :data]     (loc :get (str "-table-" (name table-name) "-" id ".jsonl"))}))}))
 
 (defn open-s3-shared-storage!
   "Returns a deref'able shared storage value, (.close) will cleanup any s3 objects named in storage (data files for tables and so on)."
