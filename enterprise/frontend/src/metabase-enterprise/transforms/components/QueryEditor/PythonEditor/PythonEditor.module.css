@@ -37,14 +37,19 @@
 .error {
   color: var(--mb-color-error);
   background-color: var(--mb-color-bg-error);
-  border: 1px solid var(--mb-color-error);
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid var(--mb-color-border);
 }
 
 .info {
   color: var(--mb-color-text-dark);
   border: 1px solid var(--mb-color-bg-medium);
   background-color: var(--mb-color-bg-light);
+}
+
+.success {
+  color: var(--mb-color-success);
+  background-color: var(--mb-color-bg-success);
+  border-bottom: 1px solid var(--mb-color-border);
 }
 
 .loading {
