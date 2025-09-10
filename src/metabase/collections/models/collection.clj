@@ -1067,7 +1067,7 @@
    (cons (perms/collection-readwrite-path new-parent)
          (perms-for-collection-and-descendants collection))))
 
-(mu/defn- collection->descendant-ids :- [:maybe [:set ms/PositiveInt]]
+(mu/defn collection->descendant-ids :- [:maybe [:set ms/PositiveInt]]
   [collection :- CollectionWithLocationAndIDOrRoot, & additional-conditions]
   (apply t2/select-pks-set :model/Collection
          :location [:like (str (children-location collection) "%")]

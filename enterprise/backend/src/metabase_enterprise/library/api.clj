@@ -11,7 +11,9 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
-   [metabase.util.log :as log])
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [toucan2.core :as t2])
   (:import (java.io File)
            (java.nio.file Files)
            (java.nio.file.attribute FileAttribute)))
@@ -50,37 +52,47 @@
   "Reloads the Metabase entities from the "
   []
   (if-let [source (sources/get-source)]
-    (with-temp-directory dir
-      (try
-        (sources/load-source! source dir)
-        (serdes/with-cache
-          (v2.load/load-metabase! (v2.ingest/ingest-yaml dir)
-                                  :root-dependency-path [{:id collection/library-entity-id
-                                                          :model "Collection"}]))
-        (log/info "Successfully reloaded entities from git repository")
-        {:status :success
-         :message "Successfully reloaded from git repository"}
+    (let [library-collection (t2/select-one :model/Collection :entity_id collection/library-entity-id)]
+      (with-temp-directory dir
+        (try
+          (sources/load-source! source dir)
+          (let [affected-collection-ids (collection/collection->descendant-ids library-collection)]
+            (when (seq affected-collection-ids)
+              (t2/delete! :model/Collection :id [:in affected-collection-ids]))
+            (doseq [model [:model/Card
+                           :model/Dashboard
+                           :model/NativeQuerySnippet
+                           :model/Pulse
+                           :model/Timeline]]
+              (t2/delete! model :collection_id [:in (cons (u/the-id library-collection) affected-collection-ids)]))
+            (serdes/with-cache
+              (v2.load/load-metabase! (v2.ingest/ingest-yaml dir)
+                                      :root-dependency-path [{:id collection/library-entity-id
+                                                              :model "Collection"}])))
+          (log/info "Successfully reloaded entities from git repository")
+          {:status :success
+           :message "Successfully reloaded from git repository"}
 
-        (catch Exception e
-          (log/errorf e "Failed to reload from git repository: %s" (.getMessage e))
-          (let [error-msg (cond
-                            (instance? java.net.UnknownHostException e)
-                            "Network error: Unable to reach git repository host"
+          (catch Exception e
+            (log/errorf e "Failed to reload from git repository: %s" (.getMessage e))
+            (let [error-msg (cond
+                              (instance? java.net.UnknownHostException e)
+                              "Network error: Unable to reach git repository host"
 
-                            (str/includes? (.getMessage e) "Authentication failed")
-                            "Authentication failed: Please check your git credentials"
+                              (str/includes? (.getMessage e) "Authentication failed")
+                              "Authentication failed: Please check your git credentials"
 
-                            (str/includes? (.getMessage e) "Repository not found")
-                            "Repository not found: Please check the repository URL"
+                              (str/includes? (.getMessage e) "Repository not found")
+                              "Repository not found: Please check the repository URL"
 
-                            (str/includes? (.getMessage e) "branch")
-                            "Branch error: Please check the specified branch exists"
+                              (str/includes? (.getMessage e) "branch")
+                              "Branch error: Please check the specified branch exists"
 
-                            :else
-                            (format "Failed to reload from git repository: %s" (.getMessage e)))]
-            {:status :error
-             :message error-msg
-             :details {:error-type (type e)}}))))
+                              :else
+                              (format "Failed to reload from git repository: %s" (.getMessage e)))]
+              {:status :error
+               :message error-msg
+               :details {:error-type (type e)}})))))
     {:status :error
      :message "Library source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}))
 
