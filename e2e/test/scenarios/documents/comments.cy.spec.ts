@@ -1312,9 +1312,11 @@ H.describeWithSnowplowEE("document comments", () => {
           const emails = response.body;
           expect(emails).to.have.length(1);
 
-          const { html, subject } = emails[0];
+          const { html, subject, to } = emails[0];
 
           expect(subject).to.eq("Comment on Lorem ipsum");
+          expect(to).to.have.length(1);
+          expect(to[0].address).to.eq("admin@metabase.test");
 
           const parser = new DOMParser();
           const document = parser.parseFromString(html, "text/html");
@@ -1342,6 +1344,25 @@ H.describeWithSnowplowEE("document comments", () => {
           expect(
             document.querySelector('a[href="http://localhost:4000"]'),
           ).to.contain.text("http://localhost:4000");
+
+          cy.log("Metabase company name");
+          const hasCompanyName = [...document.querySelectorAll("*")].some(
+            (element) => element.textContent === "Metabase, Inc.",
+          );
+          expect(hasCompanyName).to.be.true;
+
+          cy.log("Metabase company address");
+          const hasCompanyAddress = [...document.querySelectorAll("*")].some(
+            (element) =>
+              element.textContent ===
+              "9740 Campo Rd., Suite 1029, Spring Valley, CA 91977",
+          );
+          expect(hasCompanyAddress).to.be.true;
+
+          cy.log("Metabase website");
+          expect(
+            document.querySelector('a[href="https://www.metabase.com"]'),
+          ).to.contain.text("https://www.metabase.com");
         });
       });
     });
