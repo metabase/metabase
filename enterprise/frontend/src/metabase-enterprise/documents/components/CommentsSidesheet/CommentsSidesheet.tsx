@@ -204,7 +204,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
       >
         <Modal.Header px="xl">
           <Modal.Title>
-            {childTargetId === "all" ? t`All comments` : t`Comments`}
+            {childTargetId === "all" ? t`All comments` : t`Comments about this`}
           </Modal.Title>
           <Modal.CloseButton onClick={closeSidebar} />
         </Modal.Header>
@@ -238,7 +238,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
                 />
               )}
 
-              {activeComments.length === 0 && (
+              {activeComments.length === 0 && childTargetId === "all" && (
                 <Flex
                   p="xl"
                   pt="5rem"
@@ -254,7 +254,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
               )}
 
               {childTargetId !== "all" && (
-                <Box px="lg" py="xs">
+                <Box px="lg" py={activeComments.length === 0 ? "lg" : "xs"}>
                   <CommentEditor
                     autoFocus={shouldAutoOpenNewComment}
                     data-testid="new-thread-editor"
