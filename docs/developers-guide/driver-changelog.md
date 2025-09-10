@@ -18,8 +18,7 @@ title: Driver interface changelog
   and metabase.driver.sql/default-schema to implement sql transforms.
 
 - Added `metabase.driver/rename-tables!` for atomic table renaming operations. Takes a map of {from-table to-table}
-  pairs and uses topological sorting to determine the correct order to avoid naming conflicts. Drivers can provide
-  database-specific implementations for better atomicity (e.g., MySQL's single RENAME TABLE statement).
+  pairs.
 
 - Added the driver multi-methods `metabase.driver/schema-exists?` and `metabase.driver/create-schema-if-needed!` which should be implemented by drivers that support `:schemas` and `:transforms/table`.
 

@@ -299,18 +299,27 @@
 
 (defmethod driver/rename-tables! :mysql
   [_driver db-id rename-map]
-  (let [rename-pairs (-> rename-map
-                         (update-vals vector)
-                         u/topological-sort
-                         (update-vals first))
-        quote-name (fn [table-name]
-                     (str "`" (name table-name) "`"))
+  (let [rename-map (-> rename-map
+                       (update-vals vector)
+                       u/topological-sort
+                       (update-vals first))
+        quote-identifier (fn [identifier]
+                           (str "`" identifier "`"))
+        quote-table (fn [table-name]
+                      (if (namespace table-name)
+                        (str (quote-identifier (namespace table-name)) "."
+                             (quote-identifier (name table-name)))
+                        (quote-identifier (name table-name))))
         rename-clauses (mapv (fn [[from-table to-table]]
-                               (str (quote-name from-table) " TO " (quote-name to-table)))
-                             rename-pairs)
+                               (str (quote-table from-table) " TO " (quote-table to-table)))
+                             rename-map)
         sql (str "RENAME TABLE " (str/join ", " rename-clauses))]
-    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
-      (jdbc/execute! conn [sql]))))
+    (sql-jdbc.execute/do-with-connection-with-options
+     :mysql
+     db-id
+     nil
+     (fn [^java.sql.Connection conn]
+       (jdbc/execute! {:connection conn} [sql])))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
