@@ -18,7 +18,7 @@ import { FIELD_OVERRIDES } from "../../constants";
 import type { EngineFieldOverride } from "../../types";
 import { DatabaseHostnameWithProviderField } from "../DatabaseHostnameWithProviderField/DatabaseHostnameWithProviderField";
 import DatabaseInfoField from "../DatabaseInfoField";
-import DatabaseSectionField from "../DatabaseSectionField";
+import { DatabaseSectionField } from "../DatabaseSectionField/DatabaseSectionField";
 
 export interface DatabaseDetailFieldProps {
   field: EngineField;
