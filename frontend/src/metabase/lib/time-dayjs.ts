@@ -94,19 +94,8 @@ export function parseTimestamp(
     result = TEXT_UNIT_FORMATS[unit as "day-of-week"](value);
   } else if (unit && unit in NUMERIC_UNIT_FORMATS && typeof value == "number") {
     result = NUMERIC_UNIT_FORMATS[unit](value);
-  } else if (typeof value === "string" && /^\d{4}-W\d{1,2}$/.test(value)) {
-    // Handle ISO week format like "2019-W33"
-    const [year, week] = value.split("-W").map(Number);
-    const weekResult = dayjs.utc().year(year).isoWeek(week).startOf("isoWeek");
-    // Validate that the week number is valid (typically 1-53)
-    if (weekResult.isValid() && weekResult.isoWeek() === week) {
-      result = weekResult;
-    } else {
-      result = dayjs.utc(value); // fallback to default parsing
-    }
   } else if (typeof value === "number") {
-    // use strict parsing to bypass small numbers like 1
-    result = dayjs.utc(value, "", true);
+    result = dayjs.utc(value.toString());
   } else {
     result = dayjs.utc(value);
   }
