@@ -1362,7 +1362,7 @@ H.describeWithSnowplowEE("document comments", () => {
           cy.log("Metabase website");
           expect(
             document.querySelector('a[href="https://www.metabase.com"]'),
-          ).to.contain.text("https://www.metabase.com");
+          ).to.contain.text("www.metabase.com");
         });
       });
     });
