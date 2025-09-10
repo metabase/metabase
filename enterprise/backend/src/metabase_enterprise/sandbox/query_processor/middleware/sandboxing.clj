@@ -3,6 +3,7 @@
   appropriate [[metabase-enterprise.sandbox.models.sandbox]]s (Sandboxes). See dox
   for [[metabase.permissions.models.permissions]] for a high-level overview of the Metabase permissions system."
   (:require
+   [better-cond.core :as b]
    [medley.core :as m]
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
    [metabase-enterprise.sandbox.models.sandbox :as sandbox]
@@ -36,7 +37,7 @@
 
 ;;; TODO (Cam 9/9/25) -- we should probably kebab-case these when they come in
 ;;; from [[metabase-enterprise.sandbox.api.util/enforced-sandboxes-for-tables]] for consistency with all of the rest
-;;; of the QP code
+;;; of the QP code. Or maybe add this to the Metadata Provider (or a special "Enterprise" Metadata Provider)?
 (mr/def ::sandbox
   [:map
    [:table_id             ::lib.schema.id/table]
@@ -226,22 +227,53 @@
       (assoc-in [:middleware :disable-remaps?] true)
       preprocess-query))
 
-(defn- validate-sandbox-columns-match-original-table [metadata-providerable sandbox-query original-table-id]
+(defn- project-only-columns-from-original-table
+  "A sandbox query is only allowed to return columns returned by the original table. If the sandbox query returns
+  anything else, log a warning telling people this is officially unsupported, then add a new stage to the query with
+  `:fields` to only select the allowed columns.
+
+  We probably should have had this error from day 1 but now there are sandboxes in the wild that do this so I guess we
+  just have to work around them going forward."
+  [metadata-providerable sandbox-query original-table-id]
   (let [sandbox-cols (lib/returned-columns sandbox-query)
-        table-cols   (lib.metadata/fields metadata-providerable original-table-id)]
-    (doseq [{:keys [table-id], :as sandbox-col} sandbox-cols
-            :let [sandboxing-error (fn []
-                                     (ex-info (tru "Sandboxes can only include columns from the original table")
-                                              {:type              qp.error-type/bad-configuration
-                                               :original-table-id original-table-id
-                                               :disallowed-column sandbox-col}))]]
-      (when (and table-id
-                 (not= table-id original-table-id))
-        (throw (sandboxing-error)))
-      (let [table-col (or (m/find-first #(= (:name %) (:name sandbox-col))
-                                        table-cols)
-                          (throw (sandboxing-error)))]
-        (sandbox/check-column-types-match sandbox-col table-col)))))
+        table-cols   (lib.metadata/fields metadata-providerable original-table-id)
+        fixed-cols   (remove (fn [{:keys [table-id], :as sandbox-col}]
+                               (b/cond
+                                 (and table-id
+                                      (not= table-id original-table-id))
+                                 (do
+                                   (log/errorf (str "Sandboxes can only include columns from the original Table (%d),"
+                                                    " query included %s from Table %d. This is unsupported and may not"
+                                                    " work in the future.")
+                                               original-table-id
+                                               (pr-str (:name sandbox-col))
+                                               table-id)
+                                   true)
+
+                                 :let [matching-table-col (m/find-first #(= (:name %)
+                                                                            (:name sandbox-col))
+                                                                        table-cols)]
+                                 (not matching-table-col)
+                                 (do
+                                   (log/errorf (str "Sandboxes can only include columns from the original Table,"
+                                                    " but query included %s. This is unsupported and may not work in"
+                                                    " the future.")
+                                               (pr-str (:name sandbox-col)))
+                                   true)
+
+                                 :else
+                                 (do
+                                   ;; this will throw an exception if types don't match up
+                                   (sandbox/check-column-types-match sandbox-col matching-table-col)
+                                   false)))
+                             sandbox-cols)]
+    (if (= fixed-cols sandbox-cols)
+      sandbox-query
+      (do
+        (log/warn "Adding additional stage to query to work around bad sandbox with extra columns")
+        (-> sandbox-query
+            lib/append-stage
+            (lib/with-fields (map lib/update-keys-for-col-from-previous-stage fixed-cols)))))))
 
 (defn- merge-original-table-metadata [native-cols original-table-cols]
   (into []
@@ -257,17 +289,19 @@
    {:keys [source-table] :as stage} :- ::lib.schema/stage
    sandbox                          :- ::sandbox]
   (let [sandbox-query       (sandbox->query query sandbox)
-        _                   (validate-sandbox-columns-match-original-table query sandbox-query source-table)
-        new-source-stages   (vec (:stages sandbox-query))
-        replacement-stages  (-> (pop new-source-stages)
-                                (conj (-> (last new-source-stages)
-                                          (assoc :query-permissions/sandboxed-table source-table)
-                                          (m/update-existing-in [:lib/stage-metadata :columns]
-                                                                (fn [cols]
-                                                                  (merge-original-table-metadata
-                                                                   cols
-                                                                   (lib/returned-columns query (lib.metadata/table query source-table))))))
-                                      (dissoc stage :source-table)))]
+        sandbox-query       (project-only-columns-from-original-table query sandbox-query source-table)
+        new-source-stages   (mapv (fn [stage]
+                                    (assoc stage :query-permissions/sandboxed-table source-table))
+                                  (:stages sandbox-query))
+        ;; merge stage metadata in the last source stage if needed
+        new-source-stages   (m/update-existing-in new-source-stages
+                                                  [(dec (count new-source-stages)) :lib/stage-metadata :columns]
+                                                  (fn [cols]
+                                                    (merge-original-table-metadata
+                                                     cols
+                                                     (lib/returned-columns query (lib.metadata/table query source-table)))))
+        replacement-stages  (conj new-source-stages
+                                  (dissoc stage :source-table))]
     (log/tracef "Applied Sandbox: replaced stage\n\n%s\n\nwith stages\n\n%s"
                 (u/cprint-to-str stage)
                 (u/cprint-to-str replacement-stages))

@@ -84,7 +84,7 @@
                                              (h2x/identifier :table-alias @(resolve 'metabase.driver.sparksql/source-table-alias)))]]])))]
     (first (sql.qp/format-honeysql driver/*driver* honeysql))))
 
-(defn- venues-category-native-gtap-def []
+(defn- venues-category-native-sandbox-def []
   (driver/with-driver (or driver/*driver* :h2)
     (assert (driver.u/supports? driver/*driver* :native-parameters (mt/db)))
     {:query (mt/native-query
@@ -101,7 +101,7 @@
                {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
      :remappings {:cat ["variable" ["template-tag" "cat"]]}}))
 
-(defn- parameterized-sql-with-join-gtap-def
+(defn- parameterized-sql-with-join-sandbox-def
   "A SQL query for `CHECKINS` that only returns `ID` and `USER_ID`. It includes a join against `VENUES`."
   []
   (driver/with-driver (or driver/*driver* :h2)
@@ -110,7 +110,11 @@
               {:query
                (format-honeysql
                 {:select [[(identifier :checkins :id)]
-                          [(identifier :checkins :user_id)]]
+                          [(identifier :checkins :user_id)]
+                          ;; these columns are ILLEGAL, you're NOT allowed to add columns not in the original table.
+                          ;; We should complain loudly and then ignore them.
+                          [(identifier :venues :name)]
+                          [(identifier :venues :category_id)]]
                  :from [[(identifier :checkins)]]
                  :left-join [[(identifier :venues)]
                              [:= (identifier :checkins :venue_id) (identifier :venues :id)]]
@@ -126,7 +130,7 @@
                         :required true}}})
      :remappings {:user ["variable" ["template-tag" "user"]]}}))
 
-(defn- venue-names-native-gtap-def []
+(defn- venue-names-native-sandbox-def []
   (driver/with-driver (or driver/*driver* :h2)
     {:query (mt/native-query
               {:query
@@ -223,7 +227,7 @@
 (deftest middleware-native-query-test
   (testing "Make sure the middleware does the correct transformation given the GTAPs we have"
     (testing "Should substitute appropriate value in native query"
-      (met/with-gtaps! {:gtaps {:venues (venues-category-native-gtap-def)}
+      (met/with-gtaps! {:gtaps {:venues (venues-category-native-sandbox-def)}
                         :attributes {"cat" 50}}
         (is (=? (mt/query nil
                   {:database (mt/id)
@@ -258,7 +262,7 @@
 (deftest e2e-test-1
   (mt/test-drivers (e2e-test-drivers)
     (testing "Basic test around querying a table by a user with segmented only permissions and a GTAP question that is a native query"
-      (met/with-gtaps! {:gtaps {:venues (venues-category-native-gtap-def)}, :attributes {"cat" 50}}
+      (met/with-gtaps! {:gtaps {:venues (venues-category-native-sandbox-def)}, :attributes {"cat" 50}}
         (is (= [[10]]
                (run-venues-count-query)))))))
 
@@ -308,7 +312,7 @@
 (deftest e2e-test-7
   (mt/test-drivers (e2e-test-drivers)
     (testing "Tests that users can have a different parameter name in their query than they have in their user attributes"
-      (met/with-gtaps! {:gtaps {:venues {:query (:query (venues-category-native-gtap-def))
+      (met/with-gtaps! {:gtaps {:venues {:query (:query (venues-category-native-sandbox-def))
                                          :remappings {:something.different ["variable" ["template-tag" "cat"]]}}}
                         :attributes {"something.different" 50}}
         (is (= [[10]]
@@ -317,7 +321,7 @@
 (deftest e2e-test-8
   (mt/test-drivers (e2e-test-drivers)
     (testing "Make sure that you can still use a SQL-based GTAP without needing to have SQL read perms for the Database"
-      (met/with-gtaps! {:gtaps {:venues (venue-names-native-gtap-def)}}
+      (met/with-gtaps! {:gtaps {:venues (venue-names-native-sandbox-def)}}
         (is (= [[1 "Red Medicine"] [2 "Stout Burgers & Beers"]]
                (mt/formatted-rows
                 [int str]
@@ -488,7 +492,7 @@
 (deftest breakouts-test
   (mt/test-drivers (sandboxing-fk-sql-drivers)
     (testing "Make sure that if a GTAP is in effect we can still do stuff like breakouts (#229)"
-      (met/with-gtaps! {:gtaps {:venues (venues-category-native-gtap-def)}
+      (met/with-gtaps! {:gtaps {:venues (venues-category-native-sandbox-def)}
                         :attributes {"cat" 50}}
         (is (= [[1 6] [2 4]]
                (mt/format-rows-by
@@ -505,7 +509,7 @@
     (testing (str "If we use a parameterized SQL GTAP that joins a Table the user doesn't have access to, does it "
                   "still work? (EE #230) If we pass the query in directly without anything that would require nesting "
                   "it, it should work")
-      (met/with-gtaps! {:gtaps      {:checkins (parameterized-sql-with-join-gtap-def)}
+      (met/with-gtaps! {:gtaps      {:checkins (parameterized-sql-with-join-sandbox-def)}
                         :attributes {"user" 1}}
         (let [query (mt/mbql-query checkins
                       {:order-by [[:asc $id]]
@@ -530,7 +534,7 @@
              (mt/format-rows-by
               [int int]
               (mt/rows
-               (met/with-gtaps! {:gtaps {:checkins (parameterized-sql-with-join-gtap-def)}
+               (met/with-gtaps! {:gtaps {:checkins (parameterized-sql-with-join-sandbox-def)}
                                  :attributes {"user" 1}}
                  (mt/run-mbql-query checkins
                    {:order-by [[:asc $id]]
@@ -1263,7 +1267,7 @@
 
 (deftest native-sandbox-table-level-block-perms-test
   (testing "A sandbox powered by a native query source card can be used even when other tables have block perms (#49969)"
-    (met/with-gtaps! {:gtaps {:venues (venues-category-native-gtap-def)}
+    (met/with-gtaps! {:gtaps {:venues (venues-category-native-sandbox-def)}
                       :attributes {"cat" 50}}
       (data-perms/set-table-permission! &group (mt/id :people) :perms/view-data :blocked)
       (is (= 10 (count (mt/rows (qp/process-query (mt/mbql-query venues)))))))))
@@ -1271,7 +1275,7 @@
 (deftest native-sandbox-no-query-metadata-streaming-test
   (testing "A sandbox powered by a native query source card can be used via the streaming API even if the card has no
            stored results_metadata (#49985)"
-    (met/with-gtaps! {:gtaps {:venues (venues-category-native-gtap-def)}
+    (met/with-gtaps! {:gtaps {:venues (venues-category-native-sandbox-def)}
                       :attributes {"cat" 50}}
       (let [sandbox-card-id (t2/select-one-fn :card_id
                                               :model/Sandbox
@@ -1354,7 +1358,7 @@
 (deftest jwt-attributes-native-query-test
   (mt/test-drivers (e2e-test-drivers)
     (testing "Native SQL GTAP queries work with jwt_attributes"
-      (met/with-gtaps! {:gtaps {:venues (venues-category-native-gtap-def)}}
+      (met/with-gtaps! {:gtaps {:venues (venues-category-native-sandbox-def)}}
         (testing "Basic test with jwt_attributes"
           (tu/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:jwt_attributes {"cat" 50}
                                                                      :login_attributes {}}
@@ -1427,7 +1431,7 @@
 (deftest jwt-attributes-different-param-names-test
   (mt/test-drivers (e2e-test-drivers)
     (testing "GTAP remapping with different parameter names works with jwt_attributes"
-      (met/with-gtaps! {:gtaps {:venues {:query (:query (venues-category-native-gtap-def))
+      (met/with-gtaps! {:gtaps {:venues {:query (:query (venues-category-native-sandbox-def))
                                          :remappings {:something.different ["variable" ["template-tag" "cat"]]}}}}
         (tu/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:jwt_attributes {"something.different" 50}
                                                                    :login_attributes {}}
@@ -1482,7 +1486,7 @@
                          (filter #(driver.u/supports? % :parameterized-sql nil))
                          (sandboxing-fk-sql-drivers))
     (testing "Parameterized SQL GTAPs work with jwt_attributes"
-      (met/with-gtaps! {:gtaps {:checkins (parameterized-sql-with-join-gtap-def)}}
+      (met/with-gtaps! {:gtaps {:checkins (parameterized-sql-with-join-sandbox-def)}}
         (tu/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:jwt_attributes {"user" 1}
                                                                    :login_attributes {}}
           (mt/with-test-user :rasta
@@ -1535,11 +1539,8 @@
                                                                                [:field "my_numberLiteral" {:base-type :type/Integer}]
                                                                                {:stage-number 0}]}}}
                       :attributes {"filter-attribute" "1"}}
-      ;; TODO (Cam 9/9/25) -- totally illegal to create a sandbox that returns extra columns like this (so why are we
-      ;; even testing this at all??) but if we disable the check then this actually does work.
-      (with-redefs [sandboxing/validate-sandbox-columns-match-original-table (constantly nil)]
-        (is (= [[1]
-                [2]
-                [3]]
-               (mt/rows
-                (qp/process-query (query)))))))))
+      (is (= [[1]
+              [2]
+              [3]]
+             (mt/rows
+              (qp/process-query (query))))))))
