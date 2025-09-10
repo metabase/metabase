@@ -1883,15 +1883,15 @@ function verifyEmail({
   ).to.contain.text("http://localhost:4000");
 
   cy.log("Metabase company name");
-  const hasCompanyName = [...document.querySelectorAll("*")].some(
-    (element) => element.textContent === "Metabase, Inc.",
-  );
+  const hasCompanyName = [...document.querySelectorAll("*")].some((element) => {
+    return element.textContent.trim() === "Metabase, Inc.";
+  });
   expect(hasCompanyName).to.be.true;
 
   cy.log("Metabase company address");
   const hasCompanyAddress = [...document.querySelectorAll("*")].some(
     (element) =>
-      element.textContent ===
+      element.textContent.trim() ===
       "9740 Campo Rd., Suite 1029, Spring Valley, CA 91977",
   );
   expect(hasCompanyAddress).to.be.true;
