@@ -55,6 +55,8 @@
   (concat
    [:model/Channel
     :model/ChannelTemplate
+    :model/Comment
+    :model/CommentReaction
     :model/Database
     :model/User
     :model/Setting

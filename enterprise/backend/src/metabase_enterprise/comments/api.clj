@@ -1,8 +1,6 @@
 (ns metabase-enterprise.comments.api
   "`/api/ee/comment/` routes"
   (:require
-   [clojure.string :as str]
-   [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.comments.models.comment :as comment]
    [metabase-enterprise.comments.models.comment-reaction :as comment-reaction]
