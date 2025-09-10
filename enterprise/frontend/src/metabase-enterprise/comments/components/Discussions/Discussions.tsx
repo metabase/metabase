@@ -12,6 +12,7 @@ export interface DiscussionProps {
   targetId: Comment["target_id"];
   targetType: Comment["target_type"];
   enableHoverHighlight?: boolean;
+  showLastDivider?: boolean;
 }
 
 export const Discussions = ({
@@ -20,6 +21,7 @@ export const Discussions = ({
   targetId,
   targetType,
   enableHoverHighlight = false,
+  showLastDivider: _showLastDivider = false,
 }: DiscussionProps) => {
   const threads = useMemo(
     () => getCommentThreads(comments, childTargetId),
