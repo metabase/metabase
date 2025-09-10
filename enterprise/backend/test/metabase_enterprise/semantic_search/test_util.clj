@@ -73,16 +73,12 @@
 
 (defmethod do-with-setup-test-db! :mock-initialized
   [_mode thunk]
-  ;; why redefinition does not work as expected?
-  (with-redefs [;; yes
-                semantic.embedding/get-configured-model        (fn [] mock-embedding-model)
-                ;; no
+  (with-redefs [semantic.embedding/get-configured-model        (fn [] mock-embedding-model)
                 semantic.index-metadata/default-index-metadata mock-index-metadata
-                ;; probably no
                 semantic.index/model-table-suffix              mock-table-suffix]
-    (let [pgvector @(def pgv (semantic.env/get-pgvector-datasource!))
-          index-metadata @(def yy (semantic.env/get-index-metadata))
-          embedding-model @(def xix (semantic.env/get-configured-embedding-model))]
+    (let [pgvector (semantic.env/get-pgvector-datasource!)
+          index-metadata (semantic.env/get-index-metadata)
+          embedding-model (semantic.env/get-configured-embedding-model)]
       (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model)
       (thunk))))
 
