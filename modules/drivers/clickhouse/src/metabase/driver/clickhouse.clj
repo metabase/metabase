@@ -2,6 +2,7 @@
   "Driver for ClickHouse databases"
   (:require
    [clojure.core.memoize :as memoize]
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -217,17 +218,17 @@
   {:arglists '([type])}
   identity)
 
-(defmethod type->database-type :type/Boolean [_] ["Nullable(Boolean)"])
-(defmethod type->database-type :type/Float [_] ["Nullable(Float64)"])
-(defmethod type->database-type :type/Integer [_] ["Nullable(Int64)"])
-(defmethod type->database-type :type/Number [_] ["Nullable(Int64)"])
-(defmethod type->database-type :type/Text [_] ["Nullable(String)"])
-(defmethod type->database-type :type/TextLike [_] ["Nullable(String)"])
-(defmethod type->database-type :type/Date [_] ["Nullable(Date32)"])
-(defmethod type->database-type :type/DateTime [_] ["Nullable(DateTime64(3))"])
+(defmethod type->database-type :type/Boolean [_] [[:raw "Nullable(Boolean)"]])
+(defmethod type->database-type :type/Float [_] [[:raw "Nullable(Float64)"]])
+(defmethod type->database-type :type/Integer [_] [[:raw "Nullable(Int64)"]])
+(defmethod type->database-type :type/Number [_] [[:raw "Nullable(Int64)"]])
+(defmethod type->database-type :type/Text [_] [[:raw "Nullable(String)"]])
+(defmethod type->database-type :type/TextLike [_] [[:raw "Nullable(String)"]])
+(defmethod type->database-type :type/Date [_] [[:raw "Nullable(Date32)"]])
+(defmethod type->database-type :type/DateTime [_] [[:raw "Nullable(DateTime64(3))"]])
 (defmethod type->database-type :type/DateTimeWithTZ [_]
   ;; ?
-  ["Nullable(DateTime64(3))"])
+  [[:raw "Nullable(DateTime64(3))"]])
 
 (defmethod driver/type->database-type :clickhouse
   [_driver base-type]
@@ -262,7 +263,17 @@
    {:write? true}
    (fn [^java.sql.Connection conn]
      (with-open [stmt (.createStatement conn)]
-       (.execute stmt (create-table!-sql driver table-name column-definitions :primary-key primary-key))))))
+       (let [sql (create-table!-sql driver table-name column-definitions :primary-key primary-key)]
+         (.execute stmt sql))))))
+
+(defmethod driver/rename-table! :clickhouse
+  [driver db-id old-table-name new-table-name]
+  (let [sql [(format "RENAME TABLE %s TO %s" (quote-name old-table-name) (quote-name new-table-name))]]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver db-id
+     {:write? true}
+     (fn [^java.sql.Connection conn]
+       (jdbc/execute! conn sql)))))
 
 (defmethod driver/insert-into! :clickhouse
   [driver db-id table-name column-names values]
