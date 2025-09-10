@@ -42,7 +42,7 @@
   (testing "Tests for :search-native-query"
     (mt/with-premium-features #{:semantic-search}
       (mt/as-admin
-        (semantic.tu/with-index!
+        (semantic.tu/with-test-db! {:mode :mock-indexed}
           (semantic.tu/with-only-semantic-weights
             (let [not-top-10? #(or (nil? %) (< 10 %))]
               (doseq [{:keys [name desc search-string search-native-query? expected-index?]}
@@ -111,7 +111,7 @@
   (testing "Filter results by model type"
     (mt/with-premium-features #{:semantic-search}
       (mt/as-admin
-        (semantic.tu/with-index!
+        (semantic.tu/with-test-db! {:mode :mock-indexed}
           (testing "Filter for cards only"
             (let [card-results (semantic.tu/query-index {:search-string "avian" :models ["card"]})
                   filtered-results (semantic.tu/filter-for-mock-embeddings card-results)]
@@ -134,7 +134,7 @@
   (testing "Filter results by archived status"
     (mt/with-premium-features #{:semantic-search}
       (mt/as-admin
-        (semantic.tu/with-index!
+        (semantic.tu/with-test-db! {:mode :mock-indexed}
           (testing "Include only non-archived items"
             (let [active-results (semantic.tu/query-index {:search-string "feline" :archived? false})]
               (is (every? #(not (:archived %)) active-results))))
@@ -154,7 +154,7 @@
   (testing "Filter results by creator"
     (mt/with-premium-features #{:semantic-search}
       (mt/as-admin
-        (semantic.tu/with-index!
+        (semantic.tu/with-test-db! {:mode :mock-indexed}
           (testing "Filter by single creator"
             (let [crowberto-results (semantic.tu/query-index {:search-string "aquatic" :created-by [(mt/user->id :crowberto)]})
                   filtered-results (semantic.tu/filter-for-mock-embeddings crowberto-results)]
@@ -171,7 +171,7 @@
   (testing "Filter results by verified status"
     (mt/with-premium-features #{:semantic-search}
       (mt/as-admin
-        (semantic.tu/with-index!
+        (semantic.tu/with-test-db! {:mode :mock-indexed}
           (testing "Include only verified items"
             (let [verified-results (semantic.tu/query-index {:search-string "puppy" :verified true})
                   filtered-results (semantic.tu/filter-for-mock-embeddings verified-results)]
@@ -187,7 +187,7 @@
   (testing "Complex filters with multiple criteria"
     (mt/with-premium-features #{:semantic-search}
       (mt/as-admin
-        (semantic.tu/with-index!
+        (semantic.tu/with-test-db! {:mode :mock-indexed}
           (testing "Non-archived cards by specific creator"
             (let [results (semantic.tu/query-index {:search-string "equine"
                                                     :models ["card"]
@@ -221,7 +221,7 @@
 
 (deftest permissions-test
   (mt/with-premium-features #{:semantic-search}
-    (semantic.tu/with-index!
+    (semantic.tu/with-test-db! {:mode :mock-indexed}
       (let [monsters-table (t2/select-one-pk :model/Table :name "Monsters Table")
             q (fn [model s] (map :name (semantic.tu/query-index {:search-string s, :models [model]})))
             all-users (perms-group/all-users)
@@ -257,7 +257,7 @@
     (mt/with-premium-features #{:semantic-search}
       (mt/as-admin
         (binding [semantic.index/*batch-size* 1]
-          (semantic.tu/with-index!
+          (semantic.tu/with-test-db! {:mode :mock-indexed}
             (semantic.tu/with-only-semantic-weights
               (testing "Horse-related query finds horse content"
                 (let [results (-> (semantic.tu/query-index {:search-string "marine mammal"})
