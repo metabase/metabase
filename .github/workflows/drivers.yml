@@ -341,8 +341,9 @@ jobs:
       with:
         submodules: true
         token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-    - name: Prepare Python Runner
-      uses: ./.github/actions/prepare-python-runner
+    - name: Start python-runner
+      working-directory: python-runner
+      run: make run-all
     - name: Test H2 driver
       uses: ./.github/actions/test-driver
       with:
@@ -450,8 +451,9 @@ jobs:
         with:
           submodules: true
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-      - name: Prepare Python Runner
-        uses: ./.github/actions/prepare-python-runner
+      - name: Start python-runner
+        working-directory: python-runner
+        run: make run-all
       - name: Test ${{ matrix.version.name }}
         uses: ./.github/actions/test-driver
         with:
@@ -758,8 +760,9 @@ jobs:
         with:
           submodules: true
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-      - name: Prepare Python Runner
-        uses: ./.github/actions/prepare-python-runner
+      - name: Start python-runner
+        working-directory: python-runner
+        run: make run-all
       - name: Test ${{ matrix.version.name }} (${{ matrix.job.name }})
         uses: ./.github/actions/test-driver
         with:
