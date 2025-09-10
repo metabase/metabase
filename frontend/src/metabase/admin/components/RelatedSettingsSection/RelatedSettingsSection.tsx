@@ -42,12 +42,14 @@ const RelatedSettingCard = ({
     <Card
       component={Link}
       to={to}
-      p="md"
+      px="md"
+      py="xs"
       withBorder
       data-testid="related-setting-card"
       shadow="none"
+      h="3rem"
     >
-      <Group gap="sm" align="center">
+      <Group gap="sm" align="center" h="100%">
         <Icon name={icon} color="var(--mb-color-brand)" />
 
         <Text fw={500} ta="center">
