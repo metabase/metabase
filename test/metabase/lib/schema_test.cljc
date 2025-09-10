@@ -343,3 +343,7 @@
 (deftest ^:parallel normalize-remove-disallowed-keys-test
   (is (= {:source-table 1, :lib/type :mbql.stage/mbql}
          (lib/normalize ::lib.schema/stage {:source-table 1, :type "query"}))))
+
+(deftest ^:parallel stage-disallow-snake-case-test
+  (is (= ["map with all kebab-cased keys, got: (:source_table)"]
+         (me/humanize (mr/explain ::lib.schema/stage {:lib/type :mbql.stage/mbql, :source-table 1, :source_table 2})))))

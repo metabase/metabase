@@ -1,5 +1,8 @@
 (ns metabase.server.test-handler
+  ;; this is actually a test namespace so we don't need to enforce model checks here.
+  {:clj-kondo/config '{:linters {:metabase/modules {:level :off}}}}
   (:require
+   [metabase.api-routes.core]
    [metabase.api.macros :as api.macros]
    [metabase.server.core :as server]
    [metabase.util.log :as log]
@@ -7,7 +10,7 @@
 
 (mu/defn- make-test-handler :- ::api.macros/handler
   []
-  (let [api-routes    #_{:clj-kondo/ignore [:metabase/modules]} (requiring-resolve 'metabase.api-routes.core/routes)
+  (let [api-routes    #'metabase.api-routes.core/routes
         server-routes (server/make-routes api-routes)
         handler       (server/make-handler server-routes)]
     (fn [request respond raise]
@@ -24,6 +27,14 @@
 
 (def ^:private -test-handler
   (delay (make-test-handler)))
+
+(add-watch
+ #'metabase.api-routes.core/routes
+ ::reload
+ (fn [_key _ref _old-state _new-stage]
+   #_{:clj-kondo/ignore [:discouraged-var]}
+   (println "metabase.api-routes.core/routes changed, reloading test handler...")
+   (alter-var-root -test-handler (constantly (delay (make-test-handler))))))
 
 (defn test-handler
   "Build the Ring handler used in tests and by `dev`."

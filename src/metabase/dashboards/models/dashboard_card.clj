@@ -190,15 +190,6 @@
         (update-dashboard-cards-series! {dashcard-id series}))
       nil)))
 
-(def ParamMapping
-  "Schema for a parameter mapping as it would appear in the DashboardCard `:parameter_mappings` column."
-  [:and
-   [:map-of :keyword :any]
-   [:map
-    ;; TODO -- validate `:target` as well... breaks a few tests tho so those will have to be fixed (#40021)
-    [:parameter_id ms/NonBlankString]
-    #_[:target       :any]]])
-
 (def ^:private NewDashboardCard
   ;; TODO - make the rest of the options explicit instead of just allowing whatever for other keys (#40021)
   [:map

@@ -1,5 +1,8 @@
 (ns metabase-enterprise.sandbox.api.gtap
-  "`/api/mt/gtap` endpoints, for CRUD operations and the like on GTAPs (Group Table Access Policies)."
+  "`/api/mt/gtap` endpoints, for CRUD operations and the like on GTAPs (Group Table Access Policies).
+
+  TODO (Cam 9/9/25) -- rename this namespace (and the routes in [[API]]) to something like `.sandbox`/`/sandbox` --
+  `GTAP` is an old name for this feature."
   (:require
    [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap]
    [metabase.api.common :as api]

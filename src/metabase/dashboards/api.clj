@@ -637,7 +637,7 @@
 (mu/defn- check-parameter-mapping-permissions
   "Starting in 0.41.0, you must have *data* permissions in order to add or modify a DashboardCard parameter mapping."
   {:added "0.41.0"}
-  [parameter-mappings :- [:sequential dashboard-card/ParamMapping]]
+  [parameter-mappings :- [:sequential ::parameters.schema/parameter.mapping]]
   (when (seq parameter-mappings)
     ;; calculate a set of all Field IDs referenced by parameter mappings; then from those Field IDs calculate a set of
     ;; all Table IDs to which those Fields belong. This is done in a batched fashion so we can avoid N+1 query issues

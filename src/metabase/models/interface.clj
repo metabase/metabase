@@ -242,11 +242,22 @@
         (log/errorf e "Unable to normalize:\n%s" (u/pprint-to-str 'red query))
         nil))))
 
+;;; TODO (Cam 9/9/25) -- move this into the `parameters` module
 (defn normalize-parameters-list
   "Normalize `parameters` or `parameter-mappings` when coming out of the application database or in via an API request."
   [parameters]
-  (or (mbql.normalize/normalize-fragment [:parameters] parameters)
-      []))
+  (mapv (fn [parameter]
+          (-> parameter
+              (m/update-existing :id u/qualified-name)
+              ;; some things that get ran thru here, like dashcard param targets, do not have :type
+              (m/update-existing :type keyword)
+              (m/update-existing :target mbql.normalize/normalize-tokens nil)
+              (m/update-existing :values_source_type keyword)
+              (m/update-existing :values_source_config (fn [m]
+                                                         (-> m
+                                                             (m/update-existing :label_field mbql.normalize/normalize-tokens nil)
+                                                             (m/update-existing :value_field mbql.normalize/normalize-tokens nil))))))
+        parameters))
 
 (defn- keywordize-temporal_units
   [parameter]

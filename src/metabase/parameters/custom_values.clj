@@ -20,7 +20,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.query-processor.middleware.parameters :as parameters]))
 
 ;;; ------------------------------------------------- source=static-list --------------------------------------------------
 
@@ -42,8 +43,9 @@
                                                       (second v)))
                                    normalized-query)) values)))
 
-(defn- static-list-values
-  [{values-source-options :values_source_config :as _param} query]
+(mu/defn- static-list-values
+  [{values-source-options :values_source_config :as _param} :- ::parameters.schema/parameter
+   query]
   (when-let [values (:values values-source-options)]
     (let [wrapped-values (map (fn [v] (if-not (sequential? v) [v] v)) values)]
       {:values          (if query
@@ -107,9 +109,10 @@
       ;; If the query has its own limit smaller than *max-rows*, then there's no more values.
       :has_more_values (= (:row_count result) *max-rows*)})))
 
-(defn card-values
+(mu/defn card-values
   "Given a param and query returns the values."
-  [{config :values_source_config :as _param} query]
+  [{config :values_source_config :as _param} :- ::parameters.schema/parameter
+   query]
   (let [card-id (:card_id config)
         card    (t2/select-one :model/Card :id card-id)]
     (values-from-card card (:value_field config) {:query-string query})))
@@ -128,15 +131,17 @@
   `default-case-thunk` is a 0-arity function that returns values list when:
   - :values_source_type = card but the card is archived or the card no longer contains the value-field.
   - :values_source_type = nil."
-  [parameter query default-case-thunk]
+  [parameter :- ::parameters.schema/parameter
+   query
+   default-case-thunk]
   (case (:values_source_type parameter)
-    "static-list" (static-list-values parameter query)
-    "card"        (let [card (t2/select-one :model/Card :id (get-in parameter [:values_source_config :card_id]))]
-                    (when-not (mi/can-read? card)
-                      (throw (ex-info "You don't have permissions to do that." {:status-code 403})))
-                    (if (can-get-card-values? card (get-in parameter [:values_source_config :value_field]))
-                      (card-values parameter query)
-                      (default-case-thunk)))
+    :static-list (static-list-values parameter query)
+    :card        (let [card (t2/select-one :model/Card :id (get-in parameter [:values_source_config :card_id]))]
+                   (when-not (mi/can-read? card)
+                     (throw (ex-info "You don't have permissions to do that." {:status-code 403})))
+                   (if (can-get-card-values? card (get-in parameter [:values_source_config :value_field]))
+                     (card-values parameter query)
+                     (default-case-thunk)))
     nil           (default-case-thunk)
     (throw (ex-info (tru "Invalid parameter source {0}" (:values_source_type parameter))
                     {:status-code 400
@@ -173,17 +178,19 @@
             ;; more than two groups are always ambiguous, so no match
             nil))))))
 
-(defn parameter-remapped-value
+(mu/defn parameter-remapped-value
   "Fetch the remapped value for the given `value` of parameter `param` with default values provided by
   the function `default-case-thunk`.
 
   `default-case-thunk` is a 0-arity function that returns values list when :values_source_type = nil."
-  [param value default-case-thunk]
+  [param :- ::parameters.schema/parameter
+   value
+   default-case-thunk]
   (case (:values_source_type param)
-    "static-list" (m/find-first #(and (vector? %) (= (count %) 2) (= (first %) value))
-                                (get-in param [:values_source_config :values]))
-    "card"        nil
-    nil           (default-case-thunk)
+    :static-list (m/find-first #(and (vector? %) (= (count %) 2) (= (first %) value))
+                               (get-in param [:values_source_config :values]))
+    :card        nil
+    nil          (default-case-thunk)
     (throw (ex-info (tru "Invalid parameter source {0}" (:values_source_type param))
                     {:status-code 400
-                     :parameter param}))))
+                     :parameter   param}))))

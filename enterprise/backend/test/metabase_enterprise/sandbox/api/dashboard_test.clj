@@ -69,15 +69,15 @@
   (testing "dashboard with a parameter that has source is a card, it should respects sandboxing"
     (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
       (mt/with-temp
-        [:model/Card      {card-id         :id} (merge (mt/card-with-source-metadata-for-query (mt/mbql-query categories))
-                                                       {:database_id     (mt/id)
-                                                        :table_id        (mt/id :categories)})
-         :model/Dashboard {dashboard-id :id}    {:parameters [{:id                   "abc"
-                                                               :type                 "category"
-                                                               :name                 "CATEGORY"
-                                                               :values_source_type   "card"
-                                                               :values_source_config {:card_id     card-id
-                                                                                      :value_field (mt/$ids $categories.name)}}]}]
+        [:model/Card      {card-id :id}      (merge (mt/card-with-source-metadata-for-query (mt/mbql-query categories))
+                                                    {:database_id (mt/id)
+                                                     :table_id    (mt/id :categories)})
+         :model/Dashboard {dashboard-id :id} {:parameters [{:id                   "abc"
+                                                            :type                 "category"
+                                                            :name                 "CATEGORY"
+                                                            :values_source_type   "card"
+                                                            :values_source_config {:card_id     card-id
+                                                                                   :value_field (mt/$ids $categories.name)}}]}]
         (testing "when getting values"
           (let [get-values (fn [user]
                              (mt/user-http-request user :get 200 (api.dashboard-test/chain-filter-values-url dashboard-id "abc")))]
@@ -86,7 +86,6 @@
             (is (= {:values          [["African"] ["American"] ["Artisan"]]
                     :has_more_values false}
                    (get-values :rasta)))))
-
         (testing "when search values"
           (let [search (fn [user]
                          (mt/user-http-request user :get 200 (api.dashboard-test/chain-filter-search-url dashboard-id "abc" "bbq")))]

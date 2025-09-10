@@ -3,8 +3,8 @@
   (:refer-clojure :exclude [replace])
   (:require
    #?@(:clj
-       [[metabase.legacy-mbql.jvm-util :as mbql.jvm-u]
-        [metabase.models.dispatch :as models.dispatch]])
+       ([metabase.legacy-mbql.jvm-util :as mbql.jvm-u]
+        [metabase.models.dispatch :as models.dispatch]))
    [clojure.string :as str]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]

@@ -65,10 +65,12 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.models.visualization-settings :as mb.viz]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.string :as u.str]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
@@ -1340,19 +1342,19 @@
   [parameters]
   (map ids->fully-qualified-names parameters))
 
-(defn import-parameters
+(mu/defn import-parameters
   "Given the :parameter field as exported by serialization convert its field references
   (`[db schema table field]`) back into raw IDs."
-  [parameters]
+  [parameters :- [:maybe [:sequential ::parameters.schema/parameter]]]
   (for [param parameters]
     (-> param
         mbql-fully-qualified-names->ids
         (m/update-existing-in [:values_source_config :card_id] *import-fk* 'Card))))
 
-(defn parameters-deps
+(mu/defn parameters-deps
   "Given the :parameters (possibly nil) for an entity, return any embedded serdes-deps as a set.
   Always returns an empty set even if the input is nil."
-  [parameters]
+  [parameters :- [:maybe [:sequential ::parameters.schema/parameter]]]
   (reduce set/union #{}
           (for [parameter parameters
                 :when (= "card" (:values_source_type parameter))

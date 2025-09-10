@@ -53,10 +53,12 @@
                               [:parameter_id [:not-in parameter-ids-still-in-use]]))]
      (apply t2/delete! :model/ParameterCard conditions))))
 
-(defn- upsert-from-parameters!
-  [parameterized-object-type parameterized-object-id parameters]
-  (doseq [{:keys [values_source_config id]} parameters]
-    (let [card-id    (:card_id values_source_config)
+(mu/defn- upsert-from-parameters!
+  [parameterized-object-type
+   parameterized-object-id
+   parameters :- [:maybe [:sequential ::parameters.schema/parameter]]]
+  (doseq [{values-source-config :values_source_config, :keys [id]} parameters]
+    (let [card-id    (:card_id values-source-config)
           conditions {:parameterized_object_id   parameterized-object-id
                       :parameterized_object_type parameterized-object-type
                       :parameter_id              id}]
@@ -72,9 +74,9 @@
   [parameterized-object-type :- ms/NonBlankString
    parameterized-object-id   :- ms/PositiveInt
    parameters                :- [:maybe [:sequential ::parameters.schema/parameter]]]
-  (let [upsertable?           (fn [{:keys [values_source_type values_source_config id]}]
-                                (and values_source_type id (:card_id values_source_config)
-                                     (= values_source_type "card")))
+  (let [upsertable?           (fn [{values-source-type :values_source_type, values-source-config :values_source_config, :keys [id]}]
+                                (and values-source-type id (:card_id values-source-config)
+                                     (= values-source-type :card)))
         upsertable-parameters (filter upsertable? parameters)]
     (upsert-from-parameters! parameterized-object-type parameterized-object-id upsertable-parameters)
     (delete-all-for-parameterized-object! parameterized-object-type parameterized-object-id (map :id upsertable-parameters))))
