@@ -6,6 +6,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase-enterprise.library.settings :as library.settings]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common
     :as api
@@ -67,6 +68,10 @@
 (def ^:constant library-collection-type
   "The value of the `:type` field for Library collections."
   "library")
+
+(def ^:constant library-entity-id
+  "The library's entity ID"
+  "librarylibrarylibrary")
 
 (defn- trash-collection* []
   (t2/select-one :model/Collection :type trash-collection-type))
@@ -151,6 +156,8 @@
 (defmethod mi/can-write? :model/Collection
   ([instance]
    (and (not (default-audit-collection? instance))
+        (not (and (library-collection? instance)
+                  (not (library.settings/git-sync-allow-edit))))
         (mi/current-user-has-full-permissions? :write instance)))
   ([_model pk]
    (mi/can-write? (t2/select-one :model/Collection pk))))
