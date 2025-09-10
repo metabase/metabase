@@ -34,7 +34,9 @@
       ;; incorrectly, for example [[metabase.actions.models/implicit-action-parameters]]. We need to actually start
       ;; validating parameters against the `:metabase.lib.schema.parameter/parameter` schema. We should probably throw
       ;; an error here instead of silently correcting it... I was going to do that but it broke too many things
-      (log/error "normalize-token should not be getting called on a base type! This probably means we're using a base type in the wrong place, like as a parameter type")
+      (do
+        (log/error "normalize-token should not be getting called on a base type! This probably means we're using a base type in the wrong place, like as a parameter type")
+        (keyword s))
       #_{:clj-kondo/ignore [:discouraged-var]}
       (-> s
           #?(:clj u/lower-case-en :cljs str/lower-case)
