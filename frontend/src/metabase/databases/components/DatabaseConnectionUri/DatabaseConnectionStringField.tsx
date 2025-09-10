@@ -126,6 +126,9 @@ export function DatabaseConnectionStringField({
       mb="md"
       placeholder={placeholder}
       name="connection-string"
+      labelProps={{
+        mb: "sm",
+      }}
     />
   );
 }
