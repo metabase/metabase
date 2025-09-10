@@ -2,10 +2,9 @@ import { useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import MetabotLogo from "metabase/common/components/MetabotLogo";
 import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashboardModal";
 import { AddDataModal } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal";
-import { Box, Group, Stack, Text } from "metabase/ui";
+import { Group, Stack, Text, Title } from "metabase/ui";
 
 import { useCompletedEmbeddingHubSteps } from "../hooks";
 import type { EmbeddingHubModalToTrigger } from "../types/embedding-checklist";
@@ -63,33 +62,31 @@ export const EmbeddingHub = () => {
   }, [embeddingSteps, completedSteps]);
 
   return (
-    <Box mih="100%" p="4rem 7rem 2rem" bg="bg-white">
-      <Stack mx="auto" gap="xl" maw={800}>
-        <Group align="center">
-          <MetabotLogo />
+    <Stack mx="auto" py="xl" gap="xl" maw={800}>
+      <Group align="center" gap="sm" ml="3rem">
+        <Title
+          order={1}
+          c="var(--mb-color-text-dark)"
+        >{t`Embedding setup guide`}</Title>
 
-          <Text fw="bold" size="lg" c="var(--mb-color-text-dark)">{t`Get started
-         with Embedded Analytics JS and SDK for React`}</Text>
-        </Group>
-        <StepperWithCards steps={stepperSteps} />
-        <AddDataModal
-          opened={openedModal?.type === "add-data"}
-          onClose={closeModal}
-          initialTab={
-            openedModal?.type === "add-data"
-              ? openedModal?.initialTab
-              : undefined
-          }
-        />
-        <CreateDashboardModal
-          opened={openedModal?.type === "new-dashboard"}
-          onClose={closeModal}
-        />
-        <EmbeddingHubXrayPickerModal
-          opened={openedModal?.type === "xray-dashboard"}
-          onClose={closeModal}
-        />
-      </Stack>
-    </Box>
+        <Text c="var(--mb-color-text-medium)">{t`Follow the guide to get started with Embedded Analytics JS and SDK for React`}</Text>
+      </Group>
+      <StepperWithCards steps={stepperSteps} />
+      <AddDataModal
+        opened={openedModal?.type === "add-data"}
+        onClose={closeModal}
+        initialTab={
+          openedModal?.type === "add-data" ? openedModal?.initialTab : undefined
+        }
+      />
+      <CreateDashboardModal
+        opened={openedModal?.type === "new-dashboard"}
+        onClose={closeModal}
+      />
+      <EmbeddingHubXrayPickerModal
+        opened={openedModal?.type === "xray-dashboard"}
+        onClose={closeModal}
+      />
+    </Stack>
   );
 };
