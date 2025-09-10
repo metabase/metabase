@@ -1,7 +1,7 @@
 .commentRoot {
   position: relative;
   padding: 0;
-  margin: 0 0 24px 0;
+  margin: 16px;
 }
 
 .target {
@@ -26,7 +26,8 @@
 }
 
 .discussionRoot {
-  padding: 16px 0 0 0;
+  border: 1px solid var(--mb-color-border);
+  border-radius: 8px;
   position: relative;
 }
 

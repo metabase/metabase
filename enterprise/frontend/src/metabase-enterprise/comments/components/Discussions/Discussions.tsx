@@ -1,15 +1,14 @@
 import { Fragment, useMemo } from "react";
 
-import { Box, Divider, Stack } from "metabase/ui";
+import { Box, Stack } from "metabase/ui";
 import { getCommentThreads } from "metabase-enterprise/comments/utils";
-import type { Comment } from "metabase-types/api";
+import type { Comment } from "metabase-types/api/comments";
 
 import { Discussion } from "../Discussion";
 
 export interface DiscussionProps {
   childTargetId: Comment["child_target_id"];
   comments: Comment[];
-  showLastDivider?: boolean;
   targetId: Comment["target_id"];
   targetType: Comment["target_type"];
 }
@@ -17,7 +16,6 @@ export interface DiscussionProps {
 export const Discussions = ({
   childTargetId,
   comments,
-  showLastDivider,
   targetId,
   targetType,
 }: DiscussionProps) => {
@@ -27,10 +25,10 @@ export const Discussions = ({
   );
 
   return (
-    <Stack gap={0}>
-      {threads.map((thread, index) => (
+    <Stack pt="lg" gap={0}>
+      {threads.map((thread) => (
         <Fragment key={thread.id}>
-          <Box px="xl" py="md">
+          <Box px="lg" pb="lg">
             <Discussion
               childTargetId={childTargetId}
               comments={thread.comments}
@@ -38,8 +36,6 @@ export const Discussions = ({
               targetType={targetType}
             />
           </Box>
-
-          {(index !== threads.length - 1 || showLastDivider) && <Divider />}
         </Fragment>
       ))}
     </Stack>
