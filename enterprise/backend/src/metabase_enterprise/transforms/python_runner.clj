@@ -107,19 +107,25 @@
    :table_metadata {:table_id table-id}})
 
 (defn- write-table-data-to-file! [id temp-file cancel-chan]
-  (let [db-id       (t2/select-one-fn :db_id (t2/table-name :model/Table) :id id)
-        driver      (t2/select-one-fn :engine :model/Database db-id)
-        fields-meta (t2/select [:model/Field :id :name :base_type :effective_type :semantic_type :database_type :database_position]
-                               :table_id id
-                               :active true
-                               {:order-by [[:database_position :asc]]})
-        ;; TODO: limit
-        query       {:source-table id}
-        manifest    (generate-manifest  id fields-meta)]
+  (let [db-id           (t2/select-one-fn :db_id (t2/table-name :model/Table) :id id)
+        driver          (t2/select-one-fn :engine :model/Database db-id)
+        all-fields-meta (t2/select [:model/Field :id :name :base_type :effective_type :semantic_type :database_type :database_position :nfc_path :parent_id]
+                                   :table_id id
+                                   :active true
+                                   {:order-by [[:database_position :asc]]})
+        fields-meta (filter #(and (nil? (:parent_id %)) (nil? (:nfc_path %))) all-fields-meta)
+        query {:source-table id}
+        manifest (generate-manifest id fields-meta)]
     (execute-mbql-query driver db-id query
                         (fn [{cols-meta :cols} reducible-rows]
                           (with-open [os (io/output-stream temp-file)]
-                            (write-to-stream! os (mapv :name cols-meta) reducible-rows)))
+                            (let [filtered-col-names (set (map :name fields-meta))
+                                  filtered-cols (filter #(contains? filtered-col-names (:name %)) cols-meta)
+                                  col-name->index (into {} (map-indexed (fn [i col] [(:name col) i]) cols-meta))
+                                  filtered-indices (mapv #(col-name->index (:name %)) filtered-cols)
+                                  filtered-rows (eduction (map (fn [row] (mapv #(nth row %) filtered-indices)))
+                                                          reducible-rows)]
+                              (write-to-stream! os (mapv :name filtered-cols) filtered-rows))))
                         cancel-chan)
     manifest))
 
