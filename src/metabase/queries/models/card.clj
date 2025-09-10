@@ -216,7 +216,7 @@
   (when (map? query)
     (let [query-type (lib/normalized-query-type query)]
       (case query-type
-        :query      (-> query mbql.normalize/normalize qp.util/query->source-card-id)
+        :query      (-> query mbql.normalize/normalize #_{:clj-kondo/ignore [:deprecated-var]} qp.util/query->source-card-id)
         :mbql/query (-> query lib/normalize lib.util/source-card-id)
         nil))))
 

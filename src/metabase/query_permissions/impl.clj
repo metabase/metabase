@@ -218,7 +218,7 @@
   (try
     (let [query (mbql.normalize/normalize query)]
       ;; if we are using a Card as our source, our perms are that Card's (i.e. that Card's Collection's) read perms
-      (if-let [source-card-id (qp.util/query->source-card-id query)]
+      (if-let [source-card-id #_{:clj-kondo/ignore [:deprecated-var]} (qp.util/query->source-card-id query)]
         {:paths (source-card-read-perms source-card-id)}
         ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
         (let [query (cond-> query
