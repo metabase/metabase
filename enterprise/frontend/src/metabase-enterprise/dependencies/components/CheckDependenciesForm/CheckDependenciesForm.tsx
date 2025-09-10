@@ -25,15 +25,21 @@ import {
   Text,
 } from "metabase/ui";
 import visualizations from "metabase/visualizations";
-import type { Card as ApiCard } from "metabase-types/api";
+import { getTransformUrl } from "metabase-enterprise/transforms/urls";
+import type { Card as ApiCard, Transform } from "metabase-types/api";
 
 import S from "./CheckDependenciesForm.module.css";
 
-type DependencyItem = CardDependencyItem;
+type DependencyItem = CardDependencyItem | TransformDependencyItem;
 
 type CardDependencyItem = {
   type: "card";
   card: ApiCard;
+};
+
+type TransformDependencyItem = {
+  type: "transform";
+  transform: Transform;
 };
 
 export function CheckDependenciesForm({
@@ -97,52 +103,86 @@ function DependencyItemCard({ item }: DependencyItemCardProps) {
   );
 }
 
-function getItemIcon({ card }: DependencyItem): IconName {
-  switch (card.type) {
-    case "question":
-      return visualizations.get(card.display)?.iconName ?? "table2";
-    case "model":
-      return "model";
-    case "metric":
-      return "metric";
+function getItemIcon(item: DependencyItem): IconName {
+  if (item.type === "card") {
+    const { card } = item;
+
+    switch (card.type) {
+      case "question":
+        return visualizations.get(card.display)?.iconName ?? "table2";
+      case "model":
+        return "model";
+      case "metric":
+        return "metric";
+    }
+  }
+
+  if (item.type === "transform") {
+    return "refresh_downstream";
+  }
+
+  return "unknown";
+}
+
+function getItemName(item: DependencyItem) {
+  switch (item.type) {
+    case "card":
+      return item.card.name;
+    case "transform":
+      return item.transform.name;
+    default:
+      return null;
   }
 }
 
-function getItemName({ card }: DependencyItem) {
-  return card.name;
+function getItemLink(item: DependencyItem) {
+  switch (item.type) {
+    case "card":
+      return Urls.question(item.card);
+    default:
+      return getTransformUrl(item.transform.id);
+  }
 }
 
-function getItemLink({ card }: DependencyItem) {
-  return Urls.question(card);
-}
+function getItemDescription(item: DependencyItem) {
+  if (item.type === "card") {
+    const { collection, dashboard } = item.card;
 
-function getItemDescription({ card }: DependencyItem) {
-  const { collection, dashboard } = card;
+    if (collection != null) {
+      const ancestors = collection.effective_ancestors ?? [];
+      const breadcrumbs = [
+        ...ancestors.map((ancestor) => ({
+          title: ancestor.name,
+          to: Urls.collection(ancestor),
+        })),
+        { title: collection.name, to: Urls.collection(collection) },
+        ...(dashboard != null
+          ? [{ title: dashboard.name, to: Urls.dashboard(dashboard) }]
+          : []),
+      ];
 
-  if (collection != null) {
-    const ancestors = collection.effective_ancestors ?? [];
-    const breadcrumbs = [
-      ...ancestors.map((ancestor) => ({
-        title: ancestor.name,
-        to: Urls.collection(ancestor),
-      })),
-      { title: collection.name, to: Urls.collection(collection) },
-      ...(dashboard != null
-        ? [{ title: dashboard.name, to: Urls.dashboard(dashboard) }]
-        : []),
-    ];
+      return (
+        <Group gap="sm" wrap="nowrap">
+          <FixedSizeIcon
+            c="text-secondary"
+            name={dashboard != null ? "dashboard" : "collection"}
+            flex="0 0 auto"
+          />
+          <BreadcrumbList items={breadcrumbs} />
+        </Group>
+      );
+    }
+  }
 
+  if (item.type === "transform") {
     return (
-      <Group gap="sm" wrap="nowrap">
-        <FixedSizeIcon
-          c="text-secondary"
-          name={dashboard != null ? "dashboard" : "collection"}
-          flex="0 0 auto"
-        />
-        <BreadcrumbList items={breadcrumbs} />
-      </Group>
+      <Box fz="sm" lh="h5">
+        {t`Transform`}
+      </Box>
     );
   }
+
+  return null;
 }
 
 type BreadcrumbItem = {
