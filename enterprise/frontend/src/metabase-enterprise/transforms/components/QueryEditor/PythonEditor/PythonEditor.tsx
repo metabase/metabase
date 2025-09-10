@@ -13,7 +13,12 @@ import { Box, Flex, Icon, Stack, Text, Title } from "metabase/ui";
 import { ResizableBoxHandle } from "../EditorBody/ResizableBoxHandle";
 
 import S from "./PythonEditor.module.css";
-import { type ExecutionResult, parseCSV, useTestPythonScript } from "./utils";
+import {
+  type ExecutionResult,
+  completion,
+  parseCSV,
+  useTestPythonScript,
+} from "./utils";
 
 type PythonEditorProps = {
   script: string;
@@ -50,6 +55,7 @@ export function PythonEditor({
             value={script}
             onChange={onChange}
             language="python"
+            extensions={completion}
           />
 
           <Box p="md">
