@@ -12,16 +12,10 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]))
 
-(defmacro with-mock-index-metadata!
-  [& body]
-  `(with-redefs [semantic.embedding/get-configured-model (constantly semantic.tu/mock-embedding-model)
-                 semantic.env/get-index-metadata (constantly semantic.tu/mock-index-metadata)]
-     ~@body))
-
 (deftest status-endpoint-test
   (testing "GET /api/ee/semantic-search/status"
     (mt/with-premium-features #{:semantic-search}
-      (with-mock-index-metadata!
+      (semantic.tu/with-test-db! {:mode :mock-initialized}
         (with-open [index-ref (semantic.tu/open-temp-index!)]
           (with-redefs [semantic.index-metadata/get-active-index-state (fn [_ _]
                                                                          {:index @index-ref
