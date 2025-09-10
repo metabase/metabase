@@ -34,7 +34,7 @@ describe("scenarios - embedding hub", () => {
         cy.findByText("Choose a table to generate a dashboard").should(
           "be.visible",
         );
-        // Click on the first available table
+
         cy.get("[data-testid='picker-item']").first().click();
       });
 
