@@ -351,15 +351,10 @@
                   (driver/create-table! driver db-id qualified-conflict {"id" "INTEGER"} {})
 
                   (try
-                    (driver/rename-tables! driver db-id
-                                           {qualified-table-1 qualified-temp-1
-                                            qualified-table-2 qualified-conflict})
                     (is (thrown? Exception
                                  (driver/rename-tables! driver db-id
                                                         {qualified-table-1 qualified-temp-1
                                                          qualified-table-2 qualified-conflict})))
-
-                    (Thread/sleep 1000)
 
                     (testing "original tables should still exist after failed atomic rename"
                       (is (driver/table-exists? driver (mt/db) {:name test-table-1 :schema schema}))
