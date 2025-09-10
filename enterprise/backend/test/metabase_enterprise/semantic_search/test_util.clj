@@ -275,7 +275,7 @@
   N.B. *disable-updates* is bound to avoid processing of those entities by logic in [[search.ingestion]] ns.
   The processing is triggered by means :hook/search-index which :model/Card (and others) derive.
 
-  As of 2025-09-10, processing triggered by insertion, combined with manual gating of documents that callers 
+  As of 2025-09-10, processing triggered by insertion, combined with manual gating of documents that callers
   of this fn do, would result in duplicate processing and deletion of those entitities from index
   due to [[search.ingestion/bulk-ingest!]].
 
