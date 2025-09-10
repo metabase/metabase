@@ -1,123 +1,39 @@
-import { useState } from "react";
+import type { ReactNode } from "react";
 import { ResizableBox } from "react-resizable";
-import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
-import Alert from "metabase/common/components/Alert";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import DebouncedFrame from "metabase/common/components/DebouncedFrame";
+import { LoadingSpinner } from "metabase/common/components/MetadataInfo/MetadataInfo.styled";
 import { isMac } from "metabase/lib/browser";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
-import { Box, Flex, Stack, Text } from "metabase/ui";
+import { Box, Flex, Icon, Stack, Text, Title } from "metabase/ui";
 
-import {
-  useCancelPythonMutation,
-  useExecutePythonMutation,
-} from "../../../api/python-runner";
 import { ResizableBoxHandle } from "../EditorBody/ResizableBoxHandle";
 
 import S from "./PythonEditor.module.css";
-import { parseCSV } from "./utils";
+import { type ExecutionResult, parseCSV, useTestPythonScript } from "./utils";
 
 type PythonEditorProps = {
   script: string;
   isRunnable: boolean;
-  isRunning?: boolean;
-  isResultDirty?: boolean;
   onChange: (script: string) => void;
   onRunScript?: () => Promise<void>;
   onCancelScript?: () => void;
   tables?: Record<string, number>;
 };
 
-interface ExecutionResult {
-  output?: string;
-  stdout?: string;
-  stderr?: string;
-  error?: string;
-}
-
 const EDITOR_HEIGHT = 400;
 
 export function PythonEditor({
   script,
   isRunnable,
-  isRunning: isRunningProp,
-  isResultDirty: _isResultDirty,
   onChange,
-  onRunScript,
-  onCancelScript,
   tables = {},
 }: PythonEditorProps) {
-  const [localIsRunning, setLocalIsRunning] = useState(false);
-  const isRunning =
-    isRunningProp !== undefined ? isRunningProp : localIsRunning;
-  const [executionResult, setExecutionResult] =
-    useState<ExecutionResult | null>(null);
-  const [executePython] = useExecutePythonMutation();
-  const [cancelPython] = useCancelPythonMutation();
-  const handleScriptChange = (newScript: string) => {
-    onChange(newScript);
-    // Don't clear results on every keystroke - keep them visible for reference
-  };
-
-  const handleRunScript = async () => {
-    if (onRunScript) {
-      await onRunScript();
-      return;
-    }
-    setLocalIsRunning(true);
-    setExecutionResult(null);
-
-    try {
-      const result = await executePython({
-        code: script,
-        tables: tables,
-      }).unwrap();
-
-      setExecutionResult({
-        output: result.output,
-        stdout: result.stdout,
-        stderr: result.stderr,
-      });
-    } catch (error: any) {
-      // The API returns error data directly in error.data
-      const errorData = error?.data || {};
-      const errorMessage = error?.message || "Failed to execute Python script";
-      const stdout = errorData.stdout || "";
-      const stderr = errorData.stderr || "";
-
-      setExecutionResult({
-        error: errorMessage,
-        stdout: stdout,
-        stderr: stderr,
-      });
-    } finally {
-      setLocalIsRunning(false);
-    }
-  };
-
-  const handleCancelScript = async () => {
-    if (onCancelScript) {
-      onCancelScript();
-      return;
-    }
-    try {
-      await cancelPython().unwrap();
-      setLocalIsRunning(false);
-      setExecutionResult({
-        error: t`Python script execution was canceled`,
-      });
-    } catch (error) {
-      console.error("Failed to cancel Python script:", error);
-      // Still set running to false since the cancel might have worked on the server
-      setLocalIsRunning(false);
-      setExecutionResult({
-        error: t`Python script execution was canceled (cancel request may have failed)`,
-      });
-    }
-  };
+  const { isRunning, isDirty, cancel, run, executionResult } =
+    useTestPythonScript(script, tables);
 
   return (
     <Stack h="100%" w="100%" gap={0}>
@@ -132,7 +48,7 @@ export function PythonEditor({
           <CodeEditor
             className={S.editor}
             value={script}
-            onChange={handleScriptChange}
+            onChange={onChange}
             language="python"
           />
 
@@ -140,9 +56,9 @@ export function PythonEditor({
             <RunButtonWithTooltip
               disabled={!isRunnable}
               isRunning={isRunning}
-              isDirty={_isResultDirty}
-              onRun={handleRunScript}
-              onCancel={handleCancelScript}
+              isDirty={isDirty}
+              onRun={run}
+              onCancel={cancel}
               getTooltip={() => t`Run Python script`}
             />
           </Box>
@@ -150,12 +66,12 @@ export function PythonEditor({
       </ResizableBox>
 
       <DebouncedFrame className={S.visualization}>
-        {match({ isRunning, executionResult })
-          .with({ isRunning: true }, () => <LoadingState />)
-          .with({ executionResult: null }, () => <EmptyState />)
-          .otherwise(() => (
-            <ExecutionResult executionResult={executionResult} />
-          ))}
+        {executionResult ? (
+          <ExecutionResult executionResult={executionResult} />
+        ) : (
+          <EmptyState />
+        )}
+        {isRunning && <LoadingState />}
       </DebouncedFrame>
     </Stack>
   );
@@ -166,7 +82,11 @@ function getRunQueryShortcut() {
 }
 
 function LoadingState() {
-  return <Text c="text-medium">{t`Running Python script...`}</Text>;
+  return (
+    <Flex p="md" className={S.loading}>
+      <LoadingSpinner />
+    </Flex>
+  );
 }
 
 function EmptyState() {
@@ -201,39 +121,44 @@ function ExecutionResult({
   const message = getMessageForExecutionResult(executionResult);
 
   return (
-    <>
+    <Stack gap="md" p="md">
       {message}
 
       <ExecutionLogs
-        label={t`Standard Output:`}
+        label={t`Standard output:`}
         content={executionResult.stdout}
       />
       <ExecutionLogs
-        label={t`Standard Error:`}
+        label={t`Standard error:`}
         content={executionResult.stderr}
       />
 
       <ExecutionOutput output={executionResult.output} />
-    </>
+    </Stack>
   );
 }
 
 function getMessageForExecutionResult(executionResult: ExecutionResult) {
   if (executionResult.error) {
     return (
-      <Alert variant="error">
-        <Text fw="bold">{t`Execution Error`}</Text>
+      <Box className={S.error} p="sm" bdrs="xs">
+        <Title order={5} mb="xs">
+          {t`An error occurred while executing your Python script`}
+        </Title>
         {executionResult.error}
-      </Alert>
-    );
-  }
-  if (!executionResult.output) {
-    return (
-      <Box p="md">
-        <Text c="text-medium">{t`No results to display.`}</Text>
       </Box>
     );
   }
+
+  if (!executionResult.output) {
+    return (
+      <Flex className={S.info} p="sm" bdrs="xs" gap="sm" align="center">
+        <Icon name="info" />
+        <Text c="text-medium">{t`No results to display.`}</Text>
+      </Flex>
+    );
+  }
+
   return null;
 }
 
@@ -249,12 +174,11 @@ function ExecutionLogs({
   }
 
   return (
-    <Box p="md" bg="bg-light" mah="150px">
-      <Text fw="bold" mb="xs">
-        {label}
-      </Text>
-      <Text className={S.output}>{content}</Text>
-    </Box>
+    <Section title={label}>
+      <Box p="sm" bg="bg-light" mah="150px" bdrs="xs" className={S.logs}>
+        {content}
+      </Box>
+    </Section>
   );
 }
 
@@ -266,8 +190,7 @@ function ExecutionOutput({ output }: { output?: string }) {
   }
 
   return (
-    <Box p="md">
-      <Text fw="bold" mb="xs">{t`Results:`}</Text>
+    <Section title={t`Results:`}>
       <table className={S.results}>
         <thead>
           <tr>
@@ -290,6 +213,25 @@ function ExecutionOutput({ output }: { output?: string }) {
           ))}
         </tbody>
       </table>
+    </Section>
+  );
+}
+
+function Section({
+  title,
+  children,
+}: {
+  title: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <Box>
+      {title && (
+        <Title order={5} mb="xs">
+          {title}
+        </Title>
+      )}
+      {children}
     </Box>
   );
 }
