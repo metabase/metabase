@@ -7,7 +7,7 @@
   Traditionally this code lived in the [[metabase.query-processor.middleware.annotate]] namespace, where it is still
   used today."
   (:require
-   #?@(:cljs
+   #?@(:clj
        ([metabase.config.core :as config]))
    [clojure.set :as set]
    [clojure.string :as str]
