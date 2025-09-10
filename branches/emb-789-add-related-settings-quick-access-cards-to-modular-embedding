@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-788-move-embedding-settings-into-its-own-top-level-menu",
     "hash": "8b6af9a8f61b8c337341e7c8ff97c3752d7f6936"
+  },
+  "upstream": {
+    "branch": "emb-789-add-related-settings-quick-access-cards-to-modular-embedding"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 63340,
+        "gqlID": "PR_kwDOAczgH86n1kZQ"
+      }
+    }
   }
 }
