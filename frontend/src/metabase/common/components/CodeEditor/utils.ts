@@ -2,7 +2,7 @@ import { html } from "@codemirror/lang-html";
 import { javascript } from "@codemirror/lang-javascript";
 import { json } from "@codemirror/lang-json";
 import { python } from "@codemirror/lang-python";
-import { StreamLanguage } from "@codemirror/language";
+import { StreamLanguage, indentUnit } from "@codemirror/language";
 import { clojure } from "@codemirror/legacy-modes/mode/clojure";
 import { pug } from "@codemirror/legacy-modes/mode/pug";
 import { ruby } from "@codemirror/legacy-modes/mode/ruby";
@@ -28,7 +28,7 @@ export function getLanguageExtension(language: CodeLanguage): Extension {
     case "json":
       return json();
     case "python":
-      return python();
+      return [python(), indentUnit.of("    ")];
     case "mustache":
       return handlebars;
     case "pug":
