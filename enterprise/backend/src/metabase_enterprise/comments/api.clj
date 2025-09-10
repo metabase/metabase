@@ -1,6 +1,7 @@
 (ns metabase-enterprise.comments.api
   "`/api/ee/comment/` routes"
   (:require
+   [clojure.string :as str]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.comments.models.comment :as comment]
@@ -23,6 +24,12 @@
   [entity]
   (case (t2/model entity)
     :model/Document (:archived entity)))
+
+(defn- urlpath-for
+  "Generate an URL to an entity"
+  [entity]
+  (case (t2/model entity)
+    :model/Document (str "/document/" (:id entity))))
 
 (defn- content->str [content]
   (or (:text content)
@@ -132,7 +139,8 @@
                        (disj (:email @api/*current-user*)))
         payload    {:entity_type    target_type
                     :entity_title   (:name entity)
-                    :path           (comment/url entity comment)
+                    :comment_href   (comment/url entity comment)
+                    :document_href  (urlpath-for entity)
                     :created_at     (:created_at comment)
                     :author         (:common_name (:creator comment))
                     :comment        (content->str (:content comment))
