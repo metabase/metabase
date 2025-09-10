@@ -1,6 +1,6 @@
 (ns metabase-enterprise.semantic-search.migration-test
   (:require
-   [clojure.test :refer [deftest is testing use-fixtures]]
+   [clojure.test :refer [deftest is testing]]
    [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
@@ -20,8 +20,6 @@
    [next.jdbc :as jdbc]))
 
 (set! *warn-on-reflection* true)
-
-(use-fixtures :each #'semantic.tu/ensure-no-migration-table-fixture)
 
 (deftest migration-table-versions-test
   (mt/with-premium-features #{:semantic-search}

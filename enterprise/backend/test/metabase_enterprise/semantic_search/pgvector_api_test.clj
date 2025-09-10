@@ -21,8 +21,6 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :each #'semantic.tu/ensure-no-migration-table-fixture)
-
 ;; NOTE: isolation tests are absent, in prod there is only one index-metadata
 
 (deftest init-semantic-search!-test

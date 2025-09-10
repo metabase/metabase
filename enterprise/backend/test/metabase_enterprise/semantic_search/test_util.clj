@@ -172,18 +172,6 @@
   `(with-weights {:rrf 1}
      ~@body))
 
-;; TODO: remove
-(defn once-fixture [f]
-  (when semantic.db.datasource/db-url
-    (f)))
-
-;; TODO: remove
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
-(defn ensure-no-migration-table-fixture [f]
-  (semantic.db.migration/drop-migration-table! (semantic.env/get-pgvector-datasource!))
-  (f)
-  (semantic.db.migration/drop-migration-table! (semantic.env/get-pgvector-datasource!)))
-
 (def mock-embeddings
   "Static mapping from strings to (made-up) 4-dimensional embedding vectors for testing. Each pair of strings represents a
   document and a search query that should be most semantically similar to it, according to the embeddings."
