@@ -46,11 +46,6 @@ export const RunButton = forwardRef(function RunButton(
 
   const isStartingOrStarted = run?.status === "started" || isStarting;
 
-  run = {
-    id: 12,
-    status: "canceled" as const,
-  };
-
   return (
     <Button.Group>
       <Button
