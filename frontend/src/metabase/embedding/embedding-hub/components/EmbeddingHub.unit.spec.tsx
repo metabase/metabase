@@ -6,7 +6,7 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import {
   createMockRecentTableDatabaseInfo,
   createMockRecentTableItem,
@@ -60,34 +60,20 @@ describe("EmbeddingHub", () => {
   it("opens AddDataModal when 'Add data' is clicked", async () => {
     setup();
 
-    await userEvent.click(screen.getByText("Add your data"));
     await userEvent.click(screen.getByText("Add data"));
 
-    const dialog = within(screen.getByRole("dialog"));
-
-    expect(
-      dialog.getByRole("heading", { name: "Add data" }),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      const dialog = within(screen.getByRole("dialog"));
+      expect(
+        dialog.getByRole("heading", { name: "Add data" }),
+      ).toBeInTheDocument();
+    });
   });
 
-  it("opens CreateDashboardModal when 'Build your own' is clicked", async () => {
+  it("opens DataPickerModal when 'Generate a dashboard' is clicked", async () => {
     setup();
 
-    await userEvent.click(screen.getByText("Create a dashboard"));
-    await userEvent.click(screen.getByText("Build your own"));
-
-    const dialog = within(screen.getByRole("dialog"));
-
-    expect(
-      dialog.getByRole("heading", { name: "New dashboard" }),
-    ).toBeInTheDocument();
-  });
-
-  it("opens DataPickerModal when 'Generate automatic dashboard' is clicked", async () => {
-    setup();
-
-    await userEvent.click(screen.getByText("Create a dashboard"));
-    await userEvent.click(screen.getByText("Generate automatic dashboard"));
+    await userEvent.click(screen.getByText("Generate a dashboard"));
 
     const dialog = await screen.findByTestId("entity-picker-modal");
     expect(dialog).toBeInTheDocument();
