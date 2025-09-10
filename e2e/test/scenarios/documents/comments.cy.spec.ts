@@ -1,4 +1,7 @@
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  NORMAL_USER_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import { deleteComment } from "e2e/support/helpers";
 import { uuid } from "metabase/lib/uuid";
 import type { CommentId, DocumentId } from "metabase-types/api";
@@ -1380,6 +1383,57 @@ H.describeWithSnowplowEE("document comments", () => {
             });
           },
         );
+      });
+    });
+
+    it("an explicit @mention notifies that person", () => {
+      create1ParagraphDocument();
+
+      cy.get<DocumentId>("@documentId").then((documentId) => {
+        H.createComment({
+          target_type: "document",
+          target_id: documentId,
+          child_target_id: PARAGRAPH_ID,
+          parent_comment_id: null,
+          content: {
+            type: "doc",
+            content: [
+              {
+                type: "paragraph",
+                attrs: {
+                  _id: PARAGRAPH_ID,
+                },
+                content: [
+                  {
+                    type: "smartLink",
+                    attrs: {
+                      entityId: NORMAL_USER_ID,
+                      model: "user",
+                      label: "Normal user", // TODO: fix this
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        }).then(({ body: comment }) => {
+          H.getInbox().then((response: any) => {
+            const emails = response.body;
+            expect(emails).to.have.length(1);
+
+            verifyEmail({
+              email: emails[0],
+              expected: {
+                address: "normal@metabase.test",
+                subject: "Comment on Lorem ipsum",
+                heading: "Bobby Tables left a comment on a document",
+                documentTitle: "Lorem ipsum",
+                documentHref: `http://localhost:4000/document/${documentId}`,
+                commentHref: `http://localhost:4000/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${comment.id}`,
+              },
+            });
+          });
+        });
       });
     });
   });
