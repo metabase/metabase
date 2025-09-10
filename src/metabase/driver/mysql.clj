@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [honey.sql :as sql]
+   [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -19,7 +20,7 @@
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.quoting :refer [quote-columns]]
+   [metabase.driver.sql-jdbc.quoting :refer [quote-columns quote-table]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
@@ -299,19 +300,12 @@
 
 (defmethod driver/rename-tables! :mysql
   [_driver db-id rename-map]
-  (let [rename-map (-> rename-map
-                       (update-vals vector)
-                       u/topological-sort
-                       (update-vals first))
-        quote-identifier (fn [identifier]
-                           (str "`" identifier "`"))
-        quote-table (fn [table-name]
-                      (if (namespace table-name)
-                        (str (quote-identifier (namespace table-name)) "."
-                             (quote-identifier (name table-name)))
-                        (quote-identifier (name table-name))))
+  (let [rename-map     (-> rename-map
+                           (update-vals vector)
+                           u/topological-sort
+                           (update-vals first))
         rename-clauses (mapv (fn [[from-table to-table]]
-                               (str (quote-table from-table) " TO " (quote-table to-table)))
+                               (str (sql/format-entity from-table) " TO " (sql/format-entity to-table)))
                              rename-map)
         sql (str "RENAME TABLE " (str/join ", " rename-clauses))]
     (sql-jdbc.execute/do-with-connection-with-options
@@ -321,7 +315,7 @@
      (fn [^java.sql.Connection conn]
        (jdbc/execute! {:connection conn} [sql])))))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
+;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 

@@ -349,32 +349,25 @@
 
                 (try
                   (try
-                    (driver/rename-tables! driver db-id
-                                           {qualified-table-1 qualified-temp-1
-                                            qualified-table-2 qualified-conflict})
-                    (catch Exception e
-                      #p e))
-                  (is (thrown? Exception
-                               (driver/rename-tables! driver db-id
-                                                      {qualified-table-1 qualified-temp-1
-                                                       qualified-table-2 qualified-conflict})))
+                   (is (thrown? Exception
+                                (driver/rename-tables! driver db-id
+                                                       {qualified-table-1 qualified-temp-1
+                                                        qualified-table-2 qualified-conflict})))
 
-                  (Thread/sleep 1000)
+                   (testing "original tables should still exist after failed atomic rename"
+                     (is (driver/table-exists? driver (mt/db) {:name test-table-1 :schema schema}))
+                     (is (driver/table-exists? driver (mt/db) {:name test-table-2 :schema schema})))
 
-                  (testing "original tables should still exist after failed atomic rename"
-                    (is (driver/table-exists? driver (mt/db) {:name test-table-1 :schema schema}))
-                    (is (driver/table-exists? driver (mt/db) {:name test-table-2 :schema schema})))
+                   (testing "temp tables should not exist after failed atomic rename"
+                     (is (not (driver/table-exists? driver (mt/db) {:name temp-table-1 :schema schema})))
+                     (is (not (driver/table-exists? driver (mt/db) {:name temp-table-2 :schema schema}))))
 
-                  (testing "temp tables should not exist after failed atomic rename"
-                    (is (not (driver/table-exists? driver (mt/db) {:name temp-table-1 :schema schema})))
-                    (is (not (driver/table-exists? driver (mt/db) {:name temp-table-2 :schema schema}))))
+                   (testing "original data should be intact after failed atomic rename"
+                     (is (= test-data-1 (table-rows qualified-table-1)))
+                     (is (= test-data-2 (table-rows qualified-table-2))))
 
-                  (testing "original data should be intact after failed atomic rename"
-                    (is (= test-data-1 (table-rows qualified-table-1)))
-                    (is (= test-data-2 (table-rows qualified-table-2))))
-
-                  (finally
-                    (driver/drop-table! driver db-id qualified-conflict))))))
+                   (finally
+                     (driver/drop-table! driver db-id qualified-conflict)))))))
 
           (finally
             (driver/drop-table! driver db-id qualified-table-1)
