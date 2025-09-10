@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { push } from "react-router-redux";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
@@ -74,14 +74,40 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
   const suggestedTransform = useSelector(
     getMetabotSuggestedTransform as any,
   ) as ReturnType<typeof getMetabotSuggestedTransform>;
-  const proposedQuery = suggestedTransform?.source.query;
 
   const clearProposed = () => dispatch(setSuggestedTransform(undefined));
+
+  const suggestedQuery = suggestedTransform?.source.query;
+
+  const initQuery =
+    initialQuery.type === "native" && initialQuery.native.query.length > 0
+      ? initialQuery
+      : (suggestedQuery ?? initialQuery);
+
+  const proposedQuery =
+    suggestedQuery?.type === "native" &&
+    initQuery.type === "native" &&
+    suggestedQuery.native.query === initQuery.native.query
+      ? undefined
+      : suggestedQuery;
+
+  const createTransformInitValues = useMemo(
+    () =>
+      suggestedTransform
+        ? {
+            name: suggestedTransform.name,
+            description: suggestedTransform.description,
+            targetName: suggestedTransform.target.name,
+            targetSchema: suggestedTransform.target.schema,
+          }
+        : undefined,
+    [suggestedTransform],
+  );
 
   return (
     <AdminSettingsLayout fullWidthContent>
       <QueryEditor
-        initialQuery={initialQuery}
+        initialQuery={initQuery}
         isNew
         onSave={handleSaveClick}
         onCancel={handleCancelClick}
@@ -91,6 +117,7 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
       {isModalOpened && (
         <CreateTransformModal
           query={query}
+          initValues={createTransformInitValues}
           onCreate={handleCreate}
           onClose={closeModal}
         />
