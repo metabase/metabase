@@ -855,6 +855,7 @@ export const PLUGIN_TRANSFORMS: TransformsPlugin = {
 
 type DependenciesPlugin = {
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
+  CheckDependenciesModal: ComponentType<CheckDependenciesModalProps>;
   CheckDependenciesTitle: ComponentType;
   useCheckCardDependencies: (
     props: UseCheckCardDependenciesProps,
@@ -873,6 +874,12 @@ export type CheckDependenciesFormProps = {
   onCancel: () => void;
 };
 
+export type CheckDependenciesModalProps = {
+  checkData: CheckDependenciesData;
+  onSave: () => void | Promise<void>;
+  onClose: () => void;
+};
+
 export type UseCheckCardDependenciesProps = {
   getSubmittableQuestion: (state: State, question: Question) => Question;
   onSave: (question: Question) => Promise<void>;
@@ -887,6 +894,7 @@ export type UseCheckCardDependenciesResult = {
 
 export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
   CheckDependenciesForm: PluginPlaceholder,
+  CheckDependenciesModal: PluginPlaceholder,
   CheckDependenciesTitle: PluginPlaceholder,
   useCheckCardDependencies: ({ onSave }) => ({
     isConfirming: false,
