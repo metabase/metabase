@@ -174,7 +174,10 @@
    table-schema :- ::table-definition]
   (let [{:keys [columns] table-name :name} table-schema
         column-definitions (into {} (map (fn [{:keys [name type database-type]}]
-                                           (let [db-type (if database-type
+                                           (let [database-type (when-not (and (= driver :bigquery-cloud-sdk)
+                                                                              (#{"ARRAY" "RECORD"} database-type))
+                                                                 database-type)
+                                                 db-type (if database-type
                                                            [[:raw database-type]]
                                                            (driver/type->database-type driver type))]
                                              [name db-type])))

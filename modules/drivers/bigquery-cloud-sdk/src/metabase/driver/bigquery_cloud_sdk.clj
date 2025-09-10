@@ -236,7 +236,10 @@
   {:arglists '([type])}
   identity)
 
-(defmethod type->database-type :type/Array [_] [[:raw "ARRAY"]])
+;; we can't recover the parameterized types
+(defmethod type->database-type :type/Array [_] [[:raw "JSON"]])
+(defmethod type->database-type :type/Dictionary [_] [[:raw "JSON"]])
+
 (defmethod type->database-type :type/Boolean [_] [[:raw "BOOL"]])
 (defmethod type->database-type :type/Float [_] [[:raw "FLOAT64"]])
 (defmethod type->database-type :type/Integer [_] [[:raw "INT"]])
