@@ -17,7 +17,7 @@ export const knownDataPartTypes = [
 export type KnownDataPart =
   | { type: "state"; version: 1; value: Record<string, any> }
   | { type: "navigate_to"; version: 1; value: string }
-  | { type: "transform_query"; version: 1; value: SuggestedTransform };
+  | { type: "transform_suggestion"; version: 1; value: SuggestedTransform };
 
 export const toolCallPartSchema = Yup.object({
   toolCallId: Yup.string().required(),
