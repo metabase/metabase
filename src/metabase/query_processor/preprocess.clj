@@ -134,7 +134,7 @@
    (ensure-mbql5 #'qp.wrap-value-literals/wrap-value-literals)
    (ensure-mbql5 #'auto-parse-filter-values/auto-parse-filter-values)
    (ensure-mbql5 #'validate-temporal-bucketing/validate-temporal-bucketing)
-   (ensure-legacy #'optimize-temporal-filters/optimize-temporal-filters)
+   (ensure-mbql5 #'optimize-temporal-filters/optimize-temporal-filters)
    (ensure-mbql5 #'limit/add-default-limit)
    (ensure-legacy #'qp.middleware.enterprise/apply-download-limit)
    (ensure-legacy #'check-features/check-features)

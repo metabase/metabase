@@ -371,19 +371,19 @@
          [{:field-name "mystring" :base-type :type/Text}]
          [["foo"] ["bar"] ["   "] [""] [nil]]]])
       (testing "null strings count"
-        (is (= 2M
+        (is (= 2
                (-> (mt/run-mbql-query test-data-nullable-strings
                      {:filter [:is-null $mystring]
                       :aggregation [:count]})
                    mt/first-row last))))
       (testing "nullable strings not null filter"
-        (is (= 3M
+        (is (= 3
                (-> (mt/run-mbql-query test-data-nullable-strings
                      {:filter [:not-null $mystring]
                       :aggregation [:count]})
                    mt/first-row last))))
       (testing "filter nullable string by value"
-        (is (= 1M
+        (is (= 1
                (-> (mt/run-mbql-query test-data-nullable-strings
                      {:filter [:= $mystring "foo"]
                       :aggregation [:count]})
@@ -591,17 +591,8 @@
                   unsigned_int_types
                   {}))))))))
 
-;; FIXME: blocked by https://github.com/ClickHouse/clickhouse-java/issues/2218
-#_(deftest ^:parallel clickhouse-fixed-strings
-    (mt/test-driver
-      :clickhouse
-      (is (= [["val1" "val2" "val3" "val4"]]
-             (qp.test/formatted-rows
-              [str str str str]
-              :format-nil-values
-              (ctd/do-with-test-db
-               (fn [db]
-                 (data/with-db db
-                   (data/run-mbql-query
-                    fixed_strings
-                    {})))))))))
+(deftest ^:parallel clickhouse-fixed-strings
+  (mt/test-driver :clickhouse
+    (mt/dataset metabase_test
+      (is (= [[1 "val1" "val2" "val3" "val4"]]
+             (mt/rows (mt/run-mbql-query fixed_strings)))))))

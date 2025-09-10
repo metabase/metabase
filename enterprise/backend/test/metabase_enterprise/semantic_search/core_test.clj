@@ -56,7 +56,9 @@
                           in-place.legacy/results
                           (fn [_]
                             (reset! legacy-called? true)
-                            [{:id 2 :name "legacy-result" :model "card" :collection_id 1 :score 0.7}])]
+                            (reify clojure.lang.IReduceInit
+                              (reduce [_this rf init]
+                                (reduce rf init [{:id 2 :name "legacy-result" :model "card" :collection_id 1 :score 0.7}]))))]
               (testing "API defaults to semantic engine when configured"
                 (let [response (mt/user-http-request :crowberto :get 200 "search" :q "test")]
                   (is @semantic-called? "Semantic search should be called by default")
@@ -97,11 +99,15 @@
                                       {:result (dissoc result :score)
                                        :score  (:score result)})
                 search.engine/results (fn [ctx]
-                                        (case (:search-engine ctx)
-                                          :search.engine/semantic (semantic.core/results ctx)
-                                          (if (fn? fallback-results)
-                                            (fallback-results ctx)
-                                            fallback-results)))]
+                                        (let [fallback-results* #(if (fn? fallback-results)
+                                                                   (fallback-results ctx)
+                                                                   fallback-results)]
+                                          (case (:search-engine ctx)
+                                            :search.engine/semantic (semantic.core/results ctx)
+                                            :search.engine/in-place (reify clojure.lang.IReduceInit
+                                                                      (reduce [_this rf init]
+                                                                        (reduce rf init (fallback-results*))))
+                                            (fallback-results*))))]
     (thunk)))
 
 (defn- make-card-result
