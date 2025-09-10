@@ -34,6 +34,7 @@ export interface BaseUser {
   is_active: boolean;
   is_qbnewb: boolean;
   is_superuser: boolean;
+  avatar_url: string | null;
 
   date_joined: string;
   last_login: string;
@@ -131,6 +132,7 @@ export type UpdateUserRequest = {
   first_name?: string | null;
   last_name?: string | null;
   locale?: string | null;
+  avatar_url?: string | null;
   is_group_manager?: boolean;
   is_superuser?: boolean;
   login_attributes?: UserAttributeMap | null;

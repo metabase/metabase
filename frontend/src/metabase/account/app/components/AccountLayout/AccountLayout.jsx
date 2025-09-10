@@ -12,7 +12,7 @@ const propTypes = {
 const AccountLayout = ({ children, ...props }) => {
   return (
     <div>
-      <AccountHeader {...props} />
+      <AccountHeader />
       <AccountContent>{children}</AccountContent>
     </div>
   );

@@ -1,6 +1,7 @@
 (ns metabase.users.api
   "/api/user endpoints"
   (:require
+   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
@@ -600,6 +601,45 @@
    (when (pos? (t2/update! :model/User id {:type :personal} {:is_active false}))
      (events/publish-event! :event/user-deactivated {:object (t2/select-one :model/User :id id) :user-id api/*current-user-id*})))
   {:success true})
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                        Avatar Management Endpoints                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(api.macros/defendpoint :put "/:id/avatar"
+  "Update a user's avatar image."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   {:keys [avatar_url]} :- [:map
+                           [:avatar_url {:optional true} [:maybe ms/NonBlankString]]]
+   _request]
+  (check-self-or-superuser id)
+  (check-not-internal-user id)
+  (api/let-404 [user (fetch-user :id id, :is_active true)]
+    (when avatar_url
+      ;; Validate that the avatar_url is a data URI or valid URL
+      (api/checkp (or (str/starts-with? avatar_url "data:image/")
+                      (u/url? avatar_url))
+                  "avatar_url" (tru "Avatar must be a data URI or valid URL")))
+    (t2/update! :model/User id {:avatar_url avatar_url})
+    (events/publish-event! :event/user-update {:object (t2/select-one :model/User :id id)
+                                               :previous-object user
+                                               :user-id api/*current-user-id*}))
+  (fetch-user :id id))
+
+(api.macros/defendpoint :delete "/:id/avatar"
+  "Remove a user's avatar image."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (check-self-or-superuser id)
+  (check-not-internal-user id)
+  (api/let-404 [user (fetch-user :id id, :is_active true)]
+    (t2/update! :model/User id {:avatar_url nil})
+    (events/publish-event! :event/user-update {:object (t2/select-one :model/User :id id)
+                                               :previous-object user
+                                               :user-id api/*current-user-id*}))
+  (fetch-user :id id))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Other Endpoints                                                    |
