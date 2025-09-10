@@ -44,12 +44,11 @@
 (deftest run-mbql-transform-simple-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/dataset transforms-dataset/transforms-test
-      (let [target-type "table"
-            schema      (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
-        (with-transform-cleanup! [{table1-name :name :as target1} {:type   target-type
+      (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+        (with-transform-cleanup! [{table1-name :name :as target1} {:type   :table
                                                                    :schema schema
                                                                    :name   "g_products"}
-                                  {table2-name :name :as target2} {:type   target-type
+                                  {table2-name :name :as target2} {:type   :table
                                                                    :schema schema
                                                                    :name   "gizmo_products"}]
           (let [table-name (t2/select-one-fn :name :model/Table (mt/id :transforms_products))
@@ -81,12 +80,11 @@
 (deftest run-mbql-transform-join-aggregation-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table :left-join]})
     (mt/dataset transforms-dataset/transforms-test
-      (let [target-type "table"
-            schema      (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
-        (with-transform-cleanup! [no-limit-table {:type   target-type
+      (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+        (with-transform-cleanup! [no-limit-table {:type   :table
                                                   :schema schema
                                                   :name   "widgets_daily_no_limit"}
-                                  limit-table {:type   target-type
+                                  limit-table {:type   :table
                                                :schema schema
                                                :name   "widgets_daily_limit"}]
           (let [mp (mt/metadata-provider)
@@ -133,7 +131,7 @@
 (deftest run-mbql-transform-created-schema-if-needed-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table :schemas]})
     (mt/dataset transforms-dataset/transforms-test
-      (with-transform-cleanup! [target-table {:type   "table"
+      (with-transform-cleanup! [target-table {:type   :table
                                               :schema (str "transform_schema_" (mt/random-name))
                                               :name   "widget_products"}]
         (let [mp (mt/metadata-provider)
@@ -188,7 +186,7 @@
                               (lib/filter (lib/= products-category "Widget"))
                               (lib/order-by products-id :asc))]
                 (testing "user without create schema permissions should be able to create tables in existing schema"
-                  (with-transform-cleanup! [target-table {:type   "table"
+                  (with-transform-cleanup! [target-table {:type   :table
                                                           :schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
                                                           :name   "widget_products"}]
                     (mt/with-temp [:model/Transform transform {:name   "transform"
@@ -208,7 +206,7 @@
                                 [15 "Widget E" "Widget" 44.99 "2024-01-15T10:00:00Z"]]
                                query-result))))))
                 (testing "user without create schema permissions should not be able to create a new schema"
-                  (with-transform-cleanup! [target-table {:type   "table"
+                  (with-transform-cleanup! [target-table {:type   :table
                                                           :schema (str "transform_schema_" (mt/random-name))
                                                           :name   "widget_products"}]
                     (mt/with-temp [:model/Transform transform {:name   "transform"
@@ -228,7 +226,7 @@
 (deftest run-mbql-transform-rerun-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table]})
     (mt/dataset transforms-dataset/transforms-test
-      (with-transform-cleanup! [target-table {:type   "table"
+      (with-transform-cleanup! [target-table {:type   :table
                                               :schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
                                               :name   "widget_products"}]
         (let [mp (mt/metadata-provider)
@@ -257,3 +255,40 @@
                                                 query-result))))]
               (run-transform-test)
               (run-transform-test))))))))
+
+(deftest run-mbql-transform-long-running-transform-test
+  (mt/test-driver :postgres
+    (with-transform-cleanup! [target-table {:type   :table
+                                            :schema (t2/select-one-fn :schema :model/Table (mt/id :products))
+                                            :name   "sleep_table"}]
+      (let [mp (mt/metadata-provider)
+            query (lib/native-query mp "SELECT a FROM (SELECT pg_sleep(5)) x, generate_series(1, 5) a;")
+            new-query (lib/native-query mp "SELECT a FROM (SELECT pg_sleep(5)) x, generate_series(1, 6) a;")]
+        (mt/with-temp [:model/Transform transform {:name   "transform"
+                                                   :source {:type  :query
+                                                            :query query}
+                                                   :target target-table}]
+          (transforms.execute/run-mbql-transform! transform {:run-method :manual})
+          (let [table-result (wait-for-table (:name target-table) 10000)
+                transform-id (:id transform)
+                original-result [[1] [2] [3] [4] [5]]
+                query-fn (fn []
+                           (->> (lib/query mp table-result)
+                                (qp/process-query)
+                                (mt/rows)))]
+            (is (= original-result (query-fn)))
+            (let [transform-future (future
+                                     (t2/update! :model/Transform transform-id {:source {:type :query
+                                                                                         :query new-query}})
+                                     (let [new-transform (t2/select-one :model/Transform transform-id)]
+                                       (transforms.execute/run-mbql-transform! new-transform {:run-method :manual})))
+                  query-futures (doall
+                                 (for [i (range 10)]
+                                   (future
+                                     (Thread/sleep (* i 400))
+                                     (query-fn))))]
+              @transform-future
+              (let [query-results (map deref query-futures)]
+                (doseq [result query-results]
+                  (is (= original-result result))))
+              (is (= [[1] [2] [3] [4] [5] [6]] (query-fn))))))))))
