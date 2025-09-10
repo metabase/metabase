@@ -6,6 +6,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common
     :as api
@@ -30,6 +31,7 @@
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.core :as t2]
+   [toucan2.model :as t2.model]
    [toucan2.protocols :as t2.protocols]
    [toucan2.realize :as t2.realize]))
 
@@ -62,6 +64,10 @@
 (def ^:constant trash-collection-type
   "The value of the `:type` field for the Trash collection that holds archived items."
   "trash")
+
+(def ^:constant library-collection-type
+  "The value of the `:type` field for Library collections."
+  "library")
 
 (defn- trash-collection* []
   (t2/select-one :model/Collection :type trash-collection-type))
@@ -101,6 +107,16 @@
   [collection]
   (str/starts-with? (:location collection) (trash-path)))
 
+(defn library-collection?
+  "Is this a library collection?"
+  [collection-or-id]
+  (let [type (:type collection-or-id ::not-found)]
+    (if (identical? type ::not-found)
+      ;; If no :type field, it's probably an ID - fetch from DB
+      (some->> collection-or-id u/the-id (t2/select-one-fn :type :model/Collection :id) (= library-collection-type))
+      ;; If :type field exists, compare directly
+      (= type library-collection-type))))
+
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
 
 (methodical/defmethod t2/model-for-automagic-hydration [#_model :default #_k :collection]
@@ -136,6 +152,7 @@
 (defmethod mi/can-write? :model/Collection
   ([instance]
    (and (not (default-audit-collection? instance))
+        (not (library-collection? instance))
         (mi/current-user-has-full-permissions? :write instance)))
   ([_model pk]
    (mi/can-write? (t2/select-one :model/Collection pk))))
@@ -1398,6 +1415,41 @@
                  :where       [:or
                                [:= :object (perms/collection-readwrite-path collection)]
                                [:= :object (perms/collection-read-path collection)]]}))
+
+;;; -------------------------------------------------- Library -------------------------------------------------------
+
+(defn- in-library?
+  "Test if a collection is in a collection marked library"
+  [{:keys [collection]}]
+  (library-collection? collection))
+
+(defn non-library-dependencies
+  "Find dependencies of a model -- that are possible to contain in the >ibrary -- that are not contained the in Library
+  collection or in subcollections of the Library collection. Uses serdes/descendants to list dependencies of a model.
+
+  Does not check the dependencies of its own dependencies assuming deps already in the library have their own dependencies
+  in the library.
+
+  Args:
+    model: the model to check dependencies for
+
+  Returns:
+    sequence of models pairs for depedendencies of the given model that are not in the Library"
+  [{:keys [id] :as model}]
+  (let [descendants (serdes/descendants (name (t2/model model)) id)]
+    (->> (keys descendants)
+         (reduce (fn [accum [model id]] (update accum model conj id)) {})
+         (mapcat (fn [[model ids]]
+                   (case model
+                     ;; Don't check these models for library membership because their library member is transitive through
+                     ;; the model being checked for non-library dependendencies, or it is a database type that cannot belong
+                     ;; to a library
+                     ("Collection" "Table" "Database" "Field") nil
+                     "Action" (->> (t2/hydrate (t2/select (t2.model/resolve-model (symbol model)) :id [:in ids]) [:model :collection])
+                                   (map #(assoc % :in-library? (in-library? (:model %)))))
+                     (->> (t2/hydrate (t2/select (t2.model/resolve-model (symbol model)) :id [:in ids]) :collection)
+                          (map #(assoc % :in-library? (in-library? %)))))))
+         (remove :in-library?))))
 
 ;;; -------------------------------------------------- IModel Impl ---------------------------------------------------
 

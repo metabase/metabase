@@ -25,7 +25,6 @@ export const AppBanner = () => {
   const isHosted = useSelector(getIsHosted);
   const tokenStatus = useSetting("token-status");
   const migrateReadOnly = useSetting("read-only-mode");
-  const gitReadOnly = useSetting("git-sync-read-only");
   const isDevMode = useSetting("development-mode?");
 
   const { shouldShowLicenseTokenMissingBanner, dismissBanner } =
@@ -45,7 +44,7 @@ export const AppBanner = () => {
     return isDevMode ? <DevModeBanner /> : null;
   }
 
-  if (migrateReadOnly || gitReadOnly) {
+  if (migrateReadOnly) {
     return <ReadOnlyBanner />;
   }
 
