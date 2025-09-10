@@ -109,7 +109,7 @@
     (qp.store/cached card-id
       (t2/select-one-fn :dataset_query Card :id card-id))
 
-  DEPRECATED -- use [[metabase.lib.metadata/general-cached-value]] going forward."
+  DEPRECATED -- use [[metabase.lib.core/general-cached-value]] going forward."
   {:style/indent 1, :deprecated "0.57.0"}
   [k-or-ks & body]
   ;; for the unique key use a gensym prefixed by the namespace to make for easier store debugging if needed

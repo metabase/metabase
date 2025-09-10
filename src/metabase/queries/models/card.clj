@@ -545,17 +545,19 @@
         (let [model                  (case po-type :card 'Card :dashboard 'Dashboard)
               {:keys [parameters]}   (t2/select-one [model :parameters] :id po-id)
               affected-param-ids-set (cond
-                                      ;; update all parameters that use this card as source
+                                       ;; update all parameters that use this card as source
                                        (:archived changes)
                                        (set (map :parameter_id param-cards))
 
-                                      ;; update only parameters that have value_field no longer in this card
+                                       ;; update only parameters that have value_field no longer in this card
                                        (:result_metadata changes)
                                        (let [param-id->parameter (m/index-by :id parameters)]
                                          (->> param-cards
                                               (filter (fn [param-card]
-                                                       ;; if cant find the value-field in result_metadata, then we should
-                                                       ;; remove it
+                                                        ;; if cant find the value-field in result_metadata, then we should
+                                                        ;; remove it
+                                                        ;; existing usage -- do not use this in new code
+                                                        #_{:clj-kondo/ignore [:deprecated-var]}
                                                         (nil? (qp.util/field->field-info
                                                                (get-in (param-id->parameter (:parameter_id param-card)) [:values_source_config :value_field])
                                                                (:result_metadata changes)))))

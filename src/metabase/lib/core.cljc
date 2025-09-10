@@ -31,6 +31,7 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util]
    [metabase.lib.limit :as lib.limit]
+   [metabase.lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
    [metabase.lib.metric :as lib.metric]
@@ -81,6 +82,7 @@
          lib.join/keep-me
          metabase.lib.join.util/keep-me
          lib.limit/keep-me
+         metabase.lib.metadata/keep-me
          lib.metadata.calculation/keep-me
          lib.metadata.composed-provider/keep-me
          lib.metric/keep-me
@@ -330,6 +332,8 @@
   current-limit
   limit
   max-rows-limit]
+ [metabase.lib.metadata
+  general-cached-value]
  [lib.metadata.calculation
   column-name
   describe-query
