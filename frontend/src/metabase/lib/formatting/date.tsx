@@ -834,8 +834,9 @@ export function normalizeDateTimeRangeWithUnit(
   const start = a.clone().startOf(dayjsUnit);
   const end = b.clone().endOf(dayjsUnit);
   const shift = a.diff(start, "days");
-  [start, end].forEach((d) => d.add(shift, "days"));
-  return [start, end, shift];
+  const shiftedStart = start.add(shift, "days");
+  const shiftedEnd = end.add(shift, "days");
+  return [shiftedStart, shiftedEnd, shift];
 }
 
 /** This formats a time with unit as a date range */

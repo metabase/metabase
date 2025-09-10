@@ -187,8 +187,14 @@ export function formatValueRaw(
     return formatTime(value as Dayjs, column.unit, options);
   } else if (column && column.unit != null) {
     // For DateTime columns, if we have a small numeric value that doesn't make sense as a timestamp,
-    // return the raw value instead of trying to format it as a date
-    if (typeof value === "number" && value >= 0 && value < 1000) {
+    // return the raw value instead of trying to format it as a date.
+    // Exception: hour-of-day should always be formatted as time, even for small values
+    if (
+      typeof value === "number" &&
+      value >= 0 &&
+      value < 1000 &&
+      column.unit !== "hour-of-day"
+    ) {
       return String(value);
     }
     return formatDateTimeWithUnit(
