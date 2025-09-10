@@ -137,24 +137,18 @@
   [driver {:keys [db-id query target conn-spec]}]
   (let [db (driver-api/with-metadata-provider db-id (driver-api/database (driver-api/metadata-provider)))
         {schema :schema table-name :name} target
-        output-table (keyword schema table-name)]
-    (if (driver/table-exists? driver db target)
-      (let [tmp-name (get-tmp-transform-name table-name tmp-transform-suffix)
-            tmp-table (keyword schema tmp-name)
-            renamed-name (get-tmp-transform-name table-name renamed-transform-suffix)
-            renamed-table (keyword schema renamed-name)
-            create-and-rename-queries [(driver/compile-transform driver tmp-table query)
-                                       (driver/compile-rename-table driver output-table renamed-name)
-                                       (driver/compile-rename-table driver tmp-table table-name)]
-            rows-affected (first (driver/execute-raw-queries! driver conn-spec create-and-rename-queries))
-            drop-renamed-query [(driver/compile-drop-table driver renamed-table)]]
-        (try
-          (driver/execute-raw-queries! driver conn-spec drop-renamed-query)
-          (catch Exception e
-            (log/warnf e "Failed to drop renamed transform table %s" renamed-table)))
-        {:rows-affected rows-affected})
-      (let [queries [(driver/compile-transform driver output-table query)]]
-        {:rows-affected (last (driver/execute-raw-queries! driver conn-spec queries))}))))
+        output-table (keyword schema table-name)
+        queries (if (driver/table-exists? driver db target)
+                  (let [tmp-name (get-tmp-transform-name table-name tmp-transform-suffix)
+                        tmp-table (keyword schema tmp-name)
+                        renamed-name (get-tmp-transform-name table-name renamed-transform-suffix)
+                        renamed-table (keyword schema renamed-name)]
+                    [(driver/compile-transform driver tmp-table query)
+                     (driver/compile-rename-table driver output-table renamed-name)
+                     (driver/compile-rename-table driver tmp-table table-name)
+                     (driver/compile-drop-table driver renamed-table)])
+                  [(driver/compile-transform driver output-table query)])]
+    {:rows-affected (first (driver/execute-raw-queries! driver conn-spec queries))}))
 
 (defmethod driver/drop-transform-target! [:sql :table]
   [driver database {:keys [schema name]}]

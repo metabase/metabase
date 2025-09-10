@@ -263,6 +263,10 @@
     [_driver _feature _database]
     true))
 
+(defmethod driver/database-supports? [:redshift ::sleep-query]
+  [_driver _feature _database]
+  false)
+
 (defmulti sleep-numbers-query
   "Returns a query that will sleep for a few seconds and return a list of numbers."
   {:arglists '([driver num])}
