@@ -10,41 +10,41 @@ import type { UpdateTransformRequest } from "metabase-types/api";
 export function useCheckTransformDependencies({
   onSave,
 }: UseCheckTransformDependenciesProps): UseCheckTransformDependenciesResult {
-  const [patch, setPatch] = useState<UpdateTransformRequest | null>(null);
+  const [request, setRequest] = useState<UpdateTransformRequest | null>(null);
   const [isConfirmationShown, setIsConfirmationShown] = useState(false);
   const [checkTransform, { data }] = useLazyCheckTransformDependenciesQuery();
 
   const handleInitialSave = useCallback(
-    async (patch: UpdateTransformRequest) => {
-      if (patch.source == null) {
-        await onSave(patch);
+    async (request: UpdateTransformRequest) => {
+      if (request.source == null) {
+        await onSave(request);
         return;
       }
 
       const data = await checkTransform({
-        id: patch.id,
-        source: patch.source,
+        id: request.id,
+        source: request.source,
       }).unwrap();
       if (data != null && !data.success) {
-        setPatch(patch);
+        setRequest(request);
         setIsConfirmationShown(true);
       } else {
-        setPatch(null);
+        setRequest(null);
         setIsConfirmationShown(false);
-        await onSave(patch);
+        await onSave(request);
       }
     },
     [checkTransform, onSave],
   );
 
   const handleSaveAfterConfirmation = useCallback(async () => {
-    if (patch != null) {
-      await onSave(patch);
+    if (request != null) {
+      await onSave(request);
     }
-  }, [patch, onSave]);
+  }, [request, onSave]);
 
   const handleCancelSave = useCallback(() => {
-    setPatch(null);
+    setRequest(null);
     setIsConfirmationShown(false);
   }, []);
 

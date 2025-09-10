@@ -61,8 +61,8 @@ export function TransformQueryPageBody({
     handleSaveAfterConfirmation,
     handleCancelSave,
   } = PLUGIN_DEPENDENCIES.useCheckTransformDependencies({
-    onSave: async (patch) => {
-      await updateTransform(patch).unwrap();
+    onSave: async (request) => {
+      await updateTransform(request).unwrap();
       sendSuccessToast(t`Transform query updated`);
       dispatch(push(getTransformUrl(transform.id)));
     },

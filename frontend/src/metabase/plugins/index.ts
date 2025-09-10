@@ -899,13 +899,13 @@ export type UseCheckCardDependenciesResult = {
 };
 
 export type UseCheckTransformDependenciesProps = {
-  onSave: (patch: UpdateTransformRequest) => Promise<void>;
+  onSave: (request: UpdateTransformRequest) => Promise<void>;
 };
 
 export type UseCheckTransformDependenciesResult = {
   checkData?: CheckDependenciesResponse;
   isConfirmationShown: boolean;
-  handleInitialSave: (patch: UpdateTransformRequest) => Promise<void>;
+  handleInitialSave: (request: UpdateTransformRequest) => Promise<void>;
   handleSaveAfterConfirmation: () => Promise<void>;
   handleCancelSave: () => void;
 };
