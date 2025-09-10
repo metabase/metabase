@@ -9,7 +9,7 @@ describe("scenarios - embedding hub", () => {
     });
 
     it('"Generate a dashboard" card should work correctly', () => {
-      cy.visit("/embedding-hub");
+      cy.visit("/admin/embedding/setup-guide");
 
       cy.log("Find and click on 'Generate a dashboard' card");
       cy.findAllByText("Generate a dashboard").first().click();
@@ -28,7 +28,7 @@ describe("scenarios - embedding hub", () => {
     });
 
     it('"Add data" card should work correctly', () => {
-      cy.visit("/embedding-hub");
+      cy.visit("/admin/embedding/setup-guide");
 
       cy.log("Find and click on 'Add data' card");
       cy.findAllByText("Add data").first().click();
@@ -40,7 +40,7 @@ describe("scenarios - embedding hub", () => {
     });
 
     it('"Create models" link should navigate correctly', () => {
-      cy.visit("/embedding-hub");
+      cy.visit("/admin/embedding/setup-guide");
 
       cy.log("Find and click on 'Create models' link");
       cy.findAllByText("Create models").first().click();

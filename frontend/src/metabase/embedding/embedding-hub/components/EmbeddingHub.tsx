@@ -69,7 +69,7 @@ export const EmbeddingHub = () => {
           c="var(--mb-color-text-dark)"
         >{t`Embedding setup guide`}</Title>
 
-        <Text c="var(--mb-color-text-medium)">{t`Follow the guide to get started with Embedded Analytics JS and SDK for React`}</Text>
+        <Text c="var(--mb-color-text-medium)">{t`Follow the guide to get started with Embedded Analytics JS`}</Text>
       </Group>
       <StepperWithCards steps={stepperSteps} />
       <AddDataModal

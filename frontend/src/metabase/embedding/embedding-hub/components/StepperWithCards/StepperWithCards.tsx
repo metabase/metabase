@@ -80,7 +80,6 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                     <Card
                       className={cx(S.stepCard, {
                         [S.optionalStepCard]: card.optional,
-                        [S.doneStepCard]: card.done,
                       })}
                       component={onClick ? "button" : undefined}
                       onClick={onClick}

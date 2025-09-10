@@ -10,7 +10,7 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     actions: [
       {
         title: t`Create an embed`,
-        description: t`Create an embed by using Embedded Analytics JS, the SDK for React, or Static Embedding.`,
+        description: t`Create an embed by using Embedded Analytics JS.`,
         to: "/embed-js?auth_method=user_session",
         variant: "outline",
       },

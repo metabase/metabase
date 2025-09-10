@@ -75,10 +75,6 @@ export const enterpriseRoutes: RouteMap = {
 export const premiumRoutes: RouteMap = {
   saml: { path: "/authentication/saml", testPattern: /Set up SAML-based SSO/i },
   jwt: { path: "/authentication/jwt", testPattern: /Server Settings/i },
-  interactiveEmbedding: {
-    path: "/embedding-in-other-applications/full-app",
-    testPattern: /Enable Interactive embedding/i,
-  },
 };
 
 export const upsellRoutes: RouteMap = {
