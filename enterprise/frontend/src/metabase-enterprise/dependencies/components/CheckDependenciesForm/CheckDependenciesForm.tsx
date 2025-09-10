@@ -18,8 +18,8 @@ import {
   Box,
   Button,
   Card,
+  FixedSizeIcon,
   Group,
-  Icon,
   type IconName,
   Stack,
   Text,
@@ -86,7 +86,7 @@ function DependencyItemCard({ item }: DependencyItemCardProps) {
     >
       <Stack gap="xs">
         <Group c="brand" gap="sm">
-          <Icon name={getItemIcon(item)} />
+          <FixedSizeIcon name={getItemIcon(item)} />
           <Box fw="bold" lh="h4">
             {getItemName(item)}
           </Box>
@@ -133,10 +133,11 @@ function getItemDescription({ card }: DependencyItem) {
     ];
 
     return (
-      <Group gap="sm">
-        <Icon
+      <Group gap="sm" wrap="nowrap">
+        <FixedSizeIcon
           c="text-secondary"
           name={dashboard != null ? "dashboard" : "collection"}
+          flex="0 0 auto"
         />
         <BreadcrumbList items={breadcrumbs} />
       </Group>
@@ -171,7 +172,7 @@ function BreadcrumbList({ items }: BreadcrumbListProps) {
       {items.map((item, itemIndex) => (
         <Fragment key={itemIndex}>
           {itemIndex > 0 && (
-            <Icon name="chevronright" c="text-secondary" size={8} />
+            <FixedSizeIcon name="chevronright" c="text-secondary" size={8} />
           )}
           <Breadcrumb item={item} />
         </Fragment>
