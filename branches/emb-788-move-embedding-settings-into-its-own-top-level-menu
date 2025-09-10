@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-784-add-a-card-based-vertical-stepper-component",
     "hash": "f69e825ae769d022764450ee599d5dc85101d91b"
+  },
+  "upstream": {
+    "branch": "emb-788-move-embedding-settings-into-its-own-top-level-menu"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 63339,
+        "gqlID": "PR_kwDOAczgH86n1FqT"
+      }
+    }
   }
 }
