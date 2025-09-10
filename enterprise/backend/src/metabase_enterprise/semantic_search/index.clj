@@ -127,7 +127,7 @@
    :creator_id          creator_id
    :database_id         database_id
    :last_editor_id      last_editor_id
-   :name                (:name doc)
+   :name                (:name doc "")
    :content             searchable_text
    :display_type        display_type
    :archived            (some-> archived to-boolean)
