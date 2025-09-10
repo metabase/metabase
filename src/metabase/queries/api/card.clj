@@ -5,6 +5,7 @@
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.eid-translation.core :as eid-translation]
@@ -772,7 +773,10 @@
                                                  (u/the-id card)))]
           (t2/update! (t2/table-name :model/Card)
                       {:id [:in (set cards-without-position)]}
-                      {:collection_id new-collection-id-or-nil})))))
+                      {:collection_id new-collection-id-or-nil}))
+        (doseq [card cards]
+          (collection/check-non-library-dependencies card)))))
+
   (when new-collection-id-or-nil
     (events/publish-event! :event/collection-touch {:collection-id new-collection-id-or-nil :user-id api/*current-user-id*})))
 

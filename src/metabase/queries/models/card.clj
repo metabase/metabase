@@ -12,6 +12,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.core :as moderation]
@@ -965,9 +966,11 @@
                                               ;; Adding a new card at `collection_position` could cause other cards in
                                               ;; this collection to change position, check that and fix it if needed
                                               (api/maybe-reconcile-collection-position! position-info)
-                                              (t2/insert-returning-instance! :model/Card (cond-> card-data
-                                                                                           metadata
-                                                                                           (assoc :result_metadata metadata))))]
+                                              (u/prog1 (t2/insert-returning-instance! :model/Card (cond-> card-data
+                                                                                                    metadata
+                                                                                                    (assoc :result_metadata metadata)))
+                                                (when (collections/library-collection? (:collection_id <>))
+                                                  (collections/check-non-library-dependencies <>))))]
      (let [{:keys [dashboard_id]} card]
        (when (and dashboard_id autoplace-dashboard-questions?)
          (autoplace-dashcard-for-card! dashboard_id (:dashboard_tab_id input-card-data) card)))
@@ -1144,7 +1147,9 @@
         (log/error "Update of dependent card parameters failed!")
         (log/debug e
                    "`card-before-update`:" (pr-str card-before-update)
-                   "`card-updates`:" (pr-str card-updates)))))
+                   "`card-updates`:" (pr-str card-updates))))
+    (when (collections/library-collection? (or (:collection_id card-updates) (:collection_id card-before-update)))
+      (collections/check-non-library-dependencies card-before-update)))
   ;; Fetch the updated Card from the DB
   (let [card (t2/select-one :model/Card :id (:id card-before-update))]
     ;;; TODO -- this should be triggered indirectly by `:event/card-update`
