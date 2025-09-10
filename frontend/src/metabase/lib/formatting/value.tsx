@@ -186,6 +186,11 @@ export function formatValueRaw(
   } else if (isTime(column)) {
     return formatTime(value as Dayjs, column.unit, options);
   } else if (column && column.unit != null) {
+    // For DateTime columns, if we have a small numeric value that doesn't make sense as a timestamp,
+    // return the raw value instead of trying to format it as a date
+    if (typeof value === "number" && value >= 0 && value < 1000) {
+      return String(value);
+    }
     return formatDateTimeWithUnit(
       value as string | number,
       column.unit,
