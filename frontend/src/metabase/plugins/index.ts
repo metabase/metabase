@@ -888,7 +888,7 @@ export type UseCheckCardDependenciesProps = {
 
 export type UseCheckCardDependenciesResult = {
   checkData?: CheckCardDependenciesResponse;
-  isConfirming: boolean;
+  isConfirmationShown: boolean;
   handleInitialSave: (question: Question) => Promise<void>;
   handleSaveAfterConfirmation: () => Promise<void>;
   handleCancelSave: () => void;
@@ -899,7 +899,7 @@ export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
   CheckDependenciesModal: PluginPlaceholder,
   CheckDependenciesTitle: PluginPlaceholder,
   useCheckCardDependencies: ({ onSave }) => ({
-    isConfirming: false,
+    isConfirmationShown: false,
     handleInitialSave: onSave,
     handleSaveAfterConfirmation: () => Promise.resolve(),
     handleCancelSave: () => undefined,

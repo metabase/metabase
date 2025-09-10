@@ -26,7 +26,7 @@ export const SaveQuestionModal = ({
 }: SaveQuestionModalProps) => {
   const {
     checkData,
-    isConfirming,
+    isConfirmationShown,
     handleInitialSave,
     handleSaveAfterConfirmation,
   } = PLUGIN_DEPENDENCIES.useCheckCardDependencies({
@@ -57,15 +57,15 @@ export const SaveQuestionModal = ({
       <Modal.Root
         padding="xl"
         {...modalProps}
-        size={isConfirming ? "xl" : undefined}
+        size={isConfirmationShown ? "xl" : undefined}
         closeOnEscape={false}
         onClose={onClose}
       >
         <Modal.Overlay />
         <Modal.Content data-testid="save-question-modal">
-          <Modal.Header px={isConfirming ? "xl" : undefined}>
+          <Modal.Header px={isConfirmationShown ? "xl" : undefined}>
             <Modal.Title>
-              {isConfirming ? (
+              {isConfirmationShown ? (
                 <PLUGIN_DEPENDENCIES.CheckDependenciesTitle />
               ) : (
                 <SaveQuestionTitle />
@@ -75,8 +75,8 @@ export const SaveQuestionModal = ({
               <Modal.CloseButton />
             </Flex>
           </Modal.Header>
-          <Modal.Body px={isConfirming ? 0 : undefined}>
-            {checkData != null && isConfirming ? (
+          <Modal.Body px={isConfirmationShown ? 0 : undefined}>
+            {checkData != null && isConfirmationShown ? (
               <PLUGIN_DEPENDENCIES.CheckDependenciesForm
                 checkData={checkData}
                 onSave={handleSaveAfterConfirmation}

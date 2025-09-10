@@ -14,7 +14,7 @@ export function useCheckCardDependencies({
 }: UseCheckCardDependenciesProps): UseCheckCardDependenciesResult {
   const store = useStore();
   const [question, setQuestion] = useState<Question | null>(null);
-  const [isConfirming, setIsConfirming] = useState(false);
+  const [isConfirmationShown, setisConfirmationShown] = useState(false);
   const [checkCard, { data }] = useLazyCheckCardDependenciesQuery();
 
   const handleInitialSave = useCallback(
@@ -33,10 +33,10 @@ export function useCheckCardDependencies({
       }).unwrap();
       if (data != null && !data.success) {
         setQuestion(question);
-        setIsConfirming(true);
+        setisConfirmationShown(true);
       } else {
         setQuestion(null);
-        setIsConfirming(false);
+        setisConfirmationShown(false);
         await onSave(question);
       }
     },
@@ -50,12 +50,13 @@ export function useCheckCardDependencies({
   }, [question, onSave]);
 
   const handleCancelSave = useCallback(() => {
-    setIsConfirming(false);
+    setQuestion(null);
+    setisConfirmationShown(false);
   }, []);
 
   return {
     checkData: data,
-    isConfirming,
+    isConfirmationShown,
     handleInitialSave,
     handleSaveAfterConfirmation,
     handleCancelSave,

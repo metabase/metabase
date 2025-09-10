@@ -53,7 +53,7 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
     const isRunnable = Lib.canRun(question.query(), "metric");
     const {
       checkData,
-      isConfirming,
+      isConfirmationShown,
       handleInitialSave,
       handleSaveAfterConfirmation,
       handleCancelSave,
@@ -96,6 +96,7 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
           question={question}
           isDirty={isDirty}
           isRunnable={isRunnable}
+          isConfirmationShown={isConfirmationShown}
           onCreate={handleCreateStart}
           onSave={handleSave}
           onCancel={handleCancelStart}
@@ -136,7 +137,7 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
             onClose={handleModalClose}
           />
         )}
-        {isConfirming && checkData != null && (
+        {isConfirmationShown && checkData != null && (
           <PLUGIN_DEPENDENCIES.CheckDependenciesModal
             checkData={checkData}
             opened

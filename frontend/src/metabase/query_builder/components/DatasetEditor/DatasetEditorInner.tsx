@@ -5,7 +5,9 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useMount, usePrevious } from "react-use";
@@ -476,9 +478,10 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     }
   };
 
+  const saveButtonRef = useRef<ActionButton>(null);
   const {
     checkData,
-    isConfirming,
+    isConfirmationShown,
     handleInitialSave,
     handleSaveAfterConfirmation,
     handleCancelSave,
@@ -490,6 +493,10 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
       runQuestionQuery();
     },
   });
+
+  useLayoutEffect(() => {
+    saveButtonRef.current?.resetState();
+  }, [isConfirmationShown]);
 
   const handleSave = useCallback(async () => {
     const canBeDataset = checkCanBeModel(question);
@@ -683,6 +690,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
             disabled={!saveButtonTooltipLabel}
           >
             <ActionButton
+              ref={saveButtonRef}
               key="save"
               disabled={!canSaveChanges}
               actionFn={handleSave}
@@ -758,7 +766,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
         onClose={closeModal}
       />
 
-      {isConfirming && checkData != null && (
+      {isConfirmationShown && checkData != null && (
         <PLUGIN_DEPENDENCIES.CheckDependenciesModal
           checkData={checkData}
           opened
