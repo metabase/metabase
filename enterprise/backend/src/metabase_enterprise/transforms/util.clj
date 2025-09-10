@@ -173,7 +173,11 @@
    database-id :- pos-int?
    table-schema :- ::table-definition]
   (let [{:keys [columns] table-name :name} table-schema
-        column-definitions (into {} (map (fn [{:keys [name type]}] [name (driver/type->database-type driver type)]))
+        column-definitions (into {} (map (fn [{:keys [name type database-type]}]
+                                           (let [db-type (if database-type
+                                                           [[:raw database-type]]
+                                                           (driver/type->database-type driver type))]
+                                             [name db-type])))
                                  columns)
         primary-key-opts (select-keys table-schema [:primary-key])]
     (log/infof "Creating table %s with %d columns" table-name (count columns))

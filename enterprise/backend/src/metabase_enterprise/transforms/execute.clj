@@ -222,9 +222,11 @@
   "Create a table from metadata and insert data from source."
   [driver db-id table-name metadata data-source]
   (let [table-schema {:name (if (keyword? table-name) table-name (keyword table-name))
-                      :columns (mapv (fn [{:keys [name dtype]}]
+                      :columns (mapv (fn [{:keys [name dtype base_type database_type]}]
                                        {:name name
-                                        :type (transforms.util/dtype->base-type dtype)
+                                        :type (or (some->> base_type (keyword "type"))
+                                                  (transforms.util/dtype->base-type dtype))
+                                        :database-type database_type
                                         :nullable? true})
                                      (:fields metadata))}]
     (transforms.util/create-table-from-schema! driver db-id table-schema)
