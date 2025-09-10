@@ -30,4 +30,11 @@
              {:snippet 2}}
            (->> (lib.metadata/card mp 7)
                 :dataset-query
+                (deps.native-validation/native-query-deps driver mp))))
+    (is (= #{{:table (meta/id :products)}
+             {:table (meta/id :orders)}
+             {:card 1}
+             {:card 2}}
+           (->> (lib.metadata/card mp 9)
+                :dataset-query
                 (deps.native-validation/native-query-deps driver mp))))))

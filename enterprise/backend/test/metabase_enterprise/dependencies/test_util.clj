@@ -91,5 +91,7 @@
                                                  (m/find-first #(= (:name %) "ID")
                                                                (lib/join-condition-lhs-columns
                                                                 q initial-card-a nil nil)))])
-                                              (lib/with-join-fields :all))))}])
+                                              (lib/with-join-fields :all))))}
+                    {:id 9
+                     :query "select * from {{#1}} inner join {{#2}}"}])
       :snippets snippets})))
