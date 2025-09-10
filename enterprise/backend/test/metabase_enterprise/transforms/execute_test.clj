@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms.execute-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.transforms.execute :as transforms.execute]
@@ -13,6 +14,7 @@
    [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [toucan2.core :as t2]
    [toucan2.util :as u]))
 
@@ -256,14 +258,40 @@
               (run-transform-test)
               (run-transform-test))))))))
 
+(doseq [driver [:postgres :mysql :clickhouse :snowflake]]
+  (defmethod driver/database-supports? [driver ::sleep-query]
+    [_driver _feature _database]
+    true))
+
+(defmulti sleep-numbers-query
+  "Returns a query that will sleep for a few seconds and return a list of numbers."
+  {:arglists '([driver num])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod sleep-numbers-query :postgres [_driver num]
+  (format "SELECT a FROM (SELECT pg_sleep(5)) x, generate_series(1, %d) a;" num))
+
+(defmethod sleep-numbers-query :mysql [_driver num]
+  (format "SELECT a FROM (SELECT SLEEP(5)) x, (SELECT 1 AS a %s) a;"
+          (->> (range 2 (inc num))
+               (map #(str "UNION ALL SELECT " %))
+               (str/join " "))))
+
+(defmethod sleep-numbers-query :clickhouse [_driver num]
+  (format "SELECT number + 1 AS a FROM numbers(%d) WHERE sleep(3) + sleep(2) = 0;" num))
+
+(defmethod sleep-numbers-query :snowflake [_driver num]
+  (format "SELECT SEQ4() + 1 AS a FROM (SELECT SYSTEM$WAIT(5)), TABLE(GENERATOR(ROWCOUNT => %d))" num))
+
 (deftest run-mbql-transform-long-running-transform-test
-  (mt/test-driver :postgres
+  (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table ::sleep-query]})
     (with-transform-cleanup! [target-table {:type   :table
                                             :schema (t2/select-one-fn :schema :model/Table (mt/id :products))
                                             :name   "sleep_table"}]
       (let [mp (mt/metadata-provider)
-            query (lib/native-query mp "SELECT a FROM (SELECT pg_sleep(5)) x, generate_series(1, 5) a;")
-            new-query (lib/native-query mp "SELECT a FROM (SELECT pg_sleep(5)) x, generate_series(1, 6) a;")]
+            query (lib/native-query mp (sleep-numbers-query driver/*driver* 5))
+            new-query (lib/native-query mp (sleep-numbers-query driver/*driver* 6))]
         (mt/with-temp [:model/Transform transform {:name   "transform"
                                                    :source {:type  :query
                                                             :query query}
@@ -275,7 +303,7 @@
                 query-fn (fn []
                            (->> (lib/query mp table-result)
                                 (qp/process-query)
-                                (mt/rows)))]
+                                (mt/formatted-rows [int])))]
             (is (= original-result (query-fn)))
             (let [transform-future (future
                                      (t2/update! :model/Transform transform-id {:source {:type :query
