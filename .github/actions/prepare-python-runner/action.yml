@@ -37,6 +37,25 @@ runs:
       with:
         port: 5001
         
+    - name: Health check Python Runner
+      if: steps.check-python-runner.outputs.exists == 'true'
+      shell: bash
+      run: |
+        echo "🏥 Checking Python Runner health..."
+        for i in {1..30}; do
+          if curl -s -f http://localhost:5001/status > /dev/null 2>&1; then
+            echo "✅ Python Runner is healthy!"
+            # Show status for debugging
+            echo "📊 Python Runner status:"
+            curl -s http://localhost:5001/status | jq '.' || curl -s http://localhost:5001/status
+            exit 0
+          fi
+          echo "  Waiting for Python Runner to be healthy... ($i/30)"
+          sleep 1
+        done
+        echo "❌ Python Runner failed health check"
+        exit 1
+        
     - name: Wait for LocalStack
       if: steps.check-python-runner.outputs.exists == 'true'
       uses: ./.github/actions/await-port
