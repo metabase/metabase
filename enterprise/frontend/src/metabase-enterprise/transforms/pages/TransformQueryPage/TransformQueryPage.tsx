@@ -14,7 +14,7 @@ import {
 } from "metabase-enterprise/api";
 import {
   getMetabotSuggestedTransform,
-  setTransformQuery,
+  setSuggestedTransform,
 } from "metabase-enterprise/metabot/state";
 import type { DatasetQuery, Transform } from "metabase-types/api";
 
@@ -88,11 +88,12 @@ export function TransformQueryPageBody({
 
   const initialQuery = transform.source.query;
 
-  const { transformQuery: proposedQuery } = useSelector(
+  const suggestedTransform = useSelector(
     getMetabotSuggestedTransform as any,
   ) as ReturnType<typeof getMetabotSuggestedTransform>;
+  const proposedQuery = suggestedTransform?.source.query;
 
-  const clearProposed = () => dispatch(setTransformQuery(undefined));
+  const clearProposed = () => dispatch(setSuggestedTransform(undefined));
 
   return (
     <AdminSettingsLayout fullWidthContent>

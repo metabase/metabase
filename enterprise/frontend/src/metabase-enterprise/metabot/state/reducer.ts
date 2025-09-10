@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
 import { uuid } from "metabase/lib/uuid";
-import type { DatasetQuery, MetabotHistory } from "metabase-types/api";
+import type { MetabotHistory, SuggestedTransform } from "metabase-types/api";
 
 import { TOOL_CALL_MESSAGES } from "../constants";
 
@@ -30,8 +30,7 @@ export type MetabotToolCall = {
 
 export type MetabotReactionsState = {
   navigateToPath: string | null;
-  transformQuery: DatasetQuery | undefined;
-  transformQueryUpdateId: string | undefined;
+  suggestedTransform: SuggestedTransform | undefined;
 };
 
 export interface MetabotState {
@@ -60,8 +59,7 @@ export const getMetabotInitialState = (): MetabotState => ({
   state: {},
   reactions: {
     navigateToPath: null,
-    transformQuery: undefined,
-    transformQueryUpdateId: undefined,
+    suggestedTransform: undefined,
   },
   toolCalls: [],
   experimental: {
@@ -160,8 +158,7 @@ export const metabot = createSlice({
       state.isProcessing = false;
       state.toolCalls = [];
       state.conversationId = uuid();
-      state.reactions.transformQuery = undefined;
-      state.reactions.transformQueryUpdateId = undefined;
+      state.reactions.suggestedTransform = undefined;
       state.experimental.metabotReqIdOverride = undefined;
     },
     resetConversationId: (state) => {
@@ -173,15 +170,12 @@ export const metabot = createSlice({
     setNavigateToPath: (state, action: PayloadAction<string>) => {
       state.reactions.navigateToPath = action.payload;
     },
-    setTransformQuery: (
+    setSuggestedTransform: (
       state,
-      action: PayloadAction<DatasetQuery | undefined>,
+      action: PayloadAction<SuggestedTransform | undefined>,
     ) => {
       // @ts-expect-error -- TODO: look into why TS type is infinitely deep...
-      state.reactions.transformQuery = action.payload;
-      state.reactions.transformQueryUpdateId = action.payload
-        ? uuid()
-        : undefined;
+      state.reactions.suggestedTransform = action.payload;
     },
     setVisible: (state, action: PayloadAction<boolean>) => {
       state.visible = action.payload;
