@@ -14,7 +14,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [potemkin :as p]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
