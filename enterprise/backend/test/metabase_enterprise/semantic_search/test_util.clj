@@ -67,36 +67,50 @@
   [_mode thunk]
   (thunk))
 
-(defmethod do-with-setup-test-db! :initialized
+(declare mock-embedding-model
+         mock-index-metadata
+         mock-table-suffix)
+
+(defmethod do-with-setup-test-db! :mock-initialized
   [_mode thunk]
-  ;; TODO: Consider caller provided index-metadata and embedding-model.
-  (let [pgvector (semantic.env/get-pgvector-datasource!)
-        index-metadata (semantic.env/get-index-metadata)
-        embedding-model (semantic.env/get-configured-embedding-model)]
-    (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model)
-    (thunk)))
+  ;; why redefinition does not work as expected?
+  (with-redefs [;; yes
+                semantic.embedding/get-configured-model        (fn [] mock-embedding-model)
+                ;; no
+                semantic.index-metadata/default-index-metadata mock-index-metadata
+                ;; probably no
+                semantic.index/model-table-suffix              mock-table-suffix]
+    (let [pgvector @(def pgv (semantic.env/get-pgvector-datasource!))
+          index-metadata @(def yy (semantic.env/get-index-metadata))
+          embedding-model @(def xix (semantic.env/get-configured-embedding-model))]
+      (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model)
+      (thunk))))
 
-(declare blocking-index!
-         with-indexable-documents!)
+(declare do-with-indexable-documents!)
 
-(defmethod do-with-setup-test-db! :gated-mock-documents
+(defmethod do-with-setup-test-db! :mock-gated
   [mode thunk]
-  ((get-method do-with-setup-test-db! :initialized)
+  ((get-method do-with-setup-test-db! :mock-initialized)
    mode
    (fn []
-     (with-indexable-documents!
-       (let [pgvector (semantic.env/get-pgvector-datasource!)
-             index-metadata (semantic.env/get-index-metadata)]
-         (semantic.pgvector-api/gate-updates! pgvector
-                                              index-metadata
-                                              (search.ingestion/searchable-documents))
-         (thunk))))))
+     (do-with-indexable-documents!
+      (fn []
+        (let [pgvector (semantic.env/get-pgvector-datasource!)
+              index-metadata (semantic.env/get-index-metadata)]
+          (semantic.pgvector-api/gate-updates! pgvector
+                                               index-metadata
+                                               (search.ingestion/searchable-documents))
+          (thunk)))))))
 
-(defmethod do-with-setup-test-db! :indexed-mock-documents
-  [_mode thunk]
-  ((get-method do-with-setup-test-db! :gated-mock-documents)
+(declare index-all!)
+
+(defmethod do-with-setup-test-db! :mock-indexed
+  [mode thunk]
+  ((get-method do-with-setup-test-db! :mock-gated)
+   mode
    (fn []
-     (blocking-index! (thunk)))))
+     (index-all!)
+     (thunk))))
 
 ;; Reminder: this can be adjusted so (1) each database is unique and (2) redefs are thread local (latter is not simple
 ;; but possible I believe), so we can take advantage of parallel tests.
@@ -444,7 +458,8 @@
   (let [metadata-row   {:indexer_last_poll Instant/EPOCH
                         :indexer_last_seen Instant/EPOCH}
         indexing-state (semantic.indexer/init-indexing-state metadata-row)
-        step (fn [] (semantic.indexer/indexing-step db mock-index-metadata mock-index indexing-state))]
+        pgvector (semantic.env/get-pgvector-datasource!)
+        step (fn [] (semantic.indexer/indexing-step pgvector mock-index-metadata mock-index indexing-state))]
     (while (do (step) (pos? (:last-novel-count @indexing-state))))))
 
 (defn do-with-index!
