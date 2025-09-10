@@ -1412,73 +1412,75 @@ H.describeWithSnowplowEE("document comments", () => {
       create1ParagraphDocument();
 
       cy.get<DocumentId>("@documentId").then((documentId) => {
-        createParagraphComment(documentId, "Test 1");
+        createParagraphComment(documentId, "Test 1").then((comment) => {
+          cy.signInAsNormalUser();
 
-        cy.signInAsNormalUser();
-        createParagraphComment(documentId, "Test 2").then(
-          ({ body: comment }) => {
-            H.getInbox(1).then((response: any) => {
-              const emails = response.body;
-              cy.log("you should not get notified about your own comments");
-              expect(emails).to.have.length(1);
+          createParagraphComment(documentId, "Test 2", comment.body.id).then(
+            ({ body: comment }) => {
+              H.getInbox(1).then((response: any) => {
+                const emails = response.body;
+                cy.log("you should not get notified about your own comments");
+                expect(emails).to.have.length(1);
 
-              verifyEmail({
-                email: emails[0],
-                expected: {
-                  address: "admin@metabase.test",
-                  subject: "Comment on Lorem ipsum",
-                  heading: "Robert Tableton replied to a thread",
-                  documentTitle: "Lorem ipsum",
-                  documentHref: `http://localhost:4000/document/${documentId}`,
-                  commentHref: `http://localhost:4000/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${comment.id}`,
-                },
+                verifyEmail({
+                  email: emails[0],
+                  expected: {
+                    address: "admin@metabase.test",
+                    subject: "Comment on Lorem ipsum",
+                    heading: "Robert Tableton replied to a thread",
+                    documentTitle: "Lorem ipsum",
+                    documentHref: `http://localhost:4000/document/${documentId}`,
+                    commentHref: `http://localhost:4000/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${comment.id}`,
+                  },
+                });
               });
-            });
-          },
-        );
+            },
+          );
 
-        H.clearInbox();
+          H.clearInbox();
 
-        cy.signInAsImpersonatedUser();
-        createParagraphComment(documentId, "Test 3").then(
-          ({ body: comment }) => {
-            H.getInbox(2).then((response: any) => {
-              const emails = response.body;
-              expect(emails).to.have.length(2);
+          cy.signInAsImpersonatedUser();
+          createParagraphComment(documentId, "Test 3", comment.body.id).then(
+            ({ body: comment }) => {
+              H.getInbox(2).then((response: any) => {
+                const emails = response.body;
+                expect(emails).to.have.length(2);
 
-              const emailToAdmin = emails.find(
-                (email: any) => email.to.address === "admin@metabase.test",
-              );
-              const emailToNormalUser = emails.find(
-                (email: any) => email.to.address === "normal@metabase.test",
-              );
+                const emailToAdmin = emails.find(
+                  (email: any) => email.to[0].address === "admin@metabase.test",
+                );
+                const emailToNormalUser = emails.find(
+                  (email: any) =>
+                    email.to[0].address === "normal@metabase.test",
+                );
 
-              verifyEmail({
-                email: emailToAdmin,
-                expected: {
-                  address: "admin@metabase.test",
-                  subject: "Comment on Lorem ipsum",
-                  heading: "User Impersonated replied to a thread",
-                  documentTitle: "Lorem ipsum",
-                  documentHref: `http://localhost:4000/document/${documentId}`,
-                  commentHref: `http://localhost:4000/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${comment.id}`,
-                },
+                verifyEmail({
+                  email: emailToAdmin,
+                  expected: {
+                    address: "admin@metabase.test",
+                    subject: "Comment on Lorem ipsum",
+                    heading: "User Impersonated replied to a thread",
+                    documentTitle: "Lorem ipsum",
+                    documentHref: `http://localhost:4000/document/${documentId}`,
+                    commentHref: `http://localhost:4000/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${comment.id}`,
+                  },
+                });
+
+                verifyEmail({
+                  email: emailToNormalUser,
+                  expected: {
+                    address: "normal@metabase.test",
+                    subject: "Comment on Lorem ipsum",
+                    heading: "User Impersonated replied to a thread",
+                    documentTitle: "Lorem ipsum",
+                    documentHref: `http://localhost:4000/document/${documentId}`,
+                    commentHref: `http://localhost:4000/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${comment.id}`,
+                  },
+                });
               });
-
-              verifyEmail({
-                email: emailToNormalUser,
-                expected: {
-                  address: "normal@metabase.test",
-                  subject: "Comment on Lorem ipsum",
-                  heading: "User Impersonated replied to a thread",
-                  documentTitle: "Lorem ipsum",
-                  documentHref: `http://localhost:4000/document/${documentId}`,
-                  commentHref: `http://localhost:4000/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${comment.id}`,
-                },
-              });
-            });
-          },
-        );
+            },
+          );
+        });
       });
     });
 
