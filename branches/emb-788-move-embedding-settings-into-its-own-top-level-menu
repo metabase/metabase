@@ -1,7 +1,7 @@
 {
   "base": {
-    "name": "emb-784-add-a-card-based-vertical-stepper-component",
-    "hash": "f69e825ae769d022764450ee599d5dc85101d91b"
+    "name": "emb-752-integration-branch-for-embedding-hub",
+    "hash": "05ac3562bb8220770874ea6e5a1ed21a21b4b8b7"
   },
   "upstream": {
     "branch": "emb-788-move-embedding-settings-into-its-own-top-level-menu"
