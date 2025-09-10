@@ -10,13 +10,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Initialize python-runner submodule
-      shell: bash
-      run: |
-        echo "📦 Initializing python-runner submodule..."
-        git submodule update --init --recursive python-runner
-        echo "✅ Submodule initialized successfully"
-    
     - name: Check if python-runner directory exists
       id: check-python-runner
       shell: bash
@@ -24,6 +17,9 @@ runs:
         if [ -d "python-runner" ]; then
           echo "exists=true" >> $GITHUB_OUTPUT
           echo "✅ python-runner directory found"
+          # Echo the current commit for debugging
+          echo "📍 Python runner commit:"
+          cd python-runner && git rev-parse HEAD && cd ..
         else
           echo "exists=false" >> $GITHUB_OUTPUT
           echo "⚠️  python-runner directory not found - skipping Python runner setup"
@@ -34,9 +30,9 @@ runs:
       shell: bash
       working-directory: python-runner
       run: |
-        echo "🚀 Starting python-runner using make run..."
+        echo "🚀 Starting python-runner using make run-all..."
         
-        # Use the official make run command
-        make run
+        # Use the make run-all command
+        make run-all
         
         echo "✅ Python runner started successfully!"
