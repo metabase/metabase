@@ -1,5 +1,8 @@
 (ns metabase-enterprise.sandbox.api.gtap
-  "`/api/mt/gtap` endpoints, for CRUD operations and the like on GTAPs (Group Table Access Policies)."
+  "`/api/mt/gtap` endpoints, for CRUD operations and the like on GTAPs (Group Table Access Policies).
+
+  TODO (Cam 9/9/25) -- rename this namespace (and the routes in [[API]]) to something like `.sandbox`/`/sandbox` --
+  `GTAP` is an old name for this feature."
   (:require
    [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap]
    [metabase.api.common :as api]
@@ -85,7 +88,7 @@
         (throw (ex-info (tru "Sandboxing with a saved question is not enabled for this database.")
                         {:status-code 400
                          :message     (tru "Sandboxing with a saved question is not enabled for this database.")})))))
-  (gtap/check-columns-match-table {:table_id table_id
+  (sandbox/check-columns-match-table {:table_id table_id
                                    :card_id  card_id}))
 
 (api.macros/defendpoint :delete "/:id"

@@ -43,7 +43,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf]
-   [metabase.util.time :as u.time]))
+   [metabase.util.time :as u.time]
+   [metabase.lib.schema.common :as lib.schema.common]))
 
 (defn- mbql-clause?
   "True if `x` is an MBQL clause (a sequence with a token as its first arg). (This is different from the implementation
@@ -352,16 +353,20 @@
                  (assoc :name tag-name))])))
    template-tags))
 
-(defn normalize-query-parameter
+(defn- normalize-query-parameter
   "Normalize a parameter in the query `:parameters` list."
-  [{param-type :type, :keys [target id values_source_config], :as param}]
-  (cond-> param
-    id                   (update :id u/qualified-name)
-    ;; some things that get ran thru here, like dashcard param targets, do not have :type
-    param-type           (update :type maybe-normalize-token)
-    target               (update :target #(normalize-tokens % nil))
-    values_source_config (update-in [:values_source_config :label_field] #(normalize-tokens % nil))
-    values_source_config (update-in [:values_source_config :value_field] #(normalize-tokens % nil))))
+  [param]
+  (let [param (lib.schema.common/normalize-map param)]
+    (-> param
+        (m/update-existing :id u/qualified-name)
+        ;; some things that get ran thru here, like dashcard param targets, do not have :type
+        (m/update-existing :type keyword)
+        (m/update-existing :target normalize-tokens nil)
+        (m/update-existing :values-source-type keyword)
+        (m/update-existing :values-source-config (fn [m]
+                                                   (-> m
+                                                       (m/update-existing :label-field normalize-tokens nil)
+                                                       (m/update-existing :value-field normalize-tokens nil)))))))
 
 (defn- normalize-source-query [source-query]
   (let [{native? :native, :as source-query} (perf/update-keys source-query maybe-normalize-token)]

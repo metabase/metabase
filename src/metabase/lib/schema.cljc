@@ -44,8 +44,10 @@
          metabase.lib.schema.filter/keep-me)
 
 (mr/def ::stage.common
-  [:map
-   [:parameters {:optional true} [:ref ::lib.schema.parameter/parameters]]])
+  [:and
+   [:map
+    [:parameters {:optional true} [:ref ::lib.schema.parameter/parameters]]]
+   [:ref ::common/kebab-cased-map]])
 
 (mr/def ::stage.native
   [:and
@@ -256,7 +258,6 @@
         :else
         stage))))
 
-;;; TODO -- enforce all kebab-case keys
 (mr/def ::stage
   [:and
    {:default          {:lib/type :mbql.stage/mbql}
@@ -429,8 +430,8 @@
     [:update-row {:optional true} [:maybe [:ref ::actions/row]]]]
    ;;
    ;; CONSTRAINTS
+   ;;
+   [:ref ::common/kebab-cased-map]
    [:ref ::lib.schema.util/unique-uuids]
-   [:fn
-    {:error/message ":expressions is not allowed in the top level of a query -- it is only allowed in MBQL stages"}
-    #(not (when (map? %)
-            (contains? % :expressions)))]])
+   (common/disallowed-keys
+    {:expressions ":expressions is not allowed in the top level of a query -- it is only allowed in MBQL stages"})])

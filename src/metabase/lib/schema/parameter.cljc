@@ -25,6 +25,7 @@
    #?@(:clj
        ([flatland.ordered.map :as ordered-map]))
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]))
 
 (defn- variadic-opts-first
@@ -261,10 +262,22 @@
             (nil? l) (assoc :type :number/<=, :value [u])))
         param))))
 
+(mr/def ::parameter.values-source-type
+  [:enum {:decode/normalize lib.schema.common/normalize-keyword} :card :static-list])
+
+(mr/def ::parameter.values-source-config
+  "See also `:metabase.parameters.schema/values-source-config` for snake_cased app DB version."
+  [:map
+   {:decode/normalize lib.schema.common/normalize-map}
+   [:values      {:optional true} [:sequential :any]]
+   [:card-id     {:optional true} ::lib.schema.id/card]
+   [:value-field {:optional true} [:ref :metabase.legacy-mbql.schema/field-or-expression-ref]]
+   [:label-field {:optional true} [:ref :metabase.legacy-mbql.schema/field-or-expression-ref]]])
+
 (mr/def ::parameter
   [:and
    [:map
-    {:decode/normalize normalize-parameter}
+    {:decode/normalize #'normalize-parameter}
     [:type [:ref ::type]]
     ;; TODO -- these definitely SHOULD NOT be optional but a ton of tests aren't passing them in like they should be.
     ;; At some point we need to go fix those tests and then make these keys required
@@ -280,7 +293,14 @@
     ;; code that constructs the query params is doing. We can go ahead and ignore these when present.
     [:slug     {:optional true} ::lib.schema.common/non-blank-string]
     [:default  {:optional true} :any]
-    [:required {:optional true} :any]]
+    [:required {:optional true} :any]
+    ;;
+    ;; These have something to do with [[metabase.parameters.custom-values]]. Based on the schemas
+    ;; in [[metabase.parameters.schema]].
+    ;;
+    [:values-source-type   {:optional true} [:ref ::parameter.values-source-type]]
+    [:values-source-config {:optional true} [:ref ::parameter.values-source-config]]]
+   [:ref ::lib.schema.common/kebab-cased-map]
    (lib.schema.common/disallowed-keys
     {:dimension ":dimension is not allowed in a parameter, you probably meant to use :target [:dimension ...] instead."})])
 

@@ -3,12 +3,12 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.custom-values :as custom-values]
    [metabase.parameters.params :as params]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -32,7 +32,7 @@
     {:case-sensitive false}))
 
 (mu/defn- param->fields
-  [param :- mbql.s/Parameter]
+  [param :- ::parameters.schema/parameter]
   (let [op      (param-type->op (:type param))
         options (or (:options param) (param-type->default-options (:type param)))]
     (for [field-id (params/dashboard-param->field-ids param)]
@@ -53,21 +53,21 @@
   "Get filter values when only field-refs (e.g. `[:field \"SOURCE\" {:base-type :type/Text}]`)
   are provided (rather than field-ids). This is a common case for nested queries."
   [dashboard param-key]
-  (let [dashboard       (t2/hydrate dashboard :resolved-params)
-        param           (get-in dashboard [:resolved-params param-key])
-        results         (for [{:keys [target] {:keys [card]} :dashcard} (:mappings param)
-                              :let [[_ field-ref opts] (->> (mbql.normalize/normalize-tokens target :ignore-path)
-                                                            (mbql.u/check-clause :dimension))]
-                              :when field-ref]
-                          (custom-values/values-from-card card field-ref opts))]
+  (let [dashboard (t2/hydrate dashboard :resolved-params)
+        param     (get-in dashboard [:resolved-params param-key])
+        results   (for [{:keys [target] {:keys [card]} :dashcard} (:mappings param)
+                        :let                                      [[_ field-ref opts] (->> (mbql.normalize/normalize-tokens target :ignore-path)
+                                                                                           (mbql.u/check-clause :dimension))]
+                        :when                                     field-ref]
+                    (custom-values/values-from-card card field-ref opts))]
     (when-some [values (seq (distinct (mapcat :values results)))]
-      (let [has_more_values (boolean (some true? (map :has_more_values results)))]
+      (let [has-more-values? (boolean (some true? (map :has_more_values results)))]
         {:values          (cond->> values
                             (seq values)
                             (sort-by (case (count (first values))
                                        2 second
                                        1 first)))
-         :has_more_values has_more_values}))))
+         :has_more_values has-more-values?}))))
 
 (defn- combine-chained-filter-results
   [results]
@@ -98,6 +98,9 @@
                        (nil? (:resolved-params dashboard)) (t2/hydrate :resolved-params))
          constraints (chain-filter-constraints dashboard constraint-param-key->value)
          param       (get-in dashboard [:resolved-params param-key])
+         _           (when (empty? (:mappings param))
+                       (println "(metabase.util/cprint-to-str param):" (metabase.util/cprint-to-str param)) ; NOCOMMIT
+                       (println "Param has no mappings... this will not work... NOCOMMIT"))
          field-ids   (into #{} (map :field-id (param->fields param)))]
      (if (empty? field-ids)
        (or (filter-values-from-field-refs dashboard param-key)
@@ -105,16 +108,16 @@
                            {:param       (get (:resolved-params dashboard) param-key)
                             :status-code 400})))
        (try
-         (let [;; results can come back as [[value] ...] *or* as [[value remapped] ...].
-               results         (map (if (seq query)
-                                      #(chain-filter/chain-filter-search % constraints query :limit result-limit)
-                                      #(chain-filter/chain-filter % constraints :limit result-limit))
-                                    field-ids)
-               has_more_values (boolean (some true? (map :has_more_values results)))]
+         (let [ ;; results can come back as [[value] ...] *or* as [[value remapped] ...].
+               results          (map (if (seq query)
+                                       #(chain-filter/chain-filter-search % constraints query :limit result-limit)
+                                       #(chain-filter/chain-filter % constraints :limit result-limit))
+                                     field-ids)
+               has-more-values? (boolean (some true? (map :has_more_values results)))]
            {:values          (or (combine-chained-filter-results results)
                                  ;; chain filter results can't be nil
                                  [])
-            :has_more_values has_more_values})
+            :has_more_values has-more-values?})
          (catch clojure.lang.ExceptionInfo e
            (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
              (api/throw-403 e)

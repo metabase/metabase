@@ -3,7 +3,8 @@
   (:refer-clojure :exclude [replace])
   (:require
    #?@(:clj
-       [[metabase.legacy-mbql.jvm-util :as mbql.jvm-u]
+       [[metabase.config.core :as config]
+        [metabase.legacy-mbql.jvm-util :as mbql.jvm-u]
         [metabase.models.dispatch :as models.dispatch]])
    [clojure.string :as str]
    [metabase.legacy-mbql.predicates :as mbql.preds]
@@ -34,8 +35,11 @@
       ;; incorrectly, for example [[metabase.actions.models/implicit-action-parameters]]. We need to actually start
       ;; validating parameters against the `:metabase.lib.schema.parameter/parameter` schema. We should probably throw
       ;; an error here instead of silently correcting it... I was going to do that but it broke too many things
-      (do
-        (log/error "normalize-token should not be getting called on a base type! This probably means we're using a base type in the wrong place, like as a parameter type")
+      ;; NOCOMMIT
+      (let [error-message "normalize-token should not be getting called on a base type! This probably means we're using a base type in the wrong place, like as a parameter type"]
+        (if false #_#?(:clj config/is-dev? :cljs false)
+          (log/errorf (ex-info error-message {:token token}) "Called normalize-token on %s" (pr-str token))
+          (log/error error-message))
         (keyword s))
       #_{:clj-kondo/ignore [:discouraged-var]}
       (-> s

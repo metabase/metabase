@@ -246,3 +246,21 @@
    (def ^{:arglists '([& classes])} instance-of-class
      "Convenience for defining a Malli schema for an instance of a particular Class."
      (memoize instance-of-class*)))
+
+(defn- kebab-cased-key? [k]
+  (and (keyword? k)
+       (not (str/includes? (str k) "_"))))
+
+(defn- kebab-cased-map? [m]
+  (and (map? m)
+       (every? kebab-cased-key? (keys m))))
+
+(mr/def ::kebab-cased-map
+  [:fn
+   {:decode/normalize #'normalize-map
+    :error/message    "map with all kebab-cased keys"
+    :error/fn         (fn [{:keys [value]} _]
+                        (if-not (map? value)
+                          "map with all kebab-cased keys"
+                          (str "map with all kebab-cased keys, got: " (pr-str (remove kebab-cased-key? (keys value))))))}
+   kebab-cased-map?])

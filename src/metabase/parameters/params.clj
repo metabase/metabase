@@ -29,7 +29,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [malli.error :as me]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     SHARED                                                     |
@@ -38,11 +39,11 @@
 (defn assert-valid-parameters
   "Receive a Paremeterized Object and check if its parameters is valid."
   [{:keys [parameters]}]
-  (let [schema [:maybe [:sequential ::parameters.schema/parameter]]]
-    (when-not (mr/validate schema parameters)
-      (throw (ex-info ":parameters must be a sequence of maps with :id and :type keys"
+  (when parameters
+    (when-let [error (me/humanize (mr/explain [:sequential ::parameters.schema/parameter] parameters))]
+      (throw (ex-info (str "Invalid :parameters: " (pr-str error))
                       {:parameters parameters
-                       :errors     (:errors (mr/explain schema parameters))})))))
+                       :error      error})))))
 
 (defn assert-valid-parameter-mappings
   "Receive a Paremeterized Object and check if its parameters is valid."

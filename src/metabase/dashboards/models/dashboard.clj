@@ -77,7 +77,9 @@
 
 (t2/define-before-insert :model/Dashboard
   [dashboard]
-  (let [defaults  {:parameters []}
+  (let [dashboard (cond-> dashboard
+                    (seq (:parameters dashboard)) (update :parameters mi/normalize-parameters-list))
+        defaults  {:parameters []}
         dashboard (merge defaults dashboard)]
     (u/prog1 dashboard
       (params/assert-valid-parameters dashboard)
@@ -108,7 +110,7 @@
     (assoc :name "unnamed" :slug "unnamed")
     (or
      ;; we don't support linked filters for parameters with :values_source_type of anything except nil,
-     ;; but it was previously possible to set :values_source_type to "static-list" or "card" and still
+     ;; but it was previously possible to set :values_source_type to `:static-list` or `:card` and still
      ;; have linked filters. (metabase#33892)
      (some? (:values_source_type p))
      (= (:values_query_type p) "none"))
@@ -285,7 +287,7 @@
   [card]
   (cond
     ;; If this is a pre-existing card, just return it
-    (and (integer? (:id card)) (t2/select-one :model/Card :id (:id card)))
+    (and (pos-int? (:id card)) (t2/select-one :model/Card :id (:id card)))
     card
 
     ;; Don't save text cards
@@ -337,22 +339,23 @@
                         dashcard)))
     dashboard))
 
-(def ^:private ParamWithMapping
-  [:map
-   [:id ms/NonBlankString]
-   [:name ms/NonBlankString]
-   [:mappings [:maybe [:set dashboard-card/ParamMapping]]]])
+(mu/defn- dashboard->resolved-params :- [:map-of ::parameters.schema/parameter.id ::parameters.schema/parameter]
+  [dashboard :- [:map
+                 [:dashcards  [:maybe [:sequential :map]]]
+                 [:parameters [:maybe [:sequential :map]]]]]
+  (let [param-key->mappings (reduce (fn [m dashcard]
+                                      (reduce (mu/fn [m mapping :- ::parameters.schema/parameter.mapping]
+                                                (update m (:parameter_id mapping) #(conj (set %) (assoc mapping :dashcard dashcard))))
+                                              m
+                                              (:parameter_mappings dashcard)))
+                                    {}
+                                    (:dashcards dashboard))]
+    (into {}
+          (map (fn [{param-key :id, :as param}]
+                 [(u/qualified-name param-key) (assoc param :mappings (get param-key->mappings param-key))]))
+          (:parameters dashboard))))
 
-(mu/defn- dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
-  [dashboard :- [:map [:parameters [:maybe [:sequential :map]]]]]
-  (let [param-key->mappings (apply
-                             merge-with set/union
-                             (for [dashcard (:dashcards dashboard)
-                                   param    (:parameter_mappings dashcard)]
-                               {(:parameter_id param) #{(assoc param :dashcard dashcard)}}))]
-    (into {} (for [{param-key :id, :as param} (:parameters dashboard)]
-               [(u/qualified-name param-key) (assoc param :mappings (get param-key->mappings param-key))]))))
-
+;;; TODO (Cam 9/9/25) -- consider moving this into the `parameters` module
 (methodical/defmethod t2/batched-hydrate [:model/Dashboard :resolved-params]
   "Return map of Dashboard parameter key -> param with resolved `:mappings`.
    (dashboard->resolved-params (t2/select-one Dashboard :id 62))
