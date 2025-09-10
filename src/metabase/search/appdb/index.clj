@@ -295,7 +295,7 @@
                              (map (partial batch-update! context)))
                        (partial merge-with +)
                        document-reducible))]
-    (if search.ingestion/*force-sync*
+    (if (or true search.ingestion/*force-sync*)
       (do-index)
       (t2/with-connection [_conn (mdb/data-source)] (do-index)))))
 
