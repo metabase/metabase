@@ -269,53 +269,108 @@
        (catch Exception e
          (log/error e "Warning: failed to clean up index and metadata" index-metadata))))))
 
+(defn do-with-indexable-documents!
+  "Wrap the thunk into with-temp, creating entities used throughout semantic search test.
+
+  N.B. *disable-updates* is bound to avoid processing of those entities by logic in [[search.ingestion]] ns.
+  The processing is triggered by means :hook/search-index which :model/Card (and others) derive.
+
+  As of 2025-09-10, processing triggered by insertion, combined with manual gating of documents that callers 
+  of this fn do, would result in duplicate processing and deletion of those entitities from index
+  due to [[search.ingestion/bulk-ingest!]].
+
+  For details see the https://metaboat.slack.com/archives/C07SJT1P0ET/p1757452434713309?thread_ts=1757410361.879029&cid=C07SJT1P0ET"
+  [thunk]
+  ;; NB: *disable-updates*
+  (binding [search.ingestion/*disable-updates* true]
+    (mt/dataset
+      test-data
+      (mt/with-temp [:model/Collection
+                     {col1 :id}
+                     {:name "Wildlife Collection" :archived false}
+
+                     :model/Collection
+                     {col2 :id}
+                     {:name "Archived Animals" :archived true}
+
+                     :model/Collection
+                     {col3 :id}
+                     {:name "Cryptozoology", :archived false}
+
+                     :model/Card
+                     {card1 :id}
+                     {:name "Dog Training Guide" :collection_id col1 :creator_id (mt/user->id :crowberto)
+                      :archived false :query_type "native" :dataset_query (dog-training-native-query)}
+
+                     :model/Card
+                     _
+                     {:name "Bird Watching Tips" :collection_id col1 :creator_id (mt/user->id :rasta) :archived false}
+
+                     :model/Card
+                     _
+                     {:name "Cat Behavior Study" :collection_id col2 :creator_id (mt/user->id :crowberto) :archived true}
+
+                     :model/Card
+                     _
+                     {:name "Horse Racing Analysis" :collection_id col1 :creator_id (mt/user->id :rasta) :archived false}
+
+                     :model/Card
+                     _
+                     {:name "Fish Tank Setup" :collection_id col2 :creator_id (mt/user->id :crowberto) :archived true}
+
+                     :model/Card
+                     _
+                     {:name "Bigfoot Sightings" :collection_id col3 :creator_id (mt/user->id :crowberto) :archived false}
+
+                     :model/ModerationReview
+                     _
+                     {:moderated_item_type "card"
+                      :moderated_item_id card1
+                      :moderator_id (mt/user->id :crowberto)
+                      :status "verified"
+                      :most_recent true}
+
+                     :model/Dashboard
+                     _
+                     {:name "Elephant Migration" :collection_id col1 :creator_id (mt/user->id :rasta) :archived false}
+
+                     :model/Dashboard
+                     _
+                     {:name "Lion Pride Dynamics" :collection_id col1 :creator_id (mt/user->id :crowberto) :archived false}
+
+                     :model/Dashboard
+                     _
+                     {:name "Penguin Colony Study" :collection_id col2 :creator_id (mt/user->id :rasta) :archived true}
+
+                     :model/Dashboard
+                     _
+                     {:name "Whale Communication" :collection_id col1 :creator_id (mt/user->id :crowberto) :archived false}
+
+                     :model/Dashboard
+                     _
+                     {:name "Tiger Conservation" :collection_id col2 :creator_id (mt/user->id :rasta) :archived true}
+
+                     :model/Dashboard
+                     _
+                     {:name "Loch Ness Stuff" :collection_id col3 :creator_id (mt/user->id :crowberto), :archived false}
+
+                     :model/Database
+                     {db-id :id}
+                     {:name "Animal Database"}
+
+                     :model/Table
+                     _
+                     {:name "Species Table", :db_id db-id}
+
+                     :model/Table
+                     _
+                     {:name "Monsters Table", :db_id db-id, :active true}]
+        (thunk)))))
+
 (defmacro with-indexable-documents!
-  "Add a collection of test documents to that can be indexed to the appdb."
+  "Wrapper for [[do-with-indexable-documents!]]."
   [& body]
-  `(mt/dataset ~(symbol "test-data")
-     (mt/with-temp [:model/Collection       {col1# :id}  {:name "Wildlife Collection" :archived false}
-
-                    :model/Collection       {col2# :id}  {:name "Archived Animals" :archived true}
-
-                    :model/Collection       {col3# :id}  {:name "Cryptozoology", :archived false}
-
-                    :model/Card             {card1# :id} {:name "Dog Training Guide" :collection_id col1# :creator_id (mt/user->id :crowberto) :archived false
-                                                          :query_type "native" :dataset_query (dog-training-native-query)}
-
-                    :model/Card             {}           {:name "Bird Watching Tips" :collection_id col1# :creator_id (mt/user->id :rasta) :archived false}
-
-                    :model/Card             {}           {:name "Cat Behavior Study" :collection_id col2# :creator_id (mt/user->id :crowberto) :archived true}
-
-                    :model/Card             {}           {:name "Horse Racing Analysis" :collection_id col1# :creator_id (mt/user->id :rasta) :archived false}
-
-                    :model/Card             {}           {:name "Fish Tank Setup" :collection_id col2# :creator_id (mt/user->id :crowberto) :archived true}
-
-                    :model/Card             {}           {:name "Bigfoot Sightings" :collection_id col3# :creator_id (mt/user->id :crowberto), :archived false}
-
-                    :model/ModerationReview {}           {:moderated_item_type "card"
-                                                          :moderated_item_id card1#
-                                                          :moderator_id (mt/user->id :crowberto)
-                                                          :status "verified"
-                                                          :most_recent true}
-
-                    :model/Dashboard        {}           {:name "Elephant Migration" :collection_id col1# :creator_id (mt/user->id :rasta) :archived false}
-
-                    :model/Dashboard        {}           {:name "Lion Pride Dynamics" :collection_id col1# :creator_id (mt/user->id :crowberto) :archived false}
-
-                    :model/Dashboard        {}           {:name "Penguin Colony Study" :collection_id col2# :creator_id (mt/user->id :rasta) :archived true}
-
-                    :model/Dashboard        {}           {:name "Whale Communication" :collection_id col1# :creator_id (mt/user->id :crowberto) :archived false}
-
-                    :model/Dashboard        {}           {:name "Tiger Conservation" :collection_id col2# :creator_id (mt/user->id :rasta) :archived true}
-
-                    :model/Dashboard        {}           {:name "Loch Ness Stuff" :collection_id col3# :creator_id (mt/user->id :crowberto), :archived false}
-
-                    :model/Database         {db-id# :id} {:name "Animal Database"}
-
-                    :model/Table            {}           {:name "Species Table", :db_id db-id#}
-
-                    :model/Table            {}           {:name "Monsters Table", :db_id db-id#, :active true}]
-       ~@body)))
+  `(do-with-indexable-documents! (fn [] ~@body)))
 
 (defn index-all!
   "Run indexer synchonously until we've exhausted polling all documents"
@@ -326,27 +381,24 @@
         step (fn [] (semantic.indexer/indexing-step db mock-index-metadata mock-index indexing-state))]
     (while (do (step) (pos? (:last-novel-count @indexing-state))))))
 
-(defmacro blocking-index!
-  "Execute body ensuring [[index-all!]] is invoked at the end"
-  [& body]
-  `(let [ret# (do ~@body)]
-     (index-all!)
-     ret#))
+(defn do-with-index!
+  "Ensure a clean, small index for testing populated with a few collections, cards, and dashboards."
+  [thunk]
+  (with-indexable-documents!
+    (with-redefs [semantic.embedding/get-configured-model        (fn [] mock-embedding-model)
+                  semantic.index-metadata/default-index-metadata mock-index-metadata
+                  semantic.index/model-table-suffix              mock-table-suffix]
+      (with-open [_# (open-temp-index-and-metadata!)]
+        (semantic.pgvector-api/gate-updates! (semantic.env/get-pgvector-datasource!)
+                                             mock-index-metadata
+                                             (search.ingestion/searchable-documents))
+        (index-all!)
+        (thunk)))))
 
 (defmacro with-index!
-  "Ensure a clean, small index for testing populated with a few collections, cards, and dashboards."
+  "Wrapper for [[do-with-index!]]."
   [& body]
-  `(binding [search.ingestion/*disable-updates* true]
-     (with-indexable-documents!
-       (with-redefs [semantic.embedding/get-configured-model        (fn [] mock-embedding-model)
-                     semantic.index-metadata/default-index-metadata mock-index-metadata
-                     semantic.index/model-table-suffix              mock-table-suffix]
-         (with-open [_# (open-temp-index-and-metadata!)]
-           (blocking-index!
-            (semantic.pgvector-api/gate-updates! (semantic.env/get-pgvector-datasource!)
-                                                 mock-index-metadata
-                                                 (search.ingestion/searchable-documents)))
-           ~@body)))))
+  `(do-with-index! (fn [] ~@body)))
 
 (defn table-exists-in-db?
   "Check if a table actually exists in the database"
