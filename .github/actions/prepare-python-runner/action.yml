@@ -36,14 +36,12 @@ runs:
       uses: ./.github/actions/await-port
       with:
         port: 5001
-      timeout-minutes: 5
         
     - name: Wait for LocalStack
       if: steps.check-python-runner.outputs.exists == 'true'
       uses: ./.github/actions/await-port
       with:
         port: 4566
-      timeout-minutes: 5
       
     - name: Verify LocalStack S3 is ready
       if: steps.check-python-runner.outputs.exists == 'true'
