@@ -53,6 +53,17 @@
                                           :api/endpoints)]
     (str "backend:/api/ee/metabot-tools" url)))
 
+(defn- query-for-sql-parsing
+  "Given an item in context, return the query if it is a native query or SQL transform that can have table usage parsed
+  from it, otherwise nil."
+  [item]
+  (when-let [query (case (:type item)
+                     "transform" (-> item :source :query)
+                     "adhoc" (-> item :query))]
+    (when (and (#{:native "native"} (:type query))
+               (:database query))
+      query)))
+
 (defn- database-tables-for-context
   "Get database tables formatted for metabot context. Only includes tables used in the query, formatted for API output.
    Removes duplicate tables by id while preserving first occurrence order."
@@ -76,17 +87,15 @@
       [])))
 
 (defn- enhance-context-with-schema
-  "Enhance context by adding table schema information for native queries"
+  "Enhance context by adding table schema information for native queries & SQL transforms"
   [context]
   (if-let [user-viewing (get context :user_is_viewing)]
     (let [enhanced-viewing
           (mapv (fn [item]
-                  (if (and (#{:native "native"} (get-in item [:query :type]))
-                           (get-in item [:query :database]))
-                    (let [tables (database-tables-for-context {:query (:query item)})]
-                      (if (seq tables)
-                        (assoc item :used_tables tables)
-                        item))
+                  (if-let [query (query-for-sql-parsing item)]
+                    (if-let [tables (seq (database-tables-for-context {:query query}))]
+                      (assoc item :used_tables tables)
+                      item)
                     item))
                 user-viewing)]
       (assoc context :user_is_viewing enhanced-viewing))
