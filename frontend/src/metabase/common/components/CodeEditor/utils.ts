@@ -12,10 +12,19 @@ import { useMemo } from "react";
 
 import type { CodeLanguage } from "./types";
 
-export function useExtensions({ language }: { language?: CodeLanguage }) {
+export function useExtensions({
+  language,
+  extensions,
+}: {
+  language?: CodeLanguage;
+  extensions?: Extension[];
+}) {
   return useMemo(
-    () => [...(language ? [getLanguageExtension(language)] : [])],
-    [language],
+    () => [
+      ...(extensions ?? []),
+      ...(language ? [getLanguageExtension(language)] : []),
+    ],
+    [language, extensions],
   );
 }
 
