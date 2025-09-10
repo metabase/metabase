@@ -86,6 +86,7 @@ import type {
   TableId,
   Timeline,
   TimelineEvent,
+  Transform,
   User,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -863,6 +864,7 @@ type DependenciesPlugin = {
 export type CheckDependenciesData = {
   success: boolean;
   bad_cards?: Card[];
+  bad_transforms?: Transform[];
 };
 
 export type CheckDependenciesFormProps = {

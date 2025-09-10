@@ -72,8 +72,22 @@ export function CheckDependenciesForm({
 
 function getDependencyItems({
   bad_cards = [],
+  bad_transforms = [],
 }: CheckDependenciesData): DependencyItem[] {
-  return bad_cards.map((card) => ({ type: "card", card }));
+  return [
+    ...bad_transforms.map(
+      (transform): TransformDependencyItem => ({
+        type: "transform",
+        transform,
+      }),
+    ),
+    ...bad_cards.map(
+      (card): CardDependencyItem => ({
+        type: "card",
+        card,
+      }),
+    ),
+  ];
 }
 
 type DependencyItemCardProps = {
