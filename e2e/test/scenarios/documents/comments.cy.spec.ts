@@ -1507,7 +1507,7 @@ H.describeWithSnowplowEE("document comments", () => {
                     attrs: {
                       entityId: NORMAL_USER_ID,
                       model: "user",
-                      label: "Normal user", // TODO: fix this
+                      label: "Robert Tableton",
                     },
                   },
                 ],
