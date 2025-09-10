@@ -1,8 +1,5 @@
-import cx from "classnames";
-
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 
-import S from "./CodeEditor.module.css";
 import type { CodeLanguage } from "./types";
 import { useExtensions } from "./utils";
 
@@ -37,7 +34,7 @@ export function CodeEditor({
         highlightActiveLine: false,
         highlightActiveLineGutter: false,
       }}
-      className={cx(S.codeEditor, className)}
+      className={className}
       extensions={extensions}
       id={id}
       readOnly={readOnly}
