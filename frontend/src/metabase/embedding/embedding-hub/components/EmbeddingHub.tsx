@@ -1,19 +1,22 @@
-import cx from "classnames";
 import { useMemo, useState } from "react";
-import { c, t } from "ttag";
+import { P, match } from "ts-pattern";
+import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
+import MetabotLogo from "metabase/common/components/MetabotLogo";
 import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashboardModal";
 import { AddDataModal } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal";
-import { Box, Icon, Menu, Text, Title } from "metabase/ui";
+import { Box, Group, Stack, Text } from "metabase/ui";
 
 import { useCompletedEmbeddingHubSteps } from "../hooks";
-import type { EmbeddingHubStepId } from "../types";
 import type { EmbeddingHubModalToTrigger } from "../types/embedding-checklist";
 import { getEmbeddingHubSteps } from "../utils";
 
-import { EmbeddingHubChecklist } from "./EmbeddingHubChecklist";
 import { EmbeddingHubXrayPickerModal } from "./EmbeddingHubXrayPickerModal";
+import {
+  type StepperCardClickAction,
+  type StepperStep,
+  StepperWithCards,
+} from "./StepperWithCards/StepperWithCards";
 
 export const EmbeddingHub = () => {
   const embeddingSteps = useMemo(() => getEmbeddingHubSteps(), []);
@@ -22,37 +25,53 @@ export const EmbeddingHub = () => {
   const [openedModal, setOpenedModal] =
     useState<EmbeddingHubModalToTrigger | null>(null);
 
-  // Find the first unchecked step to open by default.
-  // This is undefined when every step has been completed.
-  const firstUncompletedStep = embeddingSteps.find(
-    (step) => !completedSteps[step.id],
-  );
-
   const closeModal = () => setOpenedModal(null);
 
-  const lockedSteps: Partial<Record<EmbeddingHubStepId, boolean>> = {
-    // Production embeds requires JWT to be configured.
-    "embed-production": !completedSteps["secure-embeds"],
-  };
+  const stepperSteps: StepperStep[] = useMemo(() => {
+    return embeddingSteps.map((step) => ({
+      id: step.id,
+      title: step.title,
+      cards: step.actions.map((action) => {
+        const stepId = action.stepId ?? step.id;
+
+        const clickAction: StepperCardClickAction | undefined = match(action)
+          .with({ to: P.string }, ({ to }) => ({ type: "link" as const, to }))
+          .with({ docsPath: P.string }, ({ docsPath }) => ({
+            type: "docs" as const,
+            docsPath,
+            utm: { utm_campaign: "embedding_hub", utm_content: stepId },
+          }))
+          .with({ modal: P.nonNullable }, ({ modal }) => ({
+            type: "click" as const,
+            onClick: () => setOpenedModal(modal),
+          }))
+          .otherwise(() => undefined);
+
+        return {
+          id: `${stepId}-${action.title}`,
+          title: action.title,
+          description: action.description,
+          optional: action.optional,
+
+          // TODO: add completion checks for the 'create models' step
+          done: completedSteps?.[stepId] ?? false,
+
+          clickAction,
+        };
+      }),
+    }));
+  }, [embeddingSteps, completedSteps]);
 
   return (
-    <Box mih="100%" px="lg" py="xl" bg="bg-white">
-      <Box maw={600} mx="auto">
-        <Title order={1} mb="sm" c="text-dark">{t`Embedding hub`}</Title>
+    <Box mih="100%" p="4rem 7rem 2rem" bg="bg-white">
+      <Stack mx="auto" gap="xl" maw={800}>
+        <Group align="center">
+          <MetabotLogo />
 
-        <Text mb="xl" c="text-medium">
-          {c("{0} is the link to the selected embedding type.")
-            .jt`Get started with ${(<EmbeddingTypeDropdown key="embedding-type-dropdown" />)}`}
-        </Text>
-
-        <EmbeddingHubChecklist
-          steps={embeddingSteps}
-          completedSteps={completedSteps}
-          lockedSteps={lockedSteps}
-          defaultOpenStep={firstUncompletedStep?.id}
-          onModalAction={setOpenedModal}
-        />
-
+          <Text fw="bold" size="lg" c="var(--mb-color-text-dark)">{t`Get started
+         with Embedded Analytics JS and SDK for React`}</Text>
+        </Group>
+        <StepperWithCards steps={stepperSteps} />
         <AddDataModal
           opened={openedModal?.type === "add-data"}
           onClose={closeModal}
@@ -62,42 +81,15 @@ export const EmbeddingHub = () => {
               : undefined
           }
         />
-
         <CreateDashboardModal
           opened={openedModal?.type === "new-dashboard"}
           onClose={closeModal}
         />
-
         <EmbeddingHubXrayPickerModal
           opened={openedModal?.type === "xray-dashboard"}
           onClose={closeModal}
         />
-      </Box>
+      </Stack>
     </Box>
   );
 };
-
-/**
- * TODO: made the other embedding types functional.
- *
- * This is just to illustrate that we will be able to pick other
- * embedding types soon.
- */
-const EmbeddingTypeDropdown = () => (
-  <Menu key="embedded-analytics-js-menu" position="bottom-start">
-    <Menu.Target>
-      <span className={cx(CS.textBold, CS.link, CS.cursorPointer)}>
-        <span>{t`Embedded Analytics JS`}</span>
-
-        <Icon name="chevrondown" size={12} ml={4} />
-      </span>
-    </Menu.Target>
-
-    <Menu.Dropdown>
-      <Menu.Item>{t`Embedded Analytics JS`}</Menu.Item>
-      <Menu.Item disabled>{t`Embedded Analytics SDK for React`}</Menu.Item>
-      <Menu.Item disabled>{t`Static embedding`}</Menu.Item>
-      <Menu.Item disabled>{t`Help me choose`}</Menu.Item>
-    </Menu.Dropdown>
-  </Menu>
-);

@@ -10,11 +10,7 @@ import {
   isRootTrashCollection,
 } from "metabase/collections/utils";
 import { Tree } from "metabase/common/components/tree";
-import {
-  useHasTokenFeature,
-  useSetting,
-  useUserSetting,
-} from "metabase/common/hooks";
+import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import {
   getCanAccessOnboardingPage,
@@ -142,8 +138,6 @@ export function MainNavbarView({
   const areThereOtherUsers = (activeUsersCount ?? 0) > 1;
   const showOtherUsersCollections = isAdmin && areThereOtherUsers;
 
-  const isEmbeddingFeatureEnabled = useHasTokenFeature("embedding");
-
   return (
     <ErrorBoundary>
       <SidebarContentRoot>
@@ -157,17 +151,6 @@ export function MainNavbarView({
             >
               {t`Home`}
             </PaddedSidebarLink>
-
-            {isEmbeddingFeatureEnabled && isAdmin && (
-              <PaddedSidebarLink
-                isSelected={nonEntityItem?.url === "/embedding-hub"}
-                icon="code_block"
-                onClick={onItemSelect}
-                url="/embedding-hub"
-              >
-                {t`Embedding hub`}
-              </PaddedSidebarLink>
-            )}
           </SidebarSection>
 
           {shouldDisplayGettingStarted && (

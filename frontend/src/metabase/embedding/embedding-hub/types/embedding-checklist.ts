@@ -13,7 +13,6 @@ export interface EmbeddingHubStep {
   id: EmbeddingHubStepId;
   title: string;
   icon: IconName;
-  description: string;
 
   image?: EmbeddingHubImage;
   video?: EmbeddingHubVideo;
@@ -21,7 +20,7 @@ export interface EmbeddingHubStep {
   /** Show an info alert box above the CTA */
   infoAlert?: EmbeddingHubInfoAlert;
 
-  actions?: EmbeddingHubAction[];
+  actions: EmbeddingHubAction[];
 }
 
 export type EmbeddingHubModalToTrigger =
@@ -35,7 +34,10 @@ export type EmbeddingHubInfoAlert =
   | { type: "locked"; message: string };
 
 interface EmbeddingHubAction {
-  label: string;
+  stepId?: EmbeddingHubStepId;
+
+  title: string;
+  description: string;
 
   /** Internal link to a Metabase route. */
   to?: string;
@@ -48,6 +50,8 @@ interface EmbeddingHubAction {
 
   /** Which modal to trigger? */
   modal?: EmbeddingHubModalToTrigger;
+
+  optional?: boolean;
 }
 
 interface EmbeddingHubImage {
