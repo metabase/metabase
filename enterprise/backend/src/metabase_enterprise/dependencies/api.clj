@@ -33,7 +33,7 @@
                                  :type          (:type body (:type original)))
                           (dissoc :result-metadata))
         ;; TODO: This sucks - it's getting all cards for the same database_id, which is slow and over-reaching.
-        all-cards     (t2/select-fn-set :id :model/Card :database_id database-id)
+        all-cards     (t2/select-fn-set :id :model/Card :database_id database-id :archived false)
         breakages     (dependencies/check-cards-have-sound-refs base-provider [card] all-cards)
         broken-ids    (keys breakages)
         broken-cards  (when (seq broken-ids)
