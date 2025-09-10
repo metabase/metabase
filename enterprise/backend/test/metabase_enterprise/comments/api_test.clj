@@ -129,7 +129,7 @@
               (testing "Comments on concrete paragraphs are also sent as notifications"
                 (is (=? {(:email (mt/fetch-user :lucky))
                          [{:subject "Comment on New Document"
-                           :body    [{:content (relaxed-re (format "http://localhost:3000/document/%s/comment/%s#comment-%s"
+                           :body    [{:content (relaxed-re (format "http://localhost:3000/document/%s/comments/%s#comment-%s"
                                                                    doc-id
                                                                    part-id
                                                                    (:id created)))}]}]}

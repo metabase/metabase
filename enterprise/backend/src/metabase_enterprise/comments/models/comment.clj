@@ -44,7 +44,7 @@
   [entity comment]
   (case (t2/model entity)
     :model/Document (if (:child_target_id comment)
-                      (format "/document/%s/comment/%s#comment-%s"
+                      (format "/document/%s/comments/%s#comment-%s"
                               (:id entity)
                               (:child_target_id comment)
                               (:id comment))
