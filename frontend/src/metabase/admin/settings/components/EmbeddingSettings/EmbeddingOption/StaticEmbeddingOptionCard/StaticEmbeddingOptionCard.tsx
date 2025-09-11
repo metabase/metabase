@@ -39,10 +39,7 @@ export const StaticEmbeddingOptionCard = () => {
       }`}
     >
       <Group justify="space-between" align="center" w="100%">
-        <LinkButton
-          variant="default"
-          to={"/admin/settings/embedding-in-other-applications/standalone"}
-        >
+        <LinkButton variant="default" to={"/admin/embedding/static"}>
           {t`Manage`}
         </LinkButton>
         <EmbeddingToggle settingKey="enable-embedding-static" />

@@ -75,9 +75,7 @@ export const InteractiveEmbeddingOptionCard = () => {
       </Text>
       <Group justify="space-between" align="center" w="100%">
         {isEE ? (
-          <LinkButton
-            to={"/admin/settings/embedding-in-other-applications/full-app"}
-          >
+          <LinkButton to={"/admin/embedding/interactive"}>
             {t`Configure`}
           </LinkButton>
         ) : (

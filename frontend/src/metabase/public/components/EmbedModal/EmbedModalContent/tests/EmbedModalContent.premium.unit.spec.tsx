@@ -37,10 +37,7 @@ describe("EmbedModalContent", () => {
           withinInteractiveEmbeddingCard.getByRole("link", {
             name: "Enable in admin settings",
           }),
-        ).toHaveAttribute(
-          "href",
-          "/admin/settings/embedding-in-other-applications/full-app",
-        );
+        ).toHaveAttribute("href", "/admin/embedding/interactive");
       });
     });
 
@@ -58,7 +55,7 @@ describe("EmbedModalContent", () => {
         ).toHaveProperty(
           "href",
           // I have no idea why only this URL is absolute in the test, it is relative in the markup 🤷
-          "http://localhost/admin/settings/embedding-in-other-applications/full-app",
+          "http://localhost/admin/embedding/interactive",
         );
 
         // We don't show the link at the bottom of the card
