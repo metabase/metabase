@@ -393,6 +393,15 @@ Timeout in minutes for databases query execution, both Metabase application data
 
 Whether or not the default GeoJSON maps are enabled.
 
+### `MB_DISABLE_CORS_ON_LOCALHOST`
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `disable-cors-on-localhost`.
+- [Configuration file name](./config-file.md): `disable-cors-on-localhost`
+
+Prevents the server from sending CORS headers for requests originating from localhost.
+
 ### `MB_DOWNLOAD_ROW_LIMIT`
 
 - Type: positive-integer
@@ -562,7 +571,7 @@ Allow these space delimited origins to embed Metabase interactive.
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
-- Default: `""`
+- Default: ``
 - [Configuration file name](./config-file.md): `embedding-app-origins-sdk`
 
 Allow Metabase SDK access to these space delimited origins.

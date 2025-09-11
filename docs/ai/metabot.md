@@ -68,7 +68,9 @@ You can also ask Metabot to tell you about specific tables in your database.
 
 ## How Metabot uses the query builder
 
-When you ask Metabot to create a chart from natural language, it first looks for existing questions that might answer your request. If it finds a relevant question, it'll point you to that instead of creating something new. Otherwise, Metabot will use the [query builder](../questions/query-builder/editor.md) to create a new chart for you. Keep in mind that Metabot can only handle basic query builder operations. It's limited to single-level aggregation and grouping, so if you need more complex analysis, you can take over and refine the query yourself, or switch to the native editor.
+When you ask Metabot to create a chart from natural language, it first looks for existing questions that might answer your request. If it finds a relevant question, it'll point you to that instead of creating something new. Otherwise, Metabot will use the [query builder](../questions/query-builder/editor.md) to create a new chart for you. 
+
+Keep in mind that Metabot is still learning the query builder. Metabot can only handle basic query builder operations, and it lacks access to the library of [custom expressions](../questions/query-builder/expressions-list.md). Metabot is also limited to single-level aggregation and grouping, so if you need more complex analysis, you can take over and refine the query yourself, or switch to the SQL editor.
 
 ## Metabot in the native editor
 

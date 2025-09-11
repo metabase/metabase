@@ -1131,3 +1131,20 @@
     (with-describe-table-for-sample
       []
       (is (=? #{} @nested-fields)))))
+
+(deftest dbref-field-test
+  (mt/test-driver :mongo
+    (let [id-1 (ObjectId. "68bee671b76da7388a01e6c1")
+          id-2 (ObjectId. "68bee676e7c18921ff7dcf04")
+          ref-1 (com.mongodb.DBRef. "some_collection" id-1)
+          ref-2 (com.mongodb.DBRef. "some_db" "some_collection" id-2)]
+      (mt/dataset (mt/dataset-definition
+                   "dbref_db"
+                   [["dbref_coll"
+                     [{:field-name "name", :base-type :type/Text}
+                      {:field-name "dbref", :base-type :type/*}]
+                     [["ref1" ref-1]
+                      ["ref2" ref-2]]]])
+        (is (= [[1 "ref1" ref-1 "some_collection" id-1 nil]
+                [2 "ref2" ref-2 "some_collection" id-2 "some_db"]]
+               (mt/rows (mt/run-mbql-query dbref_coll))))))))

@@ -43,6 +43,9 @@
                    metadata-type
                    ids))
 
+(defn- metadatas-by-name [providers metadata-type names]
+  (metadatas-for-f metadata.protocols/metadatas-by-name providers metadata-type names))
+
 (defn- cached-value [metadata-providers k not-found]
   (loop [[cached-provider & more] (cached-providers metadata-providers)]
     (b/cond
@@ -99,6 +102,8 @@
     (some metadata.protocols/database metadata-providers))
   (metadatas [_this metadata-type ids]
     (metadatas metadata-providers metadata-type ids))
+  (metadatas-by-name [_this metadata-type names]
+    (metadatas-by-name metadata-providers metadata-type names))
   (tables [_this]
     (tables metadata-providers))
   (metadatas-for-table [_this metadata-type table-id]
