@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
+   [metabase-enterprise.metabot-v3.settings :refer [+require-metabot-enabled]]
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -75,4 +76,4 @@
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-v3/document` routes."
-  (api.macros/ns-handler *ns* +auth))
+  (api.macros/ns-handler *ns* +auth +require-metabot-enabled))

@@ -10,6 +10,7 @@
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
    [metabase-enterprise.metabot-v3.reactions :as metabot-v3.reactions]
+   [metabase-enterprise.metabot-v3.settings :refer [assert-metabot-enabled!]]
    [metabase-enterprise.metabot-v3.tools.api :as metabot-v3.tools.api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -56,6 +57,7 @@
                                           [:conversation_id ms/UUIDString]
                                           [:history [:maybe ::metabot-v3.client.schema/messages]]
                                           [:state :map]]]
+  (assert-metabot-enabled!)
   (metabot-v3.context/log body :llm.log/fe->be)
   (doto (assoc
          (request body)
@@ -90,6 +92,7 @@
             [:conversation_id ms/UUIDString]
             [:history [:maybe ::metabot-v3.client.schema/messages]]
             [:state :map]]]
+  (assert-metabot-enabled!)
   (metabot-v3.context/log body :llm.log/fe->be)
   (streaming-request body))
 

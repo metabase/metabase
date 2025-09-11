@@ -12,7 +12,7 @@
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
-   [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
+   [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings :refer [assert-metabot-enabled!]]
    [metabase.api.common :as api]
    [metabase.premium-features.core :as premium-features]
    [metabase.server.streaming-response :as sr]
@@ -123,6 +123,7 @@
        [:session-id :string]
        [:state :map]]]
   (premium-features/assert-has-feature :metabot-v3 "MetaBot")
+  (assert-metabot-enabled!)
   (try
     (let [url      (agent-v2-endpoint-url)
           body     (-> {:messages        messages
@@ -181,6 +182,7 @@
        [:session-id :string]
        [:state :map]]]
   (premium-features/assert-has-feature :metabot-v3 "MetaBot")
+  (assert-metabot-enabled!)
   (try
     (let [url      (agent-v2-streaming-endpoint-url)
           body     (-> {:messages        messages
@@ -225,6 +227,7 @@
   "Make a request to AI Service to select a metric."
   [metrics :- [:sequential ::metabot-v3.client.schema/metric]
    query   :- :string]
+  (assert-metabot-enabled!)
   (try
     (let [url (metric-selection-endpoint-url)
           body {:metrics metrics
@@ -245,6 +248,7 @@
 (mu/defn find-outliers-request
   "Make a request to AI Service to find outliers"
   [values :- [:sequential [:map [:dimension :any] [:value :any]]]]
+  (assert-metabot-enabled!)
   (try
     (let [url (find-outliers-endpoint-url)
           body {:values values}
@@ -268,6 +272,7 @@
             [:dialect :keyword]
             [:error_message :string]
             [:schema_ddl {:optional true} :string]]]
+  (assert-metabot-enabled!)
   (let [url (fix-sql-endpoint)
         options (build-request-options body)
         response (post! url options)]
@@ -291,6 +296,7 @@
                                                            [:name :string]
                                                            [:data_type :string]
                                                            [:description {:optional true} [:maybe :string]]]]]]]]]]
+  (assert-metabot-enabled!)
   (let [url (generate-sql-endpoint)
         options (build-request-options body)
         response (post! url options)]
@@ -305,6 +311,7 @@
   "Ask the AI service to generate a new node for a document."
   [body :- [:map
             [:instructions :string]]]
+  (assert-metabot-enabled!)
   (let [url (document-generate-content-endpoint)
         options (build-request-options body)
         headers (merge (:headers options) {"x-metabase-session-token"  (get-ai-service-token)
@@ -333,6 +340,7 @@
 (mu/defn analyze-chart
   "Ask the AI service to analyze a chart image."
   [chart-data :- chart-analysis-schema]
+  (assert-metabot-enabled!)
   (let [url (analyze-chart-endpoint)
         options (build-request-options chart-data)
         response (post! url options)]
@@ -355,6 +363,7 @@
 (mu/defn analyze-dashboard
   "Ask the AI service to analyze a dashboard image."
   [dashboard-data :- dashboard-analysis-schema]
+  (assert-metabot-enabled!)
   (let [url (analyze-dashboard-endpoint)
         options (build-request-options dashboard-data)
         response (post! url options)]
