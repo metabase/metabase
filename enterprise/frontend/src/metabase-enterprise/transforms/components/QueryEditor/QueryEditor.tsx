@@ -26,6 +26,7 @@ type QueryEditorProps = {
   isNew?: boolean;
   isSaving?: boolean;
   onSave: (newQuery: DatasetQuery) => void;
+  onChange?: (newQuery: DatasetQuery) => void;
   onCancel: () => void;
   onRejectProposed?: () => void;
   onAcceptProposed?: (query: DatasetQuery) => void;
@@ -38,6 +39,7 @@ export function QueryEditor({
   isNew = true,
   isSaving = false,
   onSave,
+  onChange,
   onCancel,
   onRejectProposed,
   onAcceptProposed,
@@ -59,6 +61,7 @@ export function QueryEditor({
 
   const handleChange = async (newQuestion: Question) => {
     setQuestion(newQuestion);
+    onChange?.(newQuestion.datasetQuery());
   };
 
   const handleSave = () => {
