@@ -261,7 +261,7 @@
 
 (defn- batch-update!
   "Create the given search index entries in bulk. Commits after each batch"
-  [context documents]
+  [context separate-connection? documents]
   ;; Protect against tests that nuke the appdb
   (when config/is-test?
     (when-let [table (active-table)]
@@ -280,7 +280,7 @@
         pending-updated? (safe-batch-upsert! (pending-table) entries)]
     (when (or active-updated? pending-updated?)
       (u/prog1 (->> entries (map :model) frequencies)
-        (when (not search.ingestion/*force-sync*)
+        (when (= :search/reindexing context)
           (t2/query ["commit"]))
         (log/trace "indexed documents for " <>)
         (when active-updated?
@@ -296,9 +296,9 @@
                              (map (partial batch-update! context)))
                        (partial merge-with +)
                        document-reducible))]
-    (if search.ingestion/*force-sync*
-      (do-index)
-      (t2/with-connection [_conn (mdb/data-source)] (do-index)))))
+    (if (= :search/reindexing context)
+      (t2/with-connection [_conn (mdb/data-source)] (do-index))
+      (do-index))))
 
 (defmethod search.engine/update! :search.engine/appdb [_engine document-reducible]
   (index-docs! :search/updating document-reducible))
