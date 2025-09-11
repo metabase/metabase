@@ -971,8 +971,6 @@
     (driver/execute-raw-queries! driver conn-spec sql)))
 
 (defmethod driver/compile-rename-table :sqlserver
-  [_driver old-name new-name]
-  (let [schema (namespace old-name)
-        old-table (cond->> (name old-name)
-                    schema (str schema "."))]
-    [(format "EXEC sp_rename '\"%s\"', '%s';" old-table new-name)]))
+  [driver old-name new-name]
+  [(format "EXEC sp_rename '%s', '%s';"
+           (first (sql.qp/format-honeysql driver (keyword old-name))) new-name)])
