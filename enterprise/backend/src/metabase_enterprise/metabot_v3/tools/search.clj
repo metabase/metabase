@@ -8,6 +8,9 @@
    [metabase.search.core :as search]
    [toucan2.core :as t2]))
 
+(def ^:private metabot-search-models
+  #{"table" "dataset" "card" "dashboard" "metric" "database"})
+
 (def ^:private search-model-mappings
   "Maps metabot entity types to search engine model types"
   {"model"    "dataset"
@@ -98,7 +101,7 @@
            entity-types limit metabot-id]}]
   (let [search-models (if (seq entity-types)
                         (set (distinct (keep entity-type->search-model entity-types)))
-                        (set (vals entity-type->search-model)))
+                        metabot-search-models)
         all-queries   (distinct (concat (or term-queries []) (or semantic-queries [])))
         metabot (t2/select-one :model/Metabot :entity_id (get-in metabot-v3.config/metabot-config [metabot-id :entity-id] metabot-id))
         use-verified-content? (if metabot-id
