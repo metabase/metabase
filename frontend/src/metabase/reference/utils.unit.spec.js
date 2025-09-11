@@ -49,6 +49,7 @@ describe("Reference utils.js", () => {
     const fieldId = field.id;
     const table = createMockTable({
       id: tableId,
+      db_id: dbId,
       fields: [field],
       segments: [segment],
     });

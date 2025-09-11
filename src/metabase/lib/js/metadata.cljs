@@ -521,7 +521,7 @@
                    (keep id->dlay id-set)
                    (vals id->dlay)))]
     (into []
-          (comp (map deref)
+          (comp (keep deref)
                 (if (= metadata-type :metadata/table)
                   (filter #(= (:db-id %) database-id))
                   identity)
