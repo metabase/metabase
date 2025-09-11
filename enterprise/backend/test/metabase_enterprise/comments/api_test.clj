@@ -1,8 +1,11 @@
 (ns metabase-enterprise.comments.api-test
   "Tests for /api/ee/comment/ endpoints."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.notification.seed :as notification.seed]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -67,10 +70,12 @@
     (mt/with-temp [:model/Document {doc-id :id doc :document} {:name       "New Document"
                                                                :creator_id (mt/user->id :lucky)}]
       (mt/with-model-cleanup [:model/CommentReaction
-                              :model/Comment]
+                              :model/Comment
+                              :model/Notification]
         (mt/with-fake-inbox
-          (is (= [:event/user-invited :event/notification-create :event/slack-token-invalid :event/comment-created]
-                 (t2/select-fn-vec :event_name :model/NotificationSubscription)))
+          (notification.seed/seed-notification!)
+          (is (set/subset? #{:event/comment-created}
+                           (t2/select-fn-set :event_name :model/NotificationSubscription)))
           (testing "returns empty comments list for entity with no comments"
             (is (= {:comments []}
                    (mt/user-http-request :rasta :get 200 "ee/comment/"
