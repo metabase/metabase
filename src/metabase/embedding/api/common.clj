@@ -1,7 +1,6 @@
 (ns metabase.embedding.api.common
   (:require
    [clojure.set :as set]
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.eid-translation.core :as eid-translation]
@@ -32,10 +31,9 @@
   models.resolution/keep-me)
 
 (defn- valid-param-value?
-  "Is V a valid param value? (If it is a String, is it non-blank?)"
+  "Is V a valid param value? Empty strings are considered valid for chained filters."
   [v]
-  (or (not (string? v))
-      (not (str/blank? v))))
+  (not (nil? v)))
 
 (defn- check-params-are-allowed
   "Check that the conditions specified by `object-embedding-params` are satisfied."
@@ -149,12 +147,11 @@
   "Take a map of `query-params` and make sure they're in the right format for the rest of our code. Our
   `wrap-keyword-params` middleware normally converts all query params keys to keywords, but only if they seem like
   ones that make sense as keywords. Some params, such as ones that start with a number, do not pass this test, and are
-  not automatically converted. Thus we must do it ourselves here to make sure things are done as we'd expect.
-  Also, any param values that are blank strings should be parsed as nil, representing the absence of a value."
+  not automatically converted. Thus we must do it ourselves here to make sure things are done as we'd expected.
+  Empty strings are preserved to support chained filter functionality."
   [query-params]
   (-> query-params
-      (update-keys keyword)
-      (update-vals (fn [v] (if (= v "") nil v)))))
+      (update-keys keyword)))
 
 (mu/defn validate-and-merge-params :- [:map-of :keyword :any]
   "Validate that the `token-params` passed in the JWT and the `user-params` (passed as part of the URL) are allowed, and

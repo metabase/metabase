@@ -6,6 +6,7 @@
    [metabase.dashboards.api-test :as api.dashboard-test]
    [metabase.embedding.api.embed-test :as embed-test]
    [metabase.embedding.api.preview-embed :as api.preview-embed]
+   [metabase.parameters.chain-filter-test :as chain-filter-test]
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -572,6 +573,22 @@
               (is (= {:values          [["African"] ["American"] ["Asian"]]
                       :has_more_values false}
                      (mt/user-http-request :rasta :get 200 url))))))))))
+
+(deftest empty-string-parameter-values-test
+  "Test for issue #61054 - Empty string parameter values should work in preview embedded dashboards"
+  (testing "Empty string parameter values in preview embedded dashboards"
+    (with-embedding-enabled-and-new-secret-key!
+      (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
+        (t2/update! :model/Dashboard (u/the-id dashboard) {:enable_embedding false
+                                                           :embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"}})
+        (let [signed-token (dash-token dashboard {:_embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"}
+                                                  :params {"category_name" ""}})
+              url          (format "preview_embed/dashboard/%s/params/%s/values" signed-token "_CATEGORY_ID_")]
+          (testing "Empty string in JWT params should work for preview embed chain filtering"
+            (let [response (mt/user-http-request :rasta :get 200 url)]
+              (is (map? response))
+              (is (contains? response :values))
+              (is (contains? response :has_more_values)))))))))
 
 (deftest boolean-parameter-values-test
   (testing "embedding endpoint supports boolean parameter values (#27643)"
