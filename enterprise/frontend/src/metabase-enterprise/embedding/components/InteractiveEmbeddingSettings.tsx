@@ -46,7 +46,6 @@ export function InteractiveEmbeddingSettings() {
 
         <Box>
           <SettingHeader id="get-started" title={t`Get started`} />
-
           <Button
             mt="xs"
             variant="outline"
