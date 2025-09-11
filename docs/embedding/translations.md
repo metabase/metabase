@@ -68,7 +68,7 @@ Translations are case-insensitive. For example, if your translation dictionary h
 | -------- | ----------- | ------------ |
 | pt-BR    | Examples    | Exemplos     |
 
-then Metabase will be able to translate strings like `Examples`, `examples`, `EXAMPLES`. Note that the output of the translation will have use the same case as the translated string. So, both `Examples` and `EXAMPLES` will be translated as `Exemplos`.
+`Examples`, `examples`, `EXAMPLES` would all be translated as `Exemplos`. That is, Metabase won't preserve the original case; it will output the exact translation string in the dictionary.
 
 ## Include markdown formatting in translation dictionaries
 
