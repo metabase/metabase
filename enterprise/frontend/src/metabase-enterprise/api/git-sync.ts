@@ -19,6 +19,21 @@ export type GitFileContent = {
   entity?: Transform;
 };
 
+export type UnsyncedChangesResponse = {
+  has_unsynced_changes: boolean;
+  last_sync_at: string | null;
+  unsynced_counts?: {
+    collections: number;
+    cards: number;
+    dashboards: number;
+    snippets: number;
+    timelines: number;
+    documents: number;
+    total: number;
+  };
+  message?: string;
+};
+
 export const gitSyncApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     importGit: builder.mutation({
@@ -48,6 +63,12 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: [tag("git-file-content")],
     }),
+    getUnsyncedChanges: builder.query<UnsyncedChangesResponse, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/library/unsynced-changes",
+      }),
+    }),
   }),
 });
 
@@ -56,4 +77,5 @@ export const {
   useExportGitMutation,
   useGetRepositoryTreeQuery,
   useGetFileContentQuery,
+  useGetUnsyncedChangesQuery,
 } = gitSyncApi;

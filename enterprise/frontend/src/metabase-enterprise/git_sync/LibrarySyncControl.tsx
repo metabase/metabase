@@ -4,6 +4,7 @@ import { t } from "ttag";
 import ActionButton from "metabase/common/components/ActionButton";
 import { useSetting } from "metabase/common/hooks";
 import {
+  Alert,
   Autocomplete,
   Box,
   Button,
@@ -16,6 +17,7 @@ import {
 } from "metabase/ui";
 import {
   useExportGitMutation,
+  useGetUnsyncedChangesQuery,
   useImportGitMutation,
 } from "metabase-enterprise/api";
 
@@ -39,8 +41,18 @@ export function LibrarySyncControl() {
   const defaultPullBranch = useSetting("git-sync-import-branch");
   const defaultPushBranch = useSetting("git-sync-export-branch");
   const allowEdit = useSetting("git-sync-allow-edit");
+  const gitSyncConfigured = useSetting("git-sync-configured");
 
-  const isLoading = isImporting || isExporting;
+  const { data: unsyncedChanges, isLoading: isCheckingUnsynced } =
+    useGetUnsyncedChangesQuery(undefined, {
+      skip: !gitSyncConfigured,
+    });
+
+  const hasUnsyncedChanges =
+    unsyncedChanges?.has_unsynced_changes &&
+    (unsyncedChanges?.unsynced_counts?.total ?? 0) > 0;
+
+  const isLoading = isImporting || isExporting || isCheckingUnsynced;
 
   return (
     <Popover closeOnClickOutside={false}>
@@ -49,6 +61,15 @@ export function LibrarySyncControl() {
       </Popover.Target>
       <Popover.Dropdown>
         <Stack gap="md" align="stretch" p="lg">
+          {hasUnsyncedChanges && (
+            <Alert
+              variant="error"
+              icon={<Icon name="warning" />}
+              title={t`Unsynced changes detected`}
+            >
+              {t`You have ${unsyncedChanges?.unsynced_counts?.total} unsynced changes. Importing will overwrite these changes.`}
+            </Alert>
+          )}
           <Flex gap="md" align="end">
             <Autocomplete
               name="git-sync-import-branch"
