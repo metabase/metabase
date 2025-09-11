@@ -46,6 +46,8 @@ export function useCheckCardDependencies({
   const handleSaveAfterConfirmation = useCallback(async () => {
     if (question != null) {
       await onSave(question);
+      setQuestion(null);
+      setIsConfirmationShown(false);
     }
   }, [question, onSave]);
 

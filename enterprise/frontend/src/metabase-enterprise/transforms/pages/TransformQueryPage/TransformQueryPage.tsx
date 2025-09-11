@@ -52,7 +52,7 @@ export function TransformQueryPageBody({
 }: TransformQueryPageBodyProps) {
   const [updateTransform, { isLoading }] = useUpdateTransformMutation();
   const dispatch = useDispatch();
-  const { sendSuccessToast } = useMetadataToasts();
+  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const {
     checkData,
@@ -62,9 +62,16 @@ export function TransformQueryPageBody({
     handleCancelSave,
   } = PLUGIN_DEPENDENCIES.useCheckTransformDependencies({
     onSave: async (request) => {
-      await updateTransform(request).unwrap();
-      sendSuccessToast(t`Transform query updated`);
-      dispatch(push(getTransformUrl(transform.id)));
+      const { error } = await updateTransform(request);
+      if (error) {
+        sendErrorToast(t`Failed to update transform query`);
+      } else {
+        sendSuccessToast(t`Transform query updated`);
+        dispatch(push(getTransformUrl(transform.id)));
+      }
+    },
+    onError: () => {
+      sendErrorToast(t`Failed to update transform query`);
     },
   });
 

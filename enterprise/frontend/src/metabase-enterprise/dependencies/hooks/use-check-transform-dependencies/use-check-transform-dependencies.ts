@@ -9,6 +9,7 @@ import type { UpdateTransformRequest } from "metabase-types/api";
 
 export function useCheckTransformDependencies({
   onSave,
+  onError,
 }: UseCheckTransformDependenciesProps): UseCheckTransformDependenciesResult {
   const [request, setRequest] = useState<UpdateTransformRequest | null>(null);
   const [isConfirmationShown, setIsConfirmationShown] = useState(false);
@@ -21,25 +22,27 @@ export function useCheckTransformDependencies({
         return;
       }
 
-      const data = await checkTransform({
+      const { data, error } = await checkTransform({
         id: request.id,
         source: request.source,
-      }).unwrap();
-      if (data != null && !data.success) {
+      });
+      if (error != null) {
+        onError(error);
+      } else if (data != null && !data.success) {
         setRequest(request);
         setIsConfirmationShown(true);
       } else {
-        setRequest(null);
-        setIsConfirmationShown(false);
         await onSave(request);
       }
     },
-    [checkTransform, onSave],
+    [checkTransform, onSave, onError],
   );
 
   const handleSaveAfterConfirmation = useCallback(async () => {
     if (request != null) {
       await onSave(request);
+      setRequest(null);
+      setIsConfirmationShown(false);
     }
   }, [request, onSave]);
 

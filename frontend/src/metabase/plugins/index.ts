@@ -900,6 +900,7 @@ export type UseCheckCardDependenciesResult = {
 
 export type UseCheckTransformDependenciesProps = {
   onSave: (request: UpdateTransformRequest) => Promise<void>;
+  onError: (error: unknown) => void;
 };
 
 export type UseCheckTransformDependenciesResult = {
