@@ -23,6 +23,16 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- log-sync-event!
+  "Log a sync event to the library_sync_log table."
+  [sync-type status & {:keys [source-branch target-branch message]}]
+  (t2/insert! :model/LibrarySyncLog
+              {:sync_type sync-type
+               :source_branch source-branch
+               :target_branch target-branch
+               :status status
+               :message message}))
+
 (defn- reload-from-git!
   "Reloads the Metabase entities from the "
   [branch]
@@ -65,6 +75,8 @@
                           :entity_id (if (seq entity-ids)
                                        [:not-in entity-ids]
                                        :entity_id)))))
+        (log-sync-event! "import" "success"
+                         :source-branch (:source-branch source))
         (log/info "Successfully reloaded entities from git repository")
         {:status :success
          :message "Successfully reloaded from git repository"}
@@ -86,6 +98,9 @@
 
                             :else
                             (format "Failed to reload from git repository: %s" (.getMessage e)))]
+            (log-sync-event! "import" "error"
+                             :source-branch (:source-branch source)
+                             :message (.getMessage e))
             {:status :error
              :message error-msg
              :details {:error-type (type e)}}))))
@@ -119,9 +134,83 @@
        :body {:status "error"
               :message "Unexpected error occurred during reload"}})))
 
+(api.macros/defendpoint :get "/unsynced-changes"
+  "Does this Metabase Library contain unsynced changes?"
+  []
+  (api/check-superuser)
+  (if-let [library-collection (t2/select-one :model/Collection :entity_id collection/library-entity-id)]
+    (let [most-recent-sync (t2/select-one [:model/LibrarySyncLog :created_at]
+                                          :sync_type "import"
+                                          :status "success"
+                                          {:order-by [[:created_at :desc]]})
+          last-sync-time (:created_at most-recent-sync)
+          ;; Get all descendant collection IDs
+          library-collection-ids (collection/collection->descendant-ids library-collection)
+          all-library-collection-ids (cons (u/the-id library-collection) library-collection-ids)]
+      (if last-sync-time
+        ;; Check if any library content was created/updated after last sync
+        (let [unsynced-collections (t2/count :model/Collection
+                                             {:where
+                                              [:and
+                                               [:in :id all-library-collection-ids]
+                                               ;; Collections don't have an `updated_at` so we'll need a different approach here, or add it :facepalm:
+                                               [:> :created_at last-sync-time]]})
+              unsynced-cards (t2/count :model/Card
+                                       {:where
+                                        [:and
+                                         [:in :collection_id all-library-collection-ids]
+                                         [:or
+                                          [:> :created_at last-sync-time]
+                                          [:> :updated_at last-sync-time]]]})
+              unsynced-dashboards (t2/count :model/Dashboard
+                                            {:where
+                                             [:and
+                                              [:in :collection_id all-library-collection-ids]
+                                              [:or
+                                               [:> :created_at last-sync-time]
+                                               [:> :updated_at last-sync-time]]]})
+              unsynced-snippets (t2/count :model/NativeQuerySnippet
+                                          {:where
+                                           [:and
+                                            [:in :collection_id all-library-collection-ids]
+                                            [:or
+                                             [:> :created_at last-sync-time]
+                                             [:> :updated_at last-sync-time]]]})
+              unsynced-timelines (t2/count :model/Timeline
+                                           {:where
+                                            [:and
+                                             [:in :collection_id all-library-collection-ids]
+                                             [:or
+                                              [:> :created_at last-sync-time]
+                                              [:> :updated_at last-sync-time]]]})
+              unsynced-documents (t2/count :model/Document
+                                           {:where
+                                            [:and
+                                             [:in :collection_id all-library-collection-ids]
+                                             [:or
+                                              [:> :created_at last-sync-time]
+                                              [:> :updated_at last-sync-time]]]})
+              total-unsynced (+ unsynced-collections unsynced-cards unsynced-dashboards
+                                unsynced-snippets unsynced-timelines unsynced-documents)]
+          {:has_unsynced_changes (> total-unsynced 0)
+           :last_sync_at last-sync-time
+           :unsynced_counts {:collections unsynced-collections
+                             :cards unsynced-cards
+                             :dashboards unsynced-dashboards
+                             :snippets unsynced-snippets
+                             :timelines unsynced-timelines
+                             :documents unsynced-documents
+                             :total total-unsynced}})
+        ;; No successful sync found - everything is unsynced
+        {:has_unsynced_changes true
+         :last_sync_at nil
+         :message "No successful sync found - all library content is unsynced"}))
+    ;; No library collection found
+    {:has_unsynced_changes false
+     :message "Library collection not found"}))
+
 (api.macros/defendpoint :post "/export"
   "Export the current state of the Library collection to a Source
-
   This endpoint will:
   1. Fetch the latest changes from the source
   2. Create a branch or subdirectory -- depending on source support

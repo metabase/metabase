@@ -1414,6 +1414,78 @@ databaseChangeLog:
             sql: >-
               DELETE FROM collection WHERE type = 'library';
 
+  - changeSet:
+      id: v57.2025-09-11T16:00:00
+      author: johnswanson
+      comment: Create library_sync_log table to track when syncs occur
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: library_sync_log
+      changes:
+        - createTable:
+            tableName: library_sync_log
+            remarks: Track when library syncs occur for detecting unsynced changes
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: sync_type
+                  type: varchar(50)
+                  remarks: Type of sync operation (import, export)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source_branch
+                  type: varchar(255)
+                  remarks: Git branch that was synced from
+                  constraints:
+                    nullable: true
+              - column:
+                  name: target_branch
+                  type: varchar(255)
+                  remarks: Git branch that was synced to
+                  constraints:
+                    nullable: true
+              - column:
+                  name: status
+                  type: varchar(50)
+                  remarks: Status of sync operation (success, error)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: message
+                  type: ${text.type}
+                  remarks: Optional message or error details
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When the sync occurred
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-09-11T16:01:00
+      author: jds
+      comment: Add index on library_sync_log.created_at for efficient sync time queries
+      changes:
+        - createIndex:
+            tableName: library_sync_log
+            indexName: idx_library_sync_log_created_at
+            columns:
+              - column:
+                  name: created_at
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
