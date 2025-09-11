@@ -7,7 +7,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(set! *warn-on-reflection* true)
+(use-fixtures :each (fn [f] (mt/with-premium-features #{:documents} (f))))
 
 (defn- relaxed-re [& s]
   (re-pattern (str "(?s).*" (str/join ".*" s) ".*")))
@@ -50,6 +50,17 @@
             (tiptap [:p
                      "omg is that you? "
                      [:smartLink {:entityId 6 :model "user"}]])))))
+
+;;;
+
+(deftest comments-require-documents-feature
+  (testing "GET /api/ee/comment/"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Document {doc-id :id} {}]
+        (testing "should not return the comments"
+          (mt/user-http-request :crowberto :get 402 "ee/comment/"
+                                :target_type "document"
+                                :target_id doc-id))))))
 
 (deftest basic-comments-test
   (testing "GET /api/ee/comment/"
