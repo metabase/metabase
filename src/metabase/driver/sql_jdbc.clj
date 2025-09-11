@@ -166,7 +166,7 @@
 (defn sql-jdbc-rename-tables-with-tx!
   "Helper function for SQL JDBC drivers that support transactional table renames.
    Drivers should call this directly from their rename-tables!* implementation if they support
-   renaming tables within a transaction."
+   renaming multiple tables within a transaction atomically."
   [driver db-id sorted-rename-map]
   (let [sqls (mapv (fn [[from-table to-table]]
                      (first (sql/format {:alter-table (keyword from-table)
