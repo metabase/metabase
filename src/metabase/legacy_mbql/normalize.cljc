@@ -37,6 +37,7 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
+   [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -393,6 +394,10 @@
   [clause]
   (-> clause normalize-tokens canonicalize-mbql-clauses))
 
+(mu/defn- normalize-fingerprint :- ::lib.schema.metadata.fingerprint/fingerprint
+  [fingerprint :- :map]
+  (lib.normalize/normalize ::lib.schema.metadata.fingerprint/fingerprint fingerprint))
+
 (mu/defn normalize-source-metadata
   "Normalize source/results metadata for a single column."
   [metadata :- :map]
@@ -414,16 +419,10 @@
                                 :unit
                                 :lib/source) (keyword v)
                                :field_ref    (normalize-field-ref v)
-                               :fingerprint  (#?(:clj perf/keywordize-keys :cljs walk/keywordize-keys) v)
+                               :fingerprint  (normalize-fingerprint v)
                                :binning_info (m/update-existing v :binning_strategy keyword)
                                #_else
                                v)]
-                       ;; sanity check
-                       (when (= k :fingerprint)
-                         (when-let [base-type (first (keys (:type v)))]
-                           (assert (isa? base-type :type/*)
-                                   (str "BAD FINGERPRINT! Invalid base-type: " (pr-str base-type) " " (pr-str v)))))
-
                        [k v]))))
         metadata))
 
