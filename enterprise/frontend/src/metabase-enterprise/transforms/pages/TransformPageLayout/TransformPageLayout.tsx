@@ -9,7 +9,12 @@ import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/Admi
 import { useSelector } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
 
-import { getJobListUrl, getRunListUrl, getTransformListUrl } from "../../urls";
+import {
+  getJobListUrl,
+  getPythonLibraryUrl,
+  getRunListUrl,
+  getTransformListUrl,
+} from "../../urls";
 
 type TransformPageLayoutParams = {
   transformId?: string;
@@ -18,17 +23,20 @@ type TransformPageLayoutParams = {
 
 type TransformPageLayoutProps = {
   params: TransformPageLayoutParams;
+  fullWidth?: boolean;
   children?: ReactNode;
 };
 
 export function TransformPageLayout({
   params,
   children,
+  fullWidth,
 }: TransformPageLayoutProps) {
   return (
     <AdminSettingsLayout
       sidebar={<TransformSidebar params={params} />}
       maw="60rem"
+      fullWidth={fullWidth}
     >
       {children}
     </AdminSettingsLayout>
@@ -61,6 +69,11 @@ function TransformSidebar({ params }: TransformSidebarProps) {
         active={pathname?.startsWith(jobListUrl)}
       />
       <AdminNavItem label={t`Runs`} path={getRunListUrl()} icon="list" />
+      <AdminNavItem
+        label={t`Python library`}
+        path={getPythonLibraryUrl()}
+        icon="code_block"
+      />
     </AdminNavWrapper>
   );
 }
