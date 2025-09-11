@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useMount } from "react-use";
 import { match } from "ts-pattern";
 
 import DataReference from "metabase/query_builder/components/dataref/DataReference";
@@ -38,7 +39,7 @@ function NativeQueryEditorSidebar({
   }
 
   return (
-    <Box className={S.sidebar} h="100%" w="40%">
+    <Box className={S.sidebar} h="100%" w="40%" data-testid="editor-sidebar">
       {match({ isSnippetSidebarOpen, isDataReferenceOpen })
         .with({ isSnippetSidebarOpen: true }, () => (
           <EditorSnippetSidebar {...props} />
@@ -57,6 +58,13 @@ function EditorDataReferenceSidebar({
 }: EditorSidebarProps) {
   const [dataReferenceStack, setDataReferenceStack] = useState<any[]>([]);
 
+  useMount(() => {
+    const databaseId = question.databaseId();
+    if (dataReferenceStack.length === 0 && databaseId !== null) {
+      pushDataReferenceStack({ type: "database", item: { id: databaseId } });
+    }
+  });
+
   const pushDataReferenceStack = (ref: any) => {
     setDataReferenceStack([...dataReferenceStack, ref]);
   };
@@ -66,10 +74,6 @@ function EditorDataReferenceSidebar({
   };
 
   const toggleDataReference = () => {
-    const databaseId = question.databaseId();
-    if (dataReferenceStack.length === 0 && databaseId !== null) {
-      pushDataReferenceStack({ type: "database", item: { id: databaseId } });
-    }
     onToggleDataReference();
   };
 
