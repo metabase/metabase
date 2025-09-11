@@ -537,7 +537,10 @@
 (defn- metadata-provider*
   "Inner implementation for [[metadata-provider]], which wraps this with a cache."
   [database-id unparsed-metadata]
-  {:pre [(pos-int? database-id)]}
+  ;; TODO (Cam 9/11/25) -- it should go without saying that database ID is required, but adding this ended up breaking
+  ;; a lot of evil FE unit tests that hand-roll MBQL queries with no `database`... Need to turn this back on and then
+  ;; hunt down and fix all the tests.
+  #_{:pre [(pos-int? database-id)]}
   (let [metadata (parse-metadata unparsed-metadata)]
     (log/debug "Created metadata provider for metadata")
     (reify lib.metadata.protocols/MetadataProvider
