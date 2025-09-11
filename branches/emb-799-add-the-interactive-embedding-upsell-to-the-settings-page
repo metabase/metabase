@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-788-move-embedding-settings-into-its-own-top-level-menu",
-    "hash": "8b9d0f90fd052535e31cceb479688e25a1745af6"
+    "hash": "92ba253c866ea5e2298da8f2a5c8652e882d8262"
   },
   "upstream": {
     "branch": "emb-799-add-the-interactive-embedding-upsell-to-the-settings-page"
