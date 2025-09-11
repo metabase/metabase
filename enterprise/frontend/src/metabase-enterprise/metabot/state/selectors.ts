@@ -3,6 +3,7 @@ import _ from "underscore";
 
 import { getIsEmbedding } from "metabase/selectors/embed";
 import { getLocation } from "metabase/selectors/routing";
+import type { TransformId } from "metabase-types/api";
 
 import {
   FIXED_METABOT_IDS,
@@ -163,6 +164,14 @@ export const getNavigateToPath = createSelector(
 );
 
 export const getMetabotSuggestedTransform = createSelector(
-  getMetabotReactionsState,
-  (reactionsState) => reactionsState.suggestedTransform,
+  [getMetabotReactionsState, (_, transformId?: TransformId) => transformId],
+  (reactionsState, transformId) => {
+    if (!transformId) {
+      return reactionsState.suggestedTransform;
+    }
+
+    return reactionsState.suggestedTransform?.id === transformId
+      ? reactionsState.suggestedTransform
+      : undefined;
+  },
 );

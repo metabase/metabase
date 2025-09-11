@@ -33,6 +33,7 @@ import type {
   CardId,
   Collection,
   DatabaseId,
+  DatasetQuery,
   NativeQuerySnippet,
   ParameterId,
 } from "metabase-types/api";
@@ -62,7 +63,8 @@ type OwnProps = {
   query: NativeQuery;
 
   proposedQuestion?: Question | undefined;
-  clearProposed?: () => void;
+  onRejectProposed?: () => void;
+  onAcceptProposed?: (query: DatasetQuery) => void;
 
   nativeEditorSelectedText?: string;
   modalSnippet?: NativeQuerySnippet;
@@ -245,7 +247,8 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       snippetCollections = [],
       question,
       proposedQuestion,
-      clearProposed,
+      onRejectProposed,
+      onAcceptProposed,
       query,
       readOnly,
       isNativeEditorOpen,
@@ -358,7 +361,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
               />
 
               <Stack m="1rem" gap="md" mt="auto">
-                {proposedQuestion && clearProposed && (
+                {proposedQuestion && onRejectProposed && onAcceptProposed && (
                   <>
                     <Tooltip label={t`Accept proposed changes`} position="top">
                       <Button
@@ -367,11 +370,12 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                         px="0"
                         w="2.5rem"
                         onClick={() => {
+                          // TODO: clean this up so the condition is not needed
                           const proposedQuery =
                             proposedQuestion.legacyNativeQuery();
                           if (proposedQuery) {
                             setDatasetQuery(proposedQuery);
-                            clearProposed();
+                            onAcceptProposed(proposedQuery.datasetQuery());
                           }
                         }}
                       >
@@ -384,7 +388,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                         px="0"
                         variant="filled"
                         bg="danger"
-                        onClick={clearProposed}
+                        onClick={onRejectProposed}
                       >
                         <Icon name="close" />
                       </Button>
