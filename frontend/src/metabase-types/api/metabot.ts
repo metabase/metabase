@@ -6,6 +6,7 @@ import type {
   DatasetQuery,
   PaginationResponse,
   RowValue,
+  SuggestedTransform,
   Transform,
   UnsavedCard,
   Version,
@@ -134,7 +135,7 @@ export type MetabotDocumentInfo = {
   id: number;
 };
 
-export type MetabotTransformInfo = Transform & {
+export type MetabotTransformInfo = (Transform | SuggestedTransform) & {
   type: "transform";
 };
 

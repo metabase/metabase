@@ -38,12 +38,6 @@ export function TransformQueryPage({ params }: TransformQueryPageProps) {
     error,
   } = useGetTransformQuery(transformId ?? skipToken);
 
-  useRegisterMetabotContextProvider(async () => {
-    return transform
-      ? { user_is_viewing: [{ type: "transform", ...transform }] }
-      : {};
-  }, [transform]);
-
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
@@ -74,6 +68,11 @@ export function TransformQueryPageBody({
     (state) => getMetabotSuggestedTransform(state, transform.id) as any,
   ) as ReturnType<typeof getMetabotSuggestedTransform>;
   const proposedQuery = suggestedTransform?.source.query;
+
+  useRegisterMetabotContextProvider(async () => {
+    const viewedTransform = suggestedTransform ?? transform;
+    return { user_is_viewing: [{ type: "transform", ...viewedTransform }] };
+  }, [transform, suggestedTransform]);
 
   const onRejectProposed = () => {
     dispatch(setSuggestedTransform(undefined));
