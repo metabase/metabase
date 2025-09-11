@@ -49,10 +49,10 @@
    table-id              :- ::lib.schema.id/table]
   (lib.metadata.protocols/fields (->metadata-provider metadata-providerable) table-id))
 
-(mu/defn metadatas-for-table :- [:sequential [:or
-                                              ::lib.schema.metadata/column
-                                              ::lib.schema.metadata/metric
-                                              ::lib.schema.metadata/segment]]
+(mu/defn metadatas-for-table :- [:maybe [:sequential [:or
+                                                      ::lib.schema.metadata/column
+                                                      ::lib.schema.metadata/metric
+                                                      ::lib.schema.metadata/segment]]]
   "Return active (non-archived) metadatas associated with a particular Table, either Fields, Metrics, or
    Segments -- `metadata-type` must be one of either `:metadata/column`, `:metadata/metric`, `:metadata/segment`."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
