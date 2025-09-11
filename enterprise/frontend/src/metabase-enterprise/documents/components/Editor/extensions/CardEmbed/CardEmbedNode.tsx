@@ -44,12 +44,6 @@ interface DropZoneProps {
 }
 
 const DropZone = ({ isOver, side, disabled }: DropZoneProps) => {
-  // TODO: disable drop area if card is dragged over itself
-  // const { isOver, setNodeRef } = useDroppable({
-  //   id: `drop-zone-${id}-${side}`,
-  //   disabled,
-  // });
-
   if (disabled) {
     return null;
   }
@@ -185,26 +179,6 @@ export const CardEmbedComponent = memo(
     const { id, name } = node.attrs;
     const dispatch = useDispatch();
     const canWrite = editor.options.editable;
-
-    // // Set up draggable functionality
-    // const {
-    //   attributes,
-    //   listeners,
-    //   setNodeRef: setDraggableRef,
-    //   transform,
-    //   isDragging,
-    // } = useDraggable({
-    //   id: `card-embed-${id}`,
-    //   disabled: !canWrite,
-    // });
-    //
-    // const draggableStyle = transform
-    //   ? {
-    //       transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-    //       opacity: isDragging ? 0.5 : 1,
-    //       zIndex: isDragging ? 1000 : "auto",
-    //     }
-    //   : {};
 
     const dragHandleRef = useRef<HTMLDivElement>(null);
 
