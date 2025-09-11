@@ -836,7 +836,10 @@
   (apply update-field-options clause assoc kvs))
 
 (defn with-temporal-unit
-  "Set the `:temporal-unit` of a `:field` clause to `unit`."
+  "Set the `:temporal-unit` of a `:field` clause to `unit`.
+
+  DEPRECATED -- use [[metabase.lib.core/with-temporal-bucket]] in new code."
+  {:deprecated "0.57.0"}
   [[_ _ {:keys [base-type]} :as clause] unit]
   ;; it doesn't make sense to call this on an `:expression` or `:aggregation`.
   (assert (is-clause? :field clause))

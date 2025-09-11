@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.desugar
   (:require
-   [metabase.lib.filter.desugar :as lib.filter.desugar]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
@@ -12,7 +12,7 @@
   (letfn [(desugar** [x]
             (lib.util.match/replace x
               (clause :guard lib.util/clause?)
-              (lib.filter.desugar/desugar-filter-clause clause)))]
+              (lib/desugar-filter-clause clause)))]
     (merge
      (desugar** (dissoc stage-or-join :joins :stages :lib/stage-metadata :parameters))
      (select-keys stage-or-join [:joins :stages :lib/stage-metadata :parameters]))))

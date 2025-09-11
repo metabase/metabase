@@ -42,6 +42,7 @@
    :cljs
    (def format "Exactly like [[clojure.core/format]] but ClojureScript-friendly." gstring/format))
 
+;;; TODO (Cam 9/8/25) -- overlapping functionality with [[metabase.lib.schema.common/is-clause?]]
 (defn clause?
   "Returns true if this is a clause."
   [clause]
@@ -51,6 +52,7 @@
          (and (map? opts)
               (contains? opts :lib/uuid)))))
 
+;;; TODO (Cam 9/8/25) -- some overlap with [[metabase.lib.dispatch/mbql-clause-type]]
 (defn clause-of-type?
   "Returns true if this is a clause."
   [clause clause-type]
