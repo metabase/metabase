@@ -84,41 +84,51 @@
   [database :- i/DatabaseInstance]
   (sync-util/with-error-handling (format "Error syncing Fields for Database ''%s''" (sync-util/name-for-logging database))
     (let [driver          (driver.u/database->driver database)
-          schemas?        (driver.u/supports? driver :schemas database)
-          fields-metadata (if schemas?
-                            (fetch-metadata/fields-metadata database :schema-names (sync-util/sync-schemas database))
-                            (fetch-metadata/fields-metadata database))]
-      (transduce (comp
-                  (partition-by (juxt :table-name :table-schema))
-                  (map (fn [table-metadata]
-                         (let [{:keys [table-name table-schema]} (first table-metadata)
-                               table   (->> (t2/select :model/Table
-                                                       :db_id (:id database)
-                                                       :%lower.name (t2.util/lower-case-en table-name)
-                                                       :%lower.schema (some-> table-schema t2.util/lower-case-en)
-                                                       {:where sync-util/sync-tables-clause})
-                                            (sort-by (select-best-matching-name table-schema table-name))
-                                            first)
-                               updated (if table
-                                         (try
-                                           ;; TODO: decouple nested field columns sync from field sync. This will allow
-                                           ;; describe-fields to be used for field sync for databases with nested field columns
-                                           ;; Also this should be a driver method, not a sql-jdbc.sync method
-                                           (let [all-metadata (fetch-metadata/include-nested-fields-for-table
-                                                               (set table-metadata)
-                                                               database
-                                                               table)]
-                                             (sync-and-update! database table all-metadata))
-                                           (catch Exception e
-                                             (log/error e)
-                                             0))
-                                         0)]
-                           {:total-fields   (count table-metadata)
-                            :updated-fields updated}))))
-                 (partial merge-with +)
-                 {:total-fields   0
-                  :updated-fields 0}
-                 fields-metadata))))
+          schemas?        (driver.u/supports? driver :schemas database)]
+      (letfn [(sync! [fields-metadata]
+                (transduce (comp
+                            (partition-by (juxt :table-name :table-schema))
+                            (map (fn [table-metadata]
+                                   (let [{:keys [table-name table-schema]} (first table-metadata)
+                                         table   (->> (t2/select :model/Table
+                                                                 :db_id (:id database)
+                                                                 :%lower.name (t2.util/lower-case-en table-name)
+                                                                 :%lower.schema (some-> table-schema t2.util/lower-case-en)
+                                                                 {:where sync-util/sync-tables-clause})
+                                                      (sort-by (select-best-matching-name table-schema table-name))
+                                                      first)
+                                         updated (if table
+                                                   (try
+                                                     ;; TODO: decouple nested field columns sync from field sync. This will allow
+                                                     ;; describe-fields to be used for field sync for databases with nested field columns
+                                                     ;; Also this should be a driver method, not a sql-jdbc.sync method
+                                                     (let [all-metadata (fetch-metadata/include-nested-fields-for-table
+                                                                         (set table-metadata)
+                                                                         database
+                                                                         table)]
+                                                       (sync-and-update! database table all-metadata))
+                                                     (catch Exception e
+                                                       (log/error e)
+                                                       0))
+                                                   0)]
+                                     {:total-fields   (count table-metadata)
+                                      :updated-fields updated}))))
+                           (partial merge-with +)
+                           {:total-fields   0
+                            :updated-fields 0}
+                           fields-metadata))]
+        (if schemas?
+          (transduce (comp
+                      (map (fn [schema]
+                             (log/infof "Fetching field metadata for %s.%s" (:name database) schema)
+                             (fetch-metadata/fields-metadata database
+                                                             :schema-names [schema])))
+                      (map sync!))
+                     (completing (partial merge-with +))
+                     {:total-fields   0
+                      :updated-fields 0}
+                     (sync-util/sync-schemas database))
+          (sync! (fetch-metadata/fields-metadata database)))))))
 
 (mu/defn sync-fields-for-table!
   "Sync the Fields in the Metabase application database for a specific `table`."

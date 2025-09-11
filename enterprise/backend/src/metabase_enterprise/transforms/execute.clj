@@ -19,7 +19,6 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
   (:import
-   (clojure.lang IDeref)
    (java.io Closeable File)
    (java.time Duration)))
 
@@ -168,24 +167,16 @@
       (catch Throwable e
         (log/errorf e "An exception was caught during msg update loop, run-id: %s" run-id)))))
 
-(defn- open-log-thread! ^Closeable [run-id message-log]
-  (let [log-thread-promise (promise)
-        cleanup (fn []
-                  (let [^Thread log-thread (deref log-thread-promise 1000 nil)]
-                    (when-not log-thread (log/fatalf "Log thread reference not bound, run-id: %s" run-id))
-                    (when (.isAlive log-thread)
-                      (.interrupt log-thread)
-                      (when-not (.join log-thread (Duration/ofSeconds 10))
-                        (log/fatalf "Log thread could not be interrupted, run-id: %s" run-id)))))]
-    (u.jvm/in-virtual-thread*
-     (deliver log-thread-promise (Thread/currentThread))
-     (log-loop! run-id message-log))
-    (when-not (deref log-thread-promise 1000 nil) (log/fatalf "Log thread reference not bound, run-id: %s" run-id))
-    (reify
-      IDeref
-      (deref [_] @log-thread-promise)
-      Closeable
-      (close [_] (cleanup)))))
+(defn- open-log-future! ^Closeable [run-id message-log]
+  (let [cleanup (fn [fut]
+                  (future-cancel fut)
+                  (if (= ::timeout (try (deref fut 10000 ::timeout) (catch Throwable _)))
+                    (log/fatalf "Log polling task did not respond to interrupt, run-id: %s" run-id)
+                    (log/debugf "Log polling task done, run-id: %s")))
+        fut     (u.jvm/in-virtual-thread*
+                 (log-loop! run-id message-log))]
+    (reify Closeable
+      (close [_] (cleanup fut)))))
 
 (defn- debug-info-str [{:keys [exit-code events]}]
   (str/join "\n"
@@ -262,7 +253,7 @@
        :output   output})))
 
 (defn- run-python-transform! [{:keys [source] :as transform} db run-id cancel-chan message-log]
-  (with-open [log-thread-ref     (open-log-thread! run-id message-log)
+  (with-open [log-thread-ref     (open-log-future! run-id message-log)
               shared-storage-ref (python-runner/open-s3-shared-storage! (:source-tables source))]
     (let [driver     (:engine db)
           server-url (transforms.settings/python-execution-server-url)
