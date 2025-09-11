@@ -8,6 +8,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]))
 
+(use-fixtures :once #'semantic.tu/once-fixture)
+
 ;; NOTE: isolation tests are absent, in prod there is only one index-metadata
 
 (deftest qualify-index-test

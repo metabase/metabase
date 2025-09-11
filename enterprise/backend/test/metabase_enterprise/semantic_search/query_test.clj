@@ -9,6 +9,8 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(use-fixtures :once #'semantic.tu/once-fixture)
+
 (deftest basic-query-test
   (testing "Simple queries with no filters"
     (mt/with-premium-features #{:semantic-search}

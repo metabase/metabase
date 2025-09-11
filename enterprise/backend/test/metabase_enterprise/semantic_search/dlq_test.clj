@@ -19,6 +19,8 @@
 
 (set! *warn-on-reflection* true)
 
+(use-fixtures :once #'semantic.tu/once-fixture)
+
 (defn- open-dlq! ^Closeable [pgvector index-metadata index-id]
   (semantic.tu/closeable
    (semantic.dlq/create-dlq-table-if-not-exists! pgvector index-metadata index-id)

@@ -31,6 +31,12 @@
 
 (set! *warn-on-reflection* true)
 
+;; Purpose of this fixure is to block running tests if db-url is not set. That's true for enterprise app-db tests in CI.
+(defn once-fixture
+  [f]
+  (when semantic.db.datasource/db-url
+    (f)))
+
 (def default-test-db "my_test_db")
 
 (defn- alt-db-name-url
@@ -247,6 +253,7 @@
 (defn query-index [search-context]
   (:results (semantic.index/query-index (semantic.env/get-pgvector-datasource!) mock-index search-context)))
 
+;; TODO: this should go!!!
 (defn upsert-index! [documents & {:keys [index] :or {index mock-index} :as opts}]
   (semantic.index/upsert-index! (semantic.env/get-pgvector-datasource!) index documents opts))
 

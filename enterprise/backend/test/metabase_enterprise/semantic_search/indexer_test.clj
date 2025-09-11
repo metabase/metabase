@@ -20,6 +20,8 @@
 
 (set! *warn-on-reflection* true)
 
+(use-fixtures :once #'semantic.tu/once-fixture)
+
 (defn- get-metadata-row! [pgvector index-metadata index]
   (jdbc/execute-one! pgvector
                      (sql/format {:select [:*]

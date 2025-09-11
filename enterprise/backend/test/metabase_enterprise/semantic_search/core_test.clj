@@ -13,6 +13,8 @@
    [metabase.search.settings :as search.settings]
    [metabase.test :as mt]))
 
+(use-fixtures :once #'semantic.tu/once-fixture)
+
 (deftest fallback-engine-available-with-semantic-test
   (mt/with-premium-features #{:semantic-search}
     (mt/with-temporary-setting-values [search.settings/search-engine "semantic"]

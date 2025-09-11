@@ -15,6 +15,8 @@
 
 (set! *warn-on-reflection* true)
 
+(use-fixtures :once #'semantic.tu/once-fixture)
+
 (defn- gate-table-contents
   "Query all documents in the gate table, returning them as maps"
   [pgvector gate-table-name]

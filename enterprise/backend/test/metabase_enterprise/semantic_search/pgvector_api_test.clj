@@ -21,6 +21,8 @@
 
 (set! *warn-on-reflection* true)
 
+(use-fixtures :once #'semantic.tu/once-fixture)
+
 ;; NOTE: isolation tests are absent, in prod there is only one index-metadata
 
 (deftest init-semantic-search!-test

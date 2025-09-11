@@ -21,6 +21,8 @@
 
 (set! *warn-on-reflection* true)
 
+(use-fixtures :once #'semantic.tu/once-fixture)
+
 (defn- open-tables! ^Closeable [pgvector index-metadata]
   (semantic.tu/closeable
    (semantic.index-metadata/create-tables-if-not-exists! pgvector index-metadata)

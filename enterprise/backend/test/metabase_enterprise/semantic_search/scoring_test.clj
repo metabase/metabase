@@ -14,6 +14,8 @@
 
 (set! *warn-on-reflection* true)
 
+(use-fixtures :once #'semantic.tu/once-fixture)
+
 (defn- add-doc-defaults
   [doc]
   (merge {:id 123

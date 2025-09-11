@@ -13,6 +13,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]))
 
+(use-fixtures :once #'semantic.tu/once-fixture)
+
 (deftest create-index-table!-test
   (mt/with-premium-features #{:semantic-search}
     (with-open [index-ref (semantic.tu/open-temp-index!)]
