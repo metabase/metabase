@@ -476,7 +476,7 @@ H.describeWithSnowplowEE("document comments", () => {
       .and("have.value", "Lorem ipsum");
 
     cy.get<DocumentId>("@documentId").then((targetId) => {
-      cy.get("body").click(0, 0);
+      cy.findByPlaceholderText("New document").realClick();
       Comments.getDocumentNodeButton({
         targetId,
         childTargetId: PARAGRAPH_ID,
