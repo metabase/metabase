@@ -11,24 +11,38 @@
 (doseq [trait [:metabase/model :hook/timestamped?]]
   (derive :model/PythonLibrary trait))
 
-(t2/define-before-insert :model/PythonLibrary
-  [library]
-  (when (t2/exists? :model/PythonLibrary)
-    (throw (ex-info (tru "Only one Python library can exist at a time")
-                    {:status-code 400})))
-  library)
+(def ^:private allowed-paths
+  "Set of allowed library paths. Currently only 'common' is supported."
+  #{"common"})
 
-(defn get-python-library
-  "Get the Python library."
-  []
-  (t2/select-one :model/PythonLibrary))
+(defn- validate-path!
+  "Validates that the given path is allowed. Throws an exception if not."
+  [path]
+  (when-not (contains? allowed-paths path)
+    (throw (ex-info (tru "Invalid library path. Only ''common'' is currently supported.")
+                    {:status-code 400
+                     :path path
+                     :allowed-paths allowed-paths}))))
+
+(defn get-python-library-by-path
+  "Get the Python library by path."
+  [path]
+  (validate-path! path)
+  (t2/select-one :model/PythonLibrary :path path))
 
 (defn update-python-library-source!
   "Update the Python library source code. Creates a new record if none exists. Returns the updated library."
-  [source]
+  [path source]
+  (validate-path! path)
   (t2/with-transaction [_conn]
-    (if-let [existing (t2/select-one :model/PythonLibrary)]
+    (if-let [existing (t2/select-one :model/PythonLibrary :path path)]
       (do
         (t2/update! :model/PythonLibrary (:id existing) {:source source})
         (t2/select-one :model/PythonLibrary (:id existing)))
-      (t2/insert-returning-instance! :model/PythonLibrary {:source source}))))
+      (try
+        (t2/insert-returning-instance! :model/PythonLibrary {:path path :source source})
+        ;; Handle race condition where another process inserted between select and insert
+        (catch Exception _e
+          (when-let [existing (t2/select-one :model/PythonLibrary :path path)]
+            (t2/update! :model/PythonLibrary (:id existing) {:source source})
+            (t2/select-one :model/PythonLibrary (:id existing))))))))

@@ -1115,6 +1115,14 @@ databaseChangeLog:
                     primaryKey: true
                     primaryKeyName: pk_python_library
               - column:
+                  name: path
+                  type: varchar(254)
+                  remarks: Path identifier for the library
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uk_python_library_path
+              - column:
                   name: source
                   type: ${text.type}
                   remarks: Python source code for user modules

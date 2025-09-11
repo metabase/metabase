@@ -6,21 +6,22 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]))
 
-(api.macros/defendpoint :get "/user-modules/code"
+(api.macros/defendpoint :get "/library/:path"
   "Get the Python library for user modules."
-  [_route-params
+  [{:keys [path]} :- [:map [:path :string]]
    _query-params]
   (api/check-superuser)
-  (python-library/get-python-library))
+  (some-> (python-library/get-python-library-by-path path)
+          (select-keys [:source :path :created_at :updated_at])))
 
-(api.macros/defendpoint :put "/user-modules/code"
+(api.macros/defendpoint :put "/library/:path"
   "Update the Python library source code for user modules."
-  [_route-params
+  [{:keys [path]} :- [:map [:path :string]]
    _query-params
    body :- [:map {:closed true}
-            [:source [:string {:min 0}]]]]
+            [:source :string]]]
   (api/check-superuser)
-  (python-library/update-python-library-source! (:source body)))
+  (python-library/update-python-library-source! path (:source body)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/python-transform` routes."

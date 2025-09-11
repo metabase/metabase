@@ -10,31 +10,47 @@
   (testing "update-python-library-source!"
     (testing "creates new record when none exists"
       (t2/delete! :model/PythonLibrary)
-      (let [library (python-library/update-python-library-source! "def new_func(): return 1")]
-        (is (= "def new_func(): return 1" (:source library)))
-        (is (contains? library :id))
-        (is (contains? library :created_at))
-        (is (contains? library :updated_at)))
+      (is (=? {:source "def new_func(): return 1"
+               :path "common"
+               :id integer?
+               :created_at some?
+               :updated_at some?}
+              (python-library/update-python-library-source! "common" "def new_func(): return 1")))
       (is (= 1 (t2/count :model/PythonLibrary)))
       (is (= "def new_func(): return 1"
              (t2/select-one-fn :source :model/PythonLibrary))))
 
     (testing "updates existing record"
       (is (= 1 (t2/count :model/PythonLibrary)))
-      (let [library (python-library/update-python-library-source! "def updated_func(): return 2")]
-        (is (= "def updated_func(): return 2" (:source library)))
-        (is (contains? library :id))
-        (is (contains? library :created_at))
-        (is (contains? library :updated_at)))
+      (is (=? {:source "def updated_func(): return 2"
+               :path "common"
+               :id integer?
+               :created_at some?
+               :updated_at some?}
+              (python-library/update-python-library-source! "common" "def updated_func(): return 2")))
       (is (= 1 (t2/count :model/PythonLibrary)) "Should not create duplicate")
       (is (= "def updated_func(): return 2"
-             (t2/select-one-fn :source :model/PythonLibrary))))))
+             (t2/select-one-fn :source :model/PythonLibrary))))
 
-(deftest can-have-only-one-python-library-test
-  (testing "before-insert hook prevents multiple libraries"
-    (t2/delete! :model/PythonLibrary)
-    (t2/insert! :model/PythonLibrary {:source "def first(): pass"})
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                          #"Only one Python library can exist at a time"
-                          (t2/insert! :model/PythonLibrary {:source "def second(): pass"})))
-    (is (= 1 (t2/count :model/PythonLibrary)) "Should still have only one library")))
+    (testing "rejects invalid paths"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Invalid library path"
+                            (python-library/update-python-library-source! "invalid-path" "def test(): pass")))
+      (is (= 1 (t2/count :model/PythonLibrary)) "Should not create library with invalid path"))))
+
+(deftest get-python-library-by-path-test
+  (testing "get-python-library-by-path"
+    (testing "returns library when path is valid"
+      (t2/delete! :model/PythonLibrary)
+      (python-library/update-python-library-source! "common" "def test(): pass")
+      (is (=? {:source "def test(): pass"
+               :path "common"
+               :id integer?
+               :created_at some?
+               :updated_at some?}
+              (python-library/get-python-library-by-path "common"))))
+
+    (testing "rejects invalid paths"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Invalid library path"
+                            (python-library/get-python-library-by-path "invalid-path"))))))
