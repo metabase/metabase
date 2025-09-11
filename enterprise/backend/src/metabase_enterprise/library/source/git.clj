@@ -148,6 +148,7 @@
 (defn- branches [{:keys [git]}]
   (->> (call-command (.branchList git))
        (filter #(str/starts-with? (.getName %) "refs/heads/"))
+       (remove #(.isSymbolic %))
        (map #(str/replace-first (.getName %) "refs/heads/" ""))
        sort))
 
@@ -161,9 +162,9 @@
     (catch TransportException _ false)
     (catch GitAPIException _ false)))
 
-(defrecord GitSource [git token]
+(defrecord GitSource [git remote-url token]
   source/LibrarySource
-  (branches [this] (branches this))
+  (branches [source] (branches source))
 
   (list-files [this branch]
     (list-files this branch))

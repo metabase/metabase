@@ -20,6 +20,7 @@
   (u/prog1 (source/set-source! (when (settings/git-sync-url)
                                  (git/->GitSource (git/clone-repository! {:url   (settings/git-sync-url)
                                                                           :token (settings/git-sync-token)})
+                                                  (settings/git-sync-url)
                                                   (settings/git-sync-token))
 
                                  ;(settings/git-sync-url)
