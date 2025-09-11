@@ -56,19 +56,41 @@
       (with-temp-directory dir
         (try
           (sources/load-source! source dir)
-          (let [affected-collection-ids (collection/collection->descendant-ids library-collection)]
-            (when (seq affected-collection-ids)
-              (t2/delete! :model/Collection :id [:in affected-collection-ids]))
-            (doseq [model [:model/Card
+          ;; Load all entities from Git first - this handles creates/updates via entity_id matching
+          (let [load-result (serdes/with-cache
+                              (v2.load/load-metabase! (v2.ingest/ingest-yaml dir)
+                                                      :root-dependency-path [{:id collection/library-entity-id
+                                                                              :model "Collection"}]))
+                ;; Extract entity_ids by model from the :seen paths
+                imported-entities (->> (:seen load-result)
+                                       (map last) ; Get the last element of each path (the entity itself)
+                                       (group-by :model)
+                                       (map (fn [[model entities]]
+                                              [model (set (map :id entities))]))
+                                       (into {}))
+                affected-collection-ids (collection/collection->descendant-ids library-collection)]
+            ;; Now delete any library content that was NOT part of the import
+            (doseq [model [:model/Collection
+                           :model/Card
                            :model/Dashboard
                            :model/NativeQuerySnippet
-                           :model/Pulse
-                           :model/Timeline]]
-              (t2/delete! model :collection_id [:in (cons (u/the-id library-collection) affected-collection-ids)]))
-            (serdes/with-cache
-              (v2.load/load-metabase! (v2.ingest/ingest-yaml dir)
-                                      :root-dependency-path [{:id collection/library-entity-id
-                                                              :model "Collection"}])))
+                           :model/Timeline
+                           :model/Document]
+                    :let [serdes-model (name model)
+                          entity-ids (get imported-entities serdes-model [])]]
+              (if (= model :model/Collection)
+                (when (seq affected-collection-ids)
+                  (t2/delete! :model/Collection
+                              :id [:in affected-collection-ids]
+                              ;; if we didn't sync any, then delete all collections in the library
+                              :entity_id (if (seq entity-ids)
+                                           [:not-in entity-ids]
+                                           :entity_id)))
+                (t2/delete! model
+                            :collection_id [:in (cons (u/the-id library-collection) affected-collection-ids)]
+                            :entity_id (if (seq entity-ids)
+                                         [:not-in entity-ids]
+                                         :entity_id)))))
           (log/info "Successfully reloaded entities from git repository")
           {:status :success
            :message "Successfully reloaded from git repository"}
