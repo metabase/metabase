@@ -6,7 +6,11 @@ import type { SelectionRange } from "metabase/query_builder/components/NativeQue
 import { Center, Flex, Loader, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { DatasetQuery, NativeQuerySnippet } from "metabase-types/api";
+import type {
+  DatasetQuery,
+  NativeQuerySnippet,
+  Transform,
+} from "metabase-types/api";
 
 import { useQueryMetadata } from "../../hooks/use-query-metadata";
 import { useQueryResults } from "../../hooks/use-query-results";
@@ -29,23 +33,27 @@ import {
 } from "./utils";
 
 type QueryEditorProps = {
+  transform?: Transform;
   initialQuery: DatasetQuery;
   proposedQuery?: DatasetQuery;
   isNew?: boolean;
   isSaving?: boolean;
   onSave: (newQuery: DatasetQuery) => void;
   onCancel: () => void;
-  clearProposed?: () => void;
+  onRejectProposed?: () => void;
+  onAcceptProposed?: (query: DatasetQuery) => void;
 };
 
 export function QueryEditor({
   initialQuery,
   proposedQuery,
+  transform,
   isNew = true,
   isSaving = false,
   onSave,
   onCancel,
-  clearProposed,
+  onRejectProposed,
+  onAcceptProposed,
 }: QueryEditorProps) {
   const { question, proposedQuestion, isQueryDirty, setQuestion } =
     useQueryState(initialQuery, proposedQuery);
@@ -58,7 +66,7 @@ export function QueryEditor({
     isResultDirty,
     runQuery,
     cancelQuery,
-  } = useQueryResults(question);
+  } = useQueryResults(question, proposedQuestion);
   const { isNative } = Lib.queryDisplayInfo(question.query());
   const [isShowingNativeQueryPreview, toggleNativeQueryPreview] = useToggle();
   const validationResult = getValidationResult(question.query());
@@ -136,6 +144,7 @@ export function QueryEditor({
     >
       <EditorHeader
         validationResult={validationResult}
+        name={transform?.name}
         isNew={isNew}
         isSaving={isSaving}
         isQueryDirty={isQueryDirty}
@@ -156,7 +165,8 @@ export function QueryEditor({
             onChange={handleChange}
             onRunQuery={runQuery}
             onCancelQuery={cancelQuery}
-            clearProposed={clearProposed}
+            onRejectProposed={onRejectProposed}
+            onAcceptProposed={onAcceptProposed}
             databases={databases?.data ?? []}
             onToggleDataReference={handleToggleDataReference}
             onToggleSnippetSidebar={handleToggleSnippetSidebar}
