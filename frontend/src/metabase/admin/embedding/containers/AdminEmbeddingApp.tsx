@@ -10,7 +10,7 @@ export const AdminEmbeddingApp = ({
   children: React.ReactNode;
 }) => {
   return (
-    <AdminSettingsLayout sidebar={<EmbeddingNav />} maw="80rem">
+    <AdminSettingsLayout sidebar={<EmbeddingNav />}>
       {children}
     </AdminSettingsLayout>
   );
