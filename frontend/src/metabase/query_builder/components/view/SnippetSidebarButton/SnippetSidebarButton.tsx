@@ -21,6 +21,7 @@ export const SnippetSidebarButton = ({
   return (
     <Tooltip label={t`SQL Snippets`}>
       <Box
+        aria-label={t`SQL Snippets`}
         component="a"
         h={size}
         className={cx(className, SnippetSidebarButtonS.ButtonRoot, {
