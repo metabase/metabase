@@ -93,8 +93,7 @@
               (dissoc :lib/type))
           (t2/select-one [:model/Field :id :table_id :semantic_type :base_type :effective_type
                           :coercion_strategy :name :display_name :fingerprint]
-                         :id (data/id table-kw field-kw)))
-        {:field_ref [:field (data/id table-kw field-kw) nil]})
+                         :id (data/id table-kw field-kw))))
        (m/filter-vals some?)))
 
 (defn- expected-column-names

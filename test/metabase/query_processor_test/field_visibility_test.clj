@@ -3,9 +3,10 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
-   [metabase.test.util :as tu]
    [metabase.util :as u]))
 
 ;; make sure that rows where visibility_type = details-only are included and properly marked up
@@ -16,14 +17,16 @@
       mt/cols
       set))
 
-(deftest details-only-fields-test
+(deftest ^:parallel details-only-fields-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "sanity check -- everything should be returned before making changes"
       (is (=? (m/index-by :id (qp.test-util/expected-cols :venues))
               (m/index-by :id (venues-cols-from-query)))))
-
     (testing ":details-only fields should not be returned in normal queries"
-      (tu/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:visibility_type :details-only}
+      (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
+                                        (mt/metadata-provider)
+                                        {:fields [{:id              (mt/id :venues :price)
+                                                   :visibility-type :details-only}]})
         (is (=? (m/index-by :id (for [col (qp.test-util/expected-cols :venues)]
                                   (if (= (mt/id :venues :price) (u/the-id col))
                                     (assoc col :visibility_type :details-only)

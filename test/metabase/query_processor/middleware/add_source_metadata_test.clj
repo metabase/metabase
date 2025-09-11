@@ -23,7 +23,7 @@
   (select-keys
    col
    [:id :table_id :name :display_name :base_type :effective_type :coercion_strategy
-    :semantic_type :unit :fingerprint :settings :field_ref :nfc_path :parent_id]))
+    :semantic_type :unit :fingerprint :settings :nfc_path :parent_id]))
 
 (defn- results-metadata [cols]
   (map results-col cols))
@@ -244,9 +244,7 @@
     (is (=? (lib.tu.macros/mbql-query venues
               {:source-query    {:source-query    {:native "SELECT \"ID\", \"NAME\" FROM \"VENUES\";"}
                                  :source-metadata (venues-source-metadata :id :name)}
-               :source-metadata (let [[id-col name-col] (venues-source-metadata :id :name)]
-                                  [(assoc id-col :field_ref [:field "ID" {:base-type :type/BigInteger}])
-                                   (assoc name-col :field_ref [:field "NAME" {:base-type :type/Text}])])})
+               :source-metadata (venues-source-metadata :id :name)})
             (add-source-metadata
              (lib.tu.macros/mbql-query venues
                {:source-query {:source-query    {:native "SELECT \"ID\", \"NAME\" FROM \"VENUES\";"}
@@ -382,25 +380,3 @@
                                   (dissoc col :field_ref :id))]
             (is (=? expected-metadata
                     (added-metadata (assoc-in query [:query :source-metadata] legacy-metadata))))))))))
-
-(deftest ^:parallel add-correct-metadata-fields-for-deeply-nested-source-queries-test
-  (testing "Make sure we add correct `:fields` from deeply-nested source queries (#14872)"
-    ;; this should return a field literal ref because that's what we used in the query, even if that's not technically
-    ;; correct.
-    (is (= [[:field "TITLE" {:base-type :type/Text}]
-            [:aggregation 0]]
-           (->> (lib.tu.macros/mbql-query orders
-                  {:source-query {:source-query {:source-table $$orders
-                                                 :filter       [:= $id 1]
-                                                 :aggregation  [[:sum $total]]
-                                                 :breakout     [!day.created-at
-                                                                $product-id->products.title
-                                                                $product-id->products.category]}
-                                  :filter       [:> *sum/Float 100]
-                                  :aggregation  [[:sum *sum/Float]]
-                                  :breakout     [*TITLE/Text]}
-                   :filter       [:> *sum/Float 100]})
-                add-source-metadata
-                :query
-                :source-metadata
-                (map :field_ref))))))

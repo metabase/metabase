@@ -20,7 +20,8 @@
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (mu/defn- column-info [query :- ::lib.schema/query {initial-columns :cols}]
-  (result-metadata/returned-columns query initial-columns))
+  (map #(into (sorted-map) %)
+       (result-metadata/returned-columns query initial-columns)))
 
 (deftest ^:parallel col-info-field-ids-test
   (testing "make sure columns are comming back the way we'd expect for :field clauses"
@@ -68,7 +69,7 @@
                   "display-name should include the display name of the FK field (for IMPLICIT JOINS)")
       (is (=? [{:display-name "Category → Name"
                 :source       :fields
-                :field-ref    [:field (meta/id :categories :name) {:join-alias "Category"}]}]
+                :field-ref    [:field (meta/id :categories :name) {:source-field (meta/id :venues :category-id)}]}]
               (column-info
                (lib/query
                 meta/metadata-provider
@@ -743,7 +744,7 @@
       ;; the `:year` bucketing if you used this query in another subsequent query, so the field ref doesn't
       ;; include the unit; however `:unit` is still `:year` so the frontend can use the correct formatting to
       ;; display values of the column.
-      (is (=? [(assoc date-col  :field-ref [:field (meta/id :checkins :date) {}], :unit :year)
+      (is (=? [(assoc date-col  :field-ref [:field (meta/id :checkins :date) nil], :unit :year)
                (assoc count-col :field-ref [:field "count" {:base-type :type/Integer}])]
               (result-metadata/returned-columns
                (lib/query metadata-provider (lib.metadata/card metadata-provider 1))))))))
@@ -912,8 +913,7 @@
                   :display-name                               "Created At: Year"
                   :effective-type                             :type/Integer
                   ;; additional keys in field ref are WRONG
-                  :field-ref                                  (partial = [:field "CREATED_AT" {:base-type     :type/DateTimeWithLocalTZ
-                                                                                               :temporal-unit :year}])
+                  :field-ref                                  [:field (meta/id :orders :created-at) (partial = {:temporal-unit :year})]
                   :id                                         (meta/id :orders :created-at)
                   :inherited-temporal-unit                    :year
                   :name                                       "CREATED_AT"

@@ -1610,6 +1610,53 @@
   [expected actual]
   (=?/=?-diff (seq expected) (seq actual)))
 
+;; NOCOMMIT
+(defn- ->sorted-map [m]
+  (if (instance? clojure.lang.PersistentTreeMap m)
+    m
+    (into (sorted-map) m)))
+
+(defn- walk-sort-maps [form]
+  (clojure.walk/postwalk
+   (fn [form]
+     (cond-> form
+       (map? form) ->sorted-map))
+   form))
+
+;; NOCOMMIT
+(methodical/defmethod =?/=?-diff [clojure.lang.IPersistentMap clojure.lang.IPersistentMap]
+  [expected-map actual-map]
+  (let [expected-map (->sorted-map expected-map)
+        actual-map   (->sorted-map actual-map)]
+    (not-empty (into (sorted-map)
+                     (for [[k expected] expected-map
+                           :let         [actual (get actual-map k (symbol "nil #_\"key is not present.\""))
+                                         diff   (=?/=?-diff expected actual)]
+                           :when        diff]
+                       [k diff])))))
+
+;; NOCOMMIT
+(alter-var-root
+ #'mb.hawk.assert-exprs/=?-report
+ (constantly
+  (fn [message multifn expected actual]
+    (let [diff     (if multifn
+                     (=?/=?-diff* multifn expected actual)
+                     (=?/=?-diff* expected actual))
+          status (if (not diff) :pass :fail)
+          fail? (= status :fail)
+          expected (if fail?
+                     (walk-sort-maps expected)
+                     expected)
+          actual (if fail?
+                     (walk-sort-maps actual)
+                     actual)]
+      {:type     status
+       :message  message
+       :expected expected
+       :actual   actual
+       :diffs    [[actual [diff nil]]]}))))
+
 (defmacro with-prometheus-system!
   "Run tests with a prometheus web server and registry. Provide binding symbols in a tuple of [port system]. Port will
   be bound to the random port used for the metrics endpoint and system will be a [[PrometheusSystem]] which has a

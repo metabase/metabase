@@ -17,7 +17,30 @@
   (filter #(satisfies? metadata.protocols/InvocationTracker %)
           providers))
 
-(defn- metadatas-for-f [f providers metadata-type ids]
+(defn- metadatas [providers {id-set :id, name-set :name, :as metadata-spec}]
+  (if-not (or id-set name-set)
+    (into []
+          (comp (mapcat #(metadata.protocols/metadatas % metadata-spec))
+                (m/distinct-by :id))
+          providers)
+    (let [k (if id-set :id :name)]
+      (loop [[provider & more-providers] providers, unfetched-keys (k metadata-spec), fetched []]
+        (cond
+          (empty? unfetched-keys)
+          fetched
+
+          (not provider)
+          fetched
+
+          :else
+          (let [newly-fetched      (metadata.protocols/metadatas provider (assoc metadata-spec k unfetched-keys))
+                newly-fetched-keys (into #{} (map k) newly-fetched)
+                unfetched-keys     (set/difference unfetched-keys newly-fetched-keys)]
+            (recur more-providers
+                   unfetched-keys
+                   (into fetched newly-fetched))))))))
+
+(defn- cached-metadatas [providers metadata-type ids]
   (loop [[provider & more-providers] providers, unfetched-ids (set ids), fetched []]
     (cond
       (empty? unfetched-ids)
@@ -27,24 +50,12 @@
       fetched
 
       :else
-      (let [newly-fetched     (f provider metadata-type unfetched-ids)
+      (let [newly-fetched     (metadata.protocols/cached-metadatas provider metadata-type unfetched-ids)
             newly-fetched-ids (into #{} (map :id) newly-fetched)
             unfetched-ids     (set/difference unfetched-ids newly-fetched-ids)]
         (recur more-providers
                unfetched-ids
                (into fetched newly-fetched))))))
-
-(defn- metadatas [providers metadata-type ids]
-  (metadatas-for-f metadata.protocols/metadatas providers metadata-type ids))
-
-(defn- cached-metadatas [providers metadata-type ids]
-  (metadatas-for-f metadata.protocols/cached-metadatas
-                   (cached-providers providers)
-                   metadata-type
-                   ids))
-
-(defn- metadatas-by-name [providers metadata-type names]
-  (metadatas-for-f metadata.protocols/metadatas-by-name providers metadata-type names))
 
 (defn- cached-value [metadata-providers k not-found]
   (loop [[cached-provider & more] (cached-providers metadata-providers)]
@@ -72,25 +83,6 @@
   (when-first [provider (cached-providers metadata-providers)]
     (metadata.protocols/store-metadata! provider metadata)))
 
-(defn- tables [metadata-providers]
-  (m/distinct-by :id (mapcat metadata.protocols/tables metadata-providers)))
-
-(defn- metadatas-for-table [metadata-type table-id metadata-providers]
-  (into []
-        (comp
-         (mapcat (fn [provider]
-                   (metadata.protocols/metadatas-for-table provider metadata-type table-id)))
-         (m/distinct-by :id))
-        metadata-providers))
-
-(defn- metadatas-for-card [metadata-type card-id metadata-providers]
-  (into []
-        (comp
-         (mapcat (fn [provider]
-                   (metadata.protocols/metadatas-for-card provider metadata-type card-id)))
-         (m/distinct-by :id))
-        metadata-providers))
-
 (defn- setting [metadata-providers setting-key]
   (some (fn [provider]
           (metadata.protocols/setting provider setting-key))
@@ -100,16 +92,8 @@
   metadata.protocols/MetadataProvider
   (database [_this]
     (some metadata.protocols/database metadata-providers))
-  (metadatas [_this metadata-type ids]
-    (metadatas metadata-providers metadata-type ids))
-  (metadatas-by-name [_this metadata-type names]
-    (metadatas-by-name metadata-providers metadata-type names))
-  (tables [_this]
-    (tables metadata-providers))
-  (metadatas-for-table [_this metadata-type table-id]
-    (metadatas-for-table metadata-type table-id metadata-providers))
-  (metadatas-for-card [_this metadata-type card-id]
-    (metadatas-for-card metadata-type card-id metadata-providers))
+  (metadatas [_this metadata-spec]
+    (metadatas metadata-providers metadata-spec))
   (setting [_this setting-key]
     (setting metadata-providers setting-key))
 

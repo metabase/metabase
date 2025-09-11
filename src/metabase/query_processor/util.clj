@@ -161,32 +161,32 @@
 
 (def ^:private field-options-for-identification
   "Set of FieldOptions that only mattered for identification purposes." ;; base-type is required for field that use name instead of id
-  #{:source-field :join-alias :base-type})
+  #{:source-field :join-alias})
 
 (defn- field-normalizer
   [field]
   (let [[type id-or-name options] (mbql.normalize/normalize-tokens field)]
     [type id-or-name (select-keys options field-options-for-identification)]))
 
+;;; TODO (Cam 9/10/25) -- this logic is all wrong and needs to use Lib instead
 (defn field->field-info
-  "Given a field and result_metadata, return a map of information about the field if result_metadata contains a matched field. "
-  [field result-metadata]
-  (let [[_ttype id-or-name options :as field] (field-normalizer field)]
+  "Given a field ref and result_metadata, return a map of information about the field if result_metadata contains a
+  matched field."
+  [field-ref cols]
+  (let [[_tag id-or-name _options :as field-ref] (field-normalizer field-ref)]
     (or
-      ;; try match field_ref first
+     ;; try match field_ref first
      (first (filter (fn [field-info]
-                      (= field
+                      (= field-ref
                          (-> field-info
                              :field_ref
                              field-normalizer)))
-                    result-metadata))
-      ;; if not match name and base type for aggregation or field with string id
-     (first (filter (fn [field-info]
-                      (and (= (:name field-info)
-                              id-or-name)
-                           (= (:base-type options)
-                              (:base_type field-info))))
-                    result-metadata)))))
+                    cols))
+     ;; if not match name for aggregation or field with string id
+     (first (filter (fn [col]
+                      (= (:name col)
+                         id-or-name))
+                    cols)))))
 
 (def ^:private preserved-keys
   "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging

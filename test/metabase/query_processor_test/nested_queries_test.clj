@@ -654,20 +654,13 @@
                             :breakout     [!year.date]})]
         (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
                                           [source-query])
-          (let [[date-col count-col] (for [col (mt/cols (qp/process-query source-query))]
-                                       (as-> col col
-                                         (assoc col :source :fields)
-                                         (dissoc col :position)
-                                         (m/filter-keys simple-keyword? col)))]
-            ;; since the bucketing is happening in the source query rather than at this level, the field ref should
-            ;; return temporal unit `:default` rather than the upstream bucketing unit. You wouldn't want to re-apply
-            ;; the `:year` bucketing if you used this query in another subsequent query, so the field ref doesn't
-            ;; include the unit; however `:unit` is still `:year` so the frontend can use the correct formatting to
-            ;; display values of the column.
-            (is (=? [(assoc date-col  :field_ref [:field (mt/id :checkins :date) nil], :unit :year)
-                     (assoc count-col :field_ref [:field "count" {:base-type :type/Integer}])]
-                    (mt/cols
-                     (qp/process-query (query-with-source-card 1 lib.schema.id/saved-questions-virtual-database-id)))))))))))
+          (is (=? (for [col (mt/cols (qp/process-query source-query))]
+                    (as-> col col
+                      (assoc col :source :fields)
+                      (dissoc col :position :field_ref)
+                      (m/filter-keys simple-keyword? col)))
+                  (mt/cols
+                   (qp/process-query (query-with-source-card 1 lib.schema.id/saved-questions-virtual-database-id))))))))))
 
 (defn- completed-status [{:keys [status], :as results}]
   (if (= status :completed)
@@ -1076,19 +1069,16 @@
                  [{:name         (mt/format-name "name")
                    :display_name "Name"
                    :id           %name
-                   :field_ref    $name
                    :base_type    :type/Text}
                   {:name         (mt/format-name "name_2")
                    :display_name "c → Name"
                    :id           %categories.name
-                   :field_ref    &c.categories.name
                    :base_type    :type/Text}
                   {:name         "count"
                    :display_name "Count"
-                   :field_ref    [:field "count" {:base-type :type/Integer}]
                    :base_type    (:base_type (qp.test-util/aggregate-col :count))}])
                (for [col (mt/cols results)]
-                 (select-keys col [:name :display_name :id :field_ref :base_type]))))))))
+                 (select-keys col [:name :display_name :id :base_type]))))))))
 
 (deftest ^:parallel remapped-fks-test
   (testing "Should be able to use a question with remapped FK columns as a Saved Question (#10474)"
@@ -1313,26 +1303,6 @@
                         :order-by [[:asc $id]]
                         :limit    2})
             metadata (qp.preprocess/query->expected-cols query)]
-        (testing "x.38.0+: metadata should include `:field_ref`"
-          (is (= (mt/$ids orders
-                   [$id
-                    $user_id
-                    $product_id
-                    $subtotal
-                    $tax
-                    $total
-                    $discount
-                    $created_at
-                    $quantity
-                    &ℙ.products.id
-                    &ℙ.products.ean
-                    &ℙ.products.title
-                    &ℙ.products.category
-                    &ℙ.products.vendor
-                    &ℙ.products.price
-                    &ℙ.products.rating
-                    &ℙ.products.created_at])
-                 (map :field_ref metadata))))
         (testing "\nShould be able to use the query as a source query"
           (letfn [(test-query [query]
                     (is (=? {:status    :completed
