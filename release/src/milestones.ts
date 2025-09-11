@@ -124,13 +124,6 @@ async function getOriginalIssues({
     return [];
   }
 
-  // PRs or issues related to the SDK should not show up in core app milestones
-  // We'll probably revert this when/if we land hosted bundle
-  if (hasLabel(issue, "Embedding/SDK")) {
-    console.log("  Skip an Embedding SDK issue or PR");
-    return [];
-  }
-
   // if this isn't a pull request, we don't need to trace further
   if (!issue.pull_request) {
     console.log('  Found an issue');

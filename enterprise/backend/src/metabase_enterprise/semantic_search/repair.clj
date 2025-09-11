@@ -13,7 +13,7 @@
    [medley.core :as m]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [nano-id.core :as nano-id]
+   [metabase.util.string :as u.str]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]))
 
@@ -93,7 +93,7 @@
   Format: repair_<millis-since-epoch>_<short-id>"
   []
   (let [millis-since-epoch (t/to-millis-from-epoch (t/instant))
-        short-id           (u/lower-case-en (subs (nano-id/nano-id) 0 6))]
+        short-id           (u/lower-case-en (u.str/random-string 6))]
     (format "repair_%d_%s" millis-since-epoch short-id)))
 
 (defn with-repair-table!
