@@ -17,12 +17,22 @@
   (filter #(satisfies? metadata.protocols/InvocationTracker %)
           providers))
 
-(defn- metadatas [providers {id-set :id, name-set :name, :as metadata-spec}]
+(defn- metadatas [providers {metadata-type :lib/type, id-set :id, name-set :name, :as metadata-spec}]
   (if-not (or id-set name-set)
-    (into []
-          (comp (mapcat #(metadata.protocols/metadatas % metadata-spec))
-                (m/distinct-by :id))
-          providers)
+    (when-let [ids (not-empty
+                    (into #{}
+                          (comp (mapcat #(metadata.protocols/metadatas % metadata-spec))
+                                (m/distinct-by :id)
+                                (map :id))
+                          providers))]
+      ;; Once we fetch the combined set of everything from all of the underlying metadata providers, we need to
+      ;; refetch-everything by ID and apply the xform to remove inactive stuff. This is because if something like
+      ;; ORDERS.TAX is inactive in MP 1 but not MP 2, MP 1 won't return it for [[metabase.lib.metadata/fields]] but MP
+      ;; 2 will; we want the MP 1 to shadow the MP 2 version (and remove it from the final results).
+      ;; See [[metabase.lib.metadata.composed-provider-test/deleted-columns-metadata-provider-sanity-check-test]].
+      (into []
+            (metadata.protocols/default-spec-filter-xform metadata-spec)
+            (metadatas providers {:lib/type metadata-type, :id ids})))
     (let [k (if id-set :id :name)]
       (loop [[provider & more-providers] providers, unfetched-keys (k metadata-spec), fetched []]
         (cond
