@@ -13,7 +13,7 @@ import {
   createMockNativeQuerySnippet,
 } from "metabase-types/api/mocks";
 
-import SnippetFormModal from "./SnippetFormModal";
+import { SnippetFormModal } from "./SnippetFormModal";
 
 const TOP_SNIPPETS_FOLDER = {
   id: "root",

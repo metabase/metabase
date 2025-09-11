@@ -20,7 +20,7 @@ import {
   setIsNativeEditorOpen,
   setUIControls,
 } from "metabase/query_builder/actions";
-import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
+import { SnippetFormModal } from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
 import { Flex } from "metabase/ui";
@@ -373,23 +373,25 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
           canSaveSnippets={canSaveSnippets}
         />
 
-        {this.props.modalSnippet && (
-          <Modal onClose={this.props.closeSnippetModal}>
-            <SnippetFormModal
-              snippet={this.props.modalSnippet}
-              onCreate={this.props.insertSnippet}
-              onUpdate={(newSnippet, oldSnippet) => {
-                // get the query instance with the latest Metadata that has the updated snippet
-                const newQuery = this.props.query.updateSnippet(
-                  oldSnippet,
-                  newSnippet,
-                );
-                setDatasetQuery(newQuery);
-              }}
-              onClose={this.props.closeSnippetModal}
-            />
-          </Modal>
-        )}
+        {this.props.modalSnippet &&
+          this.props.insertSnippet &&
+          this.props.closeSnippetModal && (
+            <Modal onClose={this.props.closeSnippetModal}>
+              <SnippetFormModal
+                snippet={this.props.modalSnippet}
+                onCreate={this.props.insertSnippet}
+                onUpdate={(newSnippet, oldSnippet) => {
+                  // get the query instance with the latest Metadata that has the updated snippet
+                  const newQuery = this.props.query.updateSnippet(
+                    oldSnippet,
+                    newSnippet,
+                  );
+                  setDatasetQuery(newQuery);
+                }}
+                onClose={this.props.closeSnippetModal}
+              />
+            </Modal>
+          )}
       </div>
     );
   }

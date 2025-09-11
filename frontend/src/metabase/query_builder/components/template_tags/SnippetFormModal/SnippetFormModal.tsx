@@ -23,7 +23,7 @@ type SnippetModalProps = {
   onClose: () => void;
 };
 
-function SnippetFormModal({
+export function SnippetFormModal({
   snippet,
   onCreate,
   onUpdate,
@@ -88,6 +88,3 @@ function SnippetFormModal({
     </Modal.Root>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default SnippetFormModal;
