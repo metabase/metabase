@@ -13,6 +13,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import (java.io File)
            (java.nio.file Files)
@@ -142,6 +143,24 @@
       {:status 500
        :body {:status "error"
               :message "Unexpected error occurred during reload"}})))
+
+(api.macros/defendpoint :post "/export"
+  "Export the current state of the Library collection to a Source
+
+  This endpoint will:
+  1. Fetch the latest changes from the source
+  2. Create a branch or subdirectory -- depending on source support
+     If no branch is supplied use the configured export branch.
+  3. Export the Library collection via serialization to the branch or subdirectory
+  4. If possible commit the changes
+  5. If possible sync to the source.
+
+  Requires superuser permissions."
+  [_route
+   _query
+   {:keys [branch force-sync]}] :- [:map
+                                    [:branch {:optional true} ms/NonBlankString]
+                                    [:force-sync {:optional true} :boolean]])
 
 (api.macros/defendpoint :get "/source"
   "List items in the source repository"
