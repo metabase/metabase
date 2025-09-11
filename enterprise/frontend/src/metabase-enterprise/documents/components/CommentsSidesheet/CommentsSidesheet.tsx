@@ -232,10 +232,9 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
                 <Discussions
                   childTargetId={childTargetId === "all" ? null : childTargetId}
                   comments={activeComments}
-                  showLastDivider
+                  enableHoverHighlight={childTargetId === "all"}
                   targetId={document.id}
                   targetType="document"
-                  enableHoverHighlight={childTargetId === "all"}
                 />
               )}
 

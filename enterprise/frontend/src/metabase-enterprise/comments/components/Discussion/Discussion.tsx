@@ -13,12 +13,12 @@ import {
 } from "metabase-enterprise/api";
 import { getCommentsUrl } from "metabase-enterprise/comments/utils";
 import { setHoveredChildTargetId } from "metabase-enterprise/documents/documents.slice";
-import type { DocumentContent } from "metabase-types/api";
 import type {
   Comment,
   CommentEntityType,
+  DocumentContent,
   EntityId,
-} from "metabase-types/api/comments";
+} from "metabase-types/api";
 
 import { CommentEditor } from "../CommentEditor";
 
