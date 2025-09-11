@@ -495,7 +495,7 @@ describe("scenarios > admin > databases > exceptions", () => {
     cy.findByTestId("database-form")
       .parent()
       .within(() => {
-        cy.findByText("DATABASE CONNECTION ERROR").should("exist");
+        cy.findByText("DATABASE CONNECTION ERROR").should("be.visible");
       });
   });
 
@@ -528,7 +528,7 @@ describe("scenarios > admin > databases > exceptions", () => {
         cy.findByText("DATABASE CONNECTION ERROR").should("not.exist");
         cy.findByText(
           /Make sure your Host and Port settings are correct/,
-        ).should("exist");
+        ).should("be.visible");
       });
   });
 
