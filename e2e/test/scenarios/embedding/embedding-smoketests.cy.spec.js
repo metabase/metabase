@@ -308,20 +308,40 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       .findByRole("link", { name: /Static/ })
       .should("have.attr", "href", "/admin/embedding/static");
 
-    cy.log("Verify sidebar does not contain interactive embedding");
+    cy.log("Verify sidebar contains interactive embedding");
     cy.findByTestId("admin-layout-sidebar")
       .findByRole("link", { name: /Interactive/ })
-      .should("not.exist");
+      .should("have.attr", "href", "/admin/embedding/interactive");
 
     cy.log("Verify sidebar does not contain setup guide");
     cy.findByTestId("admin-layout-sidebar")
-      .findByRole("link", { name: /Setup/ })
+      .findByRole("link", { name: /Setup guide/ })
       .should("not.exist");
 
-    cy.log("Verify upsell icon is present in sidebar");
+    cy.log("Verify 2 upsell icons are present in sidebar");
     cy.findByTestId("admin-layout-sidebar")
-      .findByLabelText("gem icon")
-      .should("exist");
+      .findAllByLabelText("gem icon")
+      .should("have.length", 2);
+  });
+
+  it("should show interactive embedding upsell", () => {
+    cy.visit("/admin/embedding/interactive");
+
+    mainPage().within(() => {
+      cy.findByRole("heading", { name: "Interactive embedding" }).should(
+        "be.visible",
+      );
+
+      cy.log("upsell gem icon should be visible");
+      cy.findByLabelText("gem icon").should("be.visible");
+
+      cy.findByRole("link", { name: /Check out our Quickstart/i })
+        .should("be.visible")
+        .and("have.attr", "href")
+        .and("contain", "interactive-embedding-quick-start-guide");
+
+      cy.findByRole("link", { name: "Try for free" }).should("be.visible");
+    });
   });
 });
 
