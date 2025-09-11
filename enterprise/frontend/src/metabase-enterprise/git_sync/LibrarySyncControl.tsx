@@ -7,6 +7,7 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useSetting } from "metabase/common/hooks";
 import {
   Alert,
+  Anchor,
   Autocomplete,
   Box,
   Button,
@@ -22,6 +23,8 @@ import {
   useGetUnsyncedChangesQuery,
   useImportGitMutation,
 } from "metabase-enterprise/api";
+
+import { UnsyncedChangesModal } from "./UnsyncedChangesModal";
 
 const SAMPLE_BRANCHES = [
   "main",
@@ -40,6 +43,8 @@ export function LibrarySyncControl() {
   const [importGit, { isLoading: isImporting }] = useImportGitMutation();
   const [exportGit, { isLoading: isExporting }] = useExportGitMutation();
   const [showImportConfirmation, setShowImportConfirmation] = useState(false);
+  const [showUnsyncedChangesModal, setShowUnsyncedChangesModal] =
+    useState(false);
   const importButtonRef = useRef<{ cancel: () => void } | null>(null);
   const promiseRef = useRef<{
     resolve: (value?: unknown | PromiseLike<unknown>) => void;
@@ -51,13 +56,16 @@ export function LibrarySyncControl() {
   const allowEdit = useSetting("git-sync-allow-edit");
   const gitSyncConfigured = useSetting("git-sync-configured");
 
-  const { data: unsyncedChanges, isLoading: isCheckingUnsynced } =
-    useGetUnsyncedChangesQuery(undefined, {
-      skip: !gitSyncConfigured,
-      refetchOnMountOrArgChange: true,
-      refetchOnFocus: true,
-      refetchOnReconnect: true,
-    });
+  const {
+    data: unsyncedChanges,
+    isLoading: isCheckingUnsynced,
+    refetch: refetchUnsyncedChanges,
+  } = useGetUnsyncedChangesQuery(undefined, {
+    skip: !gitSyncConfigured,
+    refetchOnMountOrArgChange: true,
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
+  });
 
   const hasUnsyncedChanges =
     unsyncedChanges?.has_unsynced_changes &&
@@ -95,9 +103,18 @@ export function LibrarySyncControl() {
     promiseRef.current = null;
   };
 
+  const handlePopoverOpenChange = (opened: boolean) => {
+    if (opened && gitSyncConfigured) {
+      refetchUnsyncedChanges();
+    }
+  };
+
   return (
     <>
-      <Popover closeOnClickOutside={false}>
+      <Popover
+        closeOnClickOutside={false}
+        onOpenChange={handlePopoverOpenChange}
+      >
         <Popover.Target>
           <Button variant="subtle" leftSection={<Icon name="sync" />} />
         </Popover.Target>
@@ -109,7 +126,21 @@ export function LibrarySyncControl() {
                 icon={<Icon name="warning" />}
                 title={t`Unsynced changes detected`}
               >
-                {t`You have ${unsyncedChanges?.unsynced_counts?.total} unsynced changes. Importing will overwrite these changes.`}
+                <Stack gap="sm">
+                  <Text>
+                    {t`You have ${unsyncedChanges?.unsynced_counts?.total} unsynced changes. Importing will overwrite these changes.`}
+                  </Text>
+                  {unsyncedChanges?.entities && (
+                    <Anchor
+                      onClick={() => setShowUnsyncedChangesModal(true)}
+                      c="text"
+                      size="sm"
+                      style={{ cursor: "pointer" }}
+                    >
+                      {t`View affected items`}
+                    </Anchor>
+                  )}
+                </Stack>
               </Alert>
             )}
             <Flex gap="md" align="end">
@@ -188,6 +219,15 @@ export function LibrarySyncControl() {
         confirmButtonText={t`Import and overwrite`}
         closeButtonText={t`Cancel`}
       />
+
+      {unsyncedChanges?.entities && (
+        <UnsyncedChangesModal
+          opened={showUnsyncedChangesModal}
+          onClose={() => setShowUnsyncedChangesModal(false)}
+          entities={unsyncedChanges.entities}
+          totalCount={unsyncedChanges?.unsynced_counts?.total ?? 0}
+        />
+      )}
     </>
   );
 }

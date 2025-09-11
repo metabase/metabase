@@ -19,6 +19,25 @@ export type GitFileContent = {
   entity?: Transform;
 };
 
+export type UnsyncedEntity = {
+  id: number;
+  name: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string | null;
+  model:
+    | "collection"
+    | "card"
+    | "dashboard"
+    | "snippet"
+    | "timeline"
+    | "document";
+  collection_id?: number;
+  authority_level?: "official" | null;
+  display?: string;
+  query_type?: string;
+};
+
 export type UnsyncedChangesResponse = {
   has_unsynced_changes: boolean;
   last_sync_at: string | null;
@@ -31,6 +50,7 @@ export type UnsyncedChangesResponse = {
     documents: number;
     total: number;
   };
+  entities?: UnsyncedEntity[];
   message?: string;
 };
 

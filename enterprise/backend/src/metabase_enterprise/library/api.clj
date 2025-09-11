@@ -41,17 +41,17 @@
       (try
         (git/fetch! source)
         ;; Load all entities from Git first - this handles creates/updates via entity_id matching
-        (let [load-result #p (serdes/with-cache
-                               (v2.load/load-metabase! (source/ingestable-source source (or branch (settings/git-sync-import-branch)))
-                                                       :root-dependency-path [{:id collection/library-entity-id
-                                                                               :model "Collection"}]))
+        (let [load-result (serdes/with-cache
+                            (v2.load/load-metabase! (source/ingestable-source source (or branch (settings/git-sync-import-branch)))
+                                                    :root-dependency-path [{:id collection/library-entity-id
+                                                                            :model "Collection"}]))
               ;; Extract entity_ids by model from the :seen paths
-              imported-entities #p (->> (:seen load-result)
-                                        (map last) ; Get the last element of each path (the entity itself)
-                                        (group-by :model)
-                                        (map (fn [[model entities]]
-                                               [model (set (map :id entities))]))
-                                        (into {}))
+              imported-entities (->> (:seen load-result)
+                                     (map last) ; Get the last element of each path (the entity itself)
+                                     (group-by :model)
+                                     (map (fn [[model entities]]
+                                            [model (set (map :id entities))]))
+                                     (into {}))
               affected-collection-ids (collection/collection->descendant-ids library-collection)]
           ;; Now delete any library content that was NOT part of the import
           (doseq [model [:model/Collection
@@ -144,63 +144,69 @@
                                           :status "success"
                                           {:order-by [[:created_at :desc]]})
           last-sync-time (:created_at most-recent-sync)
-          ;; Get all descendant collection IDs
           library-collection-ids (collection/collection->descendant-ids library-collection)
           all-library-collection-ids (cons (u/the-id library-collection) library-collection-ids)]
       (if last-sync-time
-        ;; Check if any library content was created/updated after last sync
-        (let [unsynced-collections (t2/count :model/Collection
+        (let [unsynced-collections (t2/select [:model/Collection :id :name :created_at :authority_level]
+                                              {:where
+                                               [:and
+                                                [:in :id all-library-collection-ids]
+                                                [:> :created_at last-sync-time]]})
+              unsynced-cards (t2/select [:model/Card :id :name :description :created_at :updated_at :collection_id :display :query_type]
+                                        {:where
+                                         [:and
+                                          [:in :collection_id all-library-collection-ids]
+                                          [:or
+                                           [:> :created_at last-sync-time]
+                                           [:> :updated_at last-sync-time]]]})
+              unsynced-dashboards (t2/select [:model/Dashboard :id :name :description :created_at :updated_at :collection_id]
                                              {:where
                                               [:and
-                                               [:in :id all-library-collection-ids]
-                                               ;; Collections don't have an `updated_at` so we'll need a different approach here, or add it :facepalm:
-                                               [:> :created_at last-sync-time]]})
-              unsynced-cards (t2/count :model/Card
-                                       {:where
-                                        [:and
-                                         [:in :collection_id all-library-collection-ids]
-                                         [:or
-                                          [:> :created_at last-sync-time]
-                                          [:> :updated_at last-sync-time]]]})
-              unsynced-dashboards (t2/count :model/Dashboard
+                                               [:in :collection_id all-library-collection-ids]
+                                               [:or
+                                                [:> :created_at last-sync-time]
+                                                [:> :updated_at last-sync-time]]]})
+              unsynced-snippets (t2/select [:model/NativeQuerySnippet :id :name :created_at :updated_at :collection_id]
+                                           {:where
+                                            [:and
+                                             [:in :collection_id all-library-collection-ids]
+                                             [:or
+                                              [:> :created_at last-sync-time]
+                                              [:> :updated_at last-sync-time]]]})
+              unsynced-timelines (t2/select [:model/Timeline :id :name :created_at :updated_at :collection_id]
                                             {:where
                                              [:and
                                               [:in :collection_id all-library-collection-ids]
                                               [:or
                                                [:> :created_at last-sync-time]
                                                [:> :updated_at last-sync-time]]]})
-              unsynced-snippets (t2/count :model/NativeQuerySnippet
-                                          {:where
-                                           [:and
-                                            [:in :collection_id all-library-collection-ids]
-                                            [:or
-                                             [:> :created_at last-sync-time]
-                                             [:> :updated_at last-sync-time]]]})
-              unsynced-timelines (t2/count :model/Timeline
-                                           {:where
-                                            [:and
-                                             [:in :collection_id all-library-collection-ids]
-                                             [:or
-                                              [:> :created_at last-sync-time]
-                                              [:> :updated_at last-sync-time]]]})
-              unsynced-documents (t2/count :model/Document
-                                           {:where
-                                            [:and
-                                             [:in :collection_id all-library-collection-ids]
-                                             [:or
-                                              [:> :created_at last-sync-time]
-                                              [:> :updated_at last-sync-time]]]})
-              total-unsynced (+ unsynced-collections unsynced-cards unsynced-dashboards
-                                unsynced-snippets unsynced-timelines unsynced-documents)]
+              unsynced-documents (t2/select [:model/Document :id :name :created_at :updated_at :collection_id]
+                                            {:where
+                                             [:and
+                                              [:in :collection_id all-library-collection-ids]
+                                              [:or
+                                               [:> :created_at last-sync-time]
+                                               [:> :updated_at last-sync-time]]]})
+              enriched-collections (map #(assoc % :model "collection" :updated_at nil :description nil) unsynced-collections)
+              enriched-cards (map #(assoc % :model "card") unsynced-cards)
+              enriched-dashboards (map #(assoc % :model "dashboard") unsynced-dashboards)
+              enriched-snippets (map #(assoc % :model "snippet" :description nil) unsynced-snippets)
+              enriched-timelines (map #(assoc % :model "timeline" :description nil) unsynced-timelines)
+              enriched-documents (map #(assoc % :model "document" :description nil) unsynced-documents)
+              all-entities (concat enriched-collections enriched-cards enriched-dashboards
+                                   enriched-snippets enriched-timelines enriched-documents)
+              sorted-entities (sort-by #(or (:updated_at %) (:created_at %)) #(compare %2 %1) all-entities)
+              total-unsynced (count all-entities)]
           {:has_unsynced_changes (> total-unsynced 0)
            :last_sync_at last-sync-time
-           :unsynced_counts {:collections unsynced-collections
-                             :cards unsynced-cards
-                             :dashboards unsynced-dashboards
-                             :snippets unsynced-snippets
-                             :timelines unsynced-timelines
-                             :documents unsynced-documents
-                             :total total-unsynced}})
+           :unsynced_counts {:collections (count unsynced-collections)
+                             :cards (count unsynced-cards)
+                             :dashboards (count unsynced-dashboards)
+                             :snippets (count unsynced-snippets)
+                             :timelines (count unsynced-timelines)
+                             :documents (count unsynced-documents)
+                             :total total-unsynced}
+           :entities sorted-entities})
         ;; No successful sync found - everything is unsynced
         {:has_unsynced_changes true
          :last_sync_at nil
