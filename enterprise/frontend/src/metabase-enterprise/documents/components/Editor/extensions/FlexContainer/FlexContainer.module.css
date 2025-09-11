@@ -6,7 +6,6 @@
   position: relative;
   max-width: 900px;
   height: 100%;
-  outline: 2px solid var(--mb-color-brand);
 }
 
 .flexContainer.selected {
@@ -27,6 +26,10 @@
   width: 100%;
   height: 100%;
   box-sizing: border-box;
+}
+
+.flexContent :global(.node-cardEmbed) :global(.editor-style-boundary) {
+  margin: 0;
 }
 
 /* Ensure CardEmbed nodes within flex container take appropriate space */

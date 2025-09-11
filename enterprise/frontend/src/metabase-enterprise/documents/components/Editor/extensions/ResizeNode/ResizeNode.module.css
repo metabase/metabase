@@ -12,12 +12,11 @@
   }
 
   height: 100%;
-  padding-bottom: 1rem;
 }
 
 .dragContainer {
   position: absolute;
-  bottom: -0.375rem;
+  bottom: -0.75rem;
   width: 100%;
   opacity: 0;
   transition: opacity 150ms ease;
@@ -25,8 +24,8 @@
 
 .dragHandle {
   background-color: var(--mb-color-border);
-  height: 0.75rem;
-  width: 10rem;
+  height: 0.25rem;
+  width: 4rem;
   cursor: pointer;
   z-index: 10;
   border-radius: var(--default-border-radius);
