@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [metabase-enterprise.transforms.api.transform-job]
    [metabase-enterprise.transforms.api.transform-tag]
-   [metabase-enterprise.transforms.canceling :as trasnforms.canceling]
+   [metabase-enterprise.transforms.canceling :as transforms.canceling]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.models.transform :as transform.model]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
@@ -230,7 +230,7 @@
         run (api/check-404 (transform-run/running-run-for-transform-id id))]
     (transform-run-cancelation/mark-cancel-started-run! (:id run))
     (when (transforms.util/python-transform? transform)
-      (trasnforms.canceling/cancel-run! (:id run))))
+      (transforms.canceling/cancel-run! (:id run))))
   nil)
 
 (api.macros/defendpoint :post "/:id/run"
@@ -274,7 +274,7 @@
   (api/check-superuser)
   (let [run-id python-test-run-id
         cancel-chan (a/promise-chan)]
-    (trasnforms.canceling/chan-start-run! run-id cancel-chan)
+    (transforms.canceling/chan-start-run! run-id cancel-chan)
     (try
       (let [{:keys [response output events]} (transforms.execute/test-python-transform! (:code body) (:tables body) run-id cancel-chan)
             {:keys [body status]} response]
