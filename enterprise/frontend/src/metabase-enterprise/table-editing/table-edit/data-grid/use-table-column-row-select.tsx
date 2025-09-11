@@ -52,14 +52,19 @@ export function getRowSelectColumn({
         />
       </Flex>
     ),
-    cell: ({ row }: { row: Row<RowValues> }) => (
+    cell: ({
+      row,
+      table,
+    }: {
+      row: Row<RowValues>;
+      table: Table<RowValues>;
+    }) => (
       <BaseCell className={CellS.cell}>
         <Group align="center" justify="flex-start" h="100%">
           <Checkbox
             size={rem(16)}
             checked={row.getIsSelected()}
             disabled={!row.getCanSelect()}
-            indeterminate={row.getIsSomeSelected()}
             onChange={row.getToggleSelectedHandler()}
             data-testid="row-select-checkbox"
             styles={{
@@ -69,14 +74,17 @@ export function getRowSelectColumn({
             }}
           />
 
-          <Tooltip label="Edit record">
-            <Icon
-              name="pencil"
-              data-testid="row-edit-icon"
-              className={S.pencilIcon}
-              onClick={() => onRowEditClick(row.index)}
-            />
-          </Tooltip>
+          {/* Only show the edit icon when no rows are selected */}
+          {!table.getIsSomeRowsSelected() && !table.getIsAllRowsSelected() && (
+            <Tooltip label="Edit record">
+              <Icon
+                name="pencil"
+                data-testid="row-edit-icon"
+                className={S.pencilIcon}
+                onClick={() => onRowEditClick(row.index)}
+              />
+            </Tooltip>
+          )}
         </Group>
       </BaseCell>
     ),

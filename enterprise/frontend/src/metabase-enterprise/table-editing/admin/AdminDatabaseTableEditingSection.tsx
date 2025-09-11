@@ -65,7 +65,7 @@ export function AdminDatabaseTableEditingSection({
         settings: { [DATABASE_TABLE_EDITING_SETTING]: enabled },
       });
     } catch (err) {
-      setError(getResponseErrorMessage(err) || t`An error occurred`);
+      setError(getResponseErrorMessageReason(err) || t`An error occurred`);
     }
   };
 
@@ -111,4 +111,20 @@ export function AdminDatabaseTableEditingSection({
       </Box>
     </DatabaseInfoSection>
   );
+}
+
+function getResponseErrorMessageReason(error: unknown): string | undefined {
+  if (
+    error &&
+    typeof error === "object" &&
+    "data" in error &&
+    typeof error.data === "object" &&
+    error.data &&
+    "reasons" in error.data &&
+    Array.isArray(error.data.reasons)
+  ) {
+    return error.data.reasons[0]?.message ?? undefined;
+  }
+
+  return getResponseErrorMessage(error);
 }
