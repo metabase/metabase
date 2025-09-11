@@ -187,7 +187,7 @@ export function QueryEditor({
           onToggleDataReference={toggleDataReference}
           onToggleSnippetSidebar={toggleSnippetSidebar}
           onChangeModalSnippet={setModalSnippet}
-          insertSnippet={handleInsertSnippet}
+          onInsertSnippet={handleInsertSnippet}
         />
       </Flex>
     </Stack>

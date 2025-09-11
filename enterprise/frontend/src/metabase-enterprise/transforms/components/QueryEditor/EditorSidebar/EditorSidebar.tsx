@@ -18,7 +18,7 @@ type EditorSidebarProps = {
   onToggleDataReference: () => void;
   onToggleSnippetSidebar: () => void;
   onChangeModalSnippet: (snippet: NativeQuerySnippet) => void;
-  insertSnippet: (snippet: NativeQuerySnippet) => void;
+  onInsertSnippet: (snippet: NativeQuerySnippet) => void;
 };
 
 export function EditorSidebar(props: EditorSidebarProps) {
@@ -90,7 +90,7 @@ function EditorDataReferenceSidebar({
 function EditorSnippetSidebar({
   onToggleSnippetSidebar,
   onChangeModalSnippet,
-  insertSnippet,
+  onInsertSnippet,
 }: EditorSidebarProps) {
   return (
     <SnippetSidebar
@@ -98,7 +98,7 @@ function EditorSnippetSidebar({
       setModalSnippet={onChangeModalSnippet}
       openSnippetModalWithSelectedText={onChangeModalSnippet}
       snippetCollectionId={null}
-      insertSnippet={insertSnippet}
+      insertSnippet={onInsertSnippet}
     />
   );
 }
