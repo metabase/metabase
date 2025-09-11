@@ -3,14 +3,14 @@
    [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.api :as semantic.api]
-   [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
-   [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]))
+
+(use-fixtures :once #'semantic.tu/once-fixture)
 
 (deftest status-endpoint-test
   (testing "GET /api/ee/semantic-search/status"

@@ -19,6 +19,8 @@
 
 (set! *warn-on-reflection* true)
 
+(use-fixtures :once #'semantic.tu/once-fixture)
+
 (defn- create-test-index
   "Create a test index object with the given table name and embedding model."
   [table-name {:keys [provider model-name vector-dimensions]}]
