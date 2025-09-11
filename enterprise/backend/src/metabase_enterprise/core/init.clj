@@ -10,6 +10,7 @@
    [metabase-enterprise.advanced-config.init]
    [metabase-enterprise.audit-app.init]
    [metabase-enterprise.cache.init]
+   [metabase-enterprise.comments.init]
    [metabase-enterprise.database-replication.init]
    [metabase-enterprise.documents.init]
    [metabase-enterprise.gsheets.init]
