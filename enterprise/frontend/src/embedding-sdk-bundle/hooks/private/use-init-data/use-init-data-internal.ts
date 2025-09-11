@@ -23,6 +23,7 @@ const registerVisualizationsOnce = _.once(registerVisualizations);
 
 interface InitDataLoaderParameters {
   reduxStore: SdkStore;
+  isStatic: boolean;
   authConfig: MetabaseAuthConfig;
 }
 
@@ -42,12 +43,14 @@ export const useInitData = () => {
 
   useInitDataInternal({
     reduxStore,
+    isStatic: false,
     authConfig,
   });
 };
 
 export const useInitDataInternal = ({
   reduxStore,
+  isStatic,
   authConfig,
 }: InitDataLoaderParameters) => {
   const dispatch = reduxStore.dispatch;
@@ -97,7 +100,7 @@ export const useInitDataInternal = ({
   }, [authConfig.fetchRequestToken, fetchRefreshTokenFnFromStore, dispatch]);
 
   useMount(function initializeData() {
-    if (isAuthUninitialized()) {
+    if (!isStatic && isAuthUninitialized()) {
       dispatch(initAuth(authConfig));
     }
   });

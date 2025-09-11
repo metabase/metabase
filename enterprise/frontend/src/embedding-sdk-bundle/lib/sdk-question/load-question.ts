@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { getIsStatic } from "embedding-sdk-bundle/store/selectors";
 import type { LoadSdkQuestionParams } from "embedding-sdk-bundle/types/question";
 import { resolveCards } from "metabase/query_builder/actions";
 import { getParameterValuesForQuestion } from "metabase/query_builder/actions/core/parameterUtils";
@@ -30,7 +31,12 @@ export const loadQuestionSdk =
       deserializedCard,
     });
 
-    await dispatch(loadMetadataForCard(card));
+    const isStatic = getIsStatic(getState());
+
+    if (!isStatic) {
+      await dispatch(loadMetadataForCard(card));
+    }
+
     const metadata = getMetadata(getState());
 
     const originalQuestion =

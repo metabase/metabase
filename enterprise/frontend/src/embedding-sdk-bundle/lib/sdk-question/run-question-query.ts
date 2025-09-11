@@ -7,6 +7,7 @@ import type Question from "metabase-lib/v1/Question";
 
 interface RunQuestionQueryParams {
   question: Question;
+  isStaticQuestion: boolean;
   originalQuestion?: Question;
   cancelDeferred?: Deferred;
 }
@@ -14,7 +15,7 @@ interface RunQuestionQueryParams {
 export async function runQuestionQuerySdk(
   params: RunQuestionQueryParams,
 ): Promise<SdkQuestionState> {
-  let { question, originalQuestion, cancelDeferred } = params;
+  let { question, isStaticQuestion, originalQuestion, cancelDeferred } = params;
 
   if (question.isSaved()) {
     const type = question.type();
@@ -30,7 +31,7 @@ export async function runQuestionQuerySdk(
 
   let queryResults;
 
-  if (shouldRunCardQuery(question)) {
+  if (shouldRunCardQuery(question, isStaticQuestion)) {
     queryResults = await runQuestionQuery(question, {
       cancelDeferred,
       ignoreCache: false,
@@ -50,7 +51,15 @@ export async function runQuestionQuerySdk(
   return { question, queryResults };
 }
 
-export function shouldRunCardQuery(question: Question): boolean {
+export function shouldRunCardQuery(
+  question: Question,
+  isStaticQuestion: boolean,
+): boolean {
+  // TODO: investigate why this is needed
+  if (isStaticQuestion) {
+    return true;
+  }
+
   const query = question.query();
   const { isNative } = Lib.queryDisplayInfo(query);
 
