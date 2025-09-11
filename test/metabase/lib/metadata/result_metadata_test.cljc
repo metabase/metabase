@@ -201,7 +201,7 @@
                                 (lib/with-fields [(lib.metadata/field metadata-provider 3)]))]
       (is (=? {:table-id          (meta/id :venues)
                :name              "grandparent.parent.child"
-               :field-ref         [:field 3 {:base-type :type/Text}]
+               :field-ref         [:field 3 nil]
                :parent-id         2
                :id                3
                :visibility-type   :normal
