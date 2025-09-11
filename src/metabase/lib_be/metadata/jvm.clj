@@ -394,7 +394,7 @@
 (defn- card-id-key [metadata-type]
     ;; types not in the case statement do not support Card ID
   (case metadata-type
-    :metadata/metric :id))
+    :metadata/metric :source_card_id))
 
 (defn- active-only-honeysql-filter [metadata-type]
   (case metadata-type
@@ -425,20 +425,18 @@
   "This should match [[metabase.lib.metadata.protocols/default-spec-filter-xform]] as closely as possible."
   [database-id
    {metadata-type :lib/type, id-set :id, name-set :name, :keys [table-id card-id], :as _metadata-spec}]
-  (let [database-id-key   (db-id-key metadata-type)
-        active-only?      (not (or id-set name-set))
-        metric?           (= metadata-type :metadata/metric)
-        metric-for-table? (and metric?
-                               table-id)
-        where-clauses     (cond-> []
-                            database-id-key   (conj [:= database-id-key database-id])
-                            id-set            (conj [:in (id-key metadata-type) id-set])
-                            name-set          (conj [:in (name-key metadata-type) name-set])
-                            table-id          (conj [:= (table-id-key metadata-type) table-id])
-                            card-id           (conj [:= (card-id-key metadata-type) card-id])
-                            active-only?      (conj (active-only-honeysql-filter metadata-type))
-                            metric?           (conj [:= :type "metric"])
-                            metric-for-table? (conj [:= :source_card_id nil]))]
+  (let [database-id-key (db-id-key metadata-type)
+        active-only?    (not (or id-set name-set))
+        metric?         (= metadata-type :metadata/metric)
+        where-clauses   (cond-> []
+                          database-id-key        (conj [:= database-id-key database-id])
+                          id-set                 (conj [:in (id-key metadata-type) id-set])
+                          name-set               (conj [:in (name-key metadata-type) name-set])
+                          table-id               (conj [:= (table-id-key metadata-type) table-id])
+                          card-id                (conj [:= (card-id-key metadata-type) card-id])
+                          active-only?           (conj (active-only-honeysql-filter metadata-type))
+                          metric?                (conj [:= :type "metric"])
+                          (and metric? table-id) (conj [:= :source_card_id nil]))]
     (reduce
      sql.helpers/where
      {}

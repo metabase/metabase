@@ -54,39 +54,39 @@
   This should match [[metabase.lib-be.metadata.jvm/metadata-spec->honey-sql]] as closely as
   possible."
   [{metadata-type :lib/type, id-set :id, name-set :name, :keys [table-id card-id], :as _metadata-spec} :- ::metadata-spec]
-  (let [active-only?      (not (or id-set name-set))
-        metric?           (= metadata-type :metadata/metric)
-        metric-for-table? (and metric?
-                               table-id)
-        preds             [(when id-set
-                             #(contains? id-set (:id %)))
-                           (when name-set
-                             #(contains? name-set (:name %)))
-                           (when table-id
-                             #(= (:table-id %) table-id))
-                           (when card-id
-                             #(= (:card-id %) card-id))
-                           (when active-only?
-                             (case metadata-type
-                               :metadata/table
-                               #(and
-                                 (not (false? (:active %)))
-                                 (not (contains? #{:hidden :technical :cruft} (:visibility-type %))))
+  (let [active-only? (not (or id-set name-set))
+        metric?      (= metadata-type :metadata/metric)
+        preds        [(when id-set
+                        #(contains? id-set (:id %)))
+                      (when name-set
+                        #(contains? name-set (:name %)))
+                      (when table-id
+                        #(= (:table-id %) table-id))
+                      (when (and table-id metric?)
+                        #(nil? (:source-card-id %)))
+                      (when card-id
+                        (if metric?
+                          #(= (:source-card-id %) card-id)
+                          #(= (:card-id %) card-id)))
+                      (when active-only?
+                        (case metadata-type
+                          :metadata/table
+                          #(and
+                            (not (false? (:active %)))
+                            (not (#{:hidden :technical :cruft} (:visibility-type %))))
 
-                               :metadata/column
-                               #(and
-                                 (not (false? (:active %)))
-                                 (not (contains? #{:sensitive :retired} (:visibility-type %))))
+                          :metadata/column
+                          #(and
+                            (not (false? (:active %)))
+                            (not (#{:sensitive :retired} (:visibility-type %))))
 
-                               (:metadata/metric :metadata/segment)
-                               #(not (false? (:archived %)))
+                          (:metadata/metric :metadata/segment)
+                          #(not (:archived %))
 
-                               #_else
-                               nil))
-                           (when metric?
-                             #(= (:type %) :metric))
-                           (when metric-for-table?
-                             #(nil? (:source-card-id %)))]]
+                          #_else
+                          nil))
+                      (when metric?
+                        #(= (:type %) :metric))]]
     (transduce
      (comp (filter some?)
            (map filter))

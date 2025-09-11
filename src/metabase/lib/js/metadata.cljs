@@ -514,21 +514,20 @@
 (defn- database [metadata database-id]
   (some-> metadata :databases deref (get database-id) deref))
 
-(defn- metadatas [metadata database-id {metadata-type :lib/type, :as metadata-spec}]
-  (let [k (metadata-property metadata-type)]
+(defn- metadatas [metadata database-id {metadata-type :lib/type, id-set :id, :as metadata-spec}]
+  (let [k      (metadata-property metadata-type)
+        delays (let [id->dlay (some-> metadata k deref)]
+                 (if id-set
+                   (map id->dlay id-set)
+                   (vals id->dlay)))]
     (into []
-          (comp (if-let [id-set (:id metadata-spec)]
-                  (keep (fn [[id dlay]]
-                          (when (contains? id-set id)
-                            @dlay)))
-                  (keep (fn [[_id dlay]]
-                          @dlay)))
+          (comp (map deref)
                 (if (= metadata-type :metadata/table)
                   (filter #(= (:db-id %) database-id))
                   identity)
                 (lib.metadata.protocols/default-spec-filter-xform metadata-spec)
                 (distinct))
-          (some-> metadata k deref))))
+          delays)))
 
 (defn- setting [^js unparsed-metadata setting-key]
   (-> unparsed-metadata

@@ -276,6 +276,9 @@
       (let [field-ref (first (lib/fields query -1))]
         (is (=? [:field {:lib/uuid "40bb920d-d197-4ed2-ad2f-9400427b0c16"} "EXAMPLE_TIMESTAMP"]
                 field-ref))
+        (testing `lib.field.resolution/options-metadata*
+          (is (=? {:lib/source-uuid "40bb920d-d197-4ed2-ad2f-9400427b0c16"}
+                  (#'lib.field.resolution/options-metadata (second field-ref)))))
         (testing `lib.field.resolution/resolve-field-ref
           (is (=? {:lib/card-id     2
                    :lib/source      :source/previous-stage
@@ -383,7 +386,7 @@
                               :strategy     :left-join
                               :fk-field-id  %category-id}]}))
           col   (lib.field.resolution/resolve-field-ref query -1 (first (lib/fields query -1)))]
-      (is (=? {:lib/original-ref-style-for-result-metadata-purposes :original-ref-style/id}
+      (is (=? {:lib/original-ref-for-result-metadata-purposes-only [:field {:join-alias "Category"} pos-int?]}
               col))
       (is (=? [:field
                {:lib/uuid       string?
@@ -1287,24 +1290,18 @@
 
 (deftest ^:parallel resolve-incorrect-field-ref-for-expression-test
   (testing "resolve the incorrect use of a field ref correctly"
-    (let [query       (lib/query
-                       meta/metadata-provider
-                       (lib.tu.macros/mbql-query venues
-                         {:fields      [[:expression "my_numberLiteral"]]
-                          :expressions {"my_numberLiteral" [:value 1 {:base_type :type/Integer}]}}))
-          source-uuid (-> query
-                          :stages
-                          first
-                          :expressions
-                          first
-                          lib.options/uuid)]
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query venues
+                   {:fields      [[:expression "my_numberLiteral"]]
+                    :expressions {"my_numberLiteral" [:value 1 {:base_type :type/Integer}]}}))]
       (is (=? {:base-type               :type/Integer
                :display-name            "my_numberLiteral"
                :name                    "my_numberLiteral"
                :lib/expression-name     "my_numberLiteral"
                :lib/source              :source/expressions
                :lib/source-column-alias "my_numberLiteral"
-               :lib/source-uuid         source-uuid
+               :lib/source-uuid         "00000000-0000-0000-0000-000000000000"
                :lib/type                :metadata/column}
               (lib.field.resolution/resolve-field-ref
                query -1
@@ -1328,7 +1325,7 @@
                    query
                    -1
                    [:field {:base-type :type/BigInteger, :lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :products :id)])
-                  (dissoc :lib/original-display-name :lib/original-ref-style-for-result-metadata-purposes))
+                  (dissoc :lib/original-ref-for-result-metadata-purposes-only :lib/original-display-name))
               (lib.field.resolution/resolve-field-ref
                query
                -1
@@ -1412,51 +1409,12 @@
                           {:fields (for [field-id [(meta/id :orders :tax) (meta/id :products :vendor)]]
                                      {:id field-id, :active false})}))
           query      (lib/query mp (lib.metadata/card mp 1))]
-      (testing "orders.tax"
-        (is (=? {:active false
-                 :id     (meta/id :orders :tax)
-                 :name   "TAX"}
-                (lib.field.resolution/resolve-field-ref
-                 query -1
-                 [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Float} "TAX"]))))
-      (testing "products.vendor (from join)"
-        (let [expected {:active                       false
-                        :base-type                    :type/Text
-                        :database-type                "CHARACTER VARYING"
-                        :display-name                 "Vendor"
-                        :effective-type               :type/Text
-                        :fingerprint                  {}
-                        :id                           (meta/id :products :vendor)
-                        :name                         "VENDOR"
-                        :semantic-type                :type/Company
-                        :source-alias                 "Product"
-                        :table-id                     (meta/id :products)
-                        :visibility-type              :normal
-                        :lib/original-display-name    "Vendor"
-                        :lib/original-join-alias      "Product"
-                        :lib/original-name            "VENDOR"
-                        :lib/source                   :source/joins
-                        :lib/source-column-alias      "VENDOR"
-                        :lib/source-uuid              "00000000-0000-0000-0000-000000000000"
-                        :lib/type                     :metadata/column
-                        :metabase.lib.join/join-alias "Product"}]
-          (testing "card query"
-            (is (=? expected
-                    (lib.field.resolution/resolve-field-ref
-                     (lib/query mp card-query) -1
-                     [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Text, :join-alias "Product"}
-                      "VENDOR"]))))
-          (testing "query with source Card"
-            (is (=? (-> expected
-                        (assoc :display-name            "Product → Vendor"
-                               :lib/source              :source/card
-                               :lib/source-column-alias "Product__VENDOR"
-                               :lib/original-join-alias "Product")
-                        (dissoc :metabase.lib.join/join-alias))
-                    (lib.field.resolution/resolve-field-ref
-                     query -1
-                     [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Text}
-                      "Product__VENDOR"])))))))))
+      (is (=? {:active false
+               :id     (meta/id :orders :tax)
+               :name   "TAX"}
+              (lib.field.resolution/resolve-field-ref
+               query -1
+               [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Float} "TAX"]))))))
 
 (deftest ^:parallel multiple-remaps-between-tables-test
   (testing "Should be able to resolve multiple FK remaps via different FKs from Table A to Table B in a join"
@@ -1534,25 +1492,3 @@
                      :lib/source-column-alias      "CATEGORIES__via__CATEGORY_ID__NAME"
                      :metabase.lib.join/join-alias "J"}
                     (lib.field.resolution/resolve-field-ref query 0 field-ref)))))))))
-
-(deftest ^:parallel resolve-satanic-ref-that-should-have-been-an-aggregation-ref
-  (let [query       (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
-                        (lib/aggregate (lib/count))
-                        (lib/breakout (meta/field-metadata :venues :price)))
-        source-uuid (-> query
-                        :stages
-                        first
-                        :aggregation
-                        first
-                        lib.options/uuid)]
-    (is (=? {:base-type               :type/Integer
-             :display-name            "Count"
-             :name                    "count"
-             :semantic-type           :type/Quantity
-             :lib/source              :source/aggregations
-             :lib/source-column-alias "count"
-             :lib/source-uuid         source-uuid
-             :lib/type                :metadata/column}
-            (lib.field.resolution/resolve-field-ref
-             query -1
-             [:field {:base-type :type/Integer, :lib/uuid "00000000-0000-0000-0000-000000000000"} "count"])))))
