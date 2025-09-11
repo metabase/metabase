@@ -29,7 +29,6 @@
 
   Token normalization occurs first, followed by canonicalization, followed by removing empty clauses."
   (:require
-   #?@(:cljs [[clojure.walk :as walk]])
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.legacy-mbql.predicates :as mbql.preds]
@@ -394,8 +393,8 @@
   [clause]
   (-> clause normalize-tokens canonicalize-mbql-clauses))
 
-(mu/defn- normalize-fingerprint :- ::lib.schema.metadata.fingerprint/fingerprint
-  [fingerprint :- :map]
+(mu/defn- normalize-fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]
+  [fingerprint :- [:maybe :map]]
   (lib.normalize/normalize ::lib.schema.metadata.fingerprint/fingerprint fingerprint))
 
 (mu/defn normalize-source-metadata
