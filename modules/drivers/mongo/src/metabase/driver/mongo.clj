@@ -1,8 +1,11 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
   (:require
+   [clojure.data.csv :as csv]
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
@@ -628,6 +631,23 @@
     :type/IPAddress "string"
     ;; Default fallback
     "object"))
+
+(defmethod driver/insert-from-source! [:mongo :csv-file]
+  [driver db-id table-name column-names {:keys [file table-schema]}]
+  (let [csv-rows (csv/read-csv (io/reader file))
+        header-rows (first csv-rows)
+        meta (m/index-by :name (:columns table-schema))
+        maybe-decode (fn [name v]
+                       (let [ty (:type (get meta name))]
+                         (if (and (string? v)
+                                  (:type/Dictionary (conj (ancestors ty) ty)))
+                           (json/decode v)
+                           v)))
+        data-rows (map (fn [rows]
+                         (let [m (zipmap header-rows rows)]
+                           (mapv #(maybe-decode % (get m %)) column-names)))
+                       (rest csv-rows))]
+    (driver/insert-from-source! driver db-id table-name column-names {:type :rows :data data-rows})))
 
 ;; Following code is using monger. Leaving it here for a reference as it could be transformed when there is need
 ;; for ssl experiments.
