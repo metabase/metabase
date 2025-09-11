@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-752-integration-branch-for-embedding-hub",
     "hash": "b122cdd4395f27389928b3c1de343e42441c6758"
+  },
+  "upstream": {
+    "branch": "emb-798-remove-embed-menu-from-the-new-menu"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 63385,
+        "gqlID": "PR_kwDOAczgH86oDU7a"
+      }
+    }
   }
 }
