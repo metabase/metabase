@@ -8,6 +8,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
+   [metabase.users.api :as api.user]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
@@ -214,6 +215,15 @@
                                 "Cannot react to comments on archived entities")))
 
     (comment-reaction/toggle-reaction comment-id api/*current-user-id* emoji)))
+
+(api.macros/defendpoint :get "/mentions"
+  "Get a list of entities suitable for mentions. NOTE: only users for now."
+  [_route-params _query-params]
+  {:data (t2/select [:model/User :id :first_name :last_name]
+                    (-> (api.user/user-clauses nil nil nil nil)
+                        (sql.helpers/order-by [:%lower.first_name :asc]
+                                              [:%lower.last_name :asc]
+                                              [:id :asc])))})
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/comment/` routes."

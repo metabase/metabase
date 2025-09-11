@@ -273,3 +273,11 @@
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :lucky :post 403 (str "ee/comment/" restricted-comment-id "/reaction")
                                          {:emoji "👍"})))))))))
+
+(deftest mention-entities-test
+  (testing "We can get users to mention"
+    (is (=? [{:id int? :common_name "Crowberto Corv"}
+             {:id int? :common_name "Lucky Pigeon"}
+             {:id int? :common_name "Rasta Toucan"}]
+            (->> (:data (mt/user-http-request :rasta :get 200 "ee/comment/mentions"))
+                 (filter mt/test-user?))))))
