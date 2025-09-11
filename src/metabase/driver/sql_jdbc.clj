@@ -165,23 +165,27 @@
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (jdbc/execute! conn sql))))
 
-(defmethod driver/rename-tables! :sql-jdbc
-  [driver db-id rename-map]
-  (let [rename-map (-> rename-map
-                       (update-vals vector)
-                       u/topological-sort
-                       (update-vals first))
-        sqls (mapv (fn [[from-table to-table]]
+(defn sql-jdbc-rename-tables-with-tx!
+  "Helper function for SQL JDBC drivers that support transactional table renames.
+   Drivers should call this directly from their rename-tables!* implementation if they support
+   renaming tables within a transaction."
+  [driver db-id sorted-rename-map]
+  (let [sqls (mapv (fn [[from-table to-table]]
                      (first (sql/format {:alter-table (keyword from-table)
                                          :rename-table (keyword (name to-table))}
                                         :quoted true
                                         :dialect (sql.qp/quote-style driver))))
-                   rename-map)]
+                   sorted-rename-map)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
         (doseq [sql sqls]
           (.addBatch ^java.sql.Statement stmt ^String sql))
         (.executeBatch ^java.sql.Statement stmt)))))
+
+(defmethod driver/rename-tables!* :sql-jdbc
+  [driver db-id sorted-rename-map]
+  ;; Default implementation for SQL JDBC drivers using transactions
+  (sql-jdbc-rename-tables-with-tx! driver db-id sorted-rename-map))
 
 (defmethod driver/truncate! :sql-jdbc
   [driver db-id table-name]
