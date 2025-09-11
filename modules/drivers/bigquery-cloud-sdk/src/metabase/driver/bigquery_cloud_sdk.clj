@@ -971,7 +971,7 @@
           (when (.hasErrors response)
             (let [errors (.getInsertErrors response)]
               (throw (ex-info "BigQuery insert failed"
-                              {:errors (def e (into [] (map str errors)))})))))))))
+                              {:errors (into [] (map str errors))})))))))))
 
 (defmethod driver/execute-raw-queries! :bigquery-cloud-sdk
   [_driver connection-details queries]
