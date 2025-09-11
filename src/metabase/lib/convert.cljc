@@ -139,9 +139,9 @@
                                                                                    (list* tag (last args) (butlast args))
                                                                                    (list* tag {} args))
                                  ::mbql.s/options-style.𝕨𝕚𝕝𝕕                     (cond
-                                                                                   (> (count args) 2) clause
-                                                                                   (map? (last args)) (list* tag (last args) (butlast args))
-                                                                                   :else              (list* tag {} args)))]
+                                                                                       (> (count args) 2) clause
+                                                                                       (map? (last args)) (list* tag (last args) (butlast args))
+                                                                                       :else              (list* tag {} args)))]
       (lib.options/ensure-uuid (into [tag options] (map ->pMBQL) args)))))
 
 (defmethod ->pMBQL :default
