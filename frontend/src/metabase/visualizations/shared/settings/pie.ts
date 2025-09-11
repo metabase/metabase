@@ -193,14 +193,25 @@ export function getPieRows(
   const untranslatedKeysToTranslatedKeys = new Map<string, string>();
   if (untranslatedRows) {
     untranslatedRows.forEach((row, i) => {
-      untranslatedKeysToTranslatedKeys.set(
-        row[0] as string,
-        dataRows[i][0] as string,
-      );
+      const untranslatedValue = row[0];
+      const translatedValue = dataRows[i][0];
+
+      if (
+        typeof untranslatedValue === "string" &&
+        typeof translatedValue === "string"
+      ) {
+        untranslatedKeysToTranslatedKeys.set(
+          untranslatedValue,
+          translatedValue,
+        );
+      }
     });
   } else {
     dataRows.forEach((row) => {
-      untranslatedKeysToTranslatedKeys.set(row[0] as string, row[0] as string);
+      if (typeof row[0] !== "string") {
+        return;
+      }
+      untranslatedKeysToTranslatedKeys.set(row[0], row[0]);
     });
   }
 
