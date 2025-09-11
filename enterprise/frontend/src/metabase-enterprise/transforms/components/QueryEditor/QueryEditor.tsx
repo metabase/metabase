@@ -4,7 +4,7 @@ import { useListDatabasesQuery } from "metabase/api";
 import { Center, Flex, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { DatasetQuery } from "metabase-types/api";
+import type { DatasetQuery, Transform } from "metabase-types/api";
 
 import { useQueryMetadata } from "../../hooks/use-query-metadata";
 import { useQueryResults } from "../../hooks/use-query-results";
@@ -16,23 +16,27 @@ import { EditorVisualization } from "./EditorVisualization";
 import S from "./QueryEditor.module.css";
 
 type QueryEditorProps = {
+  transform?: Transform;
   initialQuery: DatasetQuery;
   proposedQuery?: DatasetQuery;
   isNew?: boolean;
   isSaving?: boolean;
   onSave: (newQuery: DatasetQuery) => void;
   onCancel: () => void;
-  clearProposed?: () => void;
+  onRejectProposed?: () => void;
+  onAcceptProposed?: (query: DatasetQuery) => void;
 };
 
 export function QueryEditor({
   initialQuery,
   proposedQuery,
+  transform,
   isNew = true,
   isSaving = false,
   onSave,
   onCancel,
-  clearProposed,
+  onRejectProposed,
+  onAcceptProposed,
 }: QueryEditorProps) {
   const { question, proposedQuestion, isQueryDirty, setQuestion } =
     useQueryState(initialQuery, proposedQuery);
@@ -45,7 +49,7 @@ export function QueryEditor({
     isResultDirty,
     runQuery,
     cancelQuery,
-  } = useQueryResults(question);
+  } = useQueryResults(question, proposedQuestion);
   const canSave = Lib.canSave(question.query(), question.type());
   const { isNative } = Lib.queryDisplayInfo(question.query());
 
@@ -89,6 +93,7 @@ export function QueryEditor({
       data-testid="transform-query-editor"
     >
       <EditorHeader
+        name={transform?.name}
         isNew={isNew}
         isSaving={isSaving}
         canSave={canSave && (isNew || isQueryDirty)}
@@ -106,7 +111,8 @@ export function QueryEditor({
         onRunQuery={runQuery}
         onCancelQuery={cancelQuery}
         databases={databases?.data ?? []}
-        clearProposed={clearProposed}
+        onRejectProposed={onRejectProposed}
+        onAcceptProposed={onAcceptProposed}
       />
       <EditorVisualization
         question={question}

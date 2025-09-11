@@ -75,7 +75,10 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
     getMetabotSuggestedTransform as any,
   ) as ReturnType<typeof getMetabotSuggestedTransform>;
 
-  const clearProposed = () => dispatch(setSuggestedTransform(undefined));
+  const onRejectProposed = () => dispatch(setSuggestedTransform(undefined));
+  const onAcceptProposed = (query: DatasetQuery) => {
+    handleSaveClick(query);
+  };
 
   const suggestedQuery = suggestedTransform?.source.query;
 
@@ -112,7 +115,8 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
         onSave={handleSaveClick}
         onCancel={handleCancelClick}
         proposedQuery={proposedQuery}
-        clearProposed={clearProposed}
+        onRejectProposed={onRejectProposed}
+        onAcceptProposed={onAcceptProposed}
       />
       {isModalOpened && (
         <CreateTransformModal

@@ -68,6 +68,27 @@ export function TransformQueryPageBody({
 
   const metabot = useMetabotAgent();
 
+  const initialQuery = transform.source.query;
+
+  const suggestedTransform = useSelector(
+    (state) => getMetabotSuggestedTransform(state, transform.id) as any,
+  ) as ReturnType<typeof getMetabotSuggestedTransform>;
+  const proposedQuery = suggestedTransform?.source.query;
+
+  const onRejectProposed = () => {
+    dispatch(setSuggestedTransform(undefined));
+    metabot.submitInput(
+      "HIDDEN MESSAGE: user has rejected your changes, ask for clarification on what they'd like to do instead.",
+    );
+  };
+  const onAcceptProposed = async (query: DatasetQuery) => {
+    await handleSave(query);
+    dispatch(setSuggestedTransform(undefined));
+    metabot.submitInput(
+      "HIDDEN MESSAGE: user has accepted your changes, move to the next step!",
+    );
+  };
+
   const handleSave = async (query: DatasetQuery) => {
     const { error } = await updateTransform({
       id: transform.id,
@@ -80,9 +101,6 @@ export function TransformQueryPageBody({
     if (error) {
       sendErrorToast(t`Failed to update transform query`);
     } else {
-      metabot.submitInput(
-        "HIDDEN MESSAGE: user has accepted your changes, move to the next step!",
-      );
       sendSuccessToast(t`Transform query updated`);
       dispatch(push(getTransformUrl(transform.id)));
     }
@@ -92,25 +110,18 @@ export function TransformQueryPageBody({
     dispatch(push(getTransformUrl(transform.id)));
   };
 
-  const initialQuery = transform.source.query;
-
-  const suggestedTransform = useSelector(
-    getMetabotSuggestedTransform as any,
-  ) as ReturnType<typeof getMetabotSuggestedTransform>;
-  const proposedQuery = suggestedTransform?.source.query;
-
-  const clearProposed = () => dispatch(setSuggestedTransform(undefined));
-
   return (
     <AdminSettingsLayout fullWidthContent>
       <QueryEditor
         initialQuery={initialQuery}
+        transform={transform}
         isNew={false}
         isSaving={isLoading}
         onSave={handleSave}
         onCancel={handleCancel}
         proposedQuery={proposedQuery}
-        clearProposed={clearProposed}
+        onRejectProposed={onRejectProposed}
+        onAcceptProposed={onAcceptProposed}
       />
     </AdminSettingsLayout>
   );
