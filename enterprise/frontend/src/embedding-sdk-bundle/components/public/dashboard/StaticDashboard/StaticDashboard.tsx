@@ -7,14 +7,21 @@ import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import { StaticQuestionSdkMode } from "../../StaticQuestion/mode";
 import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
 
+import { staticDashboardSchema } from "./StaticDashboard.schema";
+
 /**
  * @interface
  * @expand
  * @category Dashboard
  */
-export type StaticDashboardProps = SdkDashboardProps;
+export type StaticDashboardProps = Omit<
+  SdkDashboardProps,
+  | "drillThroughQuestionProps"
+  | "drillThroughQuestionHeight"
+  | "renderDrillThroughQuestion"
+>;
 
-export const StaticDashboard = (props: StaticDashboardProps) => {
+const StaticDashboardInner = (props: StaticDashboardProps) => {
   const getClickActionMode: ClickActionModeGetter = ({ question }) =>
     getEmbeddingMode({
       question,
@@ -40,3 +47,7 @@ export const StaticDashboard = (props: StaticDashboardProps) => {
     />
   );
 };
+
+export const StaticDashboard = Object.assign(StaticDashboardInner, {
+  schema: staticDashboardSchema,
+});

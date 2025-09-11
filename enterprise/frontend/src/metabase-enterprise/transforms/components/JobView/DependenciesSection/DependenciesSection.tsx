@@ -1,64 +1,36 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { AdminContentTable } from "metabase/common/components/AdminContentTable";
-import EmptyState from "metabase/common/components/EmptyState";
-import { useDispatch } from "metabase/lib/redux";
-import { Box, Card, Center, Loader } from "metabase/ui";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useListTransformJobTransformsQuery } from "metabase-enterprise/api";
-import type { Transform, TransformJobId } from "metabase-types/api";
+import type { TransformJobId } from "metabase-types/api";
 
 import { TitleSection } from "../../../components/TitleSection";
-import { getTransformUrl } from "../../../urls";
+import { TransformTable } from "../../../components/TransformTable";
+import { ListEmptyState } from "../../ListEmptyState";
 
-import S from "./DependenciesSection.module.css";
+type DependenciesSectionProps = {
+  jobId: TransformJobId;
+};
 
-export function DependenciesSection({ jobId }: { jobId: TransformJobId }) {
-  const { data: transforms, isLoading } =
-    useListTransformJobTransformsQuery(jobId);
-  const dispatch = useDispatch();
-
-  const handleRowClick = (transform: Transform) => {
-    dispatch(push(getTransformUrl(transform.id)));
-  };
+export function DependenciesSection({ jobId }: DependenciesSectionProps) {
+  const {
+    data: transforms = [],
+    error,
+    isLoading,
+  } = useListTransformJobTransformsQuery(jobId);
 
   return (
     <TitleSection
       label={t`Transforms`}
       description={t`Transforms will be run in this order.`}
     >
-      <Card p={0} shadow="none" withBorder>
-        {isLoading ? (
-          <Center>
-            <Loader m="xl" />
-          </Center>
-        ) : (
-          <AdminContentTable columnTitles={[t`Transform`, t`Target`]}>
-            {!transforms || transforms?.length === 0 ? (
-              <tr>
-                <td colSpan={2}>
-                  <Box p="md">
-                    <EmptyState
-                      message={t`There are no transforms for this job.`}
-                    />
-                  </Box>
-                </td>
-              </tr>
-            ) : (
-              transforms?.map((transform) => (
-                <tr
-                  key={transform.id}
-                  className={S.row}
-                  onClick={() => handleRowClick(transform)}
-                >
-                  <td>{transform.name}</td>
-                  <td>{transform.target.name}</td>
-                </tr>
-              ))
-            )}
-          </AdminContentTable>
-        )}
-      </Card>
+      {isLoading || error != null ? (
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      ) : transforms.length === 0 ? (
+        <ListEmptyState label={t`There are no transforms for this job.`} />
+      ) : (
+        <TransformTable transforms={transforms} />
+      )}
     </TitleSection>
   );
 }
