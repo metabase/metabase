@@ -239,40 +239,40 @@
                                  ::lib.metadata.protocols/metadata]]]
   {:pre [(vector? target-clause)]}
   (mu/disable-enforcement
-    (let [target-clause           (lib.common/->op-arg target-clause)
-          location                (find-location query stage-number target-clause)
-          replace?                (= :replace remove-or-replace)
-          replacement-clause      (when replace?
-                                    (lib.common/->op-arg replacement))
-          remove-replace-fn       (if replace?
-                                    #(lib.util/replace-clause %1 %2 %3 replacement-clause)
-                                    #(lib.util/remove-clause %1 %2 %3 stage-number))
-          changing-breakout?      (= [:breakout] location)
+    (let [target-clause (lib.common/->op-arg target-clause)
+          location (find-location query stage-number target-clause)
+          replace? (= :replace remove-or-replace)
+          replacement-clause (when replace?
+                               (lib.common/->op-arg replacement))
+          remove-replace-fn (if replace?
+                              #(lib.util/replace-clause %1 %2 %3 replacement-clause)
+                              #(lib.util/remove-clause %1 %2 %3 stage-number))
+          changing-breakout? (= [:breakout] location)
           sync-breakout-ordering? (and replace?
                                        changing-breakout?
                                        (= (first target-clause)
                                           (first replacement-clause))
                                        (= (last target-clause)
                                           (last replacement-clause)))
-          new-query               (cond
-                                    sync-breakout-ordering?
-                                    (sync-order-by-options-with-breakout
-                                     query
-                                     stage-number
-                                     target-clause
-                                     (dissoc (second replacement-clause) :lib/uuid))
+          new-query (cond
+                      sync-breakout-ordering?
+                      (sync-order-by-options-with-breakout
+                       query
+                       stage-number
+                       target-clause
+                       (dissoc (second replacement-clause) :lib/uuid))
 
-                                    changing-breakout?
-                                    (remove-breakout-order-by query stage-number target-clause)
+                      changing-breakout?
+                      (remove-breakout-order-by query stage-number target-clause)
 
-                                    :else
-                                    query)
-          new-query     (if location
-                          (-> new-query
-                              (remove-replace-location stage-number new-query location target-clause remove-replace-fn)
-                              (normalize-fields-clauses location))
-                          new-query)
-          new-stage     (lib.util/query-stage new-query stage-number)
+                      :else
+                      query)
+          new-query (if location
+                      (-> new-query
+                          (remove-replace-location stage-number new-query location target-clause remove-replace-fn)
+                          (normalize-fields-clauses location))
+                      new-query)
+          new-stage (lib.util/query-stage new-query stage-number)
           valid-change? (if changing-breakout?
                           (or
                            ;; breakout was removed
