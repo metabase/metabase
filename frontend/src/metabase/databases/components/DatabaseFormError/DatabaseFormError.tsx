@@ -1,4 +1,5 @@
-import { Fragment, useRef, useState } from "react";
+import { useDisclosure } from "@mantine/hooks";
+import { Fragment, useRef } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
@@ -12,7 +13,7 @@ import { useTroubleshootingTips } from "./useTroubleshootingTips";
 import { useDatabaseErrorDetails } from "./utils";
 
 export const DatabaseFormError = () => {
-  const [showAllTips, setShowAllTips] = useState<boolean>(false);
+  const [showAllTips, { toggle: toggleShowAllTips }] = useDisclosure(false);
   const { isHostAndPortError, errorMessage } = useDatabaseErrorDetails();
   const troubleshootingTips = useTroubleshootingTips(
     isHostAndPortError,
@@ -34,12 +35,11 @@ export const DatabaseFormError = () => {
     <Paper className={S.paper} ref={ref}>
       <Box p="md" pb={0}>
         <Alert
-          bd="1px solid warning"
           classNames={{ message: S.alertMessage, title: S.alertTitle }}
           color="warning"
           icon={<Icon name="warning" />}
           title={title}
-          variant="light"
+          variant="outline"
         >
           {errorMessage}
         </Alert>
@@ -64,7 +64,7 @@ export const DatabaseFormError = () => {
         leftSection={
           <Icon name={showAllTips ? "chevronup" : "chevrondown"} size={12} />
         }
-        onClick={() => setShowAllTips((showMoreTips) => !showMoreTips)}
+        onClick={toggleShowAllTips}
         variant="subtle"
       >
         {showAllTips ? t`Hide` : t`More troubleshooting tips`}
