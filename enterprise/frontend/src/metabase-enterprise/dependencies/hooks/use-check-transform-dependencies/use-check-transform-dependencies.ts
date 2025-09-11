@@ -1,62 +1,26 @@
-import { useCallback, useState } from "react";
-
 import type {
-  UseCheckTransformDependenciesProps,
-  UseCheckTransformDependenciesResult,
+  UseCheckDependenciesProps,
+  UseCheckDependenciesResult,
 } from "metabase/plugins";
 import { useLazyCheckTransformDependenciesQuery } from "metabase-enterprise/api";
 import type { UpdateTransformRequest } from "metabase-types/api";
 
+import { useCheckDependencies } from "../use-check-dependencies";
+
 export function useCheckTransformDependencies({
   onSave,
   onError,
-}: UseCheckTransformDependenciesProps): UseCheckTransformDependenciesResult {
-  const [request, setRequest] = useState<UpdateTransformRequest | null>(null);
-  const [isConfirmationShown, setIsConfirmationShown] = useState(false);
-  const [checkTransform, { data, isLoading }] =
-    useLazyCheckTransformDependenciesQuery();
+}: UseCheckDependenciesProps<UpdateTransformRequest>): UseCheckDependenciesResult<UpdateTransformRequest> {
+  return useCheckDependencies({
+    getCheckDependenciesRequest,
+    useLazyCheckDependenciesQuery: useLazyCheckTransformDependenciesQuery,
+    onSave,
+    onError,
+  });
+}
 
-  const handleInitialSave = useCallback(
-    async (request: UpdateTransformRequest) => {
-      if (request.source == null) {
-        await onSave(request);
-        return;
-      }
-
-      const { data, error } = await checkTransform({
-        id: request.id,
-        source: request.source,
-      });
-      if (error != null) {
-        onError(error);
-      } else if (data != null && !data.success) {
-        setRequest(request);
-        setIsConfirmationShown(true);
-      } else {
-        await onSave(request);
-      }
-    },
-    [checkTransform, onSave, onError],
-  );
-
-  const handleCloseConfirmation = useCallback(() => {
-    setRequest(null);
-    setIsConfirmationShown(false);
-  }, []);
-
-  const handleSaveAfterConfirmation = useCallback(async () => {
-    if (request != null) {
-      await onSave(request);
-      handleCloseConfirmation();
-    }
-  }, [request, onSave, handleCloseConfirmation]);
-
-  return {
-    checkData: data,
-    isCheckingDependencies: isLoading,
-    isConfirmationShown,
-    handleInitialSave,
-    handleSaveAfterConfirmation,
-    handleCloseConfirmation,
-  };
+function getCheckDependenciesRequest(
+  request: UpdateTransformRequest,
+): UpdateTransformRequest {
+  return request;
 }

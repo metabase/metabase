@@ -1,63 +1,40 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 
 import { useStore } from "metabase/lib/redux";
 import type {
-  UseCheckCardDependenciesProps,
-  UseCheckCardDependenciesResult,
+  UseCheckDependenciesProps,
+  UseCheckDependenciesResult,
 } from "metabase/plugins";
-import { useLazyCheckCardDependenciesQuery } from "metabase-enterprise/api";
+import { getSubmittableQuestion } from "metabase/query_builder/selectors";
+import { useLazyCheckTransformDependenciesQuery } from "metabase-enterprise/api";
 import type Question from "metabase-lib/v1/Question";
+import type { CheckCardDependenciesRequest } from "metabase-types/api";
+
+import { useCheckDependencies } from "../use-check-dependencies";
 
 export function useCheckCardDependencies({
-  getSubmittableQuestion,
   onSave,
-}: UseCheckCardDependenciesProps): UseCheckCardDependenciesResult {
+  onError,
+}: UseCheckDependenciesProps<Question>): UseCheckDependenciesResult<Question> {
   const store = useStore();
-  const [question, setQuestion] = useState<Question | null>(null);
-  const [isConfirmationShown, setIsConfirmationShown] = useState(false);
-  const [checkCard, { data }] = useLazyCheckCardDependenciesQuery();
 
-  const handleInitialSave = useCallback(
-    async (question: Question) => {
+  const getCheckDependenciesRequest = useCallback(
+    (question: Question): CheckCardDependenciesRequest => {
       const submittableQuestion = getSubmittableQuestion(
         store.getState(),
         question,
       );
       const { id, type, dataset_query, result_metadata } =
         submittableQuestion.card();
-      const data = await checkCard({
-        id,
-        type,
-        dataset_query,
-        result_metadata,
-      }).unwrap();
-      if (data != null && !data.success) {
-        setQuestion(question);
-        setIsConfirmationShown(true);
-      } else {
-        await onSave(question);
-      }
+      return { id, type, dataset_query, result_metadata };
     },
-    [store, getSubmittableQuestion, checkCard, onSave],
+    [store],
   );
 
-  const handleCloseConfirmation = useCallback(() => {
-    setQuestion(null);
-    setIsConfirmationShown(false);
-  }, []);
-
-  const handleSaveAfterConfirmation = useCallback(async () => {
-    if (question != null) {
-      await onSave(question);
-      handleCloseConfirmation();
-    }
-  }, [question, onSave, handleCloseConfirmation]);
-
-  return {
-    checkData: data,
-    isConfirmationShown,
-    handleInitialSave,
-    handleSaveAfterConfirmation,
-    handleCloseConfirmation,
-  };
+  return useCheckDependencies({
+    getCheckDependenciesRequest,
+    useLazyCheckDependenciesQuery: useLazyCheckTransformDependenciesQuery,
+    onSave,
+    onError,
+  });
 }

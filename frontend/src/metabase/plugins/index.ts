@@ -859,11 +859,11 @@ type DependenciesPlugin = {
   CheckDependenciesModal: ComponentType<CheckDependenciesModalProps>;
   CheckDependenciesTitle: ComponentType;
   useCheckCardDependencies: (
-    props: UseCheckCardDependenciesProps,
-  ) => UseCheckCardDependenciesResult;
+    props: UseCheckDependenciesProps<Question>,
+  ) => UseCheckDependenciesResult<Question>;
   useCheckTransformDependencies: (
-    props: UseCheckTransformDependenciesProps,
-  ) => UseCheckTransformDependenciesResult;
+    props: UseCheckDependenciesProps<UpdateTransformRequest>,
+  ) => UseCheckDependenciesResult<UpdateTransformRequest>;
 };
 
 export type CheckDependenciesData = {
@@ -885,29 +885,16 @@ export type CheckDependenciesModalProps = {
   onClose: () => void;
 };
 
-export type UseCheckCardDependenciesProps = {
-  getSubmittableQuestion: (state: State, question: Question) => Question;
-  onSave: (question: Question) => Promise<void>;
-};
-
-export type UseCheckCardDependenciesResult = {
-  checkData?: CheckDependenciesResponse;
-  isConfirmationShown: boolean;
-  handleInitialSave: (question: Question) => Promise<void>;
-  handleSaveAfterConfirmation: () => Promise<void>;
-  handleCloseConfirmation: () => void;
-};
-
-export type UseCheckTransformDependenciesProps = {
-  onSave: (request: UpdateTransformRequest) => Promise<void>;
+export type UseCheckDependenciesProps<TChange> = {
+  onSave: (change: TChange) => Promise<void>;
   onError: (error: unknown) => void;
 };
 
-export type UseCheckTransformDependenciesResult = {
+export type UseCheckDependenciesResult<TChange> = {
   checkData?: CheckDependenciesResponse;
   isCheckingDependencies: boolean;
   isConfirmationShown: boolean;
-  handleInitialSave: (request: UpdateTransformRequest) => Promise<void>;
+  handleInitialSave: (change: TChange) => Promise<void>;
   handleSaveAfterConfirmation: () => Promise<void>;
   handleCloseConfirmation: () => void;
 };
@@ -918,13 +905,14 @@ export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
   CheckDependenciesTitle: PluginPlaceholder,
   useCheckCardDependencies: ({ onSave }) => ({
     isConfirmationShown: false,
+    isCheckingDependencies: false,
     handleInitialSave: onSave,
     handleSaveAfterConfirmation: () => Promise.resolve(),
     handleCloseConfirmation: () => undefined,
   }),
   useCheckTransformDependencies: ({ onSave }) => ({
-    isCheckingDependencies: false,
     isConfirmationShown: false,
+    isCheckingDependencies: false,
     handleInitialSave: onSave,
     handleSaveAfterConfirmation: () => Promise.resolve(),
     handleCloseConfirmation: () => undefined,

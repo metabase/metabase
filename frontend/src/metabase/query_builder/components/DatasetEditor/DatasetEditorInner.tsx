@@ -41,7 +41,6 @@ import {
   getIsResultDirty,
   getMetadataDiff,
   getResultsMetadata,
-  getSubmittableQuestion,
   getVisualizationSettings,
   isResultsMetadataDirty,
 } from "metabase/query_builder/selectors";
@@ -486,11 +485,13 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     handleSaveAfterConfirmation,
     handleCloseConfirmation,
   } = PLUGIN_DEPENDENCIES.useCheckCardDependencies({
-    getSubmittableQuestion,
     onSave: async (question) => {
       await onSave(question, { rerunQuery: true });
       await setQueryBuilderMode("view");
       runQuestionQuery();
+    },
+    onError: (error) => {
+      throw error;
     },
   });
 

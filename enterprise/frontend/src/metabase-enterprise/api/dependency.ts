@@ -1,6 +1,7 @@
 import type {
   CheckCardDependenciesRequest,
   CheckDependenciesResponse,
+  CheckSnippetDependenciesRequest,
   CheckTransformDependenciesRequest,
 } from "metabase-types/api";
 
@@ -15,6 +16,16 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
       query: (body) => ({
         method: "POST",
         url: "/api/ee/dependencies/check_card",
+        body,
+      }),
+    }),
+    checkSnippetDependencies: builder.query<
+      CheckDependenciesResponse,
+      CheckSnippetDependenciesRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/dependencies/check_snippet",
         body,
       }),
     }),
@@ -33,5 +44,6 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useLazyCheckCardDependenciesQuery,
+  useLazyCheckSnippetDependenciesQuery,
   useLazyCheckTransformDependenciesQuery,
 } = dependencyApi;
