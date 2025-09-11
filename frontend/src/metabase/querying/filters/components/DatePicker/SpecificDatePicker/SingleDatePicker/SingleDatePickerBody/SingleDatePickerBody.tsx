@@ -36,7 +36,7 @@ export function SingleDatePickerBody({
         popoverProps={{ opened: false }}
         aria-label={t`Date`}
         onChange={handleDateChange}
-        onDateChange={(val) => val && setDate(new Date(val))}
+        onDateChange={(val) => val && setDate(dayjs(val).toDate())}
       />
       {hasTime && (
         <TimeInput
@@ -49,7 +49,7 @@ export function SingleDatePickerBody({
         value={value}
         date={date}
         onChange={handleDateChange}
-        onDateChange={(val) => val && setDate(new Date(val))}
+        onDateChange={(val) => val && setDate(dayjs(val).toDate())}
       />
     </Stack>
   );
