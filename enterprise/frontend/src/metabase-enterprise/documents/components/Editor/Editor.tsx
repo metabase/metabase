@@ -24,6 +24,7 @@ import { CommandSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/
 import { CustomStarterKit } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
 import { DisableMetabotSidebar } from "metabase-enterprise/rich_text_editing/tiptap/extensions/DisableMetabotSidebar";
 import { FlexContainer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/FlexContainer/FlexContainer";
+import { HandleEditorDrop } from "metabase-enterprise/rich_text_editing/tiptap/extensions/HandleEditorDrop/HandleEditorDrop";
 import { MentionExtension } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Mention/MentionExtension";
 import { MentionSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Mention/MentionSuggestion";
 import {
@@ -144,6 +145,7 @@ export const Editor: React.FC<EditorProps> = ({
         },
       }),
       ResizeNode,
+      HandleEditorDrop,
     ],
     [siteUrl, getState],
   );
@@ -161,9 +163,6 @@ export const Editor: React.FC<EditorProps> = ({
           onChange(currentContent);
         }
       },
-      // // TODO: Fix me
-      // onDrop(event, slice, moved) {
-      // },
     },
     [],
   );

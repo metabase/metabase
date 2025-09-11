@@ -110,7 +110,6 @@ export const CardEmbed: Node<{
   atom: true,
   draggable: true,
   selectable: true,
-  disableDropCursor: true,
 
   addAttributes() {
     return {
@@ -494,16 +493,14 @@ export const CardEmbedComponent = memo(
             const dropped = editor.view.draggingNode;
             const pos = getPos();
 
+            setDragState({ isDraggedOver: false, side: null });
+
             if (!pos || target === dropped) {
-              setDragState({ isDraggedOver: false, side: null });
               return;
             }
 
             const resolvedPos = editor.state.doc.resolve(pos);
             const { parent } = resolvedPos;
-            const { side } = dragState;
-
-            setDragState({ isDraggedOver: false, side: null });
 
             // Helper function to extract cardEmbed from resizeNode wrapper
             const extractCardEmbed = (node: any) => {
@@ -568,75 +565,14 @@ export const CardEmbedComponent = memo(
             }
 
             // Find the position of the dropped node (could be wrapped)
-            const {
-              pos: droppedPos,
-              parent: droppedParent,
-              wrapperNode: droppedWrapper,
-            } = findNodePositionAndParent(dropped);
+            const { pos: droppedPos, wrapperNode: droppedWrapper } =
+              findNodePositionAndParent(dropped);
 
             if (droppedPos === null) {
               return;
             }
 
-            // Check if both nodes are in the same FlexContainer
             if (
-              parent.type.name === "flexContainer" &&
-              droppedParent?.type.name === "flexContainer" &&
-              parent === droppedParent
-            ) {
-              // Reorder within the same FlexContainer
-              if (side) {
-                const containerPos = resolvedPos.before();
-                const targetIndex = resolvedPos.index();
-                const droppedResolvedPos = editor.state.doc.resolve(droppedPos);
-                const droppedIndex = droppedResolvedPos.index();
-
-                let newIndex: number;
-                if (side === "left") {
-                  newIndex =
-                    droppedIndex < targetIndex ? targetIndex - 1 : targetIndex;
-                } else {
-                  newIndex =
-                    droppedIndex < targetIndex ? targetIndex : targetIndex + 1;
-                }
-
-                if (newIndex !== droppedIndex) {
-                  // Create new FlexContainer with reordered children (unwrapped cardEmbeds)
-                  const children = [];
-                  for (let i = 0; i < parent.childCount; i++) {
-                    if (i === droppedIndex) {
-                      continue;
-                    } // Skip the dragged node in original position
-                    if (i === newIndex) {
-                      children.push(droppedCardEmbed.copy()); // Insert unwrapped cardEmbed
-                    }
-                    const childNode = parent.child(i);
-                    const childCardEmbed = extractCardEmbed(childNode);
-                    children.push(
-                      childCardEmbed ? childCardEmbed.copy() : childNode,
-                    );
-                  }
-                  // If newIndex is at the end, add the dragged node
-                  if (newIndex >= parent.childCount - 1) {
-                    children.push(droppedCardEmbed.copy());
-                  }
-
-                  const newContainer =
-                    editor.state.schema.nodes.flexContainer.create(
-                      parent.attrs,
-                      children,
-                    );
-
-                  editor.view.dispatch(
-                    editor.state.tr.replaceWith(
-                      containerPos,
-                      containerPos + parent.nodeSize,
-                      newContainer,
-                    ),
-                  );
-                }
-              }
-            } else if (
               parent.type.name === "doc" ||
               parent.type.name === "resizeNode"
             ) {
@@ -664,97 +600,40 @@ export const CardEmbedComponent = memo(
                 replaceSize = parent.nodeSize;
               }
 
-              editor.view.dispatch(
-                editor.state.tr.replaceWith(
-                  replacePos,
-                  replacePos + replaceSize,
-                  wrapper,
-                ),
+              // Create a single transaction for both operations to avoid position shifting
+              const tr = editor.state.tr;
+
+              // First, find and remove the dropped node from its original position
+              const nodeToRemove = droppedWrapper || dropped;
+              let removalHandled = false;
+              editor.state.doc.descendants((node, nodePos) => {
+                if (node === nodeToRemove && !removalHandled) {
+                  tr.delete(nodePos, nodePos + node.nodeSize);
+                  removalHandled = true;
+                  return false;
+                }
+              });
+
+              // Then replace the target with the new FlexContainer
+              // Need to recalculate positions after the removal
+              let adjustedReplacePos = replacePos;
+              if (
+                removalHandled &&
+                droppedPos !== null &&
+                droppedPos < replacePos
+              ) {
+                // If we removed something before the replace position, adjust it
+                const removedSize = nodeToRemove.nodeSize;
+                adjustedReplacePos = replacePos - removedSize;
+              }
+
+              tr.replaceWith(
+                adjustedReplacePos,
+                adjustedReplacePos + replaceSize,
+                wrapper,
               );
 
-              // Remove the dropped node from its original position
-              // Use the wrapper node position if it exists, otherwise the cardEmbed position
-              const nodeToRemove = droppedWrapper || dropped;
-              editor.state.doc.descendants((node, nodePos) => {
-                if (node === nodeToRemove) {
-                  editor.view.dispatch(
-                    editor.state.tr.delete(nodePos, nodePos + node.nodeSize),
-                  );
-                  return false;
-                }
-              });
-            } else if (parent.type.name === "flexContainer") {
-              // Dropping onto a FlexContainer - add to it
-              const containerPos = resolvedPos.before();
-              const targetIndex = resolvedPos.index();
-
-              // Determine insertion index based on drop side
-              const insertIndex =
-                side === "left" ? targetIndex : targetIndex + 1;
-
-              // Create new FlexContainer with the new child inserted
-              const children = [];
-              for (let i = 0; i < parent.childCount; i++) {
-                if (i === insertIndex) {
-                  children.push(droppedCardEmbed.copy());
-                }
-                const childNode = parent.child(i);
-                const childCardEmbed = extractCardEmbed(childNode);
-                children.push(
-                  childCardEmbed ? childCardEmbed.copy() : childNode,
-                );
-              }
-              // If inserting at the end
-              if (insertIndex >= parent.childCount) {
-                children.push(droppedCardEmbed.copy());
-              }
-
-              const newContainer =
-                editor.state.schema.nodes.flexContainer.create(
-                  parent.attrs,
-                  children,
-                );
-
-              // Check if the FlexContainer is wrapped in a resizeNode
-              const containerResolvedPos =
-                editor.state.doc.resolve(containerPos);
-              const containerParent = containerResolvedPos.parent;
-
-              if (containerParent.type.name === "resizeNode") {
-                // FlexContainer is already wrapped, just replace it
-                editor.view.dispatch(
-                  editor.state.tr.replaceWith(
-                    containerPos,
-                    containerPos + parent.nodeSize,
-                    newContainer,
-                  ),
-                );
-              } else {
-                // FlexContainer is not wrapped, wrap it in resizeNode
-                const wrapper = editor.state.schema.nodes.resizeNode.create(
-                  { height: 442, minHeight: 250 },
-                  [newContainer],
-                );
-
-                editor.view.dispatch(
-                  editor.state.tr.replaceWith(
-                    containerPos,
-                    containerPos + parent.nodeSize,
-                    wrapper,
-                  ),
-                );
-              }
-
-              // Remove the dropped node from its original position
-              const nodeToRemove = droppedWrapper || dropped;
-              editor.state.doc.descendants((node, nodePos) => {
-                if (node === nodeToRemove) {
-                  editor.view.dispatch(
-                    editor.state.tr.delete(nodePos, nodePos + node.nodeSize),
-                  );
-                  return false;
-                }
-              });
+              editor.view.dispatch(tr);
             }
           }}
         >

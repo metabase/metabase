@@ -12,28 +12,24 @@
   }
 
   height: 100%;
+  padding-bottom: 1rem;
 }
 
 .dragContainer {
   position: absolute;
-  bottom: -0.75rem;
+  bottom: 0.25rem;
   width: 100%;
   opacity: 0;
   transition: opacity 150ms ease;
 }
 
 .dragHandle {
-  background-color: var(--mb-color-border);
+  background-color: var(--mb-color-text-secondary-inverse);
   height: 0.25rem;
   width: 4rem;
-  cursor: pointer;
+  cursor: row-resize;
   z-index: 10;
   border-radius: var(--default-border-radius);
-  transition: background-color 150ms ease;
-
-  &:hover {
-    background-color: var(--mb-color-brand);
-  }
 }
 
 .wrapper {
