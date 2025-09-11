@@ -1,6 +1,5 @@
 (ns metabase-enterprise.library.settings
   (:require
-   [metabase-enterprise.library.source :as source]
    [metabase-enterprise.library.source.git :as git]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -13,15 +12,11 @@
   :encryption :no
   :default    false)
 
-(defn source-from-settings
-  []
-  (git/new-git-source (setting/get :git-sync-url)
-                      (setting/get :git-sync-token)))
-
 (defn- set-repo-with-verification!-fn [original-key]
   (fn [new-value]
     (setting/set-value-of-type! :string original-key new-value)
-    (let [source (source-from-settings)]
+    (let [source (git/new-git-source (setting/get :git-sync-url)
+                                     (setting/get :git-sync-token))]
       (if (git/can-access-branch-in-repository? (assoc source
                                                        :branch
                                                        (setting/get :git-sync-import-branch)))

@@ -2,11 +2,12 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase-enterprise.library.settings :as settings]
+   [metabase-enterprise.library.source.git :as git]
    [metabase-enterprise.library.source.protocol :as source.p]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
    [metabase.models.serialization :as serdes]
+   [metabase.settings.core :as setting]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]))
 
@@ -90,10 +91,15 @@
   (let [opts {}]
     (source.p/write-files! source branch message (map #(->file-spec opts %) stream))))
 
+(defn source-from-settings
+  []
+  (git/new-git-source (setting/get :git-sync-url)
+                      (setting/get :git-sync-token)))
+
 (defn do-with-source
   "impl for with-source"
   [thunk]
-  (let [source (settings/source-from-settings)]
+  (let [source (source-from-settings)]
     (binding [*source* source]
       (thunk source))))
 
