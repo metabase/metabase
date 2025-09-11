@@ -9,7 +9,6 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
@@ -228,7 +227,6 @@
              possible-location))))
      (stage-paths query stage-number))))
 
-
 (mu/defn- remove-replace* :- :map
   [query             :- :map
    stage-number      :- :int
@@ -236,7 +234,9 @@
    remove-or-replace :- [:enum :remove :replace]
    replacement       :- [:maybe [:or
                                  ::lib.schema.mbql-clause/clause
-                                 ::lib.metadata.protocols/metadata]]]
+                                 ;; a metadata or `:lib/external-op` or something
+                                 [:map
+                                  [:lib/type qualified-keyword?]]]]]
   {:pre [(vector? target-clause)]}
   (mu/disable-enforcement
     (let [target-clause (lib.common/->op-arg target-clause)

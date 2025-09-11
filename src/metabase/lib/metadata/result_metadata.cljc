@@ -269,37 +269,19 @@
    col   :- ::kebab-cased-map]
   (when (= (:lib/type col) :metadata/column)
     (let [remove-join-alias? (remove-join-alias-from-broken-field-ref? query col)]
-      (-> (binding [lib.ref/*ref-style* :ref.style/broken-legacy-qp-results]
-            (let [col (cond-> col
-                        remove-join-alias? (-> (lib.join/with-join-alias nil)
-                                               (assoc ::remove-join-alias? true)))
-                  [tag opts id-or-name, :as field-ref] (->> (merge
-                                                             col
-                                                             (when-not remove-join-alias?
-                                                               (when-let [previous-join-alias (:lib/original-join-alias col)]
-                                                                 {:metabase.lib.join/join-alias previous-join-alias, :lib/source :source/joins})))
-                                                            lib.ref/ref)]
-              (let [fixed #_(case (:lib/original-ref-style-for-result-metadata-purposes col)
-                              :original-ref-style/id   (if (pos-int? id-or-name)
-                                                         field-ref
-                                                         [tag (dissoc opts :base-type) (:id col)])
-                              :original-ref-style/name (if (string? id-or-name)
-                                                         field-ref
-                                                         [tag (assoc opts :base-type (:base-type col)) (:lib/deduplicated-name col)])
-                              field-ref)
-                    (cond
-                      (and (or (= (:lib/original-ref-style-for-result-metadata-purposes col) :original-ref-style/id)
-                               (and (:id col)
-                                    (= (:lib/deduplicated-name col) (:lib/original-name col))))
-                           (string? id-or-name))
-                      [tag (dissoc opts :base-type) (:id col)]
-
-                      (pos-int? id-or-name)
-                      [tag (dissoc opts :base-type) id-or-name]
-
-                      :else
-                      field-ref)]
-                fixed)))
+      (-> (if-let [original-ref (:lib/original-ref-for-result-metadata-purposes-only col)]
+            (cond-> original-ref
+              remove-join-alias? (lib.join/with-join-alias nil))
+            (binding [lib.ref/*ref-style* :ref.style/broken-legacy-qp-results]
+              (let [col (cond-> col
+                          remove-join-alias? (lib.join/with-join-alias nil)
+                          remove-join-alias? (assoc ::remove-join-alias? true))]
+                (->> (merge
+                      col
+                      (when-not remove-join-alias?
+                        (when-let [previous-join-alias (:lib/original-join-alias col)]
+                          {:metabase.lib.join/join-alias previous-join-alias, :lib/source :source/joins})))
+                     lib.ref/ref))))
           ;; broken legacy field refs in results medtadata should never have `:effective-type`
           (lib.options/update-options dissoc :effective-type)
           lib.convert/->legacy-MBQL
@@ -317,11 +299,8 @@
       (seq duplicate-refs) (mapv (fn [col]
                                    (cond-> col
                                      (duplicate-refs (:field-ref col))
-                                     (update :field-ref (fn [[tag _id-or-name opts :as field-ref]]
-                                                          (u/prog1 [tag (:lib/deduplicated-name col) (assoc opts :base-type (:base-type col))]
-                                                            (log/debugf "Field ref <> is a duplicate, returning <> instead"
-                                                                        (pr-str field-ref)
-                                                                        (pr-str <>)))))))))))
+                                     (update :field-ref (fn [[tag _id-or-name opts]]
+                                                          [tag (:lib/deduplicated-name col) (assoc opts :base-type (:base-type col))]))))))))
 
 (mu/defn- add-legacy-field-refs :- [:sequential ::kebab-cased-map]
   "Add legacy `:field_ref` to QP results metadata which is still used in a single place in the FE -- see
@@ -411,7 +390,7 @@
 ;;; keep it around but I don't have time to update a million tests. Why do columns have `:lib/uuid` anyway? They
 ;;; should maybe have `:lib/source-uuid` but I don't think they should have `:lib/uuid`.
 (defn- remove-lib-uuids [col]
-  (dissoc col :lib/uuid :lib/source-uuid :lib/original-ref-style-for-result-metadata-purposes))
+  (dissoc col :lib/uuid :lib/source-uuid :lib/original-ref-for-result-metadata-purposes-only))
 
 (mu/defn- col->legacy-metadata :- ::kebab-cased-map
   "Convert MLv2-style `:metadata/column` column metadata to the `snake_case` legacy format we've come to know and love

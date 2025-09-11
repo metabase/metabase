@@ -62,29 +62,33 @@
   (let [[col-name key-set] (cond
                              id-set   [:id id-set]
                              name-set [:name name-set])
-        ;; cache*             (get @cache metadata-type)
         cache-key          (fn [col-name k]
                              (case col-name
                                :id   [metadata-type :id k]
-                               ;; e.g. `[:metadata/column {:table-id 1} "CREATED_AT"]`
+                               ;; e.g. `[:metadata/column :name {:table-id 1} "CREATED_AT"]`
                                :name [metadata-type :name (dissoc metadata-spec :lib/type :id :name) k]))]
     (log/tracef "Getting %s metadata with %s IN %s" metadata-type col-name (pr-str (sort key-set)))
     (let [existing-keys (into #{}
-                              (filter #(get-in-cache cache (cache-key col-name %)))
+                              (let [cache* @cache]
+                                ;; [[get-in]] instead of [[get-in-cache]] because we don't want to filter out the
+                                ;; `::nil` tombstones. Also a little faster to only deref the atom once instead of for
+                                ;; each ID/name
+                                (filter #(get-in cache* (cache-key col-name %))))
                               key-set)
-          missing-keys  (set/difference (set key-set) existing-keys)]
+          missing-keys (set/difference (set key-set) existing-keys)]
       (log/tracef "Already fetched %s: %s" metadata-type (pr-str (sort (set/intersection (set key-set) existing-keys))))
       (when (seq missing-keys)
         (log/tracef "Need to fetch %s: %s" metadata-type (pr-str (sort missing-keys)))
-        (let [fetched-metadatas (lib.metadata.protocols/metadatas uncached-provider (assoc metadata-spec col-name missing-keys))
-              fetched-keys      (map col-name fetched-metadatas)
-              unfetched-keys    (set/difference (set missing-keys) (set fetched-keys))]
-          (when (seq fetched-keys)
-            (log/tracef "Fetched %s: %s" metadata-type (pr-str (sort fetched-keys)))
-            (doseq [instance fetched-metadatas
+        (let [newly-fetched-metadatas (lib.metadata.protocols/metadatas uncached-provider (assoc metadata-spec col-name missing-keys))
+              newly-fetched-keys      (map col-name newly-fetched-metadatas)
+              unfetched-keys          (set/difference (set missing-keys) (set newly-fetched-keys))]
+          (when (seq newly-fetched-keys)
+            (log/tracef "Fetched %s: %s" metadata-type (pr-str (sort newly-fetched-keys)))
+            (doseq [metadata newly-fetched-metadatas
                     ;; store the object under both its `:id` and its `:name`
-                    col-name [:id :name]]
-              (store-in-cache! cache (cache-key col-name (col-name instance)) instance)))
+                    col-name [:id :name]
+                    :let     [newly-fetched-key (col-name metadata)]]
+              (store-in-cache! cache (cache-key col-name newly-fetched-key) metadata)))
           (when (seq unfetched-keys)
             (log/tracef "Failed to fetch %s: %s" metadata-type (pr-str (sort unfetched-keys)))
             (doseq [unfetched-key unfetched-keys]
