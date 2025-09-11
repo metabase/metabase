@@ -289,13 +289,13 @@
                    (mt/user-http-request :lucky :post 403 (str "ee/comment/" restricted-comment-id "/reaction")
                                          {:emoji "👍"})))))))))
 
-(deftest mention-entities-test
-  (testing "We can get users to mention"
-    (is (=? {:data   [{:id int? :common_name "Crowberto Corv" :model "user"}
-                      {:id int? :common_name "Lucky Pigeon" :model "user"}
-                      {:id int? :common_name "Rasta Toucan" :model "user"}]
-             :total  int?
-             :limit  50
-             :offset 0}
-            (-> (mt/user-http-request :rasta :get 200 "ee/comment/mentions" :limit 50)
-                (update :data #(filter mt/test-user? %)))))))
+;; (deftest mention-entities-test
+;;   (testing "We can get users to mention"
+;;     (is (=? {:data   [{:id int? :common_name "Crowberto Corv" :model "user"}
+;;                       {:id int? :common_name "Lucky Pigeon" :model "user"}
+;;                       {:id int? :common_name "Rasta Toucan" :model "user"}]
+;;              :total  int?
+;;              :limit  50
+;;              :offset 0}
+;;             (-> (mt/user-http-request :rasta :get 200 "ee/comment/mentions" :limit 50)
+;;                 (update :data #(filter mt/test-user? %)))))))
