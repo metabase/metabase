@@ -6,3 +6,9 @@ export const trackMetabotChatOpened = () => {
     triggered_from: "search",
   });
 };
+
+export const trackMetabotRequestSent = () => {
+  trackSimpleEvent({
+    event: "metabot_request_sent",
+  });
+};
