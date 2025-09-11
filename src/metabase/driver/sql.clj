@@ -210,13 +210,22 @@
 ;;; |                                              Transforms                                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- table-key [entity]
+  (select-keys entity [:table :schema]))
+
 (defn validate-source-column
-  [driver metadata-provider tables {:keys [column] :as source-column}]
-  (when-let [table (-> (find-table-or-transform driver tables #{} source-column)
-                       :table)]
-    (let [fields (driver-api/fields metadata-provider table)
-          normalized-column (normalize-name driver column)]
-      (some #(= normalized-column (:name %)) fields))))
+  [driver metadata-provider tables-map {:keys [column] :as source-column}]
+  (let [key (table-key source-column)
+        tables (if (seq key)
+                 [(tables-map key)]
+                 (vals tables-map))
+        normalized-column (normalize-name driver column)
+        [match & more-matches] (keep (fn [table-id]
+                                       (when table-id
+                                         (->> (driver-api/fields metadata-provider table-id)
+                                              (some #(= normalized-column (:name %))))))
+                                     tables)]
+    (and match (empty? more-matches))))
 
 (defmethod driver/validate-native-query-fields :sql
   [driver metadata-provider query]
@@ -224,8 +233,14 @@
                             macaw/parsed-query
                             macaw/query->components
                             :source-columns)
-        db-tables (driver-api/tables metadata-provider)]
-    (every? #(validate-source-column driver metadata-provider db-tables %) source-columns)))
+        source-tables (into #{} (map table-key) source-columns)
+        db-tables (driver-api/tables metadata-provider)
+        tables-map (into {}
+                         (keep (fn [current]
+                                 (when-let [table (find-table-or-transform driver db-tables #{} current)]
+                                   [current (:table table)])))
+                         source-tables)]
+    (every? #(validate-source-column driver metadata-provider tables-map %) source-columns)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Convenience Imports                                               |
