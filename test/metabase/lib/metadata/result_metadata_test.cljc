@@ -68,7 +68,10 @@
                   "display-name should include the display name of the FK field (for IMPLICIT JOINS)")
       (is (=? [{:display-name "Category → Name"
                 :source       :fields
-                :field-ref    [:field (meta/id :categories :name) {:join-alias "Category"}]}]
+                ;; sort of contrived since this is not every a query we could build create IRL... even tho the join is
+                ;; technically explicit it matches the shape of an implicit one, so we should return field refs that
+                ;; act like the join isn't here yet
+                :field-ref    [:field (meta/id :categories :name) {:source-field (meta/id :venues :category-id)}]}]
               (column-info
                (lib/query
                 meta/metadata-provider
@@ -743,7 +746,7 @@
       ;; the `:year` bucketing if you used this query in another subsequent query, so the field ref doesn't
       ;; include the unit; however `:unit` is still `:year` so the frontend can use the correct formatting to
       ;; display values of the column.
-      (is (=? [(assoc date-col  :field-ref [:field (meta/id :checkins :date) {}], :unit :year)
+      (is (=? [(assoc date-col  :field-ref [:field (meta/id :checkins :date) nil], :unit :year)
                (assoc count-col :field-ref [:field "count" {:base-type :type/Integer}])]
               (result-metadata/returned-columns
                (lib/query metadata-provider (lib.metadata/card metadata-provider 1))))))))
