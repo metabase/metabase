@@ -33,7 +33,7 @@
                                    :aggregation  [[:count]]}
                     :filter       [:= *count/Integer 3976]}))]
       (is (=? {:stages [{}
-                        {:fields [[:field {} "T__CATEGORY"]
+                        {:fields [[:field {} (meta/id :products :category)]
                                   [:field {} "count"]]}]}
               (qp.preprocess/preprocess query))))))
 
