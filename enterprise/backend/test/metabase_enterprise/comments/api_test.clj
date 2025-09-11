@@ -276,8 +276,11 @@
 
 (deftest mention-entities-test
   (testing "We can get users to mention"
-    (is (=? [{:id int? :common_name "Crowberto Corv"}
-             {:id int? :common_name "Lucky Pigeon"}
-             {:id int? :common_name "Rasta Toucan"}]
-            (->> (:data (mt/user-http-request :rasta :get 200 "ee/comment/mentions"))
-                 (filter mt/test-user?))))))
+    (is (=? {:data   [{:id int? :common_name "Crowberto Corv" :model "user"}
+                      {:id int? :common_name "Lucky Pigeon" :model "user"}
+                      {:id int? :common_name "Rasta Toucan" :model "user"}]
+             :total  int?
+             :limit  50
+             :offset 0}
+            (-> (mt/user-http-request :rasta :get 200 "ee/comment/mentions" :limit 50)
+                (update :data #(filter mt/test-user? %)))))))

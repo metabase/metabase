@@ -1619,6 +1619,8 @@
    :uses #{api
            events
            models
+           request
+           users
            util}}
 
   enterprise/content-translation

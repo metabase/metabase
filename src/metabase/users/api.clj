@@ -208,7 +208,7 @@
     (some? (request/limit))                 (sql.helpers/limit (request/limit))
     (some? (request/offset))                (sql.helpers/offset (request/offset))))
 
-(defn- filter-clauses-without-paging
+(defn filter-clauses-without-paging
   "Given a where clause, return a clause that can be used to count."
   [clauses]
   (dissoc clauses :order-by :limit :offset))
