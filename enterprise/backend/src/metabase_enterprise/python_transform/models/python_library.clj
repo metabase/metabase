@@ -34,15 +34,7 @@
   "Update the Python library source code. Creates a new record if none exists. Returns the updated library."
   [path source]
   (validate-path! path)
-  (t2/with-transaction [_conn]
-    (if-let [existing (t2/select-one :model/PythonLibrary :path path)]
-      (do
-        (t2/update! :model/PythonLibrary (:id existing) {:source source})
-        (t2/select-one :model/PythonLibrary (:id existing)))
-      (try
-        (t2/insert-returning-instance! :model/PythonLibrary {:path path :source source})
-        ;; Handle race condition where another process inserted between select and insert
-        (catch Exception _e
-          (when-let [existing (t2/select-one :model/PythonLibrary :path path)]
-            (t2/update! :model/PythonLibrary (:id existing) {:source source})
-            (t2/select-one :model/PythonLibrary (:id existing))))))))
+  (let [id (app-db/update-or-insert! :model/PythonLibrary
+                                     {:path path}
+                                     (constantly {:path path :source source}))]
+    (t2/select-one :model/PythonLibrary id)))
