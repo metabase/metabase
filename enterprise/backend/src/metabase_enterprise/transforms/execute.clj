@@ -209,7 +209,8 @@
                                                   (transforms.util/dtype->base-type dtype))
                                         :database-type database_type
                                         :nullable? true})
-                                     (:fields metadata))}]
+                                     (:fields metadata))}
+        data-source (assoc data-source :table-schema table-schema)]
     (transforms.util/create-table-from-schema! driver db-id table-schema)
     (driver/insert-from-source! driver db-id table-name (mapv :name (:columns table-schema)) data-source)))
 
