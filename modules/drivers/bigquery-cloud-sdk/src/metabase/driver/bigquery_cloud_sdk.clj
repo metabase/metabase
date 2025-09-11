@@ -49,7 +49,7 @@
     TableId
     TableResult)
    (com.google.common.collect ImmutableMap)
-   (com.google.gson JsonParser JsonArray JsonObject)
+   (com.google.gson JsonParser)
    (java.util Iterator)))
 
 (set! *warn-on-reflection* true)
@@ -924,7 +924,7 @@
         (bigdec value)
 
         (:type/Date :type/DateTime :type/DateTimeWithLocalTZ)
-        (u.date/parse value)
+        (u.date/format (u.date/parse value))
 
         value))))
 
