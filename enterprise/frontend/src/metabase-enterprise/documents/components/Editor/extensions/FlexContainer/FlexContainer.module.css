@@ -28,6 +28,10 @@
   box-sizing: border-box;
 }
 
+.flexContent :global(.node-cardEmbed) :global(.editor-style-boundary) {
+  margin: 0;
+}
+
 /* Ensure CardEmbed nodes within flex container take appropriate space */
 .flexContent > :global(.react-renderer) {
   min-width: 0; /* Allow items to shrink below their natural width */
