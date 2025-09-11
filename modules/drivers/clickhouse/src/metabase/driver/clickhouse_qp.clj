@@ -358,13 +358,22 @@
   (let [[qual valuevalue fieldinfo] value
         hsql-field (sql.qp/->honeysql driver field)
         hsql-value (sql.qp/->honeysql driver value)]
-    (if (and (isa? qual :value)
-             (isa? (:base_type fieldinfo) :type/Text)
-             (nil? valuevalue))
+    (cond
+      (and (isa? qual :value)
+           (isa? (:base_type fieldinfo) :type/Text)
+           (nil? valuevalue))
       [:or
        [:= hsql-field hsql-value]
        [:= [:'empty hsql-field] 1]]
-      ((get-method sql.qp/->honeysql [:sql :=]) driver [op field value]))))
+
+      ;; UUID fields can be compared directly with strings in ClickHouse.
+      (and (isa? qual :value)
+           (isa? (:base_type fieldinfo) :type/UUID)
+           (isa? (:base-type (nth field 2)) :type/UUID)
+           (string? valuevalue))
+      [:= hsql-field hsql-value]
+
+      :else ((get-method sql.qp/->honeysql [:sql :=]) driver [op field value]))))
 
 (defmethod sql.qp/->honeysql [:clickhouse :!=]
   [driver [op field value]]
