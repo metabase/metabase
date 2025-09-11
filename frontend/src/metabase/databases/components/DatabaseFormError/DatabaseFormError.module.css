@@ -4,16 +4,4 @@
   margin-bottom: 1rem;
   margin-top: 1rem;
   width: 100%;
-
-  .alertTitle {
-    color: var(--mantine-color-black);
-    font-size: var(--mantine-font-size-sm);
-    line-height: 1rem;
-  }
-
-  .alertMessage {
-    color: var(--mantine-color-black);
-    font-size: var(--mantine-font-size-md);
-    line-height: 1.25rem;
-  }
 }
