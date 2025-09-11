@@ -38,14 +38,7 @@ describe("AddDataModal", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should have database tab selected by default", async () => {
-    setup();
-
-    const databaseTab = await screen.findByRole("tab", { name: /Database$/ });
-    expect(databaseTab).toHaveAttribute("data-active", "true");
-  });
-
-  it("should allow to change tabs", async () => {
+  it("should have database tab selected by default but allow to change tabs", async () => {
     setup();
 
     const databaseTab = screen.getByRole("tab", { name: /Database$/ });
