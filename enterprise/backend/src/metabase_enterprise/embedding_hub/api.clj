@@ -21,7 +21,9 @@
     (t2/exists? :model/Dashboard {:where (cond-> [:and
                                                   [:= :archived false]]
                                            example-dashboard-id (conj [:not= :id example-dashboard-id])
-                                           (seq audit-collection-ids) (conj [:not-in :collection_id audit-collection-ids]))})))
+                                           (seq audit-collection-ids) (conj [:or
+                                                                             [:is :collection_id nil]
+                                                                             [:not-in :collection_id audit-collection-ids]]))})))
 
 (defn- has-configured-sandboxes? []
   (and (premium-features/has-feature? :sandboxes)

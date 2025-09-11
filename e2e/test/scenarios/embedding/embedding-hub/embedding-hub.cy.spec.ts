@@ -8,11 +8,26 @@ describe("scenarios - embedding hub", () => {
       H.activateToken("pro-cloud");
     });
 
+    it("Contains setup guide in sidebar", () => {
+      cy.visit("/admin/embedding");
+
+      cy.findByTestId("admin-layout-sidebar")
+        .findByText("Setup guide")
+        .should("exist")
+        .click();
+
+      cy.findByTestId("admin-layout-content")
+        .findByRole("heading", { name: "Embedding setup guide" })
+        .should("exist");
+    });
+
     it('"Generate a dashboard" card should work correctly', () => {
-      cy.visit("/embedding-hub");
+      cy.visit("/admin/embedding/setup-guide");
 
       cy.log("Find and click on 'Generate a dashboard' card");
-      cy.findAllByText("Generate a dashboard").first().click();
+      cy.findByTestId("admin-layout-content")
+        .findByText("Generate a dashboard")
+        .click();
 
       cy.log("Select a table to generate dashboard from");
       H.modal().within(() => {
@@ -28,10 +43,10 @@ describe("scenarios - embedding hub", () => {
     });
 
     it('"Add data" card should work correctly', () => {
-      cy.visit("/embedding-hub");
+      cy.visit("/admin/embedding/setup-guide");
 
       cy.log("Find and click on 'Add data' card");
-      cy.findAllByText("Add data").first().click();
+      cy.findByTestId("admin-layout-content").findByText("Add data").click();
 
       cy.log("Add data modal should open");
       cy.findByRole("dialog").within(() => {
@@ -40,10 +55,13 @@ describe("scenarios - embedding hub", () => {
     });
 
     it('"Create models" link should navigate correctly', () => {
-      cy.visit("/embedding-hub");
+      cy.visit("/admin/embedding/setup-guide");
 
       cy.log("Find and click on 'Create models' link");
-      cy.findAllByText("Create models").first().click();
+      cy.findByTestId("admin-layout-content")
+        .findByText("Create models")
+        .first()
+        .click();
 
       cy.log("Should navigate to model creation page");
       cy.url().should("include", "/model/new");
