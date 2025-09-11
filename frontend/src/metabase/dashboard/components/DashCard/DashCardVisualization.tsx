@@ -207,7 +207,7 @@ interface DashCardVisualizationProps {
 
 export function DashCardVisualization({
   dashcard,
-  series: untranslatedRawSeries,
+  series: rawSeries,
   question,
   metadata,
   getHref,
@@ -248,10 +248,6 @@ export function DashCardVisualization({
     getDashCardInlineValuePopulatedParameters(state, dashcard.id),
   );
 
-  const rawSeries = PLUGIN_CONTENT_TRANSLATION.useTranslateSeries(
-    untranslatedRawSeries,
-  );
-
   const visualizerErrMsg = useMemo(() => {
     if (
       !dashcard ||
@@ -272,7 +268,7 @@ export function DashCardVisualization({
     }
   }, [dashcard, rawSeries]);
 
-  const series = useMemo(() => {
+  const untranslatedSeries = useMemo(() => {
     if (
       !dashcard ||
       !rawSeries ||
@@ -323,8 +319,9 @@ export function DashCardVisualization({
     ) as Card;
 
     if (!didEveryDatasetLoad) {
-      return [{ card }];
+      return [{ card }] as RawSeries;
     }
+
     const series: RawSeries = [
       {
         card: extendCardWithDashcardSettings(
@@ -368,6 +365,9 @@ export function DashCardVisualization({
 
     return series;
   }, [rawSeries, dashcard, datasets]);
+
+  const series =
+    PLUGIN_CONTENT_TRANSLATION.useTranslateSeries(untranslatedSeries);
 
   const handleOnUpdateVisualizationSettings = useCallback(
     (settings: VisualizationSettings) => {
