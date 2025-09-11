@@ -13,7 +13,6 @@ import {
   useGetDashboardQuery,
   useGetDatabaseQuery,
   useGetTableQuery,
-  useListUsersQuery,
 } from "metabase/api";
 import {
   type IconModel,
@@ -24,7 +23,10 @@ import { useDispatch } from "metabase/lib/redux";
 import { type UrlableModel, modelToUrl } from "metabase/lib/urls/modelToUrl";
 import { extractEntityId } from "metabase/lib/urls/utils";
 import { Icon } from "metabase/ui";
-import { useGetDocumentQuery } from "metabase-enterprise/api";
+import {
+  useGetDocumentQuery,
+  useListMentionsQuery,
+} from "metabase-enterprise/api";
 import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
 import { updateMentionsCache } from "metabase-enterprise/documents/documents.slice";
 import type {
@@ -34,8 +36,8 @@ import type {
   Dashboard,
   Database,
   Document,
+  MentionableUser,
   Table,
-  User,
 } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
@@ -48,7 +50,7 @@ type SmartLinkEntity =
   | Table
   | Database
   | Document
-  | User;
+  | MentionableUser;
 
 // Utility function to parse entity URLs and extract entityId and model
 export function parseEntityUrl(
@@ -254,7 +256,7 @@ const useEntityData = (
     },
   );
 
-  const usersQuery = useListUsersQuery(undefined, {
+  const usersQuery = useListMentionsQuery(undefined, {
     skip: !entityId || model !== "user",
   });
 
@@ -358,7 +360,7 @@ export const SmartLinkComponent = memo(
       );
     }
 
-    if (model === "user" && isUser(entity)) {
+    if (model === "user" && isMentionableUser(entity)) {
       return (
         <NodeViewWrapper as="span">
           <span className={styles.userMention}>@{entity.name}</span>
@@ -411,7 +413,7 @@ function entityToUrlableModel(
   const result: UrlableModel = {
     id: entity.id as number, // it is string | number in reality, but then gets casted to a string in "modelToUrl"
     model: (entity as Dashboard).model || model || "",
-    name: isUser(entity) ? entity.common_name : entity.name,
+    name: isMentionableUser(entity) ? entity.common_name : entity.name,
   };
 
   if ("db_id" in entity && entity.db_id) {
@@ -438,6 +440,6 @@ function entityToObjectWithModel(
   };
 }
 
-function isUser(value: unknown): value is User {
+function isMentionableUser(value: unknown): value is MentionableUser {
   return isObject(value) && typeof value.common_name === "string";
 }

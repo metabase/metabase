@@ -69,3 +69,7 @@ export interface CreateReactionRequest {
 export interface DeleteReactionRequest {
   id: CommentId;
 }
+
+export interface ListMentionsRequest {
+  limit: number;
+}

@@ -5,6 +5,7 @@ import type {
   CreateCommentRequest,
   CreateReactionRequest,
   ListCommentsRequest,
+  ListMentionsRequest,
   MentionableUser,
   UpdateCommentRequest,
 } from "metabase-types/api";
@@ -69,7 +70,10 @@ export const commentApi = EnterpriseApi.injectEndpoints({
         invalidateTags(error, [idTag("comment", id), listTag("comment")]),
     }),
 
-    listMentions: builder.query<{ data: MentionableUser[] }, void>({
+    listMentions: builder.query<
+      { data: MentionableUser[] },
+      ListMentionsRequest | void
+    >({
       query: (params) => ({
         method: "GET",
         url: "/api/ee/comment/mentions",
