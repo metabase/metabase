@@ -278,8 +278,10 @@
   (try
     (let [^DeleteObjectRequest request (build-delete-object-request bucket-name key)]
       (.deleteObject s3-client request))
-    (catch Exception _
-      ;; Ignore deletion errors - object might not exist or we might not have permissions
+    (catch Exception e
+      (log/debugf e "Error deleting s3 object %s" key)
+      ;; Ignore deletion errors - object might not exist, or we might not have permissions
+      ;; NOTE: we plan to put general retention on the bucket so that objects will eventually be deleted
       nil)))
 
 (defn- cleanup-s3-objects [^S3Client s3-client bucket-name s3-keys]
@@ -315,6 +317,9 @@
         bucket-name         (transforms.settings/python-storage-s-3-bucket)
         loc
         (fn [method relative-path]
+          ;; save a tracking root to a well known location
+          ;; later can ls these to collect those objects whose ttl has elapsed
+          ;; (OR setup a retention policy in s3?)
           (let [path (str work-dir-name "/" relative-path)]
             {:path   path
              :method method
@@ -332,7 +337,8 @@
          [:table id :data]     (loc :get (str "-table-" (name table-name) "-" id ".jsonl"))}))}))
 
 (defn open-s3-shared-storage!
-  "Returns a deref'able shared storage value, (.close) will cleanup any s3 objects named in storage (data files for tables and so on)."
+  "Returns a deref'able shared storage value, (.close) will optimistically delete any s3 objects named in storage (data files for tables, metadata files etc).
+  The intention is the bucket specifies a generic object retention policy to ensure objects are eventually deleted (e.g. because the process dies during writing and .close never gets called)"
   ^Closeable [table-name->id]
   (let [shared-storage (s3-shared-storage table-name->id)]
     (reify IDeref
