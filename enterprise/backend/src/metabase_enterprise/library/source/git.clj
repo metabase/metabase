@@ -94,9 +94,9 @@
          (.setRefSpecs [(RefSpec. (str branch-name ":" branch-name))]))
      git-source)))
 
-(defn write-file!
-  "Write a file to the repo. Path should be relative to the root of the repository."
-  [{:keys [^Git git] :as git-source} ^String branch ^String message ^String path ^String content]
+(defn write-files!
+  "Write a seq of files to the repo. `files` should be maps of :path and :content, with path relative to the root of the repository."
+  [{:keys [^Git git] :as git-source} ^String branch ^String message files]
   (let [repo (.getRepository git)
         branch-ref (qualify-branch branch)
         parent-id (or (.resolve repo branch-ref)
@@ -105,7 +105,16 @@
 
     (with-open [inserter (.newObjectInserter repo)]
       (let [index (DirCache/newInCore)
-            builder (.builder index)]
+            builder (.builder index)
+
+            ;; Add/update the target files
+            updated-paths (into #{} (map (fn [{:keys [path content]}]
+                                           (let [blob-id (.insert inserter Constants/OBJ_BLOB (.getBytes content "UTF-8"))
+                                                 entry (doto (DirCacheEntry. ^String path)
+                                                         (.setFileMode FileMode/REGULAR_FILE)
+                                                         (.setObjectId blob-id))]
+                                             (.add builder entry))
+                                           path) files))]
 
         ;; Copy existing tree entries, excluding the file we're updating
         (when parent-id
@@ -115,35 +124,29 @@
               (.addTree tree-walk (.getTree commit))
               (.setRecursive tree-walk true)
               (while (.next tree-walk)
-                (when-not (= (.getPathString tree-walk) path)
+                (when-not (updated-paths (.getPathString tree-walk))
                   (let [entry (doto (DirCacheEntry. (.getPathString tree-walk))
                                 (.setFileMode (.getFileMode tree-walk 0))
                                 (.setObjectId (.getObjectId tree-walk 0)))]
                     (.add builder entry)))))))
 
-        ;; Add/update the target file
-        (let [blob-id (.insert inserter Constants/OBJ_BLOB (.getBytes content "UTF-8"))
-              entry (doto (DirCacheEntry. ^String path)
-                      (.setFileMode FileMode/REGULAR_FILE)
-                      (.setObjectId blob-id))]
-          (.add builder entry)
-          (.finish builder)
+        (.finish builder)
 
-          ;; Create commit
-          (let [tree-id (.writeTree index inserter)
-                commit-builder (doto (CommitBuilder.)
-                                 (.setTreeId tree-id)
-                                 (.setAuthor (PersonIdent. "Metabase Library" "library@metabase.com"))
-                                 (.setCommitter (PersonIdent. "Metabase Library" "library@metabase.com"))
-                                 (.setMessage message))]
-            (when parent-id
-              (.setParentId commit-builder parent-id))
+        ;; Create commit
+        (let [tree-id (.writeTree index inserter)
+              commit-builder (doto (CommitBuilder.)
+                               (.setTreeId tree-id)
+                               (.setAuthor (PersonIdent. "Metabase Library" "library@metabase.com"))
+                               (.setCommitter (PersonIdent. "Metabase Library" "library@metabase.com"))
+                               (.setMessage message))]
+          (when parent-id
+            (.setParentId commit-builder parent-id))
 
-            (let [commit-id (.insert inserter commit-builder)]
-              (.flush inserter)
-              (doto (.updateRef repo branch-ref)
-                (.setNewObjectId commit-id)
-                (.update)))))))
+          (let [commit-id (.insert inserter commit-builder)]
+            (.flush inserter)
+            (doto (.updateRef repo branch-ref)
+              (.setNewObjectId commit-id)
+              (.update))))))
     (push-branch! git-source branch-ref)))
 
 (defn- branches [{:keys [git]}]
@@ -173,5 +176,5 @@
   (read-file [this branch path]
     (read-file this branch path))
 
-  (write-file! [this branch message path content]
-    (write-file! this branch message path content)))
+  (write-files! [this branch message files]
+    (write-files! this branch message files)))

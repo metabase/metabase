@@ -7,7 +7,7 @@
    [metabase.test :as mt]
    [metabase.util :as u])
   (:import (java.io File)
-           (org.eclipse.jgit.api Git)
+           (org.eclipse.jgit.api Git ResetCommand ResetCommand$ResetType)
            (org.eclipse.jgit.lib PersonIdent)
            (org.eclipse.jgit.revwalk RevCommit)
            (org.eclipse.jgit.transport URIish)))
@@ -19,11 +19,15 @@
       (.getBranch)))
 
 (defn- git-checkout! [^Git git ^String branch ^Boolean create]
-  #p (-> (.checkout git)
-         (.setName branch)
-         (.setCreateBranch create)
-         (.setForced true)
-         (.call)))
+  (-> (.checkout git)
+      (.setName branch)
+      (.setCreateBranch create)
+      (.call)))
+
+(defn- git-reset! [^Git git]
+  (-> (.reset git)
+      (.setMode ResetCommand$ResetType/HARD)
+      (.call)))
 
 (defn- git-log [^Git git]
   (map (fn [^RevCommit commit] {:message      (.getFullMessage commit)
@@ -36,7 +40,11 @@
 (defn- git-read-file! [^Git git ^String branch ^String path]
   (let [original-branch (current-branch git)]
     (try
-      (git-checkout! git branch false)
+      (if (= branch (current-branch git))
+        ;; make sure we are reading the latest commit on the branch
+        (git-reset! git)
+        (git-checkout! git branch false))
+
       (let [repo (.getRepository git)
             work-tree (.getWorkTree repo)
             full-path (io/file work-tree path)]
@@ -136,14 +144,14 @@
       (testing "Reading invalid branch"
         (is (nil? (source/read-file source "invalid-branch" "master.txt")))))))
 
-(deftest write-file
+(deftest write-files
   (mt/with-temp-dir [remote-dir nil]
     (let [[source remote] (init-source! remote-dir
                                         :files {"master.txt"      "File in master"
                                                 "subdir/path.txt" "File in subdir"}
                                         :branches ["branch-1" "branch-2"])]
-      (testing "Writing new file to master"
-        (source/write-file! source "master" "Add new file" "new-file.txt" "New file content")
+      (testing "Writing a new file to master"
+        (source/write-files! source "master" "Add new file" [{:path "new-file.txt" :content "New file content"}])
         (is (= "New file content" (source/read-file source "master" "new-file.txt")))
         (testing "Check remote repo directly"
           (is (= "New file content" (git-read-file! remote "master" "new-file.txt")))
@@ -154,7 +162,7 @@
           (is (= "File in subdir" (source/read-file source "master" "subdir/path.txt")))))
 
       (testing "Updating existing file on master"
-        (source/write-file! source "master" "Update existing file 1" "master.txt" "Updated master content")
+        (source/write-files! source "master" "Update existing file 1" [{:path "master.txt" :content "Updated master content"}])
         (is (= "Updated master content" (source/read-file source "master" "master.txt")))
         (is (= ["master.txt" "new-file.txt" "subdir/path.txt"] (source/list-files source "master")))
         (testing "Check remote repo directly"
@@ -163,4 +171,13 @@
 
         (testing "Other files are still there"
           (is (= "New file content" (source/read-file source "master" "new-file.txt")))
-          (is (= "File in subdir" (source/read-file source "master" "subdir/path.txt"))))))))
+          (is (= "File in subdir" (source/read-file source "master" "subdir/path.txt")))))
+
+      (testing "Updating multiple files"
+        (source/write-files! source "master" "Multi-file" [{:path "master.txt" :content "Updated master content 2"}
+                                                           {:path "subdir/new-file.txt" :content "File added as part of multiple files"}])
+
+        (is (= "Updated master content 2" (source/read-file source "master" "master.txt")))
+        (is (= "File added as part of multiple files" (source/read-file source "master" "subdir/new-file.txt")))
+        (is (= ["master.txt" "new-file.txt" "subdir/new-file.txt" "subdir/path.txt"] (source/list-files source "master")))
+        (is (= ["Multi-file" "Update existing file 1" "Add new file" "Initial commit"] (map :message (git-log remote))))))))

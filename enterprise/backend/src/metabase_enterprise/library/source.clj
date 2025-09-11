@@ -18,8 +18,8 @@
   (read-file [source branch path]
     "Reads the contents of the file at `path` in `branch`")
 
-  (write-file! [source branch message path content]
-    "Writes `content` to the file at `path` in `branch` with commit `message`"))
+  (write-files! [source branch message files]
+    "Writes `content` to `path` in `branch` with commit `message` for all files in `files`"))
 
 (def ^:dynamic *source*
   "The library source"
