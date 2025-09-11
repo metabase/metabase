@@ -516,7 +516,7 @@
       (loop [style (mbql.s/options-style tag), options options]
         (case style
           ::mbql.s/options-style.none                   (into [tag] args)
-          ::mbql.s/options-style.mbql5                 (into [tag (or options {})] args)
+          ::mbql.s/options-style.mbql5                  (into [tag (or options {})] args)
           ::mbql.s/options-style.last-always            (-> (into [tag] args)
                                                             (conj (not-empty (options->legacy-MBQL options))))
           ::mbql.s/options-style.last-always.snake_case (recur ::mbql.s/options-style.last-always

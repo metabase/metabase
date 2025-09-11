@@ -85,7 +85,7 @@ export function CreateDashboardForm({
 
   const handleCreate = useCallback(
     async (values: CreateDashboardProperties) => {
-      const { data: dashboard } = await handleCreateDashboard(values);
+      const dashboard = await handleCreateDashboard(values).unwrap();
       if (dashboard) {
         onCreate?.(dashboard);
       }

@@ -108,7 +108,7 @@
    (ensure-mbql5 #'qp.resolve-source-table/resolve-source-tables)
    (ensure-mbql5 #'qp.auto-bucket-datetimes/auto-bucket-datetimes)
    (ensure-mbql5 #'ensure-joins-use-source-query/ensure-joins-use-source-query)
-   (ensure-legacy #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing)
+   (ensure-mbql5 #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing)
    (ensure-legacy #'qp.add-source-metadata/add-source-metadata-for-source-queries)
    (ensure-mbql5 #'qp.middleware.enterprise/apply-impersonation)
    (ensure-mbql5 #'qp.middleware.enterprise/attach-destination-db-middleware)
@@ -123,7 +123,7 @@
    #'qp.resolve-fields/resolve-fields ; this middleware actually works with either MBQL 5 or legacy
    (ensure-mbql5 #'binning/update-binning-strategy)
    (ensure-mbql5 #'desugar/desugar)
-   (ensure-legacy #'qp.add-default-temporal-unit/add-default-temporal-unit)
+   (ensure-mbql5 #'qp.add-default-temporal-unit/add-default-temporal-unit)
    (ensure-mbql5 #'qp.add-implicit-joins/add-implicit-joins)
    (ensure-legacy #'resolve-joins/resolve-joins) ; #61398
    (ensure-mbql5 #'resolve-joined-fields/resolve-joined-fields)
@@ -134,7 +134,7 @@
    (ensure-mbql5 #'qp.wrap-value-literals/wrap-value-literals)
    (ensure-mbql5 #'auto-parse-filter-values/auto-parse-filter-values)
    (ensure-mbql5 #'validate-temporal-bucketing/validate-temporal-bucketing)
-   (ensure-legacy #'optimize-temporal-filters/optimize-temporal-filters)
+   (ensure-mbql5 #'optimize-temporal-filters/optimize-temporal-filters)
    (ensure-mbql5 #'limit/add-default-limit)
    (ensure-legacy #'qp.middleware.enterprise/apply-download-limit)
    (ensure-legacy #'check-features/check-features)

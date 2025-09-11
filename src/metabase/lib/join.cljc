@@ -306,8 +306,10 @@
    {:keys [stages], :as _join} :- ::lib.schema.join/join
    options                     :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
   (let [join-query (assoc query :stages stages)]
-    (lib.metadata.calculation/returned-columns join-query -1 (lib.util/query-stage join-query -1) options)))
+    (lib.metadata.calculation/returned-columns join-query -1 -1 options)))
 
+;;; TODO (Cam 9/5/25) -- rename this to `join-last-stage-returned-columns-relative-to-parent-stage` to make it's clear
+;;; it's talking about the columns returned by the join's last stage and has nothing to do with the join's `:fields`
 (mu/defn join-returned-columns-relative-to-parent-stage :- ::lib.metadata.calculation/visible-columns
   "All columns made 'visible' by the join (regardless of `:fields`) -- i.e., the columns returned by the last stage of
   the join -- updated so their metadata is relative to the parent stage.

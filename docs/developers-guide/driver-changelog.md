@@ -15,7 +15,7 @@ title: Driver interface changelog
 - Added metabase.driver/compile-transform, metabase.driver/compile-drop-table, metabase.driver/execute-raw-queries!,
   metabase.driver/run-transform!, metabase.driver/drop-transform-target!, metabase.driver/native-query-deps,
   metabase.driver/connection-spec, metabase.driver/table-exists?, metabase.driver.sql/normalize-name,
-  metabase.driver.sql/default-schema, and metabase.driver.sql/find-table to implement sql transforms.
+  and metabase.driver.sql/default-schema to implement sql transforms.
 
 - Added the driver multi-methods `metabase.driver/schema-exists?` and `metabase.driver/create-schema-if-needed!` which should be implemented by drivers that support `:schemas` and `:transforms/table`.
 

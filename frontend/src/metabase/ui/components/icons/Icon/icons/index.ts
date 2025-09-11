@@ -128,6 +128,8 @@ import dyno_component from "./dyno.svg?component";
 import dyno_source from "./dyno.svg?source";
 import edit_document_component from "./edit_document.svg?component";
 import edit_document_source from "./edit_document.svg?source";
+import edit_document_outlined_component from "./edit_document_outlined.svg?component";
+import edit_document_outlined_source from "./edit_document_outlined.svg?source";
 import ellipsis_component from "./ellipsis.svg?component";
 import ellipsis_source from "./ellipsis.svg?source";
 import embed_component from "./embed.svg?component";
@@ -712,6 +714,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     edit_document: {
       component: edit_document_component,
       source: edit_document_source,
+    },
+    edit_document_outlined: {
+      component: edit_document_outlined_component,
+      source: edit_document_outlined_source,
     },
     ellipsis: {
       component: ellipsis_component,
@@ -1476,6 +1482,7 @@ export type IconName =
   | "download"
   | "dyno"
   | "edit_document"
+  | "edit_document_outlined"
   | "ellipsis"
   | "embed"
   | "empty"
