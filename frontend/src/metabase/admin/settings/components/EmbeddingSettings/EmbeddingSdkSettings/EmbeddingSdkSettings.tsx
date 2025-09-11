@@ -145,7 +145,7 @@ export function EmbeddingSdkSettings() {
             {t`SDK for React`}
           </Text>
 
-          <Text c="var(--mb-color-text-medium)" lh="lg">
+          <Text c="var(--mb-color-text-secondary)" lh="lg">
             {t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`}
           </Text>
         </Stack>
@@ -191,7 +191,7 @@ export function EmbeddingSdkSettings() {
               {t`Embedded Analytics JS`}
             </Text>
 
-            <Text c="var(--mb-color-text-medium)" lh="lg">
+            <Text c="var(--mb-color-text-secondary)" lh="lg">
               {t`An easy-to-use library that lets you embed Metabase entities like charts, dashboards, or even the query builder into your own application using customizable components.`}
             </Text>
           </Stack>

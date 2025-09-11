@@ -66,10 +66,10 @@ export const EmbeddingHub = () => {
       <Stack gap="xs" ml="3rem">
         <Title
           order={1}
-          c="var(--mb-color-text-dark)"
+          c="var(--mb-color-text-primary)"
         >{t`Embedding setup guide`}</Title>
 
-        <Text c="var(--mb-color-text-medium)">{t`Follow the guide to get started with Embedded Analytics JS`}</Text>
+        <Text c="var(--mb-color-text-secondary)">{t`Follow the guide to get started with Embedded Analytics JS`}</Text>
       </Stack>
       <StepperWithCards steps={stepperSteps} />
       <AddDataModal
