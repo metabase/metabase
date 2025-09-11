@@ -1,9 +1,9 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import ModalContent from "metabase/common/components/ModalContent";
 import Snippets from "metabase/entities/snippets";
 import { useDispatch } from "metabase/lib/redux";
+import { Flex, Modal } from "metabase/ui";
 import type { NativeQuerySnippet } from "metabase-types/api";
 
 import SnippetForm, {
@@ -13,12 +13,12 @@ import SnippetForm, {
 
 type SnippetModalProps = {
   snippet: Partial<NativeQuerySnippet>;
-  onCreate?: (snippet: NativeQuerySnippet) => void;
-  onUpdate?: (
+  onCreate: (snippet: NativeQuerySnippet) => void;
+  onUpdate: (
     nextSnippet: NativeQuerySnippet,
     originalSnippet: NativeQuerySnippet,
   ) => void;
-  onClose?: () => void;
+  onClose: () => void;
 };
 
 function SnippetFormModal({
@@ -60,16 +60,27 @@ function SnippetFormModal({
   }, [snippet, dispatch, onClose]);
 
   return (
-    <ModalContent title={title} onClose={onClose}>
-      <SnippetForm
-        {...props}
-        snippet={snippet}
-        onCreate={handleCreate}
-        onUpdate={handleUpdate}
-        onArchive={handleArchive}
-        onCancel={onClose}
-      />
-    </ModalContent>
+    <Modal.Root padding="xl" opened onClose={onClose}>
+      <Modal.Overlay />
+      <Modal.Content>
+        <Modal.Header px="xl">
+          <Modal.Title>{title}</Modal.Title>
+          <Flex justify="flex-end">
+            <Modal.CloseButton />
+          </Flex>
+        </Modal.Header>
+        <Modal.Body px="xl">
+          <SnippetForm
+            {...props}
+            snippet={snippet}
+            onCreate={handleCreate}
+            onUpdate={handleUpdate}
+            onArchive={handleArchive}
+            onCancel={onClose}
+          />
+        </Modal.Body>
+      </Modal.Content>
+    </Modal.Root>
   );
 }
 
