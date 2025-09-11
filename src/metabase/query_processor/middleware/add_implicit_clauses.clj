@@ -50,7 +50,12 @@
       (when (seq cols)
         (letfn [(updated-stage [query stage-number]
                   (-> (lib/with-fields query stage-number (concat cols expressions))
-                      (lib/query-stage stage-number)))]
+                      (lib/query-stage stage-number)
+                      ;; this is used
+                      ;; by [[metabase.lib.metadata.result-metadata/super-broken-legacy-field-ref]] (via [[metabase.lib.stage/fields-columns]])
+                      ;; so it knows to force Field ID `:field_ref`s in the QP results metadata to preserve historic
+                      ;; behavior
+                      (assoc :qp/added-implicit-fields? true)))]
           (lib.walk/apply-f-for-stage-at-path updated-stage (assoc-in query path stage) path))))))
 
 (defn- has-window-function-aggregations? [stage]
