@@ -206,7 +206,7 @@
                   (future-cancel fut)
                   (if (= ::timeout (try (deref fut 10000 ::timeout) (catch Throwable _)))
                     (log/fatalf "Log polling task did not respond to interrupt, run-id: %s" run-id)
-                    (log/debugf "Log polling task done, run-id: %s")))
+                    (log/debugf "Log polling task done, run-id: %s" run-id)))
         fut     (u.jvm/in-virtual-thread*
                  (python-message-update-loop! run-id message-log))]
     (reify Closeable
