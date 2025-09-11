@@ -1305,29 +1305,22 @@
   :hierarchy #'hierarchy)
 
 (defmulti insert-from-source!
-  "Inserts data from a data source into an existing table.
-   This abstracts away the conversion and insertion process, allowing drivers
-   to optimize based on the data source type. Returns number of rows inserted. "
-  {:added "0.57.0", :arglists '([driver database-id table-name column-names data-source])}
-  (fn [driver _ _ _ data-source]
+  "Inserts data from a data source into an existing table."
+  {:added "0.57.0", :arglists '([driver database-id table-definition data-source])}
+  (fn [driver _ _ data-source]
     [(dispatch-on-initialized-driver driver) (:type data-source)])
   :hierarchy #'hierarchy)
 
-(defmethod insert-from-source! [::driver :rows]
-  [driver db-id table-name column-names {:keys [data]}]
-  (when (seq data)
-    (insert-into! driver db-id table-name column-names data))
-  (count data))
-
 (defmethod insert-from-source! [::driver :csv-file]
-  [driver db-id table-name column-names {:keys [file]}]
-  (let [csv-rows (csv/read-csv (io/reader file))
-        header-rows (first csv-rows)
-        data-rows (map (fn [rows]
-                         (let [m (zipmap header-rows rows)]
-                           (mapv #(get m %) column-names)))
-                       (rest csv-rows))]
-    (insert-from-source! driver db-id table-name column-names {:type :rows :data data-rows})))
+  [driver db-id {:keys [columns] :as table-definition} {:keys [file]}]
+  (with-open [rdr (io/reader file)]
+    (let [csv-rows (csv/read-csv rdr)
+          header (first csv-rows)
+          data-rows (map (fn [rows]
+                           (let [m (zipmap header rows)]
+                             (mapv #(get m (:name %)) columns)))
+                         (rest csv-rows))]
+      (insert-from-source! driver db-id table-definition {:type :rows :data data-rows}))))
 
 (defmulti add-columns!
   "Add columns given by `column-definitions` to a table named `table-name`. If the table doesn't exist it will throw an error.

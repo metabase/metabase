@@ -208,6 +208,10 @@
     (doseq [sql (insert-into!-sqls driver table-name column-names values false)]
       (jdbc/execute! conn sql))))
 
+(defmethod driver/insert-from-source! [:sql-jdbc :rows]
+  [driver db-id {table-name :name :keys [columns]} {:keys [data]}]
+  (driver/insert-into! driver db-id table-name (mapv :name columns) data))
+
 (defmethod driver/add-columns! :sql-jdbc
   [driver db-id table-name column-definitions & {:keys [primary-key]}]
   (mu/validate-throw [:maybe [:cat :keyword]] primary-key) ; we only support adding a single primary key column for now

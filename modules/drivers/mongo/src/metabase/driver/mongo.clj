@@ -585,18 +585,6 @@
                           (.getName db)
                           (name new-table-name))))))
 
-;; Insert documents into a collection
-(defmethod driver/insert-into! :mongo
-  [_driver db-id table-name column-names values]
-  (mongo.connection/with-mongo-database [^MongoDatabase db db-id]
-    (let [collection (mongo.util/collection db (name table-name))
-          documents (map (fn [row]
-                           (zipmap (map keyword column-names) row))
-                         values)]
-      (if (> (count documents) 1)
-        (mongo.util/insert-many collection documents)
-        (mongo.util/insert-one collection (first documents))))))
-
 (defmethod driver/drop-transform-target! [:mongo :table]
   [driver database target]
   (driver/drop-table! driver (:id database) (:name target)))
@@ -664,19 +652,20 @@
 
       value)))
 
-(defmethod driver/insert-from-source! [:mongo :csv-file]
-  [driver db-id table-name column-names {:keys [file table-schema]}]
-  (let [csv-rows (csv/read-csv (io/reader file))
-        header-rows (first csv-rows)
-        meta (m/index-by :name (:columns table-schema))
-        convert-value (fn [name v]
-                        (let [ty (:type (get meta name))]
-                          (convert-value-for-insertion ty v)))
-        data-rows (map (fn [rows]
-                         (let [m (zipmap header-rows rows)]
-                           (mapv #(convert-value % (get m %)) column-names)))
-                       (rest csv-rows))]
-    (driver/insert-from-source! driver db-id table-name column-names {:type :rows :data data-rows})))
+(defmethod driver/insert-from-source! [:mongo :rows]
+  [_driver db-id {table-name :name :keys [columns]} {:keys [data]}]
+  (let [col-names (mapv :name columns)
+        col-meta (m/index-by :name columns)]
+    (mongo.connection/with-mongo-database [^MongoDatabase db db-id]
+      (let [collection (mongo.util/collection db (name table-name))
+            documents (map #(into {} (map (fn [col-name value]
+                                            (let [ty (:type (get col-meta col-name))]
+                                              [col-name (convert-value-for-insertion ty value)]))
+                                          col-names %))
+                           data)]
+        (if (> (bounded-count 2 documents) 1)
+          (mongo.util/insert-many collection documents)
+          (mongo.util/insert-one collection (first documents)))))))
 
 ;; Following code is using monger. Leaving it here for a reference as it could be transformed when there is need
 ;; for ssl experiments.

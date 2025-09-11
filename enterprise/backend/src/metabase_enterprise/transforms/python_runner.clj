@@ -76,7 +76,9 @@
            :type/Dictionary
            :type/JSON
            :type/Date
-           :type/Text])))
+           :type/Text
+           :type/UUID
+           :type/Decimal])))
 
 (defn- closest-ancestor [t pred]
   (loop [remaining (conj clojure.lang.PersistentQueue/EMPTY [t])]

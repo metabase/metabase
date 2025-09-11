@@ -41,7 +41,6 @@
     FieldValue
     FieldValueList
     InsertAllRequest
-    InsertAllResponse
     QueryJobConfiguration
     Schema
     Table
@@ -927,46 +926,33 @@
 
       value)))
 
-(defn- prepare-row-with-field-types
-  "Convert a row using field type information to properly type values."
-  [field-types column-names row-values]
-  (into {}
-        (map (fn [col-name value]
-               (let [base-type (get field-types col-name :type/Text)]
-                 [col-name (convert-value-for-insertion base-type value)]))
-             column-names
-             row-values)))
+(defmethod driver/insert-from-source! [:bigquery-cloud-sdk :rows]
+  [_driver db-id {table-name :name :keys [columns]} {:keys [data]}]
 
-(defmethod driver/insert-into! :bigquery-cloud-sdk
-  [_driver db-id table-name column-names values]
-  (let [database (t2/select-one :model/Database db-id)
-        details (:details database)
+  (let [col-meta (m/index-by :name columns)
+        col-names (map :name columns)
+        {:keys [details]} (t2/select-one :model/Database db-id)
+
         client (database-details->client details)
         project-id (get-project-id details)
 
-        [dataset-id actual-table-name] [(namespace table-name) (name table-name)]
+        [dataset-id table-name] [(namespace table-name) (name table-name)]
 
-        ^Table bq-table (if dataset-id
-                          (get-table client project-id dataset-id actual-table-name)
-                          (throw (ex-info "Table name must include dataset" {:table-name table-name})))
+        table-id (.getTableId (get-table client project-id dataset-id table-name))
 
-        schema (.getSchema (.getDefinition bq-table))
-        table-id (.getTableId bq-table)
+        prepared-rows (map #(into {}
+                                  (map (fn [col-name value]
+                                         (let [ty (:type (get col-meta col-name))]
+                                           [col-name (convert-value-for-insertion ty value)]))
+                                       col-names %))
+                           data)]
 
-        field-types (into {}
-                          (map (fn [^Field field]
-                                 (let [[_db-type base-type] (field->database+base-type field)]
-                                   [(.getName field) base-type])))
-                          (.getFields schema))
-
-        prepared-rows (map #(prepare-row-with-field-types field-types column-names %) values)]
-
-    (doseq [chunk (partition-all 1000 prepared-rows)]
+    (doseq [chunk (partition-all (or driver/*insert-chunk-rows* 1000) prepared-rows)]
       (let [insert-request-builder (InsertAllRequest/newBuilder table-id)]
-        (doseq [row chunk]
-          (.addRow insert-request-builder ^java.util.Map row))
+        (doseq [^java.util.Map row chunk]
+          (.addRow insert-request-builder row))
         (let [insert-request (.build insert-request-builder)
-              ^InsertAllResponse response (.insertAll client insert-request)]
+              response (.insertAll client insert-request)]
           (when (.hasErrors response)
             (let [errors (.getInsertErrors response)]
               (throw (ex-info "BigQuery insert failed"

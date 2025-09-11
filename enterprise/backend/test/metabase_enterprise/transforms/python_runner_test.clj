@@ -390,8 +390,7 @@
                            (if (= driver/*driver* :mysql) "2024-01-01 12:00:00" "2024-01-01T12:00:00")
                            "2024-01-01"
                            "Sample product"]]
-            _ (driver/insert-from-source! driver db-id qualified-table-name
-                                          (mapv :name (:columns table-schema))
+            _ (driver/insert-from-source! driver db-id table-schema
                                           {:type :rows :data row-values})
 
             _ (sync/sync-database! (mt/db) {:scan :schema})

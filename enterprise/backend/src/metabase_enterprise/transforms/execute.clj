@@ -203,7 +203,7 @@
                                      (:fields metadata))}
         data-source (assoc data-source :table-schema table-schema)]
     (transforms.util/create-table-from-schema! driver db-id table-schema)
-    (driver/insert-from-source! driver db-id table-name (mapv :name (:columns table-schema)) data-source)))
+    (driver/insert-from-source! driver db-id table-schema data-source)))
 
 (defn- transfer-file-to-db [driver db {:keys [target] :as transform} metadata temp-file]
   (let [table-name (transforms.util/qualified-table-name driver target)
