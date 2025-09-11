@@ -19,7 +19,6 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
   (:import
-   (clojure.lang IDeref)
    (java.io Closeable File)
    (java.time Duration)))
 
