@@ -114,7 +114,7 @@
 (defn- cached-metadatas [cache metadata-type metadata-ids]
   (into []
         (keep (fn [id]
-                (get-in-cache cache [metadata-type id])))
+                (get-in-cache cache [metadata-type :id id])))
         metadata-ids))
 
 (defn- setting [metadata-provider cache setting-key]

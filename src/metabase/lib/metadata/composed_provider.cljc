@@ -17,6 +17,23 @@
   (filter #(satisfies? metadata.protocols/InvocationTracker %)
           providers))
 
+(defn- metadatas* [providers k unfetched-keys f]
+  (loop [[provider & more-providers] providers, unfetched-keys (set unfetched-keys), fetched []]
+    (cond
+      (empty? unfetched-keys)
+      fetched
+
+      (not provider)
+      fetched
+
+      :else
+      (let [newly-fetched      (f provider unfetched-keys)
+            newly-fetched-keys (into #{} (map k) newly-fetched)
+            unfetched-keys     (set/difference unfetched-keys newly-fetched-keys)]
+        (recur more-providers
+               unfetched-keys
+               (into fetched newly-fetched))))))
+
 (defn- metadatas [providers {metadata-type :lib/type, id-set :id, name-set :name, :as metadata-spec}]
   (if-not (or id-set name-set)
     (when-let [ids (not-empty
@@ -34,38 +51,20 @@
             (metadata.protocols/default-spec-filter-xform metadata-spec)
             (metadatas providers {:lib/type metadata-type, :id ids})))
     (let [k (if id-set :id :name)]
-      (loop [[provider & more-providers] providers, unfetched-keys (k metadata-spec), fetched []]
-        (cond
-          (empty? unfetched-keys)
-          fetched
-
-          (not provider)
-          fetched
-
-          :else
-          (let [newly-fetched      (metadata.protocols/metadatas provider (assoc metadata-spec k unfetched-keys))
-                newly-fetched-keys (into #{} (map k) newly-fetched)
-                unfetched-keys     (set/difference unfetched-keys newly-fetched-keys)]
-            (recur more-providers
-                   unfetched-keys
-                   (into fetched newly-fetched))))))))
+      (metadatas*
+       providers
+       k
+       (k metadata-spec)
+       (fn [provider unfetched-keys]
+         (metadata.protocols/metadatas provider (assoc metadata-spec k unfetched-keys)))))))
 
 (defn- cached-metadatas [providers metadata-type ids]
-  (loop [[provider & more-providers] providers, unfetched-ids (set ids), fetched []]
-    (cond
-      (empty? unfetched-ids)
-      fetched
-
-      (not provider)
-      fetched
-
-      :else
-      (let [newly-fetched     (metadata.protocols/cached-metadatas provider metadata-type unfetched-ids)
-            newly-fetched-ids (into #{} (map :id) newly-fetched)
-            unfetched-ids     (set/difference unfetched-ids newly-fetched-ids)]
-        (recur more-providers
-               unfetched-ids
-               (into fetched newly-fetched))))))
+  (metadatas*
+   (cached-providers providers)
+   :id
+   ids
+   (fn [provider unfetched-ids]
+     (metadata.protocols/cached-metadatas provider metadata-type unfetched-ids))))
 
 (defn- cached-value [metadata-providers k not-found]
   (loop [[cached-provider & more] (cached-providers metadata-providers)]
