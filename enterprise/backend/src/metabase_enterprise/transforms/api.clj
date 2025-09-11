@@ -293,7 +293,7 @@
                                     :exit_code (:exit_code (:exit_code body))})
                 (assoc :status status)))))
       (finally
-        (trasnforms.canceling/chan-end-run! run-id)))))
+        (transforms.canceling/chan-end-run! run-id)))))
 
 (api.macros/defendpoint :post "/test-python/cancel"
   "Cancel the current test-python execution."
@@ -301,7 +301,7 @@
    _query-params]
   (log/info "canceling test python execution")
   (api/check-superuser)
-  (if (trasnforms.canceling/chan-signal-cancel! python-test-run-id)
+  (if (transforms.canceling/chan-signal-cancel! python-test-run-id)
     (-> (response/response {:message (deferred-tru "Python test canceled")})
         (assoc :status 200))
     (-> (response/response {:message (deferred-tru "No running Python test to cancel")})
