@@ -200,7 +200,10 @@ export function MainNavbarView({
               />
 
               <Tree
-                data={regularCollections}
+                data={regularCollections.sort((a) => {
+                  // FIXME do this on the backend
+                  return a.type === "library" ? -1 : 0;
+                })}
                 selectedId={collectionItem?.id}
                 onSelect={onItemSelect}
                 TreeNode={SidebarCollectionLink}

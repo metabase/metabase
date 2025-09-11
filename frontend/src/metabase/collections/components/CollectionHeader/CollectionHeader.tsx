@@ -2,6 +2,7 @@ import { withRouter } from "react-router";
 
 import {
   isInstanceAnalyticsCollection,
+  isLibraryCollection,
   isTrashedCollection,
 } from "metabase/collections/utils";
 import { PLUGIN_GIT_SYNC } from "metabase/plugins";
@@ -82,7 +83,7 @@ const CollectionHeader = ({
             collection={collection}
             onUpdateCollection={onUpdateCollection}
           />
-          {collection.name.includes("Library") && ( // LOL FIXME
+          {isLibraryCollection(collection) && (
             <PLUGIN_GIT_SYNC.LibrarySyncControl />
           )}
           {!isInstanceAnalytics && (

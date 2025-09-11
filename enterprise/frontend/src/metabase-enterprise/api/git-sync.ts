@@ -1,4 +1,4 @@
-import type { Transform } from "metabase-types/api";
+import type { CollectionId, Transform } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
 import { tag } from "./tags";
@@ -56,17 +56,23 @@ export type UnsyncedChangesResponse = {
 
 export const gitSyncApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    importGit: builder.mutation({
-      query: () => ({
+    importGit: builder.mutation<
+      void,
+      { branch: string; collectionIds: CollectionId[] }
+    >({
+      query: ({ branch }) => ({
         method: "POST",
         url: "/api/ee/library/import",
+        body: { branch },
       }),
-      invalidatesTags: [tag("git-tree"), tag("git-file-content")],
+      invalidatesTags: (response, error, request) =>
+        request.collectionIds.map((id) => `collection-${id}-items`),
     }),
-    exportGit: builder.mutation({
-      query: () => ({
+    exportGit: builder.mutation<void, { branch: string }>({
+      query: ({ branch }) => ({
         method: "POST",
         url: "/api/ee/library/export",
+        body: { branch },
       }),
     }),
     getRepositoryTree: builder.query<GitTreeNode, void>({

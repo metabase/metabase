@@ -2,15 +2,17 @@ import { useRef, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { useListCollectionsTreeQuery } from "metabase/api";
+import { isLibraryCollection } from "metabase/collections/utils";
 import ActionButton from "metabase/common/components/ActionButton";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useSetting } from "metabase/common/hooks";
 import {
   Alert,
   Anchor,
   Autocomplete,
   Box,
-  Button,
   Flex,
   Group,
   Icon,
@@ -42,6 +44,7 @@ const SAMPLE_BRANCHES = [
 export function LibrarySyncControl() {
   const [importGit, { isLoading: isImporting }] = useImportGitMutation();
   const [exportGit, { isLoading: isExporting }] = useExportGitMutation();
+
   const [showImportConfirmation, setShowImportConfirmation] = useState(false);
   const [showUnsyncedChangesModal, setShowUnsyncedChangesModal] =
     useState(false);
@@ -54,7 +57,17 @@ export function LibrarySyncControl() {
   const defaultPullBranch = useSetting("git-sync-import-branch");
   const defaultPushBranch = useSetting("git-sync-export-branch");
   const allowEdit = useSetting("git-sync-allow-edit");
+
+  const [pullBranch, setPullBranch] = useState<string>(
+    defaultPullBranch ?? "main",
+  );
+  const [pushBranch, setPushBranch] = useState<string>(
+    defaultPushBranch ?? "main",
+  );
   const gitSyncConfigured = useSetting("git-sync-configured");
+
+  const { data: collections } = useListCollectionsTreeQuery();
+  const libraryCollections = collections?.filter((c) => isLibraryCollection(c));
 
   const {
     data: unsyncedChanges,
@@ -80,7 +93,10 @@ export function LibrarySyncControl() {
         promiseRef.current = { resolve, reject };
       });
     } else {
-      return importGit({}).unwrap();
+      return importGit({
+        branch: pullBranch,
+        collectionIds: libraryCollections?.map((c) => c.id) || [],
+      }).unwrap();
     }
   };
 
@@ -111,50 +127,55 @@ export function LibrarySyncControl() {
 
   return (
     <>
-      <Popover
-        closeOnClickOutside={false}
-        onOpenChange={handlePopoverOpenChange}
-      >
+      <Popover closeOnClickOutside={false} onOpenChange={handlePopoverOpenChange}>
+        {hasUnsyncedChanges && (
+          <Alert
+            variant="error"
+            icon={<Icon name="warning" />}
+            title={t`Unsynced changes detected`}
+          >
+            <Stack gap="sm">
+              <Text>
+                {t`You have ${unsyncedChanges?.unsynced_counts?.total} unsynced changes. Importing will overwrite these changes.`}
+              </Text>
+              {unsyncedChanges?.entities && (
+                <Anchor
+                  onClick={() => setShowUnsyncedChangesModal(true)}
+                  c="text"
+                  size="sm"
+                  style={{ cursor: "pointer" }}
+                >
+                  {t`View affected items`}
+                </Anchor>
+              )}
+            </Stack>
+          </Alert>
+        )}
         <Popover.Target>
-          <Button variant="subtle" leftSection={<Icon name="sync" />} />
+          <ToolbarButton
+            icon="sync"
+            onClick={() => {}}
+            aria-label={t`Sync library`}
+            tooltipLabel={t`Sync library`}
+            tooltipPosition="bottom"
+          />
         </Popover.Target>
         <Popover.Dropdown>
-          <Stack gap="md" align="stretch" p="lg">
-            {hasUnsyncedChanges && (
-              <Alert
-                variant="error"
-                icon={<Icon name="warning" />}
-                title={t`Unsynced changes detected`}
-              >
-                <Stack gap="sm">
-                  <Text>
-                    {t`You have ${unsyncedChanges?.unsynced_counts?.total} unsynced changes. Importing will overwrite these changes.`}
-                  </Text>
-                  {unsyncedChanges?.entities && (
-                    <Anchor
-                      onClick={() => setShowUnsyncedChangesModal(true)}
-                      c="text"
-                      size="sm"
-                      style={{ cursor: "pointer" }}
-                    >
-                      {t`View affected items`}
-                    </Anchor>
-                  )}
-                </Stack>
-              </Alert>
-            )}
+          <Stack gap="md" align="stretch" p="lg" miw="20rem">
             <Flex gap="md" align="end">
               <Autocomplete
                 name="git-sync-import-branch"
                 // eslint-disable-next-line
-                description={t`Metabase will pull in all content from this branch`}
+                description={t`Metabase will pull in library content from this branch`}
                 title={t`Import branch`}
+                value={pullBranch ?? ""}
+                onChange={setPullBranch}
                 defaultValue={defaultPullBranch ?? "main"}
                 w="20rem"
                 data={SAMPLE_BRANCHES}
+                disabled
               />
               <ActionButton
-                ref={importButtonRef}
                 primary
                 actionFn={handleImportClick}
                 variant="filled"
@@ -175,15 +196,18 @@ export function LibrarySyncControl() {
                 <Autocomplete
                   name="git-sync-export-branch"
                   // eslint-disable-next-line
-                  description={t`Metabase will push all content to this branch`}
+                  description={t`Metabase will save library content to this branch`}
                   title={t`Export branch`}
                   defaultValue={defaultPushBranch ?? "main"}
                   w="20rem"
                   data={SAMPLE_BRANCHES}
+                  value={pushBranch ?? ""}
+                  onChange={setPushBranch}
+                  disabled
                 />
                 <ActionButton
                   primary
-                  actionFn={() => exportGit({}).unwrap()}
+                  actionFn={() => exportGit({ branch: pushBranch }).unwrap()}
                   variant="filled"
                   failedText={t`Sync failed`}
                   activeText={t`Syncing...`}
@@ -208,7 +232,6 @@ export function LibrarySyncControl() {
           </Stack>
         </Popover.Dropdown>
       </Popover>
-
       <ConfirmModal
         opened={showImportConfirmation}
         onClose={handleCancelImport}
