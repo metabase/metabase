@@ -49,9 +49,10 @@
         "enabled"  (api/check (not (contains? duplicated-params param))
                               [400 (tru "You can''t specify a value for {0} if it''s already set in the JWT." param)])
         ;; locked means JWT must specify param
-        "locked"   (api/check
-                    (some? (get token-params param))    [400 (tru "You must specify a value for {0} in the JWT." param)]
-                    (not (contains? user-params param)) [400 (tru "You can only specify a value for {0} in the JWT." param)])))))
+        "locked"   (let [token-value (get token-params param)]
+                     (api/check
+                      (and (some? token-value) (not= token-value "")) [400 (tru "You must specify a value for {0} in the JWT." param)]
+                      (not (contains? user-params param))             [400 (tru "You can only specify a value for {0} in the JWT." param)]))))))
 
 (defn- check-params-exist
   "Make sure all the params specified are specified in `object-embedding-params`."
@@ -269,6 +270,8 @@
     (for [param parameters
           :let  [slug  (keyword (:slug param))
                  value (get slug->value slug)
+                 ;; convert empty strings to nil for query processing (but preserve for parameter filtering)
+                 value (if (= value "") nil value)
                  ;; operator parameters expect a sequence of values so if we get a lone value (e.g. from a single URL
                  ;; query parameter) wrap it in a sequence
                  value (if (and (some? value)
