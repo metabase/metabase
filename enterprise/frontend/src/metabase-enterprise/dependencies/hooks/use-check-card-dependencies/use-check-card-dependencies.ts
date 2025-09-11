@@ -35,26 +35,23 @@ export function useCheckCardDependencies({
         setQuestion(question);
         setIsConfirmationShown(true);
       } else {
-        setQuestion(null);
-        setIsConfirmationShown(false);
         await onSave(question);
       }
     },
     [store, getSubmittableQuestion, checkCard, onSave],
   );
 
-  const handleSaveAfterConfirmation = useCallback(async () => {
-    if (question != null) {
-      await onSave(question);
-      setQuestion(null);
-      setIsConfirmationShown(false);
-    }
-  }, [question, onSave]);
-
   const handleCloseConfirmation = useCallback(() => {
     setQuestion(null);
     setIsConfirmationShown(false);
   }, []);
+
+  const handleSaveAfterConfirmation = useCallback(async () => {
+    if (question != null) {
+      await onSave(question);
+      handleCloseConfirmation();
+    }
+  }, [question, onSave, handleCloseConfirmation]);
 
   return {
     checkData: data,

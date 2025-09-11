@@ -39,18 +39,17 @@ export function useCheckTransformDependencies({
     [checkTransform, onSave, onError],
   );
 
-  const handleSaveAfterConfirmation = useCallback(async () => {
-    if (request != null) {
-      await onSave(request);
-      setRequest(null);
-      setIsConfirmationShown(false);
-    }
-  }, [request, onSave]);
-
   const handleCloseConfirmation = useCallback(() => {
     setRequest(null);
     setIsConfirmationShown(false);
   }, []);
+
+  const handleSaveAfterConfirmation = useCallback(async () => {
+    if (request != null) {
+      await onSave(request);
+      handleCloseConfirmation();
+    }
+  }, [request, onSave, handleCloseConfirmation]);
 
   return {
     checkData: data,
