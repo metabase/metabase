@@ -41,7 +41,7 @@ export const AdminSettingsLayout = ({
           data-testid="admin-layout-content"
         >
           <Box maw={maw} w="100%">
-            <Box pb="2rem">
+            <Box {...(fullWidthContent ? { h: "100%" } : { pb: "2rem" })}>
               <ErrorBoundary>{children ?? <NotFound />}</ErrorBoundary>
             </Box>
           </Box>
