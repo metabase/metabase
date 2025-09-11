@@ -19,7 +19,6 @@ const NavDivider = () => <Divider my="sm" />;
 
 export function SettingsNav() {
   const hasHosting = useHasTokenFeature("hosting");
-  const hasEmbedding = useHasTokenFeature("embedding");
   const hasWhitelabel = useHasTokenFeature("whitelabel");
   const hasSaml = useHasTokenFeature("sso_saml");
   const hasJwt = useHasTokenFeature("sso_jwt");
@@ -93,30 +92,6 @@ export function SettingsNav() {
         label={t`Public sharing`}
         icon="share"
       />
-      <SettingsNavItem
-        label={t`Embedding`}
-        icon="embed"
-        folderPattern="embedding"
-      >
-        <SettingsNavItem
-          path="embedding-in-other-applications"
-          label={t`Overview`}
-        />
-        <SettingsNavItem
-          path="embedding-in-other-applications/standalone"
-          label={t`Static embedding`}
-        />
-        {hasEmbedding && (
-          <SettingsNavItem
-            path="embedding-in-other-applications/full-app"
-            label={t`Interactive embedding`}
-          />
-        )}
-        <SettingsNavItem
-          path="embedding-in-other-applications/sdk"
-          label={t`Modular embedding`}
-        />
-      </SettingsNavItem>
       <NavDivider />
       <SettingsNavItem path="license" label={t`License`} icon="store" />
       <SettingsNavItem

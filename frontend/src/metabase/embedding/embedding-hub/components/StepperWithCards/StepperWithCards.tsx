@@ -80,7 +80,6 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                     <Card
                       className={cx(S.stepCard, {
                         [S.optionalStepCard]: card.optional,
-                        [S.doneStepCard]: card.done,
                       })}
                       component={onClick ? "button" : undefined}
                       onClick={onClick}
@@ -92,15 +91,15 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                             fw="bold"
                             c={
                               card.done
-                                ? "var(--mb-color-text-medium)"
-                                : "var(--mb-color-text-dark)"
+                                ? "var(--mb-color-text-secondary)"
+                                : "var(--mb-color-text-primary)"
                             }
                           >
                             {card.title}
                           </Text>
 
                           <Text
-                            c="var(--mb-color-text-medium)"
+                            c="var(--mb-color-text-secondary)"
                             size="sm"
                             lh="lg"
                           >
@@ -120,7 +119,10 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                                 </Text>
                               ))
                               .with({ optional: true }, () => (
-                                <Text size="sm" c="var(--mb-color-text-medium)">
+                                <Text
+                                  size="sm"
+                                  c="var(--mb-color-text-secondary)"
+                                >
                                   {t`Optional`}
                                 </Text>
                               ))

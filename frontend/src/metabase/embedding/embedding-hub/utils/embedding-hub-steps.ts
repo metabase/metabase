@@ -10,7 +10,7 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     actions: [
       {
         title: t`Create an embed`,
-        description: t`Create an embed by using Embedded Analytics JS, the SDK for React, or Static Embedding.`,
+        description: t`Create an embed by using Embedded Analytics JS.`,
         to: "/embed-js?auth_method=user_session",
         variant: "outline",
       },
@@ -81,13 +81,14 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
       {
         title: t`Configure SSO`,
         description: t`Configure JWT or SAML authentication to ensure only authorized users can access your embeds.`,
-        docsPath: "embedding/securing-embeds",
+        docsPath: "embedding/embedded-analytics-js#set-up-sso",
         variant: "outline",
         stepId: "secure-embeds",
       },
       {
-        title: t`Row and column security`,
-        docsPath: "permissions/row-and-column-security",
+        title: t`Configure data permissions`,
+        docsPath:
+          "permissions/embedding#one-database-for-all-customers-commingled-setups",
         description: t`Manage permissions to limit what data your users can access.`,
         variant: "outline",
         stepId: "configure-row-column-security",

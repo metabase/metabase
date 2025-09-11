@@ -22,6 +22,7 @@ import {
   Group,
   HoverCard,
   Icon,
+  Stack,
   Text,
 } from "metabase/ui";
 
@@ -139,11 +140,15 @@ export function EmbeddingSdkSettings() {
       <UpsellDevInstances location="embedding-page" />
 
       <Flex direction="column" p="xl" className={S.SectionCard} gap="md">
-        <Group>
+        <Stack gap="xs">
           <Text fz="h3" fw={600} c="text-dark">
             {t`SDK for React`}
           </Text>
-        </Group>
+
+          <Text c="var(--mb-color-text-secondary)" lh="lg">
+            {t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`}
+          </Text>
+        </Stack>
 
         <Group gap="sm" align="center" justify="space-between" w="100%">
           <EmbeddingToggle
@@ -181,11 +186,15 @@ export function EmbeddingSdkSettings() {
 
       <Box p="xl" className={S.SectionCard}>
         <Flex direction="column" gap="md">
-          <Group gap="sm">
+          <Stack gap="xs">
             <Text fz="h3" fw={600} c="text-dark">
               {t`Embedded Analytics JS`}
             </Text>
-          </Group>
+
+            <Text c="var(--mb-color-text-secondary)" lh="lg">
+              {t`An easy-to-use library that lets you embed Metabase entities like charts, dashboards, or even the query builder into your own application using customizable components.`}
+            </Text>
+          </Stack>
 
           <Group gap="sm" align="center" justify="space-between" w="100%">
             <EmbeddingToggle
