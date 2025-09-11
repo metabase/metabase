@@ -13,14 +13,15 @@
   --stepper-outline-color: var(--mb-color-border);
 }
 
-.stepCompletedIcon > svg {
-  width: 0.75rem !important;
-}
-
-.stepIcon:not([data-completed]) {
+.step:not(.stepDone) .stepIcon {
   color: var(--mb-color-text-dark);
   border-color: transparent;
   background: var(--mb-color-focus);
+}
+
+.step.stepDone .stepIcon {
+  color: var(--mb-color-bg-white);
+  background: var(--mb-color-success-darker);
 }
 
 .stepWrapper {
