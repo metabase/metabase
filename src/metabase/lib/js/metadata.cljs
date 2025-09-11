@@ -518,7 +518,7 @@
   (let [k      (metadata-property metadata-type)
         delays (let [id->dlay (some-> metadata k deref)]
                  (if id-set
-                   (map id->dlay id-set)
+                   (keep id->dlay id-set)
                    (vals id->dlay)))]
     (into []
           (comp (map deref)
