@@ -7,6 +7,8 @@ import { useMetabotContext } from "metabase/metabot";
 import {
   type MetabotPromptSubmissionResult,
   getAgentErrorMessages,
+  getAllToolCalls,
+  getDebugMode,
   getIsLongMetabotConversation,
   getIsProcessing,
   getLastAgentMessagesByType,
@@ -16,8 +18,10 @@ import {
   getMetabotVisible,
   getProfile,
   getToolCalls,
+  getToolCallsByMessage,
   resetConversation as resetConversationAction,
   retryPrompt,
+  setDebugMode,
   setVisible as setVisibleAction,
   submitInput as submitInputAction,
 } from "../state";
@@ -70,6 +74,18 @@ export const useMetabotAgent = () => {
   const profile = useSelector(getProfile as any) as ReturnType<
     typeof getProfile
   >;
+
+  const debugMode = useSelector(getDebugMode as any) as ReturnType<
+    typeof getDebugMode
+  >;
+
+  const allToolCalls = useSelector(getAllToolCalls as any) as ReturnType<
+    typeof getAllToolCalls
+  >;
+
+  const toolCallsByMessage = useSelector(
+    getToolCallsByMessage as any,
+  ) as ReturnType<typeof getToolCallsByMessage>;
 
   const resetConversation = useCallback(
     () => dispatch(resetConversationAction()),
@@ -146,6 +162,11 @@ export const useMetabotAgent = () => {
     [resetConversation, setVisible, promptInputRef, submitInput],
   );
 
+  const toggleDebugMode = useCallback(
+    () => dispatch(setDebugMode(!debugMode)),
+    [dispatch, debugMode],
+  );
+
   return {
     isDoingScience,
     prompt,
@@ -164,5 +185,9 @@ export const useMetabotAgent = () => {
     retryMessage,
     toolCalls,
     profile,
+    debugMode,
+    allToolCalls,
+    toolCallsByMessage,
+    toggleDebugMode,
   };
 };

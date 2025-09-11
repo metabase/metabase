@@ -26,6 +26,9 @@ export type MetabotToolCall = {
   name: string;
   message: string | undefined;
   status: "started" | "ended";
+  args?: string;
+  result?: any;
+  messageId?: string; // Associates tool call with a specific message
 };
 
 export type MetabotReactionsState = {
@@ -43,6 +46,8 @@ export interface MetabotState {
   state: any;
   reactions: MetabotReactionsState;
   toolCalls: MetabotToolCall[];
+  debugMode: boolean;
+  allToolCalls: MetabotToolCall[];
   experimental: {
     metabotReqIdOverride: string | undefined;
     profileOverride: string | undefined;
@@ -62,6 +67,8 @@ export const getMetabotInitialState = (): MetabotState => ({
     suggestedTransform: undefined,
   },
   toolCalls: [],
+  debugMode: false,
+  allToolCalls: [],
   experimental: {
     metabotReqIdOverride: undefined,
     profileOverride: undefined,
@@ -118,19 +125,40 @@ export const metabot = createSlice({
     },
     toolCallStart: (
       state,
-      action: PayloadAction<{ toolCallId: string; toolName: string }>,
+      action: PayloadAction<{
+        toolCallId: string;
+        toolName: string;
+        args?: string;
+      }>,
     ) => {
-      const { toolCallId, toolName } = action.payload;
-      state.toolCalls.push({
+      const { toolCallId, toolName, args } = action.payload;
+      // Find the last agent message to associate this tool call with
+      const lastAgentMessage = [...state.messages]
+        .reverse()
+        .find((m) => m.role === "agent");
+
+      const toolCall = {
         id: toolCallId,
         name: toolName,
         message: TOOL_CALL_MESSAGES[toolName],
-        status: "started",
-      });
+        status: "started" as const,
+        args,
+        messageId: lastAgentMessage?.id,
+      };
+      state.toolCalls.push(toolCall);
+      state.allToolCalls.push(toolCall);
     },
-    toolCallEnd: (state, action: PayloadAction<{ toolCallId: string }>) => {
+    toolCallEnd: (
+      state,
+      action: PayloadAction<{ toolCallId: string; result?: any }>,
+    ) => {
+      const { toolCallId, result } = action.payload;
       state.toolCalls = state.toolCalls.map((tc) =>
-        tc.id === action.payload.toolCallId ? { ...tc, status: "ended" } : tc,
+        tc.id === toolCallId ? { ...tc, status: "ended", result } : tc,
+      );
+
+      state.allToolCalls = state.allToolCalls.map((tc) =>
+        tc.id === toolCallId ? { ...tc, status: "ended", result } : tc,
       );
     },
     // NOTE: this reducer fn should be made smarter if/when we want to have
@@ -174,7 +202,6 @@ export const metabot = createSlice({
       state,
       action: PayloadAction<SuggestedTransform | undefined>,
     ) => {
-      // @ts-expect-error -- TODO: look into why TS type is infinitely deep...
       state.reactions.suggestedTransform = action.payload;
     },
     setVisible: (state, action: PayloadAction<boolean>) => {
@@ -188,6 +215,9 @@ export const metabot = createSlice({
     },
     setProfileOverride: (state, action: PayloadAction<string | undefined>) => {
       state.experimental.profileOverride = action.payload;
+    },
+    setDebugMode: (state, action: PayloadAction<boolean>) => {
+      state.debugMode = action.payload;
     },
   },
   extraReducers: (builder) => {

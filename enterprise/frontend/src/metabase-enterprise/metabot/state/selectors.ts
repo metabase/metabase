@@ -175,3 +175,29 @@ export const getMetabotSuggestedTransform = createSelector(
       : undefined;
   },
 );
+
+export const getDebugMode = createSelector(
+  getMetabot,
+  (metabot) => metabot.debugMode,
+);
+
+export const getAllToolCalls = createSelector(
+  getMetabot,
+  (metabot) => metabot.allToolCalls,
+);
+
+export const getToolCallsByMessage = createSelector(
+  getAllToolCalls,
+  (toolCalls) => {
+    const toolCallsByMessage: Record<string, typeof toolCalls> = {};
+    toolCalls.forEach((toolCall) => {
+      if (toolCall.messageId) {
+        if (!toolCallsByMessage[toolCall.messageId]) {
+          toolCallsByMessage[toolCall.messageId] = [];
+        }
+        toolCallsByMessage[toolCall.messageId].push(toolCall);
+      }
+    });
+    return toolCallsByMessage;
+  },
+);

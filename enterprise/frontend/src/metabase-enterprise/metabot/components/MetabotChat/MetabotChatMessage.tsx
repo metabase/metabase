@@ -15,12 +15,14 @@ import {
 import type {
   MetabotChatMessage,
   MetabotErrorMessage,
+  MetabotToolCall,
 } from "metabase-enterprise/metabot/state";
 import type { MetabotFeedback } from "metabase-types/api";
 
 import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
 
 import Styles from "./MetabotChat.module.css";
+import { MetabotDebugToolCall } from "./MetabotDebugToolCall";
 import { MetabotFeedbackModal } from "./MetabotFeedbackModal";
 
 interface BaseMessageProps extends Omit<FlexProps, "onCopy"> {
@@ -111,6 +113,8 @@ interface AgentMessageProps extends BaseMessageProps {
   setFeedbackMessage?: (data: { messageId: string; positive: boolean }) => void;
   submittedFeedback: "positive" | "negative" | undefined;
   onInternalLinkClick?: (link: string) => void;
+  debugMode?: boolean;
+  toolCalls?: MetabotToolCall[];
 }
 
 export const AgentMessage = ({
@@ -123,6 +127,8 @@ export const AgentMessage = ({
   submittedFeedback,
   onInternalLinkClick,
   hideActions,
+  debugMode,
+  toolCalls,
   ...props
 }: AgentMessageProps) => (
   <MessageContainer chatRole={message.role} {...props}>
@@ -132,6 +138,15 @@ export const AgentMessage = ({
     >
       {message.message}
     </AIMarkdown>
+
+    {/* Debug tool calls inline */}
+    {debugMode && toolCalls && toolCalls.length > 0 && (
+      <div style={{ marginTop: "12px" }}>
+        {toolCalls.map((toolCall) => (
+          <MetabotDebugToolCall key={toolCall.id} toolCall={toolCall} />
+        ))}
+      </div>
+    )}
 
     <Flex className={Styles.messageActions}>
       {!hideActions && (
@@ -241,6 +256,8 @@ export const Messages = ({
   isDoingScience,
   showFeedbackButtons,
   onInternalLinkClick,
+  debugMode,
+  toolCallsByMessage,
 }: {
   messages: MetabotChatMessage[];
   errorMessages: MetabotErrorMessage[];
@@ -248,6 +265,8 @@ export const Messages = ({
   isDoingScience: boolean;
   showFeedbackButtons: boolean;
   onInternalLinkClick?: (navigateToPath: string) => void;
+  debugMode?: boolean;
+  toolCallsByMessage?: Record<string, MetabotToolCall[]>;
 }) => {
   const clipboard = useClipboard();
   const [sendToast] = useToast();
@@ -309,6 +328,8 @@ export const Messages = ({
             submittedFeedback={feedbackState.submitted[message.id]}
             hideActions={messages[index + 1]?.role === "agent"}
             onInternalLinkClick={onInternalLinkClick}
+            debugMode={debugMode}
+            toolCalls={toolCallsByMessage?.[message.id] || []}
           />
         ) : (
           <UserMessage

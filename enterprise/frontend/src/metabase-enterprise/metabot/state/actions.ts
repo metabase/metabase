@@ -49,6 +49,7 @@ export const {
   setProfileOverride,
   setMetabotReqIdOverride,
   setSuggestedTransform,
+  setDebugMode,
 } = metabot.actions;
 
 type PromptErrorOutcome = {
@@ -97,7 +98,7 @@ export const setVisible =
 
 export const executeSlashCommand = createAsyncThunk<void, SlashCommand>(
   "metabase-enterprise/metabot/executeSlashCommand",
-  async (slashCommand, { dispatch }) => {
+  async (slashCommand, { dispatch, getState }) => {
     match(slashCommand)
       .with({ cmd: "profile" }, ({ args }) => {
         if (args.length <= 1) {
@@ -112,6 +113,19 @@ export const executeSlashCommand = createAsyncThunk<void, SlashCommand>(
         } else {
           dispatch(addUndo({ message: "/metabot <name>" }));
         }
+      })
+      .with({ cmd: "debug" }, () => {
+        const state = getState() as any;
+        const currentDebugMode =
+          state.plugins?.metabotPlugin?.debugMode ?? false;
+        dispatch(setDebugMode(!currentDebugMode));
+        dispatch(
+          addUndo({
+            message: currentDebugMode
+              ? "Debug mode disabled"
+              : "Debug mode enabled",
+          }),
+        );
       })
       .otherwise(() => {
         dispatch(addUndo({ message: "Unknown command" }));
