@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-788-move-embedding-settings-into-its-own-top-level-menu",
     "hash": "b242c17ada9e960bb2aa448be572f0198d45f2de"
+  },
+  "upstream": {
+    "branch": "emb-799-add-the-interactive-embedding-upsell-to-the-settings-page"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 63399,
+        "gqlID": "PR_kwDOAczgH86oFTBA"
+      }
+    }
   }
 }
