@@ -261,7 +261,7 @@
 
 (defn- batch-update!
   "Create the given search index entries in bulk. Commits after each batch"
-  [context separate-connection? documents]
+  [context documents]
   ;; Protect against tests that nuke the appdb
   (when config/is-test?
     (when-let [table (active-table)]
