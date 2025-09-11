@@ -87,6 +87,7 @@ import type {
   Timeline,
   TimelineEvent,
   Transform,
+  UpdateSnippetRequest,
   UpdateTransformRequest,
   User,
   VisualizationDisplay,
@@ -861,6 +862,9 @@ type DependenciesPlugin = {
   useCheckCardDependencies: (
     props: UseCheckDependenciesProps<Question>,
   ) => UseCheckDependenciesResult<Question>;
+  useCheckSnippetDependencies: (
+    props: UseCheckDependenciesProps<UpdateSnippetRequest>,
+  ) => UseCheckDependenciesResult<UpdateSnippetRequest>;
   useCheckTransformDependencies: (
     props: UseCheckDependenciesProps<UpdateTransformRequest>,
   ) => UseCheckDependenciesResult<UpdateTransformRequest>;
@@ -899,22 +903,23 @@ export type UseCheckDependenciesResult<TChange> = {
   handleCloseConfirmation: () => void;
 };
 
+function useCheckDependencies<TChange>({
+  onSave,
+}: UseCheckDependenciesProps<TChange>): UseCheckDependenciesResult<TChange> {
+  return {
+    isConfirmationShown: false,
+    isCheckingDependencies: false,
+    handleInitialSave: onSave,
+    handleSaveAfterConfirmation: () => Promise.resolve(),
+    handleCloseConfirmation: () => undefined,
+  };
+}
+
 export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
   CheckDependenciesForm: PluginPlaceholder,
   CheckDependenciesModal: PluginPlaceholder,
   CheckDependenciesTitle: PluginPlaceholder,
-  useCheckCardDependencies: ({ onSave }) => ({
-    isConfirmationShown: false,
-    isCheckingDependencies: false,
-    handleInitialSave: onSave,
-    handleSaveAfterConfirmation: () => Promise.resolve(),
-    handleCloseConfirmation: () => undefined,
-  }),
-  useCheckTransformDependencies: ({ onSave }) => ({
-    isConfirmationShown: false,
-    isCheckingDependencies: false,
-    handleInitialSave: onSave,
-    handleSaveAfterConfirmation: () => Promise.resolve(),
-    handleCloseConfirmation: () => undefined,
-  }),
+  useCheckCardDependencies: useCheckDependencies,
+  useCheckSnippetDependencies: useCheckDependencies,
+  useCheckTransformDependencies: useCheckDependencies,
 };

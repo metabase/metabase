@@ -3,7 +3,10 @@ import type {
   UseCheckDependenciesResult,
 } from "metabase/plugins";
 import { useLazyCheckTransformDependenciesQuery } from "metabase-enterprise/api";
-import type { UpdateTransformRequest } from "metabase-types/api";
+import type {
+  CheckTransformDependenciesRequest,
+  UpdateTransformRequest,
+} from "metabase-types/api";
 
 import { useCheckDependencies } from "../use-check-dependencies";
 
@@ -21,6 +24,6 @@ export function useCheckTransformDependencies({
 
 function getCheckDependenciesRequest(
   request: UpdateTransformRequest,
-): UpdateTransformRequest {
+): CheckTransformDependenciesRequest {
   return request;
 }

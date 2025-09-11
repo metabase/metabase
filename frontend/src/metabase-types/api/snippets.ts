@@ -33,9 +33,9 @@ export interface CreateSnippetRequest {
 
 export interface UpdateSnippetRequest {
   id: NativeQuerySnippetId;
-  archived?: boolean;
-  content?: string | null;
-  name?: string | null;
+  name?: string;
   description?: string | null;
+  content?: string;
   collection_id?: RegularCollectionId | null;
+  archived?: boolean;
 }
