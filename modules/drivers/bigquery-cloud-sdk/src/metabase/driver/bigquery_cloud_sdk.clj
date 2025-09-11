@@ -898,35 +898,34 @@
 
 (defn- convert-value-for-insertion
   [base-type value]
-  (when value
-    (if-not (string? value)
-      value
-      (case base-type
-        :type/JSON
-        (.toString (JsonParser/parseString value))
+  (if-not (string? value)
+    value
+    (case base-type
+      :type/JSON
+      (.toString (JsonParser/parseString value))
 
-        (:type/Dictionary :type/Array)
-        (JsonParser/parseString value)
+      (:type/Dictionary :type/Array)
+      (JsonParser/parseString value)
 
-        :type/Integer
-        (parse-long value)
+      :type/Integer
+      (parse-long value)
 
-        :type/Float
-        (parse-double value)
+      :type/Float
+      (parse-double value)
 
-        :type/Boolean
-        (parse-boolean value)
+      :type/Boolean
+      (parse-boolean value)
 
-        :type/Numeric
-        (bigdec value)
+      :type/Numeric
+      (bigdec value)
 
-        :type/Decimal
-        (bigdec value)
+      :type/Decimal
+      (bigdec value)
 
-        (:type/Date :type/DateTime :type/DateTimeWithLocalTZ)
-        (u.date/format (u.date/parse value))
+      (:type/Date :type/DateTime :type/DateTimeWithLocalTZ)
+      (u.date/format (u.date/parse value))
 
-        value))))
+      value)))
 
 (defn- prepare-row-with-field-types
   "Convert a row using field type information to properly type values."

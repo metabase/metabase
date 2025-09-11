@@ -635,35 +635,34 @@
 
 (defn- convert-value-for-insertion
   [base-type value]
-  (when value
-    (if-not (string? value)
-      value
-      (case base-type
-        (:type/JSON :type/Dictionary :type/Array)
-        (json/decode value)
+  (if-not (string? value)
+    value
+    (case base-type
+      (:type/JSON :type/Dictionary :type/Array)
+      (json/decode value)
 
-        :type/Integer
-        (parse-long value)
+      :type/Integer
+      (parse-long value)
 
-        (:type/Number :type/BigInteger)
-        (bigint value)
+      (:type/Number :type/BigInteger)
+      (bigint value)
 
-        :type/Float
-        (parse-double value)
+      :type/Float
+      (parse-double value)
 
-        :type/Decimal
-        (bigdec value)
+      :type/Decimal
+      (bigdec value)
 
-        :type/Boolean
-        (parse-boolean value)
+      :type/Boolean
+      (parse-boolean value)
 
-        (:type/Date :type/DateTime :type/DateTimeWithTZ :type/Time :type/TimeWithTZ :type/Instant)
-        (u.date/parse value)
+      (:type/Date :type/DateTime :type/DateTimeWithTZ :type/Time :type/TimeWithTZ :type/Instant)
+      (u.date/parse value)
 
-        :type/UUID
-        (parse-uuid value)
+      :type/UUID
+      (parse-uuid value)
 
-        value))))
+      value)))
 
 (defmethod driver/insert-from-source! [:mongo :csv-file]
   [driver db-id table-name column-names {:keys [file table-schema]}]
