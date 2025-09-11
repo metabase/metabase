@@ -8,8 +8,8 @@ import { AdditionalHelpButtonGroup } from "./AdditionalHelpButtonGroup";
 import { CheckHostAndPortButton } from "./CheckHostAndPortButton";
 import S from "./DatabaseFormError.module.css";
 import { TroubleshootingTip } from "./TroubleshootingTip";
-import { useDatabaseErrorDetails } from "./useDatabaseErrorDetails";
 import { useTroubleshootingTips } from "./useTroubleshootingTips";
+import { useDatabaseErrorDetails } from "./utils";
 
 export const DatabaseFormError = () => {
   const [showAllTips, setShowAllTips] = useState<boolean>(false);
@@ -43,9 +43,9 @@ export const DatabaseFormError = () => {
         >
           {errorMessage}
         </Alert>
-        {troubleshootingTips.map((tipProps, _index) => (
+        {troubleshootingTips.map((tipProps, index) => (
           <Fragment key={tipProps.key}>
-            {!!_index && <Divider variant="dashed" />}
+            {!!index && <Divider variant="dashed" />}
             <TroubleshootingTip {...tipProps} />
           </Fragment>
         ))}

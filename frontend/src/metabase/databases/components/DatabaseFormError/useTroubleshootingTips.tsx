@@ -1,18 +1,17 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { type ReactNode, useMemo } from "react";
-import { Link } from "react-router";
+import { useMemo } from "react";
 import { c, t } from "ttag";
 import { identity } from "underscore";
 
-import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { getIsHosted } from "metabase/setup";
-import { Box, Code } from "metabase/ui";
+import { Code } from "metabase/ui";
 import type { State } from "metabase-types/store";
 
 import type { TipProps as _TipProps } from "./TroubleshootingTip";
+import { getDocsLinkConditionally, useCloudGatewayIPs } from "./utils";
 
 type TipKey =
   | "ip-addresses"
@@ -29,24 +28,25 @@ export const useTroubleshootingTips = (
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const isHosted = useSelector(getIsHosted);
   const getDocPageUrl = useSelector(docPageUrlGetter);
+  const metabaseIPAddresses = useCloudGatewayIPs();
 
   return useMemo(() => {
     if (isHostAndPortError && !expanded) {
       return [];
     }
 
-    const cloudIPLinkContent = renderDocsLinkMaybe(
+    const cloudIPLinkContent = getDocsLinkConditionally(
       // eslint-disable-next-line no-literal-metabase-strings -- Only visible to admins
       t`Metabase Cloud IP addresses`,
       getDocPageUrl("cloud/ip-addresses-to-whitelist"),
       showMetabaseLinks,
     );
-    const sslCertLinkContent = renderDocsLinkMaybe(
+    const sslCertLinkContent = getDocsLinkConditionally(
       t`SSL certificate`,
       getDocPageUrl("databases/ssl-certificates"),
       showMetabaseLinks,
     );
-    const permissionsLinkContent = renderDocsLinkMaybe(
+    const permissionsLinkContent = getDocsLinkConditionally(
       t`correct permissions`,
       getDocPageUrl("databases/users-roles-privileges"),
       showMetabaseLinks,
@@ -113,42 +113,13 @@ export const useTroubleshootingTips = (
   }, [
     expanded,
     getDocPageUrl,
-    showMetabaseLinks,
     isHostAndPortError,
     isHosted,
+    metabaseIPAddresses,
+    showMetabaseLinks,
   ]);
-};
-
-/**
- * Renders a link to the specified docsUrl if showMetabaseLinks is true. Otherwise, returns the title raw string.
- */
-const renderDocsLinkMaybe = (
-  title: string,
-  docsUrl: string,
-  showMetabaseLinks: boolean,
-): ReactNode => {
-  let linkContent: ReactNode = title;
-
-  if (showMetabaseLinks) {
-    linkContent = (
-      <Box
-        className={CS.link}
-        component={Link}
-        fw={600}
-        key={docsUrl}
-        target="_blank"
-        to={docsUrl}
-      >
-        {linkContent}
-      </Box>
-    );
-  }
-
-  return linkContent;
 };
 
 const docPageUrlGetter = createSelector([identity], (state: State) => {
   return (page: string): string => getDocsUrl(state, { page });
 });
-
-const metabaseIPAddresses = ["18.207.81.126", "3.211.20.157", "50.17.234.169"];

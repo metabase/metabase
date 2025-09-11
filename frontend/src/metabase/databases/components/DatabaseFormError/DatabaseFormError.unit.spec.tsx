@@ -7,7 +7,6 @@ import {
   type ErrorVariant,
   TestFormErrorProvider,
 } from "./test-utils/TestFormErrorProvider";
-import { getHostAndPortSpecificErrorMessage } from "./useDatabaseErrorDetails";
 
 interface SetupOptions {
   errorVariant?: ErrorVariant;
@@ -89,7 +88,7 @@ describe("DatabaseFormError", () => {
       ).toBeInTheDocument();
       expect(
         within(screen.getByRole("alert")).getByText(
-          getHostAndPortSpecificErrorMessage(),
+          "Make sure your Host and Port settings are correct.",
         ),
       ).toBeInTheDocument();
     });
