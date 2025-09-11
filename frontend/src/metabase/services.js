@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { Api } from "metabase/api";
 import api, { DELETE, GET, POST, PUT } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { PLUGIN_API, PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
@@ -357,6 +358,24 @@ function setCardEndpoints(prefix) {
     `${prefix}/params/${encodeURIComponent(parameterId)}/remapping`;
 
   // legacy API
+  Api.injectEndpoints({
+    endpoints: (builder) => ({
+      getCard: builder.query({
+        query: ({ id, ...params }) => ({
+          url: prefix,
+          params,
+        }),
+      }),
+    }),
+    overrideExisting: true,
+  });
+  CardApi.query = GET_with(`${prefix}/query`, [
+    // Params below are not supported by `/api/embed/card/:cardId/query` endpoint
+    "cardId",
+    "ignore_cache",
+    "collection_preview",
+    "parameters",
+  ]);
   CardApi.parameterValues = GET_with(`${prefix}/params/:paramId/values`, [
     "cardId",
   ]);

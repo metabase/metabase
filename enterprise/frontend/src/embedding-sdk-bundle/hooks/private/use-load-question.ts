@@ -1,4 +1,4 @@
-import { useReducer, useRef, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { useAsyncFn, useUnmount } from "react-use";
 
 import {
@@ -7,7 +7,8 @@ import {
   runQuestionQuerySdk,
   updateQuestionSdk,
 } from "embedding-sdk-bundle/lib/sdk-question";
-import { useSdkDispatch } from "embedding-sdk-bundle/store";
+import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
+import { getIsStatic } from "embedding-sdk-bundle/store/selectors";
 import type {
   LoadSdkQuestionParams,
   NavigateToNewCardParams,
@@ -15,6 +16,7 @@ import type {
   SqlParameterValues,
 } from "embedding-sdk-bundle/types/question";
 import { type Deferred, defer } from "metabase/lib/promise";
+import { setEmbedQuestionEndpoints } from "metabase/services";
 import type Question from "metabase-lib/v1/Question";
 import type { ParameterValuesMap } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
@@ -70,6 +72,14 @@ export function useLoadQuestion({
   const { question, originalQuestion, queryResults, parameterValues } =
     questionState;
 
+  const isStaticQuestion = useSdkSelector(getIsStatic);
+
+  useEffect(() => {
+    if (isStaticQuestion) {
+      setEmbedQuestionEndpoints(questionId);
+    }
+  }, [isStaticQuestion, questionId]);
+
   const deferredRef = useRef<Deferred>();
 
   function deferred() {
@@ -111,6 +121,7 @@ export function useLoadQuestion({
 
       const results = await runQuestionQuerySdk({
         question: questionState.question,
+        isStaticQuestion,
         originalQuestion: questionState.originalQuestion,
         cancelDeferred: deferred(),
       });
@@ -141,6 +152,7 @@ export function useLoadQuestion({
     options,
     deserializedCard,
     questionId,
+    isStaticQuestion,
     sqlParameterKey,
     targetDashboardId,
   ]);
@@ -152,6 +164,7 @@ export function useLoadQuestion({
 
     const state = await runQuestionQuerySdk({
       question,
+      isStaticQuestion,
       originalQuestion,
       cancelDeferred: deferred(),
     });
@@ -159,7 +172,7 @@ export function useLoadQuestion({
     mergeQuestionState(state);
 
     return state.question;
-  }, [dispatch, question, originalQuestion]);
+  }, [dispatch, question, isStaticQuestion, originalQuestion]);
 
   const [updateQuestionState, updateQuestion] = useAsyncFn(
     async (nextQuestion: Question, options: { run?: boolean }) => {

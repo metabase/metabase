@@ -4,6 +4,7 @@ import type {
   LoadSdkQuestionParams,
   SdkQuestionState,
 } from "embedding-sdk-bundle/types/question";
+import { getIsStatic } from "embedding-sdk-bundle/store/selectors";
 import { resolveCards } from "metabase/query_builder/actions";
 import { getParameterValuesForQuestion } from "metabase/query_builder/actions/core/parameterUtils";
 import { loadMetadataForCard } from "metabase/questions/actions";
@@ -36,7 +37,12 @@ export const loadQuestionSdk =
       deserializedCard,
     });
 
-    await dispatch(loadMetadataForCard(card));
+    const isStatic = getIsStatic(getState());
+
+    if (!isStatic) {
+      await dispatch(loadMetadataForCard(card));
+    }
+
     const metadata = getMetadata(getState());
 
     const originalQuestion =

@@ -19,12 +19,14 @@ import { createAsyncThunk } from "metabase/lib/redux";
 
 import { initAuth, refreshTokenAsync } from "./auth";
 import { getSessionTokenState } from "./selectors";
+const SET_IS_STATIC = "sdk/SET_IS_STATIC";
 const SET_METABASE_INSTANCE_VERSION = "sdk/SET_METABASE_INSTANCE_VERSION";
 const SET_METABASE_CLIENT_URL = "sdk/SET_METABASE_CLIENT_URL";
 const SET_LOADER_COMPONENT = "sdk/SET_LOADER_COMPONENT";
 const SET_ERROR_COMPONENT = "sdk/SET_ERROR_COMPONENT";
 const SET_FETCH_REQUEST_TOKEN_FN = "sdk/SET_FETCH_REQUEST_TOKEN_FN";
 
+export const setIsStatic = createAction<boolean>(SET_IS_STATIC);
 export const setMetabaseInstanceVersion = createAction<string>(
   SET_METABASE_INSTANCE_VERSION,
 );
@@ -96,6 +98,7 @@ export const setUsageProblem = createAction<SdkUsageProblem | null>(
 );
 
 const initialState: SdkState = {
+  isStatic: false,
   metabaseInstanceUrl: "",
   metabaseInstanceVersion: null,
   token: {
@@ -145,6 +148,10 @@ export const sdk = createReducer(initialState, (builder) => {
 
   builder.addCase(setLoaderComponent, (state, action) => {
     state.loaderComponent = action.payload;
+  });
+
+  builder.addCase(setIsStatic, (state, action) => {
+    state.isStatic = action.payload;
   });
 
   builder.addCase(setPlugins, (state, action) => {

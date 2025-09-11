@@ -138,6 +138,7 @@ type CollectionBrowserEntityTypes =
   | "model";
 
 export type SdkIframeEmbedBaseSettings = {
+  isStatic?: boolean;
   apiKey?: string;
   instanceUrl: string;
   theme?: MetabaseTheme;

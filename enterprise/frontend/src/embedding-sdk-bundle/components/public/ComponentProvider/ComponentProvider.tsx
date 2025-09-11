@@ -8,6 +8,7 @@ import { getSdkStore } from "embedding-sdk-bundle/store";
 import {
   setErrorComponent,
   setEventHandlers,
+  setIsStatic,
   setLoaderComponent,
   setPlugins,
 } from "embedding-sdk-bundle/store/reducer";
@@ -27,11 +28,13 @@ import { PortalContainer } from "../../private/SdkPortalContainer";
 import { SdkUsageProblemDisplay } from "../../private/SdkUsageProblem";
 
 type ComponentProviderInternalProps = ComponentProviderProps & {
+  isStatic: boolean;
   reduxStore: SdkStore;
 };
 
 export const ComponentProviderInternal = ({
   children,
+  isStatic,
   authConfig,
   pluginsConfig,
   eventHandlers,
@@ -48,7 +51,11 @@ export const ComponentProviderInternal = ({
   // This call in the ComponentProvider is still needed for:
   // - Storybook stories, where we don't have the MetabaseProvider
   // - Unit tests
-  useInitDataInternal({ reduxStore, authConfig });
+  useInitDataInternal({ reduxStore, isStatic, authConfig });
+
+  useEffect(() => {
+    reduxStore.dispatch(setIsStatic(isStatic));
+  }, [reduxStore, isStatic]);
 
   useEffect(() => {
     if (fontFamily) {
@@ -116,11 +123,13 @@ export const ComponentProviderInternal = ({
 };
 
 export type ComponentProviderProps = MetabaseProviderProps & {
+  isStatic?: boolean;
   reduxStore?: SdkStore;
 };
 
 export const ComponentProvider = memo(function ComponentProvider({
   children,
+  isStatic,
   ...props
 }: ComponentProviderProps) {
   const reduxStoreRef = useRef<SdkStore | null>(null);
@@ -134,6 +143,7 @@ export const ComponentProvider = memo(function ComponentProvider({
       <MetabotProvider>
         <ComponentProviderInternal
           {...props}
+          isStatic={isStatic ?? false}
           reduxStore={reduxStoreRef.current!}
         >
           {children}
