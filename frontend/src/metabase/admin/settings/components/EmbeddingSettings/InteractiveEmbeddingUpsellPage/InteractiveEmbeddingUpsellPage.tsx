@@ -51,6 +51,7 @@ export const InteractiveEmbeddingUpsellPage = () => {
             pos="relative"
             href={quickStartUrl}
             target="_blank"
+            rel="noreferrer"
           >
             {t`Check out our Quickstart`}{" "}
             <Box ml="sm" top="2.5px" pos="absolute" component="span">
