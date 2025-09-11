@@ -1210,6 +1210,7 @@ describe("scenarios > admin > transforms > jobs", () => {
     cy.intercept("GET", "/api/ee/transform-job/*/transforms").as(
       "getJobTransforms",
     );
+    cy.log("KICK");
 
     cy.intercept("DELETE", "/api/ee/transform-job/*").as("deleteJob");
   });
