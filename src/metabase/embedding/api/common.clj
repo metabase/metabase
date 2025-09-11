@@ -116,6 +116,8 @@
         slug->type (into {} (map (juxt :slug :type)) parameters)]
     (vec (for [[slug value] slug->value
                :let [slug (u/qualified-name slug)
+                     ;; convert empty strings to nil for query processing (but preserve for parameter filtering)
+                     value (if (= value "") nil value)
                      param-type (get slug->type slug)
                      default-options (parameters.dashboard/param-type->default-options param-type)]]
            (cond-> {:slug slug
