@@ -162,12 +162,12 @@
 (defmethod specialization/extra-entry-fields :postgres [entity]
   {:search_vector
    [:||
-    (weighted-tsvector "A" (:name entity))
-    (weighted-tsvector "B" (:searchable_text entity ""))]
+    (weighted-tsvector "A" (or (:name entity) ""))
+    (weighted-tsvector "B" (or (:searchable_text entity) ""))]
 
    :with_native_query_vector
    [:||
-    (weighted-tsvector "A" (:name entity))
+    (weighted-tsvector "A" (or (:name entity) ""))
     (weighted-tsvector "B" (str/join " " (keep entity [:searchable_text :native_query])))]})
 
 ;; See https://www.postgresql.org/docs/current/textsearch-controls.html#TEXTSEARCH-RANKING
