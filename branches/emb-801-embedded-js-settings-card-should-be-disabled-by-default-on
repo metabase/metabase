@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-752-integration-branch-for-embedding-hub",
     "hash": "b122cdd4395f27389928b3c1de343e42441c6758"
+  },
+  "upstream": {
+    "branch": "emb-801-embedded-js-settings-card-should-be-disabled-by-default-on"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 63391,
+        "gqlID": "PR_kwDOAczgH86oEBip"
+      }
+    }
   }
 }
