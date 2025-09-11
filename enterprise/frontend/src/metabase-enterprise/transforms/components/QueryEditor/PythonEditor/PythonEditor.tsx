@@ -3,18 +3,18 @@ import { ResizableBox } from "react-resizable";
 import { c, t } from "ttag";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
-import { CodeEditor } from "metabase/common/components/CodeEditor";
 import DebouncedFrame from "metabase/common/components/DebouncedFrame";
 import { LoadingSpinner } from "metabase/common/components/MetadataInfo/MetadataInfo.styled";
 import { isMac } from "metabase/lib/browser";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 import { Box, Flex, Icon, Stack, Text, Title } from "metabase/ui";
 
+import { PythonEditor as PythonCodeEditor } from "../../PythonEditor";
 import { ResizableBoxHandle } from "../EditorBody/ResizableBoxHandle";
 
 import { ExecutionOutputTable } from "./ExecutionOutputTable";
 import S from "./PythonEditor.module.css";
-import { type ExecutionResult, completion, useTestPythonScript } from "./utils";
+import { type ExecutionResult, useTestPythonScript } from "./utils";
 
 type PythonEditorProps = {
   script: string;
@@ -46,12 +46,10 @@ export function PythonEditor({
         resizeHandles={["s"]}
       >
         <Flex h="100%" align="end" bg="bg-light">
-          <CodeEditor
-            className={S.editor}
+          <PythonCodeEditor
             value={script}
             onChange={onChange}
-            language="python"
-            extensions={completion}
+            withPandasCompletions
           />
 
           <Box p="md">
