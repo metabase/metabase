@@ -6,7 +6,6 @@
    [metabase.dashboards.api-test :as api.dashboard-test]
    [metabase.embedding.api.embed-test :as embed-test]
    [metabase.embedding.api.preview-embed :as api.preview-embed]
-   [metabase.parameters.chain-filter-test :as chain-filter-test]
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -575,7 +574,6 @@
                      (mt/user-http-request :rasta :get 200 url))))))))))
 
 (deftest empty-string-parameter-values-test
-  "Test for issue #61054 - Empty string parameter values should work in preview embedded dashboards"
   (testing "Empty string parameter values in preview embedded dashboards"
     (with-embedding-enabled-and-new-secret-key!
       (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]

@@ -1911,7 +1911,6 @@
                       "Should find at least one venue with lowercase 'red' in the name"))))))))))
 
 (deftest empty-string-linked-filter-test
-  "Test for issue #61054 - Linked filter with empty string value should work in embedded dashboards"
   (with-chain-filter-fixtures! [{:keys [dashboard values-url]}]
     (t2/update! :model/Dashboard (:id dashboard)
                 {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"}})
