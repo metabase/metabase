@@ -1,3 +1,5 @@
+import cx from "classnames";
+
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 
 import S from "./PythonEditor.module.css";
@@ -7,14 +9,16 @@ export function PythonEditor({
   value,
   onChange,
   withPandasCompletions,
+  className,
 }: {
   value: string;
   onChange: (value: string) => void;
   withPandasCompletions?: boolean;
+  className?: string;
 }) {
   return (
     <CodeEditor
-      className={S.editor}
+      className={cx(S.editor, className)}
       value={value}
       onChange={onChange}
       language="python"
