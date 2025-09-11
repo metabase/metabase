@@ -362,9 +362,11 @@
 (defn- db-id-key [metadata-type]
   (case metadata-type
     :metadata/table                :db_id
+    :metadata/column               :table/db_id
     :metadata/card                 :card/database_id
-    :metadata/native-query-snippet nil
-    :table/db_id))
+    :metadata/metric               :database_id
+    :metadata/segment              :table/db_id
+    :metadata/native-query-snippet nil))
 
 (defn- id-key [metadata-type]
   (case metadata-type
@@ -387,9 +389,9 @@
 (defn- table-id-key [metadata-type]
   ;; types not in the case statement do not support Table ID
   (case metadata-type
-    :metadata/column               :field/table_id
-    :metadata/metric               :table_id
-    :metadata/segment              :segment/table_iid))
+    :metadata/column  :field/table_id
+    :metadata/metric  :table_id
+    :metadata/segment :segment/table_id))
 
 (defn- card-id-key [metadata-type]
     ;; types not in the case statement do not support Card ID
@@ -403,14 +405,17 @@
      [:= :active true]
      [:or
       [:= :visibility_type nil]
-      [:not-in :visibility_type #{"hidden" "technical" "cruft"}]]]
+      [:not-in :visibility_type [:inline ["hidden" "technical" "cruft"]]]]]
 
     :metadata/column
     [:and
      [:= :field/active true]
      [:or
       [:= :field/visibility_type nil]
-      [:not-in :field/visibility_type #{"sensitive" "retired"}]]]
+      [:not-in :field/visibility_type [:inline ["sensitive" "retired"]]]]]
+
+    :metadata/card
+    [:= :card/archived false]
 
     :metadata/metric
     [:= :archived false]
@@ -421,10 +426,12 @@
     #_else
     nil))
 
-(defn- metadata-spec->honey-sql
+(mu/defn- metadata-spec->honey-sql :- [:map
+                                       {:closed true}
+                                       [:where {:optional true} vector?]]
   "This should match [[metabase.lib.metadata.protocols/default-spec-filter-xform]] as closely as possible."
-  [database-id
-   {metadata-type :lib/type, id-set :id, name-set :name, :keys [table-id card-id], :as _metadata-spec}]
+  [database-id                                                                                         :- ::lib.schema.id/database
+   {metadata-type :lib/type, id-set :id, name-set :name, :keys [table-id card-id], :as _metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
   (let [database-id-key (db-id-key metadata-type)
         active-only?    (not (or id-set name-set))
         metric?         (= metadata-type :metadata/metric)
@@ -435,7 +442,7 @@
                           table-id               (conj [:= (table-id-key metadata-type) table-id])
                           card-id                (conj [:= (card-id-key metadata-type) card-id])
                           active-only?           (conj (active-only-honeysql-filter metadata-type))
-                          metric?                (conj [:= :type "metric"])
+                          metric?                (conj [:= :type [:inline "metric"]])
                           (and metric? table-id) (conj [:= :source_card_id nil]))]
     (reduce
      sql.helpers/where
