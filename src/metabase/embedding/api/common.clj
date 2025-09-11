@@ -150,7 +150,7 @@
   "Take a map of `query-params` and make sure they're in the right format for the rest of our code. Our
   `wrap-keyword-params` middleware normally converts all query params keys to keywords, but only if they seem like
   ones that make sense as keywords. Some params, such as ones that start with a number, do not pass this test, and are
-  not automatically converted. Thus we must do it ourselves here to make sure things are done as we'd expected.
+  not automatically converted. Thus we must do it ourselves here to make sure things are done as we'd expect.
   Empty strings are preserved to support chained filter functionality."
   [query-params]
   (-> query-params
