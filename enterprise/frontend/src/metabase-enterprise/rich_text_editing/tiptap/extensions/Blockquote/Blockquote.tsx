@@ -17,6 +17,7 @@ import {
   getChildTargetId,
   getCurrentDocument,
   getHasUnsavedChanges,
+  getHoveredChildTargetId,
 } from "metabase-enterprise/documents/selectors";
 import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
 
@@ -45,6 +46,7 @@ export const CustomBlockquote = Blockquote.extend({
 
 export const BlockquoteNodeView = ({ node }: NodeViewProps) => {
   const childTargetId = useSelector(getChildTargetId);
+  const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
   const document = useSelector(getCurrentDocument);
   const { data: commentsData } = useListCommentsQuery(
     getListCommentsQuery(document),
@@ -55,6 +57,7 @@ export const BlockquoteNodeView = ({ node }: NodeViewProps) => {
   const [rendered, setRendered] = useState(false); // floating ui wrongly positions things without this
   const { _id } = node.attrs;
   const isOpen = childTargetId === _id;
+  const isHovered = hoveredChildTargetId === _id;
   const threads = useMemo(
     () => getTargetChildCommentThreads(comments, _id),
     [comments, _id],
@@ -77,7 +80,7 @@ export const BlockquoteNodeView = ({ node }: NodeViewProps) => {
       <NodeViewWrapper
         aria-expanded={isOpen}
         className={cx(S.root, {
-          [S.open]: isOpen,
+          [S.open]: isOpen || isHovered,
         })}
         ref={refs.setReference}
         onMouseOver={() => setHovered(true)}

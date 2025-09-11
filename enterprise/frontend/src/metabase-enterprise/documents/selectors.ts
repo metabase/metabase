@@ -81,6 +81,11 @@ export const getChildTargetId = createSelector(
   (documents) => documents.childTargetId,
 );
 
+export const getHoveredChildTargetId = createSelector(
+  getDocumentsState,
+  (documents) => documents.hoveredChildTargetId,
+);
+
 export const getHasUnsavedChanges = createSelector(
   getDocumentsState,
   (documents) => documents.hasUnsavedChanges,

@@ -73,7 +73,9 @@ H.describeWithSnowplowEE("document comments", () => {
         .click();
 
       H.modal().within(() => {
-        cy.findByRole("heading", { name: "Comments" }).should("be.visible");
+        cy.findByRole("heading", { name: "Comments about this" }).should(
+          "be.visible",
+        );
 
         Comments.getNewThreadInput().click();
         cy.realType("Hello");
@@ -149,7 +151,9 @@ H.describeWithSnowplowEE("document comments", () => {
         .click();
 
       H.modal().within(() => {
-        cy.findByRole("heading", { name: "Comments" }).should("be.visible");
+        cy.findByRole("heading", { name: "Comments about this" }).should(
+          "be.visible",
+        );
         cy.findByText("Hello").should("not.exist");
       });
     });
@@ -381,7 +385,9 @@ H.describeWithSnowplowEE("document comments", () => {
     });
 
     H.modal().within(() => {
-      cy.findByRole("heading", { name: "Comments" }).should("be.visible");
+      cy.findByRole("heading", { name: "Comments about this" }).should(
+        "be.visible",
+      );
 
       cy.findByText("Test 1").should("not.exist");
       cy.findByText("Test 2").should("be.visible");
@@ -1016,7 +1022,9 @@ H.describeWithSnowplowEE("document comments", () => {
 
       H.modal().within(() => {
         cy.findByRole("heading", { name: "All comments" }).should("not.exist");
-        cy.findByRole("heading", { name: "Comments" }).should("be.visible");
+        cy.findByRole("heading", { name: "Comments about this" }).should(
+          "be.visible",
+        );
         cy.findAllByTestId("discussion-comment").should("have.length", 2);
         Comments.getCommentByText("Foo").should(
           "have.attr",
@@ -1558,7 +1566,9 @@ function startNewCommentIn1ParagraphDocument() {
   });
 
   H.modal().within(() => {
-    cy.findByRole("heading", { name: "Comments" }).should("be.visible");
+    cy.findByRole("heading", { name: "Comments about this" }).should(
+      "be.visible",
+    );
     Comments.getNewThreadInput().click();
   });
 }

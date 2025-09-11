@@ -187,9 +187,10 @@ export const CommentEditor = ({
             className={cx(S.submitBtn, { [S.canSubmit]: content })}
             disabled={!content}
             variant="subtle"
+            size="sm"
             onClick={submitDoc}
           >
-            <Icon name="arrow_up" />
+            <Icon name="send" />
           </ActionIcon>
         </Tooltip>
       )}

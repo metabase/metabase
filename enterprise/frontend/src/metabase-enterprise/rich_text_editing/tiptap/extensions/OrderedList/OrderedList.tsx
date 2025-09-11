@@ -17,6 +17,7 @@ import {
   getChildTargetId,
   getCurrentDocument,
   getHasUnsavedChanges,
+  getHoveredChildTargetId,
 } from "metabase-enterprise/documents/selectors";
 import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
 import { isTopLevel } from "metabase-enterprise/documents/utils/editorNodeUtils";
@@ -58,6 +59,7 @@ export const OrderedListNodeView = ({
   getPos,
 }: NodeViewProps) => {
   const childTargetId = useSelector(getChildTargetId);
+  const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
   const document = useSelector(getCurrentDocument);
   const { data: commentsData } = useListCommentsQuery(
     getListCommentsQuery(document),
@@ -68,6 +70,7 @@ export const OrderedListNodeView = ({
   const [rendered, setRendered] = useState(false); // floating ui wrongly positions things without this
   const { _id } = node.attrs;
   const isOpen = childTargetId === _id;
+  const isHovered = hoveredChildTargetId === _id;
   const threads = useMemo(
     () => getTargetChildCommentThreads(comments, _id),
     [comments, _id],
@@ -90,7 +93,7 @@ export const OrderedListNodeView = ({
       <NodeViewWrapper
         aria-expanded={isOpen}
         className={cx(S.root, {
-          [S.open]: isOpen,
+          [S.open]: isOpen || isHovered,
         })}
         ref={refs.setReference}
         // onMouseEnter/onMouseLeave do not work on list elements living in contentEditable

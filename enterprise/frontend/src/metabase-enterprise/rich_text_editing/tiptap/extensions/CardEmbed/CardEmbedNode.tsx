@@ -33,6 +33,7 @@ import {
   getChildTargetId,
   getCurrentDocument,
   getHasUnsavedChanges,
+  getHoveredChildTargetId,
 } from "metabase-enterprise/documents/selectors";
 import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
 import Question from "metabase-lib/v1/Question";
@@ -137,6 +138,7 @@ export const CardEmbed: Node<{
 export const CardEmbedComponent = memo(
   ({ node, updateAttributes, selected, editor, getPos }: NodeViewProps) => {
     const childTargetId = useSelector(getChildTargetId);
+    const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
     const document = useSelector(getCurrentDocument);
     const { data: commentsData } = useListCommentsQuery(
       getListCommentsQuery(document),
@@ -146,6 +148,7 @@ export const CardEmbedComponent = memo(
     const [hovered, setHovered] = useState(false);
     const { _id } = node.attrs;
     const isOpen = childTargetId === _id;
+    const isHovered = hoveredChildTargetId === _id;
     const threads = useMemo(
       () => getTargetChildCommentThreads(comments, _id),
       [comments, _id],
@@ -312,7 +315,7 @@ export const CardEmbedComponent = memo(
         <NodeViewWrapper
           aria-expanded={isOpen}
           className={cx(styles.embedWrapper, CS.root, {
-            [CS.open]: isOpen,
+            [CS.open]: isOpen || isHovered,
           })}
         >
           <Box
@@ -344,7 +347,7 @@ export const CardEmbedComponent = memo(
         <NodeViewWrapper
           aria-expanded={isOpen}
           className={cx(styles.embedWrapper, CS.root, {
-            [CS.open]: isOpen,
+            [CS.open]: isOpen || isHovered,
           })}
           data-testid="document-card-embed"
         >
@@ -372,7 +375,7 @@ export const CardEmbedComponent = memo(
         <NodeViewWrapper
           aria-expanded={isOpen}
           className={cx(styles.embedWrapper, CS.root, {
-            [CS.open]: isOpen,
+            [CS.open]: isOpen || isHovered,
           })}
           data-testid="document-card-embed"
           ref={refs.setReference}

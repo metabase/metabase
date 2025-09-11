@@ -1,25 +1,25 @@
 import { Fragment, useMemo } from "react";
 
-import { Box, Divider, Stack } from "metabase/ui";
+import { Box, Stack } from "metabase/ui";
 import { getCommentThreads } from "metabase-enterprise/comments/utils";
-import type { Comment } from "metabase-types/api";
+import type { Comment } from "metabase-types/api/comments";
 
 import { Discussion } from "../Discussion";
 
 export interface DiscussionProps {
   childTargetId: Comment["child_target_id"];
   comments: Comment[];
-  showLastDivider?: boolean;
   targetId: Comment["target_id"];
   targetType: Comment["target_type"];
+  enableHoverHighlight?: boolean;
 }
 
 export const Discussions = ({
   childTargetId,
   comments,
-  showLastDivider,
   targetId,
   targetType,
+  enableHoverHighlight = false,
 }: DiscussionProps) => {
   const threads = useMemo(
     () => getCommentThreads(comments, childTargetId),
@@ -27,19 +27,18 @@ export const Discussions = ({
   );
 
   return (
-    <Stack gap={0}>
-      {threads.map((thread, index) => (
+    <Stack pt="lg" gap={0}>
+      {threads.map((thread) => (
         <Fragment key={thread.id}>
-          <Box px="xl" py="md">
+          <Box px="lg" pb="lg">
             <Discussion
               childTargetId={childTargetId}
               comments={thread.comments}
               targetId={targetId}
               targetType={targetType}
+              enableHoverHighlight={enableHoverHighlight}
             />
           </Box>
-
-          {(index !== threads.length - 1 || showLastDivider) && <Divider />}
         </Fragment>
       ))}
     </Stack>
