@@ -130,8 +130,11 @@ describe("EmbeddingSdkSettings (OSS)", () => {
     );
     expect(relatedSettingCards).toHaveLength(5);
 
+    expect(await screen.findByText("Authentication")).toBeInTheDocument();
+    expect(await screen.findByText("Databases")).toBeInTheDocument();
     expect(await screen.findByText("People")).toBeInTheDocument();
     expect(await screen.findByText("Permissions")).toBeInTheDocument();
+    expect(await screen.findByText("Appearance")).toBeInTheDocument();
   });
 });
 
