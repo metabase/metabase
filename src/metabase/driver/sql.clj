@@ -122,10 +122,6 @@
   "Suffix used for a temporary transform table that will be renamed to the final transform table."
   "__metabase_transform_tmp_name")
 
-(def ^:const renamed-transform-suffix
-  "Suffix used to rename the existing transform table while the new transform table is created."
-  "__metabase_transform_renamed")
-
 (defn- get-tmp-transform-name [table-name suffix]
   (str (driver.impl/truncate-alias (str table-name "__" (str/replace (random-uuid) "-" ""))
                                    (- driver.impl/default-alias-max-length-bytes (count suffix)))
@@ -139,13 +135,10 @@
         output-table (keyword schema table-name)
         queries (if (driver/table-exists? driver db target)
                   (let [tmp-name (get-tmp-transform-name table-name tmp-transform-suffix)
-                        tmp-table (keyword schema tmp-name)
-                        renamed-name (get-tmp-transform-name table-name renamed-transform-suffix)
-                        renamed-table (keyword schema renamed-name)]
+                        tmp-table (keyword schema tmp-name)]
                     [(driver/compile-transform driver tmp-table query)
-                     (driver/compile-rename-table driver output-table renamed-name)
-                     (driver/compile-rename-table driver tmp-table table-name)
-                     (driver/compile-drop-table driver renamed-table)])
+                     (driver/compile-drop-table driver output-table)
+                     (driver/compile-rename-table driver tmp-table table-name)])
                   [(driver/compile-transform driver output-table query)])]
     {:rows-affected (first (driver/execute-raw-queries! driver conn-spec queries))}))
 
