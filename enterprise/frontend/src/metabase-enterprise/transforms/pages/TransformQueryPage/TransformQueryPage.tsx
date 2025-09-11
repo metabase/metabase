@@ -50,16 +50,18 @@ type TransformQueryPageBodyProps = {
 export function TransformQueryPageBody({
   transform,
 }: TransformQueryPageBodyProps) {
-  const [updateTransform, { isLoading }] = useUpdateTransformMutation();
+  const [updateTransform, { isLoading: isSaving }] =
+    useUpdateTransformMutation();
   const dispatch = useDispatch();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const {
     checkData,
+    isCheckingDependencies,
     isConfirmationShown,
     handleInitialSave,
     handleSaveAfterConfirmation,
-    handleCancelSave,
+    handleCloseConfirmation,
   } = PLUGIN_DEPENDENCIES.useCheckTransformDependencies({
     onSave: async (request) => {
       const { error } = await updateTransform(request);
@@ -91,7 +93,7 @@ export function TransformQueryPageBody({
       <QueryEditor
         initialQuery={transform.source.query}
         isNew={false}
-        isSaving={isLoading}
+        isSaving={isSaving || isCheckingDependencies}
         onSave={handleSaveQuery}
         onCancel={handleCancel}
       />
@@ -100,7 +102,7 @@ export function TransformQueryPageBody({
           checkData={checkData}
           opened
           onSave={handleSaveAfterConfirmation}
-          onClose={handleCancelSave}
+          onClose={handleCloseConfirmation}
         />
       )}
     </>

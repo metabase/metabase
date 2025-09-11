@@ -13,7 +13,8 @@ export function useCheckTransformDependencies({
 }: UseCheckTransformDependenciesProps): UseCheckTransformDependenciesResult {
   const [request, setRequest] = useState<UpdateTransformRequest | null>(null);
   const [isConfirmationShown, setIsConfirmationShown] = useState(false);
-  const [checkTransform, { data }] = useLazyCheckTransformDependenciesQuery();
+  const [checkTransform, { data, isLoading }] =
+    useLazyCheckTransformDependenciesQuery();
 
   const handleInitialSave = useCallback(
     async (request: UpdateTransformRequest) => {
@@ -46,16 +47,17 @@ export function useCheckTransformDependencies({
     }
   }, [request, onSave]);
 
-  const handleCancelSave = useCallback(() => {
+  const handleCloseConfirmation = useCallback(() => {
     setRequest(null);
     setIsConfirmationShown(false);
   }, []);
 
   return {
     checkData: data,
+    isCheckingDependencies: isLoading,
     isConfirmationShown,
     handleInitialSave,
     handleSaveAfterConfirmation,
-    handleCancelSave,
+    handleCloseConfirmation,
   };
 }

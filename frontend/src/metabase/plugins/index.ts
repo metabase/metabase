@@ -895,7 +895,7 @@ export type UseCheckCardDependenciesResult = {
   isConfirmationShown: boolean;
   handleInitialSave: (question: Question) => Promise<void>;
   handleSaveAfterConfirmation: () => Promise<void>;
-  handleCancelSave: () => void;
+  handleCloseConfirmation: () => void;
 };
 
 export type UseCheckTransformDependenciesProps = {
@@ -905,10 +905,11 @@ export type UseCheckTransformDependenciesProps = {
 
 export type UseCheckTransformDependenciesResult = {
   checkData?: CheckDependenciesResponse;
+  isCheckingDependencies: boolean;
   isConfirmationShown: boolean;
   handleInitialSave: (request: UpdateTransformRequest) => Promise<void>;
   handleSaveAfterConfirmation: () => Promise<void>;
-  handleCancelSave: () => void;
+  handleCloseConfirmation: () => void;
 };
 
 export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
@@ -919,12 +920,13 @@ export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
     isConfirmationShown: false,
     handleInitialSave: onSave,
     handleSaveAfterConfirmation: () => Promise.resolve(),
-    handleCancelSave: () => undefined,
+    handleCloseConfirmation: () => undefined,
   }),
   useCheckTransformDependencies: ({ onSave }) => ({
+    isCheckingDependencies: false,
     isConfirmationShown: false,
     handleInitialSave: onSave,
     handleSaveAfterConfirmation: () => Promise.resolve(),
-    handleCancelSave: () => undefined,
+    handleCloseConfirmation: () => undefined,
   }),
 };

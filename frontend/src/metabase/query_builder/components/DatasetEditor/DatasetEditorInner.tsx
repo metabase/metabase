@@ -484,7 +484,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     isConfirmationShown,
     handleInitialSave,
     handleSaveAfterConfirmation,
-    handleCancelSave,
+    handleCloseConfirmation,
   } = PLUGIN_DEPENDENCIES.useCheckCardDependencies({
     getSubmittableQuestion,
     onSave: async (question) => {
@@ -771,7 +771,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
           checkData={checkData}
           opened
           onSave={handleSaveAfterConfirmation}
-          onClose={handleCancelSave}
+          onClose={handleCloseConfirmation}
         />
       )}
     </>

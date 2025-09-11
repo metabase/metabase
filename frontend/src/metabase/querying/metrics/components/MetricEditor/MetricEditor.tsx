@@ -56,7 +56,7 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
       isConfirmationShown,
       handleInitialSave,
       handleSaveAfterConfirmation,
-      handleCancelSave,
+      handleCloseConfirmation,
     } = PLUGIN_DEPENDENCIES.useCheckCardDependencies({
       getSubmittableQuestion,
       onSave,
@@ -142,7 +142,7 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
             checkData={checkData}
             opened
             onSave={handleSaveAfterConfirmation}
-            onClose={handleCancelSave}
+            onClose={handleCloseConfirmation}
           />
         )}
       </Flex>

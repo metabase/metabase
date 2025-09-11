@@ -51,7 +51,7 @@ export function useCheckCardDependencies({
     }
   }, [question, onSave]);
 
-  const handleCancelSave = useCallback(() => {
+  const handleCloseConfirmation = useCallback(() => {
     setQuestion(null);
     setIsConfirmationShown(false);
   }, []);
@@ -61,6 +61,6 @@ export function useCheckCardDependencies({
     isConfirmationShown,
     handleInitialSave,
     handleSaveAfterConfirmation,
-    handleCancelSave,
+    handleCloseConfirmation,
   };
 }
