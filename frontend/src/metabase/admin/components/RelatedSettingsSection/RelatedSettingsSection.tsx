@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import Link from "metabase/common/components/Link";
 import {
   Card,
@@ -5,6 +7,7 @@ import {
   Icon,
   type IconName,
   SimpleGrid,
+  Stack,
   Text,
 } from "metabase/ui";
 
@@ -16,16 +19,22 @@ export function RelatedSettingsSection({
   items?: RelatedSettingItem[];
 }) {
   return (
-    <SimpleGrid cols={3} spacing="md">
-      {items?.map((item) => (
-        <RelatedSettingCard
-          key={item.to}
-          icon={item.icon}
-          name={item.name}
-          to={item.to}
-        />
-      ))}
-    </SimpleGrid>
+    <Stack gap="md">
+      <Text size="lg" fw="bold" lh="xs">
+        {t`Related settings`}
+      </Text>
+
+      <SimpleGrid cols={3} spacing="md">
+        {items?.map((item) => (
+          <RelatedSettingCard
+            key={item.to}
+            icon={item.icon}
+            name={item.name}
+            to={item.to}
+          />
+        ))}
+      </SimpleGrid>
+    </Stack>
   );
 }
 

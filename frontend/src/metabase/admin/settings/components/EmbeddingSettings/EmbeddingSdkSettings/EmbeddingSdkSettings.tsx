@@ -317,15 +317,9 @@ export function EmbeddingSdkSettings() {
         </Flex>
       </Alert>
 
-      <Stack gap="md">
-        <Text size="lg" fw="bold" lh="xs">
-          {t`Related settings`}
-        </Text>
-
-        <RelatedSettingsSection
-          items={getModularEmbeddingRelatedSettingItems()}
-        />
-      </Stack>
+      <RelatedSettingsSection
+        items={getModularEmbeddingRelatedSettingItems()}
+      />
     </SettingsPageWrapper>
   );
 }

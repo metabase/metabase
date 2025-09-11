@@ -11,7 +11,7 @@ import {
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import { useSetting } from "metabase/common/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
-import { Box, Stack, Text } from "metabase/ui";
+import { Box } from "metabase/ui";
 
 import { SettingTitle } from "../SettingHeader";
 import { EmbeddedResources } from "../widgets/PublicLinksListing/EmbeddedResources";
@@ -41,15 +41,7 @@ export function StaticEmbeddingSettings() {
       </SettingsSection>
       <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
 
-      <Stack gap="md">
-        <Text size="lg" fw="bold" lh="xs">
-          {t`Related settings`}
-        </Text>
-
-        <RelatedSettingsSection
-          items={getStaticEmbeddingRelatedSettingItems()}
-        />
-      </Stack>
+      <RelatedSettingsSection items={getStaticEmbeddingRelatedSettingItems()} />
     </SettingsPageWrapper>
   );
 }
