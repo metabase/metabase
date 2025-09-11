@@ -264,7 +264,7 @@
        :output   output})))
 
 (defn- run-python-transform! [{:keys [source] :as transform} db run-id cancel-chan message-log]
-  (with-open [log-thread-ref     (open-log-future! run-id message-log)
+  (with-open [log-future-ref     (open-log-future! run-id message-log)
               shared-storage-ref (python-runner/open-s3-shared-storage! (:source-tables source))]
     (let [driver     (:engine db)
           server-url (transforms.settings/python-execution-server-url)
@@ -284,7 +284,7 @@
           ;; TODO temporary to keep more code stable while refactoring
           ;; no need to materialize these early (i.e output we can stream directly into a tmp file or db if small)
           {:keys [output output-manifest events]} (python-runner/read-output-objects @shared-storage-ref)]
-      (.close log-thread-ref)           ; early close to force any writes to flush
+      (.close log-future-ref)           ; early close to force any writes to flush
       (when (seq events)
         (replace-python-logs! message-log events))
       (if (not= 200 status)
