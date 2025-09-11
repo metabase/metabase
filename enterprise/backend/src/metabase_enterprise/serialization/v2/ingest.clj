@@ -49,7 +49,7 @@
   [hierarchy]
   (mapv #(dissoc % :label) hierarchy))
 
-(defn- ingest-file
+(defn ingest-file
   "Reads an entity YAML file and clean it up (eg. parsing timestamps)
   The returned entity is in \"extracted\" form, ready to be passed to the `load` step."
   [file]
