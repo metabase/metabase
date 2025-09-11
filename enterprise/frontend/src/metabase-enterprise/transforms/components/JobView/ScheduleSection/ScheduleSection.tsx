@@ -14,7 +14,7 @@ import {
   useLazyGetTransformJobQuery,
   useRunTransformJobMutation,
 } from "metabase-enterprise/api";
-import { trackTranformJobTriggerManualRun } from "metabase-enterprise/transforms/analytics";
+import { trackTransformJobTriggerManualRun } from "metabase-enterprise/transforms/analytics";
 
 import { RunButton } from "../../../components/RunButton";
 import { SplitSection } from "../../../components/SplitSection";
@@ -104,7 +104,7 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
       return;
     }
 
-    trackTranformJobTriggerManualRun({
+    trackTransformJobTriggerManualRun({
       jobId: job.id,
       triggeredFrom: "job-page",
     });

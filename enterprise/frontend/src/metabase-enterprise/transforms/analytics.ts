@@ -1,7 +1,7 @@
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import type { TransformId, TransformJobId } from "metabase-types/api";
 
-export function trackTranformTriggerManualRun({
+export function trackTransformTriggerManualRun({
   transformId,
   triggeredFrom,
 }: {
@@ -15,7 +15,7 @@ export function trackTranformTriggerManualRun({
   });
 }
 
-export function trackTranformJobTriggerManualRun({
+export function trackTransformJobTriggerManualRun({
   jobId,
   triggeredFrom,
 }: {

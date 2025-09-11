@@ -14,7 +14,7 @@ import {
   useRunTransformMutation,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import { trackTranformTriggerManualRun } from "metabase-enterprise/transforms/analytics";
+import { trackTransformTriggerManualRun } from "metabase-enterprise/transforms/analytics";
 import type { Transform, TransformTagId } from "metabase-types/api";
 
 import { RunButton } from "../../../components/RunButton";
@@ -182,6 +182,10 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
   const [isCanceling, setIsCanceling] = useState(false);
 
   const handleRun = async () => {
+    trackTransformTriggerManualRun({
+      transformId: transform.id,
+      triggeredFrom: "transform-page",
+    });
     try {
       setIsStarting(true);
       const { error } = await runTransform(transform.id);
@@ -197,10 +201,6 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
   };
 
   const handleCancel = async () => {
-    trackTranformTriggerManualRun({
-      transformId: transform.id,
-      triggeredFrom: "transform-page",
-    });
     try {
       setIsCanceling(true);
       const { error } = await cancelTransform(transform.id);
