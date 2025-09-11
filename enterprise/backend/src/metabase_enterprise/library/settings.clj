@@ -13,19 +13,19 @@
   :encryption :no
   :default    false)
 
+(defn source-from-settings
+  []
+  (git/new-git-source (setting/get :git-sync-url)
+                      (setting/get :git-sync-token)))
+
 (defn- set-repo-with-verification!-fn [original-key]
   (fn [new-value]
     (setting/set-value-of-type! :string original-key new-value)
-    (let [source (git/->GitSource (git/clone-repository! {:url   (setting/get :git-sync-url)
-                                                          :token (setting/get :git-sync-token)})
-                                  (setting/get :git-sync-url)
-                                  (setting/get :git-sync-token))]
+    (let [source (source-from-settings)]
       (if (git/can-access-branch-in-repository? (assoc source
                                                        :branch
                                                        (setting/get :git-sync-import-branch)))
-        (do
-          (source/set-source! source)
-          (git-sync-configured! true))
+        (git-sync-configured! true)
         (git-sync-configured! false)))))
 
 (defsetting git-sync-import-branch

@@ -1,7 +1,7 @@
 (ns metabase-enterprise.library.source.git
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.library.source :as source]
+   [metabase-enterprise.library.source.protocol :as source.p]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase.util :as u]
    [metabase.util.log :as log])
@@ -149,7 +149,7 @@
               (.update))))))
     (push-branch! git-source branch-ref)))
 
-(defn- branches [{:keys [git]}]
+(defn- branches [{:keys [^Git git]}]
   (->> (call-command (.branchList git))
        (filter #(str/starts-with? (.getName %) "refs/heads/"))
        (remove #(.isSymbolic %))
@@ -167,7 +167,7 @@
     (catch GitAPIException _ false)))
 
 (defrecord GitSource [git remote-url token]
-  source/LibrarySource
+  source.p/LibrarySource
   (branches [source] (branches source))
 
   (list-files [this branch]
@@ -178,3 +178,10 @@
 
   (write-files! [this branch message files]
     (write-files! this branch message files)))
+
+(defn new-git-source
+  "Create a new git source"
+  [url token]
+  (->GitSource (clone-repository! {:url url
+                                   :token token})
+               url token))

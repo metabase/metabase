@@ -6,7 +6,7 @@
    [metabase-enterprise.library.source :as source]
    [metabase-enterprise.library.source.git :as git]
    [metabase-enterprise.mbml.core :as mbml]
-   [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
+   [metabase-enterprise.serialization.v2.extract :as v2.extract]
    [metabase-enterprise.serialization.v2.load :as v2.load]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -41,17 +41,17 @@
       (try
         (git/fetch! source)
         ;; Load all entities from Git first - this handles creates/updates via entity_id matching
-        (let [load-result (serdes/with-cache
-                            (v2.load/load-metabase! (source/ingestable-source source (or branch (settings/git-sync-import-branch)))
-                                                    :root-dependency-path [{:id collection/library-entity-id
-                                                                            :model "Collection"}]))
+        (let [load-result #p (serdes/with-cache
+                               (v2.load/load-metabase! (source/ingestable-source source (or branch (settings/git-sync-import-branch)))
+                                                       :root-dependency-path [{:id collection/library-entity-id
+                                                                               :model "Collection"}]))
               ;; Extract entity_ids by model from the :seen paths
-              imported-entities (->> (:seen load-result)
-                                     (map last) ; Get the last element of each path (the entity itself)
-                                     (group-by :model)
-                                     (map (fn [[model entities]]
-                                            [model (set (map :id entities))]))
-                                     (into {}))
+              imported-entities #p (->> (:seen load-result)
+                                        (map last) ; Get the last element of each path (the entity itself)
+                                        (group-by :model)
+                                        (map (fn [[model entities]]
+                                               [model (set (map :id entities))]))
+                                        (into {}))
               affected-collection-ids (collection/collection->descendant-ids library-collection)]
           ;; Now delete any library content that was NOT part of the import
           (doseq [model [:model/Collection
@@ -119,7 +119,7 @@
    _query
    {:keys [branch]} :- [:map [:branch {:optional true} ms/NonBlankString]]]
   (api/check-superuser)
-  (let [result (reload-from-git! branch)]
+  (let [result (source/with-source [_source] (reload-from-git! branch))]
     (case (:status result)
       :success
       "Success"
@@ -209,6 +209,24 @@
     {:has_unsynced_changes false
      :message "Library collection not found"}))
 
+(defn save-to-git!
+  [branch message]
+  (source/with-source [source]
+    (if source
+      (do
+        (serdes/with-cache
+          (-> (v2.extract/extract {:targets [["Collection" collection/library-entity-id]]
+                                   :no-collections false
+                                   :no-data-model true
+                                   :no-settings true
+                                   :include-field-values :false
+                                   :include-database-secrets :false
+                                   :continue-on-error false})
+              (source/store! source branch message)))
+        {:status :success})
+      {:status :error
+       :message "Library source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."})))
+
 (api.macros/defendpoint :post "/export"
   "Export the current state of the Library collection to a Source
   This endpoint will:
@@ -222,9 +240,24 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [branch force-sync]}] :- [:map
-                                    [:branch {:optional true} ms/NonBlankString]
-                                    [:force-sync {:optional true} :boolean]])
+   {:keys [message branch force-sync]}] :- [:map
+                                            [:message {:optional true} ms/NonBlankString]
+                                            [:branch {:optional true} ms/NonBlankString]
+                                            [:force-sync {:optional true} :boolean]]
+  (api/check-superuser)
+  (let [result (save-to-git! (or branch (settings/git-sync-export-branch))
+                             (or message "test-commit"))]
+    (case (:status result)
+      :success "Success"
+
+      :error
+      {:status 400
+       :body {:status "error"
+              :message (:message result)}}
+
+      {:status 500
+       :body {:status "error"
+              :message "Unexpected error occurred during export"}})))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/library` routes."

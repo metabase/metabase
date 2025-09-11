@@ -2,34 +2,24 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase-enterprise.library.settings :as settings]
+   [metabase-enterprise.library.source.protocol :as source.p]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
+   [metabase-enterprise.serialization.v2.storage :as v2.storage]
    [metabase.models.serialization :as serdes]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]))
 
 (set! *warn-on-reflection* true)
 
-(defprotocol LibrarySource
-  (branches [source]
-    "Returns a map of branch names available in the source")
-
-  (list-files [source branch]
-    "Lists all files in the source")
-
-  (read-file [source branch path]
-    "Reads the contents of the file at `path` in `branch`")
-
-  (write-files! [source branch message files]
-    "Writes `content` to `path` in `branch` with commit `message` for all files in `files`"))
-
 (def ^:dynamic *source*
   "The library source"
-  (atom nil))
+  nil)
 
 (defn get-source
   "The library source"
   []
-  @*source*)
+  *source*)
 
 (defn set-source!
   "Sets the library source based on the configuration settings"
@@ -38,16 +28,16 @@
 
 (defn- ingest-content
   [file-content]
-  (v2.ingest/read-timestamps (yaml/load file-content {:key-fn v2.ingest/parse-key})))
+  (v2.ingest/read-timestamps (yaml/parse-string file-content {:key-fn v2.ingest/parse-key})))
 
 (defn- ingest-all
   [source branch]
-  (into {} (for [path (list-files source branch)
+  (into {} (for [path (source.p/list-files source branch)
                  :when (and (not (str/starts-with? path "."))
                             (str/ends-with? path ".yaml"))
-                 ;; TODO legal-top-level check? / maybe not necessary for library?
+                    ;; TODO legal-top-level check? / maybe not necessary for library?
                  :let [content (try
-                                 (read-file source branch path)
+                                 (source.p/read-file source branch path)
                                  (catch Exception e
                                    (log/error e "Error reading file" path)))
                        loaded (try
@@ -64,10 +54,10 @@
   (ingest-list [_]
     (keys (or @cache (reset! cache (ingest-all source branch)))))
 
-  (ingest-one [this abs-path]
+  (ingest-one [_ abs-path]
     (when-not @cache
       (reset! cache (ingest-all source branch)))
-    (if-let [target (get (v2.ingest/ingest-list this) (v2.ingest/strip-labels abs-path))]
+    (if-let [target (get @cache (v2.ingest/strip-labels abs-path))]
       (try
         (ingest-content (second target))
         (catch Exception e
@@ -76,4 +66,38 @@
 
 (defn ingestable-source
   [source branch]
-  (->IngestableSource source branch (atom {})))
+  (->IngestableSource source branch (atom nil)))
+
+(defn- library-path
+  [opts entity]
+  (let [base-path   (serdes/storage-path entity opts)
+        dirnames    (drop-last base-path)
+        basename    (str (last base-path) ".yaml")]
+    (apply str (map v2.storage/escape-segment (concat dirnames [basename])))))
+
+(defn- ->file-spec
+  "Converts entity from serdes stream into file spec for source write-files! "
+  [opts entity]
+  (when (instance? Exception entity)
+    ;; Just short-circuit if there are errors.
+    (throw entity))
+  {:path (library-path opts entity)
+   :content (yaml/generate-string entity {:dumper-options {:flow-style :block :split-lines false}})})
+
+(defn store!
+  "Store files from `stream` to `source` on `branch`. Commits with `message`."
+  [stream source branch message]
+  (let [opts {}]
+    (source.p/write-files! source branch message (map #(->file-spec opts %) stream))))
+
+(defn do-with-source
+  "impl for with-source"
+  [thunk]
+  (let [source (settings/source-from-settings)]
+    (binding [*source* source]
+      (thunk source))))
+
+(defmacro with-source
+  "Binds the `*source*` var to the source defined by the current git settings"
+  [binding & body]
+  `(do-with-source (fn ~binding ~@body)))
