@@ -18,6 +18,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -913,9 +914,17 @@
         :type/Float
         (parse-double value)
 
-        ;; Boolean type
         :type/Boolean
         (parse-boolean value)
+
+        :type/Numeric
+        (bigdec value)
+
+        :type/Decimal
+        (bigdec value)
+
+        (:type/Date :type/DateTime :type/DateTimeWithLocalTZ)
+        (u.date/parse value)
 
         value))))
 
