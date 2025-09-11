@@ -73,6 +73,7 @@
            :type/Boolean
            :type/DateTimeWithTZ
            :type/DateTime
+           :type/Dictionary
            :type/JSON
            :type/Date
            :type/Text])))
