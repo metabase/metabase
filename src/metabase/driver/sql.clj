@@ -136,10 +136,10 @@
         queries (if (driver/table-exists? driver db target)
                   (let [tmp-name (get-tmp-transform-name table-name tmp-transform-suffix)
                         tmp-table (keyword schema tmp-name)]
-                    [(driver/compile-transform driver tmp-table query)
+                    [(driver/compile-transform driver query tmp-table)
                      (driver/compile-drop-table driver output-table)
                      (driver/compile-rename-table driver tmp-table table-name)])
-                  [(driver/compile-transform driver output-table query)])]
+                  [(driver/compile-transform driver query output-table)])]
     {:rows-affected (first (driver/execute-raw-queries! driver conn-spec queries))}))
 
 (defmethod driver/drop-transform-target! [:sql :table]

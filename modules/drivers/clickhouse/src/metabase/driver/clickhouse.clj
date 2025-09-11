@@ -309,7 +309,7 @@
         (str/starts-with? msg "Code: 81"))))
 
 (defmethod driver/compile-transform :clickhouse
-  [driver output-table query]
+  [driver query output-table]
   (let [pieces [(sql.qp/format-honeysql driver {:create-table output-table})
                 ;; TODO(rileythomp, 2025-08-22): Is there a better way to do this?
                 ;; i.e. only do this if we don't have a non-nullable field to use as a primary key?
@@ -331,4 +331,4 @@
                     schema (str schema "."))
         new-table (cond->> new-name
                     schema (str schema "."))]
-    [(format "RENAME TABLE %s TO %s;" old-table new-table)]))
+    [(format "RENAME TABLE `%s` TO `%s`;" old-table new-table)]))

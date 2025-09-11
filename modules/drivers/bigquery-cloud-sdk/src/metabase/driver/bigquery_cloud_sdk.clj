@@ -827,7 +827,7 @@
     (sql.u/quote-name :bigquery-cloud-sdk :table table-str)))
 
 (defmethod driver/compile-transform :bigquery-cloud-sdk
-  [_driver output-table query]
+  [_driver query output-table]
   (let [table-str (get-table-str output-table)]
     [(format "CREATE OR REPLACE TABLE %s AS %s" table-str query)]))
 

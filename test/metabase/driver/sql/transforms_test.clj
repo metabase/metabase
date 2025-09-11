@@ -10,7 +10,7 @@
   (testing "compile-transform should return [sql params] format"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (testing "simple table name"
-        (let [result (driver/compile-transform driver/*driver* :my_table "SELECT * FROM products")]
+        (let [result (driver/compile-transform driver/*driver* "SELECT * FROM products" :my_table)]
           (testing "returns a vector"
             (is (vector? result)))
           (testing "first element is SQL string"
@@ -24,7 +24,7 @@
                     (re-find #"(?i)CREATE\s+.*TABLE.*my_table" (first result)))))))
 
       (testing "schema-qualified table name"
-        (let [result (driver/compile-transform driver/*driver* :my_schema/my_table "SELECT * FROM products")]
+        (let [result (driver/compile-transform driver/*driver* "SELECT * FROM products" :my_schema/my_table)]
           (testing "returns a vector"
             (is (vector? result)))
           (testing "first element is SQL string"
@@ -75,7 +75,7 @@
 (deftest execute-transform-assembles-queries-test
   (testing "execute-transform! should pass correct format to execute-raw-queries!"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (let [compile-result (driver/compile-transform driver/*driver* :my_table "SELECT * FROM products")
+      (let [compile-result (driver/compile-transform driver/*driver* "SELECT * FROM products" :my_table)
             drop-result (driver/compile-drop-table driver/*driver* :my_table)]
         (testing "compile methods return consistent vector format"
           (is (vector? compile-result))

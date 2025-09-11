@@ -269,24 +269,30 @@
 
 (defmulti sleep-numbers-query
   "Returns a query that will sleep for a few seconds and return a list of numbers."
-  {:arglists '([driver num])}
+  {:arglists '([driver sleep-sec num])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-(defmethod sleep-numbers-query :postgres [_driver num]
-  (format "SELECT a FROM (SELECT pg_sleep(5)) x, generate_series(1, %d) a;" num))
+(defmethod sleep-numbers-query :postgres [_driver sleep-sec num]
+  (format "SELECT a FROM (SELECT pg_sleep(%d)) x, generate_series(1, %d) a;" sleep-sec num))
 
-(defmethod sleep-numbers-query :mysql [_driver num]
-  (format "SELECT a FROM (SELECT SLEEP(5)) x, (SELECT 1 AS a %s) a;"
+(defmethod sleep-numbers-query :mysql [_driver sleep-sec num]
+  (format "SELECT a FROM (SELECT SLEEP(%d)) x, (SELECT 1 AS a %s) a;"
+          sleep-sec
           (->> (range 2 (inc num))
                (map #(str "UNION ALL SELECT " %))
                (str/join " "))))
 
-(defmethod sleep-numbers-query :clickhouse [_driver num]
-  (format "SELECT number + 1 AS a FROM numbers(%d) WHERE sleep(3) + sleep(2) = 0;" num))
+(defmethod sleep-numbers-query :clickhouse [_driver sleep-sec num]
+  (let [q (quot sleep-sec 3)
+        r (rem sleep-sec 3)
+        threes (repeat q "sleep(3)") ;; max time clickhouse can sleep at once is 3 seconds
+        parts (concat threes [(format "sleep(%d)" r)])
+        sleeps (str/join " + " parts)]
+    (format "SELECT number + 1 AS a FROM numbers(%d) WHERE %s = 0;" num sleeps)))
 
-(defmethod sleep-numbers-query :snowflake [_driver num]
-  (format "SELECT SEQ4() + 1 AS a FROM (SELECT SYSTEM$WAIT(5)), TABLE(GENERATOR(ROWCOUNT => %d))" num))
+(defmethod sleep-numbers-query :snowflake [_driver sleep-sec num]
+  (format "SELECT SEQ4() + 1 AS a FROM (SELECT SYSTEM$WAIT(%d)), TABLE(GENERATOR(ROWCOUNT => %d))" sleep-sec num))
 
 (deftest run-mbql-transform-long-running-transform-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table ::sleep-query]})
@@ -294,8 +300,8 @@
                                             :schema (t2/select-one-fn :schema :model/Table (mt/id :products))
                                             :name   "sleep_table"}]
       (let [mp (mt/metadata-provider)
-            query (lib/native-query mp (sleep-numbers-query driver/*driver* 5))
-            new-query (lib/native-query mp (sleep-numbers-query driver/*driver* 6))]
+            query (lib/native-query mp (sleep-numbers-query driver/*driver* 5 5))
+            new-query (lib/native-query mp (sleep-numbers-query driver/*driver* 5 6))]
         (mt/with-temp [:model/Transform transform {:name   "transform"
                                                    :source {:type  :query
                                                             :query query}
@@ -317,7 +323,7 @@
                   query-futures (doall
                                  (for [i (range 10)]
                                    (future
-                                     (Thread/sleep (* i 400))
+                                     (Thread/sleep (* i 100))
                                      (query-fn))))]
               @transform-future
               (let [query-results (map deref query-futures)]

@@ -1132,7 +1132,7 @@
 
 (defmulti compile-transform
   "Compiles the sql for a transform statement, given an inner sql query and a destination."
-  {:added "0.57.0", :arglists '([driver output-table query])}
+  {:added "0.57.0", :arglists '([driver query output-table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

@@ -359,7 +359,7 @@
   (mt/test-driver :clickhouse
     (testing "compile transform for clickhouse with empty primary key column"
       (is (= ["CREATE TABLE `PRODUCTS_COPY` ORDER BY () AS SELECT * FROM products"]
-             (driver/compile-transform :clickhouse "PRODUCTS_COPY" "SELECT * FROM products"))))))
+             (driver/compile-transform :clickhouse "SELECT * FROM products" "PRODUCTS_COPY"))))))
 
 (deftest ^:parallel clickhouse-db-supports-schemas-test
   (doseq [[schemas-supported? details] [[false? {}]
