@@ -39,6 +39,7 @@
     "@tiptap/core": "^3.2.0",
     "@tiptap/extension-bubble-menu": "^3.2.0",
     "@tiptap/extension-image": "^3.2.0",
+    "@tiptap/extension-mention": "^3.3.0",
     "@tiptap/extension-placeholder": "^3.2.0",
     "@tiptap/pm": "^3.2.0",
     "@tiptap/react": "^3.2.0",
@@ -74,6 +75,7 @@
     "echarts": "^5.5.1-rc.1",
     "fast-text-encoding": "^1.0.6",
     "formik": "^2.4.5",
+    "frimousse": "^0.3.0",
     "hast-util-from-html": "^2.0.1",
     "hast-util-to-html": "^9.0.0",
     "history": "3",
@@ -147,7 +149,8 @@
     "ttag": "1.7.21",
     "typescript": "^5.4.5",
     "underscore": "~1.13.3",
-    "yup": "^0.32.11"
+    "yup": "^0.32.11",
+    "zod": "^4.1.5"
   },
   "devDependencies": {
     "@babel/cli": "^7.23.0",
@@ -252,7 +255,6 @@
     "chromatic": "^10.2.0",
     "commander": "^12.1.0",
     "concurrently": "^8.2.2",
-    "conventional-changelog-cli": "^5.0.0",
     "cross-fetch": "^3.1.5",
     "crypto-browserify": "^3.12.0",
     "css-loader": "^6.10.0",
@@ -435,7 +437,6 @@
     "dev-ee": "yarn && yarn clean-dev:cljs && concurrently -n 'backend,frontend,cljs,static-viz' -c 'blue,green,yellow,magenta,red' 'clojure -M:run:ee:dev:dev-start --hot' 'MB_EDITION=ee yarn build-hot:js-wait' 'MB_EDITION=ee yarn build:cljs' 'yarn build-static-viz:watch-wait'",
     "dev-ee-hot-be": "yarn && yarn clean-dev:cljs && concurrently -n 'backend,frontend,cljs,static-viz' -c 'blue,green,yellow,magenta,red' 'clojure -M:run:ee:dev:dev-start --hot' 'MB_EDITION=ee ENABLE_CLJS_HOT_RELOAD=true yarn build-hot:js-wait' 'MB_EDITION=ee yarn build-hot:cljs' 'yarn build-static-viz:watch-wait'",
     "embedding-sdk:generate-package": "node ./bin/embedding-sdk/generate-sdk-package-files.js",
-    "embedding-sdk:generate-changelog": "yarn conventional-changelog --config enterprise/frontend/src/embedding-sdk-bundle/conventional-changelog-config.js",
     "embedding-sdk:publish": "cd ./resources/embedding-sdk && npm publish",
     "embedding-sdk:generate-nextjs-compat": "tsx enterprise/frontend/src/embedding-sdk-package/bin/generate-nextjs-compat.ts",
     "embedding-sdk:test-unit": "yarn test-unit enterprise/frontend/src/embedding-sdk-package/ enterprise/frontend/src/embedding-sdk-bundle/ enterprise/frontend/src/embedding-sdk-shared/",
