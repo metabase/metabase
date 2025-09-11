@@ -18,10 +18,10 @@ import type {
 } from "metabase/visualizations/types";
 import type {
   DatasetColumn,
+  MaybeTranslatedSeries,
   RawSeries,
   RowValue,
   RowValues,
-  TranslatedSeries,
 } from "metabase-types/api";
 
 export function getPieDimensions(settings: ComputedVisualizationSettings) {
@@ -180,7 +180,7 @@ export function getColors(
 }
 
 export function getPieRows(
-  rawSeries: TranslatedSeries,
+  rawSeries: MaybeTranslatedSeries,
   settings: ComputedVisualizationSettings,
   formatter: Formatter,
 ) {

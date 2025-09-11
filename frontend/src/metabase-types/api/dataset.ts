@@ -191,7 +191,7 @@ export type SingleSeriesWithTranslation = SingleSeries & {
 
 export type RawSeries = SingleSeries[];
 export type TransformedSeries = RawSeries & { _raw: Series };
-export type TranslatedSeries = SingleSeriesWithTranslation[];
+export type MaybeTranslatedSeries = SingleSeriesWithTranslation[];
 export type Series = RawSeries | TransformedSeries;
 
 export type TemplateTagId = string;
