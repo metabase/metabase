@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-752-integration-branch-for-embedding-hub",
     "hash": "b122cdd4395f27389928b3c1de343e42441c6758"
+  },
+  "upstream": {
+    "branch": "emb-800-completing-later-steps-on-embedding-hub-should-not-tick-off"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 63393,
+        "gqlID": "PR_kwDOAczgH86oEWhE"
+      }
+    }
   }
 }
