@@ -37,7 +37,9 @@
   (when-not (isa? e :metabase/event)
     (derive e :metabase/event)))
 
-(defn- add-template-tags [{old-tags :template_tags :as snippet}]
+(defn add-template-tags
+  "Update the template tags based on the new contents."
+  [{old-tags :template_tags :as snippet}]
   ;; Parse the snippet content to identify all template tags (like {{snippet: FilterA}} or {{var}}).
   ;; For snippet references, we need to resolve them to snippet IDs while preserving reference stability.
   ;;

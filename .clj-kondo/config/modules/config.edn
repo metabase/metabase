@@ -1699,6 +1699,7 @@
            lib
            lib-be
            models
+           native-query-snippets
            premium-features
            queries
            query-processor
