@@ -1,9 +1,11 @@
+import { provideUserListTags } from "metabase/api/tags";
 import type {
   Comment,
   CommentId,
   CreateCommentRequest,
   CreateReactionRequest,
   ListCommentsRequest,
+  MentionableUser,
   UpdateCommentRequest,
 } from "metabase-types/api";
 
@@ -66,6 +68,16 @@ export const commentApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [idTag("comment", id), listTag("comment")]),
     }),
+
+    listMentions: builder.query<{ data: MentionableUser[] }, void>({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/comment/mentions",
+        params,
+      }),
+      providesTags: (response) =>
+        response ? provideUserListTags(response.data) : [],
+    }),
   }),
 });
 
@@ -75,4 +87,5 @@ export const {
   useUpdateCommentMutation,
   useDeleteCommentMutation,
   useToggleReactionMutation,
+  useListMentionsQuery,
 } = commentApi;

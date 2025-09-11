@@ -1,5 +1,5 @@
 import type { DocumentContent } from "./document";
-import type { BaseUser, UserId } from "./user";
+import type { BaseUser, User, UserId } from "./user";
 
 export type CommentId = number;
 
@@ -34,6 +34,11 @@ export interface CommentReaction {
   count: number;
   users: { id: UserId; name: string }[];
 }
+
+export type MentionableUser = Pick<
+  User,
+  "id" | "common_name" | "first_name" | "last_name"
+>;
 
 /** request types below */
 

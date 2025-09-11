@@ -1,17 +1,14 @@
 import { useMemo } from "react";
 
-import {
-  useListRecentsQuery,
-  useListUsersQuery,
-  useSearchQuery,
-} from "metabase/api";
+import { useListRecentsQuery, useSearchQuery } from "metabase/api";
+import { useListMentionsQuery } from "metabase-enterprise/api";
 import type { MenuItem } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
 import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
 import type {
+  MentionableUser,
   RecentItem,
   SearchModel,
   SearchResult,
-  User,
 } from "metabase-types/api";
 
 import {
@@ -30,7 +27,7 @@ interface UseEntitySearchOptions {
   query: string;
   onSelectRecent: (item: RecentItem) => void;
   onSelectSearchResult: (item: SearchResult) => void;
-  onSelectUser: (item: User) => void;
+  onSelectUser: (item: MentionableUser) => void;
   enabled?: boolean;
   searchModels?: SuggestionModel[];
 }
@@ -80,12 +77,10 @@ export function useEntitySearch({
     },
   );
 
-  const { data: usersResponse, isLoading: isUsersLoading } = useListUsersQuery(
-    undefined,
-    {
+  const { data: usersResponse, isLoading: isUsersLoading } =
+    useListMentionsQuery(undefined, {
       skip: !searchModels.includes("user"),
-    },
-  );
+    });
 
   const users = useMemo(() => {
     return (usersResponse?.data ?? [])

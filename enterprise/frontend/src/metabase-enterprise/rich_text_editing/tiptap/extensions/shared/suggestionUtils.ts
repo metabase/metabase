@@ -4,9 +4,9 @@ import type { MenuItem } from "metabase-enterprise/documents/components/Editor/s
 import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
 import type {
   Database,
+  MentionableUser,
   RecentItem,
   SearchResult,
-  User,
 } from "metabase-types/api";
 
 export const filterRecents = (item: RecentItem, models: SuggestionModel[]) =>
@@ -64,8 +64,8 @@ export function buildDbMenuItems(
 }
 
 export function buildUserMenuItems(
-  users: User[],
-  onSelect: (user: User) => void,
+  users: MentionableUser[],
+  onSelect: (user: MentionableUser) => void,
 ): MenuItem[] {
   return users.map((user) => {
     return {

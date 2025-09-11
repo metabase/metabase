@@ -3,7 +3,11 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
-import type { RecentItem, SearchResult, User } from "metabase-types/api";
+import type {
+  MentionableUser,
+  RecentItem,
+  SearchResult,
+} from "metabase-types/api";
 
 import { useEntitySearch } from "./useEntitySearch";
 
@@ -72,7 +76,7 @@ export function useEntitySuggestions({
   );
 
   const handleUserSelect = useCallback(
-    (item: User) => {
+    (item: MentionableUser) => {
       onSelectEntity({
         id: item.id,
         model: "user",
