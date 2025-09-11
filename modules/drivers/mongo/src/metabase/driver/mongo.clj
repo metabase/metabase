@@ -632,20 +632,49 @@
     ;; Default fallback
     "object"))
 
+(defn- convert-value-for-insertion
+  [base-type value]
+  (when value
+    (if-not (string? value)
+      value
+      (case base-type
+        (:type/JSON :type/Dictionary :type/Array)
+        (json/decode value)
+
+        :type/Integer
+        (parse-long value)
+
+        (:type/Number :type/BigInteger)
+        (bigint value)
+
+        :type/Float
+        (parse-double value)
+
+        :type/Decimal
+        (bigdec value)
+
+        :type/Boolean
+        (parse-boolean value)
+
+        (:type/Date :type/DateTime :type/DateTimeWithTZ :type/Time :type/TimeWithTZ :type/Instant)
+        (u.date/parse value)
+
+        :type/UUID
+        (parse-uuid value)
+
+        value))))
+
 (defmethod driver/insert-from-source! [:mongo :csv-file]
   [driver db-id table-name column-names {:keys [file table-schema]}]
   (let [csv-rows (csv/read-csv (io/reader file))
         header-rows (first csv-rows)
         meta (m/index-by :name (:columns table-schema))
-        maybe-decode (fn [name v]
-                       (let [ty (:type (get meta name))]
-                         (if (and (string? v)
-                                  (:type/Dictionary (conj (ancestors ty) ty)))
-                           (json/decode v)
-                           v)))
+        convert-value (fn [name v]
+                        (let [ty (:type (get meta name))]
+                          (convert-value-for-insertion ty v)))
         data-rows (map (fn [rows]
                          (let [m (zipmap header-rows rows)]
-                           (mapv #(maybe-decode % (get m %)) column-names)))
+                           (mapv #(convert-value % (get m %)) column-names)))
                        (rest csv-rows))]
     (driver/insert-from-source! driver db-id table-name column-names {:type :rows :data data-rows})))
 
