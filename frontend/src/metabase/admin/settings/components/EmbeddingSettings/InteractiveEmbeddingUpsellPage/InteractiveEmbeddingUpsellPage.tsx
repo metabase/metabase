@@ -1,36 +1,22 @@
 import { jt, t } from "ttag";
 
 import { UpsellEmbeddingButton } from "metabase/admin/upsells/UpsellEmbeddingButton";
-import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
+import { UpsellGem } from "metabase/admin/upsells/components";
 import ExternalLink from "metabase/common/components/ExternalLink";
-import { useSetting } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { getDocsUrl, getSetting } from "metabase/selectors/settings";
 import { Box, Group, Icon, Text } from "metabase/ui";
 
-import { EmbeddingToggle } from "../../EmbeddingToggle";
-import { EmbeddingOption } from "../EmbeddingOption";
-import { LinkButton } from "../LinkButton";
+import { EmbeddingOption } from "../EmbeddingOption/EmbeddingOption";
 
 import { InteractiveEmbeddingIcon } from "./InteractiveEmbeddingIcon";
 
-const interactiveEmbeddingUtmTags = {
-  utm_source: "product",
-  utm_medium: "docs",
-  utm_campaign: "embedding-interactive",
-  utm_content: "embedding-admin",
-};
-
-export const InteractiveEmbeddingOptionCard = () => {
-  const isEE = PLUGIN_EMBEDDING.isEnabled();
+export const InteractiveEmbeddingUpsellPage = () => {
   const plan = useSelector((state) =>
     getPlan(getSetting(state, "token-features")),
   );
-  const isInteractiveEmbeddingEnabled = useSetting(
-    "enable-embedding-interactive",
-  );
+
   const quickStartUrl = useSelector((state) =>
     getDocsUrl(state, {
       page: "embedding/interactive-embedding-quick-start-guide",
@@ -40,14 +26,10 @@ export const InteractiveEmbeddingOptionCard = () => {
 
   return (
     <EmbeddingOption
-      icon={
-        <InteractiveEmbeddingIcon
-          disabled={!isEE || !isInteractiveEmbeddingEnabled}
-        />
-      }
+      icon={<InteractiveEmbeddingIcon />}
       title={
         <Group gap="sm">
-          {!isEE && <UpsellGem />}
+          <UpsellGem />
           {t`Interactive embedding`}
         </Group>
       }
@@ -62,7 +44,7 @@ export const InteractiveEmbeddingOptionCard = () => {
     >
       <Text
         fw="bold"
-        color="brand"
+        c="brand"
         component="a"
         pos="relative"
         href={quickStartUrl}
@@ -73,24 +55,22 @@ export const InteractiveEmbeddingOptionCard = () => {
           <Icon name="share" aria-hidden />
         </Box>
       </Text>
+
       <Group justify="space-between" align="center" w="100%">
-        {isEE ? (
-          <LinkButton to={"/admin/embedding/interactive"}>
-            {t`Configure`}
-          </LinkButton>
-        ) : (
-          <UpsellEmbeddingButton
-            url="https://www.metabase.com/product/embedded-analytics"
-            campaign="embedding-interactive"
-            location="embedding-page"
-            size="large"
-          />
-        )}
-        <EmbeddingToggle
-          settingKey="enable-embedding-interactive"
-          disabled={!isEE}
+        <UpsellEmbeddingButton
+          url="https://www.metabase.com/product/embedded-analytics"
+          campaign="embedding-interactive"
+          location="embedding-page"
+          size="large"
         />
       </Group>
     </EmbeddingOption>
   );
+};
+
+const interactiveEmbeddingUtmTags = {
+  utm_source: "product",
+  utm_medium: "docs",
+  utm_campaign: "embedding-interactive",
+  utm_content: "embedding-admin",
 };

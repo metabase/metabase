@@ -12,8 +12,8 @@ import { getLocation } from "metabase/selectors/routing";
 import { Divider, Flex, Stack } from "metabase/ui";
 
 export function EmbeddingNav() {
-  const hasInteractiveEmbedding = useHasTokenFeature("embedding");
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
+  const hasInteractiveEmbedding = useHasTokenFeature("embedding");
   const hasSdkEmbedding = useHasTokenFeature("embedding_sdk");
 
   return (
@@ -42,13 +42,16 @@ export function EmbeddingNav() {
           icon="embed_modular"
         />
 
-        {hasInteractiveEmbedding && (
-          <EmbeddingNavItem
-            path="/admin/embedding/interactive"
-            label={t`Interactive`}
-            icon="embed_interactive"
-          />
-        )}
+        <EmbeddingNavItem
+          path="/admin/embedding/interactive"
+          label={
+            <Flex gap="sm" align="center">
+              <span>{t`Interactive`}</span>
+              {!hasInteractiveEmbedding && <UpsellGem />}
+            </Flex>
+          }
+          icon="embed_interactive"
+        />
 
         <EmbeddingNavItem
           path="/admin/embedding/static"

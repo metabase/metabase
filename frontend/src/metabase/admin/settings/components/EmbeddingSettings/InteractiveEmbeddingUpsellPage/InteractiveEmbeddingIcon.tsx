@@ -1,20 +1,15 @@
 import cx from "classnames";
 
-import EmbeddingOptionS from "../EmbeddingOption.module.css";
-import type { EmbeddingOptionIconProps } from "../types";
+import EmbeddingOptionS from "./EmbeddingOption.module.css";
 
-export const InteractiveEmbeddingIcon = ({
-  disabled,
-}: EmbeddingOptionIconProps) => {
+export const InteractiveEmbeddingIcon = () => {
   return (
     <svg
       width="40"
       height="32"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className={cx(EmbeddingOptionS.EmbeddingOptionIcon, {
-        [EmbeddingOptionS.Disabled]: disabled,
-      })}
+      className={cx(EmbeddingOptionS.EmbeddingOptionIcon)}
     >
       <g clipPath="url(#clip0_1030_4461)">
         <rect
