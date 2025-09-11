@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import Snippets from "metabase/entities/snippets";
 import { useDispatch } from "metabase/lib/redux";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Flex, Modal } from "metabase/ui";
 import type { NativeQuerySnippet } from "metabase-types/api";
 
@@ -14,7 +15,7 @@ import SnippetForm, {
 type SnippetModalProps = {
   snippet:
     | NativeQuerySnippet
-    | (Omit<Partial<NativeQuerySnippet>, "id"> & { id: undefined });
+    | (Omit<Partial<NativeQuerySnippet>, "id"> & { id?: undefined });
   onCreate: (snippet: NativeQuerySnippet) => void;
   onUpdate: (
     nextSnippet: NativeQuerySnippet,
@@ -32,7 +33,7 @@ export function SnippetFormModal({
 }: SnippetModalProps) {
   const dispatch = useDispatch();
   const isEditing = snippet.id != null;
-  const title = isEditing
+  const modalTitle = isEditing
     ? t`Editing ${snippet.name}`
     : t`Create your new snippet`;
 
@@ -64,25 +65,52 @@ export function SnippetFormModal({
     onClose?.();
   }, [snippet, dispatch, onClose]);
 
+  const {
+    checkData,
+    isConfirmationShown,
+    handleInitialSave,
+    handleSaveAfterConfirmation,
+    handleCloseConfirmation,
+  } = PLUGIN_DEPENDENCIES.useCheckSnippetDependencies({
+    onSave: handleUpdate,
+    onError: (error) => {
+      throw error;
+    },
+  });
+
   return (
     <Modal.Root padding="xl" opened onClose={onClose}>
       <Modal.Overlay />
       <Modal.Content>
         <Modal.Header px="xl">
-          <Modal.Title>{title}</Modal.Title>
+          <Modal.Title>
+            {isConfirmationShown ? (
+              <PLUGIN_DEPENDENCIES.CheckDependenciesTitle />
+            ) : (
+              modalTitle
+            )}
+          </Modal.Title>
           <Flex justify="flex-end">
             <Modal.CloseButton />
           </Flex>
         </Modal.Header>
-        <Modal.Body px="xl">
-          <SnippetForm
-            {...props}
-            snippet={snippet}
-            onCreate={handleCreate}
-            onUpdate={handleUpdate}
-            onArchive={handleArchive}
-            onCancel={onClose}
-          />
+        <Modal.Body px={isConfirmationShown ? 0 : "xl"}>
+          {isConfirmationShown && checkData != null ? (
+            <PLUGIN_DEPENDENCIES.CheckDependenciesForm
+              checkData={checkData}
+              onSave={handleSaveAfterConfirmation}
+              onCancel={handleCloseConfirmation}
+            />
+          ) : (
+            <SnippetForm
+              {...props}
+              snippet={snippet}
+              onCreate={handleCreate}
+              onUpdate={handleInitialSave}
+              onArchive={handleArchive}
+              onCancel={onClose}
+            />
+          )}
         </Modal.Body>
       </Modal.Content>
     </Modal.Root>

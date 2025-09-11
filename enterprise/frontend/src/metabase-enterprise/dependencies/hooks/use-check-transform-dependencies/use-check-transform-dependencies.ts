@@ -22,8 +22,9 @@ export function useCheckTransformDependencies({
   });
 }
 
-function getCheckDependenciesRequest(
-  request: UpdateTransformRequest,
-): CheckTransformDependenciesRequest {
-  return request;
+function getCheckDependenciesRequest({
+  id,
+  source,
+}: UpdateTransformRequest): CheckTransformDependenciesRequest {
+  return { id, source };
 }

@@ -22,8 +22,10 @@ export function useCheckSnippetDependencies({
   });
 }
 
-function getCheckDependenciesRequest(
-  request: UpdateSnippetRequest,
-): CheckSnippetDependenciesRequest {
-  return request;
+function getCheckDependenciesRequest({
+  id,
+  name,
+  content,
+}: UpdateSnippetRequest): CheckSnippetDependenciesRequest {
+  return { id, name, content };
 }
