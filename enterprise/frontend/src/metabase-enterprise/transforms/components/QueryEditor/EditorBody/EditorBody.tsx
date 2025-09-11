@@ -4,7 +4,9 @@ import { ResizableBox, type ResizableBoxProps } from "react-resizable";
 import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
 import type { DataPickerItem } from "metabase/common/components/Pickers/DataPicker";
 import { useSetting } from "metabase/common/hooks";
-import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
+import NativeQueryEditor, {
+  type SelectionRange,
+} from "metabase/query_builder/components/NativeQueryEditor";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { Box } from "metabase/ui";
 import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/utils";
