@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-752-integration-branch-for-embedding-hub",
-    "hash": "359dd0ddb48051fae3650e55a5b59361adae05bf"
+    "hash": "8489295766fa2e1123a3c0cb16b024b5b9aa932a"
   },
   "upstream": {
     "branch": "emb-798-remove-embed-menu-from-the-new-menu"
