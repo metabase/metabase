@@ -360,6 +360,70 @@
                                     :timeout 30000})))
                 (is (true? (t2/exists? :model/Table :name (:name target))))))))))))
 
+(deftest transform-function-with-library-test
+  (testing "transform function can use libraries"
+    (mt/test-drivers #{:postgres}
+      (mt/with-temp [:model/PythonLibrary _ {:path   "circle"
+                                             :source "import math\n\ndef calculate_circle_area(radius):\n    return math.pi * radius ** 2"}
+                     :model/PythonLibrary _ {:path   "utils"
+                                             :source "def format_currency(amount):\n    return f\"${amount:,.2f}\""}]
+        (let [transform-code (str "import pandas as pd\n"
+                                  "from circle import calculate_circle_area\n"
+                                  "from utils import format_currency\n"
+                                  "\n"
+                                  "def transform():\n"
+                                  "    data = [\n"
+                                  "        {'radius': 5, 'area': calculate_circle_area(5), 'price': format_currency(78.54)},\n"
+                                  "        {'radius': 10, 'area': calculate_circle_area(10), 'price': format_currency(314.16)}\n"
+                                  "    ]\n"
+                                  "    return pd.DataFrame(data)")
+              result         (execute {:code transform-code})]
+          (is (=? {:output #(and (str/includes? % "radius,area,price")
+                                 (str/includes? % "5,78.5")
+                                 (str/includes? % "$78.54")
+                                 (str/includes? % "10,314.1")
+                                 (str/includes? % "$314.16"))
+                   :stdout "Successfully saved 2 rows to S3\nSuccessfully saved output manifest with 3 fields"
+                   :stderr ""}
+                  result)))))))
+
+(deftest transform-function-without-libraries-test
+  (testing "transform function works when no libraries exist"
+    (mt/test-drivers #{:postgres}
+      (with-redefs [t2/select-fn->fn (fn [k v model]
+                                       (when (and (= k :path)
+                                                  (= v :source)
+                                                  (= model :model/PythonLibrary))
+                                         {}))]
+        (let [transform-code (str "import pandas as pd\n"
+                                  "\n"
+                                  "def transform():\n"
+                                  "    return pd.DataFrame({'status': ['ok']})")
+              result         (execute {:code transform-code})]
+          (is (=? {:output "status\nok\n"
+                   :stdout "Successfully saved 1 rows to CSV\nSuccessfully saved output manifest with 1 fields"
+                   :stderr ""}
+                  result)))))))
+
+(deftest transform-function-library-import-error-test
+  (testing "transform function handles missing library gracefully"
+    (mt/test-drivers #{:postgres}
+      (with-redefs [t2/select-fn->fn (fn [k v model]
+                                       (when (and (= k :path)
+                                                  (= v :source)
+                                                  (= model :model/PythonLibrary))
+                                         {"utils" "def helper():\n    return 42"}))]
+        (let [transform-code (str "import pandas as pd\n"
+                                  "from common import some_function  # This library doesn't exist\n"
+                                  "\n"
+                                  "def transform():\n"
+                                  "    return pd.DataFrame({'value': [some_function()]})")
+              result         (execute {:code transform-code})]
+          (is (=? {:error     "Execution failed"
+                   :exit-code 1
+                   :stderr    #(str/includes? % "No module named 'common'")}
+                  result)))))))
+
 (deftest transform-type-roundtrip-test
   (mt/test-drivers #{:postgres :h2 :mysql :bigquery-cloud-sdk :redshift :snowflake :sqlserver :clickhouse}
     (mt/with-empty-db

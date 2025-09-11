@@ -1,5 +1,6 @@
 (ns metabase-enterprise.python-transform.models.python-library
   (:require
+   [metabase.app-db.core :as app-db]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
