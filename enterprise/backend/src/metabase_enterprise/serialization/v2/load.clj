@@ -162,10 +162,14 @@
                           e)))))))
 
 (defn load-metabase!
-  "Loads in a database export from an ingestion source, which is any Ingestable instance."
-  [ingestion & {:keys [backfill? continue-on-error]
-                :or   {backfill?         true
-                       continue-on-error false}}]
+  "Loads in a database export from an ingestion source, which is any Ingestable instance.
+
+  If `root-dependency-path` is passed, we will only load entities that are dependent upon (or dependencies of) the entity
+  described by that serdes path."
+  [ingestion & {:keys [backfill? continue-on-error root-dependency-path]
+                :or   {backfill?            true
+                       continue-on-error    false
+                       root-dependency-path nil}}]
   (u/prog1
     (t2/with-transaction [_tx]
       ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared dependencies
@@ -182,7 +186,12 @@
         (log/infof "Starting deserialization, total %s documents" (count contents))
         (reduce (fn [ctx item]
                   (try
-                    (load-one! ctx item)
+                    (let [ingested (serdes.ingest/ingest-one ingestion item)]
+                      (if (or (nil? root-dependency-path)
+                              (contains? (set (serdes/dependencies ingested))
+                                         root-dependency-path))
+                        (load-one! ctx item)
+                        ctx))
                     (catch Exception e
                       (when-not continue-on-error
                         (throw e))

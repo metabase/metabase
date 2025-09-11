@@ -2020,6 +2020,321 @@
           (is (not (some #(= (t2/model %) :model/Table) result))
               "Should never return tables as dependencies"))))))
 
+(deftest moving-into-library?-test
+  (testing "moving-into-library? function behavior"
+    (mt/with-temp [:model/Collection {library-id :id} {:name "Library" :type "library"}
+                   :model/Collection {regular-coll-id :id} {:name "Regular Collection"}
+                   :model/Collection {other-library-id :id} {:name "Other Library" :type "library"}]
+
+      (testing "when moving from non-library to library collection"
+        (is (true? (collection/moving-into-library? regular-coll-id library-id))
+            "Should return true when moving from regular to library collection"))
+
+      (testing "when moving from library to library collection"
+        (is (false? (collection/moving-into-library? library-id other-library-id))
+            "Should return false when moving from library to library collection"))
+
+      (testing "when moving from library to non-library collection"
+        (is (false? (collection/moving-into-library? library-id regular-coll-id))
+            "Should return false when moving from library to non-library collection"))
+
+      (testing "when moving from non-library to non-library collection"
+        (mt/with-temp [:model/Collection {other-regular-id :id} {:name "Other Regular"}]
+          (is (false? (collection/moving-into-library? regular-coll-id other-regular-id))
+              "Should return false when moving between non-library collections")))
+
+      (testing "when old collection ID is nil"
+        (is (true? (collection/moving-into-library? nil library-id))
+            "Should return false when old collection ID is nil"))
+
+      (testing "when new collection ID is nil"
+        (is (false? (collection/moving-into-library? regular-coll-id nil))
+            "Should return false when new collection ID is nil"))
+
+      (testing "when both collection IDs are nil"
+        (is (false? (collection/moving-into-library? nil nil))
+            "Should return false when both collection IDs are nil"))
+
+      (testing "when collection IDs don't exist"
+        (is (false? (collection/moving-into-library? 99999 88888))
+            "Should return false when collection IDs don't exist")))))
+
+(deftest check-non-library-dependencies-test
+  (testing "check-non-library-dependencies function behavior"
+    (testing "when model has no non-library dependencies"
+      (mt/with-temp [:model/Card {card-id :id} {:name "Test Card"}]
+        ;; Mock non-library-dependencies to return empty
+        (with-redefs [collection/non-library-dependencies (constantly [])]
+          (is (nil? (collection/check-non-library-dependencies (t2/instance :model/Card {:id card-id})))
+              "Should return nil when no dependencies"))))
+
+    (testing "when model has non-library dependencies"
+      (mt/with-temp [:model/Card {card-id :id} {:name "Test Card"}
+                     :model/Card {dep-card-id :id} {:name "Dependency Card"}]
+        ;; Mock non-library-dependencies to return dependencies
+        (with-redefs [collection/non-library-dependencies
+                      (constantly [(t2/instance :model/Card {:id dep-card-id})])]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Model has non-library dependencies"
+               (collection/check-non-library-dependencies (t2/instance :model/Card {:id card-id})))
+              "Should throw exception when dependencies exist"))))
+
+    (testing "exception contains correct data"
+      (mt/with-temp [:model/Card {card-id :id} {:name "Test Card"}
+                     :model/Card {dep-card-id :id} {:name "Dependency Card"}]
+        (let [dependency (t2/instance :model/Card {:id dep-card-id})]
+          ;; Mock non-library-dependencies to return dependencies
+          (with-redefs [collection/non-library-dependencies (constantly [dependency])]
+            (try
+              (collection/check-non-library-dependencies (t2/instance :model/Card {:id card-id}))
+              (catch Exception e
+                (let [ex-data (ex-data e)]
+                  (is (= 400 (:status-code ex-data))
+                      "Should have 400 status code")
+                  (is (= [dependency] (:non-library-models ex-data))
+                      "Should include dependencies in exception data"))))))))))
+
+(deftest move-collection!-into-library-true-test
+  (testing "when into-library? is true, collection and descendants become library type"
+    (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent" :location "/"}
+                   :model/Collection {coll-id :id :as coll} {:name "Collection to Move"
+                                                             :location "/"
+                                                             :type nil}
+                   :model/Collection {child-id :id} {:name "Child Collection"
+                                                     :location (format "/%d/" coll-id)
+                                                     :type nil}
+                   :model/Collection {grandchild-id :id} {:name "Grandchild Collection"
+                                                          :location (format "/%d/%d/" coll-id child-id)
+                                                          :type nil}]
+      ;; Move collection to parent with into-library? true
+      (collection/move-collection! coll (format "/%d/" parent-id) true)
+
+      ;; Check that the moved collection became library type
+      (let [moved-coll (t2/select-one :model/Collection :id coll-id)]
+        (is (= "library" (:type moved-coll))
+            "Moved collection should have library type"))
+
+      ;; Check that child collections also became library type
+      (let [moved-child (t2/select-one :model/Collection :id child-id)]
+        (is (= "library" (:type moved-child))
+            "Child collection should have library type"))
+
+      (let [moved-grandchild (t2/select-one :model/Collection :id grandchild-id)]
+        (is (= "library" (:type moved-grandchild))
+            "Grandchild collection should have library type")))))
+
+(deftest move-collection!-into-library-false-test
+  (testing "when into-library? is false, collection types remain unchanged"
+    (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent" :location "/"}
+                   :model/Collection {coll-id :id :as coll} {:name "Collection to Move"
+                                                             :location "/"
+                                                             :type nil}
+                   :model/Collection {child-id :id} {:name "Child Collection"
+                                                     :location (format "/%d/" coll-id)
+                                                     :type nil}]
+      ;; Move collection to parent with into-library? false
+      (collection/move-collection! coll (format "/%d/" parent-id) false)
+
+      ;; Check that collection types remain nil
+      (let [moved-coll (t2/select-one :model/Collection :id coll-id)]
+        (is (nil? (:type moved-coll))
+            "Moved collection should not have library type"))
+
+      (let [moved-child (t2/select-one :model/Collection :id child-id)]
+        (is (nil? (:type moved-child))
+            "Child collection should not have library type")))))
+
+(deftest move-collection!-into-library-omitted-test
+  (testing "when into-library? is omitted, collection types remain unchanged"
+    (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent" :location "/"}
+                   :model/Collection {coll-id :id :as coll} {:name "Collection to Move"
+                                                             :location "/"
+                                                             :type nil}
+                   :model/Collection {child-id :id} {:name "Child Collection"
+                                                     :location (format "/%d/" coll-id)
+                                                     :type nil}]
+      ;; Move collection to parent without into-library? parameter
+      (collection/move-collection! coll (format "/%d/" parent-id))
+
+      ;; Check that collection types remain nil
+      (let [moved-coll (t2/select-one :model/Collection :id coll-id)]
+        (is (nil? (:type moved-coll))
+            "Moved collection should not have library type when parameter omitted"))
+
+      (let [moved-child (t2/select-one :model/Collection :id child-id)]
+        (is (nil? (:type moved-child))
+            "Child collection should not have library type when parameter omitted")))))
+
+(deftest move-collection!-already-library-test
+  (testing "when collection already has library type and into-library? is true"
+    (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent" :location "/"}
+                   :model/Collection {coll-id :id :as coll} {:name "Library Collection"
+                                                             :location "/"
+                                                             :type "library"}
+                   :model/Collection {child-id :id} {:name "Child Collection"
+                                                     :location (format "/%d/" coll-id)
+                                                     :type "library"}]
+      ;; Move library collection with into-library? true
+      (collection/move-collection! coll (format "/%d/" parent-id) true)
+
+      ;; Check that collections remain library type
+      (let [moved-coll (t2/select-one :model/Collection :id coll-id)]
+        (is (= "library" (:type moved-coll))
+            "Library collection should remain library type"))
+
+      (let [moved-child (t2/select-one :model/Collection :id child-id)]
+        (is (= "library" (:type moved-child))
+            "Child of library collection should remain library type")))))
+
+(deftest move-collection!-mixed-descendants-test
+  (testing "mixed type descendants all become library when into-library? is true"
+    (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent" :location "/"}
+                   :model/Collection {coll-id :id :as coll} {:name "Collection to Move"
+                                                             :location "/"
+                                                             :type nil}
+                   :model/Collection {child1-id :id} {:name "Child 1 - Already Library"
+                                                      :location (format "/%d/" coll-id)
+                                                      :type "library"}
+                   :model/Collection {child2-id :id} {:name "Child 2 - Not Library"
+                                                      :location (format "/%d/" coll-id)
+                                                      :type nil}
+                   :model/Collection {grandchild-id :id} {:name "Grandchild - Not Library"
+                                                          :location (format "/%d/%d/" coll-id child2-id)
+                                                          :type nil}]
+      ;; Move collection with mixed type descendants
+      (collection/move-collection! coll (format "/%d/" parent-id) true)
+
+      ;; Check that all collections became library type
+      (let [moved-coll (t2/select-one :model/Collection :id coll-id)]
+        (is (= "library" (:type moved-coll))
+            "Root collection should be library type"))
+
+      (let [moved-child1 (t2/select-one :model/Collection :id child1-id)]
+        (is (= "library" (:type moved-child1))
+            "Child that was already library should remain library"))
+
+      (let [moved-child2 (t2/select-one :model/Collection :id child2-id)]
+        (is (= "library" (:type moved-child2))
+            "Child that wasn't library should become library"))
+
+      (let [moved-grandchild (t2/select-one :model/Collection :id grandchild-id)]
+        (is (= "library" (:type moved-grandchild))
+            "Grandchild should become library")))))
+
+(deftest move-collection!-dependency-checking-success-test
+  (testing "move-collection! with into-library? true succeeds when all dependencies are in library"
+    (mt/with-temp [:model/Collection {library-id :id} {:name "Library" :location "/" :type "library"}
+                   :model/Collection {parent-id :id} {:name "Parent" :location "/"}
+                   :model/Collection {coll-id :id :as coll} {:name "Collection to Move"
+                                                             :location "/"
+                                                             :type nil}
+                   :model/Card {library-card-id :id} {:name "Library Card"
+                                                      :collection_id library-id
+                                                      :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
+                                                        :collection_id coll-id
+                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" library-card-id)})}]
+      ;; This should succeed because the dependency (library-card) is in a library collection
+      (collection/move-collection! coll (format "/%d/" parent-id) true)
+
+      ;; Verify the collection was moved and became library type
+      (let [moved-coll (t2/select-one :model/Collection :id coll-id)]
+        (is (= "library" (:type moved-coll))
+            "Collection should have library type")
+        (is (= (format "/%d/" parent-id) (:location moved-coll))
+            "Collection should be moved to new location")))))
+
+(deftest move-collection!-dependency-checking-failure-test
+  (testing "move-collection! with into-library? true throws exception when dependencies exist outside library"
+    (mt/with-temp [:model/Collection {non-library-id :id} {:name "Non-Library" :location "/" :type nil}
+                   :model/Collection {parent-id :id} {:name "Parent" :location "/"}
+                   :model/Collection {coll-id :id :as coll} {:name "Collection to Move"
+                                                             :location "/"
+                                                             :type nil}
+                   :model/Card {non-library-card-id :id} {:name "Non-Library Card"
+                                                          :collection_id non-library-id
+                                                          :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
+                                                        :collection_id coll-id
+                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-library-card-id)})}]
+      ;; This should throw an exception because the dependency (non-library-card) is not in a library collection
+      (let [ex (is (thrown? Exception
+                            (collection/move-collection! coll (format "/%d/" parent-id) true))
+                   "Should throw exception for non-library dependencies")]
+        ;; Verify exception details
+        (is (= "Model has non-library dependencies" (ex-message ex))
+            "Exception should have correct message")
+        (let [ex-data (ex-data ex)]
+          (is (= 400 (:status-code ex-data))
+              "Exception should have 400 status code")
+          (is (contains? ex-data :non-library-models)
+              "Exception should contain non-library models")))
+
+      ;; Verify the transaction was rolled back - collection should not be moved or changed
+      (let [unchanged-coll (t2/select-one :model/Collection :id coll-id)]
+        (is (nil? (:type unchanged-coll))
+            "Collection type should remain unchanged after failed move")
+        (is (= "/" (:location unchanged-coll))
+            "Collection location should remain unchanged after failed move")))))
+
+(deftest move-collection!-dependency-checking-transaction-rollback-test
+  (testing "move-collection! transaction rollback when dependency check fails after updates"
+    (mt/with-temp [:model/Collection {non-library-id :id} {:name "Non-Library" :location "/" :type nil}
+                   :model/Collection {parent-id :id} {:name "Parent" :location "/"}
+                   :model/Collection {coll-id :id :as coll} {:name "Collection to Move"
+                                                             :location "/"
+                                                             :type nil}
+                   :model/Collection {child-id :id} {:name "Child Collection"
+                                                     :location (format "/%d/" coll-id)
+                                                     :type nil}
+                   :model/Card {non-library-card-id :id} {:name "Non-Library Card"
+                                                          :collection_id non-library-id
+                                                          :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
+                                                        :collection_id coll-id
+                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-library-card-id)})}]
+      ;; This should throw an exception after updates are made but before transaction commits
+      (is (thrown? Exception
+                   (collection/move-collection! coll (format "/%d/" parent-id) true))
+          "Should throw exception for non-library dependencies")
+
+      ;; Verify the transaction was completely rolled back
+      (let [unchanged-coll (t2/select-one :model/Collection :id coll-id)]
+        (is (nil? (:type unchanged-coll))
+            "Collection type should remain unchanged after transaction rollback")
+        (is (= "/" (:location unchanged-coll))
+            "Collection location should remain unchanged after transaction rollback"))
+
+      (let [unchanged-child (t2/select-one :model/Collection :id child-id)]
+        (is (nil? (:type unchanged-child))
+            "Child collection type should remain unchanged after transaction rollback")
+        (is (= (format "/%d/" coll-id) (:location unchanged-child))
+            "Child collection location should remain unchanged after transaction rollback")))))
+
+(deftest move-collection!-no-dependency-checking-without-library-flag-test
+  (testing "move-collection! without into-library? flag does not check dependencies"
+    (mt/with-temp [:model/Collection {non-library-id :id} {:name "Non-Library" :location "/" :type nil}
+                   :model/Collection {parent-id :id} {:name "Parent" :location "/"}
+                   :model/Collection {coll-id :id :as coll} {:name "Collection to Move"
+                                                             :location "/"
+                                                             :type nil}
+                   :model/Card {non-library-card-id :id} {:name "Non-Library Card"
+                                                          :collection_id non-library-id
+                                                          :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
+                                                        :collection_id coll-id
+                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-library-card-id)})}]
+      ;; This should succeed because we're not converting to library
+      (collection/move-collection! coll (format "/%d/" parent-id))
+
+      ;; Verify the collection was moved but did not become library type
+      (let [moved-coll (t2/select-one :model/Collection :id coll-id)]
+        (is (nil? (:type moved-coll))
+            "Collection should not have library type")
+        (is (= (format "/%d/" parent-id) (:location moved-coll))
+            "Collection should be moved to new location")))))
+
 (deftest in-library?-test
   (testing "in-library? helper function"
     (mt/with-temp [:model/Collection child {:name "Child"

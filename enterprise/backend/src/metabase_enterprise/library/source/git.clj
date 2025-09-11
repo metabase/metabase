@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.library.source :as source]
+   [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
@@ -174,4 +175,3 @@
 
   (write-file! [this branch message path content]
     (write-file! this branch message path content)))
-
