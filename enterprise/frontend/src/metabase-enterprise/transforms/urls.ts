@@ -123,3 +123,7 @@ export function getTableMetadataUrl(
 ) {
   return `/admin/datamodel/database/${databaseId}/schema/${databaseId}:${encodeURIComponent(schema ?? "")}/table/${tableId}`;
 }
+
+export function getPythonLibraryUrl() {
+  return `/admin/transforms/library/python`;
+}
