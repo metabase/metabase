@@ -1315,8 +1315,7 @@
 
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn rename-table!
-  "Rename a single table. This is a simple wrapper around rename-tables! for single table renames
-   that skips the topological sort."
+  "Rename a single table."
   {:added "0.57.0"}
   [driver db-id from-table to-table]
   (rename-tables!* driver db-id {from-table to-table}))
