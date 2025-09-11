@@ -49,8 +49,8 @@
                  :when loaded]
              [(mapv #(dissoc % :label) loaded) [loaded file]])))
 
+;; Wraps a source object providing the ingestable interface for serdes
 (defrecord IngestableSource [source branch]
-  "Wraps a source object providing the ingestable interface for serdes"
   v2.ingest/Ingestable
   (ingest-list [_]
     (keys (ingest-all source branch)))
