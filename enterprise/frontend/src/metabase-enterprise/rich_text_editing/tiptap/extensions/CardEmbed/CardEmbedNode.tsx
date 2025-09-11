@@ -1,6 +1,6 @@
 import { autoUpdate, useFloating } from "@floating-ui/react";
 import { Node, mergeAttributes } from "@tiptap/core";
-import { Plugin } from "@tiptap/pm/state";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
 import {
   type NodeViewProps,
   NodeViewWrapper,
@@ -8,6 +8,7 @@ import {
 } from "@tiptap/react";
 import cx from "classnames";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMount, useUnmount } from "react-use";
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
@@ -156,24 +157,26 @@ export const CardEmbed: Node<{
   },
 
   addProseMirrorPlugins() {
-    return [createProseMirrorPlugin("cardEmbed"), new Plugin({
-      key: "simp",
+    return [
+      createProseMirrorPlugin("cardEmbed"),
+      new Plugin({
+        key: new PluginKey("simp"),
+        props: {
+          handleDOMEvents: {
+            dragstart: (view, event) => {
+              const { pos } = view.posAtCoords({
+                left: event.clientX,
+                top: event.clientY,
+              });
+              const node = view.state.doc.nodeAt(pos);
 
-      props: {
-        handleDOMEvents: {
-          dragstart: (view, event) => {
-            const { pos } = view.posAtCoords({
-              left: event.clientX,
-              top: event.clientY,
-            });
-            const node = view.state.doc.nodeAt(pos);
-
-            view.draggingNode = node;
-            return false;
+              view.draggingNode = node;
+              return false;
+            },
           },
         },
-      },
-    }),];
+      }),
+    ];
   },
 
   renderText({ node }) {
@@ -193,6 +196,7 @@ export const CardEmbedComponent = memo(
     const { data: commentsData } = useListCommentsQuery(
       getListCommentsQuery(document),
     );
+
     const comments = commentsData?.comments;
     const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
     const [hovered, setHovered] = useState(false);
@@ -213,7 +217,7 @@ export const CardEmbedComponent = memo(
     const dispatch = useDispatch();
     const canWrite = editor.options.editable;
 
-    const dragHandleRef = useRef<HTMLDivElement>(null);
+    const isMountedRef = useRef(false);
 
     let embedIndex = -1;
 
@@ -261,6 +265,14 @@ export const CardEmbedComponent = memo(
         titleInputRef.current.select();
       }
     }, [isEditingTitle]);
+
+    useMount(() => {
+      isMountedRef.current = true;
+    });
+
+    useUnmount(() => {
+      isMountedRef.current = false;
+    });
 
     const handleTitleSave = () => {
       const trimmedTitle = editedTitle.trim();
@@ -393,7 +405,9 @@ export const CardEmbedComponent = memo(
           window.clearTimeout(draggedOverTimeoutRef.current);
 
           draggedOverTimeoutRef.current = window.setTimeout(() => {
-            setDragState({ isDraggedOver: false, side: null });
+            if (isMountedRef.current) {
+              setDragState({ isDraggedOver: false, side: null });
+            }
           }, 300);
         }
       },
@@ -675,7 +689,8 @@ export const CardEmbedComponent = memo(
               const targetIndex = resolvedPos.index();
 
               // Determine insertion index based on drop side
-              const insertIndex = side === "left" ? targetIndex : targetIndex + 1;
+              const insertIndex =
+                side === "left" ? targetIndex : targetIndex + 1;
 
               // Create new FlexContainer with the new child inserted
               const children = [];
@@ -685,20 +700,24 @@ export const CardEmbedComponent = memo(
                 }
                 const childNode = parent.child(i);
                 const childCardEmbed = extractCardEmbed(childNode);
-                children.push(childCardEmbed ? childCardEmbed.copy() : childNode);
+                children.push(
+                  childCardEmbed ? childCardEmbed.copy() : childNode,
+                );
               }
               // If inserting at the end
               if (insertIndex >= parent.childCount) {
                 children.push(droppedCardEmbed.copy());
               }
 
-              const newContainer = editor.state.schema.nodes.flexContainer.create(
-                parent.attrs,
-                children,
-              );
+              const newContainer =
+                editor.state.schema.nodes.flexContainer.create(
+                  parent.attrs,
+                  children,
+                );
 
               // Check if the FlexContainer is wrapped in a resizeNode
-              const containerResolvedPos = editor.state.doc.resolve(containerPos);
+              const containerResolvedPos =
+                editor.state.doc.resolve(containerPos);
               const containerParent = containerResolvedPos.parent;
 
               if (containerParent.type.name === "resizeNode") {
