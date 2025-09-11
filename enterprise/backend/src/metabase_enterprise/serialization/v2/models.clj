@@ -52,6 +52,8 @@
    "CloudMigration"
    "CollectionBookmark"
    "CollectionPermissionGraphRevision"
+   "Comment"
+   "CommentReaction"
    "ConnectionImpersonation"
    "ContentTranslation"
    "DatabaseRouter"

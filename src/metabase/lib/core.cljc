@@ -13,6 +13,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.convert.metadata-to-legacy]
    [metabase.lib.database :as lib.database]
+   [metabase.lib.dispatch]
    [metabase.lib.drill-thru :as lib.drill-thru]
    [metabase.lib.drill-thru.column-extract :as lib.drill-thru.column-extract]
    [metabase.lib.drill-thru.pivot :as lib.drill-thru.pivot]
@@ -23,6 +24,9 @@
    [metabase.lib.field :as lib.field]
    [metabase.lib.field.util]
    [metabase.lib.filter :as lib.filter]
+   [metabase.lib.filter.desugar]
+   [metabase.lib.filter.negate]
+   [metabase.lib.filter.simplify-compound]
    [metabase.lib.filter.update :as lib.filter.update]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util]
@@ -58,6 +62,7 @@
          lib.convert/keep-me
          metabase.lib.convert.metadata-to-legacy/keep-me
          lib.database/keep-me
+         metabase.lib.dispatch/keep-me
          lib.drill-thru.column-extract/keep-me
          lib.drill-thru.pivot/keep-me
          lib.drill-thru/keep-me
@@ -68,6 +73,9 @@
          lib.field/keep-me
          metabase.lib.field.util/keep-me
          lib.filter.update/keep-me
+         metabase.lib.filter.desugar/keep-me
+         metabase.lib.filter.negate/keep-me
+         metabase.lib.filter.simplify-compound/keep-me
          lib.filter/keep-me
          lib.join/keep-me
          metabase.lib.join.util/keep-me
@@ -144,6 +152,8 @@
   lib-metadata-column-key->legacy-metadata-column-key]
  [lib.database
   database-id]
+ [metabase.lib.dispatch
+  dispatch-value]
  [lib.drill-thru
   available-drill-thrus
   drill-thru]
@@ -276,6 +286,13 @@
   relative-time-interval
   time-interval
   segment]
+ [metabase.lib.filter.desugar
+  desugar-filter-clause]
+ [metabase.lib.filter.negate
+  negate-boolean-expression]
+ [metabase.lib.filter.simplify-compound
+  simplify-compound-filter
+  simplify-filters]
  [lib.filter.update
   update-lat-lon-filter
   update-numeric-filter
@@ -290,6 +307,7 @@
   join-condition-update-temporal-bucketing
   join-conditions
   join-fields
+  join-fields-to-add-to-parent-stage
   join-lhs-display-name
   join-strategy
   joinable-columns

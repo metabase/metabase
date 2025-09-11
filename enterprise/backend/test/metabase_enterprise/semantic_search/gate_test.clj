@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [honey.sql :as sql]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.gate :as semantic.gate]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
@@ -89,7 +90,7 @@
   (:ts (jdbc/execute-one! pgvector ["select clock_timestamp() ts"])))
 
 (deftest gate-documents!-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         t0             (ts "2025-01-01T00:00:00Z")
         t1             (ts "2025-01-01T00:01:00Z")
@@ -168,7 +169,7 @@
                (comparable-gate-row (dissoc (get-gate-row! pgvector index-metadata (:id (version c3 t3))) :gated_at))))))))
 
 (deftest poll-test
-  (let [pgvector        semantic.tu/db
+  (let [pgvector        (semantic.env/get-pgvector-datasource!)
         index-metadata  (semantic.tu/unique-index-metadata)
         epoch-watermark {:last-poll Instant/EPOCH :last-seen Instant/EPOCH}
         c1              {:model "card" :id "123" :searchable_text "a"}
@@ -275,7 +276,7 @@
              (:last-seen watermark))))))
 
 (deftest flush-watermark!-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         model1         {:provider "foo" :model-name "m1" :vector-dimensions 42}
         model2         {:provider "foo" :model-name "m2" :vector-dimensions 42}
@@ -330,7 +331,7 @@
 
 (deftest gate-documents-metrics-test
   (mt/with-prometheus-system! [_ system]
-    (let [pgvector       semantic.tu/db
+    (let [pgvector       (semantic.env/get-pgvector-datasource!)
           index-metadata (semantic.tu/unique-index-metadata)
           t1             (ts "2025-01-01T00:01:00Z")
           c1             {:model "card" :id "123" :searchable_text "Dog Training Guide"}
