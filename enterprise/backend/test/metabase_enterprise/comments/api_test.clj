@@ -101,7 +101,7 @@
                          [{:subject "Comment on New Document"
                            :body    [{:content (relaxed-re
                                                 (str (:common_name (mt/fetch-user :rasta)) " left a comment")
-                                                (format "http://localhost:3000/document/%s#comment-%s"
+                                                (format "http://localhost:\\d+/document/%s#comment-%s"
                                                         doc-id
                                                         (:id created)))}]}]}
                         (first (swap-vals! mt/inbox empty)))))
@@ -165,7 +165,7 @@
               (testing "Comments on concrete paragraphs are also sent as notifications"
                 (is (=? {(:email (mt/fetch-user :lucky))
                          [{:subject "Comment on New Document"
-                           :body    [{:content (relaxed-re (format "http://localhost:3000/document/%s/comments/%s#comment-%s"
+                           :body    [{:content (relaxed-re (format "http://localhost:\\d+/document/%s/comments/%s#comment-%s"
                                                                    doc-id
                                                                    part-id
                                                                    (:id created)))}]}]}
