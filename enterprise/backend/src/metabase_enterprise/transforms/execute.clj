@@ -70,7 +70,8 @@
       (transform-run/succeed-started-run! run-id)
       ret)
     (catch Throwable t
-      (transform-run/fail-started-run! run-id {:message (.getMessage t)})
+      (let [{::keys [transform-run-message]} (ex-data t)]
+        (transform-run/fail-started-run! run-id {:message (or transform-run-message (.getMessage t))}))
       (throw t))
     (finally
       (canceling/chan-end-run! run-id))))
@@ -124,79 +125,92 @@
          (deliver start-promise t))
        (throw t)))))
 
-(defn- log! [message-log s]
-  (when message-log
-    (swap! message-log (fn [m] (update m (if (:python m) :post-python :pre-python) conj s))))
+(defn- empty-message-log
+  "Returns a new message log.
+
+  Python transforms produce output while they run. The message log is a stateful structure that buffers log outputs during the run.
+  The goal is to assist in debugging in the case of python runtime or syntax errors, and to provide some immediate feedback for longer running transforms.
+
+  Important Note: in memory buffering is considered acceptable as we expect /logs output to be truncated or small.
+
+  The intended use of this structure is to produce a string suitable for `transform_run.message`, saving it every few seconds."
+  []
+  (atom {:pre-python  []                                    ; log! outputs previous to the python execution, i.e table read progress
+         :python      nil                                   ; events json structured logs from the /logs endpoint
+         :post-python []                                    ; log! outputs after the python execution, i.e. output reads, writes to target
+         }))
+
+(defn- log!
+  "Appends a string to the message log, the string is user facing and should be suitable for presentation as part of the `transform_run.message` field."
+  [message-log s]
+  (swap! message-log (fn [m] (update m (if (:python m) :post-python :pre-python) conj s)))
   nil)
 
-(defn- replace-python-logs! [message-log events]
-  (when message-log (swap! message-log assoc :python events))
+(defn- replace-python-logs!
+  "Called when events output is received from a /logs call to copy those events into the message-log."
+  [message-log events]
+  (swap! message-log assoc :python events)
   nil)
 
-(defn- save-log-as-message! [run-id message-log]
-  (when message-log
-    (let [{:keys [pre-python python post-python]} @message-log]
-      (t2/update! :model/TransformRun
-                  :id run-id
-                  {:message (str/join "\n" (concat pre-python
-                                                   (for [{:keys [stream message]} python]
-                                                     (if (= "stdout" stream)
-                                                       (str "\033[32m" message "\033[0m")
-                                                       (str "\033[31m" message "\033[0m")))
-                                                   post-python))}))))
+(defn- message-log->transform-run-message
+  "Presents the content of the log as a string suitable for storage in transform_run.message."
+  [message-log]
+  (let [{:keys [pre-python python post-python]} @message-log]
+    (str/join "\n" (concat pre-python
+                           (map :message python)
+                           post-python))))
 
-(defn- log-loop! [run-id message-log]
-  (let [poll #(python-runner/get-logs run-id)]
-    (try
-      (loop []
-        (if (.isInterrupted (Thread/currentThread))
-          (log/debug "Message update loop interrupted")
-          (do (Thread/sleep 1000)
-              (let [{:keys [status body]} (poll)]
-                (cond
-                  (<= 200 status 299)
-                  (let [{:keys [execution_id events]} body]
-                    (if-not (= run-id execution_id)
-                      (do (log/debugf "Run id did not match expected: %s actual: %s" run-id execution_id)
-                          (recur))
-                      (do
-                        (replace-python-logs! message-log events)
-                        (save-log-as-message! run-id message-log)
-                        (recur))))
-                  (= 404 status)
-                  (do
-                    (log/debugf "No logs yet (or run finished), run-id: %s" run-id)
-                    (recur))
-                  :else
-                  (do
-                    (log/warnf "Unexpected status polling for logs %s %s, run-id: %s" status body run-id)
-                    (log/debug "Exiting due to poll error")))))))
-      (catch InterruptedException _)
-      (catch Throwable e
-        (log/errorf e "An exception was caught during msg update loop, run-id: %s" run-id)))))
+(defn- save-log-to-transform-run-message!
+  "Saves the content of the log into the transform_run's message field. Lossy, string contains user facing information only."
+  [run-id message-log]
+  (t2/update! :model/TransformRun
+              :id run-id
+              {:message (message-log->transform-run-message message-log)}))
 
-(defn- open-log-future! ^Closeable [run-id message-log]
+(defn- python-message-update-loop!
+  "Block while relevant log data is replicated from the runner into the message log.
+  When new logs are received, the log data will be flushed to the transform_run.message field as a string.
+
+  The loop will exit on error or when interrupted."
+  [run-id message-log]
+  (try
+    (loop []
+      (if (.isInterrupted (Thread/currentThread))
+        (log/debug "Message update loop interrupted")
+        (do (Thread/sleep 1000)
+            (let [{:keys [status body]} (python-runner/get-logs run-id)]
+              (cond
+                (<= 200 status 299)
+                (let [{:keys [execution_id events]} body]
+                  (if-not (= run-id execution_id)
+                    (do (log/debugf "Run id did not match expected: %s actual: %s" run-id execution_id)
+                        (recur))
+                    (do
+                      (replace-python-logs! message-log events)
+                      (save-log-to-transform-run-message! run-id message-log)
+                      (recur))))
+                (= 404 status)
+                (do
+                  (log/debugf "No logs yet (or run finished), run-id: %s" run-id)
+                  (recur))
+                :else
+                (do
+                  (log/warnf "Unexpected status polling for logs %s %s, run-id: %s" status body run-id)
+                  (log/debug "Exiting due to poll error")))))))
+    (catch InterruptedException _)
+    (catch Throwable e
+      (log/errorf e "An exception was caught during msg update loop, run-id: %s" run-id))))
+
+(defn- open-python-message-update-future! ^Closeable [run-id message-log]
   (let [cleanup (fn [fut]
                   (future-cancel fut)
                   (if (= ::timeout (try (deref fut 10000 ::timeout) (catch Throwable _)))
                     (log/fatalf "Log polling task did not respond to interrupt, run-id: %s" run-id)
                     (log/debugf "Log polling task done, run-id: %s")))
         fut     (u.jvm/in-virtual-thread*
-                 (log-loop! run-id message-log))]
+                 (python-message-update-loop! run-id message-log))]
     (reify Closeable
       (close [_] (cleanup fut)))))
-
-(defn- debug-info-str [{:keys [exit-code events]}]
-  (str/join "\n"
-            ;; todo this was temporary before the log stuff, needs a rethink at some point
-            ["stdout"
-             "======"
-             (->> events (filter #(= "stdout" (:stream %))) (map :message) (str/join "\n"))
-             "stderr"
-             "======"
-             (->> events (filter #(= "stderr" (:stream %))) (map :message) (str/join "\n"))
-             "======"
-             (format "exit code %d" exit-code)]))
 
 (defn- create-table-and-insert-data!
   "Create a table from metadata and insert data from source."
@@ -245,12 +259,12 @@
   "Execute a transform in test mode (does not write result into a table)."
   [code tables->id run-id cancel-chan]
   (with-open [shared-storage-ref (python-runner/open-s3-shared-storage! tables->id)]
-    (let [server-url              (transforms.settings/python-execution-server-url)
-          _                       (python-runner/copy-tables-to-s3! {:run-id         run-id
-                                                                     :shared-storage @shared-storage-ref
-                                                                     :table-name->id tables->id
-                                                                     :cancel-chan    cancel-chan})
-          _                       (python-runner/open-cancellation-process! server-url run-id cancel-chan) ; inherits lifetime of cancel-chan
+    (let [server-url (transforms.settings/python-execution-server-url)
+          _          (python-runner/copy-tables-to-s3! {:run-id         run-id
+                                                        :shared-storage @shared-storage-ref
+                                                        :table-name->id tables->id
+                                                        :cancel-chan    cancel-chan})
+          _          (python-runner/open-cancellation-process! server-url run-id cancel-chan) ; inherits lifetime of cancel-chan
           response
           (python-runner/execute-python-code-http-call!
            {:server-url     server-url
@@ -264,11 +278,11 @@
        :output   output})))
 
 (defn- run-python-transform! [{:keys [source] :as transform} db run-id cancel-chan message-log]
-  (with-open [log-future-ref     (open-log-future! run-id message-log)
+  (with-open [log-future-ref     (open-python-message-update-future! run-id message-log)
               shared-storage-ref (python-runner/open-s3-shared-storage! (:source-tables source))]
     (let [driver     (:engine db)
           server-url (transforms.settings/python-execution-server-url)
-          _          (python-runner/copy-tables-to-s3! {:run-id                  run-id
+          _          (python-runner/copy-tables-to-s3! {:run-id         run-id
                                                         :shared-storage @shared-storage-ref
                                                         :table-name->id (:source-tables source)
                                                         :cancel-chan    cancel-chan})
@@ -280,27 +294,27 @@
             :run-id         run-id
             :table-name->id (:source-tables source)
             :shared-storage @shared-storage-ref})
-          {:keys [exit_code]} body
           ;; TODO temporary to keep more code stable while refactoring
           ;; no need to materialize these early (i.e output we can stream directly into a tmp file or db if small)
           {:keys [output output-manifest events]} (python-runner/read-output-objects @shared-storage-ref)]
-      (.close log-future-ref)           ; early close to force any writes to flush
+      (.close log-future-ref)                               ; early close to force any writes to flush
       (when (seq events)
         (replace-python-logs! message-log events))
       (if (not= 200 status)
-        (throw (ex-info (debug-info-str {:exit-code exit_code :events events}) ;; todo do better here
+        (throw (ex-info "Python runner call failed"
                         {:status-code     400
                          :api-status-code status
                          :body            body
                          :events          events
-                         :error           (:error body)}))
+                         ::transform-run-message (message-log->transform-run-message message-log)}))
         (try
           (let [temp-file (File/createTempFile "transform-output-" ".csv")]
             (when-not (seq (:fields output-manifest))
               (throw (ex-info "No fields in metadata"
-                              {:metadata output-manifest
-                               :raw-body body
-                               :events   events})))
+                              {:metadata               output-manifest
+                               :raw-body               body
+                               :events                 events
+                               ::transform-run-message (message-log->transform-run-message message-log)})))
             (try
               (with-open [writer (io/writer temp-file)]
                 (.write writer ^String output))
@@ -313,7 +327,9 @@
           response
           (catch Exception e
             (log/error e "Failed to to create resulting table")
-            (throw (ex-info "Failed to create the resulting table" {:error (.getMessage e)}))))))))
+            (throw (ex-info "Failed to create the resulting table"
+                            {::transform-run-message (message-log->transform-run-message message-log)}
+                            e))))))))
 
 (defn execute-python-transform!
   "Execute a Python transform by calling the python runner.
@@ -321,33 +337,30 @@
   This is executing synchronously, but supports being kicked off in the background
   by delivering the `start-promise` just before the start when the beginning of the execution has been booked
   in the database."
-  [transform {:keys [run-method start-promise message-log]}]
+  [transform {:keys [run-method start-promise]}]
   (when (transforms.util/python-transform? transform)
     (try
-      (let [message-log (or message-log (atom {:pre-python  []
-                                               :python      nil
-                                               :post-python []}))
+      (let [message-log (empty-message-log)
             {:keys [target] transform-id :id} transform
             {driver :engine :as db} (t2/select-one :model/Database (:database target))
             {run-id :id} (try-start-unless-already-running transform-id run-method)]
         (some-> start-promise (deliver [:started run-id]))
         (log! message-log "Executing Python transform")
         (log/info "Executing Python transform" transform-id "with target" (pr-str target))
-        (let [start-ms (u/start-timer)
-              transform-details
-              {:db db
-               :transform-type (keyword (:type target))
-               :conn-spec (driver/connection-spec driver db)
-               :output-schema (:schema target)
-               :output-table (transforms.util/qualified-table-name driver target)}
-              result   (run-cancelable-transform! run-id driver transform-details (fn [cancel-chan] (run-python-transform! transform db run-id cancel-chan message-log)))]
+        (let [start-ms          (u/start-timer)
+              transform-details {:db             db
+                                 :transform-type (keyword (:type target))
+                                 :conn-spec      (driver/connection-spec driver db)
+                                 :output-schema  (:schema target)
+                                 :output-table   (transforms.util/qualified-table-name driver target)}
+              run-fn            (fn [cancel-chan] (run-python-transform! transform db run-id cancel-chan message-log))
+              result            (run-cancelable-transform! run-id driver transform-details run-fn)]
           (transforms.instrumentation/with-stage-timing [run-id :sync :table-sync]
             (sync-target! target db run-id))
-          (log! message-log (format "Python execution finished in %s" (Duration/ofMillis (u/since-ms start-ms))))
-          (save-log-as-message! run-id message-log)
+          (log! message-log (format "Python execution finished successfully in %s" (Duration/ofMillis (u/since-ms start-ms))))
+          (save-log-to-transform-run-message! run-id message-log)
           {:run_id run-id
            :result result}))
       (catch Throwable t
         (log/error t "Error executing Python transform")
-        (log! message-log "Error executing python transform")
         (throw t)))))
