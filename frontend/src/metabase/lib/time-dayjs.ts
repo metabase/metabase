@@ -95,7 +95,8 @@ export function parseTimestamp(
   } else if (unit && unit in NUMERIC_UNIT_FORMATS && typeof value == "number") {
     result = NUMERIC_UNIT_FORMATS[unit](value);
   } else if (typeof value === "number") {
-    result = dayjs.utc(value.toString());
+    // use strict parsing to bypass small numbers like 1
+    result = dayjs.utc(value, "", true);
   } else {
     result = dayjs.utc(value);
   }
