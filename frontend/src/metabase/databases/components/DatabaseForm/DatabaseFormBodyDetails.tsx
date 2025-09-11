@@ -7,6 +7,7 @@ import DatabaseDetailField from "../DatabaseDetailField";
 
 import S from "./DatabaseForm.module.css";
 import {
+  AllFieldsRule,
   FieldRegexRule,
   GroupField,
   VisibleIfRule,
@@ -20,20 +21,18 @@ interface DatabaseFormBodyDetailsProps {
   engine: Engine | undefined;
 }
 
-export interface FieldMapper {
+interface FieldMapper {
   rules: Array<VisibleIfRule | FieldRegexRule>;
-  fieldRegexes?: RegExp[];
+  formRules?: Array<AllFieldsRule>;
   className: string;
   key: string;
-  skipEngine?: string[];
-  visibleIf?: Record<string, boolean>[];
 }
 
 const mappers: FieldMapper[] = [
   {
     rules: [new FieldRegexRule(/^host$/), new FieldRegexRule(/^port$/)],
+    formRules: [new AllFieldsRule(["host", "port"])],
     // BigQuery Cloud SDK and Snowflake have just host field
-    skipEngine: ["bigquery-cloud-sdk", "snowflake"],
     className: S.SubGroup,
     key: "host-and-port",
   },
@@ -97,10 +96,6 @@ export function DatabaseFormBodyDetails({
 
   const mappedFields = fieldMappers.reduce<Array<EngineField | GroupField>>(
     (acc, mapper) => {
-      if (engineKey && mapper?.skipEngine?.includes(engineKey)) {
-        return acc;
-      }
-
       return groupFieldsByRules(acc, mapper);
     },
     fields,

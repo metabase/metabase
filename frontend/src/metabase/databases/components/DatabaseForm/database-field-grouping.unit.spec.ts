@@ -2,6 +2,7 @@ import type { EngineField } from "metabase-types/api";
 import { createMockEngineField } from "metabase-types/api/mocks";
 
 import {
+  AllFieldsRule,
   FieldRegexRule,
   GroupField,
   VisibleIfRule,
@@ -206,6 +207,84 @@ describe("database-field-grouping", () => {
         rules: [],
         className: "test-class",
         key: "test-key",
+      });
+
+      expect(result).toEqual(fields);
+    });
+
+    it("groups fields when formRules requirements are met", () => {
+      const fields = [userField, hostField, portField, passwordField];
+
+      const result = groupFieldsByRules(fields, {
+        rules: [new FieldRegexRule(/^host$/), new FieldRegexRule(/^port$/)],
+        formRules: [new AllFieldsRule(["host", "port"])],
+        className: "host-port-group",
+        key: "host-port",
+      });
+
+      expect(result).toHaveLength(3);
+      expect(result[0]).toBe(userField);
+      expect(result[1]).toBeInstanceOf(GroupField);
+      expect(result[2]).toBe(passwordField);
+
+      const groupField = result[1] as GroupField;
+      expect(groupField.fields).toEqual([hostField, portField]);
+    });
+
+    it("does not group fields when formRules requirements are not met", () => {
+      const fields = [userField, hostField, passwordField]; // Missing port
+
+      const result = groupFieldsByRules(fields, {
+        rules: [new FieldRegexRule(/^host$/), new FieldRegexRule(/^port$/)],
+        formRules: [new AllFieldsRule(["host", "port"])],
+        className: "host-port-group",
+        key: "host-port",
+      });
+
+      expect(result).toEqual(fields);
+    });
+
+    it("handles multiple formRules - all must pass", () => {
+      const sslField = createMockEngineField({ name: "ssl" });
+      const fields = [hostField, portField, sslField, userField];
+
+      const result = groupFieldsByRules(fields, {
+        rules: [
+          new FieldRegexRule(/^host$/),
+          new FieldRegexRule(/^port$/),
+          new FieldRegexRule(/^ssl$/),
+        ],
+        formRules: [
+          new AllFieldsRule(["host", "port"]),
+          new AllFieldsRule(["ssl"]),
+        ],
+        className: "connection-group",
+        key: "connection",
+      });
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toBeInstanceOf(GroupField);
+      expect(result[1]).toBe(userField);
+
+      const groupField = result[0] as GroupField;
+      expect(groupField.fields).toEqual([hostField, portField, sslField]);
+    });
+
+    it("returns original fields if any formRule fails", () => {
+      const fields = [hostField, portField, userField]; // Missing ssl
+
+      const result = groupFieldsByRules(fields, {
+        rules: [
+          new FieldRegexRule(/^host$/),
+          new FieldRegexRule(/^port$/),
+          new FieldRegexRule(/^ssl$/),
+        ],
+        formRules: [
+          new AllFieldsRule(["host", "port"]),
+          new AllFieldsRule(["ssl"]), // This will fail
+        ],
+        className: "connection-group",
+        key: "connection",
       });
 
       expect(result).toEqual(fields);

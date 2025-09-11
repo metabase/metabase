@@ -2,10 +2,32 @@ import type { EngineField } from "metabase-types/api";
 
 export class VisibleIfRule {
   constructor(public visibleIfConditions: Record<string, boolean>) {}
+
+  check(field: EngineField): boolean {
+    return Object.entries(this.visibleIfConditions).every(
+      ([key, value]) => field?.["visible-if"]?.[key] === value,
+    );
+  }
 }
 
 export class FieldRegexRule {
   constructor(public regex: RegExp) {}
+
+  check(field: EngineField): boolean {
+    return this.regex.test(field.name);
+  }
+}
+
+export class AllFieldsRule {
+  constructor(public fieldNames: string[]) {}
+
+  check(fields: Array<EngineField | GroupField>): boolean {
+    return this.fieldNames.every((name) =>
+      fields.some(
+        (field) => !(field instanceof GroupField) && field.name === name,
+      ),
+    );
+  }
 }
 
 export class GroupField {
@@ -20,16 +42,24 @@ export function groupFieldsByRules(
   fields: Array<EngineField | GroupField>,
   {
     rules,
+    formRules,
     className,
     key,
   }: {
     rules?: Array<VisibleIfRule | FieldRegexRule>;
+    formRules?: Array<AllFieldsRule>;
     className: string;
     key: string;
   },
 ): Array<EngineField | GroupField> {
   if (fields.length === 0) {
     return fields;
+  }
+
+  if (formRules) {
+    if (!formRules.every((rule) => rule.check(fields))) {
+      return fields;
+    }
   }
 
   // Indexes of the fields to combine into one group field
@@ -39,21 +69,7 @@ export function groupFieldsByRules(
         return false;
       }
 
-      const result = rules?.some((rule) => {
-        if (rule instanceof FieldRegexRule) {
-          return rule.regex.test(field.name);
-        }
-
-        if (rule instanceof VisibleIfRule) {
-          return Object.entries(rule.visibleIfConditions).every(
-            ([key, value]) => field?.["visible-if"]?.[key] === value,
-          );
-        }
-
-        return false;
-      });
-
-      return result;
+      return rules?.some((rule) => rule.check(field));
     })
     .map((field) => (field ? fields.indexOf(field) : -1))
     .filter((index) => index !== -1);
