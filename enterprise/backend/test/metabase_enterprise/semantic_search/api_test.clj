@@ -3,6 +3,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.api :as semantic.api]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
