@@ -1,5 +1,6 @@
 (ns metabase-enterprise.library.settings
   (:require
+   [metabase-enterprise.library.source :as source]
    [metabase-enterprise.library.source.git :as git]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -15,11 +16,17 @@
 (defn- set-repo-with-verification!-fn [original-key]
   (fn [new-value]
     (setting/set-value-of-type! :string original-key new-value)
-    (if (git/can-access-branch-in-repository? (setting/get :git-sync-url)
-                                              (setting/get :git-sync-import-branch)
-                                              (setting/get :git-sync-token))
-      (git-sync-configured! true)
-      (git-sync-configured! false))))
+    (let [source (git/->GitSource (git/clone-repository! {:url   (setting/get :git-sync-url)
+                                                          :token (setting/get :git-sync-token)})
+                                  (setting/get :git-sync-url)
+                                  (setting/get :git-sync-token))]
+      (if (git/can-access-branch-in-repository? (assoc source
+                                                       :branch
+                                                       (setting/get :git-sync-import-branch)))
+        (do
+          (source/set-source! source)
+          (git-sync-configured! true))
+        (git-sync-configured! false)))))
 
 (defsetting git-sync-import-branch
   (deferred-tru "The git branch to pull from, e.g. `main`")

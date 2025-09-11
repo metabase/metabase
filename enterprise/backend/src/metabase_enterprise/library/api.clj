@@ -23,34 +23,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn cleanup-temp-directory!
-  "Clean up temporary directory and all its contents."
-  [temp-dir]
-  (when temp-dir
-    (try
-      (let [dir-file (io/file temp-dir)]
-        (when (.exists ^File dir-file)
-          (log/debugf "Cleaning up temporary directory: %s" temp-dir)
-
-          (letfn [(delete-file [file]
-                    (when (.isDirectory file)
-                      (doseq [child (.listFiles file)]
-                        (delete-file child)))
-                    (.delete file))]
-            (delete-file dir-file))
-
-          (log/debugf "Successfully cleaned up temporary directory: %s" temp-dir)))
-      (catch Exception e
-        (log/warnf e "Failed to clean up temporary directory: %s" temp-dir)))))
-
-(defmacro with-temp-directory
-  "Makes a temp dir and then deletes it outside the form."
-  [binding & body]
-  `(let [~binding (.toFile (Files/createTempDirectory "library-" (into-array FileAttribute [])))]
-     (try ~@body
-          (finally
-            (cleanup-temp-directory! ~binding)))))
-
 (defn- reload-from-git!
   "Reloads the Metabase entities from the "
   [branch]
@@ -60,7 +32,7 @@
         (git/fetch! source)
         ;; Load all entities from Git first - this handles creates/updates via entity_id matching
         (let [load-result (serdes/with-cache
-                            (v2.load/load-metabase! (source/->IngestableSource source (or branch (settings/git-sync-import-branch)))
+                            (v2.load/load-metabase! (source/ingestable-source source (or branch (settings/git-sync-import-branch)))
                                                     :root-dependency-path [{:id collection/library-entity-id
                                                                             :model "Collection"}]))
               ;; Extract entity_ids by model from the :seen paths
@@ -164,9 +136,6 @@
    {:keys [branch force-sync]}] :- [:map
                                     [:branch {:optional true} ms/NonBlankString]
                                     [:force-sync {:optional true} :boolean]])
-
-(def ^:private entity-type->fe-type
-  {"model/Transform:v1" "transform"})
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/library` routes."

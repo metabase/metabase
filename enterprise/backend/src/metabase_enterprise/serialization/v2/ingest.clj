@@ -31,13 +31,13 @@
     "Given one of the `:serdes/meta` abstract paths returned by [[ingest-list]], read in and return the entire
     corresponding entity."))
 
-(defn- read-timestamps [entity]
+(defn read-timestamps [entity]
   (->> (keys entity)
        (filter #(or (#{:last_analyzed} %)
                     (.endsWith (name %) "_at")))
        (reduce #(update %1 %2 u.date/parse) entity)))
 
-(defn- parse-key
+(defn parse-key
   "Convert suitable string keys to clojure keywords, ignoring keys with whitespace, etc."
   [{k :key}]
   (if (and (string? k)
@@ -45,11 +45,11 @@
     (keyword k)
     k))
 
-(defn- strip-labels
+(defn strip-labels
   [hierarchy]
   (mapv #(dissoc % :label) hierarchy))
 
-(defn ingest-file
+(defn- ingest-file
   "Reads an entity YAML file and clean it up (eg. parsing timestamps)
   The returned entity is in \"extracted\" form, ready to be passed to the `load` step."
   [file]

@@ -160,7 +160,7 @@
   "Return true if we can access the given branch in the remote git repository, false otherwise."
   [{:keys [branch] :as git-source}]
   (try
-    (boolean (get (branches git-source) branch))
+    (boolean (get (set (branches git-source)) branch))
 
     (catch InvalidRemoteException _ false)
     (catch TransportException _ false)
