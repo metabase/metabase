@@ -80,7 +80,7 @@
                             (not (false? (:active %)))
                             (not (#{:sensitive :retired} (:visibility-type %))))
 
-                          (:metadata/metric :metadata/segment)
+                          (:metadata/card :metadata/metric :metadata/segment)
                           #(not (:archived %))
 
                           #_else
