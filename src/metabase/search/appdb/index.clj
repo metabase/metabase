@@ -280,7 +280,7 @@
         pending-updated? (safe-batch-upsert! (pending-table) entries)]
     (when (or active-updated? pending-updated?)
       (u/prog1 (->> entries (map :model) frequencies)
-        (when (and false (not search.ingestion/*force-sync*))
+        (when (not search.ingestion/*force-sync*)
           (t2/query ["commit"]))
         (log/trace "indexed documents for " <>)
         (when active-updated?
