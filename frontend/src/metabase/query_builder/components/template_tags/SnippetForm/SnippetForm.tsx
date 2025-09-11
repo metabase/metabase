@@ -11,16 +11,10 @@ import FormInput from "metabase/common/components/FormInput";
 import FormSubmitButton from "metabase/common/components/FormSubmitButton";
 import FormTextArea from "metabase/common/components/FormTextArea";
 import SnippetCollections from "metabase/entities/snippet-collections";
-import Snippets from "metabase/entities/snippets";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { connect } from "metabase/lib/redux";
 import { Flex } from "metabase/ui";
-import type {
-  Collection,
-  NativeQuerySnippet,
-  NativeQuerySnippetId,
-} from "metabase-types/api";
+import type { Collection, NativeQuerySnippet } from "metabase-types/api";
 
 import S from "./SnippetForm.module.css";
 
@@ -37,23 +31,20 @@ const SNIPPET_SCHEMA = Yup.object({
   collection_id: Yup.number().nullable().default(null),
 });
 
-type SnippetFormValues = Pick<
+export type SnippetFormValues = Pick<
   NativeQuerySnippet,
   "name" | "description" | "content" | "collection_id"
 >;
 
-type UpdateSnippetFormValues = Partial<SnippetFormValues> &
+export type UpdateSnippetFormValues = Partial<SnippetFormValues> &
   Pick<NativeQuerySnippet, "id"> & {
     archived?: boolean;
   };
 
 export interface SnippetFormOwnProps {
   snippet: Partial<NativeQuerySnippet>;
-  onCreate?: (snippet: NativeQuerySnippet) => void;
-  onUpdate?: (
-    nextSnippet: NativeQuerySnippet,
-    originalSnippet: NativeQuerySnippet,
-  ) => void;
+  onCreate: (snippet: SnippetFormValues) => Promise<NativeQuerySnippet>;
+  onUpdate: (snippet: UpdateSnippetFormValues) => Promise<NativeQuerySnippet>;
   onArchive?: () => void;
   onCancel?: () => void;
 }
@@ -61,30 +52,11 @@ export interface SnippetFormOwnProps {
 interface SnippetLoaderProps {
   snippetCollections: Collection[];
 }
-
-interface SnippetFormDispatchProps {
-  handleCreateSnippet: (
-    snippet: SnippetFormValues,
-  ) => Promise<NativeQuerySnippet>;
-  handleUpdateSnippet: (
-    snippet: UpdateSnippetFormValues,
-  ) => Promise<NativeQuerySnippet>;
-}
-
-type SnippetFormProps = SnippetFormOwnProps &
-  SnippetLoaderProps &
-  SnippetFormDispatchProps;
-
-const mapDispatchToProps = {
-  handleCreateSnippet: Snippets.actions.create,
-  handleUpdateSnippet: Snippets.actions.update,
-};
+type SnippetFormProps = SnippetFormOwnProps & SnippetLoaderProps;
 
 function SnippetForm({
   snippet,
   snippetCollections,
-  handleCreateSnippet,
-  handleUpdateSnippet,
   onCreate,
   onUpdate,
   onArchive,
@@ -106,42 +78,16 @@ function SnippetForm({
     [snippet],
   );
 
-  const handleCreate = useCallback(
-    async (values: SnippetFormValues) => {
-      const action = await handleCreateSnippet(values);
-      const snippet = Snippets.HACK_getObjectFromAction(action);
-      onCreate?.(snippet);
-    },
-    [handleCreateSnippet, onCreate],
-  );
-
-  const handleUpdate = useCallback(
-    async (values: UpdateSnippetFormValues) => {
-      const action = await handleUpdateSnippet(values);
-      const nextSnippet = Snippets.HACK_getObjectFromAction(action);
-      onUpdate?.(nextSnippet, snippet as NativeQuerySnippet);
-    },
-    [snippet, handleUpdateSnippet, onUpdate],
-  );
-
   const handleSubmit = useCallback(
     async (values: SnippetFormValues) => {
       if (isEditing && snippet.id) {
-        await handleUpdate({ ...values, id: snippet.id });
+        await onUpdate({ ...values, id: snippet.id });
       } else {
-        await handleCreate(values);
+        await onCreate(values);
       }
     },
-    [snippet.id, isEditing, handleCreate, handleUpdate],
+    [snippet.id, isEditing, onCreate, onUpdate],
   );
-
-  const handleArchive = useCallback(async () => {
-    await handleUpdateSnippet({
-      id: snippet.id as NativeQuerySnippetId,
-      archived: true,
-    });
-    onArchive?.();
-  }, [snippet.id, handleUpdateSnippet, onArchive]);
 
   return (
     <FormProvider
@@ -184,8 +130,10 @@ function SnippetForm({
                   type="button"
                   icon="archive"
                   borderless
-                  onClick={handleArchive}
-                >{t`Archive`}</Button>
+                  onClick={onArchive}
+                >
+                  {t`Archive`}
+                </Button>
               )}
               <FormErrorMessage inline />
             </Flex>
@@ -203,7 +151,4 @@ function SnippetForm({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  SnippetCollections.loadList(),
-  connect(null, mapDispatchToProps),
-)(SnippetForm);
+export default _.compose(SnippetCollections.loadList())(SnippetForm);
