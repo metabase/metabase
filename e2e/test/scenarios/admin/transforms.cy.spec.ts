@@ -1148,7 +1148,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
 
       // We need to pass a timeout here since canceling a transform can
       // take a while on the back end
-      getRunButton({ timeout: 40_000 }).should("have.text", "Run canceled");
+      getRunButton({ timeout: 40_000 }).should("have.text", "Canceled");
       getRunStatus().should("contain", "Last run was canceled");
     });
 
