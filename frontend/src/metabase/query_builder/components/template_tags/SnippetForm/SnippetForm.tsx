@@ -42,7 +42,9 @@ export type UpdateSnippetFormValues = Partial<SnippetFormValues> &
   };
 
 export interface SnippetFormOwnProps {
-  snippet: Partial<NativeQuerySnippet>;
+  snippet:
+    | NativeQuerySnippet
+    | (Omit<Partial<NativeQuerySnippet>, "id"> & { id: undefined });
   onCreate: (snippet: SnippetFormValues) => Promise<NativeQuerySnippet>;
   onUpdate: (snippet: UpdateSnippetFormValues) => Promise<NativeQuerySnippet>;
   onArchive?: () => void;

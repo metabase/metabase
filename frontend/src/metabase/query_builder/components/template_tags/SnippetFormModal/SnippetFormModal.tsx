@@ -12,7 +12,9 @@ import SnippetForm, {
 } from "../SnippetForm";
 
 type SnippetModalProps = {
-  snippet: Partial<NativeQuerySnippet>;
+  snippet:
+    | NativeQuerySnippet
+    | (Omit<Partial<NativeQuerySnippet>, "id"> & { id: undefined });
   onCreate: (snippet: NativeQuerySnippet) => void;
   onUpdate: (
     nextSnippet: NativeQuerySnippet,
@@ -46,9 +48,12 @@ function SnippetFormModal({
 
   const handleUpdate = useCallback(
     async (values: UpdateSnippetFormValues) => {
+      if (snippet.id == null) {
+        return;
+      }
       const action = await dispatch(Snippets.actions.update(values));
       const nextSnippet = Snippets.HACK_getObjectFromAction(action);
-      onUpdate?.(nextSnippet, snippet as NativeQuerySnippet);
+      onUpdate?.(nextSnippet, snippet);
       onClose?.();
     },
     [snippet, dispatch, onUpdate, onClose],
