@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -63,6 +64,7 @@ export function TransformQueryPageBody({
   const metabot = useMetabotAgent();
 
   const initialQuery = transform.source.query;
+  const [latestQuery, setLatestQuery] = useState<DatasetQuery>(initialQuery);
 
   const suggestedTransform = useSelector(
     (state) => getMetabotSuggestedTransform(state, transform.id) as any,
@@ -70,9 +72,12 @@ export function TransformQueryPageBody({
   const proposedQuery = suggestedTransform?.source.query;
 
   useRegisterMetabotContextProvider(async () => {
-    const viewedTransform = suggestedTransform ?? transform;
+    const viewedTransform = suggestedTransform ?? {
+      ...transform,
+      source: { ...transform.source, query: latestQuery },
+    };
     return { user_is_viewing: [{ type: "transform", ...viewedTransform }] };
-  }, [transform, suggestedTransform]);
+  }, [transform, latestQuery, suggestedTransform]);
 
   const onRejectProposed = () => {
     dispatch(setSuggestedTransform(undefined));
@@ -117,6 +122,7 @@ export function TransformQueryPageBody({
         isNew={false}
         isSaving={isLoading}
         onSave={handleSave}
+        onChange={setLatestQuery}
         onCancel={handleCancel}
         proposedQuery={proposedQuery}
         onRejectProposed={onRejectProposed}
