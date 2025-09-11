@@ -42,6 +42,9 @@ export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
   get search_data_sources() {
     return t`Checking available data sources`;
   },
+  get search() {
+    return t`Searching`;
+  },
   get search_metabase_documentation() {
     return t`Consulting the docs`;
   },
