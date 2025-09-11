@@ -537,6 +537,7 @@
 (defn- metadata-provider*
   "Inner implementation for [[metadata-provider]], which wraps this with a cache."
   [database-id unparsed-metadata]
+  {:pre [(pos-int? database-id)]}
   (let [metadata (parse-metadata unparsed-metadata)]
     (log/debug "Created metadata provider for metadata")
     (reify lib.metadata.protocols/MetadataProvider
