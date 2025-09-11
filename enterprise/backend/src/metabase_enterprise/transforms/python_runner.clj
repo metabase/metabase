@@ -4,6 +4,7 @@
    [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
@@ -106,6 +107,14 @@
                          cols-meta)
    :table_metadata {:table_id table-id}})
 
+(defn- maybe-fixup-v [col v]
+  ;; clickhouse returns bigdecimals for int64 values
+  (if (and (isa? (:base_type col) :type/Integer)
+           (or (instance? BigDecimal v)
+               (float? v)))
+    (bigint v)
+    v))
+
 (defn- write-table-data-to-file! [id temp-file cancel-chan]
   (let [db-id           (t2/select-one-fn :db_id (t2/table-name :model/Table) :id id)
         driver          (t2/select-one-fn :engine :model/Database db-id)
@@ -119,11 +128,13 @@
     (execute-mbql-query driver db-id query
                         (fn [{cols-meta :cols} reducible-rows]
                           (with-open [os (io/output-stream temp-file)]
-                            (let [filtered-col-names (set (map :name fields-meta))
-                                  filtered-cols (filter #(contains? filtered-col-names (:name %)) cols-meta)
+                            (let [filtered-col-meta (m/index-by :name fields-meta)
+                                  filtered-cols (filter #(contains? filtered-col-meta (:name %)) cols-meta)
                                   col-name->index (into {} (map-indexed (fn [i col] [(:name col) i]) cols-meta))
-                                  filtered-indices (mapv #(col-name->index (:name %)) filtered-cols)
-                                  filtered-rows (eduction (map (fn [row] (mapv #(nth row %) filtered-indices)))
+                                  filtered-indices (mapv (fn [col] [(col-name->index (:name col)) col]) filtered-cols)
+                                  filtered-rows (eduction (map (fn [row] (mapv (fn [[idx col]]
+                                                                                 (let [v (nth row idx)]
+                                                                                   (maybe-fixup-v col v))) filtered-indices)))
                                                           reducible-rows)]
                               (write-to-stream! os (mapv :name filtered-cols) filtered-rows))))
                         cancel-chan)

@@ -267,13 +267,10 @@
          (.execute stmt sql))))))
 
 (defmethod driver/rename-table! :clickhouse
-  [driver db-id old-table-name new-table-name]
+  [_driver db-id old-table-name new-table-name]
   (let [sql [(format "RENAME TABLE %s TO %s" (quote-name old-table-name) (quote-name new-table-name))]]
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver db-id
-     {:write? true}
-     (fn [^java.sql.Connection conn]
-       (jdbc/execute! conn sql)))))
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+      (jdbc/execute! conn sql))))
 
 (defmethod driver/insert-into! :clickhouse
   [driver db-id table-name column-names values]
