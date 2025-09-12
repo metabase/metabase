@@ -115,5 +115,5 @@ export function provideTransformJobListTags(
 export function providePythonLibraryTags(
   library: PythonLibrary,
 ): TagDescription<EnterpriseTagType>[] {
-  return [idTag("python-transform-library", library.name)];
+  return [idTag("python-transform-library", library.path)];
 }

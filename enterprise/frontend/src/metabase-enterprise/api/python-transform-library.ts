@@ -2,37 +2,37 @@ import { EnterpriseApi } from "./api";
 import { idTag, invalidateTags, providePythonLibraryTags } from "./tags";
 
 export type PythonLibrary = {
-  name: string;
+  path: string;
   source: string;
 };
 
 export type GetPythonLibraryRequest = {
-  name: string;
+  path: string;
 };
 
 export type UpdatePythonLibraryRequest = {
-  name: string;
+  path: string;
   source: string;
 };
 
 export const pythonLibraryApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     getPythonLibrary: builder.query<PythonLibrary, GetPythonLibraryRequest>({
-      query: ({ name }) => ({
-        url: `/api/ee/python-transform/library/${name}`,
+      query: ({ path }) => ({
+        url: `/api/ee/python-transform/library/${path}`,
         method: "GET",
       }),
       providesTags: (library) =>
         library ? providePythonLibraryTags(library) : [],
     }),
     updatePythonLibrary: builder.mutation<void, UpdatePythonLibraryRequest>({
-      query: ({ name, source }) => ({
-        url: `/api/ee/python-transform/library/${name}`,
+      query: ({ path, source }) => ({
+        url: `/api/ee/python-transform/library/${path}`,
         method: "PUT",
         body: { source },
       }),
-      invalidatesTags: (_, error, { name }) =>
-        invalidateTags(error, [idTag("python-transform-library", name)]),
+      invalidatesTags: (_, error, { path }) =>
+        invalidateTags(error, [idTag("python-transform-library", path)]),
     }),
   }),
 });

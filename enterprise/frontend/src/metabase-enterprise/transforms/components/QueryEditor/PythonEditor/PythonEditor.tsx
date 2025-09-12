@@ -11,7 +11,7 @@ import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWit
 import { Box, Checkbox, Flex, Icon, Stack, Text, Title } from "metabase/ui";
 import { getPythonLibraryUrl } from "metabase-enterprise/transforms/urls";
 
-import { SHARED_LIB_IMPORT_NAME } from "../../../constants";
+import { SHARED_LIB_IMPORT_PATH } from "../../../constants";
 import { PythonEditor as PythonCodeEditor } from "../../PythonEditor";
 import { ResizableBoxHandle } from "../EditorBody/ResizableBoxHandle";
 
@@ -45,12 +45,12 @@ export function PythonEditor({
   const { isRunning, isDirty, cancel, run, executionResult } =
     useTestPythonScript(script, tables);
 
-  const hasSharedLib = hasImport(script, SHARED_LIB_IMPORT_NAME);
+  const hasSharedLib = hasImport(script, SHARED_LIB_IMPORT_PATH);
   function handleToggleSharedLib() {
-    if (hasImport(script, SHARED_LIB_IMPORT_NAME)) {
-      onChange(removeImport(script, SHARED_LIB_IMPORT_NAME));
+    if (hasImport(script, SHARED_LIB_IMPORT_PATH)) {
+      onChange(removeImport(script, SHARED_LIB_IMPORT_PATH));
     } else {
-      onChange(insertImport(script, SHARED_LIB_IMPORT_NAME));
+      onChange(insertImport(script, SHARED_LIB_IMPORT_PATH));
     }
   }
 
@@ -91,7 +91,7 @@ export function PythonEditor({
           <Flex
             component={Link}
             target="_blank"
-            to={getPythonLibraryUrl({ name: SHARED_LIB_IMPORT_NAME })}
+            to={getPythonLibraryUrl({ path: SHARED_LIB_IMPORT_PATH })}
             gap="sm"
           >
             <Icon name="pencil" />

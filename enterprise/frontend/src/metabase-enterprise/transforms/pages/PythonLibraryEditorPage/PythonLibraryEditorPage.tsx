@@ -30,14 +30,14 @@ const EMPTY_LIBRARY_SOURCE = `
 export function PythonLibraryEditorPage({
   params,
 }: PythonLibraryEditorPageProps) {
-  const { name } = params;
+  const { path } = params;
   const [source, setSource] = useState("");
 
   const {
     data: library,
     isLoading,
     error,
-  } = useGetPythonLibraryQuery({ name });
+  } = useGetPythonLibraryQuery({ path });
   const [updatePythonLibrary, { isLoading: isSaving }] =
     useUpdatePythonLibraryMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
@@ -59,7 +59,7 @@ export function PythonLibraryEditorPage({
 
   async function handleSave() {
     try {
-      await updatePythonLibrary({ name, source }).unwrap();
+      await updatePythonLibrary({ path, source }).unwrap();
       sendSuccessToast(t`Python library saved`);
     } catch (error) {
       sendErrorToast(t`Python library could not be saved`);

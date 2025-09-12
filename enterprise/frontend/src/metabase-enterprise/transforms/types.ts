@@ -22,5 +22,5 @@ export type JobListParams = {
 };
 
 export type PythonLibraryEditorPageParams = {
-  name: string;
+  path: string;
 };

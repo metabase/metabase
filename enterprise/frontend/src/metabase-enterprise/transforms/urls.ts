@@ -128,6 +128,6 @@ export function getTableMetadataUrl(
   return `/admin/datamodel/database/${databaseId}/schema/${databaseId}:${encodeURIComponent(schema ?? "")}/table/${tableId}`;
 }
 
-export function getPythonLibraryUrl({ name }: PythonLibraryEditorPageParams) {
-  return `/admin/transforms/library/${name}`;
+export function getPythonLibraryUrl({ path }: PythonLibraryEditorPageParams) {
+  return `/admin/transforms/library/${path}`;
 }
