@@ -38,17 +38,11 @@
             metadata.protocols/MetadataProvider
             (database [_this]
               (metadata.protocols/database meta/metadata-provider))
-            (metadatas [_this metadata-type ids]
-              (cond->> (metadata.protocols/metadatas meta/metadata-provider metadata-type ids)
+            (metadatas [_this {metadata-type :lib/type, :as metadata-spec}]
+              (cond->> (metadata.protocols/metadatas meta/metadata-provider metadata-spec)
                 (= metadata-type :metadata/column)
                 (mapv (fn [field]
                         (assoc field :name nil)))))
-            (tables [_this]
-              (metadata.protocols/tables meta/metadata-provider))
-            (metadatas-for-table [_this metadata-type table-id]
-              (when (= metadata-type :metadata/column)
-                (mapv #(assoc % :name nil)
-                      (metadata.protocols/fields meta/metadata-provider table-id))))
             (setting [_this _setting-key]
               nil))
           query (lib/query metadata-provider (meta/table-metadata :venues))]

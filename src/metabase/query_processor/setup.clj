@@ -41,8 +41,8 @@
         source-table        (:source-table deepest-inner-query)]
     (lib.util/legacy-string-table-id->card-id source-table)))
 
-(defn- bootstrap-metadatas [metadata-type ids]
-  (when (and (seq ids)
+(defn- bootstrap-metadatas [{metadata-type :lib/type, id-set :id, :as _metadata-spec}]
+  (when (and (seq id-set)
              (= metadata-type :metadata/card))
     (t2/select-fn-vec
      (fn [card]
@@ -51,22 +51,14 @@
         :name        (format "Card #%d" (:id card))
         :database-id (:database_id card)})
      [:model/Card :id :database_id :card_schema]
-     :id [:in (set ids)])))
+     :id [:in (set id-set)])))
 
 (deftype ^:private BootstrapMetadataProvider []
   lib.metadata.protocols/MetadataProvider
   (database [_this]
     nil)
-  (metadatas [_this metadata-type ids]
-    (bootstrap-metadatas metadata-type ids))
-  (metadatas-by-name [_this _metadata-type _names]
-    nil)
-  (tables [_this]
-    nil)
-  (metadatas-for-table [_this _metadata-type _table-id]
-    nil)
-  (metadatas-for-card [_this _metadata-type _card-id]
-    nil)
+  (metadatas [_this metadata-spec]
+    (bootstrap-metadatas metadata-spec))
   (setting [_this _setting-key]
     nil))
 

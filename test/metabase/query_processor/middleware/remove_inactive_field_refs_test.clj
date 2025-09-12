@@ -162,7 +162,8 @@
           "PRODUCT_ID" true
           "QUANTITY"   true
           "SUBTOTAL"   true
-          "TAX"        false
+          ;; TAX shouldn't come back from [[metabase.lib.metadata/fields]] because it's inactive
+          ;; "TAX"        false
           "TOTAL"      true
           "USER_ID"    true}
          (into (sorted-map)
