@@ -28,11 +28,16 @@
    [:result_metadata {:optional true}  [:maybe analyze/ResultsMetadata]]])
 
 (defn- broken-cards-response
-  [broken-ids]
-  (let [broken-cards (when (seq broken-ids)
-                       (-> (t2/select :model/Card :id [:in broken-ids])
-                           (t2/hydrate [:collection :effective_ancestors] :dashboard)))]
-    {:success   (empty? broken-ids)
+  [{:keys [cards transforms]}]
+  (let [broken-card-ids (keys cards)
+        broken-cards (when (seq broken-card-ids)
+                       (-> (t2/select :model/Card :id [:in broken-card-ids])
+                           (t2/hydrate [:collection :effective_ancestors] :dashboard)))
+        broken-transform-ids (keys transforms)
+        broken-transforms (when (seq broken-transform-ids)
+                            (t2/select :model/Transform :id [:in broken-transform-ids]))]
+    {:success   (and (empty? broken-card-ids)
+                     (empty? broken-transform-ids))
      :bad_cards (into [] (comp (filter (fn [card]
                                          (if (mi/can-read? card)
                                            card
@@ -42,7 +47,8 @@
                                       (-> card
                                           collection.root/hydrate-root-collection
                                           (update :dashboard #(some-> % (select-keys [:id :name])))))))
-                      broken-cards)}))
+                      broken-cards)
+     :bad_transforms (into [] broken-transforms)}))
 
 (api.macros/defendpoint :post "/check_card"
   "Check a proposed edit to a card, and return the card IDs for those cards this edit will break."
@@ -60,9 +66,9 @@
                            (:result_metadata body) (assoc :result-metadata (:result_metadata body))))
         ;; TODO: This sucks - it's getting all cards for the same database_id, which is slow and over-reaching.
         all-cards     (t2/select-fn-set :id :model/Card :database_id database-id :archived false)
-        breakages     (dependencies/check-cards-have-sound-refs base-provider [card] all-cards)
-        broken-ids    (keys breakages)]
-    (broken-cards-response broken-ids)))
+        all-transforms (t2/select-fn-set :id :model/Transform)
+        breakages      (dependencies/check-cards-have-sound-refs base-provider [card] all-cards all-transforms)]
+    (broken-cards-response breakages)))
 
 (api.macros/defendpoint :post "/check_transform"
   "Check a proposed edit to a transform, and return the card, transform, etc. IDs for things that will break."

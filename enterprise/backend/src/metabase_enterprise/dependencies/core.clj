@@ -23,7 +23,7 @@
       lib.metadata.cached-provider/cached-metadata-provider
       (doto (lib.metadata.protocols/store-metadatas! cards))))
 
-(mu/defn check-cards-have-sound-refs :- [:map-of ::lib.schema.id/card [:sequential ::lib.schema.mbql-clause/clause]]
+(mu/defn check-cards-have-sound-refs ;; :- [:map-of ::lib.schema.id/card [:sequential ::lib.schema.mbql-clause/clause]]
   "Given a list `updated-cards` of `:metadata/card`s which may have changes vs. AppDB, and a list `check-cards` of
   cards to check, return any bad clauses found in the `check-cards`.
 
@@ -37,18 +37,25 @@
   Returns a map `{card-id [bad refs...]}`, which will be empty if there are no bad refs detected."
   ([base-provider  :- ::lib.schema.metadata/metadata-provider
     updated-cards  :- [:sequential ::lib.schema.metadata/card]
-    check-card-ids :- [:maybe [:set ::lib.schema.id/card]]]
-   (check-cards-have-sound-refs (provider-with-updated-cards base-provider updated-cards) check-card-ids))
+    check-card-ids :- [:maybe [:set ::lib.schema.id/card]]
+    check-transform-ids]
+   (check-cards-have-sound-refs (provider-with-updated-cards base-provider updated-cards) check-card-ids check-transform-ids))
   ([provider       :- ::lib.schema.metadata/metadata-provider
-    check-card-ids :- [:maybe [:set ::lib.schema.id/card]]]
-   (reduce (fn [errors card-id]
-             (let [card     (lib.metadata/card provider card-id)
-                   query    (lib/query provider (:dataset-query card))
+    check-card-ids :- [:maybe [:set ::lib.schema.id/card]]
+    check-transform-ids]
+   (reduce (fn [errors [error-type id query]]
+             (let [query    (lib/query provider query)
                    bad-refs (lib/find-bad-refs query)]
                (cond-> errors
-                 bad-refs (assoc (:id card) bad-refs))))
+                 bad-refs (assoc-in [error-type id] bad-refs))))
            {}
-           check-card-ids)))
+           (concat (map (fn [card-id]
+                          [:cards card-id (:dataset-query (lib.metadata/card provider card-id))])
+                        check-card-ids)
+                   (map (fn [transform-id]
+                          [:transforms transform-id (get-in (lib.metadata/transform provider transform-id)
+                                                            [:source :query])])
+                        check-transform-ids)))))
 
 (defn- upstream-deps:mbql-card [legacy-query]
   (lib.util/source-tables-and-cards [legacy-query]))
