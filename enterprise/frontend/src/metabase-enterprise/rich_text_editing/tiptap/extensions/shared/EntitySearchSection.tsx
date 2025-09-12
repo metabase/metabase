@@ -51,7 +51,7 @@ export function EntitySearchSection({
           <Text size="md" c="text-medium">{t`No results found`}</Text>
         </Box>
       ) : null}
-      <Divider my="sm" mx="sm" />
+      {menuItems.length > 0 && <Divider my="sm" mx="sm" />}
       <SearchResultsFooter
         isSelected={selectedIndex === menuItems.length}
         onClick={onFooterClick}
