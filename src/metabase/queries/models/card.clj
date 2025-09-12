@@ -236,7 +236,7 @@
     (doseq [[db-id table-ids] db-id->table-ids
             :let  [mp (lib.metadata.jvm/application-database-metadata-provider db-id)]
             :when (seq table-ids)]
-      (lib.metadata.protocols/metadatas mp :metadata/table table-ids))))
+      (lib.metadata.protocols/metadatas mp {:lib/type :metadata/table, :id (set table-ids)}))))
 
 (defn with-can-run-adhoc-query
   "Adds `:can_run_adhoc_query` to each card."

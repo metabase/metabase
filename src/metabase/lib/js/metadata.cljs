@@ -479,7 +479,7 @@
 (defn- card->metric-card
   [card]
   (-> card
-      (select-keys [:id :table-id :name :description :archived :dataset-query :source-card-id])
+      (select-keys [:id :table-id :name :description :archived :dataset-query :source-card-id :type])
       (assoc :lib/type :metadata/metric)))
 
 (defn- metric-cards
@@ -497,90 +497,37 @@
     :metadata/table                :tables
     :metadata/column               :fields
     :metadata/card                 :cards
+    :metadata/metric               :metrics
     :metadata/segment              :segments
     :metadata/native-query-snippet :snippets))
 
-(defn- by-name-field [field]
-  (keyword (str (name field) "-by-name")))
-
-(defn- by-name-delay [objects-delay]
-  (delay
-    (let [objects @objects-delay]
-      (into {}
-            (map (fn [[_id object-delay]]
-                   (let [object @object-delay]
-                     [(:name object) object])))
-            objects))))
-
-(defn- add-by-names [metadata-map]
-  (into metadata-map
-        (map (fn [[field objects-delay]]
-               [(by-name-field field)
-                (by-name-delay objects-delay)]))
-        metadata-map))
-
 (defn- parse-metadata [metadata]
   (let [delayed-cards (parse-objects-delay :card metadata)]
-    (add-by-names
-     {:databases (parse-objects-delay :database metadata)
-      :tables    (parse-objects-delay :table    metadata)
-      :fields    (parse-objects-delay :field    metadata)
-      :snippets  (parse-objects-delay :snippet  metadata)
-      :cards     delayed-cards
-      :metrics   (delay (metric-cards delayed-cards))
-      :segments  (parse-objects-delay :segment  metadata)})))
+    {:databases (parse-objects-delay :database metadata)
+     :tables    (parse-objects-delay :table    metadata)
+     :fields    (parse-objects-delay :field    metadata)
+     :snippets  (parse-objects-delay :snippet  metadata)
+     :cards     delayed-cards
+     :metrics   (delay (metric-cards delayed-cards))
+     :segments  (parse-objects-delay :segment  metadata)}))
 
 (defn- database [metadata database-id]
   (some-> metadata :databases deref (get database-id) deref))
 
-(defn- metadatas [metadata metadata-type ids]
-  (let [k          (metadata-property metadata-type)
-        metadatas* (some-> metadata k deref)]
+(defn- metadatas [metadata database-id {metadata-type :lib/type, id-set :id, :as metadata-spec}]
+  (let [k      (metadata-property metadata-type)
+        delays (let [id->dlay (some-> metadata k deref)]
+                 (if id-set
+                   (keep id->dlay id-set)
+                   (vals id->dlay)))]
     (into []
-          (keep (fn [id]
-                  (some-> metadatas* (get id) deref)))
-          ids)))
-
-(defn- metadatas-by-name [metadata metadata-type names]
-  (let [k          (-> metadata-type metadata-property by-name-field)
-        metadatas* (some-> metadata k deref)]
-    (into [] (comp (distinct)
-                   (keep #(get metadatas* %)))
-          names)))
-
-(defn- tables [metadata database-id]
-  (into []
-        (keep (fn [[_id dlay]]
-                (when-let [table (some-> dlay deref)]
-                  (when (= (:db-id table) database-id)
-                    table))))
-        (some-> metadata :tables deref)))
-
-(defn- metadatas-for-table
-  [metadata metadata-type table-id]
-  (let [k (case metadata-type
-            :metadata/column  :fields
-            :metadata/metric  :metrics
-            :metadata/segment :segments)]
-    (into []
-          (keep (fn [[_id dlay]]
-                  (when-let [object (some-> dlay deref)]
-                    (when (and (= (:table-id object) table-id)
-                               (or (not= metadata-type :metadata/metric)
-                                   (nil? (:source-card-id object))))
-                      object))))
-          (some-> metadata k deref))))
-
-(defn- metadatas-for-card
-  [metadata metadata-type card-id]
-  (let [k (case metadata-type
-            :metadata/metric :metrics)]
-    (into []
-          (keep (fn [[_id dlay]]
-                  (when-let [object (some-> dlay deref)]
-                    (when (= (:source-card-id object) card-id)
-                      object))))
-          (some-> metadata k deref))))
+          (comp (keep deref)
+                (if (= metadata-type :metadata/table)
+                  (filter #(= (:db-id %) database-id))
+                  identity)
+                (lib.metadata.protocols/default-spec-filter-xform metadata-spec)
+                (distinct))
+          delays)))
 
 (defn- setting [^js unparsed-metadata setting-key]
   (-> unparsed-metadata
@@ -590,21 +537,17 @@
 (defn- metadata-provider*
   "Inner implementation for [[metadata-provider]], which wraps this with a cache."
   [database-id unparsed-metadata]
+  ;; TODO (Cam 9/11/25) -- it should go without saying that database ID is required, but adding this ended up breaking
+  ;; a lot of evil FE unit tests that hand-roll MBQL queries with no `database`... Need to turn this back on and then
+  ;; hunt down and fix all the tests.
+  #_{:pre [(pos-int? database-id)]}
   (let [metadata (parse-metadata unparsed-metadata)]
     (log/debug "Created metadata provider for metadata")
     (reify lib.metadata.protocols/MetadataProvider
       (database [_this]
         (database metadata database-id))
-      (metadatas [_this metadata-type ids]
-        (metadatas metadata metadata-type ids))
-      (metadatas-by-name [_this metadata-type names]
-        (metadatas-by-name metadata metadata-type names))
-      (tables [_this]
-        (tables metadata database-id))
-      (metadatas-for-table [_this metadata-type table-id]
-        (metadatas-for-table metadata metadata-type table-id))
-      (metadatas-for-card [_this metadata-type card-id]
-        (metadatas-for-card metadata metadata-type card-id))
+      (metadatas [_this metadata-spec]
+        (metadatas metadata database-id metadata-spec))
       (setting [_this setting-key]
         (setting unparsed-metadata setting-key))
 
