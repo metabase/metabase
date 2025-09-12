@@ -44,17 +44,9 @@ export function AUTH_TIMEOUT() {
 }
 
 export function EXISTING_USER_SESSION_FAILED() {
-  const docsUrl =
-    // eslint-disable-next-line no-unconditional-metabase-links-render -- this is in an error
-    "https://www.metabase.com/docs/latest/embedding/embedded-analytics-js#use-existing-user-session-to-test-embeds";
-
-  const error = new MetabaseError(
+  return new MetabaseError(
     "EXISTING_USER_SESSION_FAILED",
     // eslint-disable-next-line no-literal-metabase-strings -- developer-facing error message explaining authentication failure
     "Failed to authenticate using an existing Metabase user session.",
-    {},
-    { docsUrl },
   );
-
-  return error;
 }
