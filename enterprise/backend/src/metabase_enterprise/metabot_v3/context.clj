@@ -60,7 +60,8 @@
   [item]
   (when-let [query (case (:type item)
                      "transform" (-> item :source :query)
-                     "adhoc" (-> item :query))]
+                     "adhoc" (-> item :query)
+                     nil)]
     (when (and (#{:native "native"} (:type query))
                (:database query))
       query)))
