@@ -1621,6 +1621,8 @@
   "Schema for a valid dimension clause."
   (with-meta [:ref ::dimension] {:clause-name :dimension}))
 
+(defmethod options-style-method :dimension [_tag] ::options-style.last-unless-empty)
+
 (defclause variable
   target template-tag)
 
