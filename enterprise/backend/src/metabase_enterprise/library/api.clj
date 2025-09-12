@@ -46,12 +46,12 @@
                                                     :root-dependency-path [{:id collection/library-entity-id
                                                                             :model "Collection"}]))
               ;; Extract entity_ids by model from the :seen paths
-              imported-entities #p (->> (:seen load-result)
-                                        (map last) ; Get the last element of each path (the entity itself)
-                                        (group-by :model)
-                                        (map (fn [[model entities]]
-                                               [model (set (map :id entities))]))
-                                        (into {}))
+              imported-entities (->> (:seen load-result)
+                                     (map last) ; Get the last element of each path (the entity itself)
+                                     (group-by :model)
+                                     (map (fn [[model entities]]
+                                            [model (set (map :id entities))]))
+                                     (into {}))
               affected-collection-ids (collection/collection->descendant-ids library-collection)]
           ;; Now delete any library content that was NOT part of the import
           (doseq [model [:model/Collection
