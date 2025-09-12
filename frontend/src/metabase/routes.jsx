@@ -66,6 +66,7 @@ import { EmbeddingSetup } from "metabase/setup/components/EmbeddingSetup/Embeddi
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
+import { GlossaryListContainer } from "./reference/glossary/GlossaryListContainer";
 import {
   CanAccessOnboarding,
   CanAccessSettings,
@@ -379,6 +380,7 @@ export const getRoutes = (store) => {
               path="databases/:databaseId/tables/:tableId/questions"
               component={TableQuestionsContainer}
             />
+            <Route path="glossary" component={GlossaryListContainer} />
           </Route>
 
           {/* ACCOUNT */}
