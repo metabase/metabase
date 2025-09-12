@@ -38,7 +38,7 @@
   (let [metadata (-> metadata
                      (perf/update-keys u/->kebab-case-en)
                      (assoc :lib/type metadata-type))]
-    (store-in-cache! cache [metadata-type id] metadata))
+    (store-in-cache! cache [metadata-type :id id] metadata))
   true)
 
 (defn- get-in-cache-or-fetch [cache ks fetch-thunk]
