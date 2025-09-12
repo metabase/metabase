@@ -1,6 +1,6 @@
 import { noop } from "underscore";
 
-type CancellablePromise<T> = Promise<T> & {
+export type CancellablePromise<T> = Promise<T> & {
   cancel: () => void;
 };
 
