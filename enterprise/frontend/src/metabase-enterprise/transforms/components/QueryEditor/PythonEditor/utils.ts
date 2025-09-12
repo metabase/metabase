@@ -99,3 +99,33 @@ export function useTestPythonScript(
     executionResult,
   };
 }
+
+export function insertImport(source: string, lib: string) {
+  const lines = source.split("\n");
+
+  // Find the first line that is not a comment
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.trim().startsWith("#")) {
+      continue;
+    }
+    lines.splice(i, 0, `import ${lib}`);
+    break;
+  }
+
+  return lines.join("\n");
+}
+
+function libImportRegex(lib: string) {
+  return new RegExp(`import ${lib}`, "g");
+}
+
+export function removeImport(source: string, lib: string) {
+  const lines = source.split("\n");
+  return lines.filter((line) => !libImportRegex(lib).test(line)).join("\n");
+}
+
+export function hasImport(source: string, lib: string) {
+  const regex = libImportRegex(lib);
+  return regex.test(source);
+}

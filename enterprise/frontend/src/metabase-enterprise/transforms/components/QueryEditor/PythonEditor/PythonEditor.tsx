@@ -4,17 +4,24 @@ import { c, t } from "ttag";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import DebouncedFrame from "metabase/common/components/DebouncedFrame";
+import Link from "metabase/common/components/Link";
 import { LoadingSpinner } from "metabase/common/components/MetadataInfo/MetadataInfo.styled";
 import { isMac } from "metabase/lib/browser";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
-import { Box, Flex, Icon, Stack, Text, Title } from "metabase/ui";
+import { Box, Checkbox, Flex, Icon, Stack, Text, Title } from "metabase/ui";
 
 import { PythonEditor as PythonCodeEditor } from "../../PythonEditor";
 import { ResizableBoxHandle } from "../EditorBody/ResizableBoxHandle";
 
 import { ExecutionOutputTable } from "./ExecutionOutputTable";
 import S from "./PythonEditor.module.css";
-import { type ExecutionResult, useTestPythonScript } from "./utils";
+import {
+  type ExecutionResult,
+  hasImport,
+  insertImport,
+  removeImport,
+  useTestPythonScript,
+} from "./utils";
 
 type PythonEditorProps = {
   script: string;
@@ -26,6 +33,7 @@ type PythonEditorProps = {
 };
 
 const EDITOR_HEIGHT = 400;
+const SHARED_LIB_IMPORT_NAME = "lib";
 
 export function PythonEditor({
   script,
@@ -35,6 +43,15 @@ export function PythonEditor({
 }: PythonEditorProps) {
   const { isRunning, isDirty, cancel, run, executionResult } =
     useTestPythonScript(script, tables);
+
+  const hasSharedLib = hasImport(script, SHARED_LIB_IMPORT_NAME);
+  function handleToggleSharedLib() {
+    if (hasImport(script, SHARED_LIB_IMPORT_NAME)) {
+      onChange(removeImport(script, SHARED_LIB_IMPORT_NAME));
+    } else {
+      onChange(insertImport(script, SHARED_LIB_IMPORT_NAME));
+    }
+  }
 
   return (
     <Stack h="100%" w="100%" gap={0}>
@@ -63,6 +80,23 @@ export function PythonEditor({
             />
           </Box>
         </Flex>
+        <Stack className={S.libraryActions} p="md" gap="sm">
+          <Checkbox
+            label={t`Import shared library`}
+            checked={hasSharedLib}
+            onChange={handleToggleSharedLib}
+            size="sm"
+          />
+          <Flex
+            component={Link}
+            target="_blank"
+            to="/admin/transforms/library/python"
+            gap="sm"
+          >
+            <Icon name="pencil" />
+            {t`Edit shared library`}
+          </Flex>
+        </Stack>
       </ResizableBox>
 
       <DebouncedFrame className={S.visualization}>
