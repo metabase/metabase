@@ -8,7 +8,6 @@ export class MetabaseError<C extends string, P> extends Error {
     this.name = "MetabaseError";
     this.code = code;
     this.params = params;
-
     Object.setPrototypeOf(this, MetabaseError.prototype);
   }
 }

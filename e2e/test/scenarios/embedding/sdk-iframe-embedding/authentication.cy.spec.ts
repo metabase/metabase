@@ -58,11 +58,18 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     });
 
     frame.within(() => {
-      cy.findByTestId("sdk-error-container")
+      cy.findByTestId("sdk-error-container", { timeout: 10_000 })
         .should("be.visible")
         .and(
           "contain",
-          "Could not load the test embed using your Metabase user session. Try using Google Chrome or use API keys for testing instead.",
+          /Failed to authenticate using an existing Metabase user session./,
+        );
+
+      cy.findByRole("link", { name: "Read more." })
+        .should("have.attr", "href")
+        .and(
+          "include",
+          "https://www.metabase.com/docs/latest/embedding/embedded-analytics-js#use-existing-user-session-to-test-embeds",
         );
     });
   });
