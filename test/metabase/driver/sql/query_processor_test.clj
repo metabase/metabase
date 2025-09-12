@@ -454,14 +454,14 @@
 (deftest ^:parallel multiple-joins-with-expressions-test
   (testing "We should be able to compile a complicated query with multiple joins and expressions correctly"
     (is (= '{:select   [source.PRODUCTS__via__PRODUCT_ID__CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
-                        source.PEOPLE__via__USER_ID__SOURCE AS PEOPLE__via__USER_ID__SOURCE
-                        DATE_TRUNC ("year" source.CREATED_AT) AS CREATED_AT
-                        source.pivot-grouping AS pivot-grouping
-                        COUNT (*) AS count]
-             :from     [{:select    [ORDERS.USER_ID                     AS USER_ID
-                                     ORDERS.PRODUCT_ID                  AS PRODUCT_ID
-                                     ORDERS.CREATED_AT                  AS CREATED_AT
-                                     ABS (0)                            AS pivot-grouping
+                        source.PEOPLE__via__USER_ID__SOURCE        AS PEOPLE__via__USER_ID__SOURCE
+                        DATE_TRUNC ("year" source.CREATED_AT)      AS CREATED_AT
+                        source.pivot-grouping                      AS pivot-grouping
+                        COUNT (*)                                  AS count]
+             :from     [{:select    [ORDERS.USER_ID    AS USER_ID
+                                     ORDERS.PRODUCT_ID AS PRODUCT_ID
+                                     ORDERS.CREATED_AT AS CREATED_AT
+                                     ABS (0)           AS pivot-grouping
                                      ;; TODO: The order here is not deterministic! It's coming
                                      ;; from [[metabase.query-processor.util.transformations.nest-breakouts]]
                                      ;; or [[metabase.query-processor.util.nest-query]], which walks the query looking
@@ -469,8 +469,16 @@
                                      ;; order. Changing the map keys on the inner query can perturb this order; if you
                                      ;; cause this test to fail based on shuffling the order of these joined fields
                                      ;; just edit the expectation to match the new order. Tech debt issue: #39396
-                                     PRODUCTS__via__PRODUCT_ID.ID       AS PRODUCTS__via__PRODUCT_ID__ID
-                                     PEOPLE__via__USER_ID.ID            AS PEOPLE__via__USER_ID__ID
+                                     PRODUCTS__via__PRODUCT_ID.ID AS PRODUCTS__via__PRODUCT_ID__ID
+                                     ;;
+                                     ;; This column used to be here, but now it's not anymore... can't say I'm sure
+                                     ;; why but it looks like it's not needed (it's not used in the parent stage and
+                                     ;; not returned anyway). I guess maybe `nest-expressions` or `nest-breakouts`
+                                     ;; removes it because it's unneeded and we've just gotten better at ref matching
+                                     ;; recently or something. I've verified that the query still works correctly.
+                                     ;;
+                                     ;; PEOPLE__via__USER_ID.ID AS PEOPLE__via__USER_ID__ID
+                                     ;;
                                      PRODUCTS__via__PRODUCT_ID.CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
                                      PEOPLE__via__USER_ID.SOURCE        AS PEOPLE__via__USER_ID__SOURCE]
                          :from      [ORDERS]
@@ -512,9 +520,9 @@
                         DATE_TRUNC ("year" source.CREATED_AT)
                         source.pivot-grouping]
              :order-by [source.PRODUCTS__via__PRODUCT_ID__CATEGORY ASC
-                        source.PEOPLE__via__USER_ID__SOURCE ASC
-                        DATE_TRUNC ("year" source.CREATED_AT) ASC
-                        source.pivot-grouping ASC]}
+                        source.PEOPLE__via__USER_ID__SOURCE        ASC
+                        DATE_TRUNC ("year" source.CREATED_AT)      ASC
+                        source.pivot-grouping                      ASC]}
            (-> (lib.tu.macros/mbql-query orders
                  {:aggregation [[:aggregation-options [:count] {:name "count"}]]
                   :breakout    [&PRODUCTS__via__PRODUCT_ID.products.category
