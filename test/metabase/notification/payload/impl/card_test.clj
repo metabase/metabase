@@ -612,3 +612,28 @@
                                           "ngoc@metabase.com"]
                              :filters    nil}}
                  (mt/latest-audit-log-entry :alert-send (:id notification)))))))))
+
+(deftest progress-value-setting-test
+  (testing "Progress charts should respect progress.value setting for goal comparison"
+    (let [goal-met? (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)
+          notification-card {:send_condition "goal_above"}]
+      (testing "Should use progress.value column instead of first column"
+        (let [card-part {:card {:display :progress
+                                :visualization_settings {:progress.value "actual_value"
+                                                         :progress.goal "Target"}}
+                         :result {:data {:cols [{:name "ignore_me" :base_type :type/Integer}
+                                                {:name "actual_value" :base_type :type/Integer}
+                                                {:name "Target" :base_type :type/Integer}]
+                                         :rows [[999 120 100]]}}}]
+          (is (true? (goal-met? notification-card card-part))
+              "Should return true when actual_value (120) >= Target (100)")))
+
+      (testing "Should fall back to first numeric column when no progress.value is set"
+        (let [card-part {:card {:display :progress
+                                :visualization_settings {:progress.goal "Target"}}
+                         :result {:data {:cols [{:name "text_col" :base_type :type/Text}
+                                                {:name "numeric_col" :base_type :type/Integer}
+                                                {:name "Target" :base_type :type/Integer}]
+                                         :rows [["text" 120 100]]}}}]
+          (is (true? (goal-met? notification-card card-part))
+              "Should return true when first numeric column (120) >= Target (100)"))))))

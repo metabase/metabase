@@ -590,23 +590,6 @@
                           :slice-els-colours  slice-elements
                           :total-els-text     total-elements})))))))))))
 
-(deftest render-progress
-  (let [col [{:name          "NumPurchased",
-              :display_name  "NumPurchased",
-              :base_type     :type/Integer
-              :semantic_type nil}]
-        render  (fn [rows]
-                  (body/render :progress :inline pacific-tz
-                               render.tu/test-card
-                               nil
-                               {:cols col :rows rows}))]
-    (testing "Renders without error"
-      (let [rendered-info (render [[25]])]
-        (is (has-inline-image? rendered-info))))
-    (testing "Renders negative value without error"
-      (let [rendered-info (render [[-25]])]
-        (is (has-inline-image? rendered-info))))))
-
 (deftest ^:parallel format-percentage-test
   (are [value expected] (= expected
                            (body/format-percentage 12345.4321 value))
