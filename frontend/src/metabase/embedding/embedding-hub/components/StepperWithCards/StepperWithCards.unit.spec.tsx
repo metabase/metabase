@@ -36,7 +36,7 @@ describe("StepperWithCards", () => {
         id: "step2",
         title: "Second Step",
         cards: [
-          { id: "3", done: false },
+          { id: "3", done: true }, // both must be done to complete the step
           { id: "4", done: false },
         ],
       },
