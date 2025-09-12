@@ -1525,7 +1525,7 @@
 
 (deftest ^:parallel self-join-in-source-card-test
   (testing "When query uses a source card with a self-join, query should work (#27521)"
-    (let [mp (mt/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           q1 (-> (lib/query
                   mp
                   (lib.metadata/table mp (mt/id :orders)))

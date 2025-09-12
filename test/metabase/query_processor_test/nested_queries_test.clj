@@ -720,7 +720,7 @@
 (deftest ^:parallel macroexpansion-test
   (testing "Make sure that macro expansion works inside of a neested query, when using a compound filter clause (#5974)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
-      (qp.store/with-metadata-provider (-> (mt/application-database-metadata-provider (mt/id))
+      (qp.store/with-metadata-provider (-> (mt/metadata-provider)
                                            (lib.tu/mock-metadata-provider
                                             {:segments [{:id         1
                                                          :name       "Segment 1"
@@ -1014,7 +1014,7 @@
                               {:source-table "card__1"}))))
           (testing "if source query with expression literals is from a Model"
             (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                              (mt/application-database-metadata-provider (mt/id))
+                                              (mt/metadata-provider)
                                               {:cards [{:id 1
                                                         :type :model
                                                         :name "Model 1"
@@ -1095,7 +1095,7 @@
     (mt/dataset test-data
       ;; Add column remapping from Orders Product ID -> Products.Title
       (let [provider              (lib.tu/remap-metadata-provider
-                                   (mt/application-database-metadata-provider (mt/id))
+                                   (mt/metadata-provider)
                                    (mt/id :orders :product_id)
                                    (mt/id :products :title))
             card-results-metadata (qp.store/with-metadata-provider provider
@@ -1147,7 +1147,7 @@
                    4.0 "2017-12-31T14:41:56.87Z"]
                   (first (mt/rows results))))))
         (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                          (mt/application-database-metadata-provider (mt/id))
+                                          (mt/metadata-provider)
                                           (mt/id :orders :product_id)
                                           (mt/id :products :title))
           (do-test
@@ -1223,7 +1223,7 @@
                         "2017-12-31T14:41:56.87Z"]
                        (mt/first-row result)))))
             (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                              (mt/application-database-metadata-provider (mt/id))
+                                              (mt/metadata-provider)
                                               (mt/id :orders :product_id)
                                               (mt/id :products :title))
               (let [result (run-query)]
@@ -1344,7 +1344,7 @@
                                {:source-query (:query query)})
                        metadata (assoc-in [:query :source-metadata] metadata))))
                   (test-card-source-query [metadata]
-                    (qp.store/with-metadata-provider (-> (mt/application-database-metadata-provider (mt/id))
+                    (qp.store/with-metadata-provider (-> (mt/metadata-provider)
                                                          (lib.tu/metadata-provider-with-cards-for-queries [query])
                                                          (lib.tu/merged-mock-metadata-provider
                                                           {:cards [{:id 1, :result-metadata metadata}]}))
@@ -1522,7 +1522,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "A nested query with a Metric should work as expected (#12507)"
       (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                        (mt/application-database-metadata-provider (mt/id))
+                                        (mt/metadata-provider)
                                         {:cards [{:id 1
                                                   :type :metric
                                                   :name "Metric 1"

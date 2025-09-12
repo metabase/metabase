@@ -524,7 +524,7 @@
 
 (deftest ^:parallel internal-remap-e2e-test
   (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                    (mt/application-database-metadata-provider (mt/id))
+                                    (mt/metadata-provider)
                                     (mt/id :venues :category_id)
                                     (mapv first (mt/rows (qp/process-query
                                                           (mt/mbql-query categories

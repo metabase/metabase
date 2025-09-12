@@ -120,7 +120,7 @@
           (is (= (assoc-in joins-in-joins-query
                            [:query :joins 0 :source-query :filter]
                            (mt/$ids [:= [:field %products.category {:join-alias "products"}] "Widget"]))
-                 (wrap-joined-fields (mt/application-database-metadata-provider (mt/id)) joins-in-joins-query)))
+                 (wrap-joined-fields (mt/metadata-provider) joins-in-joins-query)))
           (testing "Can we actually run the join-in-joins query?"
             (is (=? {:status :completed, :row_count 1}
                     (qp/process-query (assoc-in joins-in-joins-query [:query :limit] 1))))))))))
@@ -204,7 +204,7 @@
                             $products.title
                             [:field %products.title {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]})]
       (testing "Middleware should handle the query"
-        (is (some? (wrap-joined-fields (mt/application-database-metadata-provider (mt/id)) query))))
+        (is (some? (wrap-joined-fields (mt/metadata-provider) query))))
       (testing "Should be able tor run query end-to-end"
         (is (=? {:status    :completed
                  :row_count 10}

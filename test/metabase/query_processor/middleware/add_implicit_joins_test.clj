@@ -385,7 +385,7 @@
 
 (deftest ^:parallel reuse-existing-joins-e2e-test
   (testing "Should work at arbitrary levels of nesting"
-    (let [mp         (mt/application-database-metadata-provider (mt/id))
+    (let [mp         (mt/metadata-provider)
           base-query (lib/query
                       mp
                       (mt/mbql-query orders

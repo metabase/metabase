@@ -833,7 +833,7 @@
                      (first (mt/rows result))))))
           (testing "Ok, add remapping and it should still work"
             (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                              (mt/application-database-metadata-provider (mt/id))
+                                              (mt/metadata-provider)
                                               (mt/id :reviews :product_id)
                                               (mt/id :products :title))
               (let [result (mt/run-mbql-query reviews {:order-by [[:asc $id]]})]
@@ -935,7 +935,7 @@
                                   (qp/process-query drill-thru-query)))))))]
             (test-drill-thru)
             (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                              (mt/application-database-metadata-provider (mt/id))
+                                              (mt/metadata-provider)
                                               (mt/id :orders :product_id)
                                               (mt/id :products :title))
               (test-drill-thru))))))))
@@ -986,7 +986,7 @@
           (do-tests)
           (testing "with remapping"
             (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                              (mt/application-database-metadata-provider (mt/id))
+                                              (mt/metadata-provider)
                                               (mt/id :orders :product_id)
                                               (mt/id :products :title))
               (do-tests))))))))
@@ -1014,7 +1014,7 @@
     (mt/dataset test-data
       (let [remap-metadata-provider (fn []
                                       (lib.tu/remap-metadata-provider
-                                       (mt/application-database-metadata-provider (mt/id))
+                                       (mt/metadata-provider)
                                        (mt/id :orders :product_id)
                                        (mt/id :products :title)))
             mbql-sandbox-results (met/with-gtaps! {:gtaps (mt/$ids

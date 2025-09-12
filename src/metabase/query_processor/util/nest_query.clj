@@ -153,7 +153,11 @@
                   (log/debugf "Keeping used ref:\n%s" (u/pprint-to-str a-ref))
                   (log/debugf "Removing unused ref:\n%s" (u/pprint-to-str (keep-source+alias-props a-ref))))))
             (remove-unused [refs]
-              (filterv used?* refs))]
+              (into []
+                    (comp (filter used?*)
+                          (m/distinct-by (fn [[_tag _id-or-name opts]]
+                                           (::add/desired-alias opts))))
+                    refs))]
       (update source :fields remove-unused))))
 
 (defn- append-join-fields
