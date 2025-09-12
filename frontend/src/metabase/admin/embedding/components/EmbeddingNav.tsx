@@ -8,12 +8,13 @@ import {
 import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
 import { Divider, Flex, Stack } from "metabase/ui";
 
 export function EmbeddingNav() {
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
-  const hasInteractiveEmbedding = useHasTokenFeature("embedding");
+  const hasInteractiveEmbedding = PLUGIN_EMBEDDING.isEnabled();
   const hasSdkEmbedding = useHasTokenFeature("embedding_sdk");
 
   return (
