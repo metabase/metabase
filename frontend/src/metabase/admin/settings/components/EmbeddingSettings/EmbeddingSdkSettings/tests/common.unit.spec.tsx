@@ -118,6 +118,24 @@ describe("EmbeddingSdkSettings (OSS)", () => {
       screen.queryByRole("link", { name: "Request version pinning" }),
     ).not.toBeInTheDocument();
   });
+
+  it("should show cards with related settings", async () => {
+    await setup({
+      isEmbeddingSdkEnabled: true,
+      showSdkEmbedTerms: false,
+    });
+
+    const relatedSettingCards = await screen.findAllByTestId(
+      "related-setting-card",
+    );
+    expect(relatedSettingCards).toHaveLength(5);
+
+    expect(await screen.findByText("Authentication")).toBeInTheDocument();
+    expect(await screen.findByText("Databases")).toBeInTheDocument();
+    expect(await screen.findByText("People")).toBeInTheDocument();
+    expect(await screen.findByText("Permissions")).toBeInTheDocument();
+    expect(await screen.findByText("Appearance")).toBeInTheDocument();
+  });
 });
 
 function assertLegaleseModal() {

@@ -2,6 +2,10 @@ import { useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
+import {
+  RelatedSettingsSection,
+  getModularEmbeddingRelatedSettingItems,
+} from "metabase/admin/components/RelatedSettingsSection";
 import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashboardModal";
 import { AddDataModal } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal";
 import { Stack, Text, Title } from "metabase/ui";
@@ -72,6 +76,9 @@ export const EmbeddingHub = () => {
         <Text c="var(--mb-color-text-secondary)">{t`Follow the guide to get started with Embedded Analytics JS`}</Text>
       </Stack>
       <StepperWithCards steps={stepperSteps} />
+      <RelatedSettingsSection
+        items={getModularEmbeddingRelatedSettingItems()}
+      />
       <AddDataModal
         opened={openedModal?.type === "add-data"}
         onClose={closeModal}
