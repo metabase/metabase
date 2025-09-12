@@ -25,9 +25,9 @@ export interface ListSnippetsParams {
 }
 
 export interface CreateSnippetRequest {
-  content: string;
   name: string;
-  description?: string;
+  content: string;
+  description?: string | null;
   collection_id?: RegularCollectionId | null;
 }
 

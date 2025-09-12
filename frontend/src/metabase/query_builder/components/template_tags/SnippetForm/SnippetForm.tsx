@@ -1,10 +1,9 @@
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
-import { canonicalCollectionId } from "metabase/collections/utils";
 import Button from "metabase/common/components/Button";
 import FormErrorMessage from "metabase/common/components/FormErrorMessage";
 import FormInput from "metabase/common/components/FormInput";
@@ -36,18 +35,11 @@ export type SnippetFormValues = Pick<
   "name" | "description" | "content" | "collection_id"
 >;
 
-export type UpdateSnippetFormValues = Partial<SnippetFormValues> &
-  Pick<NativeQuerySnippet, "id"> & {
-    archived?: boolean;
-  };
-
 export interface SnippetFormOwnProps {
-  snippet:
-    | NativeQuerySnippet
-    | (Omit<Partial<NativeQuerySnippet>, "id"> & { id: undefined });
-  onCreate: (snippet: SnippetFormValues) => Promise<NativeQuerySnippet>;
-  onUpdate: (snippet: UpdateSnippetFormValues) => Promise<NativeQuerySnippet>;
-  onArchive?: () => void;
+  snippet?: Partial<SnippetFormValues>;
+  isEditing: boolean;
+  onSubmit: (snippet: SnippetFormValues) => void | Promise<void>;
+  onArchive?: () => void | Promise<void>;
   onCancel?: () => void;
 }
 
@@ -59,12 +51,11 @@ type SnippetFormProps = SnippetFormOwnProps & SnippetLoaderProps;
 function SnippetForm({
   snippet,
   snippetCollections,
-  onCreate,
-  onUpdate,
+  isEditing,
+  onSubmit,
   onArchive,
   onCancel,
 }: SnippetFormProps) {
-  const isEditing = snippet.id != null;
   const hasManyCollections = snippetCollections.length > 1;
 
   const initialValues = useMemo(
@@ -72,30 +63,18 @@ function SnippetForm({
       SNIPPET_SCHEMA.cast(
         {
           ...snippet,
-          content: snippet.content || "",
-          parent_id: canonicalCollectionId(snippet.id),
+          content: snippet?.content || "",
         },
         { stripUnknown: true },
       ),
     [snippet],
   );
 
-  const handleSubmit = useCallback(
-    async (values: SnippetFormValues) => {
-      if (isEditing && snippet.id) {
-        await onUpdate({ ...values, id: snippet.id });
-      } else {
-        await onCreate(values);
-      }
-    },
-    [snippet.id, isEditing, onCreate, onUpdate],
-  );
-
   return (
     <FormProvider
       initialValues={initialValues}
       validationSchema={SNIPPET_SCHEMA}
-      onSubmit={handleSubmit}
+      onSubmit={onSubmit}
     >
       {({ dirty }) => (
         <Form disabled={!dirty} className={S.SnippetForm}>

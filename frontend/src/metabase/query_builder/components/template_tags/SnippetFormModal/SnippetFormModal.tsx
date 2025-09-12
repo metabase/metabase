@@ -5,17 +5,16 @@ import Snippets from "metabase/entities/snippets";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Flex, Modal } from "metabase/ui";
-import type { NativeQuerySnippet } from "metabase-types/api";
+import type {
+  CreateSnippetRequest,
+  NativeQuerySnippet,
+  UpdateSnippetRequest,
+} from "metabase-types/api";
 
-import SnippetForm, {
-  type SnippetFormValues,
-  type UpdateSnippetFormValues,
-} from "../SnippetForm";
+import SnippetForm, { type SnippetFormValues } from "../SnippetForm";
 
 type SnippetModalProps = {
-  snippet:
-    | NativeQuerySnippet
-    | (Omit<Partial<NativeQuerySnippet>, "id"> & { id?: undefined });
+  snippet: NativeQuerySnippet | Partial<Omit<NativeQuerySnippet, "id">>;
   onCreate: (snippet: NativeQuerySnippet) => void;
   onUpdate: (
     nextSnippet: NativeQuerySnippet,
@@ -32,13 +31,13 @@ export function SnippetFormModal({
   ...props
 }: SnippetModalProps) {
   const dispatch = useDispatch();
-  const isEditing = snippet.id != null;
+  const isEditing = isSavedSnippet(snippet);
   const modalTitle = isEditing
     ? t`Editing ${snippet.name}`
     : t`Create your new snippet`;
 
   const handleCreate = useCallback(
-    async (values: SnippetFormValues) => {
+    async (values: CreateSnippetRequest) => {
       const action = await dispatch(Snippets.actions.create(values));
       const snippet = Snippets.HACK_getObjectFromAction(action);
       onCreate?.(snippet);
@@ -48,11 +47,11 @@ export function SnippetFormModal({
   );
 
   const handleUpdate = useCallback(
-    async (values: UpdateSnippetFormValues) => {
-      if (snippet.id == null) {
+    async (values: UpdateSnippetRequest) => {
+      if (!isSavedSnippet(snippet)) {
         return;
       }
-      const action = await dispatch(Snippets.actions.update(values));
+      const action = await dispatch(Snippets.actions.update(snippet, values));
       const nextSnippet = Snippets.HACK_getObjectFromAction(action);
       onUpdate?.(nextSnippet, snippet);
       onClose?.();
@@ -61,6 +60,9 @@ export function SnippetFormModal({
   );
 
   const handleArchive = useCallback(async () => {
+    if (!isSavedSnippet(snippet)) {
+      return;
+    }
     await dispatch(Snippets.actions.update({ id: snippet.id, archived: true }));
     onClose?.();
   }, [snippet, dispatch, onClose]);
@@ -77,6 +79,17 @@ export function SnippetFormModal({
       throw error;
     },
   });
+
+  const handleSubmit = useCallback(
+    async (values: SnippetFormValues) => {
+      if (isSavedSnippet(snippet)) {
+        await handleInitialSave({ ...values, id: snippet.id });
+      } else {
+        await handleCreate(values);
+      }
+    },
+    [snippet, handleCreate, handleInitialSave],
+  );
 
   return (
     <Modal.Root padding="xl" opened onClose={onClose}>
@@ -105,8 +118,7 @@ export function SnippetFormModal({
             <SnippetForm
               {...props}
               snippet={snippet}
-              onCreate={handleCreate}
-              onUpdate={handleInitialSave}
+              onSubmit={handleSubmit}
               onArchive={handleArchive}
               onCancel={onClose}
             />
@@ -115,4 +127,10 @@ export function SnippetFormModal({
       </Modal.Content>
     </Modal.Root>
   );
+}
+
+function isSavedSnippet(
+  snippet: NativeQuerySnippet | Partial<Omit<NativeQuerySnippet, "id">>,
+): snippet is NativeQuerySnippet {
+  return "id" in snippet;
 }
