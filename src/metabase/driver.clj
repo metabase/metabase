@@ -1305,7 +1305,19 @@
   :hierarchy #'hierarchy)
 
 (defmulti insert-from-source!
-  "Inserts data from a data source into an existing table."
+  "Inserts data from a data source into an existing table. Table must exist. Blocks until completion.
+
+  `table-definition` is a map with `:name` (may be schema-qualified) and `:columns`
+  (vector of maps with `:name` and optional `:type`, `:database-type`). Column order must match data row order.
+
+  `data-source` dispatches on `:type`. Built-in types include `:csv-file` (with `:file`) and `:rows`
+  (with `:data` as reducible of row vectors). Drivers may implement additional types.
+
+  Implementations may leave partial data on failure, the method makes no rollback guarantees.
+  Data visibility to other connections is not guaranteed immediately.
+
+  A default implementation for `:csv-file` data-source is provided, which delegates to a `:rows`
+  data-source. Non-jdbc drivers must at least implement a `:rows` datasource."
   {:added "0.57.0", :arglists '([driver database-id table-definition data-source])}
   (fn [driver _ _ data-source]
     [(dispatch-on-initialized-driver driver) (:type data-source)])
@@ -1390,7 +1402,7 @@
   :hierarchy #'hierarchy)
 
 (defmulti type->database-type
-  "Returns the database type for a given Metabase type (from the type hierarchy) as a HoneySQL spec."
+  "Returns the database type for a given Metabase type as a HoneySQL spec."
   {:added "0.57.0", :arglists '([driver base-type])}
   (fn [driver _base-type] driver)
   :hierarchy #'hierarchy)
