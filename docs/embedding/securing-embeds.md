@@ -162,7 +162,7 @@ For code samples, see the [static embedding reference app](https://github.com/me
 
 ## Modular and interactive embedding auth with JWT or SAML
 
-Modular embedding (using Embedded Analytics [SDK](./sdk/introduction.md) or [JS](./embedded-analytics-js.md) component), and [interactive full-app embedding](./interactive-embedding.md) integrate  with SSO (either [JWT](../people-and-groups/authenticating-with-jwt.md) or [SAML](../people-and-groups/authenticating-with-saml.md)) to authenticate and authorize people in one flow. The auth integration makes it easy to map user attributes (such as a person's role or department) to granular levels of data access, including:
+Modular embedding (using Embedded Analytics [SDK](./sdk/introduction.md) or [JS](./embedded-analytics-js.md) components), and [interactive full-app embedding](./interactive-embedding.md) integrate  with SSO (either [JWT](../people-and-groups/authenticating-with-jwt.md) or [SAML](../people-and-groups/authenticating-with-saml.md)) to authenticate and authorize people in one flow. The auth integration makes it easy to map user attributes (such as a person's role or department) to granular levels of data access, including:
 
 - [Tables](../permissions/data.md)
 - [Rows](../permissions/row-and-column-security.md#row-level-security-filter-by-a-column-in-the-table)
