@@ -464,7 +464,7 @@ describe("question moving", () => {
     cy.intercept("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
       statusCode: 400,
       body: { message: "Sorry buddy, only cool kids in this collection" },
-    });
+    }).as("updateQuestion");
 
     H.appBar().findByText("Our analytics").should("be.visible");
     cy.findByTestId("qb-header-action-panel")
