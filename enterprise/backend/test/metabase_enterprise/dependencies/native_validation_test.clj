@@ -6,8 +6,15 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]))
 
+(defn- validates?
+  [mp driver card-id expected]
+  (is (= expected
+         (->> (lib.metadata/card mp card-id)
+              :dataset-query
+              (deps.native-validation/validate-native-query driver mp)))))
+
 (deftest basic-deps-test
-  (let [mp (deps.tu/default-metadata-provider)
+  (let [mp     (deps.tu/default-metadata-provider)
         driver (:engine (lib.metadata/database mp))]
     (is (= #{{:table (meta/id :products)}}
            (->> (lib.metadata/card mp 4)
@@ -38,3 +45,47 @@
            (->> (lib.metadata/card mp 9)
                 :dataset-query
                 (deps.native-validation/native-query-deps driver mp))))))
+
+(deftest validate-native-query-with-subquery-columns-test
+  (testing "validate-native-query should detect invalid columns in subqueries"
+    (let [mp (deps.tu/default-metadata-provider)
+          driver (:engine (lib.metadata/database mp))]
+
+      (testing "Valid query - selecting existing columns from subquery"
+        (validates? mp driver 10 true))
+
+      (testing "Invalid query - selecting non-existent column from subquery"
+        (validates? mp driver 11 false)
+        (validates? mp driver 12 false))
+
+      (testing "Nested subqueries"
+        (validates? mp driver 13 true)
+        (validates? mp driver 14 false))
+
+      (testing "SELECT * from subquery expands to subquery columns"
+        (validates? mp driver 15 true)
+        (validates? mp driver 16 true)
+        (validates? mp driver 17 false)))))
+
+(deftest validate-card-reference-after-expansion-test
+  (testing "Validation of queries after card references have been expanded"
+    (let [mp (deps.tu/default-metadata-provider)
+          driver (:engine (lib.metadata/database mp))]
+
+      (testing "Card reference expanded to subquery - valid columns"
+        (validates? mp driver 18 true))
+
+      (testing "Card reference expanded to subquery - invalid column"
+        (validates? mp driver 19 false))
+
+      (testing "Card reference with alias - valid column"
+        (validates? mp driver 20 true))
+
+      (testing "Card reference with alias - invalid column"
+        (validates? mp driver 21 false))
+
+      (testing "Wildcard selection from card reference"
+        (validates? mp driver 22 true))
+
+      (testing "Invalid column from aliased card"
+        (validates? mp driver 23 false)))))
