@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import Snippets from "metabase/entities/snippets";
@@ -24,12 +24,12 @@ type SnippetModalProps = {
 };
 
 export function SnippetFormModal({
-  snippet,
+  snippet: initialSnippet,
   onCreate,
   onUpdate,
   onClose,
-  ...props
 }: SnippetModalProps) {
+  const [snippet, setSnippet] = useState(initialSnippet);
   const dispatch = useDispatch();
   const isEditing = isSavedSnippet(snippet);
   const modalTitle = isEditing
@@ -83,6 +83,7 @@ export function SnippetFormModal({
   const handleSubmit = useCallback(
     async (values: SnippetFormValues) => {
       if (isSavedSnippet(snippet)) {
+        setSnippet({ ...snippet, ...values });
         await handleInitialSave({ ...values, id: snippet.id });
       } else {
         await handleCreate(values);
@@ -116,8 +117,8 @@ export function SnippetFormModal({
             />
           ) : (
             <SnippetForm
-              {...props}
               snippet={snippet}
+              isEditing={isEditing}
               onSubmit={handleSubmit}
               onArchive={handleArchive}
               onCancel={onClose}
