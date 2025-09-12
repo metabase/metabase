@@ -700,7 +700,8 @@ export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
 
 export const PLUGIN_METABOT = {
   isEnabled: () => false,
-  Metabot: (_props: { hide?: boolean }) => null as React.ReactElement | null,
+  Metabot: (_props: { hide?: boolean; emptyConvoText?: string }) =>
+    null as React.ReactElement | null,
   defaultMetabotContextValue,
   MetabotContext: React.createContext(defaultMetabotContextValue),
   getMetabotProvider: () => {

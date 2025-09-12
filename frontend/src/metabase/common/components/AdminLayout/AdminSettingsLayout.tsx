@@ -1,4 +1,5 @@
 import type React from "react";
+import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useSelector } from "metabase/lib/redux";
@@ -47,7 +48,10 @@ export const AdminSettingsLayout = ({
           </Box>
         </Box>
 
-        <PLUGIN_METABOT.Metabot hide={!isMetabotEnabledForRoute} />
+        <PLUGIN_METABOT.Metabot
+          hide={!isMetabotEnabledForRoute}
+          emptyConvoText={t`Let's transform your data together!`}
+        />
       </Box>
     </Box>
   );

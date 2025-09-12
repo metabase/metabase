@@ -27,7 +27,11 @@ import { Messages } from "./MetabotChatMessage";
 import { MetabotThinking } from "./MetabotThinking";
 import { useScrollManager } from "./hooks";
 
-export const MetabotChat = () => {
+export const MetabotChat = ({
+  emptyConvoText,
+}: {
+  emptyConvoText?: string;
+}) => {
   const metabot = useMetabotAgent();
   const { handleSubmitInput, handleRetryMessage, handleResetInput } =
     useMetabotChatHandlers();
@@ -103,11 +107,10 @@ export const MetabotChat = () => {
                 data-testid="metabot-empty-chat-info"
               >
                 <Box component={EmptyDashboardBot} w="6rem" />
-                <Text
-                  c="text-light"
-                  maw="12rem"
-                  ta="center"
-                >{t`I can help you explore your metrics and models.`}</Text>
+                <Text c="text-light" maw="12rem" ta="center">
+                  {emptyConvoText ??
+                    t`I can help you explore your metrics and models.`}
+                </Text>
               </Flex>
               {/* empty state with suggested prompts */}
               <Stack
