@@ -2,14 +2,10 @@ import { useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-<<<<<<< HEAD
-=======
 import {
   RelatedSettingsSection,
   getModularEmbeddingRelatedSettingItems,
 } from "metabase/admin/components/RelatedSettingsSection";
-import MetabotLogo from "metabase/common/components/MetabotLogo";
->>>>>>> 229a09bd6d4 (fix related card sizing)
 import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashboardModal";
 import { AddDataModal } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal";
 import { Stack, Text, Title } from "metabase/ui";
@@ -77,37 +73,12 @@ export const EmbeddingHub = () => {
           c="var(--mb-color-text-primary)"
         >{t`Embedding setup guide`}</Title>
 
-<<<<<<< HEAD
         <Text c="var(--mb-color-text-secondary)">{t`Follow the guide to get started with Embedded Analytics JS`}</Text>
-=======
-          <Text fw="bold" size="lg" c="var(--mb-color-text-dark)">{t`Get started
-         with Embedded Analytics JS and SDK for React`}</Text>
-        </Group>
-        <StepperWithCards steps={stepperSteps} />
-
-        <RelatedSettingsSection
-          items={getModularEmbeddingRelatedSettingItems()}
-        />
-        <AddDataModal
-          opened={openedModal?.type === "add-data"}
-          onClose={closeModal}
-          initialTab={
-            openedModal?.type === "add-data"
-              ? openedModal?.initialTab
-              : undefined
-          }
-        />
-        <CreateDashboardModal
-          opened={openedModal?.type === "new-dashboard"}
-          onClose={closeModal}
-        />
-        <EmbeddingHubXrayPickerModal
-          opened={openedModal?.type === "xray-dashboard"}
-          onClose={closeModal}
-        />
->>>>>>> 229a09bd6d4 (fix related card sizing)
       </Stack>
       <StepperWithCards steps={stepperSteps} />
+      <RelatedSettingsSection
+        items={getModularEmbeddingRelatedSettingItems()}
+      />
       <AddDataModal
         opened={openedModal?.type === "add-data"}
         onClose={closeModal}
