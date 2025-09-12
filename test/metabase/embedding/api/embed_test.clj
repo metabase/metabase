@@ -546,13 +546,12 @@
                                         :display-name "Filter"
                                         :id           "_filter_"
                                         :type         "text"}}}}
-   :enable_embedding true
-   :embedding_params {:filter :enabled}})
+   :enable_embedding true})
 
 (deftest empty-string-value-card-query-test
   (testing "GET /api/embed/card/:token/query"
     (with-embedding-enabled-and-new-secret-key!
-      (mt/with-temp [:model/Card card (card-with-empty-string-filter)]
+      (mt/with-temp [:model/Card card (assoc (card-with-empty-string-filter) :embedding_params {:filter :enabled})]
         (testing "an empty string value should be passed to the query"
           (is (= [[10]]
                  (mt/rows (client/client :get 202 (card-query-url card "")
@@ -977,9 +976,10 @@
           (testing "check this is the same result as when a default value is provided"
             (is (= [[107]]
                    (mt/rows (client/client :get 202 (str (dashcard-url dashcard) "?date=Q1-2014")))))))
-        (testing "an empty value should apply if provided as an empty string in the query params"
+        (testing "an empty value should apply if provided as nil in the query params"
           (is (= [[1000]]
-                 (mt/rows (client/client :get 202 (str (dashcard-url dashcard) "?date="))))))
+                 (mt/rows (client/client :get 202 (str (dashcard-url dashcard))
+                                         :parameters (json/encode {:date nil}))))))
         (testing "an empty value should apply if provided as nil in the JWT params"
           (is (= [[1000]]
                  (mt/rows (client/client :get 202 (dashcard-url dashcard {:params {:date nil}}))))))
