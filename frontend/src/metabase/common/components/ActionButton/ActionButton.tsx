@@ -7,14 +7,13 @@ import {
   useRef,
   useState,
 } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import Button, { type ButtonProps } from "metabase/common/components/Button";
-import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import type { CancellablePromise } from "metabase/lib/promise";
 import { cancelable } from "metabase/lib/promise";
-import { Center, Icon, Loader } from "metabase/ui";
+import { Button, type ButtonProps, Icon } from "metabase/ui";
 
 export interface ActionButtonProps extends Omit<ButtonProps, "onClick"> {
   // need to expose this ref to allow Tooltip to bind to the correct element
@@ -26,9 +25,6 @@ export interface ActionButtonProps extends Omit<ButtonProps, "onClick"> {
   useLoadingSpinner?: boolean;
   actionFn: () => Promise<unknown>;
   className?: string;
-  successClassName?: string;
-  failedClassName?: string;
-  forceActiveStyle?: boolean;
   children?: React.ReactNode;
 }
 
@@ -45,10 +41,7 @@ export const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
       successText = t`Saved`,
       useLoadingSpinner = false,
       actionFn,
-      className = ButtonsS.Button,
-      successClassName = ButtonsS.ButtonSuccess, // not used
-      failedClassName = ButtonsS.ButtonDanger, // not used
-      forceActiveStyle = false,
+      className = "",
       children,
       innerRef,
       ...buttonProps
@@ -117,33 +110,35 @@ export const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
     const isActionDisabled = active || result === "success";
     const actionStatus = active ? "pending" : (result ?? "idle");
 
+    const color = match({ result })
+      .with({ result: "success" }, () => "success")
+      .with({ result: "failed" }, () => "danger")
+      .otherwise(() => buttonProps.color || "brand");
+
+    // success and failure are always "filled" variant
+    const variant = match({ result })
+      .with({ result: "success" }, () => "filled")
+      .with({ result: "failed" }, () => "filled")
+      .otherwise(() => buttonProps.variant || "filled");
+
     return (
       <Button
-        {...buttonProps}
+        loading={active && useLoadingSpinner}
         ref={innerRef}
         data-action-status={actionStatus}
-        className={
-          forceActiveStyle
-            ? ButtonsS.Button
-            : cx(className, {
-                [successClassName]: result === "success",
-                [failedClassName]: result === "failed",
-                [CS.pointerEventsNone]: isActionDisabled,
-              })
-        }
+        {...buttonProps}
+        variant={variant}
+        color={color}
+        className={cx(className, {
+          [CS.pointerEventsNone]: isActionDisabled,
+        })}
         onClick={handleClick}
       >
         {active ? (
-          useLoadingSpinner ? (
-            <Center px="2rem">
-              <Loader size="sm" color="white" data-testid="loading-indicator" />
-            </Center>
-          ) : (
-            activeText
-          )
+          activeText
         ) : result === "success" ? (
           <span>
-            {forceActiveStyle ? null : <Icon name="check" size={12} />}
+            <Icon name="check" size={12} />
             <span className={CS.ml1}>{successText}</span>
           </span>
         ) : result === "failed" ? (

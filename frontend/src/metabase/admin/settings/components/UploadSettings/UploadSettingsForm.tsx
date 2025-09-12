@@ -237,7 +237,7 @@ export function UploadSettingsFormView({
               disabled={!hasValidSettings}
               failedText={t`Failed to save upload settings`}
               actionFn={handleEnableUploads}
-              primary
+              color="brand"
               useLoadingSpinner
               type="submit"
             />
@@ -251,7 +251,7 @@ export function UploadSettingsFormView({
               failedText={t`Failed to disable uploads`}
               actionFn={handleDisableUploads}
               type="button"
-              danger
+              color="danger"
               useLoadingSpinner
             />
           )
@@ -264,7 +264,7 @@ export function UploadSettingsFormView({
             }
             failedText={t`Failed to enable uploads`}
             actionFn={handleEnableUploads}
-            primary={!!hasValidSettings}
+            color={"brand"}
             disabled={!hasValidSettings || !hasValidDatabases}
             useLoadingSpinner
             type="submit"

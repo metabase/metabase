@@ -21,8 +21,6 @@ import {
   DatabaseInfoSectionDivider,
 } from "../DatabaseInfoSection";
 
-import S from "./DatabaseConnectionInfoSection.module.css";
-
 export const DatabaseConnectionInfoSection = ({
   database,
 }: {
@@ -76,7 +74,7 @@ export const DatabaseConnectionInfoSection = ({
       <Flex gap="sm" wrap="wrap">
         {!isSynced && <Button disabled>{t`Syncing database…`}</Button>}
         <ActionButton
-          className={S.actionButton}
+          variant="default"
           actionFn={handleSyncDatabaseSchema}
           normalText={t`Sync database schema`}
           activeText={t`Starting…`}
@@ -84,7 +82,7 @@ export const DatabaseConnectionInfoSection = ({
           successText={t`Sync triggered!`}
         />
         <ActionButton
-          className={S.actionButton}
+          variant="default"
           actionFn={() => rescanDatabaseFieldValues(database.id).unwrap()}
           normalText={t`Re-scan field values`}
           activeText={t`Starting…`}
@@ -93,7 +91,7 @@ export const DatabaseConnectionInfoSection = ({
         />
         {!isSynced && (
           <ActionButton
-            className={S.actionButton}
+            variant="default"
             actionFn={handleDismissSyncSpinner}
             normalText={t`Dismiss sync spinner manually`}
             activeText={t`Dismissing…`}
