@@ -115,7 +115,7 @@ export function TransformQueryPageBody({
   };
 
   return (
-    <AdminSettingsLayout fullWidthContent>
+    <AdminSettingsLayout fullWidthContent key={transform.id}>
       <QueryEditor
         initialQuery={initialQuery}
         transform={transform}
