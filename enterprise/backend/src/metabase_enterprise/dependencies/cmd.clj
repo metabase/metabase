@@ -11,7 +11,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(defn load-and-check [path]
+(defn check-dependencies [path]
   (binding [mdb.connection/*application-db*
             (mdb.connection/application-db :h2
                                            (mdb.data-source/broken-out-details->DataSource
