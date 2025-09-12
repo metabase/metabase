@@ -31,9 +31,18 @@
           (println "Checking dependencies for database" db-id)
           (if (seq card-ids)
             (try
-              (print (u/pprint-to-str
-                      (deps/check-cards-have-sound-refs mp card-ids transform-ids)))
+              (let [{:keys [cards transforms]} (deps/check-cards-have-sound-refs mp card-ids transform-ids)]
+                (if (or (seq cards) (seq transforms))
+                  (do (doseq [card-id (keys cards)]
+                        (println "Card"
+                                 (t2/select-one-fn :name :model/Card :id card-id)
+                                 "is bad"))
+                      (doseq [transform-id (keys transforms)]
+                        (println "Transform"
+                                 (t2/select-one-fn :name :model/Transform :id transform-id)
+                                 "is bad")))
+                  (println "All cards and transforms are valid")))
               (catch Throwable e
-                (println "Checking dependencies for databaes" db-id "failed")
+                (println "Checking dependencies for database" db-id "failed")
                 (println (ex-message e))))
             (println "No cards found")))))))
