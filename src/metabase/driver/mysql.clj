@@ -297,21 +297,6 @@
   [_]
   :sunday)
 
-(defmethod driver/rename-tables :mysql
-  [_driver db-id rename-map]
-  (let [rename-pairs (-> rename-map
-                         (update-vals vector)
-                         u/topological-sort
-                         (update-vals first))
-        quote-name (fn [table-name]
-                     (str "`" (name table-name) "`"))
-        rename-clauses (mapv (fn [[from-table to-table]]
-                               (str (quote-name from-table) " TO " (quote-name to-table)))
-                             rename-pairs)
-        sql (str "RENAME TABLE " (str/join ", " rename-clauses))]
-    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
-      (jdbc/execute! conn [sql]))))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
