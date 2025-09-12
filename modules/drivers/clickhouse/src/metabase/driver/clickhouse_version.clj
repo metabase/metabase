@@ -39,7 +39,7 @@
                                       :minor (.getInt ver-rset 3)})
 
             (.next cloud-rset)
-            (assoc :cloud? (.getBoolean cloud-rset 1)))))))
+            (assoc :cloud (.getBoolean cloud-rset 1)))))))
    :ttl/threshold default-cache-ttl))
 
 (defmethod driver/dbms-version :clickhouse
