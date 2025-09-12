@@ -1645,3 +1645,9 @@
                                                :join-alias                                        "ord1"
                                                :metabase.lib.query/transformation-added-base-type true}
                                        "USER_ID"])))))
+
+(deftest ^:parallel dimension->mbql5-test
+  (is (=? [:dimension
+           {:stage-number 0, :lib/uuid string?}
+           [:field {:base-type :type/BigInteger, :lib/uuid string?} 49]]
+          (lib.convert/->pMBQL [:dimension [:field 49 {:base-type :type/BigInteger}] {:stage-number 0}]))))
