@@ -1,13 +1,21 @@
+import userEvent from "@testing-library/user-event";
+
 import { render, screen } from "__support__/ui";
 
-import type { StepperStep } from "./StepperWithCards";
+import type { StepperCardClickAction, StepperStep } from "./StepperWithCards";
 import { StepperWithCards } from "./StepperWithCards";
 
 const createMockSteps = (
   stepConfigs: {
     id: string;
     title: string;
-    cards: { id: string; done?: boolean; optional?: boolean }[];
+    cards: {
+      id: string;
+      done?: boolean;
+      optional?: boolean;
+      locked?: boolean;
+      clickAction?: StepperCardClickAction;
+    }[];
   }[],
 ): StepperStep[] => {
   return stepConfigs.map(({ id, title, cards }) => ({
@@ -87,5 +95,78 @@ describe("StepperWithCards", () => {
 
     const checkIcons = screen.getAllByLabelText("check icon");
     expect(checkIcons).toHaveLength(1);
+  });
+
+  it("should disable locked cards", () => {
+    const mockClickAction = jest.fn();
+    const steps = createMockSteps([
+      {
+        id: "step1",
+        title: "First Step",
+        cards: [
+          { id: "1", done: false },
+          {
+            id: "2",
+            done: false,
+            locked: true,
+            clickAction: { type: "click", onClick: mockClickAction },
+          },
+        ],
+      },
+    ]);
+
+    render(<StepperWithCards steps={steps} />);
+
+    // Lock icon should be shown
+    const lockIcon = screen.getByLabelText("lock icon");
+    expect(lockIcon).toBeInTheDocument();
+
+    // The locked card should be disabled
+    const lockedCard = screen.getByTestId("step-card-2");
+    expect(lockedCard).toBeDisabled();
+
+    // Clicking the disabled card should not trigger the action
+    userEvent.click(lockedCard);
+    expect(mockClickAction).not.toHaveBeenCalled();
+
+    // The step should not be marked as done
+    const allSteps = screen.getAllByRole("button");
+    expect(allSteps).toHaveLength(2);
+    expect(allSteps[0]).toHaveAttribute("data-done", "false");
+
+    // No steps should be marked as done
+    const checkIcons = screen.queryAllByLabelText("check icon");
+    expect(checkIcons).toHaveLength(0);
+  });
+
+  it("should not create links for locked cards with link actions", () => {
+    const steps = createMockSteps([
+      {
+        id: "step1",
+        title: "First Step",
+        cards: [
+          { id: "1", done: false },
+          {
+            id: "2",
+            done: false,
+            locked: true,
+            clickAction: {
+              type: "link",
+              to: "/test-link",
+            },
+          },
+        ],
+      },
+    ]);
+
+    render(<StepperWithCards steps={steps} />);
+
+    // Should not find any links since the locked card shouldn't create one
+    const links = screen.queryAllByRole("link");
+    expect(links).toHaveLength(0);
+
+    // Lock icon should still be present
+    const lockIcon = screen.getByLabelText("lock icon");
+    expect(lockIcon).toBeInTheDocument();
   });
 });

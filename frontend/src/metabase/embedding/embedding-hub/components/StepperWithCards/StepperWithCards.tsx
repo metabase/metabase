@@ -24,6 +24,7 @@ export interface StepperCard {
 
   optional?: boolean;
   done?: boolean;
+  locked?: boolean;
 
   clickAction?: StepperCardClickAction;
 }
@@ -76,9 +77,12 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                       <Card
                         className={cx(S.stepCard, {
                           [S.optionalStepCard]: card.optional,
+                          [S.lockedStepCard]: card.locked,
                         })}
                         component={onClick ? "button" : undefined}
                         onClick={onClick}
+                        disabled={card.locked}
+                        data-testid={`step-card-${card.id}`}
                       >
                         <Stack justify="space-between" h="100%">
                           <Stack gap="xs" h="100%">
@@ -103,7 +107,7 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                             </Text>
                           </Stack>
 
-                          {(card.optional || card.done) && (
+                          {(card.optional || card.done || card.locked) && (
                             <Flex justify="flex-end">
                               {match(card)
                                 .with({ done: true }, () => (
@@ -113,6 +117,12 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                                   >
                                     {t`Done`}
                                   </Text>
+                                ))
+                                .with({ locked: true }, () => (
+                                  <Icon
+                                    name="lock"
+                                    c="var(--mb-color-text-secondary)"
+                                  />
                                 ))
                                 .with({ optional: true }, () => (
                                   <Text
@@ -153,5 +163,11 @@ const CardAction = ({
         {children}
       </DocsLink>
     ))
-    .with({ type: "link" }, ({ to }) => <Link to={to}>{children}</Link>)
+    .with({ type: "link" }, ({ to }) => {
+      if (card.locked) {
+        return children;
+      }
+
+      return <Link to={to}>{children}</Link>;
+    })
     .otherwise(() => children);

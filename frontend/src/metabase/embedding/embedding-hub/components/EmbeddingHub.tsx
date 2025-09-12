@@ -11,7 +11,10 @@ import { AddDataModal } from "metabase/nav/containers/MainNavbar/MainNavbarConta
 import { Stack, Text, Title } from "metabase/ui";
 
 import { useCompletedEmbeddingHubSteps } from "../hooks";
-import type { EmbeddingHubModalToTrigger } from "../types/embedding-checklist";
+import type {
+  EmbeddingHubModalToTrigger,
+  EmbeddingHubStepId,
+} from "../types/embedding-checklist";
 import { getEmbeddingHubSteps } from "../utils";
 
 import { EmbeddingHubXrayPickerModal } from "./EmbeddingHubXrayPickerModal";
@@ -29,6 +32,13 @@ export const EmbeddingHub = () => {
     useState<EmbeddingHubModalToTrigger | null>(null);
 
   const closeModal = () => setOpenedModal(null);
+
+  const lockedSteps: Partial<Record<EmbeddingHubStepId, boolean>> = useMemo(
+    () => ({
+      "embed-production": !completedSteps?.["secure-embeds"],
+    }),
+    [completedSteps],
+  );
 
   const stepperSteps: StepperStep[] = useMemo(() => {
     return embeddingSteps.map((step) => ({
@@ -58,12 +68,13 @@ export const EmbeddingHub = () => {
 
           // TODO: add completion checks for the 'create models' step
           done: completedSteps?.[stepId] ?? false,
+          locked: lockedSteps?.[stepId] ?? false,
 
           clickAction,
         };
       }),
     }));
-  }, [embeddingSteps, completedSteps]);
+  }, [embeddingSteps, completedSteps, lockedSteps]);
 
   return (
     <Stack mx="auto" py="xl" gap="xl" maw={800}>
