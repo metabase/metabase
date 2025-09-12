@@ -32,8 +32,8 @@ import {
 
 import { SettingHeader } from "../../SettingHeader";
 import { AdminSettingInput } from "../../widgets/AdminSettingInput";
-import { LinkButton } from "../EmbeddingOption/LinkButton";
 import { EmbeddingToggle } from "../EmbeddingToggle";
+import { LinkButton } from "../LinkButton";
 
 import S from "./EmbeddingSdkSettings.module.css";
 

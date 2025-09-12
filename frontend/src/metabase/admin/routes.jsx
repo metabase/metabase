@@ -54,6 +54,7 @@ import {
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
 import { StrategyEditorForDatabases } from "./performance/components/StrategyEditorForDatabases";
 import { PerformanceTabId } from "./performance/types";
+import { InteractiveEmbeddingUpsellPage } from "./settings/components/EmbeddingSettings/InteractiveEmbeddingUpsellPage";
 import { getSettingsRoutes } from "./settingsRoutes";
 import { ToolsUpsell } from "./tools/components/ToolsUpsell";
 import { RedirectToAllowedSettings, createAdminRouteGuard } from "./utils";
@@ -159,9 +160,13 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           <Route
             path="interactive"
             title={t`Interactive`}
-            component={() => (
-              <PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingSettings />
-            )}
+            component={() => {
+              if (PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingSettings) {
+                return <PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingSettings />;
+              }
+
+              return <InteractiveEmbeddingUpsellPage />;
+            }}
           />
           <Route
             path="static"
