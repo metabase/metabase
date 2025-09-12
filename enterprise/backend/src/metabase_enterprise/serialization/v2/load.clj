@@ -187,12 +187,16 @@
         (log/infof "Starting deserialization, total %s documents" (count contents))
         (reduce (fn [ctx item]
                   (try
-                    (let [ingested (serdes.ingest/ingest-one ingestion item)]
-                      (if (or (nil? root-dependency-path)
-                              (contains? (set (serdes/dependencies ingested))
-                                         root-dependency-path))
-                        (load-one! ctx item)
-                        ctx))
+                    (if (or (nil? root-dependency-path)
+                            (contains? (u/traverse [item] #(try
+                                                             (zipmap (serdes/dependencies
+                                                                      (serdes.ingest/ingest-one ingestion %))
+                                                                     (repeat %))
+                                                             (catch Exception _
+                                                               nil)))
+                                       root-dependency-path))
+                      (load-one! ctx item)
+                      ctx)
                     (catch Exception e
                       (when-not continue-on-error
                         (throw e))
