@@ -136,6 +136,26 @@ describe("EmbeddingSdkSettings (OSS)", () => {
     expect(await screen.findByText("Permissions")).toBeInTheDocument();
     expect(await screen.findByText("Appearance")).toBeInTheDocument();
   });
+
+  it("shows the Embedded Analytics JS toggle is Disabled when token features are missing (EMB-801)", () => {
+    setup({ tokenFeatures: { embedding_simple: false } });
+
+    const toggle = screen.getByRole("switch", {
+      name: "Embedded Analytics JS toggle",
+    });
+
+    expect(toggle).toBeDisabled();
+
+    const toggleContainer = screen
+      .getAllByTestId("switch-with-env-var")
+      .find((toggleElement) =>
+        within(toggleElement).queryByRole("switch", {
+          name: "Embedded Analytics JS toggle",
+        }),
+      );
+
+    expect(within(toggleContainer!).getByText("Disabled")).toBeInTheDocument();
+  });
 });
 
 function assertLegaleseModal() {

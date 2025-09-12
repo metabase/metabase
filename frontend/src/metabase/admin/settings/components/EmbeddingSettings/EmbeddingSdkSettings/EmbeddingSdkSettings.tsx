@@ -156,7 +156,6 @@ export function EmbeddingSdkSettings() {
 
         <Group gap="sm" align="center" justify="space-between" w="100%">
           <EmbeddingToggle
-            label={t`Enabled`}
             settingKey="enable-embedding-sdk"
             labelPosition="right"
             aria-label={t`SDK for React toggle`}
@@ -202,7 +201,6 @@ export function EmbeddingSdkSettings() {
 
           <Group gap="sm" align="center" justify="space-between" w="100%">
             <EmbeddingToggle
-              label={t`Enabled`}
               labelPosition="right"
               settingKey="enable-embedding-simple"
               disabled={!isSimpleEmbedFeatureEnabled}
