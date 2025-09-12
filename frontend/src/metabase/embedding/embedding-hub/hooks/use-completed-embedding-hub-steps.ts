@@ -25,10 +25,11 @@ export const useCompletedEmbeddingHubSteps = (): {
         "configure-row-column-security": false,
         "secure-embeds": false,
         "embed-production": false,
+        "create-models": false,
       };
     }
 
-    return embeddingHubChecklist;
+    return { "create-models": false, ...embeddingHubChecklist };
   }, [embeddingHubChecklist, isLoading]);
 
   return { data, isLoading };
