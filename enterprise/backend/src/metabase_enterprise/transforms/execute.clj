@@ -216,7 +216,7 @@
 (defn- transfer-file-to-db [driver db {:keys [target] :as transform} metadata temp-file]
   (let [table-name (transforms.util/qualified-table-name driver target)
         table-exists? (transforms.util/target-table-exists? transform)
-        data-source {:type :csv-file
+        data-source {:type :jsonl-file
                      :file temp-file}]
     (if table-exists?
       ;; Table exists - use temp table + atomic swap pattern
@@ -295,7 +295,7 @@
                          :events          events
                          :error           (:error body)}))
         (try
-          (let [temp-file (File/createTempFile "transform-output-" ".csv")]
+          (let [temp-file (File/createTempFile "transform-output-" ".jsonl")]
             (when-not (seq (:fields output-manifest))
               (throw (ex-info "No fields in metadata"
                               {:metadata output-manifest
