@@ -8,7 +8,8 @@ import {
   useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
 import { getErrorMessage, useAdminSetting } from "metabase/api/utils";
-import ActionButton, {
+import {
+  ActionButton,
   type ActionButtonHandle,
 } from "metabase/common/components/ActionButton";
 import Alert from "metabase/common/components/Alert";
