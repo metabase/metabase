@@ -161,7 +161,7 @@ export const AgentMessage = ({
               dispatch(setSuggestedTransform(transform));
             }}
           >
-            {t`Apply Changes To: ${message.payload.name}`}
+            {t`Proposed changes to: ${message.payload.name}`}
           </Button>
         </Flex>
       )}
