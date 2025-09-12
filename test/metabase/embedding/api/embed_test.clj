@@ -528,9 +528,11 @@
             (testing "check this is different to when a non-nil value is provided"
               (is (= [[138]]
                      (mt/rows (client/client :get 202 (card-query-url card "" {:params {:date "Q2-2014"}})))))))
-          (testing "an empty string value is invalid and should result in an error"
-            (is (= "You must specify a value for :date in the JWT."
-                   (client/client :get 400 (card-query-url card "" {:params {:date ""}}))))))))))
+          (testing "an empty string value should not be converted to nil"
+            (is (= {:status     "failed"
+                    :error      "An error occurred while running the query."
+                    :error_type "qp"}
+                   (client/client :get 202 (card-query-url card "" {:params {:date ""}}))))))))))
 
 (defn- card-with-date-field-filter []
   {:dataset_query    {:database (mt/id)
@@ -969,9 +971,11 @@
               (testing "check this is different to when a non-nil value is provided"
                 (is (= [[138]]
                        (mt/rows (client/client :get 202 (dashcard-url dashcard {:params {:date "Q2-2014"}})))))))
-            (testing "an empty string value is invalid and should result in an error"
-              (is (= "You must specify a value for :date in the JWT."
-                     (client/client :get 400 (dashcard-url dashcard {:params {:date ""}})))))))))))
+            (testing "an empty string value should not be converted to nil"
+              (is (= {:status     "failed"
+                      :error      "An error occurred while running the query."
+                      :error_type "qp"}
+                     (client/client :get 202 (dashcard-url dashcard {:params {:date ""}})))))))))))
 
 ;;; -------------------------------------------------- Other Tests ---------------------------------------------------
 

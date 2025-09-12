@@ -31,12 +31,6 @@
   ;; the benefit of tests
   models.resolution/keep-me)
 
-(defn- valid-param-value?
-  "Is V a valid param value? (If it is a String, is it non-blank?)"
-  [v]
-  (or (not (string? v))
-      (not (str/blank? v))))
-
 (defn- check-params-are-allowed
   "Check that the conditions specified by `object-embedding-params` are satisfied."
   [object-embedding-params token-params user-params]
@@ -135,26 +129,28 @@
   problem with this approach is that we cannot reliably distinguish between numbers and numeric strings, as well as
   booleans and boolean strings. To fix this issue we introduced another query string parameter `:parameters` which
   contains serialized JSON with parameter values. If this object cannot be found or parsed, we fallback to plain query
-  string parameters."
+  string parameters.
+
+  For legacy query string parameters only, we replace empty strings with `nil`, representing the absence of a value. In
+  the old format, there is no way to distinguish between `nil` and an empty string; we keep this behavior for backward
+  compatibility. In the new format with JSON, there is no such an issue, and we don't do any replacement to support both
+  values."
   [query-params]
   (or (try
         (when-let [parameters (:parameters query-params)]
           (json/decode+kw parameters))
         (catch Throwable _
           nil))
-      query-params
+      (update-vals query-params (fn [v] (if (= v "") nil v)))
       {}))
 
 (mu/defn normalize-query-params :- [:map-of :keyword :any]
   "Take a map of `query-params` and make sure they're in the right format for the rest of our code. Our
   `wrap-keyword-params` middleware normally converts all query params keys to keywords, but only if they seem like
   ones that make sense as keywords. Some params, such as ones that start with a number, do not pass this test, and are
-  not automatically converted. Thus we must do it ourselves here to make sure things are done as we'd expect.
-  Also, any param values that are blank strings should be parsed as nil, representing the absence of a value."
+  not automatically converted. Thus we must do it ourselves here to make sure things are done as we'd expect."
   [query-params]
-  (-> query-params
-      (update-keys keyword)
-      (update-vals (fn [v] (if (= v "") nil v)))))
+  (update-keys query-params keyword))
 
 (mu/defn validate-and-merge-params :- [:map-of :keyword :any]
   "Validate that the `token-params` passed in the JWT and the `user-params` (passed as part of the URL) are allowed, and
@@ -164,9 +160,7 @@
   [object-embedding-params :- ms/EmbeddingParams
    token-params            :- [:map-of :keyword :any]
    user-params             :- [:map-of :keyword :any]]
-  (check-param-sets object-embedding-params
-                    (m/filter-vals valid-param-value? token-params)
-                    (m/filter-vals valid-param-value? user-params))
+  (check-param-sets object-embedding-params token-params user-params)
   ;; ok, everything checks out, now return the merged params map,
   ;; but first turn empty lists into nil
   (-> (merge user-params token-params)
