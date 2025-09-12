@@ -550,16 +550,26 @@
 
 (deftest empty-string-value-card-query-test
   (testing "GET /api/embed/card/:token/query"
-    (with-embedding-enabled-and-new-secret-key!
-      (mt/with-temp [:model/Card card (assoc (card-with-empty-string-filter) :embedding_params {:filter :enabled})]
-        (testing "an empty string value should be passed to the query"
-          (is (= [[10]]
-                 (mt/rows (client/client :get 202 (card-query-url card "")
-                                         :parameters (json/encode {:filter ""}))))))
-        (testing "a non-empty string value should be distinguished from an empty string"
-          (is (= [[20]]
-                 (mt/rows (client/client :get 202 (card-query-url card "")
-                                         :parameters (json/encode {:filter "A"}))))))))))
+    (testing "query string params"
+      (with-embedding-enabled-and-new-secret-key!
+        (mt/with-temp [:model/Card card (assoc (card-with-empty-string-filter) :embedding_params {:filter :enabled})]
+          (testing "an empty string value should be passed to the query"
+            (is (= [[10]]
+                   (mt/rows (client/client :get 202 (card-query-url card "")
+                                           :parameters (json/encode {:filter ""}))))))
+          (testing "a non-empty string value should be distinguished from an empty string"
+            (is (= [[20]]
+                   (mt/rows (client/client :get 202 (card-query-url card "")
+                                           :parameters (json/encode {:filter "A"})))))))))
+    (testing "JWT params"
+      (with-embedding-enabled-and-new-secret-key!
+        (mt/with-temp [:model/Card card (assoc (card-with-empty-string-filter) :embedding_params {:filter :locked})]
+          (testing "an empty string value should be passed to the query"
+            (is (= [[10]]
+                   (mt/rows (client/client :get 202 (card-query-url card "" {:params {:filter ""}}))))))
+          (testing "a non-empty string value should be distinguished from an empty string"
+            (is (= [[20]]
+                   (mt/rows (client/client :get 202 (card-query-url card "" {:params {:filter "A"}})))))))))))
 
 (defn- card-with-date-field-filter []
   {:dataset_query    {:database (mt/id)
