@@ -7,6 +7,7 @@ import { useMetabotContext } from "metabase/metabot";
 import { trackMetabotRequestSent } from "../analytics";
 import {
   type MetabotPromptSubmissionResult,
+  type MetabotUserChatMessage,
   getAgentErrorMessages,
   getIsLongMetabotConversation,
   getIsProcessing,
@@ -89,18 +90,27 @@ export const useMetabotAgent = () => {
   );
 
   const submitInput = useCallback(
-    async (prompt: string) => {
+    async (prompt: string | Omit<MetabotUserChatMessage, "id" | "role">) => {
       if (!visible) {
         setVisible(true);
       }
 
       const context = await getChatContext();
       const action = await dispatch(
-        submitInputAction({
-          message: prompt,
-          context,
-          metabot_id: metabotRequestId,
-        }),
+        submitInputAction(
+          typeof prompt === "string"
+            ? {
+                type: "text",
+                message: prompt,
+                context,
+                metabot_id: metabotRequestId,
+              }
+            : {
+                ...prompt,
+                context,
+                metabot_id: metabotRequestId,
+              },
+        ),
       );
 
       trackMetabotRequestSent();

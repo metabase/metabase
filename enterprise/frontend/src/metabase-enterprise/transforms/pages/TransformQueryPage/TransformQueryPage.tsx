@@ -81,16 +81,24 @@ export function TransformQueryPageBody({
 
   const onRejectProposed = () => {
     dispatch(setSuggestedTransform(undefined));
-    metabot.submitInput(
-      "HIDDEN MESSAGE: user has rejected your changes, ask for clarification on what they'd like to do instead.",
-    );
+    metabot.submitInput({
+      type: "action",
+      message:
+        "HIDDEN MESSAGE: the user has rejected your changes, ask for clarification on what they'd like to do instead.",
+      // @ts-expect-error -- TODO
+      userMessage: "❌ You rejected the change",
+    });
   };
   const onAcceptProposed = async (query: DatasetQuery) => {
     await handleSave(query);
     dispatch(setSuggestedTransform(undefined));
-    metabot.submitInput(
-      "HIDDEN MESSAGE: user has accepted your changes, move to the next step!",
-    );
+    metabot.submitInput({
+      type: "action",
+      message:
+        "HIDDEN MESSAGE: user has accepted your changes, move to the next step!",
+      // @ts-expect-error -- TODO
+      userMessage: "✅ You accepted the change",
+    });
   };
 
   const handleSave = async (query: DatasetQuery) => {
