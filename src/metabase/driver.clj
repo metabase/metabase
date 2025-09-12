@@ -1289,8 +1289,6 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(declare rename-tables!*)
-
 (defmulti rename-tables!*
   "Driver-specific implementation of table renaming. Takes a pre-sorted map of {from-table to-table}.
    The input map has already been topologically sorted by the public rename-tables! function.
