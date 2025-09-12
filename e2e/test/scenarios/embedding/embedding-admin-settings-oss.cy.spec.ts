@@ -1,8 +1,16 @@
+const { H } = cy;
+
 // These tests will run on both OSS and EE instances, both without a token.
 describe(
   "scenarios > embedding > admin settings > oss",
   { tags: "@OSS" },
   () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.updateSetting("show-sdk-embed-terms", false);
+    });
+
     it("shows all embedding types without the setup guide", () => {
       cy.log("Navigate to Embedding admin section");
       cy.visit("/admin/embedding");
@@ -35,7 +43,7 @@ describe(
     it("should show interactive embedding upsell on oss", () => {
       cy.visit("/admin/embedding/interactive");
 
-      mainPage().within(() => {
+      cy.findByTestId("admin-layout-content").within(() => {
         cy.findByRole("heading", { name: "Interactive embedding" }).should(
           "be.visible",
         );
