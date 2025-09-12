@@ -366,6 +366,8 @@ import share_component from "./share.svg?component";
 import share_source from "./share.svg?source";
 import shield_component from "./shield.svg?component";
 import shield_source from "./shield.svg?source";
+import shield_outline_component from "./shield_outline.svg?component";
+import shield_outline_source from "./shield_outline.svg?source";
 import sidebar_closed_component from "./sidebar_closed.svg?component";
 import sidebar_closed_source from "./sidebar_closed.svg?source";
 import sidebar_open_component from "./sidebar_open.svg?component";
@@ -1237,6 +1239,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: shield_component,
       source: shield_source,
     },
+    shield_outline: {
+      component: shield_outline_component,
+      source: shield_outline_source,
+    },
     sidebar_closed: {
       component: sidebar_closed_component,
       source: sidebar_closed_source,
@@ -1649,6 +1655,7 @@ export type IconName =
   | "section"
   | "segment"
   | "shield"
+  | "shield_outline"
   | "sidebar_closed"
   | "sidebar_open"
   | "slack"
