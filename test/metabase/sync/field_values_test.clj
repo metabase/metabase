@@ -93,6 +93,20 @@
           (is (partial= {:values [[1] [2] [3] [4]]}
                         (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price))))))))))
 
+(deftest sync-should-properly-handle-last-used-at-advanced-field-values
+  (testing "Test that syncing will not skip active advanced FieldValues when full FieldValues are inactive"
+    (mt/with-full-data-perms-for-all-users!
+      (t2/insert! :model/FieldValues {:field_id (mt/id :venues :price)
+                                      :type :full
+                                      :last_used_at (t/minus (t/offset-date-time) (t/days 20))})
+      (t2/insert! :model/FieldValues {:field_id (mt/id :venues :price)
+                                      :type :advanced
+                                      :hash_key "random-key"
+                                      :last_used_at (t/minus (t/offset-date-time) (t/hours 2))})
+      (is (= (repeat 2 {:errors 0, :created 0, :updated 1, :deleted 0})
+             (sync-database!' "update-field-values" (data/db))))
+      (is (= [1 2 3 4] (venues-price-field-values))))))
+
 (deftest sync-should-delete-expired-advanced-field-values-test
   (testing "Test that the expired Advanced FieldValues should be removed"
     (let [field-id                  (mt/id :venues :price)
