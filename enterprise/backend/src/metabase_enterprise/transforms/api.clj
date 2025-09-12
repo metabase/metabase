@@ -244,9 +244,6 @@
     (if (transforms.util/python-transform? transform)
       (u.jvm/in-virtual-thread*
        (transforms.execute/execute-python-transform! transform {:start-promise start-promise
-                                                                :message-log   (atom {:pre-python  []
-                                                                                      :python      nil
-                                                                                      :post-python []})
                                                                 :run-method :manual}))
       (u.jvm/in-virtual-thread*
        (transforms.execute/run-mbql-transform! transform {:start-promise start-promise
