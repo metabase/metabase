@@ -6,7 +6,7 @@ import type {
   UseCheckDependenciesResult,
 } from "metabase/plugins";
 import { getSubmittableQuestion } from "metabase/query_builder/selectors";
-import { useLazyCheckTransformDependenciesQuery } from "metabase-enterprise/api";
+import { useLazyCheckCardDependenciesQuery } from "metabase-enterprise/api";
 import type Question from "metabase-lib/v1/Question";
 import type { CheckCardDependenciesRequest } from "metabase-types/api";
 
@@ -33,7 +33,7 @@ export function useCheckCardDependencies({
 
   return useCheckDependencies({
     getCheckDependenciesRequest,
-    useLazyCheckDependenciesQuery: useLazyCheckTransformDependenciesQuery,
+    useLazyCheckDependenciesQuery: useLazyCheckCardDependenciesQuery,
     onSave,
     onError,
   });
