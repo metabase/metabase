@@ -109,13 +109,13 @@ Note the `defer` attribute and the reference to your Metabase URL in the script 
 
 If you're embedding multiple entities on the same page, you only need to include the `<script>` tags once globally.
 
-You can also generate the code snippet for Embedded Analytics JS interactively in Metabase through **+ New > Embed**. Check out the [Quickstart](#quickstart).
+You can also generate the code snippet for Embedded Analytics JS interactively in Metabase through **Admin settings > Embedding > Setup guide > Create embed**. Check out the [Quickstart](#quickstart).
 
 ## Customizing embeds
 
 The exact customization options you see will depend on what type of entity you're embedding.
 
-When you're creating a new embed using **+ New > Embed**, you'll see the following customization options in the interactive creation flow. These options correspond to parameters in [components](#components).
+When you're creating a new embed using **Admin settings > Embedding > Setup guide > Create embed**, you'll see the following customization options in the interactive creation flow. These options correspond to parameters in [components](#components).
 
 - **Allow people to drill through on data points**: determines whether people can interact with the chart (or charts on a dashboard). Interactivity includes [drilling down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) to individual records from aggregated questions, filtering on click, zooming in, etc. Disabling drill-through for an embedded _question_ also disables people's ability to add filters and summaries.
 
