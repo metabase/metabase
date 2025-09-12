@@ -45,6 +45,7 @@
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema.util]
    [metabase.lib.segment :as lib.segment]
+   [metabase.lib.serialize]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.swap :as lib.swap]
    [metabase.lib.table :as lib.table]
@@ -93,6 +94,7 @@
          lib.remove-replace/keep-me
          metabase.lib.schema.util/keep-me
          lib.segment/keep-me
+         metabase.lib.serialize/keep-me
          lib.stage/keep-me
          lib.swap/keep-me
          lib.table/keep-me
@@ -400,6 +402,8 @@
  [metabase.lib.schema.util]
  [lib.segment
   available-segments]
+ [metabase.lib.serialize
+  prepare-for-serialization]
  [lib.stage
   append-stage
   drop-stage
