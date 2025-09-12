@@ -4,6 +4,9 @@
   (:refer-clojure :exclude [alias])
   (:require
    [medley.core :as m]
+   ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
+   ;; Lib soon
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]

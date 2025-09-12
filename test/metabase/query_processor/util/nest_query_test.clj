@@ -209,8 +209,8 @@
                                                                                      :source-alias "PRICE"}]
                                                                4]}
                                             :fields [[:field "ID" #::add{:source-table ::add/source
-                                                                        :source-alias  "ID"
-                                                                        :desired-alias "ID"}]
+                                                                         :source-alias  "ID"
+                                                                         :desired-alias "ID"}]
                                                      [:field "x" {:base-type          :type/Integer
                                                                   ::add/source-table  ::add/source
                                                                   ::add/source-alias  "x"

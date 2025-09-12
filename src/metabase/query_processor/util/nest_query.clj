@@ -9,7 +9,11 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.api.common :as api]
+   ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
+   ;; Lib only soon
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.schema :as mbql.s]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]

@@ -4,18 +4,17 @@
   `yyyy-MM-dd` format datetime strings."
   (:require
    [medley.core :as m]
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [metabase.lib.util :as lib.util]))
+   [metabase.util.malli.registry :as mr]))
 
 (mr/def ::column-type-info
   [:map
@@ -64,7 +63,7 @@
 
 (defn- auto-bucketable-value? [v]
   (or (yyyy-MM-dd-date-string? v)
-      (mbql.u/is-clause? :relative-datetime v)))
+      (lib.util/clause-of-type? v :relative-datetime)))
 
 (mu/defn- filter-clause?
   [query      :- ::lib.schema/query
@@ -83,7 +82,7 @@
    stage-path :- ::lib.walk/stage-path
    x]
   (and (filter-clause? query stage-path x)
-       (not (mbql.u/is-clause? #{:and :or :not} x))))
+       (not (lib.util/clause-of-type? x #{:and :or :not}))))
 
 (mr/def ::do-not-bucket-reason
   [:and
@@ -104,7 +103,7 @@
     (cond
       ;; *  is not an equality or comparison filter. e.g. wouldn't make sense to bucket a field and then check if it is
       ;;    `NOT NULL`
-      (not (mbql.u/is-clause? #{:= :!= :< :> :<= :>= :between} x))
+      (not (lib.util/clause-of-type? x #{:= :!= :< :> :<= :>= :between}))
       :do-not-bucket-reason/not-equality-or-comparison-filter
 
       ;; *  has arguments that aren't `yyyy-MM-dd` date strings. The only reason we auto-bucket datetime clauses in the
@@ -124,12 +123,12 @@
 
     ;; do not auto-bucket clauses inside a `:time-interval` filter: it already supplies its own unit
     ;; do not auto-bucket clauses inside a `:datetime-diff` clause: the precise timestamp is needed for the difference
-    (mbql.u/is-clause? #{:time-interval :datetime-diff} x)
+    (lib.util/clause-of-type? x #{:time-interval :datetime-diff})
     :do-not-bucket-reason/bucketed-or-precise-operation
 
     ;; do not autobucket clauses that already have a temporal unit, or have a binning strategy
-    (and (or (mbql.u/is-clause? :expression x)
-             (mbql.u/is-clause? :field x))
+    (and (or (lib.util/clause-of-type? x :expression)
+             (lib.util/clause-of-type? x :field))
          (let [[_tag opts _id-or-name] x]
            ((some-fn :temporal-unit :binning) opts)))
     :do-not-bucket-reason/field-with-bucketing-or-binning

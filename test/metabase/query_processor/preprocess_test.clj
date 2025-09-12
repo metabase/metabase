@@ -361,7 +361,7 @@
               (-> query
                   qp.preprocess/preprocess
                   lib/->legacy-MBQL)))
-      (is (= [ ;; orders.id, from :fields
+      (is (= [;; orders.id, from :fields
               "ID"
               ;; from the People join :fields
               "People → Longitude"

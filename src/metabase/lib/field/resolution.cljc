@@ -598,9 +598,9 @@
   "Resolve metadata for a `:field` ref. This is part of the implementation
   for [[metabase.lib.metadata.calculation/metadata-method]] a `:field` clause. Guaranteed to have
   `:lib/source-column-alias` for wherever the hecc it comes from."
-  [query                                                           :- ::lib.schema/query
-   stage-number                                                    :- :int
-   [_tag {:keys [source-field join-alias], :as opts} id-or-name, :as field-ref] :- :mbql.clause/field]
+  [query                                                                                                  :- ::lib.schema/query
+   stage-number                                                                                           :- :int
+   [_tag {:keys [source-field join-alias], :as opts} id-or-name, :as #?(:clj field-ref :cljs _field-ref)] :- :mbql.clause/field]
   ;; this is just for easier debugging
   (let [stage-number (lib.util/canonical-stage-index query stage-number)]
     (log/debugf "Resolving %s in stage %s" (pr-str id-or-name) (pr-str stage-number))

@@ -283,36 +283,35 @@
   (when (= (:lib/type col) :metadata/column)
     (let [remove-join-alias? (remove-join-alias-from-broken-field-ref? query col)]
       (-> (binding [lib.ref/*ref-style* :ref.style/broken-legacy-qp-results]
-            (let [col                                  (cond-> col
-                                                         remove-join-alias? (-> (lib.join/with-join-alias nil)
-                                                                                (assoc ::remove-join-alias? true)))
+            (let [col (cond-> col
+                        remove-join-alias? (-> (lib.join/with-join-alias nil)
+                                               (assoc ::remove-join-alias? true)))
                   [tag opts id-or-name, :as field-ref] (->> (merge
                                                              col
                                                              (when-not remove-join-alias?
                                                                (when-let [previous-join-alias (:lib/original-join-alias col)]
                                                                  {:metabase.lib.join/join-alias previous-join-alias, :lib/source :source/joins})))
                                                             lib.ref/ref)]
-              (let [fixed (cond
-                            ;; if original ref in the query used an ID then `:field-ref` should as well for historic
-                            ;; reasons.
-                            (and (or (= (:lib/original-ref-style-for-result-metadata-purposes col) :original-ref-style/id)
-                                     ;; for historic reasons implicit fields should also come back with ID refs...
-                                     ;; traditionally that's what the middleware added
-                                     (and (:id col)
-                                          (:qp/implicit-field? col))
-                                     (and (:id col)
-                                          ;; don't force ID refs when it would result in duplicates (probably not
-                                          ;; needed since [[deduplicate-field-refs]] will fix this anyway?)
-                                          (= (:lib/deduplicated-name col) (:lib/original-name col))))
-                                 (string? id-or-name))
-                            [tag (dissoc opts :base-type) (:id col)]
+              (cond
+                ;; if original ref in the query used an ID then `:field-ref` should as well for historic
+                ;; reasons.
+                (and (or (= (:lib/original-ref-style-for-result-metadata-purposes col) :original-ref-style/id)
+                         ;; for historic reasons implicit fields should also come back with ID refs...
+                         ;; traditionally that's what the middleware added
+                         (and (:id col)
+                              (:qp/implicit-field? col))
+                         (and (:id col)
+                              ;; don't force ID refs when it would result in duplicates (probably not
+                              ;; needed since [[deduplicate-field-refs]] will fix this anyway?)
+                              (= (:lib/deduplicated-name col) (:lib/original-name col))))
+                     (string? id-or-name))
+                [tag (dissoc opts :base-type) (:id col)]
 
-                            (pos-int? id-or-name)
-                            [tag (dissoc opts :base-type) id-or-name]
+                (pos-int? id-or-name)
+                [tag (dissoc opts :base-type) id-or-name]
 
-                            :else
-                            field-ref)]
-                fixed)))
+                :else
+                field-ref)))
           ;; broken legacy field refs in results medtadata should never have `:effective-type`
           (lib.options/update-options dissoc :effective-type)
           lib.convert/->legacy-MBQL

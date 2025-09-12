@@ -1,6 +1,9 @@
 (ns metabase.query-processor.preprocess
   (:require
    [metabase.config.core :as config]
+   ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
+   ;; Lib soon
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
