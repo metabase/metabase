@@ -97,7 +97,7 @@
        [:id      {:optional false} ms/PositiveInt]
        [:name    {:optional true}  native-query-snippets/NativeQuerySnippetName]
        [:content {:optional true}  :string]]]
-  (let [original   (t2/select :model/NativeQuerySnippet id)
+  (let [original   (t2/select-one :model/NativeQuerySnippet id)
         _          (when (and snippet-name
                               (not= snippet-name (:name original))
                               (t2/exists? :model/NativeQuerySnippet :name snippet-name))

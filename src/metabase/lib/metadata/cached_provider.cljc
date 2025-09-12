@@ -28,12 +28,13 @@
    id            :- pos-int?
    metadata      :- [:multi
                      {:dispatch :lib/type}
-                     [:metadata/database      ::lib.schema.metadata/database]
-                     [:metadata/table         ::lib.schema.metadata/table]
-                     [:metadata/column        ::lib.schema.metadata/column]
-                     [:metadata/card          ::lib.schema.metadata/card]
-                     [:metadata/metric        ::lib.schema.metadata/metric]
-                     [:metadata/segment       ::lib.schema.metadata/segment]]]
+                     [:metadata/database             ::lib.schema.metadata/database]
+                     [:metadata/table                ::lib.schema.metadata/table]
+                     [:metadata/column               ::lib.schema.metadata/column]
+                     [:metadata/card                 ::lib.schema.metadata/card]
+                     [:metadata/metric               ::lib.schema.metadata/metric]
+                     [:metadata/segment              ::lib.schema.metadata/segment]
+                     [:metadata/native-query-snippet ::lib.schema.metadata/native-query-snippet]]]
   (let [metadata (-> metadata
                      (perf/update-keys u/->kebab-case-en)
                      (assoc :lib/type metadata-type))]
