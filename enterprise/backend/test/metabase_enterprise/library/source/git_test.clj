@@ -2,65 +2,42 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
-   [metabase-enterprise.library.source :as source]
    [metabase-enterprise.library.source.git :as git]
-   [metabase.test :as mt]
-   [metabase.util :as u])
+   [metabase-enterprise.library.source.protocol :as source.p]
+   [metabase.test :as mt])
   (:import (java.io File)
-           (org.eclipse.jgit.api Git ResetCommand ResetCommand$ResetType)
-           (org.eclipse.jgit.lib PersonIdent)
-           (org.eclipse.jgit.revwalk RevCommit)
-           (org.eclipse.jgit.transport URIish)))
+           (org.eclipse.jgit.api Git)
+           (org.eclipse.jgit.lib PersonIdent)))
 
 (set! *warn-on-reflection* true)
 
-(defn- current-branch [^Git git]
+(defn- git-working-branch
+  "The working branch in the given repo"
+  [{:keys [^Git git]}]
   (-> (.getRepository git)
       (.getBranch)))
 
-(defn- git-checkout! [^Git git ^String branch ^Boolean create]
+(defn- git-working-checkout!
+  "Checks out the given branch in the working directory"
+  [{:keys [^Git git]} ^String branch ^Boolean create]
   (-> (.checkout git)
       (.setName branch)
       (.setCreateBranch create)
+      (.setForced true)
       (.call)))
 
-(defn- git-reset! [^Git git]
-  (-> (.reset git)
-      (.setMode ResetCommand$ResetType/HARD)
-      (.call)))
-
-(defn- git-log [^Git git]
-  (map (fn [^RevCommit commit] {:message      (.getFullMessage commit)
-                                :author-name  (.getName (.getAuthorIdent commit))
-                                :author-email (.getEmailAddress (.getAuthorIdent commit))
-                                :id           (.name (.abbreviate commit 8))
-                                :parent       (when (< 0 (.getParentCount commit)) (.name (.abbreviate (.getParent commit 0) 8)))}) (-> (.log git)
-                                                                                                                                        (.call))))
-
-(defn- git-read-file! [^Git git ^String branch ^String path]
-  (let [original-branch (current-branch git)]
-    (try
-      (if (= branch (current-branch git))
-        ;; make sure we are reading the latest commit on the branch
-        (git-reset! git)
-        (git-checkout! git branch false))
-
-      (let [repo (.getRepository git)
-            work-tree (.getWorkTree repo)
-            full-path (io/file work-tree path)]
-        (when (.exists full-path)
-          (slurp full-path)))
-      (finally
-        (git-checkout! git original-branch false)))))
-
-(defn- git-commit! [^Git git message]
+(defn- git-working-commit!
+  "Commits the current working directory"
+  [{:keys [^Git git]} message]
   (-> (.commit git)
       (.setMessage message)
       (.setAuthor (PersonIdent. "Test Setup" "test@metabase.com"))
       (.setCommitter (PersonIdent. "Test Setup" "test@metabase.com"))
       (.call)))
 
-(defn- git-add! [^Git git ^String path ^String content]
+(defn- git-working-add!
+  "Writes the given file in the working path and stages it for commit"
+  [{:keys [^Git git]} ^String path ^String content]
   (let [repo (.getRepository git)
         work-tree (.getWorkTree repo)
         full-path (io/file work-tree path)]
@@ -71,49 +48,60 @@
         (.addFilepattern path)
         (.call))))
 
-(defn- git-create-branch! [^Git git ^String branch]
-  (let [initial-branch (current-branch git)]
-    (git-checkout! git branch true)
-    (git-add! git (str "file-in-" branch ".txt") (str "File in " branch))
-    (git-commit! git (str "Init branch " branch))
+(defn- git-working-create-branch!
+  "Creates a branch with an initial commit and file using the working directory"
+  [source ^String branch]
+  (let [initial-branch (git-working-branch source)]
+    (git-working-checkout! source branch true)
+    (git-working-add! source (str "file-in-" branch ".txt") (str "File in " branch))
+    (git-working-commit! source (str "Init branch " branch))
 
-    (git-checkout! git initial-branch false)))
+    (git-working-checkout! source initial-branch false)))
 
-(defn- git-init! [^String dir & {:keys [files branches]}]
-  (let [^Git git (-> (Git/init)
-                     (.setDirectory (File. dir))
-                     (.call))]
+(defn- git-working-init!
+  "Initializes a git repo in the given directory"
+  [^String dir & {:keys [files branches]}]
+  (let [git (-> (Git/init)
+                (.setDirectory (File. dir))
+                (.call))]
     (doseq [[path content] files]
-      (git-add! git path content))
+      (git-working-add! {:git git} path content))
 
-    (git-commit! git "Initial commit")
+    (git-working-commit! {:git git} "Initial commit")
 
     (doseq [branch branches]
-      (git-create-branch! git branch))
+      (git-working-create-branch! {:git git} branch))
 
     git))
 
-(defn- init-source! [dir & config]
-  (let [^Git git (apply git-init! dir config)
-        source (git/->GitSource git (.getDirectory (.getRepository git)) nil)]
-    (-> (.remoteAdd git)
-        (.setName "origin")
-        (.setUri (-> (.getRepository git)
-                     (.getDirectory)
-                     (.toURI)
-                     (.toURL)
-                     (URIish.)))
-        (.call))
-    [source git]))
+(defn- init-source!
+  "Creates a (local) 'remote' repo and initializes a git source that uses it"
+  [dir & config]
+  (let [^Git remote-repo (apply git-working-init! dir config)
+        remote-url (-> (.getRepository remote-repo)
+                       (.getDirectory)
+                       (.toURI)
+                       (.toURL)
+                       (.toExternalForm))
+        local-repo (git/clone-repository! {:url remote-url})
+        source (git/->GitSource local-repo remote-url nil)]
+    [source {:git remote-repo}]))
 
 (deftest qualify-branch-test
   (is (= "refs/heads/main" (#'git/qualify-branch "main")))
   (is (= "refs/heads/main" (#'git/qualify-branch "refs/heads/main"))))
 
+(deftest log
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[source _remote] (init-source! remote-dir :branches ["branch-1" "branch-2"])]
+      (is (= ["Initial commit"] (map :message (git/log source "master"))))
+      (is (= ["Init branch branch-1" "Initial commit"] (map :message (git/log source "branch-1"))))
+      (is (nil? (git/log source "invalid"))))))
+
 (deftest branches
   (mt/with-temp-dir [remote-dir nil]
     (let [[source _remote] (init-source! remote-dir :branches ["branch-1" "branch-2"])]
-      (is (= ["branch-1" "branch-2" "master"] (source/branches source))))))
+      (is (= ["branch-1" "branch-2" "master"] (source.p/branches source))))))
 
 (deftest list-files
   (mt/with-temp-dir [remote-dir nil]
@@ -121,9 +109,9 @@
                                          :files {"master.txt"      "File in master"
                                                  "subdir/path.txt" "File in subdir"}
                                          :branches ["branch-1" "branch-2"])]
-      (is (= ["master.txt" "subdir/path.txt"] (source/list-files source "master")))
-      (is (= ["file-in-branch-1.txt" "master.txt" "subdir/path.txt"] (source/list-files source "branch-1")))
-      (is (= ["file-in-branch-2.txt" "master.txt" "subdir/path.txt"] (source/list-files source "branch-2"))))))
+      (is (= ["master.txt" "subdir/path.txt"] (source.p/list-files source "master")))
+      (is (= ["file-in-branch-1.txt" "master.txt" "subdir/path.txt"] (source.p/list-files source "branch-1")))
+      (is (= ["file-in-branch-2.txt" "master.txt" "subdir/path.txt"] (source.p/list-files source "branch-2"))))))
 
 (deftest read-file
   (mt/with-temp-dir [remote-dir nil]
@@ -132,17 +120,17 @@
                                                  "subdir/path.txt" "File in subdir"}
                                          :branches ["branch-1" "branch-2"])]
       (testing "Reading master"
-        (is (= "File in master" (source/read-file source "master" "master.txt")))
-        (is (= "File in subdir" (source/read-file source "master" "subdir/path.txt")))
-        (is (nil? (source/read-file source "master" "file-in-branch-1.txt"))))
+        (is (= "File in master" (source.p/read-file source "master" "master.txt")))
+        (is (= "File in subdir" (source.p/read-file source "master" "subdir/path.txt")))
+        (is (nil? (source.p/read-file source "master" "file-in-branch-1.txt"))))
 
       (testing "Reading branch-1"
-        (is (= "File in master" (source/read-file source "branch-1" "master.txt")))
-        (is (= "File in branch-1" (source/read-file source "branch-1" "file-in-branch-1.txt")))
-        (is (nil? (source/read-file source "master" "file-in-branch-2.txt"))))
+        (is (= "File in master" (source.p/read-file source "branch-1" "master.txt")))
+        (is (= "File in branch-1" (source.p/read-file source "branch-1" "file-in-branch-1.txt")))
+        (is (nil? (source.p/read-file source "master" "file-in-branch-2.txt"))))
 
       (testing "Reading invalid branch"
-        (is (nil? (source/read-file source "invalid-branch" "master.txt")))))))
+        (is (nil? (source.p/read-file source "invalid-branch" "master.txt")))))))
 
 (deftest write-files
   (mt/with-temp-dir [remote-dir nil]
@@ -150,34 +138,114 @@
                                         :files {"master.txt"      "File in master"
                                                 "subdir/path.txt" "File in subdir"}
                                         :branches ["branch-1" "branch-2"])]
-      (testing "Writing a new file to master"
-        (source/write-files! source "master" "Add new file" [{:path "new-file.txt" :content "New file content"}])
-        (is (= "New file content" (source/read-file source "master" "new-file.txt")))
-        (testing "Check remote repo directly"
-          (is (= "New file content" (git-read-file! remote "master" "new-file.txt")))
-          (is (= ["Add new file" "Initial commit"] (map :message (git-log remote)))))
-
-        (testing "Existing files are unchanged"
-          (is (= "File in master" (source/read-file source "master" "master.txt")))
-          (is (= "File in subdir" (source/read-file source "master" "subdir/path.txt")))))
-
       (testing "Updating existing file on master"
-        (source/write-files! source "master" "Update existing file 1" [{:path "master.txt" :content "Updated master content"}])
-        (is (= "Updated master content" (source/read-file source "master" "master.txt")))
-        (is (= ["master.txt" "new-file.txt" "subdir/path.txt"] (source/list-files source "master")))
+        (source.p/write-files! source "master" "Update existing file" [{:path "master.txt" :content "Updated master content"}])
+        (is (= "Updated master content" (source.p/read-file source "master" "master.txt")))
+        (is (= ["master.txt"] (source.p/list-files source "master")))
+        (is (= ["Update existing file" "Initial commit"] (map :message (git/log source "master"))))
+
         (testing "Check remote repo directly"
-          (is (= "Updated master content" (git-read-file! remote "master" "master.txt")))
-          (is (= ["Update existing file 1" "Add new file" "Initial commit"] (map :message (git-log remote)))))
+          (is (= "Updated master content" (git/read-file remote "master" "master.txt")))
+          (is (= ["master.txt"] (git/list-files remote "master")))
+          (is (= ["Update existing file" "Initial commit"] (map :message (git/log remote "master"))))))
 
-        (testing "Other files are still there"
-          (is (= "New file content" (source/read-file source "master" "new-file.txt")))
-          (is (= "File in subdir" (source/read-file source "master" "subdir/path.txt")))))
+      (testing "Writing a new file to master"
+        (source.p/write-files! source "master" "Add new file" [{:path "new-file.txt" :content "New file content"}])
+        (is (= "New file content" (source.p/read-file source "master" "new-file.txt")))
+        (is (= ["new-file.txt"] (source.p/list-files source "master")))
+        (is (nil? (source.p/read-file source "master" "master.txt")))
+        (is (= ["Add new file" "Update existing file" "Initial commit"] (map :message (git/log source "master"))))
 
-      (testing "Updating multiple files"
-        (source/write-files! source "master" "Multi-file" [{:path "master.txt" :content "Updated master content 2"}
-                                                           {:path "subdir/new-file.txt" :content "File added as part of multiple files"}])
+        (testing "Check remote repo directly"
+          (is (= "New file content" (git/read-file remote "master" "new-file.txt")))
+          (is (= ["new-file.txt"] (git/list-files remote "master")))
+          (is (= ["Add new file" "Update existing file" "Initial commit"] (map :message (git/log remote "master"))))))
 
-        (is (= "Updated master content 2" (source/read-file source "master" "master.txt")))
-        (is (= "File added as part of multiple files" (source/read-file source "master" "subdir/new-file.txt")))
-        (is (= ["master.txt" "new-file.txt" "subdir/new-file.txt" "subdir/path.txt"] (source/list-files source "master")))
-        (is (= ["Multi-file" "Update existing file 1" "Add new file" "Initial commit"] (map :message (git-log remote))))))))
+      (testing "Writing multiple files"
+        (source.p/write-files! source "master" "Multi-file" [{:path "subdir/sub-file.txt" :content "File newly added"}
+                                                             {:path "new-file.txt" :content "Updated new file"}])
+
+        (is (= "File newly added" (source.p/read-file source "master" "subdir/sub-file.txt")))
+        (is (= "Updated new file" (source.p/read-file source "master" "new-file.txt")))
+        (is (= ["new-file.txt" "subdir/sub-file.txt"] (source.p/list-files source "master")))
+        (is (= ["Multi-file" "Add new file" "Update existing file" "Initial commit"] (map :message (git/log remote "master")))))
+
+      (testing "Writing to a new branch"
+        (source.p/write-files! source "new-branch" "New Branch" [{:path "branched/branched-file.txt" :content "File added to branch"}
+                                                                 {:path "new-file.txt" :content "Updated file in branch"}])
+
+        (is (= "File added to branch" (source.p/read-file source "new-branch" "branched/branched-file.txt")))
+        (is (= "Updated file in branch" (source.p/read-file source "new-branch" "new-file.txt")))
+        (is (= ["branched/branched-file.txt" "new-file.txt"] (source.p/list-files source "new-branch")))
+        (is (= ["New Branch" "Multi-file" "Add new file" "Update existing file" "Initial commit"] (map :message (git/log source "new-branch"))))
+
+        (testing "Check remote repo"
+          (is (= ["New Branch" "Multi-file" "Add new file" "Update existing file" "Initial commit"] (map :message (git/log remote "new-branch"))))))
+
+      (testing "Updating a branch"
+        (source.p/write-files! source "new-branch" "Updating Branch" [{:path "branched/branched-file.txt" :content "File updated in branch"}
+                                                                      {:path "another-file.txt" :content "Added in 2nd commit"}])
+
+        (is (= "File updated in branch" (source.p/read-file source "new-branch" "branched/branched-file.txt")))
+        (is (= "Added in 2nd commit" (source.p/read-file source "new-branch" "another-file.txt")))
+        (is (= ["another-file.txt" "branched/branched-file.txt"] (source.p/list-files source "new-branch")))
+        (is (= ["Updating Branch" "New Branch" "Multi-file" "Add new file" "Update existing file" "Initial commit"] (map :message (git/log source "new-branch"))))
+
+        (testing "Check remote repo"
+          (is (= ["Updating Branch" "New Branch" "Multi-file" "Add new file" "Update existing file" "Initial commit"] (map :message (git/log remote "new-branch")))))))))
+
+(deftest concurrent-access
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[source remote] (init-source! remote-dir
+                                        :files {"master.txt"      "File in master"
+                                                "subdir/path.txt" "File in subdir"}
+                                        :branches ["branch-1" "branch-2"])]
+
+      (testing "Initial clone is the same"
+        (is (= ["Initial commit"] (map :message (git/log source "master"))))
+        (is (= ["Initial commit"] (map :message (git/log remote "master")))))
+
+      ;; Add an extra commit to remote
+      (git-working-add! remote "additional-file.txt" "Additional file content")
+      (git-working-commit! remote "Added additional file")
+
+      (testing "Source is behind remote"
+        (is (= ["Initial commit"] (map :message (git/log source "master"))))
+        (is (= ["Added additional file" "Initial commit"] (map :message (git/log remote "master"))))
+
+        (is (= "File in master" (source.p/read-file source "master" "master.txt")))
+        (is (nil? (source.p/read-file source "master" "additional-file.txt"))))
+
+      (testing "After fetch, source is up to date"
+        (git/fetch! source)
+        (is (= "Additional file content" (source.p/read-file source "master" "additional-file.txt")))
+        (is (= ["Added additional file" "Initial commit"] (map :message (git/log source "master")))))
+
+      (testing "Writing a file to source and pushing back to remote when there is new content on remote"
+        ;; Make source be behind again
+        (git-working-add! remote "only-on-remote.txt" "Initially on remote")
+        (git-working-commit! remote "Only on remote")
+
+        (source.p/write-files! source "master" "Added to source" [{:path "initially-source.txt" :content "Initially on source"}])
+
+        (testing "Remote has the new commit with just the files committed, but only version is in history"
+          (is (= ["Added to source" "Only on remote" "Added additional file" "Initial commit"] (map :message (git/log remote "master"))))
+          (is (= ["initially-source.txt"] (git/list-files remote "master")))
+          (is (= "Initially on source" (git/read-file remote "master" "initially-source.txt"))))
+
+        (testing "Source has the same history"
+          (is (= (map :message (git/log remote "master")) (map :message (git/log source "master"))))))
+
+      (testing "Writing to a branch local has not seen (but remote has) adds it to the history on remote"
+        (git-working-checkout! remote "new-branch" true)
+        (git-working-add! remote "new-branch-file.txt" "Initially on remote")
+        (git-working-add! remote "new-branch-remote.txt" "Initially on remote")
+        (git-working-commit! remote "New-branch on remote")
+
+        (is (= ["New-branch on remote" "Added to source" "Only on remote" "Added additional file" "Initial commit"] (map :message (git/log remote "new-branch"))))
+        (is (nil? (git/log source "new-branch")))
+
+        (source.p/write-files! source "new-branch" "New-branch on source" [{:path "new-branch-source.txt" :content "Initially on source"}
+                                                                           {:path "new-branch-file.txt" :content "Updated on source"}])
+
+        (is (= ["New-branch on source" "New-branch on remote" "Added to source" "Only on remote" "Added additional file" "Initial commit"] (map :message (git/log remote "new-branch"))))))))

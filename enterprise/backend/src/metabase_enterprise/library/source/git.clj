@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.library.source.protocol :as source.p]
-   [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
@@ -10,15 +9,13 @@
    (java.nio.file.attribute FileAttribute)
    (org.eclipse.jgit.api Git GitCommand TransportCommand)
    (org.eclipse.jgit.dircache DirCache DirCacheEntry)
-   (org.eclipse.jgit.lib CommitBuilder Constants FileMode ObjectId PersonIdent Ref)
-   (org.eclipse.jgit.revwalk RevWalk)
+   (org.eclipse.jgit.lib CommitBuilder Constants FileMode PersonIdent)
+   (org.eclipse.jgit.revwalk RevCommit RevWalk)
    (org.eclipse.jgit.transport RefSpec
-                               UsernamePasswordCredentialsProvider)
+                               RemoteRefUpdate$Status UsernamePasswordCredentialsProvider)
    (org.eclipse.jgit.treewalk TreeWalk)))
 
 (set! *warn-on-reflection* true)
-
-(def ^:private ^:dynamic repo-path (atom nil))
 
 (defn- call-command [^GitCommand command]
   (.call command))
@@ -58,7 +55,19 @@
   (u/prog1 (call-remote-command (.fetch git) git-source))
   (log/info "Successfully fetched repository" {:repo (str git)}))
 
-(defn- list-files
+(defn log
+  "The log of commits on a branch."
+  [{:keys [^Git git]} ^String branch]
+  (when-let [branch-id (.resolve (.getRepository git) (qualify-branch branch))]
+    (let [log-result (call-command (-> (.log git)
+                                       (.add branch-id)))]
+      (map (fn [^RevCommit commit] {:message      (.getFullMessage commit)
+                                    :author-name  (.getName (.getAuthorIdent commit))
+                                    :author-email (.getEmailAddress (.getAuthorIdent commit))
+                                    :id           (.name (.abbreviate commit 8))
+                                    :parent       (when (< 0 (.getParentCount commit)) (.name (.abbreviate (.getParent commit 0) 8)))}) log-result))))
+
+(defn list-files
   "List all files in the repository."
   [{:keys [^Git git]} ^String branch]
   (let [repo (.getRepository git)
@@ -86,16 +95,25 @@
 (defn push-branch!
   "Pushes a local branch to a remote branch."
   [{:keys [^Git git] :as git-source} ^String branch-name]
-  (let [branch-name (qualify-branch branch-name)]
-    (call-remote-command
-     (-> (.push git)
-         (.setRemote "origin")
-         (.setRefSpecs [(RefSpec. (str branch-name ":" branch-name))]))
-     git-source)))
+  (let [branch-name (qualify-branch branch-name)
+        push-response (call-remote-command
+                       (-> (.push git)
+                           (.setRemote "origin")
+                           (.setRefSpecs [(RefSpec. (str branch-name ":" branch-name))]))
+                       git-source)
+        push-results (->> push-response
+                          (map #(into [] (.getRemoteUpdates %)))
+                          flatten)]
+
+    (when-let [failures (seq (remove #(#{RemoteRefUpdate$Status/OK RemoteRefUpdate$Status/UP_TO_DATE} %) (map #(.getStatus %) push-results)))]
+      (throw (ex-info (str "Failed to push branch " branch-name " to remote") {:failures failures})))
+    push-response))
 
 (defn write-files!
-  "Write a seq of files to the repo. `files` should be maps of :path and :content, with path relative to the root of the repository."
+  "Write a seq of files to the repo. `files` should be maps of :path and :content, with path relative to the root of the repository.
+  Replaces all files in the branch with the given files, does not preserve files not in the list."
   [{:keys [^Git git] :as git-source} ^String branch ^String message files]
+  (fetch! git-source)
   (let [repo (.getRepository git)
         branch-ref (qualify-branch branch)
         parent-id (or (.resolve repo branch-ref)
@@ -104,31 +122,15 @@
 
     (with-open [inserter (.newObjectInserter repo)]
       (let [index (DirCache/newInCore)
-            builder (.builder index)
+            builder (.builder index)]
 
-            ;; Add/update the target files
-            updated-paths (into #{} (map (fn [{:keys [path content]}]
-                                           (let [blob-id (.insert inserter Constants/OBJ_BLOB (.getBytes content "UTF-8"))
-                                                 entry (doto (DirCacheEntry. ^String path)
-                                                         (.setFileMode FileMode/REGULAR_FILE)
-                                                         (.setObjectId blob-id))]
-                                             (.add builder entry))
-                                           path) files))]
-
-        ;; Copy existing tree entries, excluding the file we're updating
-        (when parent-id
-          (with-open [rev-walk (RevWalk. repo)
-                      tree-walk (TreeWalk. repo)]
-            (let [commit (.parseCommit rev-walk parent-id)]
-              (.addTree tree-walk (.getTree commit))
-              (.setRecursive tree-walk true)
-              (while (.next tree-walk)
-                (when-not (updated-paths (.getPathString tree-walk))
-                  (let [entry (doto (DirCacheEntry. (.getPathString tree-walk))
-                                (.setFileMode (.getFileMode tree-walk 0))
-                                (.setObjectId (.getObjectId tree-walk 0)))]
-                    (.add builder entry)))))))
-
+        (doseq [{:keys [path content]} files]
+          (let [blob-id (.insert inserter Constants/OBJ_BLOB (.getBytes content "UTF-8"))
+                entry (doto (DirCacheEntry. ^String path)
+                        (.setFileMode FileMode/REGULAR_FILE)
+                        (.setObjectId blob-id))]
+            (.add builder entry))
+          path)
         (.finish builder)
 
         ;; Create commit
@@ -148,7 +150,9 @@
               (.update))))))
     (push-branch! git-source branch-ref)))
 
-(defn- branches [{:keys [^Git git]}]
+(defn branches
+  "Return the branches in the repo"
+  [{:keys [^Git git]}]
   (->> (call-command (.branchList git))
        (filter #(str/starts-with? (.getName %) "refs/heads/"))
        (remove #(.isSymbolic %))
@@ -171,6 +175,6 @@
 (defn new-git-source
   "Create a new git source"
   [url token]
-  (->GitSource (clone-repository! {:url url
+  (->GitSource (clone-repository! {:url   url
                                    :token token})
                url token))
