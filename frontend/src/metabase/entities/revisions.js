@@ -15,20 +15,8 @@ const Revisions = createEntity({
     useListQuery: useListRevisionsQuery,
   },
   api: {
-    list: ({ model_type, model_id }, dispatch) =>
-      entityCompatibleQuery(
-        { entity: model_type, id: model_id },
-        dispatch,
-        revisionApi.endpoints.listRevisions,
-      )
-        // add model_type and model_id to each object since they are required for revert
-        .then((revisions) =>
-          revisions.map((revision) => ({
-            model_type,
-            model_id,
-            ...revision,
-          })),
-        ),
+    // should use useListRevisionsQuery directly
+    list: null,
   },
 
   actionTypes: {
@@ -37,18 +25,16 @@ const Revisions = createEntity({
 
   objectActions: {
     // use thunk since we don't actually want to dispatch an action
-    revert: (revision) => async (dispatch) => {
+    revert: (id, entity, revision) => async (dispatch) => {
       await entityCompatibleQuery(
         {
-          entity: revision.model_type,
-          id: revision.model_id,
+          id,
+          entity,
           revision_id: revision.id,
         },
         dispatch,
         revisionApi.endpoints.revertRevision,
       );
-
-      dispatch(Revisions.actions.invalidateLists());
       dispatch({ type: REVERT, payload: revision });
     },
   },

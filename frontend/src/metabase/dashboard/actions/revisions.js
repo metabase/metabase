@@ -8,12 +8,14 @@ import { createThunkAction } from "metabase/lib/redux";
 export const REVERT_TO_REVISION = "metabase/dashboard/REVERT_TO_REVISION";
 export const revertToRevision = createThunkAction(
   REVERT_TO_REVISION,
-  (revision) => {
+  (dashboardId, revision) => {
     return async (dispatch) => {
-      await dispatch(Revisions.objectActions.revert(revision));
+      await dispatch(
+        Revisions.objectActions.revert(dashboardId, "dashboard", revision),
+      );
       await dispatch(
         fetchDashboard({
-          dashId: revision.model_id,
+          dashId: dashboardId,
           queryParams: null,
         }),
       );

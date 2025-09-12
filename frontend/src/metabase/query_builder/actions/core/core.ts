@@ -376,11 +376,12 @@ function normalizeValue(
 export const REVERT_TO_REVISION = "metabase/qb/REVERT_TO_REVISION";
 export const revertToRevision = createThunkAction(
   REVERT_TO_REVISION,
-  (revision) => {
+  (id, revision) => {
     return async (dispatch) => {
-      await dispatch(Revisions.objectActions.revert(revision));
+      await dispatch(Revisions.objectActions.revert(id, "card", revision));
       await dispatch(reloadCard());
       await dispatch(runQuestionQuery({ shouldUpdateUrl: false }));
+      return { id };
     };
   },
 );
