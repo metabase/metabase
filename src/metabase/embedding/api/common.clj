@@ -129,19 +129,14 @@
   problem with this approach is that we cannot reliably distinguish between numbers and numeric strings, as well as
   booleans and boolean strings. To fix this issue we introduced another query string parameter `:parameters` which
   contains serialized JSON with parameter values. If this object cannot be found or parsed, we fallback to plain query
-  string parameters.
-
-  For legacy query string parameters only, we replace empty strings with `nil`, representing the absence of a value. In
-  the old format, there is no way to distinguish between `nil` and an empty string; we keep this behavior for backward
-  compatibility. In the new format with JSON, there is no such an issue, and we don't do any replacement to support both
-  values."
+  string parameters."
   [query-params]
   (or (try
         (when-let [parameters (:parameters query-params)]
           (json/decode+kw parameters))
         (catch Throwable _
           nil))
-      (update-vals query-params (fn [v] (if (= v "") nil v)))
+      query-params
       {}))
 
 (mu/defn normalize-query-params :- [:map-of :keyword :any]

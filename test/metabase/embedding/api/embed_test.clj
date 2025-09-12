@@ -25,6 +25,7 @@
    [metabase.test.http-client :as client]
    [metabase.tiles.api-test :as tiles.api-test]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)))
@@ -504,9 +505,10 @@
             (testing "check this is the same result as when a default value is provided"
               (is (= [[107]]
                      (mt/rows (client/client :get 202 (str (card-query-url card "") "?date=Q1-2014")))))))
-          (testing "an empty value should apply if provided as an empty string in the query params"
+          (testing "an empty value should apply if provided as nil in the query params"
             (is (= [[1000]]
-                   (mt/rows (client/client :get 202 (str (card-query-url card "") "?date="))))))
+                   (mt/rows (client/client :get 202 (str (card-query-url card ""))
+                                           :parameters (json/encode {:date nil}))))))
           (testing "an empty value should apply if provided as nil in the JWT params"
             (is (= [[1000]]
                    (mt/rows (client/client :get 202 (card-query-url card "" {:params {:date nil}}))))))))
@@ -528,7 +530,7 @@
             (testing "check this is different to when a non-nil value is provided"
               (is (= [[138]]
                      (mt/rows (client/client :get 202 (card-query-url card "" {:params {:date "Q2-2014"}})))))))
-          (testing "an empty string value should not be converted to nil"
+          (testing "an empty string value should not be converted to nil and should result in an error"
             (is (= {:status     "failed"
                     :error      "An error occurred while running the query."
                     :error_type "qp"}
@@ -971,7 +973,7 @@
               (testing "check this is different to when a non-nil value is provided"
                 (is (= [[138]]
                        (mt/rows (client/client :get 202 (dashcard-url dashcard {:params {:date "Q2-2014"}})))))))
-            (testing "an empty string value should not be converted to nil"
+            (testing "an empty string value should not be converted to nil and should result in an error"
               (is (= {:status     "failed"
                       :error      "An error occurred while running the query."
                       :error_type "qp"}
