@@ -27,6 +27,96 @@ import { uploadTranslationDictionaryViaAPI } from "./helpers/e2e-content-transla
 const { H } = cy;
 
 describe("scenarios > content translation > static embedding > dashboards", () => {
+  describe("card titles and descriptions", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      uploadTranslationDictionaryViaAPI([
+        { locale: "fr", msgid: "Gadget", msgstr: "Le gadget" },
+        { locale: "fr", msgid: "Doohickey", msgstr: "Le doohickey" },
+        { locale: "fr", msgid: "Gizmo", msgstr: "Le gizmo" },
+        { locale: "fr", msgid: "Widget", msgstr: "Le widget" },
+        {
+          locale: "fr",
+          msgid: "Products by Category (Pie)",
+          msgstr: "Produits par catégorie (Camembert)",
+        },
+        {
+          locale: "fr",
+          msgid: "A breakdown of products by category",
+          msgstr: "Une répartition des produits par catégorie",
+        },
+      ]);
+
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+      cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
+
+      cy.signInAsAdmin();
+
+      H.createQuestion(ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY, {
+        idAlias: "productsCountByCreatedAtQuestionId",
+        wrapId: true,
+      });
+
+      H.createQuestion(
+        {
+          ...PRODUCTS_COUNT_BY_CATEGORY_PIE,
+          description: "A breakdown of products by category",
+        },
+        {
+          idAlias: "productsCountByCategoryPieQuestionId",
+          wrapId: true,
+        },
+      );
+    });
+
+    it("should translate static embedding dashboard card titles and descriptions", () => {
+      H.createDashboard({
+        name: "the_dashboard",
+      }).then(({ body: { id: dashboardId } }) => {
+        H.visitDashboard(dashboardId);
+        H.editDashboard();
+        H.openQuestionsSidebar();
+
+        H.sidebar().findByText(PRODUCTS_COUNT_BY_CATEGORY_PIE.name).click();
+        H.saveDashboard();
+
+        H.openStaticEmbeddingModal({
+          acceptTerms: false,
+        });
+        H.publishChanges("dashboard", () => {});
+
+        H.visitEmbeddedPage(
+          {
+            resource: { dashboard: dashboardId as number },
+            params: {},
+          },
+          {
+            additionalHashOptions: {
+              locale: "fr",
+            },
+          },
+        );
+
+        cy.wait("@dashboard");
+        cy.wait("@cardQuery");
+
+        // Check that the title is translated
+        cy.findByText("Produits par catégorie (Camembert)").should("exist");
+
+        H.getDashboardCard(0).realHover().icon("info").realHover();
+        H.tooltip().within(() => {
+          // Check that the description is translated
+          cy.findByText("Une répartition des produits par catégorie").should(
+            "exist",
+          );
+        });
+      });
+    });
+  });
+
   describe("values translation", () => {
     beforeEach(() => {
       H.restore();
