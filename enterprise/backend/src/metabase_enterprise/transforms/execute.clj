@@ -167,6 +167,9 @@
               :id run-id
               {:message (message-log->transform-run-message message-log)}))
 
+(def ^:private ^Duration python-message-loop-poll-sleep-duration
+  (Duration/ofMillis 1000))
+
 (defn- python-message-update-loop!
   "Block while relevant log data is replicated from the runner into the message log.
   When new logs are received, the log data will be flushed to the transform_run.message field as a string.
@@ -177,7 +180,8 @@
     (loop []
       (if (.isInterrupted (Thread/currentThread))
         (log/debug "Message update loop interrupted")
-        (do (Thread/sleep 1000)
+        (do (let [sleep-ms (.toMillis python-message-loop-poll-sleep-duration)]
+              (when (pos? sleep-ms) (Thread/sleep sleep-ms)))
             (let [{:keys [status body]} (python-runner/get-logs run-id)]
               (cond
                 (<= 200 status 299)
