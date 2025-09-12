@@ -52,7 +52,7 @@
    (or (let [viz (-> query :viz-settings)]
          (when (seq viz) viz))
        (when-let [card-id (-> query :info :card-id)]
-         (:visualization-settings (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))))))
+         (:visualization-settings (lib.metadata.protocols/card query card-id))))))
 
 (mu/defn update-viz-settings :- ::qp.schema/rff
   "Middleware for fetching and processing a table's visualization settings so that they can be incorporated
