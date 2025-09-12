@@ -1441,10 +1441,11 @@
     sequence of models pairs for depedendencies of the given model that are not in the Library"
   [{:keys [id] :as model}]
   (let [all-descendants (u/traverse [[(name (t2/model model)) id]] #(serdes/descendants (first %) (second %)))
-        {cards "Cards"} (->> all-descendants keys (u/group-by first second))
-        library-collection (t2/select-one :model/Collection :entity_id library-entity-id)
-        library-collection-tree (conj (descendant-ids library-collection) (:id library-collection))]
-    (set/difference (set cards) (t2/select-pks-set :model/Card :collection_id [:in library-collection-tree]))))
+        {cards "Card"} (->> all-descendants keys (u/group-by first second))]
+    (set/difference (set cards) (t2/select-pks-set :model/Card {:inner-join [[:collection :c]
+                                                                             [:and
+                                                                              [:= :c.id :collection_id]
+                                                                              [:= :c.type [:inline "library"]]]]}))))
 
 (defn check-non-library-dependencies
   "Throws if a model has non-library-dependencies.
