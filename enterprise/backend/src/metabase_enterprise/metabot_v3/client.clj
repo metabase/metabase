@@ -109,31 +109,31 @@
 (defn- generate-embeddings-endpoint []
   (str (metabot-v3.settings/ai-service-base-url) "/v1/embeddings"))
 
-(defn- store-message! [conversation-id props chunks]
-  (let [usage  (-> (u/last chunks) :metadata :usage)
-        state  (u/seek #(and (= (:_type %) :DATA)
-                             (= (:type %) "state"))
-                       chunks)
-        chunks (if state (vec (remove #(= % state) chunks)) chunks)]
+(defn- store-message! [conversation-id profile-id messages]
+  (let [finish   (let [m (u/last messages)]
+                   (when (= (:_type m) :FINISH_MESSAGE)
+                     m))
+        state    (u/seek #(and (= (:_type %) :DATA)
+                               (= (:type %) "state"))
+                         messages)
+        messages (-> (remove #(or (= % state) (= % finish)) messages)
+                     vec)]
     (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
-                              (constantly (cond-> {:user_id    api/*current-user-id*
-                                                   :profile_id (:profile_id props)}
+                              (constantly (cond-> {:user_id    api/*current-user-id*}
                                             state (assoc :state state))))
     ;; NOTE: this will need to be constrained at some point, see BOT-386
     (t2/insert! :model/MetabotMessage
                 {:conversation_id conversation-id
-                 :data            chunks
-                 :usage           usage
-                 :role            (:role props)
-                 :total_tokens    (->> (vals usage)
+                 :data            messages
+                 :usage           (:usage finish)
+                 :role            (:role (first messages))
+                 :profile_id      profile-id
+                 :total_tokens    (->> (vals (:usage finish))
                                        ;; NOTE: this filter is supporting backward-compatible usage format, can be
                                        ;; removed when ai-service does not give us `completionTokens` in `usage`
                                        (filter map?)
                                        (map #(+ (:prompt %) (:completion %)))
                                        (apply +))})))
-
-(defn- handle-finish [conversation-id profile-id lines]
-  (store-message! conversation-id {:role :assistant :profile_id profile-id} (metabot-v3.u/aisdk-lines->chunks lines)))
 
 (mu/defn streaming-request :- :any
   "Make a streaming V2 request to the AI Service
@@ -151,25 +151,25 @@
    Response chunks are encoded in the format understood by the frontend and AI Service, Clojure backend doesn't
    know anything about it and just shuttles them over.
    "
-  [{:keys [context messages profile-id conversation-id session-id state]}
+  [{:keys [context message history profile-id conversation-id session-id state]}
    :- [:map
        [:context :map]
-       [:messages ::metabot-v3.client.schema/messages]
+       [:message ::metabot-v3.client.schema/message]
+       [:history ::metabot-v3.client.schema/messages]
        [:profile-id :string]
        [:conversation-id :string]
        [:session-id :string]
        [:state :map]]]
   (premium-features/assert-has-feature :metabot-v3 "MetaBot")
   (try
-    (store-message! conversation-id {:role :user :profile_id profile-id} (last messages))
+    (store-message! conversation-id profile-id [message])
     (let [url      (ai-url "/v2/agent/stream")
-          body     (-> {:messages        messages
-                        :context         context
-                        :conversation_id conversation-id
-                        :profile_id      profile-id
-                        :user_id         api/*current-user-id*
-                        :state           state}
-                       (u/deep-kebab->snake-keys))
+          body     {:messages        (conj (vec history) message)
+                    :context         context
+                    :conversation_id conversation-id
+                    :profile_id      profile-id
+                    :user_id         api/*current-user-id*
+                    :state           state}
           _        (metabot-v3.context/log body :llm.log/be->llm)
           _        (log/debugf "V2 request to AI Proxy:\n%s" (u/pprint-to-str body))
           options  (cond-> {:headers          {"Accept"                    "text/event-stream"
@@ -189,16 +189,16 @@
           ;; Response from the AI Service will send response parts separated by newline
           (with-open [response-reader ^BufferedReader (io/reader (:body response))]
             (loop [lines []]
-              ;; Line we read from response will lack newline at the end, but FE will be confused without that, so we
-              ;; need to append it.
               (if-let [line (.readLine response-reader)]
                 (do
+                  ;; Line we read from response will lack newline at the end, but FE will be confused without that, so
+                  ;; we need to append it.
                   (.write os (.getBytes line "UTF-8"))
                   (.write os (.getBytes "\n"))
                   ;; Immediately flush so it feels fluid on the frontend
                   (.flush os)
                   (recur (conj lines line)))
-                (handle-finish conversation-id profile-id lines)))))
+                (store-message! conversation-id profile-id (metabot-v3.u/aisdk->messages "assistant" lines))))))
         (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
                         {:request (assoc options :body body)
                          :response response}))))

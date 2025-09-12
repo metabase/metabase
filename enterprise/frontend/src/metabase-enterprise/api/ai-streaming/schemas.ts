@@ -28,8 +28,8 @@ export const finishPartSchema = Yup.object({
     .oneOf([
       "stop",
       "length",
-      "content-filter",
-      "tool-calls",
+      "content_filter",
+      "tool_calls",
       "error",
       "other",
       "unknown",

@@ -428,7 +428,7 @@ databaseChangeLog:
       rollback: # will be dropped with table
 
   - changeSet:
-      id: v56.2025-09-03T17:15:02
+      id: v56.2025-09-03T17:16:00
       author: piranha
       comment: metabot_message table
       changes:
@@ -452,17 +452,23 @@ databaseChangeLog:
                     nullable: false
                   remarks: 'created_at'
               - column:
-                  name: data
+                  name: profile_id
                   type: ${text.type}
                   constraints:
                     nullable: false
-                  remarks: 'Full message content'
+                  remarks: 'ai-service profile used to perform the conversation'
               - column:
                   name: role
                   type: varchar(20)
                   constraints:
                     nullable: false
                   remarks: 'Role of the sender'
+              - column:
+                  name: data
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+                  remarks: 'Full message content'
               - column:
                   name: usage
                   type: ${text.type}
@@ -486,7 +492,7 @@ databaseChangeLog:
                   remarks: 'Reference to a conversation'
 
   - changeSet:
-      id: v56.2025-09-03T17:15:04
+      id: v56.2025-09-03T17:16:01
       author: piranha
       comment: Index on metabot_message.conversation_id
       changes:

@@ -3,8 +3,7 @@
    [clojure.set :as set]
    [clojure.walk :as walk]
    [metabase.util :as u]
-   [metabase.util.json :as json]
-   [metabase.util.log :as log]))
+   [metabase.util.json :as json]))
 
 (defn- safe-case-updater
   [f]
@@ -28,7 +27,7 @@
 ;;; AI SDK support
 
 (def TYPE-PREFIX
-  "AI SDK type to prefix"
+  "AI SDK type to prefix, same names as in FE or ai-service"
   ;; NOTE: if we ever get prefix longer than 2 chars, you need to fix parsing to be more generic
   {:TEXT           "0:"
    :DATA           "2:"
@@ -39,17 +38,38 @@
 
 (def PREFIX-TYPE "AI SDK prefix to type" (set/map-invert TYPE-PREFIX))
 
-(defn aisdk-lines->chunks
-  "Convert AI SDK line format into an array of parsed chunks."
-  [lines]
-  (reduce
-   (fn [acc line]
-     ;; NOTE: depends on all prefixes being 2 chars long
-     (let [value (json/decode+kw (subs line 2))
-           type  (get PREFIX-TYPE (subs line 0 2))]
-       (cond
-         (and (string? value) (string? (u/last acc))) (update acc (dec (count acc)) str value)
-         (string? value)                              (conj acc value)
-         :else                                        (conj acc (assoc value :_type type)))))
-   []
-   lines))
+(defn aisdk->messages
+  "Convert AI SDK line format into an array of parsed messages."
+  [role lines]
+  (into [] (comp
+            (map (fn [line] [(get PREFIX-TYPE (subs line 0 2)) (json/decode+kw (subs line 2))]))
+            (partition-by first)
+            (mapcat (fn [block]
+                      (let [type (ffirst block)]
+                        (case type
+                          :TEXT           [{:role    role
+                                            :_type   type
+                                            :content (transduce (map second) str block)}]
+                          (:DATA
+                           :ERROR)        (map #(-> (second %) (assoc :_type type)) block)
+                          :TOOL_CALL      [{:role       role
+                                            :_type      type
+                                            :tool_calls (map (fn [[_ v]]
+                                                               {:id        (:toolCallId v)
+                                                                :name      (:toolName v)
+                                                                :arguments (:args v)})
+                                                             block)}]
+                          :TOOL_RESULT    (map (fn [[_ v]]
+                                                 {:role         "tool"
+                                                  :_type        type
+                                                  :tool_call_id (:toolCallId v)
+                                                  :content      (:result v)})
+                                               block)
+                          :FINISH_MESSAGE (map (fn [[_ v]]
+                                                 {:role          role
+                                                  :_type         type
+                                                  :finish_reason (:finishReason v)
+                                                  :usage         (-> (:usage v)
+                                                                     (dissoc :promptTokens :completionTokens))})
+                                               block))))))
+        lines))

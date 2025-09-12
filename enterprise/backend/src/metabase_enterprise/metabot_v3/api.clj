@@ -16,16 +16,16 @@
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
   [{:keys [metabot_id profile_id message context history conversation_id state]}]
-  (let [initial-message (metabot-v3.envelope/user-message message)
-        history         (conj (vec history) initial-message)
-        metabot-id      (metabot-v3.config/resolve-dynamic-metabot-id metabot_id)
-        profile-id      (metabot-v3.config/resolve-dynamic-profile-id profile_id metabot-id)]
+  (let [message    (metabot-v3.envelope/user-message message)
+        metabot-id (metabot-v3.config/resolve-dynamic-metabot-id metabot_id)
+        profile-id (metabot-v3.config/resolve-dynamic-profile-id profile_id metabot-id)]
     (metabot-v3.tools.api/streaming-handle-envelope
      {:context         (metabot-v3.context/create-context context)
       :metabot-id      metabot-id
       :profile-id      profile-id
       :conversation-id conversation_id
-      :messages        history
+      :message         message
+      :history         history
       :state           state})))
 
 (api.macros/defendpoint :post "/v2/agent-streaming"
