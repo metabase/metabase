@@ -4,6 +4,8 @@ import type { MetabaseAuthMethod } from "embedding-sdk-bundle/types";
 import type {
   MetabaseEmbeddingSessionToken,
   MetabaseFetchRequestTokenFn,
+  MetabaseFetchStaticTokenFnData,
+  UserBackendJwtResponse,
 } from "embedding-sdk-bundle/types/refresh-token";
 import type {
   CollectionBrowserListColumns,
@@ -19,7 +21,16 @@ import type { CollectionId } from "metabase-types/api";
 /** Events that the embed.js script listens for */
 export type SdkIframeEmbedTagMessage =
   | { type: "metabase.embed.iframeReady" }
-  | { type: "metabase.embed.requestSessionToken" };
+  | { type: "metabase.embed.requestSessionToken" }
+  | {
+      type: "metabase.embed.fetchStaticToken";
+      data: SdkIframeEmbedTagFetchStaticTokenData;
+    };
+
+export type SdkIframeEmbedTagFetchStaticTokenData =
+  MetabaseFetchStaticTokenFnData & {
+    messageId: string;
+  };
 
 /** Events that the sdk embed route listens for */
 export type SdkIframeEmbedMessage =
@@ -46,7 +57,16 @@ export type SdkIframeEmbedMessage =
         usageAnalytics: EmbeddedAnalyticsJsEventSchema;
         embedHostUrl: string;
       };
-    };
+    }
+  | {
+    type: "metabase.embed.setStaticToken";
+    data: MetabaseEmbeddingSetRequestStaticTokenData;
+  };
+
+export type MetabaseEmbeddingSetRequestStaticTokenData = {
+  messageId: string;
+  staticToken: UserBackendJwtResponse;
+};
 
 // --- Embed Option Interfaces ---
 
@@ -145,12 +165,22 @@ export type SdkIframeEmbedBaseSettings = {
   locale?: string;
   preferredAuthMethod?: MetabaseAuthMethod;
   fetchRequestToken?: MetabaseFetchRequestTokenFn;
+  fetchStaticToken?: (
+    data: MetabaseFetchStaticTokenFnData,
+  ) => Promise<UserBackendJwtResponse>;
 
   /** Whether we should use the existing user session (i.e. admin user's cookie) */
   useExistingUserSession?: boolean;
 
   // Whether the embed is running on localhost. Cannot be set by the user.
   _isLocalhost?: boolean;
+};
+
+export type SdkIframeEmbedInternalIframeSettings = Omit<
+  SdkIframeEmbedBaseSettings,
+  "fetchRequestToken"
+> & {
+  fetchRequestToken?: boolean;
 };
 
 export type SdkIframeEmbedTemplateSettings =

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useCallback } from "react";
 import { P, match } from "ts-pattern";
 
 import { PublicComponentStylesWrapper } from "embedding-sdk-bundle/components/private/PublicComponentStylesWrapper";
@@ -13,15 +13,20 @@ import {
 } from "embedding-sdk-bundle/components/public/dashboard";
 import { getSdkStore, useSdkSelector } from "embedding-sdk-bundle/store";
 import { getLoginStatus } from "embedding-sdk-bundle/store/selectors";
+import type { MetabaseFetchStaticTokenFnData } from "embedding-sdk-bundle/types/refresh-token";
 import type { MetabaseAuthConfig } from "embedding-sdk-package";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { createTracker } from "metabase/lib/analytics-untyped";
+import { uuid } from "metabase/lib/uuid";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { Box } from "metabase/ui";
 
 import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
-import type { SdkIframeEmbedSettings } from "../types/embed";
+import type {
+  MetabaseEmbeddingSetRequestStaticTokenData,
+  SdkIframeEmbedSettings,
+} from "../types/embed";
 
 import { MetabaseBrowser } from "./MetabaseBrowser";
 import {
@@ -40,9 +45,34 @@ const store = getSdkStore();
 createTracker(store);
 
 export const SdkIframeEmbedRoute = () => {
-  const { embedSettings } = useSdkIframeEmbedEventBus({
-    onSettingsChanged,
-  });
+  const { sendMessage, waitForIncomingMessage, embedSettings } =
+    useSdkIframeEmbedEventBus({
+      onSettingsChanged,
+    });
+
+  const fetchStaticToken = useCallback(
+    async (data: MetabaseFetchStaticTokenFnData) => {
+      const messageId = uuid();
+
+      sendMessage({
+        type: "metabase.embed.fetchStaticToken",
+        data: {
+          ...data,
+          messageId,
+        },
+      });
+
+      const incomingMessageData =
+        await waitForIncomingMessage<MetabaseEmbeddingSetRequestStaticTokenData>(
+          (message) =>
+            message.type === "metabase.embed.setStaticToken" &&
+            message.data.messageId === messageId,
+        );
+
+      return incomingMessageData.staticToken;
+    },
+    [sendMessage, waitForIncomingMessage],
+  );
 
   // The embed settings won't be available until the parent sends it via postMessage.
   // The SDK will show its own loading indicator, so we don't need to show it twice.
@@ -72,10 +102,11 @@ export const SdkIframeEmbedRoute = () => {
 
   const { isStatic, theme, locale } = embedSettings;
 
-  const authConfig: MetabaseAuthConfig = {
+  const authConfig = {
     metabaseInstanceUrl: embedSettings.instanceUrl,
     apiKey: embedSettings.apiKey,
-  };
+    fetchStaticToken,
+  } as MetabaseAuthConfig;
 
   return (
     <ComponentProvider

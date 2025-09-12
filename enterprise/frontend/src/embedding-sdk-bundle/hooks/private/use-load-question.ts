@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState } from "react";
+import { useReducer, useRef, useState } from "react";
 import { useAsyncFn, useUnmount } from "react-use";
 
 import {
@@ -8,13 +8,18 @@ import {
   updateQuestionSdk,
 } from "embedding-sdk-bundle/lib/sdk-question";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
-import { getIsStatic } from "embedding-sdk-bundle/store/selectors";
+import {
+  getFetchStaticTokenFn,
+  getIsStatic,
+} from "embedding-sdk-bundle/store/selectors";
 import type {
   LoadSdkQuestionParams,
   NavigateToNewCardParams,
+  SdkQuestionId,
   SdkQuestionState,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types/question";
+import type { MetabaseFetchStaticTokenFn } from "embedding-sdk-bundle/types/refresh-token";
 import { type Deferred, defer } from "metabase/lib/promise";
 import { setEmbedQuestionEndpoints } from "metabase/services";
 import type Question from "metabase-lib/v1/Question";
@@ -56,6 +61,35 @@ export interface LoadQuestionHookResult {
     | null;
 }
 
+// TODO: move from this file
+const getNormalizedQuestionId = async ({
+  questionId,
+  isStaticQuestion,
+  customFetchStaticTokenFn,
+}: {
+  questionId: SdkQuestionId | null | undefined;
+  isStaticQuestion: boolean;
+  customFetchStaticTokenFn: MetabaseFetchStaticTokenFn | null | undefined;
+}): Promise<SdkQuestionId | null | undefined> => {
+  if (questionId === null || questionId === undefined || !isStaticQuestion) {
+    return questionId;
+  }
+
+  const isStaticToken =
+    typeof questionId === "string" && questionId.includes(".");
+
+  if (isStaticToken) {
+    return questionId;
+  }
+
+  const fetchedStaticToken = await customFetchStaticTokenFn?.({
+    entityType: "question",
+    entityId: questionId,
+  });
+
+  return fetchedStaticToken?.jwt ?? null;
+};
+
 export function useLoadQuestion({
   questionId,
   options,
@@ -73,12 +107,7 @@ export function useLoadQuestion({
     questionState;
 
   const isStaticQuestion = useSdkSelector(getIsStatic);
-
-  useEffect(() => {
-    if (isStaticQuestion) {
-      setEmbedQuestionEndpoints(questionId);
-    }
-  }, [isStaticQuestion, questionId]);
+  const customFetchStaticTokenFn = useSdkSelector(getFetchStaticTokenFn);
 
   const deferredRef = useRef<Deferred>();
 
@@ -106,12 +135,23 @@ export function useLoadQuestion({
     if (shouldLoadQuestion) {
       setIsQuestionLoading(true);
     }
+
     try {
+      const normalizedQuestionId = await getNormalizedQuestionId({
+        questionId,
+        isStaticQuestion,
+        customFetchStaticTokenFn,
+      });
+
+      if (isStaticQuestion) {
+        setEmbedQuestionEndpoints(normalizedQuestionId);
+      }
+
       const questionState = await dispatch(
         loadQuestionSdk({
           options,
           deserializedCard,
-          questionId,
+          questionId: normalizedQuestionId,
           initialSqlParameters,
           targetDashboardId,
         }),
