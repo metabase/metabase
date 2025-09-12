@@ -7,7 +7,11 @@ import type {
   TransformJobId,
 } from "metabase-types/api";
 
-import type { JobListParams, RunListParams } from "./types";
+import type {
+  JobListParams,
+  PythonLibraryEditorPageParams,
+  RunListParams,
+} from "./types";
 
 export const ROOT_URL = "/admin/transforms";
 
@@ -124,6 +128,6 @@ export function getTableMetadataUrl(
   return `/admin/datamodel/database/${databaseId}/schema/${databaseId}:${encodeURIComponent(schema ?? "")}/table/${tableId}`;
 }
 
-export function getPythonLibraryUrl() {
-  return `/admin/transforms/library/python`;
+export function getPythonLibraryUrl({ name }: PythonLibraryEditorPageParams) {
+  return `/admin/transforms/library/${name}`;
 }
