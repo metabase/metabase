@@ -245,7 +245,7 @@
   "Return information about a specific Transform. Nil if it does not exist."
   [metadata-provider :- ::metadata-provider
    card-id           :- ::lib.schema.id/card]
-  (metadata metadata-provider :metadata/transform card-id))
+  (metadata-by-id metadata-provider :metadata/transform card-id))
 
 (mu/defn native-query-snippet :- [:maybe ::lib.schema.metadata/native-query-snippet]
   "Get metadata for a NativeQuerySnippet with `snippet-id` if it can be found."

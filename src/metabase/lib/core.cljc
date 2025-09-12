@@ -439,7 +439,7 @@
   source-table-id
   update-query-stage]
  [lib.validate
-  find-bad-refs])
+  find-bad-refs]
  [metabase.lib.walk.util
   all-source-card-ids
   all-source-table-ids
