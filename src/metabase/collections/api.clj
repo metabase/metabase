@@ -1296,7 +1296,9 @@
          [400 "You cannot modify the Trash Collection."])
 
         ;; ok, we're good to move!
-        (collection/move-collection! collection-before-update new-location)))))
+        (collection/move-collection! collection-before-update new-location
+                                     (collection/moving-into-library? (collection/location-path->parent-id orig-location)
+                                                                      new-parent-id))))))
 
 (defn- archive-collection!
   "If input to the `PUT /api/collection/:id` endpoint specifies that we should archive a collection, do the appropriate

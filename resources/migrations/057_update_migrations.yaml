@@ -1353,6 +1353,139 @@ databaseChangeLog:
                   name: comment_id
       rollback: # will be removed along the table
 
+  - changeSet:
+      id: v57.2025-08-26T10:51:08
+      author: jds
+      comment: Add synced_to_source_of_truth column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: synced_to_source_of_truth
+                  remarks: Whether this transform is synced to the git source of truth
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-09-04T10:00:00
+      author: edpaget
+      comment: Add library_identifier column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: library_identifier
+                  remarks: Unique identifier for transforms within a library
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-09-04T10:01:00
+      author: edpaget
+      comment: Add unique constraint and index on transform.library_identifier
+      changes:
+        - addUniqueConstraint:
+            tableName: transform
+            columnNames: library_identifier
+            constraintName: unique_transform_library_identifier
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_library_identifier
+            columns:
+              - column:
+                  name: library_identifier
+
+  - changeSet:
+      id: v57.2025-09-09T12:00:00
+      author: johnswanson
+      comment: Create the Library collection
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO collection (name, slug, entity_id, type) VALUES ('Library', 'library', 'librarylibrarylibrary', 'library');
+
+      rollback:
+        - sql:
+            sql: >-
+              DELETE FROM collection WHERE type = 'library';
+
+  - changeSet:
+      id: v57.2025-09-11T16:00:00
+      author: johnswanson
+      comment: Create library_sync_log table to track when syncs occur
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: library_sync_log
+      changes:
+        - createTable:
+            tableName: library_sync_log
+            remarks: Track when library syncs occur for detecting unsynced changes
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: sync_type
+                  type: varchar(50)
+                  remarks: Type of sync operation (import, export)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source_branch
+                  type: varchar(255)
+                  remarks: Git branch that was synced from
+                  constraints:
+                    nullable: true
+              - column:
+                  name: target_branch
+                  type: varchar(255)
+                  remarks: Git branch that was synced to
+                  constraints:
+                    nullable: true
+              - column:
+                  name: status
+                  type: varchar(50)
+                  remarks: Status of sync operation (success, error)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: message
+                  type: ${text.type}
+                  remarks: Optional message or error details
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When the sync occurred
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-09-11T16:01:00
+      author: jds
+      comment: Add index on library_sync_log.created_at for efficient sync time queries
+      changes:
+        - createIndex:
+            tableName: library_sync_log
+            indexName: idx_library_sync_log_created_at
+            columns:
+              - column:
+                  name: created_at
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

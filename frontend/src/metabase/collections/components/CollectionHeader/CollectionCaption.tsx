@@ -4,6 +4,7 @@ import { t } from "ttag";
 import {
   isEditableCollection,
   isInstanceAnalyticsCollection,
+  isLibraryCollection,
   isRootTrashCollection,
 } from "metabase/collections/utils";
 import { color } from "metabase/lib/colors";
@@ -91,6 +92,10 @@ const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
         entity="collection"
       />
     );
+  }
+
+  if (isLibraryCollection(collection)) {
+    return <Icon size={24} c="brand" name="reference" />;
   }
 
   if (isRootTrashCollection(collection)) {

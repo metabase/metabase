@@ -12,6 +12,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.channel.email.messages :as messages]
    [metabase.collections.api :as api.collection]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.dashboards.models.dashboard :as dashboard]
@@ -140,7 +141,10 @@
                          ;; collection to change position, check that and fix up if needed
                          (api/maybe-reconcile-collection-position! dashboard-data)
                          ;; Ok, now save the Dashboard
-                         (first (t2/insert-returning-instances! :model/Dashboard dashboard-data)))]
+
+                         (u/prog1 (first (t2/insert-returning-instances! :model/Dashboard dashboard-data))
+                           (when (collections/library-collection? collection_id)
+                             (collections/check-non-library-dependencies <>))))]
     (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
     (analytics/track-event! :snowplow/dashboard
                             {:event        :dashboard-created
@@ -522,9 +526,12 @@
                                                                             id->referenced-card
                                                                             id->new-tab-id))]
                              (api/check-500 (dashboard/add-dashcards! dash dashcards)))
-                           (cond-> dash
-                             (seq uncopied)
-                             (assoc :uncopied uncopied))))]
+                           (u/prog1 (cond-> dash
+                                      (seq uncopied)
+                                      (assoc :uncopied uncopied))
+                             (when (collections/moving-into-library? (:collection_id existing-dashboard)
+                                                                     collection_id)
+                               (collections/check-non-library-dependencies <>)))))]
     (analytics/track-event! :snowplow/dashboard
                             {:event        :dashboard-created
                              :dashboard-id (u/the-id dashboard)})
@@ -971,7 +978,9 @@
                (reset! changes-stats
                        (merge
                         (select-keys tabs-changes-stats [:created-tab-ids :deleted-tab-ids :total-num-tabs])
-                        (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards]))))))
+                        (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards])))))
+           (when (collections/library-collection? (:collection_id dash-updates))
+             (collections/check-non-library-dependencies (t2/select-one :model/Dashboard id))))
          true))
       (let [dashboard (t2/select-one :model/Dashboard id)]
         ;; skip publishing the event if it's just a change in its collection position

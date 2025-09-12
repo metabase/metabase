@@ -3062,3 +3062,109 @@
   (mt/with-temp [:model/Collection {a-id :id} {:archived true}]
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :delete 403 (str "/collection/" a-id))))))
+
+(deftest api-move-collection-into-library-dependency-checking-success-test
+  (testing "PUT /api/collection/:id with parent_id in library succeeds when all dependencies are in library"
+    (mt/with-temp [:model/Collection {library-id :id} {:name "Library" :location "/" :type "library"}
+                   :model/Collection {parent-id :id} {:name "Parent" :location (format "/%d/" library-id) :type "library"}
+                   :model/Collection {coll-id :id} {:name "Collection to Move"
+                                                    :location "/"
+                                                    :type nil}
+                   :model/Card {library-card-id :id} {:name "Library Card"
+                                                      :collection_id library-id
+                                                      :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
+                                                        :collection_id coll-id
+                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" library-card-id)})}]
+      ;; This should succeed because the dependency (library-card) is in a library collection
+      (let [response (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id)
+                                           {:parent_id parent-id})]
+        ;; Verify the collection was moved and became library type
+        (is (= "library" (:type response))
+            "Collection should have library type")
+        (is (= parent-id (:parent_id response))
+            "Collection should be moved to library parent")))))
+
+(deftest api-move-collection-into-library-dependency-checking-failure-test
+  (testing "PUT /api/collection/:id with parent_id in library throws 400 when dependencies exist outside library"
+    (mt/with-temp [:model/Collection {non-library-id :id} {:name "Non-Library" :location "/" :type nil}
+                   :model/Collection {library-id :id} {:name "Library" :location "/" :type "library"}
+                   :model/Collection {parent-id :id} {:name "Parent" :location (format "/%d/" library-id) :type "library"}
+                   :model/Collection {coll-id :id} {:name "Collection to Move"
+                                                    :location "/"
+                                                    :type nil}
+                   :model/Card {non-library-card-id :id} {:name "Non-Library Card"
+                                                          :collection_id non-library-id
+                                                          :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
+                                                        :collection_id coll-id
+                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-library-card-id)})}]
+      ;; This should return 400 because the dependency (non-library-card) is not in a library collection
+      (let [response (mt/user-http-request :crowberto :put 400 (str "collection/" coll-id)
+                                           {:parent_id parent-id})]
+        ;; Verify error response contains dependency information
+        (is (str/includes? (:message response) "non-library dependencies")
+            "Error message should mention non-library dependencies"))
+
+      ;; Verify the transaction was rolled back - collection should not be moved or changed
+      (let [unchanged-coll (t2/select-one :model/Collection :id coll-id)]
+        (is (nil? (:type unchanged-coll))
+            "Collection type should remain unchanged after failed move")
+        (is (= "/" (:location unchanged-coll))
+            "Collection location should remain unchanged after failed move")))))
+
+(deftest api-move-collection-into-library-dependency-checking-transaction-rollback-test
+  (testing "PUT /api/collection/:id transaction rollback when dependency check fails after updates"
+    (mt/with-temp [:model/Collection {non-library-id :id} {:name "Non-Library" :location "/" :type nil}
+                   :model/Collection {library-id :id} {:name "Library" :location "/" :type "library"}
+                   :model/Collection {parent-id :id} {:name "Parent" :location (format "/%d/" library-id) :type "library"}
+                   :model/Collection {coll-id :id} {:name "Collection to Move"
+                                                    :location "/"
+                                                    :type nil}
+                   :model/Collection {child-id :id} {:name "Child Collection"
+                                                     :location (format "/%d/" coll-id)
+                                                     :type nil}
+                   :model/Card {non-library-card-id :id} {:name "Non-Library Card"
+                                                          :collection_id non-library-id
+                                                          :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
+                                                        :collection_id coll-id
+                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-library-card-id)})}]
+      ;; This should return 400 with transaction rollback
+      (mt/user-http-request :crowberto :put 400 (str "collection/" coll-id)
+                            {:parent_id parent-id})
+
+      ;; Verify the transaction was completely rolled back
+      (let [unchanged-coll (t2/select-one :model/Collection :id coll-id)]
+        (is (nil? (:type unchanged-coll))
+            "Collection type should remain unchanged after transaction rollback")
+        (is (= "/" (:location unchanged-coll))
+            "Collection location should remain unchanged after transaction rollback"))
+
+      (let [unchanged-child (t2/select-one :model/Collection :id child-id)]
+        (is (nil? (:type unchanged-child))
+            "Child collection type should remain unchanged after transaction rollback")
+        (is (= (format "/%d/" coll-id) (:location unchanged-child))
+            "Child collection location should remain unchanged after transaction rollback")))))
+
+(deftest api-move-collection-outside-library-no-dependency-checking-test
+  (testing "PUT /api/collection/:id to non-library parent does not check dependencies"
+    (mt/with-temp [:model/Collection {non-library-id :id} {:name "Non-Library" :location "/" :type nil}
+                   :model/Collection {parent-id :id} {:name "Parent" :location "/" :type nil}
+                   :model/Collection {coll-id :id} {:name "Collection to Move"
+                                                    :location "/"
+                                                    :type nil}
+                   :model/Card {non-library-card-id :id} {:name "Non-Library Card"
+                                                          :collection_id non-library-id
+                                                          :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
+                                                        :collection_id coll-id
+                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-library-card-id)})}]
+      ;; This should succeed because we're not moving into a library collection
+      (let [response (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id)
+                                           {:parent_id parent-id})]
+        ;; Verify the collection was moved but did not become library type
+        (is (nil? (:type response))
+            "Collection should not have library type")
+        (is (= parent-id (:parent_id response))
+            "Collection should be moved to new parent")))))

@@ -15,6 +15,7 @@
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.config.core :as config :refer [*request-id*]]
    [metabase.events.core :as events]
+   [metabase.library.core :as library]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
@@ -30,6 +31,7 @@
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.core :as t2]
+   [toucan2.model :as t2.model]
    [toucan2.protocols :as t2.protocols]
    [toucan2.realize :as t2.realize]))
 
@@ -62,6 +64,14 @@
 (def ^:constant trash-collection-type
   "The value of the `:type` field for the Trash collection that holds archived items."
   "trash")
+
+(def ^:constant library-collection-type
+  "The value of the `:type` field for Library collections."
+  "library")
+
+(def ^:constant library-entity-id
+  "The library's entity ID"
+  "librarylibrarylibrary")
 
 (defn- trash-collection* []
   (t2/select-one :model/Collection :type trash-collection-type))
@@ -101,6 +111,16 @@
   [collection]
   (str/starts-with? (:location collection) (trash-path)))
 
+(defn library-collection?
+  "Is this a library collection?"
+  [collection-or-id]
+  (let [type (:type collection-or-id ::not-found)]
+    (if (identical? type ::not-found)
+      ;; If no :type field, it's probably an ID - fetch from DB
+      (some->> collection-or-id u/the-id (t2/select-one-fn :type :model/Collection :id) (= library-collection-type))
+      ;; If :type field exists, compare directly
+      (= type library-collection-type))))
+
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
 
 (methodical/defmethod t2/model-for-automagic-hydration [#_model :default #_k :collection]
@@ -125,6 +145,7 @@
 (doto :model/Collection
   (derive :metabase/model)
   (derive :hook/entity-id)
+  (derive :hook/git-sync-protected)
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
 
@@ -135,6 +156,7 @@
 (defmethod mi/can-write? :model/Collection
   ([instance]
    (and (not (default-audit-collection? instance))
+        (library/library-editable? instance)
         (mi/current-user-has-full-permissions? :write instance)))
   ([_model pk]
    (mi/can-write? (t2/select-one :model/Collection pk))))
@@ -221,7 +243,7 @@
   (unchecked-location-path->ids location-path))
 
 (mu/defn location-path->parent-id :- [:maybe ms/PositiveInt]
-  "Given a `location-path` fetch the ID of the direct of a Collection.
+  "Given a `location-path` fetch the ID of the direct parent of a Collection.
 
      (location-path->parent-id \"/10/20/\") ; -> 20"
   [location-path :- LocationPath]
@@ -1044,7 +1066,7 @@
    (cons (perms/collection-readwrite-path new-parent)
          (perms-for-collection-and-descendants collection))))
 
-(mu/defn- collection->descendant-ids :- [:maybe [:set ms/PositiveInt]]
+(mu/defn collection->descendant-ids :- [:maybe [:set ms/PositiveInt]]
   [collection :- CollectionWithLocationAndIDOrRoot, & additional-conditions]
   (apply t2/select-pks-set :model/Collection
          :location [:like (str (children-location collection) "%")]
@@ -1145,9 +1167,13 @@
     (archive-collection! collection)
     (unarchive-collection! collection updates)))
 
+(declare check-non-library-dependencies)
+
 (mu/defn move-collection!
   "Move a Collection and all its descendant Collections from its current `location` to a `new-location`."
-  [collection :- CollectionWithLocationAndIDOrRoot, new-location :- LocationPath]
+  [collection :- CollectionWithLocationAndIDOrRoot
+   new-location :- LocationPath
+   & [into-library? :- :boolean]]
   (let [orig-children-location (children-location collection)
         new-children-location  (children-location (assoc collection :location new-location))
         will-be-in-trash? (str/starts-with? new-location (trash-path))]
@@ -1161,12 +1187,16 @@
     (events/publish-event! :event/collection-touch {:collection-id (:id collection) :user-id api/*current-user-id*})
     (t2/with-transaction [_conn]
       (t2/update! :model/Collection (u/the-id collection)
-                  {:location new-location})
+                  (cond-> {:location new-location :type nil}
+                    into-library? (assoc :type "library")))
       ;; we need to update all the descendant collections as well...
-      (t2/query-one
-       {:update :collection
-        :set    {:location [:replace :location orig-children-location new-children-location]}
-        :where  [:like :location (str orig-children-location "%")]}))))
+      (u/prog1 (t2/query-one
+                {:update :collection
+                 :set    (cond-> {:location [:replace :location orig-children-location new-children-location] :type nil}
+                           into-library? (assoc :type "library"))
+                 :where  [:like :location (str orig-children-location "%")]})
+        (when into-library?
+          (check-non-library-dependencies collection))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Toucan IModel & Perms Method Impls                                       |
@@ -1397,6 +1427,57 @@
                  :where       [:or
                                [:= :object (perms/collection-readwrite-path collection)]
                                [:= :object (perms/collection-read-path collection)]]}))
+
+;;; -------------------------------------------------- Library -------------------------------------------------------
+
+(defn non-library-dependencies
+  "Find dependencies of a model -- that are possible to contain in the >ibrary -- that are not contained the in Library
+  collection or in subcollections of the Library collection. Uses serdes/descendants to list dependencies of a model.
+
+  Args:
+    model: the model to check dependencies for
+
+  Returns:
+    sequence of models pairs for depedendencies of the given model that are not in the Library"
+  [{:keys [id] :as model}]
+  (let [all-descendants (u/traverse [[(name (t2/model model)) id]] #(serdes/descendants (first %) (second %)))
+        {cards "Cards"} (->> all-descendants keys (u/group-by first second))
+        library-collection (t2/select-one :model/Collection :entity_id library-entity-id)
+        library-collection-tree (conj (descendant-ids library-collection) (:id library-collection))]
+    (set/difference (set cards) (t2/select-pks-set :model/Card :collection_id [:in library-collection-tree]))))
+
+(defn check-non-library-dependencies
+  "Throws if a model has non-library-dependencies.
+
+  Args:
+    model: the model to check depedencies for
+
+  Returns:
+    nil
+
+  Raises:
+    ex-info object with non-library-dependencies and a 400 status code  "
+  [model]
+  (when-let [non-library-deps (not-empty (non-library-dependencies model))]
+    (throw (ex-info (str (deferred-tru "Model has non-library dependencies")) {:non-library-models non-library-deps
+                                                                               :status-code 400})))
+  model)
+
+(defn moving-into-library?
+  "Tests if a move from old-collection-id to new-collection-id means the object is moving from a non-library collection
+  to a library collection.
+
+  Args:
+    old-collection-id: id of the collection the object is being moved from
+    new-collection-id: id of the collection the object is being moved to
+
+  Returns:
+    true if the old collection is not part of the library and the new collection is."
+  [old-collection-id new-collection-id]
+  (and (not (nil? new-collection-id))
+       (t2/exists? :model/Collection {:where [:and [:= :id new-collection-id] [:= :type "library"]]})
+       (or (nil? old-collection-id)
+           (t2/exists? :model/Collection {:where [:and [:= :id old-collection-id] [:or [:<> :type "library"] [:= :type nil]]]}))))
 
 ;;; -------------------------------------------------- IModel Impl ---------------------------------------------------
 

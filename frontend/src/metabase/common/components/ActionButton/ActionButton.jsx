@@ -61,6 +61,13 @@ export default class ActionButton extends Component {
     });
   }
 
+  cancel() {
+    if (this.actionPromise) {
+      this.actionPromise.cancel();
+    }
+    this.resetState();
+  }
+
   resetStateOnTimeout = () => {
     // clear any previously set timeouts then start a new one
     clearTimeout(this.timeout);
@@ -125,6 +132,7 @@ export default class ActionButton extends Component {
       failedClassName,
       forceActiveStyle,
       children,
+      disabled,
       ...props
     } = this.props;
     const { active, result } = this.state;
@@ -146,6 +154,7 @@ export default class ActionButton extends Component {
               })
         }
         onClick={this.onClick}
+        disabled={disabled}
       >
         {active ? (
           useLoadingSpinner ? (

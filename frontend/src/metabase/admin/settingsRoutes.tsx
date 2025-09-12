@@ -2,7 +2,11 @@ import { IndexRedirect, Route } from "react-router";
 
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { NotFound } from "metabase/common/components/ErrorPages";
-import { PLUGIN_ADMIN_SETTINGS, PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
+import {
+  PLUGIN_ADMIN_SETTINGS,
+  PLUGIN_AUTH_PROVIDERS,
+  PLUGIN_GIT_SYNC,
+} from "metabase/plugins";
 
 import { GoogleAuthForm } from "./settings/auth/components/GoogleAuthForm";
 import {
@@ -59,6 +63,18 @@ export const getSettingsRoutes = () => (
     <Route
       path="authentication/jwt"
       component={() => <PLUGIN_AUTH_PROVIDERS.SettingsJWTForm />}
+    />
+    <Route
+      path="library"
+      component={() => <PLUGIN_GIT_SYNC.GitSyncSettings />}
+    />
+    <Route
+      path="library/sync"
+      component={() => <PLUGIN_GIT_SYNC.GitSyncSettings />}
+    />
+    <Route
+      path="library/changes"
+      component={() => <PLUGIN_GIT_SYNC.GitChangeList />}
     />
     <Route path="maps" component={MapsSettingsPage} />
     <Route path="localization" component={LocalizationSettingsPage} />

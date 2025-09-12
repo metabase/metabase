@@ -14,6 +14,7 @@
    [metabase-enterprise.database-replication.init]
    [metabase-enterprise.documents.init]
    [metabase-enterprise.gsheets.init]
+   [metabase-enterprise.library.init]
    [metabase-enterprise.llm.init]
    [metabase-enterprise.metabot-v3.init]
    [metabase-enterprise.scim.init]
