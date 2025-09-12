@@ -79,7 +79,7 @@ Static embedding only guarantees authorized access to your Metabase data (you de
 
 If you want to secure your static embeds based on someone's identity (you decide _who_ gets access to _what_), you'll need to set up your own authentication flow and manually wire that up to [locked parameters](#example-sending-user-attributes-to-a-locked-parameter) on each of your static embeds. Note that locked parameters are essentially filters, so you can only set up **row-level** restrictions in a static embed.
 
-If you want an easier way to embed different views of data for different customers (without allowing the customers to see each other’s data), learn how [Modular and interactive embedding authenticates and authorizes people in one flow](#modular-and-interactive-embedding-authenticates-and-authorizes-people-in-one-flow).
+If you want an easier way to embed different views of data for different customers (without allowing the customers to see each other’s data), learn how [Modular and interactive embedding authenticates and authorizes people in one flow](#modular-and-interactive-embedding-auth-with-jwt-or-saml).
 
 ### Static embedding with JWT authorization
 
