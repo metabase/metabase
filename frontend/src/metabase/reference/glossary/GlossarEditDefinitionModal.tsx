@@ -56,6 +56,7 @@ export function GlossaryEditDefinitionModal({
           <TextInput
             label={t`Term`}
             placeholder={t`Data science`}
+            required
             value={term}
             onChange={(e) => setTerm(e.target.value)}
           />
