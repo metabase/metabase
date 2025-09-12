@@ -14,26 +14,33 @@
 
 (set! *warn-on-reflection* true)
 
-(mu/defn- hydrated-native-query-snippet :- [:maybe (ms/InstanceOf :model/NativeQuerySnippet)]
-  [id :- ms/PositiveInt]
-  (-> (api/read-check (t2/select-one :model/NativeQuerySnippet :id id))
-      (t2/hydrate :creator)))
+(mu/defn list-native-query-snippets :- [:sequential (ms/InstanceOf :model/NativeQuerySnippet)]
+  "List all native query snippets the current user has read access to."
+  ([]
+   (list-native-query-snippets false))
+  ([archived :- ms/BooleanValue]
+   (let [snippets (t2/select :model/NativeQuerySnippet
+                             :archived archived
+                             {:order-by [[:%lower.name :asc]]})]
+     (t2/hydrate (filter mi/can-read? snippets) :creator))))
 
 (api.macros/defendpoint :get "/"
   "Fetch all snippets"
   [_route-params
    {:keys [archived]} :- [:map
                           [:archived {:default false} [:maybe ms/BooleanValue]]]]
-  (let [snippets (t2/select :model/NativeQuerySnippet
-                            :archived archived
-                            {:order-by [[:%lower.name :asc]]})]
-    (t2/hydrate (filter mi/can-read? snippets) :creator)))
+  (list-native-query-snippets (boolean archived)))
+
+(mu/defn get-native-query-snippet :- [:maybe (ms/InstanceOf :model/NativeQuerySnippet)]
+  [id :- ms/PositiveInt]
+  (-> (api/read-check (t2/select-one :model/NativeQuerySnippet :id id))
+      (t2/hydrate :creator)))
 
 (api.macros/defendpoint :get "/:id"
   "Fetch native query snippet with ID."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (hydrated-native-query-snippet id))
+  (get-native-query-snippet id))
 
 (defn- check-snippet-name-is-unique [snippet-name]
   (when (t2/exists? :model/NativeQuerySnippet :name snippet-name)
@@ -72,7 +79,7 @@
       (when-let [new-name (:name changes)]
         (check-snippet-name-is-unique new-name))
       (t2/update! :model/NativeQuerySnippet id changes))
-    (hydrated-native-query-snippet id)))
+    (get-native-query-snippet id)))
 
 (api.macros/defendpoint :put "/:id"
   "Update an existing `NativeQuerySnippet`."
