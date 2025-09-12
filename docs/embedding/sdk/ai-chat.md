@@ -1,5 +1,6 @@
 ---
 title: "Embedded analytics SDK - AI chat"
+summary: Embed an AI chat component in your app that can create queries from natural language questions.
 ---
 
 # Embedded analytics SDK - AI chat
@@ -31,6 +32,6 @@ To configure your embedded AI chat in your Metabase:
 3. Click the **AI** tab.
 4. In the left sidebar, click **Embedded Metabot**.
 
-When embedding the Metabot component in your app, you can specify a collection that embedded Metabot is allowed to use for creating queries. Embedded Metabot will only have access to that collection.
+When embedding the Metabot component in your app, you should specify a collection that embedded Metabot is allowed to use for creating queries. Embedded Metabot will only have access to that collection.
 
 For tips and more, see [Metabot settings](../../ai/settings.md).
