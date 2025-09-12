@@ -14,6 +14,7 @@ import { PythonEditor } from "metabase-enterprise/transforms/components/PythonEd
 import type { PythonLibraryEditorPageParams } from "metabase-enterprise/transforms/types";
 
 import S from "./PythonLibraryEditorPage.module.css";
+import { isNotFoundError } from "./utils";
 
 type PythonLibraryEditorPageProps = {
   params: PythonLibraryEditorPageParams;
@@ -42,16 +43,17 @@ export function PythonLibraryEditorPage({
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   function handleRevert() {
-    if (isLoading || error) {
+    if (isLoading) {
       return;
     }
 
-    // FIXME: update the api to return 404 when the library doesn't exist
-    // @ts-expect-error: library is "" when the request returns 204
-    if (library != null && library !== "") {
-      setSource(library.source || "");
-    } else {
+    if (isNotFoundError(error)) {
       setSource(EMPTY_LIBRARY_SOURCE);
+      return;
+    }
+
+    if (library != null) {
+      setSource(library.source || "");
     }
   }
 
@@ -69,7 +71,7 @@ export function PythonLibraryEditorPage({
 
   const isDirty = source !== library?.source;
 
-  if (isLoading || error) {
+  if (isLoading || (error && !isNotFoundError(error))) {
     return (
       <Box p="md">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
