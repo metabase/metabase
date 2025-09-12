@@ -36,8 +36,6 @@ describe("scenarios > embedding > upsells", { tags: "@EE" }, () => {
       expect(url).to.match(/source_plan=oss/);
     });
   });
-
-  // TODO: add tests in interactive embedding page for upsells
 });
 
 function mainPage() {
