@@ -1270,11 +1270,12 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti rename-table!
-  "Rename a table from `old-table-name` to `new-table-name`. Table names may be qualified by schema e.g.
-
-    schema.table"
-  {:added "0.57.0", :arglists '([driver db-id old-table-name new-table-name])}
+(defmulti rename-tables!
+  "Rename multiple tables atomically within a transaction. Takes a map of {from-table to-table}.
+   Uses topological sorting to determine the correct order to avoid conflicts.
+   This is a simpler, composable operation compared to swap-table! that only handles renaming.
+   Table names may be qualified by schema e.g. schema.table"
+  {:added "0.57.0", :arglists '([driver db-id rename-map])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -1287,6 +1288,35 @@
   {:added "0.50.0", :arglists '([driver db-id table-name])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti rename-tables!*
+  "Driver-specific implementation of table renaming. Takes a pre-sorted map of {from-table to-table}.
+   The input map has already been topologically sorted by the public rename-tables! function.
+   Implementations should perform the actual rename operations atomically as supported by the database.
+   NOTE: Do not call this directly - use rename-tables! instead which handles the topological sort."
+  {:added "0.57.0", :arglists '([driver db-id sorted-rename-map])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defn rename-tables!
+  "Rename multiple tables atomically. Takes a map of {from-table to-table}.
+   Performs topological sort to determine correct rename order, then delegates to driver-specific implementation.
+   Implementations should use transactions, compound operations, or metadata locks as supported by the database.
+   Table names may be qualified by schema e.g. :schema/table"
+  {:added "0.57.0"}
+  [driver db-id rename-map]
+  (let [sorted-rename-map (-> rename-map
+                              (update-vals vector)
+                              u/topological-sort
+                              (update-vals first))]
+    (rename-tables!* driver db-id sorted-rename-map)))
+
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+(defn rename-table!
+  "Rename a single table."
+  {:added "0.57.0"}
+  [driver db-id from-table to-table]
+  (rename-tables!* driver db-id {from-table to-table}))
 
 (defmulti insert-into!
   "Insert `values` into a table named `table-name`. `values` is a lazy sequence of rows, where each row's order matches

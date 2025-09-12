@@ -11,6 +11,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.random :as random]
    [toucan2.core :as t2])
   (:import
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -185,14 +186,20 @@
     (log/infof "Creating table %s with %d columns" table-name (count columns))
     (driver/create-table! driver database-id table-name column-definitions primary-key-opts)))
 
-(defn rename-table!
-  "kename a table in the database."
-  [driver database-id old-table-name new-table-name]
-  (log/infof "Renaming table %s to %s" old-table-name new-table-name)
-  (driver/rename-table! driver database-id old-table-name new-table-name))
-
 (defn drop-table!
   "Drop a table in the database."
   [driver database-id table-name]
   (log/infof "Dropping table %s" table-name)
   (driver/drop-table! driver database-id table-name))
+
+(defn temp-table-name
+  "Generate a temporary table name with the given suffix and current timestamp in seconds."
+  [base-table-name suffix]
+  (keyword (str (u/qualified-name base-table-name) "_" suffix "_" (quot (System/currentTimeMillis) 1000))))
+
+(defn rename-tables!
+  "Rename multiple tables atomically within a transaction using the new driver/rename-tables method.
+   This is a simpler, composable operation that only handles renaming."
+  [driver database-id rename-map]
+  (log/infof "Renaming tables: %s" (pr-str rename-map))
+  (driver/rename-tables! driver database-id rename-map))
