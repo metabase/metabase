@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { P, match } from "ts-pattern";
 
+import { PublicComponentStylesWrapper } from "embedding-sdk-bundle/components/private/PublicComponentStylesWrapper";
+import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkBreadcrumbsProvider } from "embedding-sdk-bundle/components/private/SdkBreadcrumbs";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
@@ -9,7 +11,8 @@ import {
   InteractiveDashboard,
   StaticDashboard,
 } from "embedding-sdk-bundle/components/public/dashboard";
-import { getSdkStore } from "embedding-sdk-bundle/store";
+import { getSdkStore, useSdkSelector } from "embedding-sdk-bundle/store";
+import { getLoginStatus } from "embedding-sdk-bundle/store/selectors";
 import type { MetabaseAuthConfig } from "embedding-sdk-package";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { createTracker } from "metabase/lib/analytics-untyped";
@@ -92,6 +95,18 @@ const SdkIframeEmbedView = ({
   settings: SdkIframeEmbedSettings;
 }): ReactNode => {
   const rerenderKey = useParamRerenderKey(settings);
+  const loginStatus = useSdkSelector(getLoginStatus);
+
+  if (loginStatus?.status === "error") {
+    return (
+      <PublicComponentStylesWrapper>
+        <SdkError
+          error={loginStatus.error}
+          message={loginStatus.error.message}
+        />
+      </PublicComponentStylesWrapper>
+    );
+  }
 
   return match(settings)
     .with(
