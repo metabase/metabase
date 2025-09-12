@@ -9,7 +9,6 @@
    (java.nio.file Files)
    (java.nio.file.attribute FileAttribute)
    (org.eclipse.jgit.api Git GitCommand TransportCommand)
-   (org.eclipse.jgit.api.errors GitAPIException InvalidRemoteException TransportException)
    (org.eclipse.jgit.dircache DirCache DirCacheEntry)
    (org.eclipse.jgit.lib CommitBuilder Constants FileMode ObjectId PersonIdent Ref)
    (org.eclipse.jgit.revwalk RevWalk)

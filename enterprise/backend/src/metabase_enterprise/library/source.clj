@@ -1,6 +1,5 @@
 (ns metabase-enterprise.library.source
   (:require
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.library.source.git :as git]
    [metabase-enterprise.library.source.protocol :as source.p]
@@ -11,6 +10,7 @@
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml])
   (:import
+   (java.io File)
    (org.eclipse.jgit.api.errors GitAPIException InvalidRemoteException TransportException)))
 
 (set! *warn-on-reflection* true)
@@ -76,7 +76,7 @@
   (let [base-path   (serdes/storage-path entity opts)
         dirnames    (drop-last base-path)
         basename    (str (last base-path) ".yaml")]
-    (apply str (map v2.storage/escape-segment (concat dirnames [basename])))))
+    (str/join File/separator (map v2.storage/escape-segment (concat dirnames [basename])))))
 
 (defn- ->file-spec
   "Converts entity from serdes stream into file spec for source write-files! "
@@ -90,7 +90,7 @@
 (defn store!
   "Store files from `stream` to `source` on `branch`. Commits with `message`."
   [stream source branch message]
-  (let [opts {}]
+  (let [opts (serdes/storage-base-context)]
     (source.p/write-files! source branch message (map #(->file-spec opts %) stream))))
 
 (defn source-from-settings
