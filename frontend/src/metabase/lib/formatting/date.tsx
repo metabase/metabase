@@ -19,19 +19,18 @@ import type { OptionsType } from "./types";
 
 const EN_DASH = `–`;
 
-function getDayOfYearOrdinal(dayOfYear: number): string {
-  const j = dayOfYear % 10;
-  const k = dayOfYear % 100;
-  if (j === 1 && k !== 11) {
-    return dayOfYear + "st";
-  }
-  if (j === 2 && k !== 12) {
-    return dayOfYear + "nd";
-  }
-  if (j === 3 && k !== 13) {
-    return dayOfYear + "rd";
-  }
-  return dayOfYear + "th";
+function getOrdinal(number: number): string {
+  const pr = new Intl.PluralRules("en", { type: "ordinal" });
+  const rule = pr.select(number);
+
+  const suffixes: Record<string, string> = {
+    one: "st",
+    two: "nd",
+    few: "rd",
+    other: "th",
+  };
+
+  return suffixes[rule];
 }
 
 type DEFAULT_DATE_FORMATS_TYPE = { [key: string]: string };
@@ -880,7 +879,7 @@ export function formatDateTimeRangeWithUnit(
     // because dayjs DDD format token doesn't work like moment's DDD
     if (processedFormat.includes("DDDo")) {
       const dayOfYear = date.dayOfYear();
-      const ordinal = getDayOfYearOrdinal(dayOfYear);
+      const ordinal = dayOfYear + getOrdinal(dayOfYear);
       // Replace only the DDDo token
       processedFormat = processedFormat.replace(/DDDo/g, ordinal);
       // Remove brackets from literal text since we're not using dayjs formatting
@@ -1223,10 +1222,4 @@ function timeStyleOption(style: string, description: string) {
       EXAMPLE_DATE.format(format) + (description ? ` (${description})` : ``),
     value: style,
   };
-}
-
-function getOrdinal(number: number): string {
-  const ordinals = ["th", "st", "nd", "rd"];
-  const v = number % 100;
-  return ordinals[(v - 20) % 10] || ordinals[v] || ordinals[0];
 }
