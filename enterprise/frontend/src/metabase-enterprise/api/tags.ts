@@ -9,6 +9,8 @@ import type {
   TransformTag,
 } from "metabase-types/api";
 
+import type { PythonLibrary } from "./python-transform-library";
+
 export const ENTERPRISE_TAG_TYPES = [
   ...TAG_TYPES,
   "scim",
@@ -23,6 +25,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "transform-job",
   "transform-job-via-tag",
   "transform-run",
+  "python-transform-library",
 ] as const;
 
 export type EnterpriseTagType = (typeof ENTERPRISE_TAG_TYPES)[number];
@@ -125,4 +128,10 @@ export function provideCommentTags(
   }
 
   return [idTag("comment", comment.id)];
+}
+
+export function providePythonLibraryTags(
+  library: PythonLibrary,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("python-transform-library", library.path)];
 }
