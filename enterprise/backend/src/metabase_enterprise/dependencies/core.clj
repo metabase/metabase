@@ -35,18 +35,20 @@
   even if that bad ref has nothing to do with the `updated-cards`.
 
   Returns a map `{card-id [bad refs...]}`, which will be empty if there are no bad refs detected."
-  [base-provider  :- ::lib.schema.metadata/metadata-provider
-   updated-cards  :- [:sequential ::lib.schema.metadata/card]
-   check-card-ids :- [:maybe [:set ::lib.schema.id/card]]]
-  (let [provider (provider-with-updated-cards base-provider updated-cards)]
-    (reduce (fn [errors card-id]
-              (let [card     (lib.metadata/card provider card-id)
-                    query    (lib/query provider (:dataset-query card))
-                    bad-refs (lib/find-bad-refs query)]
-                (cond-> errors
-                  bad-refs (assoc (:id card) bad-refs))))
-            {}
-            check-card-ids)))
+  ([base-provider  :- ::lib.schema.metadata/metadata-provider
+    updated-cards  :- [:sequential ::lib.schema.metadata/card]
+    check-card-ids :- [:maybe [:set ::lib.schema.id/card]]]
+   (check-cards-have-sound-refs (provider-with-updated-cards base-provider updated-cards) check-card-ids))
+  ([provider       :- ::lib.schema.metadata/metadata-provider
+    check-card-ids :- [:maybe [:set ::lib.schema.id/card]]]
+   (reduce (fn [errors card-id]
+             (let [card     (lib.metadata/card provider card-id)
+                   query    (lib/query provider (:dataset-query card))
+                   bad-refs (lib/find-bad-refs query)]
+               (cond-> errors
+                 bad-refs (assoc (:id card) bad-refs))))
+           {}
+           check-card-ids)))
 
 (defn- upstream-deps:mbql-card [legacy-query]
   (lib.util/source-tables-and-cards [legacy-query]))
@@ -93,6 +95,7 @@
   (log/infof "Deleting deps for deleted %s %d" entity-type id)
   (deps.graph/replace-dependencies entity-type id {}))
 
+#_{:clj-kondo/ignore [:unresolved-namespace]}
 (comment
   ;; This should work on any fresh-ish Metabase instance; these are the built-in example questions.
   (let [card-ids [1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20

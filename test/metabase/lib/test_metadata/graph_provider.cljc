@@ -37,12 +37,17 @@
   ;; not implemented for the simple graph metadata provider.
   nil)
 
+(defn- graph-transform [_metadata-graph _transford-id]
+  ;; not implemented for the simple graph metadata provider.
+  nil)
+
 (defn- graph-metadatas [metadata-graph metadata-type ids]
   (let [f (case metadata-type
             :metadata/table         graph-table
             :metadata/column        graph-field
             :metadata/segment       graph-segment
             :metadata/card          graph-card
+            :metadata/transform     graph-transform
             :metadata/native-query-snippet graph-snippet)]
     (into []
           (keep (fn [id]

@@ -1,5 +1,6 @@
 (ns metabase-enterprise.dependencies.api
   (:require
+   [medley.core :as m]
    [metabase-enterprise.dependencies.core :as dependencies]
    [metabase.analyze.core :as analyze]
    [metabase.api.macros :as api.macros]
@@ -8,8 +9,12 @@
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib-be.metadata.jvm :as lib-be.metadata.jvm]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.models.interface :as mi]
+   [metabase.native-query-snippets.core :as native-query-snippets]
    [metabase.queries.schema :as queries.schema]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -21,6 +26,23 @@
    [:dataset_query   {:optional true}  [:maybe ms/Map]]
    [:type            {:optional true}  [:maybe ::queries.schema/card-type]]
    [:result_metadata {:optional true}  [:maybe analyze/ResultsMetadata]]])
+
+(defn- broken-cards-response
+  [broken-ids]
+  (let [broken-cards (when (seq broken-ids)
+                       (-> (t2/select :model/Card :id [:in broken-ids])
+                           (t2/hydrate [:collection :effective_ancestors] :dashboard)))]
+    {:success   (empty? broken-ids)
+     :bad_cards (into [] (comp (filter (fn [card]
+                                         (if (mi/can-read? card)
+                                           card
+                                           (do (log/warnf "Eliding broken card %d - not readable by the user" (:id card))
+                                               nil))))
+                               (map (fn [card]
+                                      (-> card
+                                          collection.root/hydrate-root-collection
+                                          (update :dashboard #(some-> % (select-keys [:id :name])))))))
+                      broken-cards)}))
 
 (api.macros/defendpoint :post "/check_card"
   "Check a proposed edit to a card, and return the card IDs for those cards this edit will break."
@@ -39,21 +61,8 @@
         ;; TODO: This sucks - it's getting all cards for the same database_id, which is slow and over-reaching.
         all-cards     (t2/select-fn-set :id :model/Card :database_id database-id :archived false)
         breakages     (dependencies/check-cards-have-sound-refs base-provider [card] all-cards)
-        broken-ids    (keys breakages)
-        broken-cards  (when (seq broken-ids)
-                        (-> (t2/select :model/Card :id [:in broken-ids])
-                            (t2/hydrate [:collection :effective_ancestors] :dashboard)))]
-    {:success   (empty? breakages)
-     :bad_cards (into [] (comp (filter (fn [card]
-                                         (if (mi/can-read? card)
-                                           card
-                                           (do (log/warnf "Eliding broken card %d - not readable by the user" (:id card))
-                                               nil))))
-                               (map (fn [card]
-                                      (-> card
-                                          collection.root/hydrate-root-collection
-                                          (update :dashboard #(some-> % (select-keys [:id :name])))))))
-                      broken-cards)}))
+        broken-ids    (keys breakages)]
+    (broken-cards-response broken-ids)))
 
 (api.macros/defendpoint :post "/check_transform"
   "Check a proposed edit to a transform, and return the card, transform, etc. IDs for things that will break."
@@ -63,13 +72,39 @@
   ;; FIXME: This is just a stub - implement it!
   {:success true})
 
+(defn- broken-by-snippet
+  [database-id snippet]
+  (let [provider (-> (lib-be.metadata.jvm/application-database-metadata-provider database-id)
+                     lib.metadata.cached-provider/cached-metadata-provider
+                     (doto (lib.metadata.protocols/store-metadata! snippet)))
+        ;; TODO: This sucks - it's getting all cards for the same database_id, which is slow and over-reaching.
+        all-cards (t2/select-fn-set :id :model/Card :database_id database-id :archived false)
+        breakages (dependencies/check-cards-have-sound-refs provider all-cards)]
+    (keys breakages)))
+
 (api.macros/defendpoint :post "/check_snippet"
   "Check a proposed edit to a native snippet, and return the cards, etc. which will be broken."
   [_route-params
    _query-params
-   _body :- [:map [:id ms/PositiveInt]]]
-  ;; FIXME: This is just a stub - implement it!
-  {:success true})
+   {:keys [id content], snippet-name :name}
+   :- [:map
+       [:id      {:optional false} ms/PositiveInt]
+       [:name    {:optional true}  native-query-snippets/NativeQuerySnippetName]
+       [:content {:optional true}  :string]]]
+  (let [original   (t2/select :model/NativeQuerySnippet id)
+        _          (when (and snippet-name
+                              (not= snippet-name (:name original))
+                              (t2/exists? :model/NativeQuerySnippet :name snippet-name))
+                     (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
+                                     {:status-code 400})))
+        snippet    (cond-> (m/assoc-some original
+                                         :lib/type :metadata/native-query-snippet
+                                         :name snippet-name
+                                         :content content)
+                     content native-query-snippets/add-template-tags)
+        broken-ids (mapcat #(broken-by-snippet % snippet)
+                           (t2/select-fn-vec :id :model/Database))]
+    (broken-cards-response broken-ids)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."

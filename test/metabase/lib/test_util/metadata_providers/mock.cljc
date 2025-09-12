@@ -53,6 +53,7 @@
               :metadata/column               :fields
               :metadata/card                 :cards
               :metadata/segment              :segments
+              :metadata/transform            :transforms
               :metadata/native-query-snippet :native-query-snippets)
         ids (set ids)]
     (into []
@@ -68,6 +69,7 @@
               :metadata/column               :fields
               :metadata/card                 :cards
               :metadata/segment              :segments
+              :metadata/transform            :transforms
               :metadata/native-query-snippet :native-query-snippets)
         names (set names)]
     (into []

@@ -723,6 +723,7 @@
            metabase.native-query-snippets.core}
    :uses #{api
            collections
+           events
            lib
            models
            permissions
@@ -1694,9 +1695,11 @@
            api
            collections
            driver
+           events
            lib
            lib-be
            models
+           native-query-snippets
            premium-features
            queries
            query-processor

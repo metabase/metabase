@@ -1,6 +1,7 @@
 (ns metabase.native-query-snippets.models.native-query-snippet
   (:require
    [metabase.collections.models.collection :as collection]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.models.interface :as mi]
@@ -10,7 +11,8 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -31,7 +33,13 @@
   [_]
   #{:snippets})
 
-(defn- add-template-tags [{old-tags :template_tags :as snippet}]
+(doseq [e [:event/snippet-create :event/snippet-update :event/snippet-delete]]
+  (when-not (isa? e :metabase/event)
+    (derive e :metabase/event)))
+
+(defn add-template-tags
+  "Update the template tags based on the new contents."
+  [{old-tags :template_tags :as snippet}]
   ;; Parse the snippet content to identify all template tags (like {{snippet: FilterA}} or {{var}}).
   ;; For snippet references, we need to resolve them to snippet IDs while preserving reference stability.
   ;;
@@ -66,6 +74,11 @@
   (u/prog1 (add-template-tags snippet)
     (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
 
+(t2/define-after-insert :model/NativeQuerySnippet
+  [snippet]
+  (u/prog1 (t2.realize/realize snippet)
+    (events/publish-event! :event/snippet-create {:object <>})))
+
 (t2/define-before-update :model/NativeQuerySnippet
   [snippet]
   (u/prog1 (cond-> snippet
@@ -74,6 +87,16 @@
     (when (contains? (t2/changes <>) :creator_id)
       (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet."))))
     (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
+
+(t2/define-after-update :model/NativeQuerySnippet
+  [snippet]
+  (u/prog1 (t2.realize/realize snippet)
+    (events/publish-event! :event/snippet-update {:object <>})))
+
+(t2/define-before-delete :model/NativeQuerySnippet
+  [snippet]
+  (u/prog1 snippet
+    (events/publish-event! :event/snippet-delete {:object <>})))
 
 (defmethod serdes/hash-fields :model/NativeQuerySnippet
   [_snippet]

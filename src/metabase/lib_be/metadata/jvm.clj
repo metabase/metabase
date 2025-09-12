@@ -347,6 +347,28 @@
   (instance->metadata snippet :metadata/native-query-snippet))
 
 ;;;
+;;; Transforms
+;;;
+
+(derive :metadata/transform :model/Transform)
+
+(methodical/defmethod t2.model/resolve-model :metadata/transform
+  [model]
+  (t2/resolve-model :model/Transform) ; for side-effects
+  model)
+
+(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
+                                         #_model          :metadata/transform
+                                         #_resolved-query clojure.lang.IPersistentMap]
+  [query-type model parsed-args honeysql]
+  (merge (next-method query-type model parsed-args honeysql)
+         {:select [:id :name :source :target]}))
+
+(t2/define-after-select :metadata/transform
+  [snippet]
+  (instance->metadata snippet :metadata/transform))
+
+;;;
 ;;; MetadataProvider
 ;;;
 
@@ -363,6 +385,7 @@
     :metadata/table                :db_id
     :metadata/card                 :card/database_id
     :metadata/native-query-snippet nil
+    :metadata/transform            nil
     :table/db_id))
 
 (defn- metadatas [database-id metadata-type ids]

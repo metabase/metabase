@@ -3,7 +3,9 @@
    [clojure.core.cache.wrapped :as cache.wrapped]
    [clojure.set :as set]
    [metabase.app-db.core :as mdb]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :as premium-features]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.core :as t2])
@@ -50,13 +52,18 @@
                          [:from_entity_id   :id]]
                 :where  where-clause})))
 
+(def ^:private entity-type->model-map
+  {:card      :model/Card
+   :table     :model/Table
+   :transform :model/Transform
+   :snippet   :model/NativeQuerySnippet})
+
+(def ^:private model->entity-type-map
+  (set/map-invert entity-type->model-map))
+
 (defn- entity-type->model
   [entity-type]
-  (case entity-type
-    (:card      "card")      :model/Card
-    (:table     "table")     :model/Table
-    (:transform "transform") :model/Transform
-    (:snippet   "snippet")   :model/NativeQuerySnippet))
+  (entity-type->model-map (keyword entity-type)))
 
 (defn- entity-ref->model
   [entity-ref]
@@ -112,11 +119,7 @@
 
 (defn- entity-type
   [instance]
-  (case (t2/model instance)
-    :model/Card               :card
-    :model/Table              :table
-    :model/Transform          :transform
-    :model/NativeQuerySnippet :snippet))
+  (model->entity-type-map (t2/model instance)))
 
 (defn upsert-dependency
   "Upser that `dependent-instance` depends on `depended-on-instance`."
@@ -179,10 +182,11 @@
   [entity-keys]
   (->> entity-keys
        (group-by first)
-       (mapcat (fn [[entity-type entity-keys]] (t2/select-fn-vec (juxt :to_entity_type :to_entity_id)
-                                                                 [:model/Dependency :to_entity_type :to_entity_id]
-                                                                 :from_entity_type entity-type
-                                                                 :from_entity_id [:in (map second entity-keys)])))))
+       (mapcat (fn [[entity-type entity-keys]]
+                 (t2/select-fn-vec (juxt :to_entity_type :to_entity_id)
+                                   [:model/Dependency :to_entity_type :to_entity_id]
+                                   :from_entity_type entity-type
+                                   :from_entity_id [:in (map second entity-keys)])))))
 
 (defn key-dependents
   "Get the dependent entity keys for the entity keys in `entity-keys`.
@@ -190,10 +194,11 @@
   [entity-keys]
   (->> entity-keys
        (group-by first)
-       (mapcat (fn [[entity-type entity-keys]] (t2/select-fn-vec (juxt :from_entity_type :from_entity_id)
-                                                                 [:model/Dependency  :from_entity_type :from_entity_id]
-                                                                 :to_entity_type entity-type
-                                                                 :to_entity_id [:in (map second entity-keys)])))))
+       (mapcat (fn [[entity-type entity-keys]]
+                 (t2/select-fn-vec (juxt :from_entity_type :from_entity_id)
+                                   [:model/Dependency  :from_entity_type :from_entity_id]
+                                   :to_entity_type entity-type
+                                   :to_entity_id [:in (map second entity-keys)])))))
 
 (defn bfs-nodes
   "Return a topologically ordered vector of instances linked to the instances in `start-nodes`.
@@ -239,6 +244,35 @@
         (t2/delete! :model/Dependency :id [:in to-remove]))
       (when (seq to-add)
         (t2/insert! :model/Dependency to-add)))))
+
+(defn- snippet-dependencies
+  [{:keys [template_tags] :as _snippet}]
+  (let [type->id-key {:card :card-id, :snippet :snippet-id}
+        dependencies (keep (fn [tag]
+                             (let [entity-type (:type tag)]
+                               (when-let [id-key (type->id-key entity-type)]
+                                 (when-let [entity-id (id-key tag)]
+                                   [entity-type entity-id]))))
+                           (vals template_tags))]
+    (-> (group-by first dependencies)
+        (update-vals #(into #{} (map second) %)))))
+
+(derive ::snippet-deps :metabase/event)
+(derive :event/snippet-create ::snippet-deps)
+(derive :event/snippet-update ::snippet-deps)
+
+(methodical/defmethod events/publish-event! ::snippet-deps
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (replace-dependencies :snippet (:id object) (snippet-dependencies object))))
+
+(derive ::snippet-delete :metabase/event)
+(derive :event/snippet-delete ::snippet-delete)
+
+(methodical/defmethod events/publish-event! ::snippet-delete
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (t2/delete! :model/Dependency :from_entity_type :snippet :from_entity_id (:id object))))
 
 (comment
   (set/difference #{3} nil)
