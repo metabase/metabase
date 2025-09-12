@@ -100,7 +100,7 @@ export function useTestPythonScript(
   };
 }
 
-export function insertImport(source: string, lib: string) {
+export function insertImport(source: string, path: string) {
   const lines = source.split("\n");
 
   // Find the first line that is not a comment
@@ -109,23 +109,27 @@ export function insertImport(source: string, lib: string) {
     if (line.trim().startsWith("#")) {
       continue;
     }
-    lines.splice(i, 0, `import ${lib}`);
+    lines.splice(i, 0, `import ${pathToImportSpecifier(path)}`);
     break;
   }
 
   return lines.join("\n");
 }
 
-function libImportRegex(lib: string) {
-  return new RegExp(`import ${lib}`, "g");
+function pathToImportSpecifier(path: string) {
+  return path.replace(/\.py$/, "").split("/").join(".");
 }
 
-export function removeImport(source: string, lib: string) {
+function libImportRegex(path: string) {
+  return new RegExp(`import ${pathToImportSpecifier(path)}`, "g");
+}
+
+export function removeImport(source: string, path: string) {
   const lines = source.split("\n");
-  return lines.filter((line) => !libImportRegex(lib).test(line)).join("\n");
+  return lines.filter((line) => !libImportRegex(path).test(line)).join("\n");
 }
 
-export function hasImport(source: string, lib: string) {
-  const regex = libImportRegex(lib);
+export function hasImport(source: string, path: string) {
+  const regex = libImportRegex(path);
   return regex.test(source);
 }
