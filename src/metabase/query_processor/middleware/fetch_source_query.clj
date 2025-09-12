@@ -167,6 +167,6 @@
   [{:qp/keys [source-card-id], :as preprocessed-query} rff]
   (if-not source-card-id
     rff
-    (let [model? (= (:type (lib.metadata.protocols/card preprocessed-query source-card-id)) :model)]
+    (let [model? (= (:type (lib.metadata/card preprocessed-query source-card-id)) :model)]
       (fn rff' [metadata]
         (rff (cond-> metadata model? (assoc :dataset model?, :model model?)))))))
