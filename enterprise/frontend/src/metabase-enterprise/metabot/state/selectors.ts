@@ -19,8 +19,9 @@ export const getMetabot = (state: MetabotStoreState) => {
 };
 
 export const getMetabotVisible = createSelector(
-  getMetabot,
-  (metabot) => metabot.visible,
+  [getMetabot, getLocation],
+  (metabot, location) =>
+    location.pathname.startsWith("/admin/transforms") ? true : metabot.visible,
 );
 
 export const getMessages = createSelector(
