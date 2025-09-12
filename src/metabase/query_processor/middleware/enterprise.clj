@@ -26,7 +26,7 @@
 (defenterprise apply-sandboxing
   "Pre-processing middleware. Replaces source tables a User was querying against with source queries that (presumably)
   restrict the rows returned, based on presence of sandboxes."
-  metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
+  metabase-enterprise.sandbox.query-processor.middleware.sandboxing
   [query]
   query)
 
@@ -118,7 +118,7 @@
 
 (defenterprise merge-sandboxing-metadata
   "Post-processing middleware. Merges in column metadata from the original, unsandboxed version of the query."
-  metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
+  metabase-enterprise.sandbox.query-processor.middleware.sandboxing
   [_query rff]
   rff)
 
