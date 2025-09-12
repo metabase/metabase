@@ -128,4 +128,4 @@
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :cache-field-values database (format "Cache field values in %s"
                                                                  (sync-util/name-for-logging database))
-                            (sync-util/run-sync-operation "field values scanning" database sync-field-values-steps)))
+    (sync-util/run-sync-operation "field values scanning" database sync-field-values-steps)))
