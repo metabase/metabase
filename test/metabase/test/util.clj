@@ -132,6 +132,12 @@
             {:name (u.random/random-name)
              :channel_type "channel/metabase-test"}))
 
+   :model/Comment
+   (fn [_] (default-timestamped
+            {:target_type "document"
+             :creator_id  (rasta-id)
+             :content     {:text (u.random/random-name)}}))
+
    :model/Dashboard
    (fn [_] (default-timestamped
             {:creator_id (rasta-id)
@@ -167,6 +173,21 @@
    (fn [_] (default-timestamped
             {:name (u.random/random-name)
              :type "internal"}))
+
+   :model/Document
+   (fn [_] (default-timestamped
+            {:name (u.random/random-name)
+             :document {:type "doc"
+                        :content [{:attrs {:_id (str (random-uuid))}
+                                   :type "paragraph"
+                                   :content [{:type "text"
+                                              :text "Hello"}]}
+                                  {:attrs {:_id (str (random-uuid))}
+                                   :type "paragraph"
+                                   :content [{:type "text"
+                                              :text "World"}]}]}
+             :content_type "application/json+vnd.prose-mirror"
+             :creator_id (rasta-id)}))
 
    :model/Field
    (fn [_] (default-timestamped
@@ -247,19 +268,6 @@
              :details {}
              :schedule_type :daily
              :schedule_hour 15}))
-
-   :model/Document
-   (fn [_] (default-timestamped
-            {:name (u.random/random-name)
-             :document {:type "doc"
-                        :content [{:type "paragraph"
-                                   :content [{:type "text"
-                                              :text "Hello"}]}
-                                  {:type "paragraph"
-                                   :content [{:type "text"
-                                              :text "World"}]}]}
-             :content_type "application/json+vnd.prose-mirror"
-             :creator_id (rasta-id)}))
 
    :model/Revision
    (fn [_] {:user_id (rasta-id)
@@ -834,7 +842,7 @@
            {:delete-from (t2/table-name model)
             :where [:and max-id-condition additional-conditions]}))
         ;; TODO we don't (currently) have index update hooks on deletes, so we need this to ensure rollback happens.
-        (search/reindex! {:in-place? true})))))
+        (search/reindex! {:in-place? true :async? false})))))
 
 (defmacro with-model-cleanup
   "Execute `body`, then delete any *new* rows created for each model in `models`. Calls `delete!`, so if the model has
@@ -1579,7 +1587,7 @@
   `(fn [{:keys ~(mapv (comp symbol name) bindings)}]
      ~@body))
 
-(defn do-poll-until [^Long timeout-ms thunk]
+(defn do-poll-until [^Long timeout-ms code thunk]
   (let [result-prom (promise)
         _timeouter (future (Thread/sleep timeout-ms) (deliver result-prom ::timeout))
         _runner (future (loop []
@@ -1588,7 +1596,8 @@
                             (recur))))
         result @result-prom]
     (cond (= result ::timeout) (throw (ex-info (str "Timeout after " timeout-ms "ms")
-                                               {:timeout-ms timeout-ms}))
+                                               {:timeout-ms timeout-ms
+                                                :code code}))
           (instance? Throwable result) (throw result)
           :else result)))
 
@@ -1602,6 +1611,7 @@
   [timeout-ms & body]
   `(do-poll-until
     ~timeout-ms
+    '~@body
     (fn ~'poll-body [] ~@body)))
 
 (methodical/defmethod =?/=?-diff [(Class/forName "[B") (Class/forName "[B")]

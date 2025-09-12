@@ -24,3 +24,4 @@ archived_at: null
 database_require_filter: null
 deactivated_at: null
 is_writable: null
+data_authority: unconfigured

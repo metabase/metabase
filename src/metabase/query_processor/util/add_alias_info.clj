@@ -62,8 +62,10 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-(def ^:private ^:dynamic ^{:arglists '([driver s])} *escape-alias-fn*
-  #'driver/escape-alias)
+(mu/defn- ^:dynamic *escape-alias-fn* :- :string
+  [driver :- :keyword
+   s      :- :string]
+  (driver/escape-alias driver s))
 
 (defmulti ^String field-reference-mlv2
   "Generate a reference for the field instance `field-inst` appropriate for the driver `driver`.

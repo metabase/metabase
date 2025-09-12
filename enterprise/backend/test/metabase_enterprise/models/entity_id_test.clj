@@ -96,7 +96,9 @@
     :model/ViewLog
     :model/GroupTableAccessPolicy
     :model/ConnectionImpersonation
-    :model/CloudMigration})
+    :model/CloudMigration
+    :model/Comment
+    :model/CommentReaction})
 
 (deftest ^:parallel comprehensive-entity-id-test
   (let [entity-id-models (->> (v2.entity-ids/toucan-models)

@@ -233,7 +233,7 @@
 
 (mu/defn process-query-for-card-default-qp :- :some
   "Default value of the `:qp` option for [[process-query-for-card]]."
-  [query :- ::qp.schema/query
+  [query :- ::qp.schema/any-query
    rff   :- [:maybe ::qp.schema/rff]]
   (qp/process-query (qp/userland-query query) rff))
 
@@ -241,8 +241,8 @@
   "Create the default `:make-run` function for [[process-query-for-card]]."
   [qp export-format]
   (mu/fn [query :- :map
-          info  :- [:maybe ::lib.schema.info/info]]
-    (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]
+          info :- [:maybe ::lib.schema.info/info]]
+    (qp.streaming/streaming-response [rff export-format (qp.streaming/safe-filename-prefix (:card-name info))]
       (qp (update query :info merge info) rff))))
 
 (defn combined-parameters-and-template-tags

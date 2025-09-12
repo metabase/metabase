@@ -155,22 +155,33 @@
                                 (.getCanonicalName ^Class klass))
                         {:tag klass}))))))
 
+(defn- warning?
+  "Warnings don't block you saving a setting, but the value won't be used until the warning is resolved."
+  [reason]
+  (= (:type reason) :warning))
+
 (defn disabled-for-db-reasons
   "Return the reasons, if any, for the given setting being disabled."
   [setting-def database]
   (when-let [f (:enabled-for-db? setting-def)]
     (try (when-not (f database)
            [{:key     :disabled-for-db
-             :message "This database does not support this setting"}])
+             :type    :error
+             :message (tru "This database does not support this setting")}])
          (catch ExceptionInfo e
            (or (:setting/disabled-reasons (ex-data e))
                (throw e))))))
 
+(defn- disabled-for-db-reasons? [setting-def database]
+  (seq (remove warning? (disabled-for-db-reasons setting-def database))))
+
 (defn custom-disabled-reasons!
-  "Expose custom reasons for a setting being disabled to the admin panel."
+  "Expose custom reasons for a setting being disabled to the admin panel.
+  For convenience, we strip nil reasons, and no-op with a truthy return if nothing remains."
   [reasons]
-  (assert (seq reasons) "At least one reason must be given")
-  (throw (ex-info "Setting is not enabled for this database" {:setting/disabled-reasons reasons})))
+  (if-let [reasons (seq (remove nil? reasons))]
+    (throw (ex-info "Setting is not enabled for this database" {:setting/disabled-reasons reasons}))
+    true))
 
 ;; This is called `LocalOption` rather than `DatabaseLocalOption` or something like that because we intend to also add
 ;; User-Local Settings at some point in the future. The will use the same options
@@ -697,7 +708,7 @@
 
     (if (or (and feature (not (has-feature? feature)))
             (and enabled? (not (enabled?)))
-            (and *database* (disabled-for-db-reasons setting-def *database*)))
+            (and *database* (disabled-for-db-reasons? setting-def *database*)))
       (:default setting-def)
       (if (= config/*disable-setting-cache* disable-cache?) ;; Optimization: only bind dynvar if necessary.
         (getter)
@@ -946,11 +957,14 @@
                       {:setting s-name
                        :required-feature driver-feature
                        :database-id (:id database)})))
+    ;; Warnings are only for display and shouldn't block writing the setting.
+    ;; They imply that the setting won't work until the issue is resolved, but often it is a transient problem.
     (when-let [reasons (disabled-for-db-reasons setting database)]
-      (throw (ex-info (tru "Setting {0} is not enabled for this database" s-name)
-                      {:setting     s-name
-                       :database-id (:id database)
-                       :reasons     reasons})))))
+      (when (not-every? warning? (disabled-for-db-reasons setting database))
+        (throw (ex-info (tru "Setting {0} is not enabled for this database" s-name)
+                        {:setting     s-name
+                         :database-id (:id database)
+                         :reasons     reasons}))))))
 
 (defn set!
   "Set the value of `setting-definition-or-name`. What this means depends on the Setting's `:setter`; by default, this

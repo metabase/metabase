@@ -3,23 +3,26 @@ import { t } from "ttag";
 
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
-import { Card } from "metabase/ui";
+import { Card, Flex } from "metabase/ui";
 import {
   useListTransformTagsQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
+import { TimezoneIndicator } from "metabase-enterprise/transforms/components/TimezoneIndicator";
 import type { Transform } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
 import { RunStatusInfo } from "../../../components/RunStatusInfo";
 import { TagList } from "../../../components/TagList";
 import { getTransformUrl } from "../../../urls";
-import { parseLocalTimestamp } from "../../../utils";
+import { parseTimestampWithTimezone } from "../../../utils";
 
 import S from "./TransformList.module.css";
 
 export function TransformList() {
+  const systemTimezone = useSetting("system-timezone");
   const {
     data: transforms = [],
     isLoading: isLoadingTransforms,
@@ -52,7 +55,9 @@ export function TransformList() {
         columnTitles={[
           t`Transform`,
           t`Target`,
-          t`Last run at`,
+          <Flex align="center" gap="xs" key="last-run-at">
+            {t`Last run at`} <TimezoneIndicator />
+          </Flex>,
           t`Last run status`,
           t`Tags`,
         ]}
@@ -65,20 +70,24 @@ export function TransformList() {
           >
             <td>{transform.name}</td>
             <td>{transform.target.name}</td>
-            <td>
+            <td className={S.nowrap}>
               {transform.last_run?.end_time
-                ? parseLocalTimestamp(transform.last_run.end_time).format("lll")
+                ? parseTimestampWithTimezone(
+                    transform.last_run.end_time,
+                    systemTimezone,
+                  ).format("lll")
                 : null}
             </td>
-            <td>
+            <td className={S.nowrap}>
               {transform.last_run != null ? (
                 <RunStatusInfo
                   status={transform.last_run.status}
                   message={transform.last_run.message}
                   endTime={
                     transform.last_run.end_time != null
-                      ? parseLocalTimestamp(
+                      ? parseTimestampWithTimezone(
                           transform.last_run.end_time,
+                          systemTimezone,
                         ).toDate()
                       : null
                   }

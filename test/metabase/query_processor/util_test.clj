@@ -4,23 +4,15 @@
    [buddy.core.codecs :as codecs]
    [clojure.test :refer :all]
    [metabase.query-processor.util :as qp.util]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
-(deftest ^:parallel query-without-aggregations-or-limits?-test
-  #_{:clj-kondo/ignore [:equals-true]}
-  (are [x expected] (= expected
-                       (qp.util/query-without-aggregations-or-limits? x))
-    {:query {:aggregation [[:count]]}} false
-    {:query {}}                        true
-    {:query {:aggregation [[:count]]
-             :limit       10}}         false
-    {:query {:aggregation [[:count]]
-             :page        1}}          false))
-
 (defn- query-hash-hex [query]
-  (codecs/bytes->hex (qp.util/query-hash query)))
+  (codecs/bytes->hex
+   (mu/disable-enforcement
+     (qp.util/query-hash query))))
 
 (deftest ^:parallel query-hash-test
   (testing "qp.util/query-hash"

@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -302,9 +303,14 @@
           dimension-id (get-in (lib.metadata/field mp (meta/id :orders :product-id))
                                [:lib/external-remap :id])]
       (doseq [nesting-level [0 1]
-              :let          [query (lib/query mp (mt/nest-query query nesting-level))]]
+              :let          [query (reduce
+                                    (fn [query _]
+                                      (lib/append-stage query))
+                                    (lib/query mp query)
+                                    (range nesting-level))]]
         (testing (format "nesting level = %d" nesting-level)
-          (is (= (-> (lib/->legacy-MBQL query)
+          (is (= (-> query
+                     lib/->legacy-MBQL
                      (assoc-in
                       (concat [:query] (repeat nesting-level :source-query) [:fields])
                       (lib.tu.macros/$ids orders
@@ -605,7 +611,9 @@
                              :alias        "j"
                              :condition    [:= $id &j.orders.product-id]
                              :fields       :all}]}))
-          preprocessed (qp.preprocess/preprocess query)]
+          preprocessed (-> query
+                           qp.preprocess/preprocess
+                           lib/->legacy-MBQL)]
       (testing ":query => :joins"
         (let [joins (get-in preprocessed [:query :joins])]
           (testing "=> 0"
@@ -717,7 +725,9 @@
                                  :fields       #(= (count %) 10)}
                                 {:alias "PEOPLE__via__USER_ID"}]
                        :fields #(= (count %) 20)}}
-              (qp.preprocess/preprocess query))))))
+              (-> query
+                  qp.preprocess/preprocess
+                  lib/->legacy-MBQL))))))
 
 (deftest ^:parallel multiple-fk-remaps-test-in-joins-e2e-test
   (testing "Should be able to do multiple FK remaps via different FKs from Table A to Table B in a join"
@@ -773,4 +783,45 @@
                                 [:field (meta/id :categories :name)    {:join-alias "CATEGORIES__via__ID"}]
                                 ;; TODO DUPLICATE!!!
                                 [:field (meta/id :categories :name) {:join-alias "J"}]]}}
-              (qp.preprocess/preprocess query))))))
+              (-> query
+                  qp.preprocess/preprocess
+                  lib/->legacy-MBQL))))))
+
+(deftest ^:parallel do-not-include-remaps-in-joins-for-columns-that-are-not-in-fields-e2e-test
+  (testing "Do not include remaps in joins for columns that are not in :fields (#63165)"
+    (let [mp    (-> meta/metadata-provider
+                    (lib.tu/remap-metadata-provider (meta/id :orders :product-id) (meta/id :products :title)))
+          query (-> (lib/query mp (meta/table-metadata :people))
+                    (lib/with-fields [(meta/field-metadata :people :id)])
+                    (lib/join (-> (lib/join-clause (meta/table-metadata :orders))
+                                  (lib/with-join-fields [(meta/field-metadata :orders :id)]))))]
+      (testing `lib/returned-columns
+        (binding [lib.metadata.calculation/*display-name-style* :long]
+          (testing "remapping disabled"
+            (is (= ["ID"
+                    "Orders → ID"]
+                   (map :display-name (lib/returned-columns query -1 -1)))))
+          (testing "remapping enabled: should return the same columns"
+            (is (= ["ID"
+                    "Orders → ID"]
+                   (map :display-name (lib/returned-columns query -1 -1 {:include-remaps? true})))))))
+      (testing `qp.preprocess/preprocess
+        (is (=? {:fields [[:field {} (meta/id :people :id)]
+                          [:field {:join-alias "Orders"} (meta/id :orders :id)]]
+                 :joins  [{:alias  "Orders"
+                           :fields [[:field {:join-alias "Orders"} (meta/id :orders :id)]]
+                           :stages [{:joins  (symbol "nil #_\"key is not present.\"")
+                                     :fields [[:field {} (meta/id :orders :id)]
+                                              [:field {} (meta/id :orders :user-id)]
+                                              [:field {} (meta/id :orders :product-id)]
+                                              [:field {} (meta/id :orders :subtotal)]
+                                              [:field {} (meta/id :orders :tax)]
+                                              [:field {} (meta/id :orders :total)]
+                                              [:field {} (meta/id :orders :discount)]
+                                              [:field {} (meta/id :orders :created-at)]
+                                              [:field {} (meta/id :orders :quantity)]]}]}]}
+                (-> (qp.preprocess/preprocess query) :stages first))))
+      (testing `qp.preprocess/query->expected-cols
+        (is (= ["ID"
+                "Orders → ID"]
+               (map :display_name (qp.preprocess/query->expected-cols query))))))))

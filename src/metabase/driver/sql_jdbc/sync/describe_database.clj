@@ -193,6 +193,7 @@
   (if (driver/database-supports? driver :table-privileges nil)
     (let [privilege-map (build-privilege-map driver conn)]
       (fn [{schema :schema table :name ttype :type} privilege]
+        (assert (#{:select :write} privilege))
         ;; driver/current-user-table-privileges does not return privileges for external table on redshift, and foreign
         ;; table on postgres, so we need to use the select method on them
         ;;
@@ -200,13 +201,18 @@
         (if (#{[:postgres "FOREIGN TABLE"]}
              [driver ttype])
           (case privilege
-            :select   (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
-            :write nil) ; Foreign tables typically don't support write operations
+            :select (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
+            :write  nil) ; Foreign tables typically don't support write operations
           (contains? (get-in privilege-map [schema table] #{}) privilege))))
-    (fn [{schema :schema table :name} privilege]
-      (case privilege
-        :select (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
-        :write nil))))
+    (let [can-check-writable?          (driver/database-supports? driver :metadata/table-writable-check {:connection conn})
+          check-writable-privilege-map (when can-check-writable?
+                                         (build-privilege-map driver conn))]
+      (fn [{schema :schema table :name} privilege]
+        (assert (#{:select :write} privilege))
+        (case privilege
+          :select (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
+          :write  (when can-check-writable?
+                    (contains? (get-in check-writable-privilege-map [schema table] #{}) privilege)))))))
 
 (defn fast-active-tables
   "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch

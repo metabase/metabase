@@ -4,12 +4,11 @@
   logger that clojure.tools.logging uses."
   (:require
    [amalloy.ring-buffer :refer [ring-buffer]]
-   [clj-time.coerce :as time.coerce]
-   [clj-time.format :as time.format]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging :as log]
    [clojure.tools.logging.impl :as log.impl]
    [flatland.ordered.map :as ordered-map]
+   [java-time.api :as t]
    [metabase.classloader.core :as classloader]
    [metabase.config.core :as config])
   (:import
@@ -39,8 +38,7 @@
     s))
 
 (defn- event->log-data [^LogEvent event]
-  {:timestamp    (time.format/unparse (time.format/formatter :date-time)
-                                      (time.coerce/from-long (.getTimeMillis event)))
+  {:timestamp    (t/format :iso-instant (t/instant (.getTimeMillis event)))
    :level        (.getLevel event)
    :fqns         (.getLoggerName event)
    :msg          (elide-string (str (.getMessage event)) 4000)

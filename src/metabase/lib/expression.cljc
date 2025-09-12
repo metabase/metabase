@@ -392,8 +392,14 @@
    [:relative-datetime {:lib/uuid (str (random-uuid))} t])
 
   ([t    :- ::lib.schema.expression.temporal/relative-datetime.amount
-    unit :- ::lib.schema.temporal-bucketing/unit.date-time.interval]
+    unit :- ::lib.schema.expression.temporal/relative-datetime.unit]
    [:relative-datetime {:lib/uuid (str (random-uuid))} t unit]))
+
+(doseq [tag [:relative-datetime
+             :absolute-datetime]]
+  (defmethod lib.temporal-bucket/temporal-bucket-method tag
+    [[_tag _opts _t unit]]
+    unit))
 
 (mu/defn value :- ::lib.schema.expression/expression
   "Creates a `:value` clause for the `literal`. Converts bigint literals to strings for serialization purposes."
