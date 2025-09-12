@@ -122,7 +122,7 @@ Metabase's reference documentation.
 
 ### Documents
 
-- [Creating documents](./documents/create.md)
+- [Introduction to documents](./documents/introduction.md)
 
 ### Data modeling
 
