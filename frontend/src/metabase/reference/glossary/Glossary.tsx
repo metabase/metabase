@@ -19,9 +19,11 @@ import {
   Center,
   Group,
   Icon,
+  Menu,
+  Popover,
   Stack,
   Text,
-  Tooltip,
+  rem,
 } from "metabase/ui";
 
 import { GlossaryEditDefinitionModal } from "./GlossarEditDefinitionModal";
@@ -38,6 +40,7 @@ export function Glossary() {
     useState<GlossaryDefinition | null>(null);
   const [deletingDefinition, setDeletingDefinition] =
     useState<GlossaryDefinition | null>(null);
+  const [popoverOpened, setPopoverOpened] = useState(false);
 
   const { mockedGlossary, addDefinition, updateDefinition, deleteDefinition } =
     useMockedGlossary();
@@ -96,6 +99,7 @@ export function Glossary() {
                 >
                   <Text lh="1.2">{term.definition}</Text>
                 </Box>
+
                 <Box
                   component="td"
                   valign="top"
@@ -104,21 +108,57 @@ export function Glossary() {
                   pt="sm"
                   pb={0}
                 >
-                  <Tooltip label={t`Edit`}>
-                    <ActionIcon
-                      c="text-light"
-                      className={S.action}
-                      onClick={() =>
-                        setEditingDefinition({
-                          id: term.id,
-                          term: term.term,
-                          definition: term.definition,
-                        })
-                      }
-                    >
-                      <Icon name="pencil" />
-                    </ActionIcon>
-                  </Tooltip>
+                  <Popover
+                    opened={popoverOpened}
+                    onChange={setPopoverOpened}
+                    width={rem(140)}
+                    position="bottom-end"
+                  >
+                    <Popover.Target>
+                      <ActionIcon
+                        c="text-light"
+                        className={cx(S.action, {
+                          [S.visible]: popoverOpened,
+                        })}
+                        onClick={() => setPopoverOpened((opened) => !opened)}
+                      >
+                        <Icon name="ellipsis" />
+                      </ActionIcon>
+                    </Popover.Target>
+
+                    <Popover.Dropdown p="xs">
+                      <Menu>
+                        <Menu.Item
+                          leftSection={<Icon name="pencil" />}
+                          onClick={() => {
+                            setEditingDefinition({
+                              id: term.id,
+                              term: term.term,
+                              definition: term.definition,
+                            });
+                            setPopoverOpened(false);
+                          }}
+                        >
+                          {t`Edit`}
+                        </Menu.Item>
+
+                        <Menu.Item
+                          leftSection={<Icon name="trash" />}
+                          data-testid="comment-action-panel-delete"
+                          onClick={() => {
+                            setDeletingDefinition({
+                              id: term.id,
+                              term: term.term,
+                              definition: term.definition,
+                            });
+                            setPopoverOpened(false);
+                          }}
+                        >
+                          {t`Delete`}
+                        </Menu.Item>
+                      </Menu>
+                    </Popover.Dropdown>
+                  </Popover>
                 </Box>
               </tr>
             ))}
