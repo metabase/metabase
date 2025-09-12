@@ -4781,6 +4781,7 @@ describe("issue 14595", () => {
           },
           {
             name: "Many data types",
+            database: WRITABLE_DB_ID,
             query: { "source-table": tableId },
           },
         ],
