@@ -25,10 +25,6 @@
   (mu/fn [query :- ::lib.schema/query]
     (:lib/type (lib/query-stage query -1))))
 
-(defmethod current-user-download-perms-level :mbql.stage/mbql
-  [_]
-  :one-million-rows)
-
 (defmethod current-user-download-perms-level :mbql.stage/native
   [{database-id :database, :as _query}]
   (perms/native-download-permission-for-user api/*current-user-id* database-id))
@@ -46,7 +42,7 @@
        nil))
     @has-native-stage?))
 
-(mu/defmethod current-user-download-perms-level :query
+(mu/defmethod current-user-download-perms-level :mbql.stage/mbql
   [{db-id :database, :as query} :- ::lib.schema/query]
   (let [{:keys [table-ids native?]} (query-perms/query->source-ids query)
         perms (if (or native? (any-native-stage? query))
@@ -71,7 +67,7 @@
     (and (is-download? query)
          (= (:lib/type (lib/query-stage query -1)) :mbql.stage/mbql)
          (= (current-user-download-perms-level query) :ten-thousand-rows))
-    (lib/limit -1 (apply min (filter some? [(lib/current-limit query -1) max-rows-in-limited-downloads])))))
+    (lib/limit ((fnil min Integer/MAX_VALUE) (lib/current-limit query -1) max-rows-in-limited-downloads))))
 
 (defenterprise-schema limit-download-result-rows :- ::qp.schema/rff
   "Post-processing middleware to limit the number of rows included in downloads if the user has `limited` download
