@@ -20,6 +20,12 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- frontend-dev-port
+  "Gets the frontend dev port from environment variable, defaulting to 8081"
+  []
+  (or (some-> (System/getenv "MB_FRONTEND_DEV_PORT") Integer/parseInt)
+      8080))
+
 (defn- generate-nonce
   "Generates a random nonce of 10 characters to add to the `Content-Security-Policy` header so that only scripts and
    inline style elements with the same nonce will be allowed to run. The server generates a unique nonce value each
@@ -132,7 +138,7 @@
                                     "https://www.google-analytics.com")
                                   ;; for webpack hot reloading
                                   (when config/is-dev?
-                                    "http://localhost:8080")
+                                    (format "http://localhost:%d" (frontend-dev-port)))
                                   ;; for react dev tools to work in Firefox until resolution of
                                   ;; https://github.com/facebook/react/issues/17997
                                   (when config/is-dev?
@@ -151,7 +157,7 @@
                                    (format "'nonce-%s'" nonce))
                                  ;; for webpack hot reloading
                                  (when config/is-dev?
-                                   "http://localhost:8080")
+                                   (format "http://localhost:%d" (frontend-dev-port)))
                                  ;; CLJS REPL
                                  (when config/is-dev?
                                    "http://localhost:9630")
@@ -170,7 +176,7 @@
                                    (setting/get-value-of-type :string :snowplow-url))
                                  ;; Webpack dev server
                                  (when config/is-dev?
-                                   "*:8080 ws://*:8080")
+                                   (format "*:%d ws://*:%d" (frontend-dev-port) (frontend-dev-port)))
                                  ;; CLJS REPL
                                  (when config/is-dev?
                                    "ws://*:9630")]
