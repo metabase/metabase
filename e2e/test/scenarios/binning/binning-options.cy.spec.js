@@ -197,7 +197,6 @@ describe("scenarios > binning > binning options", () => {
   context("via time series footer (metabase#11183)", () => {
     it("should render time series binning options correctly", () => {
       H.openTable({ table: ORDERS_ID });
-
       H.tableHeaderClick("Created At");
       H.popover().findByText("Distribution").click();
       getTitle("Count by Created At: Month");
