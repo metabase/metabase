@@ -5,6 +5,7 @@
    [metabase-enterprise.library.settings :as settings]
    [metabase-enterprise.library.source :as source]
    [metabase-enterprise.library.source.git :as git]
+   [metabase-enterprise.library.source.protocol :as source.p]
    [metabase-enterprise.mbml.core :as mbml]
    [metabase-enterprise.serialization.v2.extract :as v2.extract]
    [metabase-enterprise.serialization.v2.load :as v2.load]
@@ -264,6 +265,40 @@
       {:status 500
        :body {:status "error"
               :message "Unexpected error occurred during export"}})))
+
+(api.macros/defendpoint :get "/branches"
+  "Get list of branches from the configured git source.
+
+  Returns a JSON object with branch names under the :items key.
+
+  Requires superuser permissions."
+  []
+  (api/check-superuser)
+  (source/with-source [source]
+    (if source
+      (try
+        (let [branch-list (source.p/branches source)]
+          {:items branch-list})
+        (catch Exception e
+          (log/errorf e "Failed to get branches from git source: %s" (.getMessage e))
+          (let [error-msg (cond
+                            (instance? java.net.UnknownHostException e)
+                            "Network error: Unable to reach git repository host"
+
+                            (str/includes? (.getMessage e) "Authentication failed")
+                            "Authentication failed: Please check your git credentials"
+
+                            (str/includes? (.getMessage e) "Repository not found")
+                            "Repository not found: Please check the repository URL"
+
+                            :else
+                            (format "Failed to get branches from git source: %s" (.getMessage e)))]
+            {:status 400
+             :body {:status "error"
+                    :message error-msg}})))
+      {:status 400
+       :body {:status "error"
+              :message "Git source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}})))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/library` routes."
