@@ -1,6 +1,7 @@
 (ns metabase.query-processor.compile
   (:refer-clojure :exclude [compile])
   (:require
+   [clojure.set :as set]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
@@ -38,7 +39,10 @@
 (mu/defn- compile* :- ::compiled
   [query :- ::lib.schema/query]
   (assert (not (:qp/compiled query)) "This query has already been compiled!")
-  (driver/mbql->native driver/*driver* (lib/->legacy-MBQL query)))
+  (let [last-stage (lib/query-stage query -1)]
+    (if (= (:lib/type last-stage) :mbql.stage/native)
+      (set/rename-keys last-stage {:native :query})
+      (driver/mbql->native driver/*driver* (lib/->legacy-MBQL query)))))
 
 (mu/defn compile-preprocessed :- ::compiled
   "Compile an already-preprocessed query, if needed. Returns just the resulting 'inner' native query.

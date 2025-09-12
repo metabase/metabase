@@ -2023,7 +2023,7 @@
 ;;; [[qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation]] already does
 ;;; basically the same check, this is here mostly to avoid the performance hit of converting to pMBQL and back in
 ;;; queries that have no cumulative aggregations at all. Once we convert the SQL QP to pMBQL we can remove this.
-(defn- has-window-function-aggregations? [inner-query]
+(mu/defn- has-window-function-aggregations? [inner-query :- driver-api/MBQLQuery]
   (or (driver-api/match (mapcat inner-query [:aggregation :expressions])
         #{:cum-sum :cum-count :offset}
         true)
@@ -2065,7 +2065,8 @@
   "Transpile MBQL query into a native SQL statement. This is the `:sql` driver implementation
   of [[driver/mbql->native]] (actual multimethod definition is in [[metabase.driver.sql]]."
   [driver      :- :keyword
-   outer-query :- :map]
+   outer-query :- [:map
+                   [:query driver-api/MBQLQuery]]]
   (let [honeysql-form (mbql->honeysql driver outer-query)
         [sql & args]  (format-honeysql driver honeysql-form)]
     {:query sql, :params args}))
