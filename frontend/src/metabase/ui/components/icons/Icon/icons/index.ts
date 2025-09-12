@@ -260,6 +260,8 @@ import mail_component from "./mail.svg?component";
 import mail_source from "./mail.svg?source";
 import mail_filled_component from "./mail_filled.svg?component";
 import mail_filled_source from "./mail_filled.svg?source";
+import message_component from "./message.svg?component";
+import message_source from "./message.svg?source";
 import metabot_component from "./metabot.svg?component";
 import metabot_source from "./metabot.svg?source";
 import metabot_sad_component from "./metabot_sad.svg?component";
@@ -352,6 +354,8 @@ import section_component from "./section.svg?component";
 import section_source from "./section.svg?source";
 import segment_component from "./segment.svg?component";
 import segment_source from "./segment.svg?source";
+import send_component from "./send.svg?component";
+import send_source from "./send.svg?source";
 import share_component from "./share.svg?component";
 import share_source from "./share.svg?source";
 import shield_component from "./shield.svg?component";
@@ -366,6 +370,8 @@ import slack_colorized_component from "./slack_colorized.svg?component";
 import slack_colorized_source from "./slack_colorized.svg?source";
 import smartscalar_component from "./smartscalar.svg?component";
 import smartscalar_source from "./smartscalar.svg?source";
+import smile_component from "./smile.svg?component";
+import smile_source from "./smile.svg?source";
 import snail_component from "./snail.svg?component";
 import snail_source from "./snail.svg?source";
 import snippet_component from "./snippet.svg?component";
@@ -983,6 +989,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: mail_filled_component,
       source: mail_filled_source,
     },
+    message: {
+      component: message_component,
+      source: message_source,
+    },
     metabot: {
       component: metabot_component,
       source: metabot_source,
@@ -1199,6 +1209,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: segment_component,
       source: segment_source,
     },
+    send: {
+      component: send_component,
+      source: send_source,
+    },
     shield: {
       component: shield_component,
       source: shield_source,
@@ -1222,6 +1236,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     smartscalar: {
       component: smartscalar_component,
       source: smartscalar_source,
+    },
+    smile: {
+      component: smile_component,
+      source: smile_source,
     },
     snail: {
       component: snail_component,
@@ -1549,6 +1567,7 @@ export type IconName =
   | "lock_filled"
   | "mail"
   | "mail_filled"
+  | "message"
   | "metabot"
   | "metabot_sad"
   | "metric"
@@ -1581,6 +1600,8 @@ export type IconName =
   | "revert"
   | "sankey"
   | "share"
+  | "send"
+  | "smile"
   | "split"
   | "sql"
   | "subscription"

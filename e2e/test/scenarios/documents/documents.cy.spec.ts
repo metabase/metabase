@@ -144,16 +144,23 @@ H.describeWithSnowplowEE("documents", () => {
                     text: "Lorem Ipsum and some more words",
                   },
                 ],
+                attrs: {
+                  _id: "1",
+                },
               },
               {
                 type: "cardEmbed",
                 attrs: {
                   id: ORDERS_QUESTION_ID,
                   name: null,
+                  _id: "2",
                 },
               },
               {
                 type: "paragraph",
+                attrs: {
+                  _id: "3",
+                },
               },
             ],
             type: "doc",
