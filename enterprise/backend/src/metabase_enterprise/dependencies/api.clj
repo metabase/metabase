@@ -80,12 +80,13 @@
 
 (defn- broken-by-snippet
   [database-id snippet]
-  (let [provider (-> (lib-be.metadata.jvm/application-database-metadata-provider database-id)
-                     lib.metadata.cached-provider/cached-metadata-provider
-                     (doto (lib.metadata.protocols/store-metadata! snippet)))
+  (let [provider       (-> (lib-be.metadata.jvm/application-database-metadata-provider database-id)
+                           lib.metadata.cached-provider/cached-metadata-provider
+                           (doto (lib.metadata.protocols/store-metadata! snippet)))
         ;; TODO: This sucks - it's getting all cards for the same database_id, which is slow and over-reaching.
-        all-cards (t2/select-fn-set :id :model/Card :database_id database-id :archived false)
-        breakages (dependencies/check-cards-have-sound-refs provider all-cards)]
+        all-cards      (t2/select-fn-set :id :model/Card :database_id database-id :archived false)
+        all-transforms (t2/select-fn-set :id :model/Transform)
+        breakages      (dependencies/check-cards-have-sound-refs provider all-cards all-transforms)]
     (keys breakages)))
 
 (api.macros/defendpoint :post "/check_snippet"
