@@ -1450,7 +1450,7 @@
                                             (map #(assoc % :in-library? (in-library? (:model %)))))
                               (->> (t2/hydrate (t2/select (t2.model/resolve-model (symbol model)) :id [:in ids]) :collection)
                                    (map #(assoc % :in-library? (in-library? %))))))))]
-    #p (concat deps (mapcat descendants-recur deps))))
+    (concat deps (mapcat descendants-recur deps))))
 
 (defn non-library-dependencies
   "Find dependencies of a model -- that are possible to contain in the >ibrary -- that are not contained the in Library
