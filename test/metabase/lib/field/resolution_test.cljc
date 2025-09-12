@@ -1416,6 +1416,22 @@
                query -1
                [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Float} "TAX"]))))))
 
+(deftest ^:parallel resolve-inactive-field-ref-by-name-test
+  (testing "Should be able to resolve an INACTIVE field ref by name correctly."
+    (let [mp    (-> meta/metadata-provider
+                    (lib.tu/merged-mock-metadata-provider
+                     {:fields (for [field-id [(meta/id :orders :tax) (meta/id :products :vendor)]]
+                                {:id field-id, :active false})}))
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query orders))]
+      (is (=? {:active false
+               :id     (meta/id :orders :tax)
+               :name   "TAX"}
+              (lib.field.resolution/resolve-field-ref
+               query -1
+               [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Float} "TAX"]))))))
+
 (deftest ^:parallel multiple-remaps-between-tables-test
   (testing "Should be able to resolve multiple FK remaps via different FKs from Table A to Table B in a join"
     (let [mp        (-> meta/metadata-provider
