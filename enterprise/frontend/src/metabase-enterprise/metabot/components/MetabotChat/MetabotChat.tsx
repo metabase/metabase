@@ -15,6 +15,7 @@ import {
   Stack,
   Text,
   Textarea,
+  Tooltip,
 } from "metabase/ui";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 import { MetabotResetLongChatButton } from "metabase-enterprise/metabot/components/MetabotChat/MetabotResetLongChatButton";
@@ -68,12 +69,14 @@ export const MetabotChat = () => {
           </Flex>
 
           <Flex gap="sm">
-            <ActionIcon
-              onClick={() => metabot.resetConversation()}
-              data-testid="metabot-reset-chat"
-            >
-              <Icon c="text-primary" name="revert" />
-            </ActionIcon>
+            <Tooltip label={t`Clear conversation`} position="bottom">
+              <ActionIcon
+                onClick={() => metabot.resetConversation()}
+                data-testid="metabot-reset-chat"
+              >
+                <Icon c="text-primary" name="revert" />
+              </ActionIcon>
+            </Tooltip>
             <ActionIcon onClick={handleClose} data-testid="metabot-close-chat">
               <Icon c="text-primary" name="close" />
             </ActionIcon>
