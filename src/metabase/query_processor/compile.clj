@@ -34,15 +34,23 @@
    [:ref ::lib.schema/query]
    [:map
     [:qp/compiled        ::compiled]
-    [:qp/compiled-inline ::compiled-with-inlined-parameters]]])
+    ;; If the query was already native, then don't include this because we're not about to go splice the parameters
+    ;; into the existing query. Otherwise we should include this.
+    [:qp/compiled-inline {:optional true} ::compiled-with-inlined-parameters]]])
+
+(defn- native-only?
+  "Whether the query is native-only and thus does not need further compiling; true if the only stage is native. Native
+  stages can only be the first stage, so if the last stage is native it means we have only one stage and this query is
+  native-only."
+  [query]
+  (= (:lib/type (lib/query-stage query -1)) :mbql.stage/native))
 
 (mu/defn- compile* :- ::compiled
   [query :- ::lib.schema/query]
   (assert (not (:qp/compiled query)) "This query has already been compiled!")
-  (let [last-stage (lib/query-stage query -1)]
-    (if (= (:lib/type last-stage) :mbql.stage/native)
-      (set/rename-keys last-stage {:native :query})
-      (driver/mbql->native driver/*driver* (lib/->legacy-MBQL query)))))
+  (if (native-only? query)
+    (set/rename-keys (lib/query-stage query -1) {:native :query})
+    (driver/mbql->native driver/*driver* (lib/->legacy-MBQL query))))
 
 (mu/defn compile-preprocessed :- ::compiled
   "Compile an already-preprocessed query, if needed. Returns just the resulting 'inner' native query.
@@ -69,10 +77,11 @@
   query outright and remove the MBQL `:query`, because that would break perms checks."
   [preprocessed :- ::lib.schema/query]
   (let [preprocessed (dissoc preprocessed :qp/compiled :qp/compiled-inline)]
-    (assoc preprocessed
-           :qp/compiled        (compile-preprocessed preprocessed)
-           :qp/compiled-inline (binding [driver/*compile-with-inline-parameters* true]
-                                 (compile-preprocessed preprocessed)))))
+    (-> preprocessed
+        (assoc :qp/compiled (compile-preprocessed preprocessed))
+        (cond-> (not (native-only? preprocessed))
+          (assoc :qp/compiled-inline (binding [driver/*compile-with-inline-parameters* true]
+                                       (compile-preprocessed preprocessed)))))))
 
 (mu/defn compile-with-inline-parameters :- ::compiled-with-inlined-parameters
   "Return the native form for a `query`, with any prepared statement (or equivalent) parameters spliced into the query
