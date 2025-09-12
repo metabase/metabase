@@ -10,7 +10,6 @@ type GlossaryEditDefinitionModalProps = {
   opened: boolean;
   onClose: () => void;
   onSubmit: (id: string, term: string, definition: string) => void;
-  onDelete: (term: string) => void;
 };
 
 export function GlossaryEditDefinitionModal({
@@ -20,7 +19,6 @@ export function GlossaryEditDefinitionModal({
   opened,
   onClose,
   onSubmit,
-  onDelete,
 }: GlossaryEditDefinitionModalProps) {
   const [term, setTerm] = useState("");
   const [definition, setDefinition] = useState("");
@@ -42,15 +40,8 @@ export function GlossaryEditDefinitionModal({
     [id, term, definition, onSubmit, onClose],
   );
 
-  const handleDelete = useCallback(() => {
-    if (id) {
-      onDelete(id);
-      onClose();
-    }
-  }, [id, onDelete, onClose]);
-
   return (
-    <Modal title={t`New definition`} onClose={onClose} opened={opened}>
+    <Modal title={t`Edit definition`} onClose={onClose} opened={opened}>
       <form onSubmit={handleSubmit}>
         <Stack gap="xl" mt="md">
           <TextInput
@@ -70,12 +61,7 @@ export function GlossaryEditDefinitionModal({
             maxRows={6}
           />
           <Group justify="flex-end">
-            <Button
-              type="button"
-              variant="filled"
-              color="danger"
-              onClick={handleDelete}
-            >{t`Delete`}</Button>
+            <Button onClick={onClose}>{t`Cancel`}</Button>
             <Button type="submit" variant="filled">{t`Save`}</Button>
           </Group>
         </Stack>

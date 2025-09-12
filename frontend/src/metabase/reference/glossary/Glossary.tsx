@@ -3,6 +3,7 @@ import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import {
   ColumnHeader,
   ItemCell,
@@ -34,6 +35,8 @@ import {
 export function Glossary() {
   const [newDefinitionOpened, newDefinitionHandler] = useDisclosure();
   const [editingDefinition, setEditingDefinition] =
+    useState<GlossaryDefinition | null>(null);
+  const [deletingDefinition, setDeletingDefinition] =
     useState<GlossaryDefinition | null>(null);
 
   const { mockedGlossary, addDefinition, updateDefinition, deleteDefinition } =
@@ -136,7 +139,19 @@ export function Glossary() {
         opened={editingDefinition !== null}
         onClose={() => setEditingDefinition(null)}
         onSubmit={updateDefinition}
-        onDelete={deleteDefinition}
+      />
+
+      <ConfirmModal
+        confirmButtonText={t`Delete`}
+        opened={deletingDefinition != null}
+        title={t`Delete “${deletingDefinition?.term}”`}
+        onClose={() => setDeletingDefinition(null)}
+        onConfirm={() => {
+          if (deletingDefinition) {
+            deleteDefinition(deletingDefinition.id);
+            setDeletingDefinition(null);
+          }
+        }}
       />
     </div>
   );

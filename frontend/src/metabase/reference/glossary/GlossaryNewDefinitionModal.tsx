@@ -53,6 +53,7 @@ export function GlossaryNewDefinitionModal({
             maxRows={6}
           />
           <Group justify="flex-end">
+            <Button onClick={onClose}>{t`Cancel`}</Button>
             <Button type="submit" variant="filled">{t`Create`}</Button>
           </Group>
         </Stack>
