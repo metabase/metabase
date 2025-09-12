@@ -67,10 +67,15 @@ export const CommandExtension = Extension.create<CommandOptions>({
                 type: "resizeNode",
                 content: [
                   {
-                    type: "cardEmbed",
-                    attrs: {
-                      id: props.entityId,
-                    },
+                    type: "flexContainer",
+                    content: [
+                      {
+                        type: "cardEmbed",
+                        attrs: {
+                          id: props.entityId,
+                        },
+                      },
+                    ],
                   },
                 ],
               })

@@ -1,4 +1,4 @@
-import type { Editor, Range } from "@tiptap/core";
+import { type Editor, type Range, findParentNode } from "@tiptap/core";
 import {
   type DOMAttributes,
   forwardRef,
@@ -70,6 +70,7 @@ interface CommandOption {
   text?: string;
   label: string;
   command: string;
+  nodeName?: string;
 }
 
 interface CommandSection {
@@ -115,6 +116,28 @@ const CommandMenuItem = forwardRef<
   );
 });
 
+const isCommandAllowedAtPosition =
+  (editor: Editor) =>
+  (item: CommandOption): boolean => {
+    const nodeType = item.nodeName && editor.schema.nodes[item.nodeName];
+    if (!nodeType) {
+      return true;
+    }
+    const closestIsolatingParent = findParentNode(
+      (n) => !!n.type.spec.isolating,
+    )(editor.state.selection);
+
+    if (!closestIsolatingParent) {
+      return true;
+    }
+
+    const wouldInsertedNodeBeAllowed = !!closestIsolatingParent?.node
+      .contentMatchAt(0)
+      .matchType(nodeType);
+
+    return wouldInsertedNodeBeAllowed;
+  };
+
 export const CommandSuggestion = forwardRef<
   SuggestionRef,
   CommandSuggestionProps
@@ -130,25 +153,27 @@ export const CommandSuggestion = forwardRef<
       {
         items: [
           ...(PLUGIN_METABOT.isEnabled()
-            ? ([
+            ? [
                 {
-                  icon: "metabot",
+                  icon: "metabot" as const,
                   label: t`Ask Metabot`,
                   command: "metabot",
+                  nodeName: "metabot",
                 },
-              ] as const)
+              ]
             : []),
           {
-            icon: "lineandbar",
+            icon: "lineandbar" as const,
             label: t`Chart`,
             command: "embedQuestion",
+            nodeName: "cardEmbed",
           },
           {
-            icon: "link",
+            icon: "link" as const,
             label: t`Link`,
             command: "linkTo",
           },
-        ],
+        ].filter(isCommandAllowedAtPosition(editor)),
       },
       {
         title: t`Formatting`,
@@ -191,7 +216,7 @@ export const CommandSuggestion = forwardRef<
         ],
       },
     ],
-    [],
+    [editor],
   );
 
   const allCommandOptions = useMemo(

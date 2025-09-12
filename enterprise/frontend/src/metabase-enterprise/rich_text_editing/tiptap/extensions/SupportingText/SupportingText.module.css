@@ -1,0 +1,45 @@
+.wrapper {
+  height: 100%;
+  position: relative;
+  border-radius: var(--mantine-radius-md);
+  overflow: hidden;
+  background-color: var(--mb-color-bg-light);
+  border: 1px solid transparent;
+  transition:
+    background-color 150ms,
+    border-color 150ms;
+
+  &:hover {
+    background-color: color-mix(in srgb, var(--mb-color-bg-light) 98%, #000);
+  }
+
+  &:has(.handle:focus) {
+    border-color: var(--mb-color-brand);
+  }
+}
+
+.scrollContainer {
+  position: absolute;
+  height: 100%;
+  width: 100%;
+  overflow: auto;
+  padding: 1rem;
+}
+
+.handle {
+  cursor: grab;
+  height: 1rem;
+  position: absolute;
+  top: 0;
+  width: 100%;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.placeholder {
+  position: absolute;
+  pointer-events: none;
+  color: var(--mb-color-text-light);
+}

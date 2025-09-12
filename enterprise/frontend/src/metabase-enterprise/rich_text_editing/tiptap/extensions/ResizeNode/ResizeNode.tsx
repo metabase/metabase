@@ -22,7 +22,7 @@ export const ResizeNode: Node<{
   content: "block",
   atom: true,
   draggable: false,
-  selectable: true,
+  selectable: false,
 
   addAttributes() {
     return {

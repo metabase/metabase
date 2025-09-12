@@ -1,5 +1,17 @@
 import { Extension } from "@tiptap/core";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
+import type { EditorView } from "@tiptap/pm/view";
+
+const wrapCardEmbed = (
+  view: EditorView,
+  cardEmbed: ProseMirrorNode,
+): ProseMirrorNode => {
+  const { nodes } = view.state.schema;
+  return nodes.resizeNode.create({ height: 442, minHeight: 250 }, [
+    nodes.flexContainer.create({}, [cardEmbed]),
+  ]);
+};
 
 export const HandleEditorDrop = Extension.create({
   name: "handleEditorDrop",
@@ -206,11 +218,10 @@ export const HandleEditorDrop = Extension.create({
                             extractCardEmbed(remainingChild);
 
                           if (remainingCardEmbed) {
-                            const wrappedRemainingCard =
-                              view.state.schema.nodes.resizeNode.create(
-                                { height: 442, minHeight: 250 },
-                                [remainingCardEmbed],
-                              );
+                            const wrappedRemainingCard = wrapCardEmbed(
+                              view,
+                              remainingCardEmbed,
+                            );
 
                             // Replace the entire FlexContainer (and its resizeNode wrapper if it exists)
                             const containerResolvedPos =
@@ -269,11 +280,7 @@ export const HandleEditorDrop = Extension.create({
                         }
 
                         // Now insert the wrapped node at drop position (after FlexContainer operations)
-                        const wrappedNode =
-                          view.state.schema.nodes.resizeNode.create(
-                            { height: 442, minHeight: 250 },
-                            [cardEmbedNode],
-                          );
+                        const wrappedNode = wrapCardEmbed(view, cardEmbedNode);
 
                         // Calculate adjusted drop position if the FlexContainer operations affected positions
                         let adjustedDropPos = dropPos;
@@ -300,11 +307,7 @@ export const HandleEditorDrop = Extension.create({
                       const tr = view.state.tr;
 
                       // Wrap the cardEmbed in a resizeNode
-                      const wrappedNode =
-                        view.state.schema.nodes.resizeNode.create(
-                          { height: 442, minHeight: 250 },
-                          [cardEmbedNode],
-                        );
+                      const wrappedNode = wrapCardEmbed(view, cardEmbedNode);
 
                       // Remove the original node from its position
                       if (originalPos !== null) {
