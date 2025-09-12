@@ -40,7 +40,8 @@ export function Glossary() {
     useState<GlossaryDefinition | null>(null);
   const [deletingDefinition, setDeletingDefinition] =
     useState<GlossaryDefinition | null>(null);
-  const [popoverOpened, setPopoverOpened] = useState(false);
+  const [popoverDefinition, setPopoverDefinition] =
+    useState<GlossaryDefinition | null>(null);
 
   const { mockedGlossary, addDefinition, updateDefinition, deleteDefinition } =
     useMockedGlossary();
@@ -84,84 +85,92 @@ export function Glossary() {
           </thead>
           <TBody>
             {mockedGlossary.length === 0 && <EmptyGlossary />}
-            {mockedGlossary.map((term, index) => (
-              <tr className={S.row} key={index}>
-                <Box component="td" valign="top">
-                  <Text lh="1.2" fw="bold">
-                    {term.term}
-                  </Text>
-                </Box>
-                <Box
-                  component="td"
-                  valign="top"
-                  pr="0"
-                  style={{ wordBreak: "break-word" }}
-                >
-                  <Text lh="1.2">{term.definition}</Text>
-                </Box>
+            {mockedGlossary.map((term, index) => {
+              const popoverOpened = popoverDefinition?.id === term.id;
 
-                <Box
-                  component="td"
-                  valign="top"
-                  align="center"
-                  px="md"
-                  pt="sm"
-                  pb={0}
-                >
-                  <Popover
-                    opened={popoverOpened}
-                    onChange={setPopoverOpened}
-                    width={rem(140)}
-                    position="bottom-end"
+              return (
+                <tr className={S.row} key={index}>
+                  <Box component="td" valign="top">
+                    <Text lh="1.2" fw="bold">
+                      {term.term}
+                    </Text>
+                  </Box>
+                  <Box
+                    component="td"
+                    valign="top"
+                    pr="0"
+                    style={{ wordBreak: "break-word" }}
                   >
-                    <Popover.Target>
-                      <ActionIcon
-                        c="text-light"
-                        className={cx(S.action, {
-                          [S.visible]: popoverOpened,
-                        })}
-                        onClick={() => setPopoverOpened((opened) => !opened)}
-                      >
-                        <Icon name="ellipsis" />
-                      </ActionIcon>
-                    </Popover.Target>
+                    <Text lh="1.2">{term.definition}</Text>
+                  </Box>
 
-                    <Popover.Dropdown p="xs">
-                      <Menu>
-                        <Menu.Item
-                          leftSection={<Icon name="pencil" />}
-                          onClick={() => {
-                            setEditingDefinition({
-                              id: term.id,
-                              term: term.term,
-                              definition: term.definition,
-                            });
-                            setPopoverOpened(false);
-                          }}
+                  <Box
+                    component="td"
+                    valign="top"
+                    align="center"
+                    px="md"
+                    pt="sm"
+                    pb={0}
+                  >
+                    <Popover
+                      opened={popoverOpened}
+                      onChange={() => setPopoverDefinition(null)}
+                      width={rem(140)}
+                      position="bottom-end"
+                    >
+                      <Popover.Target>
+                        <ActionIcon
+                          c="text-light"
+                          className={cx(S.action, {
+                            [S.visible]: popoverOpened,
+                          })}
+                          onClick={() =>
+                            setPopoverDefinition((definition) =>
+                              definition === term ? null : term,
+                            )
+                          }
                         >
-                          {t`Edit`}
-                        </Menu.Item>
+                          <Icon name="ellipsis" />
+                        </ActionIcon>
+                      </Popover.Target>
 
-                        <Menu.Item
-                          leftSection={<Icon name="trash" />}
-                          data-testid="comment-action-panel-delete"
-                          onClick={() => {
-                            setDeletingDefinition({
-                              id: term.id,
-                              term: term.term,
-                              definition: term.definition,
-                            });
-                            setPopoverOpened(false);
-                          }}
-                        >
-                          {t`Delete`}
-                        </Menu.Item>
-                      </Menu>
-                    </Popover.Dropdown>
-                  </Popover>
-                </Box>
-              </tr>
-            ))}
+                      <Popover.Dropdown p="xs">
+                        <Menu>
+                          <Menu.Item
+                            leftSection={<Icon name="pencil" />}
+                            onClick={() => {
+                              setEditingDefinition({
+                                id: term.id,
+                                term: term.term,
+                                definition: term.definition,
+                              });
+                              setPopoverDefinition(null);
+                            }}
+                          >
+                            {t`Edit`}
+                          </Menu.Item>
+
+                          <Menu.Item
+                            leftSection={<Icon name="trash" />}
+                            data-testid="comment-action-panel-delete"
+                            onClick={() => {
+                              setDeletingDefinition({
+                                id: term.id,
+                                term: term.term,
+                                definition: term.definition,
+                              });
+                              setPopoverDefinition(null);
+                            }}
+                          >
+                            {t`Delete`}
+                          </Menu.Item>
+                        </Menu>
+                      </Popover.Dropdown>
+                    </Popover>
+                  </Box>
+                </tr>
+              );
+            })}
           </TBody>
         </Table>
       </div>
