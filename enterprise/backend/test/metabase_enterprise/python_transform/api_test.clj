@@ -23,7 +23,7 @@
         (t2/delete! :model/PythonLibrary)
         (python-library/update-python-library-source! "common" "def my_function():\n    return 42")
         (is (=? {:source "def my_function():\n    return 42"
-                 :path "common"
+                 :path "common.py"
                  :created_at some?
                  :updated_at some?}
                 (mt/user-http-request :crowberto :get 200 "ee/python-transform/library/common"))))
@@ -50,7 +50,7 @@
         (testing "allows empty string"
           (t2/delete! :model/PythonLibrary)
           (is (=? {:source ""
-                   :path "common"
+                   :path "common.py"
                    :id integer?
                    :created_at some?
                    :updated_at some?}
@@ -60,7 +60,7 @@
       (testing "creates new library when none exists"
         (t2/delete! :model/PythonLibrary)
         (is (=? {:source "def new_function():\n    return 100"
-                 :path "common"
+                 :path "common.py"
                  :id integer?
                  :created_at some?
                  :updated_at some?}
@@ -73,7 +73,7 @@
         (t2/delete! :model/PythonLibrary)
         (python-library/update-python-library-source! "common" "def old_function():\n    return 1")
         (is (=? {:source "def updated_function():\n    return 2"
-                 :path "common"
+                 :path "common.py"
                  :id integer?
                  :created_at some?
                  :updated_at some?}

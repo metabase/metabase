@@ -11,7 +11,7 @@
     (testing "creates new record when none exists"
       (t2/delete! :model/PythonLibrary)
       (is (=? {:source "def new_func(): return 1"
-               :path "common"
+               :path "common.py"
                :id integer?
                :created_at some?
                :updated_at some?}
@@ -23,7 +23,7 @@
     (testing "updates existing record"
       (is (= 1 (t2/count :model/PythonLibrary)))
       (is (=? {:source "def updated_func(): return 2"
-               :path "common"
+               :path "common.py"
                :id integer?
                :created_at some?
                :updated_at some?}
@@ -44,7 +44,7 @@
       (t2/delete! :model/PythonLibrary)
       (python-library/update-python-library-source! "common" "def test(): pass")
       (is (=? {:source "def test(): pass"
-               :path "common"
+               :path "common.py"
                :id integer?
                :created_at some?
                :updated_at some?}
@@ -54,3 +54,25 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Invalid library path"
                             (python-library/get-python-library-by-path "invalid-path"))))))
+
+(deftest normalize-path-test
+  (testing "normalize-path function"
+    (testing "adds .py extension when missing"
+      (is (= "common.py" (#'python-library/normalize-path "common"))))
+
+    (testing "doesn't duplicate .py extension"
+      (is (= "common.py" (#'python-library/normalize-path "common.py"))))
+
+    (testing "works with paths that already have .py extension when updating"
+      (t2/delete! :model/PythonLibrary)
+      (python-library/update-python-library-source! "common.py" "def test(): pass")
+      (is (=? {:source "def test(): pass"
+               :path "common.py"
+               :id integer?
+               :created_at some?
+               :updated_at some?}
+              (python-library/get-python-library-by-path "common.py")))
+      ;; Verify we can also access it without .py
+      (is (=? {:source "def test(): pass"
+               :path "common.py"}
+              (python-library/get-python-library-by-path "common"))))))
