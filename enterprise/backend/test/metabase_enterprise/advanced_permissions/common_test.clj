@@ -88,8 +88,8 @@
 
         (testing "A new database defaults to `:blocked` if the group has a sandbox for any table"
           (mt/with-temp [:model/Table {table-id :id} {:db_id db-id}
-                         :model/GroupTableAccessPolicy _ {:group_id group-id
-                                                          :table_id table-id}
+                         :model/Sandbox _ {:group_id group-id
+                                           :table_id table-id}
                          :model/Database {db-id-2 :id} {}]
             (is (= :blocked (perm-value db-id-2)))))))))
 
@@ -115,8 +115,8 @@
 
         (testing "A new table defaults to `:blocked` if the group has a sandbox for any existing table"
           (data-perms/set-table-permission! group-id table-id-1 :perms/view-data :unrestricted)
-          (mt/with-temp [:model/GroupTableAccessPolicy _ {:group_id group-id
-                                                          :table_id table-id-1}
+          (mt/with-temp [:model/Sandbox _ {:group_id group-id
+                                           :table_id table-id-1}
                          :model/Table {table-id-3 :id} {:db_id db-id :schema "PUBLIC"}]
             (is (nil? (perm-value nil)))
             (is (= :unrestricted (perm-value table-id-1)))
@@ -145,10 +145,10 @@
           (data-perms/set-database-permission! all-users-group-id db-id :perms/view-data :unrestricted)
           (mt/with-temp [:model/Card                   {card-id :id}  {}
                          :model/Table                  {table-id :id} {:db_id db-id}
-                         :model/GroupTableAccessPolicy _              {:table_id             table-id
-                                                                       :group_id             all-users-group-id
-                                                                       :card_id              card-id
-                                                                       :attribute_remappings {"foo" 1}}]
+                         :model/Sandbox _              {:table_id             table-id
+                                                        :group_id             all-users-group-id
+                                                        :card_id              card-id
+                                                        :attribute_remappings {"foo" 1}}]
             (is (= :blocked (advanced-permissions.common/new-group-view-data-permission-level db-id)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
