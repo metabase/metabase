@@ -11,7 +11,7 @@ import {
   METABOT_REQUEST_IDS,
 } from "../constants";
 
-import type { MetabotUserTextChatMessage } from "./reducer";
+import type { MetabotUserChatMessage } from "./reducer";
 import type { MetabotStoreState } from "./types";
 
 export const getMetabot = (state: MetabotStoreState) => {
@@ -48,7 +48,7 @@ export const getAgentErrorMessages = createSelector(
 // that exact message will be returned.
 export const getUserPromptForMessageId = createSelector(
   [getMessages, (_, messageId: string) => messageId],
-  (messages, messageId): MetabotUserTextChatMessage | undefined => {
+  (messages, messageId): MetabotUserChatMessage | undefined => {
     const messageIndex = messages.findLastIndex((m) => m.id === messageId);
     const message = messages[messageIndex];
     if (!message) {
@@ -62,7 +62,7 @@ export const getUserPromptForMessageId = createSelector(
       return messages
         .slice(0, messageIndex)
         .findLast((m) => m.role === "user") as
-        | MetabotUserTextChatMessage
+        | MetabotUserChatMessage
         | undefined;
     }
   },
@@ -97,6 +97,7 @@ export const getIsLongMetabotConversation = createSelector(
   getMessages,
   (messages) => {
     const totalMessageLength = messages.reduce((sum, msg) => {
+      // TODO: fix this to be any message w/ a message property
       return sum + (msg.type === "text" ? msg.message.length : 0);
     }, 0);
     return totalMessageLength >= LONG_CONVO_MSG_LENGTH_THRESHOLD;
