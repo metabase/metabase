@@ -1678,7 +1678,11 @@
                    {:test-str              "Locked filter is set to an empty list in the token."
                     :params                {:category []}
                     :expected-row-count    200
-                    :expected-values-count 199}]]
+                    :expected-values-count 199}
+                   {:test-str              "Locked filter is set to an empty string in the token."
+                    :params                {:category [""]}
+                    :expected-row-count    0
+                    :expected-values-count 0}]]
             (testing test-str
               (let [token        (dash-token dashboard-id {:params params})
                     row-count    (-> (mt/user-http-request :crowberto :get 202
