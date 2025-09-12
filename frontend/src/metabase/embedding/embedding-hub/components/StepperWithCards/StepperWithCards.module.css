@@ -57,7 +57,11 @@
   max-width: 15.625rem;
 }
 
-.stepCard:hover {
+.lockedStepCard {
+  cursor: not-allowed;
+}
+
+.stepCard:not(.lockedStepCard):hover {
   border: 1px solid var(--mb-color-focus) !important;
   box-shadow: 0 2px 24px 0 var(--mb-color-shadow-embedding-hub-card);
 }
