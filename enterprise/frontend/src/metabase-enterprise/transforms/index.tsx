@@ -37,7 +37,7 @@ if (hasPremiumFeature("transforms")) {
         <Route
           component={(props) => <TransformPageLayout {...props} fullWidth />}
         >
-          <Route path="library/python" component={PythonLibraryEditorPage} />
+          <Route path="library/:name" component={PythonLibraryEditorPage} />
         </Route>
         <Route
           path="new/:type"

@@ -9,6 +9,7 @@ import { LoadingSpinner } from "metabase/common/components/MetadataInfo/Metadata
 import { isMac } from "metabase/lib/browser";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 import { Box, Checkbox, Flex, Icon, Stack, Text, Title } from "metabase/ui";
+import { getPythonLibraryUrl } from "metabase-enterprise/transforms/urls";
 
 import { SHARED_LIB_IMPORT_NAME } from "../../../constants";
 import { PythonEditor as PythonCodeEditor } from "../../PythonEditor";
@@ -90,7 +91,7 @@ export function PythonEditor({
           <Flex
             component={Link}
             target="_blank"
-            to="/admin/transforms/library/python"
+            to={getPythonLibraryUrl({ name: SHARED_LIB_IMPORT_NAME })}
             gap="sm"
           >
             <Icon name="pencil" />

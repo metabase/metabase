@@ -8,6 +8,7 @@ import {
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { useSelector } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
+import { SHARED_LIB_IMPORT_NAME } from "metabase-enterprise/transforms/constants";
 
 import {
   getJobListUrl,
@@ -71,7 +72,7 @@ function TransformSidebar({ params }: TransformSidebarProps) {
       <AdminNavItem label={t`Runs`} path={getRunListUrl()} icon="list" />
       <AdminNavItem
         label={t`Python library`}
-        path={getPythonLibraryUrl()}
+        path={getPythonLibraryUrl({ name: SHARED_LIB_IMPORT_NAME })}
         icon="code_block"
       />
     </AdminNavWrapper>

@@ -11,18 +11,25 @@ import {
   useUpdatePythonLibraryMutation,
 } from "metabase-enterprise/api/python-transform-library";
 import { PythonEditor } from "metabase-enterprise/transforms/components/PythonEditor";
-import { SHARED_LIB_IMPORT_NAME } from "metabase-enterprise/transforms/constants";
+import type { PythonLibraryEditorPageParams } from "metabase-enterprise/transforms/types";
 
 import S from "./PythonLibraryEditorPage.module.css";
 
-export function PythonLibraryEditorPage() {
+type PythonLibraryEditorPageProps = {
+  params: PythonLibraryEditorPageParams;
+};
+
+export function PythonLibraryEditorPage({
+  params,
+}: PythonLibraryEditorPageProps) {
+  const { name } = params;
   const [source, setSource] = useState("");
 
   const {
     data: library,
     isLoading,
     error,
-  } = useGetPythonLibraryQuery({ name: SHARED_LIB_IMPORT_NAME });
+  } = useGetPythonLibraryQuery({ name });
   const [updatePythonLibrary, { isLoading: isSaving }] =
     useUpdatePythonLibraryMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
@@ -39,10 +46,7 @@ export function PythonLibraryEditorPage() {
 
   async function handleSave() {
     try {
-      await updatePythonLibrary({
-        name: SHARED_LIB_IMPORT_NAME,
-        source,
-      }).unwrap();
+      await updatePythonLibrary({ name, source }).unwrap();
       sendSuccessToast(t`Python library saved`);
     } catch (error) {
       sendErrorToast(t`Python library could not be saved`);
