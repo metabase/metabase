@@ -708,8 +708,8 @@
                        {:pivot_rows [0 1]
                         :pivot_cols []})]
       (is (= (mt/$ids orders
-               [[:field %products.category {:source-field %product_id, :base-type :type/Text}]
-                [:field %people.source {:source-field %user_id, :base-type :type/Text}]
+               [[:field %products.category {:source-field %product_id}]
+                [:field %people.source {:source-field %user_id}]
                 [:expression "pivot-grouping"]
                 [:aggregation 0]])
              (mapv :field_ref (mt/cols (qp.pivot/run-pivot-query query))))))))

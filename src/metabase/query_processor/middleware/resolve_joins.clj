@@ -102,8 +102,6 @@
                        :type     qp.error-type/invalid-query})))
     (mapv
      (fn [field]
-       ;; implicit datetime Fields get bucketing of `:default`. This is so other middleware doesn't try to give it
-       ;; default bucketing of `:day`
        [:field (u/the-id field) nil])
      fields)))
 

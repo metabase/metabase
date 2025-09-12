@@ -17,8 +17,6 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
-(ns-unalias *ns* 'qp.store) ; NOCOMMIT
-
 (deftest ^:parallel fk-field-infos->joins-test
   (is (=? [{:lib/type    :mbql/join
             :stages      [{:source-table (meta/id :products)}]

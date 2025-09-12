@@ -68,7 +68,7 @@
                   "display-name should include the display name of the FK field (for IMPLICIT JOINS)")
       (is (=? [{:display-name "Category → Name"
                 :source       :fields
-                ;; sort of contrived since this is not every a query we could build create IRL... even tho the join is
+                ;; sort of contrived since this is not a query we could build create IRL... even tho the join is
                 ;; technically explicit it matches the shape of an implicit one, so we should return field refs that
                 ;; act like the join isn't here yet
                 :field-ref    [:field (meta/id :categories :name) {:source-field (meta/id :venues :category-id)}]}]
@@ -915,8 +915,7 @@
                   :display-name                               "Created At: Year"
                   :effective-type                             :type/Integer
                   ;; additional keys in field ref are WRONG
-                  :field-ref                                  (partial = [:field "CREATED_AT" {:base-type     :type/DateTimeWithLocalTZ
-                                                                                               :temporal-unit :year}])
+                  :field-ref                                  [:field (meta/id :orders :created-at) (partial = {:temporal-unit :year})]
                   :id                                         (meta/id :orders :created-at)
                   :inherited-temporal-unit                    :year
                   :name                                       "CREATED_AT"

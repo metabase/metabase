@@ -14,7 +14,8 @@
    [metabase.lib.walk :as lib.walk]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.lib.util :as lib.util]))
 
 (mr/def ::column-type-info
   [:map
@@ -69,7 +70,7 @@
   [query      :- ::lib.schema/query
    stage-path :- ::lib.walk/stage-path
    x]
-  (and (mbql.u/mbql-clause? x)
+  (and (lib.util/clause? x)
        (when-let [expr-type (try
                               (lib.walk/apply-f-for-stage-at-path lib/type-of query stage-path x)
                               (catch Throwable e
@@ -169,11 +170,11 @@
 
               ;; if it's a `:field` clause and `field-id->type-info` tells us it's a `:type/Temporal` (but not
               ;; `:type/Time`), then go ahead and replace it
-              [:field opts (id-or-name :guard datetime-but-not-time?)]
-              [:field (assoc opts :temporal-unit :day) id-or-name]
+              [:field _opts (_id-or-name :guard datetime-but-not-time?)]
+              (lib/with-temporal-bucket &match :day)
 
-              [:expression (opts :guard (comp date-or-datetime-clause? expression-opts->type-info)) name']
-              [:expression (assoc opts :temporal-unit :day) name']))
+              [:expression (_opts :guard (comp date-or-datetime-clause? expression-opts->type-info)) _name]
+              (lib/with-temporal-bucket &match :day)))
           (rewrite-clause [stage clause-to-rewrite]
             (m/update-existing stage clause-to-rewrite wrap-clauses))]
     (-> stage
