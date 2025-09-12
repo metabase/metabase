@@ -342,6 +342,17 @@ export type DatabaseHelpClickedEvent = ValidateEvent<{
   triggered_from: "admin" | "setup";
 }>;
 
+export type XRayClickedEvent = ValidateEvent<{
+  event: "x-ray_clicked";
+  triggered_from: "homepage" | "browse_database" | "suggestion_sidebar";
+}>;
+
+export type XRaySavedEvent = ValidateEvent<{
+  event: "x-ray_saved";
+}>;
+
+export type XRayEvent = XRayClickedEvent | XRaySavedEvent;
+
 export type EmbedWizardEvent =
   | EmbedWizardExperienceSelectedEvent
   | EmbedWizardResourceSelectedEvent
@@ -398,4 +409,5 @@ export type SimpleEvent =
   | DocumentReplaceCardEvent
   | DocumentUpdatedEvent
   | DocumentPrintEvent
-  | DatabaseHelpClickedEvent;
+  | DatabaseHelpClickedEvent
+  | XRayEvent;

@@ -11,6 +11,7 @@ import { Box, Flex, Icon, type IconName, Title, Tooltip } from "metabase/ui";
 import type { RelatedDashboardXRays } from "metabase-types/api";
 
 import S from "./AutomaticDashboardApp.module.css";
+import { trackSuggestedXRayClicked } from "./analytics";
 
 const RELATED_CONTENT: Record<
   keyof RelatedDashboardXRays,
@@ -64,6 +65,7 @@ const SuggestionsList = ({
                 key={itemIndex}
                 to={item.url}
                 className={cx(CS.hoverParent, CS.hoverVisibility, S.ItemLink)}
+                onClick={trackSuggestedXRayClicked}
               >
                 <Card className={CS.p2} hoverable>
                   <Flex align="center">
