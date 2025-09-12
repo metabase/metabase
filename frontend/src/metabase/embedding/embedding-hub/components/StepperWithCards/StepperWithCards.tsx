@@ -82,6 +82,7 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                         component={onClick ? "button" : undefined}
                         onClick={onClick}
                         disabled={card.locked}
+                        data-testid={`step-card-${card.id}`}
                       >
                         <Stack justify="space-between" h="100%">
                           <Stack gap="xs" h="100%">
