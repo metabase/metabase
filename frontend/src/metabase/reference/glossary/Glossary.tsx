@@ -70,7 +70,9 @@ export function Glossary() {
             {mockedGlossary.map((term, index) => (
               <tr key={index}>
                 <Box component="td" valign="top">
-                  <Text fw="bold">{term.term}</Text>
+                  <Text lh="1.2" fw="bold">
+                    {term.term}
+                  </Text>
                 </Box>
                 <Box component="td" valign="top" pr="0">
                   <Text lh="1.2">{term.definition}</Text>
