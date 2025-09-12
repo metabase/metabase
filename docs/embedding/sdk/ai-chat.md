@@ -24,11 +24,9 @@ You can check out a [demo of the AI chat component](https://embedded-analytics-s
 ```typescript
 {% include_file "{{ dirname }}/snippets/questions/ai-question.tsx" %}
 ```
+## API reference
 
-###
-
-/embedding/sdk/api/MetabotQuestion
-
+- [Component](./api/MetabotQuestion.html)
 
 ## Setting up AI chat
 
