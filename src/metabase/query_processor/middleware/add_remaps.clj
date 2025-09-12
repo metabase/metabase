@@ -546,6 +546,8 @@
     :as                                                    col} :- ::column-with-optional-base-type]
   (when (seq values)
     (let [remap-from       (:name col)
+          ;; TODO (Cam 9/11/25) -- update this to use the `lib.metadata/general-cached-value` or whatever
+          ;; it's called from my other PRs waiting on review.
           stringified-mask (qp.store/miscellaneous-value [::large-int/column-index-mask])]
       {:col-index       idx
        :from            remap-from

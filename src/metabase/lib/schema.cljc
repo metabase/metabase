@@ -68,9 +68,10 @@
      ;; are the parameters we pass in for a `PreparedStatement` for `?` placeholders. These can be anything, including
      ;; nil.
      ;;
-     ;; TODO -- pretty sure this is supposed to be `:params`, not `:args`, and this is allowed to be anything rather
-     ;; than just `literal`... I think we're using the `literal` schema tho for either normalization or serialization
-     [:args {:optional true} [:sequential ::literal/literal]]
+     ;; This schema is `[:or ::literal/literal :any]` so Malli encoding [[metabase.lib.serialize]] will use it if
+     ;; applicable... e.g. a Java time type will get serialized to a
+     ;; string (see [[metabase.lib.serialize-test/encode-java-time-types-in-native-query-args-test]])
+     [:params {:optional true} [:maybe [:sequential [:or [:ref ::literal/literal] :any]]]]
      ;; the Table/Collection/etc. that this query should be executed against; currently only used for MongoDB, where it
      ;; is required.
      [:collection {:optional true} ::common/non-blank-string]
@@ -93,7 +94,8 @@
      :limit        "MBQL stage keys like :limit are not allowed in a native query stage."
      :order-by     "MBQL stage keys like :order-by are not allowed in a native query stage."
      :offset       "MBQL stage keys like :offset are not allowed in a native query stage."
-     :page         "MBQL stage keys like :page are not allowed in a native query stage."})])
+     :page         "MBQL stage keys like :page are not allowed in a native query stage."
+     :args         "Native query parameters should use :params, not :args."})])
 
 (mr/def ::breakout
   [:ref ::ref/ref])
@@ -263,7 +265,6 @@
     :decode/normalize normalize-stage
     :encode/serialize #(dissoc %
                                ;; this stuff is all added at runtime by QP middleware.
-                               :params
                                :parameters
                                :lib/stage-metadata
                                ;; TODO (Cam 8/7/25) -- wait a minute, `:middleware` is not supposed to be added here,
