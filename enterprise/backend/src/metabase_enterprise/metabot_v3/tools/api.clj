@@ -20,6 +20,7 @@
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
    [metabase-enterprise.metabot-v3.tools.search :as metabot-v3.tools.search]
    [metabase-enterprise.metabot-v3.tools.search-data-sources :as metabot-v3.tools.search-data-sources]
+   [metabase-enterprise.metabot-v3.tools.snippets :as metabot-v3.tools.snippets]
    [metabase-enterprise.metabot-v3.tools.transforms :as metabot-v3.tools.transforms]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.macros :as api.macros]
@@ -740,6 +741,36 @@
                          [:total_count :int]]]]
    [:map [:output :string]]])
 
+(mr/def ::basic-snippet
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:name :string]
+   [:description {:optional true} [:maybe :string]]])
+
+(mr/def ::full-snippet
+  [:merge
+   ::basic-snippet
+   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:content :string]]])
+
+(mr/def ::get-snippets-result
+  "Schema for SQL snippet list results"
+  [:map
+   {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:structured_output [:sequential ::basic-snippet]]])
+
+(mr/def ::get-snippet-details-arguments
+  [:and
+   [:map
+    [:snippet_id :int]]
+   [:map {:encode/tool-api-request
+          #(set/rename-keys % {:snippet_id :snippet-id})}]])
+
+(mr/def ::get-snippet-details-result
+  "Schema for SQL snippet detail results"
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:structured_output ::full-snippet]])
+
 (api.macros/defendpoint :post "/answer-sources" :- [:merge ::answer-sources-result ::tool-request]
   "Return top level meta information about available information sources."
   [_route-params
@@ -1132,6 +1163,35 @@
       (doto (-> {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}
                 (assoc :conversation_id conversation_id))
         (metabot-v3.context/log :llm.log/be->llm)))))
+
+(api.macros/defendpoint :post "/get-snippets" :- [:merge ::get-snippets-result ::tool-request]
+  "Get a list of all known SQL snippets."
+  [_route-params
+   _query-params
+   {:keys [conversation_id] :as body} :- ::tool-request]
+  (metabot-v3.context/log (assoc body :api :get-snippets) :llm.log/llm->be)
+  (doto (-> (mc/decode ::get-snippets-result
+                       (metabot-v3.tools.snippets/get-snippets)
+                       (mtx/transformer {:name :tool-api-response}))
+            (assoc :conversation_id conversation_id))
+    (metabot-v3.context/log :llm.log/be->llm)))
+
+(api.macros/defendpoint :post "/get-snippet-details" :- [:merge ::get-snippet-details-result ::tool-request]
+  "Get the content of a single SQL snippet."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments ::get-snippet-details-arguments]]
+                                                    ::tool-request]]
+
+  (metabot-v3.context/log (assoc body :api :get-snippet-details) :llm.log/llm->be)
+  (let [arguments (mc/encode ::get-snippet-details-arguments arguments (mtx/transformer {:name :tool-api-request}))
+        snippet-id (:snippet-id arguments)]
+    (doto (-> (mc/decode ::get-snippet-details-result
+                         (metabot-v3.tools.snippets/get-snippet-details snippet-id)
+                         (mtx/transformer {:name :tool-api-response}))
+              (assoc :conversation_id conversation_id))
+      (metabot-v3.context/log :llm.log/be->llm))))
 
 (defn- enforce-authentication
   "Middleware that returns a 401 response if no `ai-session` can be found for  `request`."
