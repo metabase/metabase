@@ -21,9 +21,12 @@
   Question transformation:
   - None"
   (:require
+   [better-cond.core :as b]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.operator :as lib.filter.operator]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -52,9 +55,7 @@
    column       :- ::lib.schema.metadata/column
    column-ref   :- ::lib.schema.ref/ref
    adding       :- [:enum :filter :expression]]
-  (let [next-stage    (->> (lib.util/canonical-stage-index query stage-number)
-                           (lib.util/next-stage-number query))
-        base          (cond
+  (let [base          (b/cond
                         ;; An extra stage is needed if:
                         ;; - The target column is an aggregation
                         ;; - OR the target column is a breakout AND we are adding a custom expression based on it.
@@ -64,17 +65,25 @@
                                  (and (:lib/breakout? column)
                                       (= adding :expression))))
                         {:query        query
-                         :stage-number stage-number}
-
+                         :stage-number stage-number
+                         :column-ref   column-ref}
                         ;; An extra stage is needed.
+                        :let [next-stage-ref (-> column
+                                                 lib.field.util/update-keys-for-col-from-previous-stage
+                                                 lib.ref/ref)]
                         ;; If there's a later stage, then use it.
-                        next-stage {:query        query
-                                    :stage-number next-stage}
+                        :let [next-stage-number (lib.util/next-stage-number query stage-number)]
+                        next-stage-number
+                        {:query        query
+                         :stage-number next-stage-number
+                         :column-ref   next-stage-ref}
                         ;; And if there isn't a later stage, add one.
-                        :else      {:query        (lib.stage/append-stage query)
-                                    :stage-number -1})
+                        :else
+                        {:query        (lib.stage/append-stage query)
+                         :stage-number -1
+                         :column-ref   next-stage-ref})
         filter-column (lib.drill-thru.common/matching-filterable-column
-                       (:query base) (:stage-number base) column-ref column)]
+                       (:query base) (:stage-number base) (:column-ref base) column)]
     ;; If we cannot find the matching column, don't allow to drill
     (when filter-column
       (assoc base :column filter-column))))

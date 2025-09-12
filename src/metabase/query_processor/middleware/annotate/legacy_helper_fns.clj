@@ -16,6 +16,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
+;;; TODO (Cam 9/5/25) -- why do we this AND [[metabase.lib.query/query-from-legacy-inner-query]]? Can't we just use
+;;; that everywhere?
 (mu/defn legacy-inner-query->mlv2-query :- ::lib.schema/query
   "Convert a legacy `inner-query` to an MLv2 query. Requires bound QP store."
   [inner-query :- [:and

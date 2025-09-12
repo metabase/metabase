@@ -85,7 +85,7 @@
                                                                               stage-number
                                                                               (get existing-breakouts position)
                                                                               columns
-                                                                              {:generous? true}))
+                                                                              {:find-matching-column/ignore-binning-and-bucketing? true}))
                                          (range (count existing-breakouts)))]
          (mapv #(let [positions  (column->breakout-positions %)]
                   (cond-> %
@@ -96,27 +96,16 @@
   "Returns existing breakouts (as MBQL expressions) for `column` in a stage if there are any. Returns `nil` if there
   are no existing breakouts."
   ([query stage-number column]
-   (existing-breakouts query stage-number column nil))
+   (existing-breakouts query stage-number column {:find-matching-column/ignore-binning-and-bucketing? true}))
 
-  ([query                                         :- ::lib.schema/query
-    stage-number                                  :- :int
-    column                                        :- ::lib.schema.metadata/column
-    {:keys [same-binning-strategy?
-            same-temporal-bucket?], :as _options} :- [:maybe
-                                                      [:map
-                                                       [:same-binning-strategy? {:optional true, :default false} [:maybe :boolean]]
-                                                       [:same-temporal-bucket? {:optional true, :default false} [:maybe :boolean]]]]]
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    column       :- ::lib.schema.metadata/column
+    options      :- [:maybe ::lib.equality/find-matching-column.options]]
    (not-empty
-    (into []
-          (filter (fn [a-breakout]
-                    (and (lib.equality/find-matching-column query stage-number a-breakout [column])
-                         (or (not same-temporal-bucket?)
-                             (= (lib.temporal-bucket/temporal-bucket a-breakout)
-                                (lib.temporal-bucket/temporal-bucket column)))
-                         (or (not same-binning-strategy?)
-                             (lib.binning/binning= (lib.binning/binning a-breakout)
-                                                   (lib.binning/binning column))))))
-          (breakouts query stage-number)))))
+    (filterv (fn [a-breakout]
+               (lib.equality/find-matching-column query stage-number a-breakout [column] options))
+             (breakouts query stage-number)))))
 
 (defn breakout-column?
   "Returns if `column` is a breakout column of stage with `stage-number` of `query`."
@@ -148,14 +137,20 @@
   ([query       :- ::lib.schema/query
     stage-number :- :int
     breakout-ref :- ::lib.schema.ref/ref]
-   (when-let [column (lib.equality/find-matching-column breakout-ref
+   (let [column  (or (lib.equality/find-matching-column query
+                                                        stage-number
+                                                        breakout-ref
                                                         (breakoutable-columns query stage-number)
-                                                        {:generous? true})]
-     (let [binning (lib.binning/binning breakout-ref)
-           bucket  (lib.temporal-bucket/temporal-bucket breakout-ref)]
-       (cond-> column
-         binning (lib.binning/with-binning binning)
-         bucket  (lib.temporal-bucket/with-temporal-bucket bucket))))))
+                                                        {:find-matching-column/ignore-binning-and-bucketing? true})
+                     (throw (ex-info "Failed to resolve breakout ref"
+                                     {:query        query
+                                      :stage-number stage-number
+                                      :ref          breakout-ref})))
+         binning (lib.binning/binning breakout-ref)
+         bucket  (lib.temporal-bucket/temporal-bucket breakout-ref)]
+     (cond-> column
+       binning (lib.binning/with-binning binning)
+       bucket  (lib.temporal-bucket/with-temporal-bucket bucket)))))
 
 (mu/defn remove-all-breakouts :- ::lib.schema/query
   "Remove all breakouts from a query stage."

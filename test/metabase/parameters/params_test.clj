@@ -34,15 +34,17 @@
                             :fk_target_field_id nil}}
            (-> (t2/select-one [:model/Field :name :table_id :semantic_type], :id (mt/id :venues :id))
                (t2/hydrate :name_field)
-               mt/derecordize))))
+               mt/derecordize)))))
 
+(deftest ^:parallel hydrate-name-field-test-2
   (testing "make sure it works for multiple fields efficiently. Should only require one DB call to hydrate many Fields"
     (let [venues-fields (t2/select :model/Field :table_id (mt/id :venues))]
       (t2/with-call-count [call-count]
         (t2/hydrate venues-fields :name_field)
         (is (= 1
-               (call-count))))))
+               (call-count)))))))
 
+(deftest ^:parallel hydrate-name-field-test-3
   (testing "It shouldn't hydrate for Fields that aren't PKs"
     (is (= {:name          "PRICE"
             :table_id      (mt/id :venues)
@@ -50,8 +52,9 @@
             :name_field    nil}
            (-> (t2/select-one [:model/Field :name :table_id :semantic_type], :id (mt/id :venues :price))
                (t2/hydrate :name_field)
-               mt/derecordize))))
+               mt/derecordize)))))
 
+(deftest ^:parallel hydrate-name-field-test-4
   (testing "Or if it *is* a PK, but no name Field is available for that Table, it shouldn't hydrate"
     (is (= {:name          "ID"
             :table_id      (mt/id :checkins)
@@ -119,7 +122,9 @@
                                           :dimensions         []}]}
               (-> (t2/hydrate dashboard :param_fields)
                   :param_fields
-                  mt/derecordize)))))
+                  mt/derecordize))))))
+
+(deftest hydrate-param-fields-for-dashboard-test-2
   (testing "should ignore invalid parameter mappings"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Dashboard    dashboard  {:parameters [{:id "p1" :type :number/=}
@@ -212,7 +217,9 @@
            (params/get-linked-field-ids
             [{:parameter_mappings
               [{:parameter_id "foo" :target [:dimension [:field 256 nil]]}
-               {:parameter_id "bar" :target [:dimension [:field 267 nil]]}]}]))))
+               {:parameter_id "bar" :target [:dimension [:field 267 nil]]}]}])))))
+
+(deftest ^:parallel get-linked-field-ids-test-2
   (testing "get-linked-field-ids multiple fields to one param test"
     (is (= {"foo" #{256 10}
             "bar" #{267}}
@@ -221,7 +228,9 @@
               [{:parameter_id "foo" :target [:dimension [:field 256 nil]]}
                {:parameter_id "bar" :target [:dimension [:field 267 nil]]}]}
              {:parameter_mappings
-              [{:parameter_id "foo" :target [:dimension [:field 10 nil]]}]}]))))
+              [{:parameter_id "foo" :target [:dimension [:field 10 nil]]}]}])))))
+
+(deftest ^:parallel get-linked-field-ids-test-3
   (testing "get-linked-field-ids-test misc fields"
     (is (= {"1" #{1} "2" #{2} "3" #{3} "4" #{4} "5" #{5}}
            (params/get-linked-field-ids
@@ -231,7 +240,9 @@
                {:parameter_id "wow" :target [:dimension [:field "wow" {:base-type :type/Integer}]]}
                {:parameter_id "3" :target [:dimension [:field 3 {:source-field 1}]]}
                {:parameter_id "4" :target [:dimension [:field 4 {:binning {:strategy :num-bins, :num-bins 1}}]]}
-               {:parameter_id "5" :target [:dimension [:field 5]]}]}]))))
+               {:parameter_id "5" :target [:dimension [:field 5]]}]}])))))
+
+(deftest ^:parallel get-linked-field-ids-test-4
   (testing "get-linked-field-ids-test no fields"
     (is (= {}
            (params/get-linked-field-ids

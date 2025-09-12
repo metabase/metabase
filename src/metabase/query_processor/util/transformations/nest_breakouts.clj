@@ -54,12 +54,14 @@
                                   nil)))
 
 (mu/defn- update-second-stage-refs :- ::lib.schema/stage
-  [stage            :- ::lib.schema/stage
+  [query
+   stage-number
+   stage            :- ::lib.schema/stage
    first-stage-cols :- [:sequential ::lib.schema.metadata/column]]
   (lib.util.match/replace stage
     #{:field :expression}
     (if-let [col (when-not (some #{:expressions} &parents)
-                   (lib.equality/find-matching-column &match first-stage-cols))]
+                   (lib.equality/find-matching-column query stage-number &match first-stage-cols))]
       (-> col
           lib/update-keys-for-col-from-previous-stage
           update-temporal-bucket
@@ -157,7 +159,9 @@
         first-stage-cols (lib.walk/apply-f-for-stage-at-path lib/returned-columns query path)]
     (-> stage
         (dissoc :joins :source-table :source-card :lib/stage-metadata :filters)
-        (update-second-stage-refs first-stage-cols)
+        (as-> $stage (lib.walk/apply-f-for-stage-at-path (fn [query stage-number]
+                                                           (update-second-stage-refs query stage-number $stage first-stage-cols))
+                                                         query path))
         (dissoc :expressions)
         add-implicit-breakout-order-bys)))
 

@@ -508,8 +508,11 @@
 
 ;;; if you pass in an integer assume it's a stage number; use the method for the query stage itself.
 (defmethod returned-columns-method :dispatch-type/integer
-  [query _stage-number stage-number options]
-  (returned-columns-method query stage-number (lib.util/query-stage query stage-number) options))
+  [query stage-number x-stage-number options]
+  (assert (= (lib.util/canonical-stage-index query stage-number)
+             (lib.util/canonical-stage-index query x-stage-number))
+          (lib.util/format "Call to returned-columns with different stage numbers, %d and %d" stage-number x-stage-number))
+  (returned-columns-method query x-stage-number (lib.util/query-stage query x-stage-number) options))
 
 (mu/defn returned-columns :- [:maybe ::returned-columns]
   "Return a sequence of metadata maps for all the columns expected to be 'returned' at a query, stage of the query, or
@@ -534,7 +537,7 @@
    (returned-columns query (lib.util/query-stage query -1)))
 
   ([query x]
-   (returned-columns query -1 x))
+   (returned-columns query (if (int? x) x -1) x))
 
   ([query stage-number x]
    (returned-columns query stage-number x nil))
@@ -637,9 +640,10 @@
   "Given a seq of columns, return metadata for any remapped columns, if the `:include-remaps?` option is set."
   [query                                  :- ::lib.schema/query
    stage-number                           :- :int
-   source-cols                            :- [:maybe [:sequential ::lib.schema.metadata/column]]
+   source-cols                            :- [:maybe [:sequential ::column-metadata-with-source]]
    {:keys [include-remaps?] :as _options} :- [:maybe ::returned-columns.options]]
   (when (and include-remaps?
+             (not (get-in query [:middleware :disable-remaps?]))
              (lib.util/first-stage? query stage-number))
     (let [existing-ids (into #{} (keep :id) source-cols)]
       (for [column source-cols
@@ -672,9 +676,8 @@
   Does not include columns from any Tables that are already explicitly joined.
 
   Does not include columns that would be implicitly joinable via multiple hops."
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   cols         :- [:sequential ::lib.schema.metadata/column]]
+  [query :- ::lib.schema/query
+   cols  :- [:sequential ::lib.schema.metadata/column]]
   (let [remap-target-ids (into #{} (keep (comp :field-id :lib/external-remap)) cols)
         existing-table-ids (into #{} (comp (remove (comp remap-target-ids :id))
                                            (map :table-id))
@@ -697,7 +700,7 @@
     (into []
           (mapcat (fn [{:keys [table-id], ::keys [fk-field-id fk-field-name fk-join-alias]}]
                     (let [table (id->table table-id)]
-                      (for [field (returned-columns query stage-number table)]
+                      (for [field (returned-columns query table)]
                         (m/assoc-some field
                                       :fk-field-id              fk-field-id
                                       :fk-field-name            fk-field-name
