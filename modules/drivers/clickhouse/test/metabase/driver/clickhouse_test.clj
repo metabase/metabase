@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.driver.clickhouse :as clickhouse]
    [metabase.driver.clickhouse-qp :as clickhouse-qp]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -44,74 +43,65 @@
              (driver/db-default-timezone :clickhouse spec))))))
 
 (deftest ^:parallel clickhouse-connection-string
-  (mt/with-dynamic-fn-redefs [;; This function's implementation requires the connection details to actually connect to the
-                              ;; database, which is orthogonal to the purpose of this test.
-                              clickhouse/cloud? (constantly false)]
-    (testing "connection with no additional options"
-      (is (= ctd/default-connection-params
-             (sql-jdbc.conn/connection-details->spec
-              :clickhouse
-              {}))))
-    (testing "custom connection with additional options"
-      (is (= (merge
-              ctd/default-connection-params
-              {:subname "//myclickhouse:9999/foo?sessionTimeout=42"
-               :user "bob"
-               :password "qaz"
-               :ssl true
-               :custom_http_params "max_threads=42,allow_experimental_analyzer=0"})
-             (sql-jdbc.conn/connection-details->spec
-              :clickhouse
-              {:host "myclickhouse"
-               :port 9999
-               :user "bob"
-               :password "qaz"
-               :dbname "foo"
-               :additional-options "sessionTimeout=42"
-               :ssl true
-               :clickhouse-settings "max_threads=42,allow_experimental_analyzer=0"}))))
-    (testing "nil dbname handling"
-      (is (= ctd/default-connection-params
-             (sql-jdbc.conn/connection-details->spec
-              :clickhouse {:dbname nil}))))
-    (testing "schema removal"
-      (doall
-       (for [host ["localhost" "http://localhost" "https://localhost"]]
-         (testing (str "for host " host)
-           (is (= ctd/default-connection-params
-                  (sql-jdbc.conn/connection-details->spec
-                   :clickhouse {:host host}))))))
-      (doall
-       (for [host ["myhost" "http://myhost" "https://myhost"]]
-         (testing (str "for host " host)
-           (is (= (merge ctd/default-connection-params
-                         {:subname "//myhost:8123/default"})
-                  (sql-jdbc.conn/connection-details->spec
-                   :clickhouse {:host host}))))))
-      (doall
-       (for [host ["sub.example.com" "http://sub.example.com" "https://sub.example.com"]]
-         (testing (str "for host " host " with some additional params")
-           (is (= (merge ctd/default-connection-params
-                         {:subname "//sub.example.com:8443/mydb" :ssl true})
-                  (sql-jdbc.conn/connection-details->spec
-                   :clickhouse {:host host :dbname "mydb" :port 8443 :ssl true})))))))))
+  (testing "connection with no additional options"
+    (is (= ctd/default-connection-params
+           (sql-jdbc.conn/connection-details->spec
+            :clickhouse
+            {}))))
+  (testing "custom connection with additional options"
+    (is (= (merge
+            ctd/default-connection-params
+            {:subname "//myclickhouse:9999/foo?sessionTimeout=42"
+             :user "bob"
+             :password "qaz"
+             :ssl true
+             :custom_http_params "max_threads=42,allow_experimental_analyzer=0"})
+           (sql-jdbc.conn/connection-details->spec
+            :clickhouse
+            {:host "myclickhouse"
+             :port 9999
+             :user "bob"
+             :password "qaz"
+             :dbname "foo"
+             :additional-options "sessionTimeout=42"
+             :ssl true
+             :clickhouse-settings "max_threads=42,allow_experimental_analyzer=0"}))))
+  (testing "nil dbname handling"
+    (is (= ctd/default-connection-params
+           (sql-jdbc.conn/connection-details->spec
+            :clickhouse {:dbname nil}))))
+  (testing "schema removal"
+    (doall
+     (for [host ["localhost" "http://localhost" "https://localhost"]]
+       (testing (str "for host " host)
+         (is (= ctd/default-connection-params
+                (sql-jdbc.conn/connection-details->spec
+                 :clickhouse {:host host}))))))
+    (doall
+     (for [host ["myhost" "http://myhost" "https://myhost"]]
+       (testing (str "for host " host)
+         (is (= (merge ctd/default-connection-params
+                       {:subname "//myhost:8123/default"})
+                (sql-jdbc.conn/connection-details->spec
+                 :clickhouse {:host host}))))))
+    (doall
+     (for [host ["sub.example.com" "http://sub.example.com" "https://sub.example.com"]]
+       (testing (str "for host " host " with some additional params")
+         (is (= (merge ctd/default-connection-params
+                       {:subname "//sub.example.com:8443/mydb" :ssl true})
+                (sql-jdbc.conn/connection-details->spec
+                 :clickhouse {:host host :dbname "mydb" :port 8443 :ssl true}))))))))
 
 (deftest ^:parallel clickhouse-connection-string-select-sequential-consistency
-  (mt/with-dynamic-fn-redefs [;; This function's implementation requires the connection details to actually
-                              ;; connect to the database, which is orthogonal to the purpose of this test.
-                              clickhouse/cloud? (constantly true)]
-    (testing "connection with no additional options"
-      (is (= (assoc ctd/default-connection-params :select_sequential_consistency true)
-             (sql-jdbc.conn/connection-details->spec
-              :clickhouse
-              {}))))))
+  (testing "connection with no additional options"
+    (is (= (assoc ctd/default-connection-params :select_sequential_consistency true)
+           (sql-jdbc.conn/connection-details->spec
+            :clickhouse
+            {})))))
 
 (deftest clickhouse-connection-fails-test
   (mt/test-driver :clickhouse
     (mt/with-temp [:model/Database db {:details (assoc (:details (mt/db)) :password "wrongpassword") :engine :clickhouse}]
-      (testing "sense check that checking the cloud mode fails with a SQLException."
-       ;; nil arg isn't tested here, as it will pick up the defaults, which is the same as the Docker instance credentials.
-        (is (thrown? java.sql.SQLException (#'clickhouse/cloud? (:details db)))))
       (testing "`driver/database-supports? :uploads` does not throw even if the connection fails."
         (is (false? (driver/database-supports? :clickhouse :uploads db)))
         (is (false? (driver/database-supports? :clickhouse :uploads nil))))

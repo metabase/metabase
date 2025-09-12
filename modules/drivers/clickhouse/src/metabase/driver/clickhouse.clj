@@ -1,7 +1,6 @@
 (ns metabase.driver.clickhouse
   "Driver for ClickHouse databases"
   (:require
-   [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -87,6 +86,7 @@
          :http_connection_provider       "HTTP_URL_CONNECTION"
          :jdbc_ignore_unsupported_values "true"
          :jdbc_schema_term               "schema"
+         :select_sequential_consistency  true
          :max_open_connections           (or max-open-connections 100)
          ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
          :custom_http_params             (or clickhouse-settings "")}
@@ -119,37 +119,13 @@
        (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone))
      (f conn))))
 
-(def ^:private ^{:arglists '([db-details])} cloud?
-  "Returns true if the `db-details` are for a ClickHouse Cloud instance, and false otherwise. If it fails to connect
-   to the database, it throws a java.sql.SQLException."
-  (memoize/ttl
-   (fn [db-details]
-     (let [spec (connection-details->spec* db-details)]
-       (sql-jdbc.execute/do-with-connection-with-options
-        :clickhouse spec nil
-        (fn [^java.sql.Connection conn]
-          (with-open [stmt (.createStatement conn)
-                      rset (.executeQuery stmt "SELECT value='1' FROM system.settings WHERE name='cloud_mode'")]
-            (if (.next rset) (.getBoolean rset 1) false))))))
-   ;; cache the results for 48 hours; TTL is here only to eventually clear out old entries
-   :ttl/threshold (* 48 60 60 1000)))
-
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]
-  (cond-> (connection-details->spec* details)
-    (try (cloud? details)
-         (catch java.sql.SQLException _e
-           false))
-    ;; select_sequential_consistency guarantees that we can query data from any replica in CH Cloud
-    ;; immediately after it is written
-    (assoc :select_sequential_consistency true)))
+  (connection-details->spec* details))
 
 (defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
-  (if (:details db)
-    (try (cloud? (:details db))
-         (catch java.sql.SQLException _e
-           false))
-    false))
+  ;; only cloud dbs support uploads
+  (boolean (-> db :dbms_version :cloud?)))
 
 (defmethod driver/can-connect? :clickhouse
   [driver details]
