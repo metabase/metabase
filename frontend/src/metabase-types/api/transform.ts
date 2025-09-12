@@ -22,6 +22,9 @@ export type Transform = {
   last_run?: TransformRun | null;
 };
 
+export type SuggestedTransform = Partial<Pick<Transform, "id">> &
+  Pick<Transform, "name" | "description" | "source" | "target">;
+
 export type TransformSource = {
   type: "query";
   query: DatasetQuery;

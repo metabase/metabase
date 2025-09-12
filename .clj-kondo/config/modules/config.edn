@@ -1802,7 +1802,8 @@
            util
            warehouse-schema
            warehouses
-           enterprise/documents}}
+           enterprise/documents
+           enterprise/transforms}}
 
   enterprise/permission-debug
   {:team "UX West"

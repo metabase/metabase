@@ -23,7 +23,11 @@ import type { Dispatch } from "metabase-types/store";
 import { METABOT_ERR_MSG } from "../constants";
 import { notifyUnknownReaction, reactionHandlers } from "../reactions";
 
-import { type MetabotErrorMessage, metabot } from "./reducer";
+import {
+  type MetabotErrorMessage,
+  type MetabotUserChatMessage,
+  metabot,
+} from "./reducer";
 import {
   getAgentErrorMessages,
   getAgentRequestMetadata,
@@ -39,6 +43,7 @@ import { createMessageId, parseSlashCommand } from "./utils";
 export const {
   addAgentTextDelta,
   addAgentMessage,
+  addAgentEditSuggestionMessage,
   addAgentErrorMessage,
   addUserMessage,
   resetConversationId,
@@ -48,6 +53,7 @@ export const {
   toolCallEnd,
   setProfileOverride,
   setMetabotReqIdOverride,
+  setSuggestedTransform,
 } = metabot.actions;
 
 type PromptErrorOutcome = {
@@ -125,8 +131,7 @@ export type MetabotPromptSubmissionResult =
 
 export const submitInput = createAsyncThunk<
   MetabotPromptSubmissionResult,
-  {
-    message: string;
+  Omit<MetabotUserChatMessage, "id" | "role"> & {
     context: MetabotChatContext;
     metabot_id?: string;
   }
@@ -158,7 +163,7 @@ export const submitInput = createAsyncThunk<
       // altering it by adding the current message the user is wanting to send
       const agentMetadata = getAgentRequestMetadata(getState() as any);
       const messageId = createMessageId();
-      dispatch(addUserMessage({ id: messageId, message: data.message }));
+      dispatch(addUserMessage({ id: messageId, ...data }));
 
       const sendMessageRequestPromise = dispatch(
         sendAgentRequest({
@@ -240,6 +245,19 @@ export const sendAgentRequest = createAsyncThunk<
                   dispatch(push(part.value) as UnknownAction);
                 }
               })
+              .with(
+                { type: "transform_suggestion" },
+                ({ value: transform }) => {
+                  dispatch(setSuggestedTransform(transform));
+                  dispatch(
+                    addAgentEditSuggestionMessage({
+                      type: "edit_suggestion",
+                      model: "transform",
+                      payload: transform,
+                    }),
+                  );
+                },
+              )
               .exhaustive();
           },
           onTextPart: (part) => {
@@ -309,7 +327,13 @@ export const retryPrompt = createAsyncThunk<
     dispatch(metabot.actions.rewindStateToMessageId(messageId));
 
     return await dispatch(
-      submitInput({ message: prompt.message, context, metabot_id }),
+      // TODO: fix with new action type
+      submitInput({
+        type: "text",
+        message: prompt.message,
+        context,
+        metabot_id,
+      }),
     ).unwrap();
   },
 );

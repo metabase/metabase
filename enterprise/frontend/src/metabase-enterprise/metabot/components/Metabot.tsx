@@ -11,9 +11,13 @@ import { MetabotChat } from "./MetabotChat";
 
 export interface MetabotProps {
   hide?: boolean;
+  emptyConvoText?: string;
 }
 
-export const MetabotAuthenticated = ({ hide }: MetabotProps) => {
+export const MetabotAuthenticated = ({
+  hide,
+  emptyConvoText,
+}: MetabotProps) => {
   const { visible, setVisible } = useMetabotAgent();
 
   useEffect(() => {
@@ -40,7 +44,7 @@ export const MetabotAuthenticated = ({ hide }: MetabotProps) => {
 
   return (
     <ErrorBoundary errorComponent={() => null}>
-      <MetabotChat />
+      <MetabotChat emptyConvoText={emptyConvoText} />
     </ErrorBoundary>
   );
 };

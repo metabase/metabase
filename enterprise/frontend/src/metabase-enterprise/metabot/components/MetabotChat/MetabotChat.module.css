@@ -104,6 +104,14 @@
   background: var(--mb-color-bg-medium);
 }
 
+.messageUserAction {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--mb-color-bg-light);
+  border: 1px solid var(--mb-color-bg-medium);
+  font-weight: bold;
+}
+
 .messageActions {
   opacity: 0;
   transition: all 150ms linear;

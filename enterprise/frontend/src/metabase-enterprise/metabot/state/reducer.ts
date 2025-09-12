@@ -3,18 +3,54 @@ import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
 import { uuid } from "metabase/lib/uuid";
-import type { MetabotHistory } from "metabase-types/api";
+import type { MetabotHistory, SuggestedTransform } from "metabase-types/api";
 
 import { TOOL_CALL_MESSAGES } from "../constants";
 
 import { sendAgentRequest } from "./actions";
 import { createMessageId } from "./utils";
 
-export type MetabotChatMessage = {
+export type MetabotUserTextChatMessage = {
   id: string;
-  role: "user" | "agent";
+  role: "user";
+  type: "text";
   message: string;
 };
+
+export type MetabotUserActionChatMessage = {
+  id: string;
+  role: "user";
+  type: "action";
+  message: string;
+  userMessage: string;
+};
+
+export type MetabotAgentTextChatMessage = {
+  id: string;
+  role: "agent";
+  type: "text";
+  message: string;
+};
+
+export type MetabotAgentEditSuggestionChatMessage = {
+  id: string;
+  role: "agent";
+  type: "edit_suggestion";
+  model: "transform";
+  payload: SuggestedTransform;
+};
+
+export type MetabotAgentChatMessage =
+  | MetabotAgentTextChatMessage
+  | MetabotAgentEditSuggestionChatMessage;
+
+export type MetabotUserChatMessage =
+  | MetabotUserTextChatMessage
+  | MetabotUserActionChatMessage;
+
+export type MetabotChatMessage =
+  | MetabotUserChatMessage
+  | MetabotAgentChatMessage;
 
 export type MetabotErrorMessage = {
   type: "message" | "alert";
@@ -30,6 +66,7 @@ export type MetabotToolCall = {
 
 export type MetabotReactionsState = {
   navigateToPath: string | null;
+  suggestedTransform: SuggestedTransform | undefined;
 };
 
 export interface MetabotState {
@@ -58,6 +95,7 @@ export const getMetabotInitialState = (): MetabotState => ({
   state: {},
   reactions: {
     navigateToPath: null,
+    suggestedTransform: undefined,
   },
   toolCalls: [],
   experimental: {
@@ -72,23 +110,42 @@ export const metabot = createSlice({
   reducers: {
     addUserMessage: (
       state,
-      action: PayloadAction<Omit<MetabotChatMessage, "role">>,
+      action: PayloadAction<Omit<MetabotUserChatMessage, "role">>,
     ) => {
-      const { id, message } = action.payload;
+      const { id, message, ...rest } = action.payload;
 
       state.errorMessages = [];
-      state.messages.push({ id, role: "user", message });
+      state.messages.push({ id, role: "user", message, ...rest } as any);
       state.history.push({ id, role: "user", content: message });
     },
     addAgentMessage: (
       state,
-      action: PayloadAction<Omit<MetabotChatMessage, "id" | "role">>,
+      action: PayloadAction<
+        Omit<MetabotAgentTextChatMessage, "id" | "role" | "type">
+      >,
     ) => {
       state.toolCalls = [];
       state.messages.push({
         id: createMessageId(),
         role: "agent",
+        type: "text",
         message: action.payload.message,
+      });
+    },
+    addAgentEditSuggestionMessage: (
+      state,
+      action: PayloadAction<
+        Omit<MetabotAgentEditSuggestionChatMessage, "id" | "role">
+      >,
+    ) => {
+      state.toolCalls = [];
+      // @ts-expect-error - TODO: figure out why this type causes issues
+      state.messages.push({
+        id: createMessageId(),
+        role: "agent",
+        type: "edit_suggestion",
+        model: action.payload.model,
+        payload: action.payload.payload,
       });
     },
     addAgentErrorMessage: (
@@ -100,14 +157,18 @@ export const metabot = createSlice({
     addAgentTextDelta: (state, action: PayloadAction<string>) => {
       const hasToolCalls = state.toolCalls.length > 0;
       const lastMessage = _.last(state.messages);
-      const canAppend = !hasToolCalls && lastMessage?.role === "agent";
+      const canAppend =
+        !hasToolCalls &&
+        lastMessage?.role === "agent" &&
+        lastMessage.type === "text";
 
       if (canAppend) {
-        lastMessage!.message = lastMessage!.message + action.payload;
+        lastMessage.message = lastMessage.message + action.payload;
       } else {
         state.messages.push({
           id: createMessageId(),
           role: "agent",
+          type: "text",
           message: action.payload,
         });
       }
@@ -156,6 +217,7 @@ export const metabot = createSlice({
       state.isProcessing = false;
       state.toolCalls = [];
       state.conversationId = uuid();
+      state.reactions.suggestedTransform = undefined;
       state.experimental.metabotReqIdOverride = undefined;
     },
     resetConversationId: (state) => {
@@ -166,6 +228,12 @@ export const metabot = createSlice({
     },
     setNavigateToPath: (state, action: PayloadAction<string>) => {
       state.reactions.navigateToPath = action.payload;
+    },
+    setSuggestedTransform: (
+      state,
+      action: PayloadAction<SuggestedTransform | undefined>,
+    ) => {
+      state.reactions.suggestedTransform = action.payload;
     },
     setVisible: (state, action: PayloadAction<boolean>) => {
       state.visible = action.payload;

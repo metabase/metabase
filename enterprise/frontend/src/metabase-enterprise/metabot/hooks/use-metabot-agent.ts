@@ -6,15 +6,16 @@ import { useMetabotContext } from "metabase/metabot";
 
 import {
   type MetabotPromptSubmissionResult,
+  type MetabotUserChatMessage,
   getAgentErrorMessages,
   getIsLongMetabotConversation,
   getIsProcessing,
-  getLastAgentMessagesByType,
   getMessages,
   getMetabotId,
+  getMetabotReactionsState,
   getMetabotRequestId,
   getMetabotVisible,
-  getProfileOverride,
+  getProfile,
   getToolCalls,
   resetConversation as resetConversationAction,
   retryPrompt,
@@ -35,9 +36,6 @@ export const useMetabotAgent = () => {
   const messages = useSelector(getMessages as any) as ReturnType<
     typeof getMessages
   >;
-  const lastAgentMessages = useSelector(
-    getLastAgentMessagesByType as any,
-  ) as ReturnType<typeof getLastAgentMessagesByType>;
 
   const errorMessages = useSelector(getAgentErrorMessages as any) as ReturnType<
     typeof getAgentErrorMessages
@@ -67,8 +65,12 @@ export const useMetabotAgent = () => {
     [dispatch],
   );
 
-  const profile = useSelector(getProfileOverride as any) as ReturnType<
-    typeof getProfileOverride
+  const profile = useSelector(getProfile as any) as ReturnType<
+    typeof getProfile
+  >;
+
+  const reactions = useSelector(getMetabotReactionsState as any) as ReturnType<
+    typeof getMetabotReactionsState
   >;
 
   const resetConversation = useCallback(
@@ -87,18 +89,27 @@ export const useMetabotAgent = () => {
   );
 
   const submitInput = useCallback(
-    async (prompt: string) => {
+    async (prompt: string | Omit<MetabotUserChatMessage, "id" | "role">) => {
       if (!visible) {
         setVisible(true);
       }
 
       const context = await getChatContext();
       const action = await dispatch(
-        submitInputAction({
-          message: prompt,
-          context,
-          metabot_id: metabotRequestId,
-        }),
+        submitInputAction(
+          typeof prompt === "string"
+            ? {
+                type: "text",
+                message: prompt,
+                context,
+                metabot_id: metabotRequestId,
+              }
+            : {
+                ...prompt,
+                context,
+                metabot_id: metabotRequestId,
+              },
+        ),
       );
 
       if (isFulfilled(action)) {
@@ -154,7 +165,6 @@ export const useMetabotAgent = () => {
     metabotId,
     visible,
     messages,
-    lastAgentMessages,
     errorMessages,
     isLongConversation,
     resetConversation,
@@ -164,5 +174,6 @@ export const useMetabotAgent = () => {
     retryMessage,
     toolCalls,
     profile,
+    reactions,
   };
 };
