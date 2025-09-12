@@ -1,10 +1,12 @@
 (ns metabase.lib.schema.aggregation
+  (:refer-clojure :exclude [some])
   (:require
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [some]]))
 
 ;; count has an optional expression arg. This is the number of non-NULL values -- corresponds to count(<expr>) in SQL
 (mbql-clause/define-catn-mbql-clause :count :- :type/Integer

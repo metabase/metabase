@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.resolve-joins
   "Middleware that fetches tables that will need to be joined, referred to by `:field` clauses with `:source-field`
   options, and adds information to the query about what joins should be done and how they should be performed."
-  (:refer-clojure :exclude [alias])
+  (:refer-clojure :exclude [alias every? mapv])
   (:require
    [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
@@ -12,7 +12,8 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [every? mapv]]))
 
 (def ^:private Joins
   "Schema for a non-empty sequence of Joins. Unlike [[mbql.s/Joins]], this does not enforce the constraint that all join

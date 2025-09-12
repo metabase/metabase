@@ -1,5 +1,5 @@
 (ns metabase.lib.filter
-  (:refer-clojure :exclude [filter and or not = < <= > >= not-empty case])
+  (:refer-clojure :exclude [filter and or not = < <= > >= not-empty case every? some mapv])
   (:require
    [inflections.core :as inflections]
    [medley.core :as m]
@@ -27,6 +27,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.number :as u.number]
+   [metabase.util.performance :refer [every? some mapv]]
    [metabase.util.time :as u.time]))
 
 (doseq [tag [:and :or]]

@@ -1,4 +1,5 @@
 (ns metabase.query-processor.streaming.csv
+  (:refer-clojure :exclude [mapv])
   (:require
    [clojure.data.csv]
    [medley.core :as m]
@@ -8,7 +9,7 @@
    [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.util.performance :as perf])
+   [metabase.util.performance :as perf :refer [mapv]])
   (:import
    (java.io BufferedWriter OutputStream OutputStreamWriter)
    (java.nio.charset StandardCharsets)))

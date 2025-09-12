@@ -1,4 +1,5 @@
 (ns metabase.lib.breakout
+  (:refer-clojure :exclude [mapv])
   (:require
    [clojure.string :as str]
    [metabase.lib.binning :as lib.binning]
@@ -14,7 +15,8 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv]]))
 
 (defmethod lib.metadata.calculation/describe-top-level-key-method :breakout
   [query stage-number _k]

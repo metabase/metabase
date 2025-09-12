@@ -1,4 +1,5 @@
 (ns metabase.lib.drill-thru
+  (:refer-clojure :exclude [select-keys])
   (:require
    [metabase.lib.drill-thru.automatic-insights :as lib.drill-thru.automatic-insights]
    [metabase.lib.drill-thru.column-extract :as lib.drill-thru.column-extract]
@@ -30,7 +31,8 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [select-keys]]))
 
 (comment
   lib.drill-thru.fk-details/keep-me

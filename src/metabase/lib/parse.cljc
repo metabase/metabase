@@ -1,9 +1,11 @@
 (ns metabase.lib.parse
+  (:refer-clojure :exclude [some])
   (:require
    [clojure.string :as str]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.performance :refer [some]]))
 
 (defn- combine-adjacent-strings
   "Returns any adjacent strings in coll combined together"

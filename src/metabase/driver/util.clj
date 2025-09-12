@@ -1,5 +1,6 @@
 (ns metabase.driver.util
   "Utility functions for common operations on drivers."
+  (:refer-clojure :exclude [mapv])
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.core.memoize :as memoize]
@@ -21,7 +22,7 @@
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf]
+   [metabase.util.performance :as perf :refer [mapv]]
    [metabase.util.snake-hating-map :refer [snake-hating-map?]])
   (:import
    (java.io ByteArrayInputStream)

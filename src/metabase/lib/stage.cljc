@@ -1,5 +1,6 @@
 (ns metabase.lib.stage
   "Method implementations for a stage of a query."
+  (:refer-clojure :exclude [mapv some])
   (:require
    [clojure.string :as str]
    [metabase.lib.aggregation :as lib.aggregation]
@@ -20,7 +21,8 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv some]]))
 
 (lib.hierarchy/derive :mbql.stage/mbql   ::stage)
 (lib.hierarchy/derive :mbql.stage/native ::stage)

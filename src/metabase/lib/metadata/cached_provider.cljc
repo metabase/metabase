@@ -1,4 +1,5 @@
 (ns metabase.lib.metadata.cached-provider
+  (:refer-clojure :exclude [every? update-keys])
   (:require
    #?@(:clj ([pretty.core :as pretty]))
    [clojure.set :as set]
@@ -7,7 +8,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf]))
+   [metabase.util.performance :refer [every? update-keys]]))
 
 #?(:clj (set! *warn-on-reflection* true))
 
@@ -35,7 +36,7 @@
                      [:metadata/metric        ::lib.schema.metadata/metric]
                      [:metadata/segment       ::lib.schema.metadata/segment]]]
   (let [metadata (-> metadata
-                     (perf/update-keys u/->kebab-case-en)
+                     (update-keys u/->kebab-case-en)
                      (assoc :lib/type metadata-type))]
     (store-in-cache! cache [metadata-type id] metadata))
   true)

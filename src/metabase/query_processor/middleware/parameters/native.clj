@@ -25,6 +25,7 @@
 
   3.  `substitute` (and the related namespace `substitution`) replace optional and param objects with appropriate SQL
       snippets and prepared statement args, and combine the sequence of fragments back into a single SQL string."
+  (:refer-clojure :exclude [mapv])
   (:require
    [clojure.set :as set]
    [medley.core :as m]
@@ -35,7 +36,8 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.store :as qp.store]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv]]))
 
 (defn- substitute-native-parameters* [stage]
   (-> stage

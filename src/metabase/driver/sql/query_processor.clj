@@ -1,5 +1,6 @@
 (ns metabase.driver.sql.query-processor
   "The Query Processor is responsible for translating the Metabase Query Language into HoneySQL SQL forms."
+  (:refer-clojure :exclude [some mapv every? select-keys])
   (:require
    [clojure.core.match :refer [match]]
    [clojure.string :as str]
@@ -18,7 +19,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf]
+   [metabase.util.performance :as perf :refer [some mapv every? select-keys]]
    [toucan2.pipeline :as t2.pipeline])
   (:import
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
