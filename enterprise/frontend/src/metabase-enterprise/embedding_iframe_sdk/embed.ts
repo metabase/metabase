@@ -20,6 +20,7 @@ import type {
   SdkIframeEmbedEventHandler,
   SdkIframeEmbedMessage,
   SdkIframeEmbedSettings,
+  SdkIframeEmbedTagFetchStaticTokenData,
   SdkIframeEmbedTagMessage,
 } from "./types/embed";
 import { attributeToSettingKey, parseAttributeValue } from "./webcomponents";
@@ -365,13 +366,14 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
       settings.apiKey,
       settings.useExistingUserSession,
       settings.preferredAuthMethod,
+      settings.fetchStaticToken,
     ].filter(
       (method) => method !== undefined && method !== null && method !== false,
     );
 
     if (authMethods.length > 1) {
       raiseError(
-        "apiKey, useExistingUserSession, and preferredAuthMethod are mutually exclusive, only one can be specified.",
+        "apiKey, useExistingUserSession, preferredAuthMethod, and fetchStaticToken are mutually exclusive, only one can be specified.",
       );
     }
   }
@@ -405,6 +407,10 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
     if (event.data.type === "metabase.embed.requestSessionToken") {
       await this._authenticate();
     }
+
+    if (event.data.type === "metabase.embed.fetchStaticToken") {
+      await this._fetchStaticToken(event.data.data);
+    }
   };
 
   sendMessage<Message extends SdkIframeEmbedMessage>(
@@ -412,7 +418,21 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
     data: Message["data"],
   ) {
     if (this._iframe?.contentWindow) {
-      this._iframe.contentWindow.postMessage({ type, data }, "*");
+      // TODO: refactor/redo
+      const normalizedData = Object.fromEntries(
+        Object.entries(data).map(([key, value]) => {
+          if (typeof value === "function") {
+            return [key, true];
+          }
+
+          return [key, value];
+        }),
+      );
+
+      this._iframe.contentWindow.postMessage(
+        { type, data: normalizedData },
+        "*",
+      );
     }
   }
 
@@ -482,6 +502,23 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
       // eslint-disable-next-line no-literal-metabase-strings -- header name
       ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),
     };
+  }
+
+  private async _fetchStaticToken(data: SdkIframeEmbedTagFetchStaticTokenData) {
+    const { fetchStaticToken } = this.properties;
+
+    if (!fetchStaticToken) {
+      throw new Error(
+        "fetchStaticToken function is not provided in the embed settings",
+      );
+    }
+
+    const staticToken = await fetchStaticToken(data);
+
+    this._sendMessage("metabase.embed.setStaticToken", {
+      messageId: data.messageId,
+      staticToken,
+    });
   }
 }
 

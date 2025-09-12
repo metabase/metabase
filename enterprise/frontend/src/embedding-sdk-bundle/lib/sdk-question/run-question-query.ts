@@ -53,7 +53,7 @@ export async function runQuestionQuerySdk(
 
 export function shouldRunCardQuery(
   question: Question,
-  isStaticQuestion: boolean,
+  isStaticQuestion: boolean | null,
 ): boolean {
   // TODO: investigate why this is needed
   if (isStaticQuestion) {

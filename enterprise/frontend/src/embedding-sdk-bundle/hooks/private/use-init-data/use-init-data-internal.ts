@@ -5,10 +5,14 @@ import _ from "underscore";
 import { initAuth } from "embedding-sdk-bundle/store/auth";
 import {
   setFetchRefreshTokenFn,
+  setFetchStaticTokenFn,
   setMetabaseClientUrl,
   setMetabaseInstanceVersion,
 } from "embedding-sdk-bundle/store/reducer";
-import { getFetchRefreshTokenFn } from "embedding-sdk-bundle/store/selectors";
+import {
+  getFetchRefreshTokenFn,
+  getFetchStaticTokenFn,
+} from "embedding-sdk-bundle/store/selectors";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
 import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
@@ -59,6 +63,8 @@ export const useInitDataInternal = ({
     reduxStore.getState().sdk.loginStatus.status === "uninitialized";
 
   const fetchRefreshTokenFnFromStore = useLazySelector(getFetchRefreshTokenFn);
+  const fetchStaticTokenFnFromStore = useLazySelector(getFetchStaticTokenFn);
+
   const sdkPackageVersion =
     getBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO").version ?? null;
 
@@ -98,6 +104,12 @@ export const useInitDataInternal = ({
       dispatch(setFetchRefreshTokenFn(authConfig.fetchRequestToken ?? null));
     }
   }, [authConfig.fetchRequestToken, fetchRefreshTokenFnFromStore, dispatch]);
+
+  useEffect(() => {
+    if (authConfig.fetchStaticToken !== fetchStaticTokenFnFromStore) {
+      dispatch(setFetchStaticTokenFn(authConfig.fetchStaticToken ?? null));
+    }
+  }, [authConfig.fetchStaticToken, fetchStaticTokenFnFromStore, dispatch]);
 
   useMount(function initializeData() {
     if (!isStatic && isAuthUninitialized()) {

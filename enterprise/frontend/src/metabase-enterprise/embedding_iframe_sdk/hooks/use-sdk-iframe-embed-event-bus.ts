@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { match } from "ts-pattern";
 
 import { trackSchemaEvent } from "metabase/lib/analytics";
@@ -8,6 +8,7 @@ import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/em
 import type {
   SdkIframeEmbedMessage,
   SdkIframeEmbedSettings,
+  SdkIframeEmbedTagMessage,
 } from "../types/embed";
 
 type Handler = (event: MessageEvent<SdkIframeEmbedMessage>) => void;
@@ -17,17 +18,54 @@ type UsageAnalytics = {
   embedHostUrl: string;
 };
 
+const WAIT_FOR_INCOMING_MESSAGE_MAX_WAIT_TIME = 10000;
+
 export function useSdkIframeEmbedEventBus({
   onSettingsChanged,
 }: {
   onSettingsChanged?: (settings: SdkIframeEmbedSettings) => void;
 }): {
+  sendMessage: (message: SdkIframeEmbedTagMessage) => void;
+  waitForIncomingMessage: <TData extends SdkIframeEmbedMessage["data"]>(
+    handler: (event: SdkIframeEmbedMessage) => boolean,
+  ) => Promise<TData>;
   embedSettings: SdkIframeEmbedSettings | null;
 } {
   const [embedSettings, setEmbedSettings] =
     useState<SdkIframeEmbedSettings | null>(null);
   const [usageAnalytics, setUsageAnalytics] = useState<UsageAnalytics | null>(
     null,
+  );
+
+  const sendMessage = useCallback((message: SdkIframeEmbedTagMessage) => {
+    window.parent.postMessage(message, "*");
+  }, []);
+
+  const waitForIncomingMessage = useCallback(
+    async <TData extends SdkIframeEmbedMessage["data"]>(
+      handler: (event: SdkIframeEmbedMessage) => boolean,
+    ): Promise<TData> => {
+      return new Promise<TData>((resolve, reject) => {
+        let waitTimeout = 0;
+
+        waitTimeout = window.setTimeout(() => {
+          window.removeEventListener("message", messageHandler);
+          reject(new Error("Timeout waiting for incoming message"));
+        }, WAIT_FOR_INCOMING_MESSAGE_MAX_WAIT_TIME);
+
+        const messageHandler = (event: MessageEvent<SdkIframeEmbedMessage>) => {
+          const isExpectedMessage = handler(event.data);
+
+          if (isExpectedMessage) {
+            window.clearTimeout(waitTimeout);
+            resolve(event.data.data as TData);
+          }
+        };
+
+        window.addEventListener("message", messageHandler);
+      });
+    },
+    [],
   );
 
   useEffect(() => {
@@ -52,12 +90,12 @@ export function useSdkIframeEmbedEventBus({
     window.addEventListener("message", messageHandler);
 
     // notify embed.js that the iframe is ready
-    window.parent.postMessage({ type: "metabase.embed.iframeReady" }, "*");
+    sendMessage({ type: "metabase.embed.iframeReady" });
 
     return () => {
       window.removeEventListener("message", messageHandler);
     };
-  }, [onSettingsChanged]);
+  }, [onSettingsChanged, sendMessage]);
 
   useEffect(() => {
     if (embedSettings?.instanceUrl && usageAnalytics) {
@@ -71,7 +109,7 @@ export function useSdkIframeEmbedEventBus({
     }
   }, [embedSettings?.instanceUrl, usageAnalytics]);
 
-  return { embedSettings };
+  return { sendMessage, waitForIncomingMessage, embedSettings };
 }
 
 export function isMetabaseInstance(instanceUrl: string, embedHostUrl: string) {
