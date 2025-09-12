@@ -303,7 +303,8 @@
                          (and (:id col)
                               ;; don't force ID refs when it would result in duplicates (probably not
                               ;; needed since [[deduplicate-field-refs]] will fix this anyway?)
-                              (= (:lib/deduplicated-name col) (:lib/original-name col))))
+                              (= (:lib/deduplicated-name col) (:lib/original-name col))
+                              (not (= (:lib/original-ref-style-for-result-metadata-purposes col) :original-ref-style/name))))
                      (string? id-or-name))
                 [tag (dissoc opts :base-type) (:id col)]
 
