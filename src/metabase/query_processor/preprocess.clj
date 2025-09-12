@@ -136,10 +136,8 @@
    (ensure-mbql5 #'validate-temporal-bucketing/validate-temporal-bucketing)
    (ensure-mbql5 #'optimize-temporal-filters/optimize-temporal-filters)
    (ensure-mbql5 #'limit/add-default-limit)
-   (ensure-legacy #'qp.middleware.enterprise/apply-download-limit)
-   (ensure-legacy #'check-features/check-features)
-   ;; return MBQL 5 at the end
-   (ensure-mbql5 identity)])
+   (ensure-mbql5 #'qp.middleware.enterprise/apply-download-limit)
+   (ensure-mbql5 #'check-features/check-features)])
 
 (defn- middleware-fn-name [middleware-fn]
   (if-let [fn-name (:name (meta middleware-fn))]

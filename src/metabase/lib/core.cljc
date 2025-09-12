@@ -421,6 +421,8 @@
   temporal-bucket
   with-temporal-bucket]
  [lib.util
+  clause?
+  clause-of-type?
   fresh-uuids
   native-stage?
   normalized-query-type
