@@ -45,7 +45,11 @@
     check-transform-ids]
    (reduce (fn [errors [error-type id query]]
              (let [query    (lib/query provider query)
-                   bad-refs (lib/find-bad-refs query)]
+                   query-type (:lib/type (lib/query-stage query 0))
+                   driver (:engine (lib.metadata/database provider))
+                   bad-refs (case query-type
+                              :mbql.stage/mbql (lib/find-bad-refs query)
+                              :mbql.stage/native (not (deps.native/validate-native-query driver provider query)))]
                (cond-> errors
                  bad-refs (assoc-in [error-type id] bad-refs))))
            {}
