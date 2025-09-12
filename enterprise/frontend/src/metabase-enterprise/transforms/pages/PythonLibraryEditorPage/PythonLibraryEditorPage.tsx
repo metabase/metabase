@@ -19,6 +19,13 @@ type PythonLibraryEditorPageProps = {
   params: PythonLibraryEditorPageParams;
 };
 
+const EMPTY_LIBRARY_SOURCE = `
+# This is your Python library.
+# You can add functions and classes here that can be reused in Python transforms.
+`
+  .trim()
+  .concat("\n");
+
 export function PythonLibraryEditorPage({
   params,
 }: PythonLibraryEditorPageProps) {
@@ -35,8 +42,15 @@ export function PythonLibraryEditorPage({
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   useEffect(() => {
-    setSource(library?.source || "");
-  }, [library?.source]);
+    if (isLoading || error) {
+      return;
+    }
+    if (library != null) {
+      setSource(library.source || "");
+    } else {
+      setSource(EMPTY_LIBRARY_SOURCE);
+    }
+  }, [isLoading, error, library]);
 
   const isDirty = source !== library?.source;
 
