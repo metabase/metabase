@@ -175,9 +175,6 @@
 ;;; TODO (Cam 9/10/25) -- this logic is all wrong and needs to use Lib instead
 (defn field->field-info
   "Given a field ref and result_metadata, return a map of information about the field if result_metadata contains a
-  matched field."
-  [field-ref cols]
-  (let [[_tag id-or-name _options :as field-ref] (field-normalizer field-ref)]
   matched field.
 
   DEPRECATED -- this is broken, please use Lib instead going forward."
