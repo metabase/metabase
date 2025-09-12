@@ -181,7 +181,7 @@
   {:deprecated "0.57.0"}
   [field-ref cols]
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (let [[_ttype id-or-name options :as field-ref] (field-normalizer field-ref)]
+  (let [[_ttype id-or-name _options :as field-ref] (field-normalizer field-ref)]
     (or
      ;; try match field_ref first
      (first (filter (fn [field-info]
