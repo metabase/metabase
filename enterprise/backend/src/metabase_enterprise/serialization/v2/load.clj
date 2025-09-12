@@ -170,7 +170,6 @@
                 :or   {backfill?            true
                        continue-on-error    false
                        root-dependency-path nil}}]
-  (prn ingestion)
   (u/prog1
     (t2/with-transaction [_tx]
       ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared dependencies
