@@ -1,3 +1,4 @@
+import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 import type {
   Card,
   CardQueryMetadata,
@@ -158,5 +159,18 @@ export const createMockColumnRangeFormattingSetting = (
   max_type: "all",
   min_value: 0,
   max_value: 1,
+  ...opts,
+});
+
+export const createMockPieRow = (opts?: Partial<PieRow>): PieRow => ({
+  // eslint-disable-next-line no-color-literals
+  color: "#7172AD",
+  defaultColor: false,
+  enabled: true,
+  hidden: false,
+  isOther: false,
+  key: "Doohickey",
+  name: "Doohickey",
+  originalName: "Doohickey",
   ...opts,
 });

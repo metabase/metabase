@@ -47,15 +47,17 @@
 
 (def wrap-reload-dev-mw
   "In dev, reload files on the fly if they've changed. Returns nil in prod."
-  (when-let [wrap-reload (try (and
-                               config/is-dev?
-                               (not *compile-files*)
-                               ;; `*enable-wrap-reload*` is set to true `dev.clj` when the `--hot-reload` flag is passed to the :dev-start alias
-                               (true? @(requiring-resolve 'user/*enable-hot-reload*))
-                               ;; this middleware is only available in dev
-                               (requiring-resolve 'ring.middleware.reload/wrap-reload))
-                              (catch Exception _ nil))]
-    wrap-reload))
+  (try
+    (when (and
+           config/is-dev?
+           (not *compile-files*)
+           ;; [[user/*enable-hot-reload*]] is set to true in `dev.clj` when the `--hot` flag is passed to the `:dev-start` alias
+           (true? @(requiring-resolve 'user/*enable-hot-reload*)))
+      (log/info "Wrap Reload Dev MW Enabled. Outdated namespaces will be recompiled when handling incoming requests")
+      (let [wrap-reload (requiring-resolve 'ring.middleware.reload/wrap-reload)]
+        (fn wrap-reload-dev-mw-fn [handler]
+          (wrap-reload handler {:dirs ["src" "enterprise/backend/src"]}))))
+    (catch Exception _ nil)))
 
 (def ^:private middleware
   ;; ▼▼▼ POST-PROCESSING ▼▼▼ happens from TOP-TO-BOTTOM
@@ -84,7 +86,8 @@
         #'mw.request-id/wrap-request-id              ; Add a unique request ID to the request
         #'mw.misc/bind-request                       ; bind `metabase.middleware.misc/*request*` for the duration of the request
         #'mw.ssl/redirect-to-https-middleware
-        wrap-reload-dev-mw]
+        wrap-reload-dev-mw                           ; reloads outdated clojure code when --hot flag is passed with the :dev-start alias
+        ]
        (remove nil?)))
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP
 

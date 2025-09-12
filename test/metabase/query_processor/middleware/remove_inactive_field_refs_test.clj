@@ -1,9 +1,11 @@
 (ns metabase.query-processor.middleware.remove-inactive-field-refs-test
+  "See also [[metabase.query-processor-test.inactive-fields-test]] (for e2e tests related to inactive fields in other
+  situations)."
   (:require
    [clojure.test :refer :all]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -33,19 +35,20 @@
       (is (=? {:stages [{}
                         {:fields [[:field {} (meta/id :products :category)]
                                   [:field {} "count"]]}]}
-              (lib/query meta/metadata-provider (qp.preprocess/preprocess query)))))))
+              (qp.preprocess/preprocess query))))))
 
 (def ^:private metadata-provider
   (delay
     (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
-     (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+     (mt/metadata-provider)
      [(mt/mbql-query orders
         {:joins [{:source-table $$products
                   :alias        "Product"
                   :condition    [:=
                                  $orders.product_id
                                  [:field %products.id {:join-alias "Product"}]]
-                  :fields       :all}]})
+                  :fields       :all}]
+         :limit 1})
       (mt/mbql-query orders
         {:fields [$id $subtotal $tax $total $created_at $quantity]
          :joins  [{:source-table $$products
@@ -53,7 +56,8 @@
                    :condition    [:=
                                   $orders.product_id
                                   [:field %products.id {:join-alias "Product"}]]
-                   :fields       :all}]})
+                   :fields       :all}]
+         :limit  1})
       (mt/mbql-query orders
         {:fields [$id $subtotal $tax $total $created_at $quantity]
          :joins  [{:source-table $$products
@@ -65,7 +69,8 @@
                                   [:field %products.title {:join-alias "Product"}]
                                   [:field %products.vendor {:join-alias "Product"}]
                                   [:field %products.price {:join-alias "Product"}]
-                                  [:field %products.rating {:join-alias "Product"}]]}]})
+                                  [:field %products.rating {:join-alias "Product"}]]}]
+         :limit  1})
       (mt/mbql-query orders
         {:source-table "card__3"
          :fields       [[:field "ID" {:base-type :type/BigInteger}]
@@ -73,7 +78,8 @@
                         [:field "TOTAL" {:base-type :type/Float}]
                         [:field "ID_2" {:base-type :type/BigInteger}]
                         [:field "RATING" {:base-type :type/Float}]]
-         :filter       [:> [:field "TOTAL" {:base-type :type/Float}] 3]})])))
+         :filter       [:> [:field "TOTAL" {:base-type :type/Float}] 3]
+         :limit        1})])))
 
 (defn- summary-query []
   (mt/mbql-query orders
@@ -149,6 +155,22 @@
      {:fields (for [field-id [(mt/id :orders :tax) (mt/id :products :ean) (mt/id :products :vendor)]]
                 {:id field-id, :active false})})))
 
+(deftest ^:parallel deleted-columns-metadata-provider-sanity-check-test
+  (is (= {"CREATED_AT" true
+          "DISCOUNT"   true
+          "ID"         true
+          "PRODUCT_ID" true
+          "QUANTITY"   true
+          "SUBTOTAL"   true
+          "TAX"        false
+          "TOTAL"      true
+          "USER_ID"    true}
+         (into (sorted-map)
+               (map (juxt :name :active))
+               (lib.metadata/fields @deleted-columns-metadata-provider (mt/id :orders)))))
+  (is (=? {:active false}
+          (lib.metadata/field @deleted-columns-metadata-provider (mt/id :orders :tax)))))
+
 (defn- basic-query []
   (-> (lib/query @deleted-columns-metadata-provider (lib.metadata/table @metadata-provider (mt/id :orders)))
       (lib/with-fields [(lib.metadata/field @metadata-provider (mt/id :orders :id))
@@ -183,7 +205,9 @@
 
 (deftest ^:parallel basic-deleted-columns-test-3
   (testing "should remove field in joins"
-    (let [preprocessed (qp.preprocess/preprocess (lib/query @deleted-columns-metadata-provider (join-query)))]
+    (let [preprocessed (-> (lib/query @deleted-columns-metadata-provider (join-query))
+                           qp.preprocess/preprocess
+                           lib/->legacy-MBQL)]
       (testing ":query => :joins => first => :source-query => :fields"
         (is (=? [[:field (mt/id :orders :id) nil]
                  [:field (mt/id :orders :subtotal) nil]
@@ -227,6 +251,23 @@
           (is (=? fields
                   (map :name (mt/cols results)))))))))
 
+(deftest ^:parallel card-3-deleted-columns-sanity-check-test
+  (is (= {"CREATED_AT"      true
+          "ID"              true
+          "Product__ID"     true
+          "Product__PRICE"  true
+          "Product__RATING" true
+          "Product__TITLE"  true
+          "Product__VENDOR" false
+          "QUANTITY"        true
+          "SUBTOTAL"        true
+          "TAX"             false
+          "TOTAL"           true}
+         (into (sorted-map)
+               (map (juxt :lib/desired-column-alias :active))
+               (lib.metadata.result-metadata/returned-columns
+                (lib/query @deleted-columns-metadata-provider (lib.metadata/card @deleted-columns-metadata-provider 3)))))))
+
 (deftest ^:parallel deleted-columns-test-2
   (qp.store/with-metadata-provider @deleted-columns-metadata-provider
     (testing "Active columns can be used"
@@ -256,12 +297,30 @@
                   mt/cols
                   (map :display_name)))))))
 
-(deftest ^:parallel deleted-columns-test-5
-  (qp.store/with-metadata-provider @deleted-columns-metadata-provider
-    (testing "Additional level of nesting is OK"
-      (testing "in joins too"
-        (is (= ["ID" "Title" "Category" "Price" "Rating" "Created At"
-                "Card → ID" "Card → Total"]
-               (->> (qp/process-query (join-query))
-                    mt/cols
-                    (map :display_name))))))))
+(deftest ^:parallel deleted-columns-test-5a
+  (testing "Additional level of nesting is OK"
+    (testing "in joins too"
+      (is (= ["ID" "TITLE" "CATEGORY" "PRICE" "RATING" "CREATED_AT"
+              "Card__Product__ID" "Card__TOTAL"]
+             (mapv :lib/desired-column-alias
+                   (lib.metadata.result-metadata/returned-columns
+                    (lib/query @deleted-columns-metadata-provider (join-query)))))))))
+
+(deftest ^:parallel deleted-columns-test-5b
+  (testing "Additional level of nesting is OK"
+    (testing "in joins too"
+      (is (= ["ID" "TITLE" "CATEGORY" "PRICE" "RATING" "CREATED_AT"
+              "Card__Product__ID" "Card__TOTAL"]
+             (mapv :lib/desired-column-alias
+                   (lib.metadata.result-metadata/returned-columns
+                    (qp.preprocess/preprocess
+                     (lib/query @deleted-columns-metadata-provider (join-query))))))))))
+
+(deftest ^:parallel deleted-columns-test-5c
+  (testing "Additional level of nesting is OK"
+    (testing "in joins too"
+      (is (= ["ID" "Title" "Category" "Price" "Rating" "Created At"
+              "Card → ID" "Card → Total"]
+             (->> (qp/process-query (lib/query @deleted-columns-metadata-provider (join-query)))
+                  mt/cols
+                  (map :display_name)))))))

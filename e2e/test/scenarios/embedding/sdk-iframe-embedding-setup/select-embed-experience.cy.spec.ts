@@ -23,7 +23,9 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.intercept("GET", "/api/dashboard/*").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
+    cy.intercept("GET", "/api/activity/recents?context=selections*").as(
+      "recentActivity",
+    );
   });
 
   afterEach(() => {
@@ -87,6 +89,27 @@ H.describeWithSnowplow(suiteTitle, () => {
       H.getSimpleEmbedIframeContent().within(() => {
         cy.log("data picker is visible");
         cy.findByText("Pick your starting data").should("be.visible");
+      });
+    });
+
+    it("shows browser template when selected", () => {
+      visitNewEmbedPage();
+      getEmbedSidebar().findByText("Browser").click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_experience_selected",
+        event_detail: "browser",
+      });
+
+      H.getSimpleEmbedIframeContent().within(() => {
+        cy.log("collection is visible in breadcrumbs");
+        cy.findByTestId("sdk-breadcrumbs")
+          .findAllByText("Our analytics")
+          .first()
+          .should("be.visible");
+
+        cy.log("collection is visible in browser");
+        cy.findAllByText("Orders in a dashboard").should("be.visible");
       });
     });
   });
@@ -156,4 +179,19 @@ H.describeWithSnowplow(suiteTitle, () => {
       });
     },
   );
+
+  it("should show a fake loading indicator in embed preview", () => {
+    cy.visit("/embed-js");
+
+    cy.get("#iframe-embed-container")
+      .findByTestId("preview-loading-indicator", { timeout: 20_000 })
+      .should("be.visible");
+
+    cy.get("[data-iframe-loaded]", { timeout: 20_000 }).should(
+      "have.length",
+      1,
+    );
+
+    cy.findByTestId("preview-loading-indicator").should("not.exist");
+  });
 });

@@ -70,6 +70,7 @@
                        (top-left :lon)
                        (bottom-right :lat)
                        (bottom-right :lon)]]
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (update details :filter mbql.u/combine-filter-clauses inside-filter)))
 
 ;;; --------------------------------------------------- RENDERING ----------------------------------------------------

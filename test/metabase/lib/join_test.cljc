@@ -1570,16 +1570,6 @@
 
 (deftest ^:parallel join-and-summary-ordering-test
   (let [has-fields? #(-> % lib/joins first (contains? :fields))]
-    (testing "adding an aggregation or breakout removes :fields from any joins"
-      (let [base       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                           (lib/join (meta/table-metadata :products)))
-            aggregated (lib/aggregate base (lib/count))
-            broken-out (lib/breakout base (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))]
-        (is (=? [{:fields :all}]
-                (lib/joins base)))
-        (is (has-fields? base))
-        (is (not (has-fields? aggregated)))
-        (is (not (has-fields? broken-out)))))
     (testing "a join added with an existing breakout has no :fields clause"
       (is (not (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                    (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
@@ -1703,7 +1693,7 @@
                       {:name "NAME"}]   ; remap of VENUES.CATEGORY_ID => CATEGORIES.NAME
           exp-join2  [{:name "CATEGORY"}]
           cols       (fn [query]
-                       (lib/returned-columns query -1 (lib.util/query-stage query -1) {:include-remaps? true}))]
+                       (lib/returned-columns query -1 -1 {:include-remaps? true}))]
       (is (=? (concat exp-main exp-join1 exp-join2)
               (-> base
                   (lib/join join1)

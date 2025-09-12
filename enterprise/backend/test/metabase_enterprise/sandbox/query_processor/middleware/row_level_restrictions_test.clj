@@ -186,13 +186,12 @@
                    :query {:source-query {:source-table $$checkins
                                           :fields [$id $date $user_id $venue_id]
                                           :filter [:and
-                                                                          ;; This still gets :default bucketing!
-                                                                          ;; auto-bucket-datetimes puts :day bucketing
-                                                                          ;; on both parts of this filter, since it's
-                                                                          ;; matching a YYYY-mm-dd string. Then
-                                                                          ;; optimize-temporal-filters sees that the
-                                                                          ;; :type/Date column already has :day
-                                                                          ;; granularity, and switches both to :default
+                                                   ;; This still gets :default bucketing! auto-bucket-datetimes
+                                                   ;; puts :day bucketing on both parts of this filter, since it's
+                                                   ;; matching a YYYY-mm-dd string. Then optimize-temporal-filters
+                                                   ;; sees that the
+                                                   ;; :type/Date column already has :day
+                                                   ;; granularity, and switches both to :default
                                                    [:> !default.date [:absolute-datetime
                                                                       #t "2014-01-01"
                                                                       :default]]
@@ -200,8 +199,7 @@
                                                     $user_id
                                                     [:value 5 {:base_type :type/Integer
                                                                :semantic_type :type/FK
-                                                               :database_type "INTEGER"
-                                                               :name "USER_ID"}]]]
+                                                               :database_type "INTEGER"}]]]
                                           ::row-level-restrictions/gtap? true
                                           :query-permissions/gtapped-table $$checkins}
                            :joins [{:source-query
@@ -212,8 +210,7 @@
                                               $venues.price
                                               [:value 1 {:base_type :type/Integer
                                                          :semantic_type :type/Category
-                                                         :database_type "INTEGER"
-                                                         :name "PRICE"}]]
+                                                         :database_type "INTEGER"}]]
                                      ::row-level-restrictions/gtap? true
                                      :query-permissions/gtapped-table $$venues}
                                     :alias "v"
@@ -377,6 +374,8 @@
   (mt/test-drivers (e2e-test-drivers)
     (testing "Users with view access to the related collection should bypass segmented permissions"
       (mt/with-temp-copy-of-db
+        ;; with temp ok here since that's the only way to create a Collection
+        #_{:clj-kondo/ignore [:discouraged-var]}
         (mt/with-temp [:model/Collection collection {}
                        :model/Card card {:collection_id (u/the-id collection)}]
           (mt/with-group [group]
@@ -399,16 +398,21 @@
                   "querying of a card as a nested query. Part of the row level perms check is looking at the table (or "
                   "card) to see if row level permissions apply. This was broken when it wasn't expecting a card and "
                   "only expecting resolved source-tables")
-      (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)}]
-        (let [query (mt/mbql-query nil
-                      {:source-table (format "card__%s" (u/the-id card))
-                       :aggregation [["count"]]})]
-          (mt/with-test-user :rasta
-            (mt/with-native-query-testing-context query
-              (is (= [[100]]
-                     (mt/format-rows-by
-                      [int]
-                      (mt/rows (qp/process-query query))))))))))))
+      (let [mp    (lib.tu/mock-metadata-provider
+                   (mt/metadata-provider)
+                   {:cards [{:id            1
+                             :dataset-query (mt/mbql-query venues)}]})
+            query (lib/query
+                   mp
+                   (mt/mbql-query nil
+                     {:source-table "card__1"
+                      :aggregation  [["count"]]}))]
+        (mt/with-test-user :rasta
+          (mt/with-native-query-testing-context query
+            (is (= [[100]]
+                   (mt/format-rows-by
+                    [int]
+                    (mt/rows (qp/process-query query)))))))))))
 
 ;; Test that we can follow FKs to related tables and breakout by columns on those related tables. This test has
 ;; several things wrapped up which are detailed below
@@ -865,6 +869,8 @@
                      :row_count 2}
                     (qp/process-query query))))
           (testing "should be able to save the query as a Card and run it"
+            ;; with temp ok here since that's the only way to create a Collection
+            #_{:clj-kondo/ignore [:discouraged-var]}
             (mt/with-temp [:model/Collection {collection-id :id} {}
                            :model/Card {card-id :id} {:dataset_query query, :collection_id collection-id}]
               (perms/grant-collection-read-permissions! &group collection-id)
@@ -891,9 +897,13 @@
                                         [:value "Widget" {:base_type :type/Text
                                                           :semantic_type (t2/select-one-fn :semantic_type :model/Field
                                                                                            :id (mt/id :products :category))
-                                                          :database_type "CHARACTER VARYING"
-                                                          :name "CATEGORY"}]]
-                                       (get-in (qp.preprocess/preprocess drill-thru-query) [:query :filter])))))]
+                                                          :database_type "CHARACTER VARYING"}]]
+                                       (get-in (-> drill-thru-query
+                                                   qp.preprocess/preprocess
+                                                   ;; legacy usage -- don't do things like this going forward
+                                                   #_{:clj-kondo/ignore [:discouraged-var]}
+                                                   lib/->legacy-MBQL)
+                                               [:query :filter])))))]
                         (testing "As an admin"
                           (mt/with-test-user :crowberto
                             (test-preprocessing)
@@ -1116,6 +1126,8 @@
                                                [:field (mt/id :products :category)
                                                 nil]]}}}}
         (mt/with-persistence-enabled! [persist-models!]
+          ;; with temp ok here since I'm pretty sure `persist-models!` doesn't use Metadata Providers
+          #_{:clj-kondo/ignore [:discouraged-var]}
           (mt/with-temp [:model/Card model {:type :model
                                             :dataset_query (mt/mbql-query
                                                              products
@@ -1161,47 +1173,48 @@
 (deftest is-sandboxed-success-test
   (testing "Integration test that checks that is_sandboxed is recorded in query_execution correctly for a sandboxed query"
     (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
-      (mt/with-temp [:model/Card card {:database_id (mt/id)
-                                       :table_id (mt/id :categories)
-                                       :dataset_query (mt/mbql-query categories)}]
-        (let [query (:dataset_query card)]
-          (process-userland-query-test/with-query-execution! [qe query]
-            (qp/process-query (qp/userland-query query))
-            (is (=? {:is_sandboxed true}
-                    (qe)))))))))
+      (let [query (mt/mbql-query categories)]
+        (process-userland-query-test/with-query-execution! [qe query]
+          (qp/process-query (qp/userland-query query))
+          (is (=? {:is_sandboxed true}
+                  (qe))))))))
 
 (deftest sandbox-join-permissions-test
   (testing "Sandboxed query fails when sandboxed table is joined to a table that the current user doesn't have access to"
     (met/with-gtaps! (mt/$ids orders
-                       {:gtaps {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}}
+                       {:gtaps      {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}}
                         :attributes {"user_id" 1}})
       (data-perms/set-table-permission! &group (mt/id :products) :perms/view-data :legacy-no-self-service)
       (data-perms/set-table-permission! &group (mt/id :products) :perms/create-queries :no)
       (let [query (mt/mbql-query orders
-                    {:limit 5
+                    {:limit       5
                      :aggregation [:count]
-                     :joins [{:source-table $$products
-                              :fields :all
-                              :alias "Products"
-                              :condition [:= $product_id &Products.products.id]}]})]
+                     :joins       [{:source-table $$products
+                                    :fields       :all
+                                    :alias        "Products"
+                                    :condition    [:= $product_id &Products.products.id]}]})]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"You do not have permissions to run this query"
              (qp/process-query query))))
-
-      (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query products)}]
-        (let [query (mt/mbql-query orders
-                      {:limit 5
-                       :aggregation [:count]
-                       :joins [{:source-table (str "card__" (:id card))
-                                :fields :all
-                                :strategy :left-join
-                                :alias "Products"
-                                :condition [:= $product_id &Products.products.id]}]})]
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"You do not have permissions to run this query"
-               (qp/process-query query))))))))
+      (let [mp    (lib.tu/mock-metadata-provider
+                   (mt/metadata-provider)
+                   {:cards [{:id            1
+                             :dataset-query (mt/mbql-query products)}]})
+            query (lib/query
+                   mp
+                   (mt/mbql-query orders
+                     {:limit       5
+                      :aggregation [:count]
+                      :joins       [{:source-table "card__1"
+                                     :fields       :all
+                                     :strategy     :left-join
+                                     :alias        "Products"
+                                     :condition    [:= $product_id &Products.products.id]}]}))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"You do not have permissions to run this query"
+             (qp/process-query query)))))))
 
 (deftest sandbox-join-permissions-unrestricted-test
   (testing "sandboxing with unrestricted data perms on the sandboxed table works"

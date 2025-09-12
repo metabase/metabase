@@ -92,7 +92,12 @@
   [final-col-metadata insights-col-metadata]
   ;; the two metadatas will both be in order that matches the column order of the results
   (mapv
-   (fn [{final-base-type :base_type, :as final-col} {our-base-type :base_type, :as insights-col}]
+   (fn [{final-base-type      :base_type
+         final-effective-type :effective_type
+         :as final-col}
+        {our-base-type      :base_type
+         our-effective-type :effective_type
+         :as insights-col}]
      (merge
       (select-keys final-col [:id :description :display_name :semantic_type :fk_target_field_id
                               :settings :field_ref :base_type :effective_type :database_type
@@ -101,7 +106,9 @@
       insights-col
       {:name (:name final-col)} ; The final cols have correctly disambiguated ID_2 names, but the insights cols don't.
       (when (= our-base-type :type/*)
-        {:base_type final-base-type})))
+        {:base_type final-base-type})
+      (when (= our-effective-type :type/*)
+        {:effective_type final-effective-type})))
    final-col-metadata
    insights-col-metadata))
 
@@ -126,7 +133,7 @@
 
 (mu/defn record-and-return-metadata! :- ::qp.schema/rff
   "Post-processing middleware that records metadata about the columns returned when running the query. Returns an rff."
-  [{{:keys [skip-results-metadata?]} :middleware, :as query} :- ::qp.schema/query
+  [{{:keys [skip-results-metadata?]} :middleware, :as query} :- ::qp.schema/any-query
    rff                                                       :- ::qp.schema/rff]
   (if skip-results-metadata?
     rff

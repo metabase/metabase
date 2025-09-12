@@ -44,6 +44,7 @@ export function EmbeddingSdkSettings() {
 
   const isReactSdkEnabled = useSetting("enable-embedding-sdk");
   const isReactSdkFeatureEnabled = PLUGIN_EMBEDDING_SDK.isEnabled();
+  const isLocalhostCorsDisabled = useSetting("disable-cors-on-localhost");
 
   const isSimpleEmbedEnabled = useSetting("enable-embedding-simple");
   const isSimpleEmbedFeatureEnabled =
@@ -67,12 +68,18 @@ export function EmbeddingSdkSettings() {
     utm: utmTags,
   });
 
-  const quickStartUrl = useUrlWithUtm(
+  const sdkQuickStartUrl = useUrlWithUtm(
     "https://metaba.se/sdk-quick-start",
     utmTags,
   );
 
-  const documentationUrl = useUrlWithUtm("https://metaba.se/sdk-docs", utmTags);
+  const sdkDocumentationUrl = useUrlWithUtm(
+    "https://metaba.se/sdk-docs",
+    utmTags,
+  );
+
+  // The quickstart is part of the documentation page, unlike the SDK, so we only need a single docs link.
+  const embedJsDocumentationUrl = useDocsUrl("embedding/embedded-analytics-js");
 
   const SwitchBinariesLink = (
     <ExternalLink
@@ -123,6 +130,10 @@ export function EmbeddingSdkSettings() {
     )
     .otherwise(() => null);
 
+  const corsHintText = isLocalhostCorsDisabled
+    ? t`Separate values with a space. Localhost is not allowed. Changes will take effect within one minute.`
+    : t`Separate values with a space. Localhost is automatically included. Changes will take effect within one minute.`;
+
   return (
     <SettingsPageWrapper title={t`Modular embedding`}>
       <UpsellDevInstances location="embedding-page" />
@@ -147,7 +158,7 @@ export function EmbeddingSdkSettings() {
               size="compact-xs"
               variant="outline"
               component={ExternalLink}
-              href={quickStartUrl}
+              href={sdkQuickStartUrl}
               rightSection={<Icon size={12} name="external" />}
               fz="sm"
             >
@@ -158,7 +169,7 @@ export function EmbeddingSdkSettings() {
               size="compact-xs"
               variant="outline"
               component={ExternalLink}
-              href={documentationUrl}
+              href={sdkDocumentationUrl}
               rightSection={<Icon size={12} name="external" />}
               fz="sm"
             >
@@ -195,12 +206,24 @@ export function EmbeddingSdkSettings() {
                 >
                   {t`Try it out`}
                 </LinkButton>
+
+                <Button
+                  size="compact-xs"
+                  variant="outline"
+                  component={ExternalLink}
+                  href={embedJsDocumentationUrl?.url}
+                  rightSection={<Icon size={12} name="external" />}
+                  fz="sm"
+                >
+                  {t`Documentation`}
+                </Button>
               </Group>
             ) : (
               <UpsellEmbeddingButton
                 url="https://www.metabase.com/product/embedded-analytics"
                 campaign="embedded-analytics-js"
                 location="embedding-page"
+                size="default"
               />
             )}
           </Group>
@@ -227,7 +250,7 @@ export function EmbeddingSdkSettings() {
                   <HoverCard.Dropdown>
                     <Box p="md" w={270}>
                       <Text lh="lg" c="text-medium">
-                        {t`Separate values with a space. Localhost is automatically included. Changes will take effect within one minute.`}
+                        {corsHintText}
                       </Text>
                     </Box>
                   </HoverCard.Dropdown>

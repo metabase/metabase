@@ -16,7 +16,7 @@ import SnippetCollections from "metabase/entities/snippet-collections";
 import Snippets from "metabase/entities/snippets";
 import { useDispatch } from "metabase/lib/redux";
 import {
-  runQuestionOrSelectedQuery,
+  runOrCancelQuestionOrSelectedQuery,
   setIsNativeEditorOpen,
   setUIControls,
 } from "metabase/query_builder/actions";
@@ -181,10 +181,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
   onChange = (queryText: string) => {
     const { query, setDatasetQuery } = this.props;
     if (query.queryText() !== queryText) {
-      const updatedQuery = query
-        .setQueryText(queryText)
-        .updateSnippetsWithIds(this.props.snippets);
-
+      const updatedQuery = query.setQueryText(queryText);
       setDatasetQuery(updatedQuery);
     }
   };
@@ -382,9 +379,12 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
               snippet={this.props.modalSnippet}
               onCreate={this.props.insertSnippet}
               onUpdate={(newSnippet, oldSnippet) => {
-                if (newSnippet.name !== oldSnippet.name) {
-                  setDatasetQuery(query.updateSnippetNames([newSnippet]));
-                }
+                // get the query instance with the latest Metadata that has the updated snippet
+                const newQuery = this.props.query.updateSnippet(
+                  oldSnippet,
+                  newSnippet,
+                );
+                setDatasetQuery(newQuery);
               }}
               onClose={this.props.closeSnippetModal}
             />
@@ -404,7 +404,7 @@ const NativeQueryEditorWrapper = forwardRef<
   const { isNativeEditorOpen } = props;
 
   const runQuery = useCallback(() => {
-    dispatch(runQuestionOrSelectedQuery());
+    dispatch(runOrCancelQuestionOrSelectedQuery());
   }, [dispatch]);
 
   /**

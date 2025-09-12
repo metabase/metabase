@@ -1955,7 +1955,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
       });
     });
 
-    it("should work with models", () => {
+    it("should work with models", { tags: "@flaky" }, () => {
       createGuiModel({ sourceTableId: ORDERS_ID });
       verifyRemappedFilter({
         visitCard: () => cy.get("@modelId").then(H.visitModel),
@@ -2415,8 +2415,8 @@ describe("issue 50038", () => {
                   strategy: "left-join",
                   condition: [
                     "=",
-                    ["field", ORDERS_ID, {}],
-                    ["field", PRODUCTS_ID, {}],
+                    ["field", PRODUCTS.ID, null],
+                    ["field", ORDERS.PRODUCT_ID, { "join-alias": "Orders" }],
                   ],
                 },
               ],

@@ -8,7 +8,7 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 // eslint-disable-next-line no-restricted-imports -- deprecated sdk import
-import { getMetabaseInstanceUrl } from "embedding-sdk/store/selectors";
+import { getMetabaseInstanceUrl } from "embedding-sdk-bundle/store/selectors";
 import Link from "metabase/common/components/Link";
 import LoadingSpinner from "metabase/common/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
@@ -145,7 +145,7 @@ const MapNotFound = () => {
         {isAdmin && (
           <Text component="p" className={CS.mt1}>
             {jt`To add a new map, visit ${(
-              <Link to="/admin/settings/maps" className={CS.link}>
+              <Link key="link" to="/admin/settings/maps" className={CS.link}>
                 {t`Admin settings > Maps`}
               </Link>
             )}.`}
@@ -411,6 +411,7 @@ class ChoroplethMapInner extends Component {
         hovered={hovered}
         onHoverChange={onHoverChange}
         isDashboard={this.props.isDashboard}
+        isDocument={this.props.isDocument}
       >
         {projection ? (
           <LegacyChoropleth

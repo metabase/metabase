@@ -13,6 +13,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.convert.metadata-to-legacy]
    [metabase.lib.database :as lib.database]
+   [metabase.lib.dispatch]
    [metabase.lib.drill-thru :as lib.drill-thru]
    [metabase.lib.drill-thru.column-extract :as lib.drill-thru.column-extract]
    [metabase.lib.drill-thru.pivot :as lib.drill-thru.pivot]
@@ -23,6 +24,9 @@
    [metabase.lib.field :as lib.field]
    [metabase.lib.field.util]
    [metabase.lib.filter :as lib.filter]
+   [metabase.lib.filter.desugar]
+   [metabase.lib.filter.negate]
+   [metabase.lib.filter.simplify-compound]
    [metabase.lib.filter.update :as lib.filter.update]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util]
@@ -34,6 +38,7 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options]
    [metabase.lib.order-by :as lib.order-by]
+   [metabase.lib.page]
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
@@ -43,6 +48,7 @@
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.swap :as lib.swap]
    [metabase.lib.table :as lib.table]
+   [metabase.lib.template-tags :as lib.template-tags]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.util.namespaces :as shared.ns]))
@@ -56,6 +62,7 @@
          lib.convert/keep-me
          metabase.lib.convert.metadata-to-legacy/keep-me
          lib.database/keep-me
+         metabase.lib.dispatch/keep-me
          lib.drill-thru.column-extract/keep-me
          lib.drill-thru.pivot/keep-me
          lib.drill-thru/keep-me
@@ -66,6 +73,9 @@
          lib.field/keep-me
          metabase.lib.field.util/keep-me
          lib.filter.update/keep-me
+         metabase.lib.filter.desugar/keep-me
+         metabase.lib.filter.negate/keep-me
+         metabase.lib.filter.simplify-compound/keep-me
          lib.filter/keep-me
          lib.join/keep-me
          metabase.lib.join.util/keep-me
@@ -77,6 +87,7 @@
          lib.normalize/keep-me
          metabase.lib.options/keep-me
          lib.order-by/keep-me
+         lib.parse/keep-me
          lib.query/keep-me
          lib.ref/keep-me
          lib.remove-replace/keep-me
@@ -85,6 +96,7 @@
          lib.stage/keep-me
          lib.swap/keep-me
          lib.table/keep-me
+         lib.template-tags/keep-me
          lib.temporal-bucket/keep-me
          lib.util/keep-me)
 
@@ -140,6 +152,8 @@
   lib-metadata-column-key->legacy-metadata-column-key]
  [lib.database
   database-id]
+ [metabase.lib.dispatch
+  dispatch-value]
  [lib.drill-thru
   available-drill-thrus
   drill-thru]
@@ -272,6 +286,13 @@
   relative-time-interval
   time-interval
   segment]
+ [metabase.lib.filter.desugar
+  desugar-filter-clause]
+ [metabase.lib.filter.negate
+  negate-boolean-expression]
+ [metabase.lib.filter.simplify-compound
+  simplify-compound-filter
+  simplify-filters]
  [lib.filter.update
   update-lat-lon-filter
   update-numeric-filter
@@ -286,6 +307,7 @@
   join-condition-update-temporal-bucketing
   join-conditions
   join-fields
+  join-fields-to-add-to-parent-stage
   join-lhs-display-name
   join-strategy
   joinable-columns
@@ -302,7 +324,8 @@
   available-metrics]
  [lib.limit
   current-limit
-  limit]
+  limit
+  max-rows-limit]
  [lib.metadata.calculation
   column-name
   describe-query
@@ -324,8 +347,10 @@
   native-extras
   native-query
   raw-native-query
+  recognize-template-tags
   required-native-extras
-  template-tag-card-ids
+  native-query-card-ids
+  native-query-snippet-ids
   template-tags-referenced-cards
   template-tags
   with-different-database
@@ -344,6 +369,9 @@
   orderable-columns]
  [lib.normalize
   normalize]
+ [metabase.lib.page
+  current-page
+  with-page]
  [lib.parse
   parse]
  [lib.query
@@ -351,7 +379,7 @@
   can-preview
   can-run
   can-save
-  check-overwrite
+  check-card-overwrite
   preview-query
   query
   query-from-legacy-inner-query
@@ -380,6 +408,9 @@
   has-clauses?]
  [lib.swap
   swap-clauses]
+ [lib.template-tags
+  template-tags->card-ids
+  template-tags->snippet-ids]
  [lib.temporal-bucket
   describe-temporal-unit
   describe-temporal-interval

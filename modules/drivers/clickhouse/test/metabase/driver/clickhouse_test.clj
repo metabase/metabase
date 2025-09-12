@@ -147,7 +147,9 @@
                  {:ssl true
                   :host "server.clickhouseconnect.test"
                   :port 8443
-                  :dbname "default system"
+                  :enable-multiple-db true
+                  :db-filters-patterns "default, system"
+                  :db-filters-type "inclusion"
                   :additional-options additional-options}))))))))
 
 (deftest ^:parallel clickhouse-nippy
@@ -229,9 +231,6 @@
                (mt/rows (qp/process-query q))))))))
 
 (deftest ^:parallel comment-question-mark-test
-  ;; broken in 0.8.3, fixed in 0.8.4
-  ;; https://github.com/metabase/metabase/issues/56690
-  ;; https://github.com/ClickHouse/clickhouse-java/issues/2290
   (mt/test-driver :clickhouse
     (testing "a query with a question mark in the comment and has a variable should work correctly"
       (let [query "SELECT *
@@ -252,9 +251,6 @@
                                 :value  "African"}]}))))))))
 
 (deftest ^:parallel select-question-mark-test
-  ;; broken in 0.8.3, fixed in 0.8.4
-  ;; https://github.com/metabase/metabase/issues/56690
-  ;; https://github.com/ClickHouse/clickhouse-java/issues/2290
   (mt/test-driver :clickhouse
     (testing "a query that selects a question mark and has a variable should work correctly"
       (let [query "SELECT *, '?'
@@ -277,47 +273,36 @@
                                 :target [:dimension [:template-tag "category_name"]]
                                 :value  ["African"]}]}))))))))
 
-#_(deftest ^:parallel ternary-with-variable-test
-    ;; TODO(rileythomp): enable these tests once the jdbc driver has been fixed
-    ;; broken in 0.8.4, waiting for fix
-    ;; https://github.com/metabase/metabase/issues/56690
-    ;; https://github.com/ClickHouse/clickhouse-java/issues/2348
-    (mt/test-driver :clickhouse
-      (testing "a query with a ternary and a variable should work correctly"
-        (is (= [[1 "African" 1]]
-               (mt/rows
-                (qp/process-query
-                 {:database (mt/id)
-                  :type :native
-                  :native {:query "SELECT *, true ? 1 : 0 AS foo
-                                   FROM test_data.categories
-                                   WHERE name = {{category_name}};"
-                           :template-tags {"category_name" {:type         :text
-                                                            :name         "category_name"
-                                                            :display-name "Category Name"}}}
-                  :parameters [{:type   :category
-                                :target [:variable [:template-tag "category_name"]]
-                                :value  "African"}]})))))))
+(deftest ^:parallel ternary-with-variable-test
+  (mt/test-driver :clickhouse
+    (testing "a query with a ternary and a variable should work correctly"
+      (is (= [[1 "African" 1]]
+             (mt/rows
+              (qp/process-query
+               {:database (mt/id)
+                :type :native
+                :native {:query "SELECT *, true ? 1 : 0 AS foo
+                                 FROM test_data.categories
+                                 WHERE name = {{category_name}};"
+                         :template-tags {"category_name" {:type         :text
+                                                          :name         "category_name"
+                                                          :display-name "Category Name"}}}
+                :parameters [{:type   :category
+                              :target [:variable [:template-tag "category_name"]]
+                              :value  "African"}]})))))))
 
-#_(deftest ^:parallel line-comment-block-comment-test
-    ;; TODO(rileythomp): enable these tests once the jdbc driver has been fix
-    ;; broken in  0.8.4, waiting for fix
-    ;; https://github.com/metabase/metabase/issues/57149
-    ;; https://github.com/ClickHouse/clickhouse-java/issues/2338
-    (mt/test-driver :clickhouse
-      (testing "a query with a line comment followed by a block comment should work correctly"
-        (is (= [[1]]
-               (mt/rows
-                (qp/process-query
-                 (mt/native-query
-                   {:query "-- foo
-                            /* comment */
-                            select 1;"}))))))))
+(deftest ^:parallel line-comment-block-comment-test
+  (mt/test-driver :clickhouse
+    (testing "a query with a line comment followed by a block comment should work correctly"
+      (is (= [[1]]
+             (mt/rows
+              (qp/process-query
+               (mt/native-query
+                 {:query "-- foo
+                          /* comment */
+                          select 1;"}))))))))
 
 (deftest ^:parallel subquery-with-cte-test
-  ;; broken in 0.8.6, waiting for fix
-  ;; https://github.com/metabase/metabase/issues/59166
-  ;; https://github.com/ClickHouse/clickhouse-java/issues/2442
   (mt/test-driver :clickhouse
     (testing "a query with a CTE in a subquery should work correctly"
       (is (= [[9]]
@@ -327,10 +312,6 @@
                  {:query "select * from ( with x as ( select 9 ) select * from x ) as y;"}))))))))
 
 (deftest ^:parallel casted-params-test
-  ;; broken in 0.8.6, waiting for fix
-  ;; https://github.com/metabase/metabase/issues/58992
-  ;; https://github.com/metabase/metabase/issues/59002
-  ;; https://github.com/ClickHouse/clickhouse-java/issues/2422
   (mt/test-driver :clickhouse
     (testing "a query with a with multiple params and one of the casted should work correctly"
       (is (= [[1 "African"] [2 "American"]]
@@ -354,3 +335,23 @@
                               :target [:variable [:template-tag "category_id_2"]]
                               :value  "2"}]
                 :middleware {:format-rows? false}})))))))
+
+(deftest ^:parallel compile-transform-test
+  (mt/test-driver :clickhouse
+    (testing "compile transform for clickhouse with empty primary key column"
+      (is (= ["CREATE TABLE `PRODUCTS_COPY` ORDER BY () AS SELECT * FROM products"]
+             (driver/compile-transform :clickhouse {:query "SELECT * FROM products"
+                                                    :output-table "PRODUCTS_COPY"}))))))
+
+(deftest ^:parallel clickhouse-db-supports-schemas-test
+  (doseq [[schemas-supported? details] [[false? {}]
+                                        [false? {:enable-multiple-db nil}]
+                                        [false? {:enable-multiple-db false}]
+                                        [true? {:enable-multiple-db true}]]]
+    (is (schemas-supported? (driver/database-supports? :clickhouse :schemas {:details details})))))
+
+(deftest ^:parallel humanize-connection-error-message-test
+  (is (= "random message" (driver/humanize-connection-error-message :clickhouse ["random message"])))
+  (is (= :username-or-password-incorrect (driver/humanize-connection-error-message :clickhouse ["Failed to create connection"
+                                                                                                "Failed to get server info"
+                                                                                                "Code: 516. DB::Exception: asdf: Authentication failed: password is incorrect, or there is no user with such name. (AUTHENTICATION_FAILED) (version 25.7.4.11 (official build))"]))))

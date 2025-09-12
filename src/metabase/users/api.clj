@@ -187,7 +187,7 @@
     :else
     user/non-admin-or-self-visible-columns))
 
-(defn- user-clauses
+(defn user-clauses
   "Honeysql clauses for filtering on users
   - with a status,
   - with a query,
@@ -208,7 +208,7 @@
     (some? (request/limit))                 (sql.helpers/limit (request/limit))
     (some? (request/offset))                (sql.helpers/offset (request/offset))))
 
-(defn- filter-clauses-without-paging
+(defn filter-clauses-without-paging
   "Given a where clause, return a clause that can be used to count."
   [clauses]
   (dissoc clauses :order-by :limit :offset))
@@ -407,7 +407,7 @@
 
 (defn invite-user
   "Implementation for `POST /`, invites a user to Metabase."
-  [{:keys [email user_group_memberships] :as body}]
+  [{:keys [email user_group_memberships source] :as body}]
   (api/check-superuser)
   (api/checkp (not (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
               "email" (tru "Email address already in use."))
@@ -421,7 +421,7 @@
       (analytics/track-event! :snowplow/invite
                               {:event           :invite-sent
                                :invited-user-id new-user-id
-                               :source          "admin"})
+                               :source          (or source "admin")})
       (-> (fetch-user :id new-user-id)
           (t2/hydrate :user_group_memberships)))))
 
@@ -434,7 +434,8 @@
             [:last_name              {:optional true} [:maybe ms/NonBlankString]]
             [:email                  ms/Email]
             [:user_group_memberships {:optional true} [:maybe [:sequential ::user-group-membership]]]
-            [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]]]
+            [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]
+            [:source                 {:optional true, :default "admin"} [:maybe ms/NonBlankString]]]]
   (invite-user body))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

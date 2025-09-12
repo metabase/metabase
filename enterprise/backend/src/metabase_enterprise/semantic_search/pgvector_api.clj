@@ -10,9 +10,12 @@
   (:require
    [metabase-enterprise.semantic-search.db.connection :as semantic.db.connection]
    [metabase-enterprise.semantic-search.db.migration :as semantic.db.migration]
+   [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
    [metabase-enterprise.semantic-search.gate :as semantic.gate]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
+   [metabase-enterprise.semantic-search.repair :as semantic.repair]
+   [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import (java.time Instant)))
@@ -28,27 +31,38 @@
   (require '[metabase-enterprise.semantic-search.embedding :as semantic.embedding])
   (def embedding-model (semantic.embedding/get-configured-model)))
 
-(defn- initialize-index!
-  [tx index-metadata embedding-model]
-  (let [active-index-state (semantic.index-metadata/get-active-index-state tx index-metadata)
-        active-index       (:index active-index-state)
-        active-model       (:embedding-model active-index)
-          ;; Model switching: compare configured embedding-model vs currently active model.
-          ;; If different, find/create appropriate index and activate it. This handles
-          ;; environment changes (model config updates) without losing existing indexes.
-          ;; nil active-model (no active index) is treated as model change so that a new index is created and made active
-        model-changed      (not= embedding-model active-model)
-        model-switching    (and active-model model-changed)]
-    (when model-switching
-      (log/infof "Configured model does not match active index, switching. Previous active: %s" (u/pprint-to-str active-index)))
-    (let [{:keys [index metadata-row]}
-          (semantic.index-metadata/find-best-index! tx index-metadata embedding-model)]
-      (semantic.index/create-index-table-if-not-exists! tx index)
-      (if model-changed
-        (let [index-id (or (:id metadata-row) (semantic.index-metadata/record-new-index-table! tx index-metadata index))]
-          (semantic.index-metadata/activate-index! tx index-metadata index-id)
-          index)
-        active-index))))
+(defn- fresh-index [index-metadata embedding-model & {:keys [force-reset?]}]
+  (let [default-table-name   (semantic.index/model-table-name embedding-model)
+        generated-table-name (if force-reset?
+                               (str default-table-name "_" (semantic.index/model-table-suffix))
+                               default-table-name)
+        table-name           (semantic.index/hash-identifier-if-exceeds-pg-limit generated-table-name)]
+    (-> (semantic.index/default-index embedding-model :table-name table-name)
+        (semantic.index-metadata/qualify-index index-metadata))))
+
+(defn initialize-index!
+  "Creates an index for the provided embedding model (if it does not exist or if we're asking to force reset).
+
+  Returns the index that you can use with semantic.search.index functions to operate on the index."
+  [tx index-metadata embedding-model opts]
+  (let [force-new-index (:force-reset? opts)
+
+        {:keys [index metadata-row active]}
+        (if force-new-index
+          {:index (fresh-index index-metadata embedding-model opts)}
+          (or (semantic.index-metadata/find-compatible-index! tx index-metadata embedding-model)
+              {:index (fresh-index index-metadata embedding-model opts)}))
+
+        index-id (or (:id metadata-row) (semantic.index-metadata/record-new-index-table! tx index-metadata index))]
+
+    (semantic.index/create-index-table-if-not-exists! tx index)
+    (semantic.dlq/create-dlq-table-if-not-exists! tx index-metadata index-id)
+
+    (when-not active
+      (log/infof "Configured model does not match active index, switching to new index %s" (u/pprint-to-str index))
+      (semantic.index-metadata/activate-index! tx index-metadata index-id))
+
+    index))
 
 (defn init-semantic-search!
   "Initialises a pgvector database for semantic search if it does not exist and creates an index for the provided
@@ -57,11 +71,11 @@
   Returns the index that you can use with semantic.search.index functions to operate on the index.
 
   Designed to be called once at application startup (or in tests)."
-  [pgvector index-metadata embedding-model]
+  [pgvector index-metadata embedding-model & {:as opts}]
   (semantic.db.connection/with-migrate-tx [tx pgvector]
     (semantic.db.migration/maybe-migrate! tx {:index-metadata index-metadata
                                               :embedding-model embedding-model})
-    (initialize-index! tx index-metadata embedding-model)))
+    (initialize-index! tx index-metadata embedding-model opts)))
 
 ;; query/index-mgmt require an active index to be established first.
 ;; init-semantic-search! must be called on startup
@@ -91,17 +105,22 @@
 (defn gate-updates!
   "Stages document updates through the gate table to enable async indexing. See gate.clj.
 
+  If passed a repair-table name, document models & IDs are also recorded in that table to enable detection of
+  lost deletes.
+
   NOTE: Returns a frequency map of input {model id-count} for compatibility with existing caller expectations -
   but it is redundant and should otherwise be ignored."
-  [pgvector index-metadata documents]
+  [pgvector index-metadata documents & {:keys [repair-table]}]
   (let [now (Instant/now)]
     (transduce
-     (partition-all (min 512 semantic.gate/max-batch-size))
+     (partition-all (min 512 (semantic.settings/ee-search-gate-max-batch-size)))
      (completing
       (fn [acc documents]
         (->> documents
              (mapv #(semantic.gate/search-doc->gate-doc % now))
              (semantic.gate/gate-documents! pgvector index-metadata))
+        (when repair-table
+          (semantic.repair/populate-repair-table! pgvector repair-table documents))
         (merge-with + acc (frequencies (map :model documents)))))
      {}
      documents)))
@@ -114,7 +133,7 @@
   [pgvector index-metadata model ids]
   (let [now (Instant/now)]
     (transduce
-     (partition-all (min 512 semantic.gate/max-batch-size))
+     (partition-all (min 512 (semantic.settings/ee-search-gate-max-batch-size)))
      (completing
       (fn [acc ids]
         (->> ids
