@@ -158,7 +158,9 @@
   [dtype-str]
   (cond
     (str/starts-with? dtype-str "int") :type/Integer
+    (str/starts-with? dtype-str "Int") :type/Integer
     (str/starts-with? dtype-str "float") :type/Float
+    (str/starts-with? dtype-str "Float") :type/Float
     (str/starts-with? dtype-str "bool") :type/Boolean
     ;; datetime64[ns, timezone] indicates timezone-aware datetime
     (str/starts-with? dtype-str "datetime64[ns, ") :type/DateTimeWithTZ
