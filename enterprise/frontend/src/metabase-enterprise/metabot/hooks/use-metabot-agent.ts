@@ -13,6 +13,7 @@ import {
   getLastAgentMessagesByType,
   getMessages,
   getMetabotId,
+  getMetabotReactionsState,
   getMetabotRequestId,
   getMetabotVisible,
   getProfile,
@@ -70,6 +71,10 @@ export const useMetabotAgent = () => {
 
   const profile = useSelector(getProfile as any) as ReturnType<
     typeof getProfile
+  >;
+
+  const reactions = useSelector(getMetabotReactionsState as any) as ReturnType<
+    typeof getMetabotReactionsState
   >;
 
   const resetConversation = useCallback(
@@ -167,5 +172,6 @@ export const useMetabotAgent = () => {
     retryMessage,
     toolCalls,
     profile,
+    reactions,
   };
 };

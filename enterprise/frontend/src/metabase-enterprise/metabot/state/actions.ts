@@ -245,10 +245,10 @@ export const sendAgentRequest = createAsyncThunk<
                 { type: "transform_suggestion" },
                 ({ value: transform }) => {
                   dispatch(setSuggestedTransform(transform));
-                  const url = transform.id
+                  /*const url = transform.id
                     ? `/admin/transforms/${transform.id}/query`
                     : `/admin/transforms/new/native`;
-                  dispatch(push(url) as UnknownAction);
+                  dispatch(push(url) as UnknownAction);*/
                 },
               )
               .exhaustive();
