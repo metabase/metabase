@@ -41,11 +41,20 @@ export function NewTransformQueryPage({ params }: NewTransformQueryPageProps) {
     error,
   } = useGetCardQuery(cardId ? { id: cardId } : skipToken);
 
+  const suggestedTransform = useSelector(
+    getMetabotSuggestedTransform as any,
+  ) as ReturnType<typeof getMetabotSuggestedTransform>;
+  const suggestedQuery = suggestedTransform?.source.query;
+
+  const [initialSuggestedQuery] = useState(suggestedQuery);
+
+  const initialQuery = initialSuggestedQuery || getInitialQuery(card, type);
+
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  return <NewTransformPageBody initialQuery={getInitialQuery(card, type)} />;
+  return <NewTransformPageBody initialQuery={initialQuery} />;
 }
 
 type NewTransformPageBodyProps = {
@@ -101,7 +110,8 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
             name: suggestedTransform.name,
             description: suggestedTransform.description,
             targetName: suggestedTransform.target.name,
-            targetSchema: suggestedTransform.target.schema,
+            // TODO: enabling this breaks the UI for some reason...
+            // targetSchema: suggestedTransform.target.schema,
           }
         : undefined,
     [suggestedTransform],
