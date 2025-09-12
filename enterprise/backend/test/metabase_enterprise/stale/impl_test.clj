@@ -374,7 +374,7 @@
                :offset         0
                :sort-column    :name
                :sort-direction :asc})))
-      (t2/delete! :model/GroupTableAccessPolicy :card_id gtap-card-id)
+      (t2/delete! :model/Sandbox :card_id gtap-card-id)
       (is (= {:rows [{:model :model/Card :id gtap-card-id}]
               :total 1}
              (stale/find-candidates

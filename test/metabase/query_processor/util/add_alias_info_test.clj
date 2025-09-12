@@ -1263,7 +1263,7 @@
                 first)))))
 
 ;;; see also [[metabase.driver.sql.query-processor-test/evil-field-ref-for-an-expression-test]]
-;;; and [[metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test/evil-field-ref-for-an-expression-test]]
+;;; and [[metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test/evil-field-ref-for-an-expression-test]]
 (deftest ^:parallel resolve-incorrect-field-ref-for-expression-test
   (testing "resolve the incorrect use of a :field ref for an expression correctly"
     (let [query (lib/query

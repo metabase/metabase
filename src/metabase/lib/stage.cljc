@@ -16,11 +16,22 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.stage.util]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.namespaces :as shared.ns]))
+
+(comment metabase.lib.stage.util/keep-me)
+
+(shared.ns/import-fns
+ [metabase.lib.stage.util
+  append-stage
+  drop-empty-stages
+  drop-stage
+  has-clauses?])
 
 (lib.hierarchy/derive :mbql.stage/mbql   ::stage)
 (lib.hierarchy/derive :mbql.stage/native ::stage)
@@ -354,35 +365,6 @@
                                             previous-stage-number
                                             (lib.util/query-stage query previous-stage-number)
                                             style))))
-
-(mu/defn has-clauses? :- :boolean
-  "Does given query stage have any clauses?"
-  [query        :- ::lib.schema/query
-   stage-number :- :int]
-  (boolean (seq (dissoc (lib.util/query-stage query stage-number) :lib/type :source-table :source-card))))
-
-(mu/defn append-stage :- ::lib.schema/query
-  "Adds a new blank stage to the end of the pipeline."
-  [query]
-  (update query :stages conj {:lib/type :mbql.stage/mbql}))
-
-(mu/defn drop-stage :- ::lib.schema/query
-  "Drops the final stage in the pipeline, will no-op if it is the only stage"
-  [query]
-  (if (= 1 (count (:stages query)))
-    query
-    (update query :stages pop)))
-
-(mu/defn drop-empty-stages :- ::lib.schema/query
-  "Drops all empty stages in the pipeline."
-  [query :- ::lib.schema/query]
-  (update query :stages (fn [stages]
-                          (into []
-                                (keep-indexed (fn [stage-number stage]
-                                                (when (or (zero? stage-number)
-                                                          (has-clauses? query stage-number))
-                                                  stage)))
-                                stages))))
 
 (mu/defn ensure-extra-stage :- [:tuple ::lib.schema/query :int]
   "Given a query and current stage, returns a tuple of `[query next-stage-number]`.

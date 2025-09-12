@@ -252,3 +252,23 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    metadata-type         :- ::lib.schema.metadata/type]
   (lib.metadata.protocols/invoked-ids metadata-providerable metadata-type))
+
+(defn general-cached-value
+  "Get/cache a general value in a cached metadata provider. If the value is already present, it will be returned,
+  otherwise it will be calculated with
+
+    (thunk)
+
+  then saved in the cache and returned.
+
+  `ks` should be unique app-wide (e.g., it should include a namespaced key in the namespace you're using it in.)"
+  [cached-metadata-providerable ks thunk]
+  (let [mp (->metadata-provider cached-metadata-providerable)
+        _  (assert (lib.metadata.protocols/cached-metadata-provider-with-cache? mp)
+                   "Not a cached metadata provider with a cache")
+        v  (lib.metadata.protocols/cached-value mp ks ::not-found)]
+    (if (= v ::not-found)
+      (let [v (thunk)]
+        (lib.metadata.protocols/cache-value! mp ks v)
+        v)
+      v)))
