@@ -22,7 +22,7 @@ import {
   type MetabotAgentTextChatMessage,
   type MetabotChatMessage,
   type MetabotErrorMessage,
-  type MetabotUserTextChatMessage,
+  type MetabotUserChatMessage,
   setSuggestedTransform,
 } from "metabase-enterprise/metabot/state";
 import type { MetabotFeedback } from "metabase-types/api";
@@ -59,7 +59,7 @@ export const MessageContainer = ({
 );
 
 interface UserMessageProps extends Omit<BaseMessageProps, "message"> {
-  message: MetabotUserTextChatMessage;
+  message: MetabotUserChatMessage;
   onCopy: () => void;
 }
 
@@ -71,14 +71,22 @@ export const UserMessage = ({
   ...props
 }: UserMessageProps) => (
   <MessageContainer chatRole={message.role} {...props}>
-    <Text
-      className={cx(
-        Styles.message,
-        message.role === "user" && Styles.messageUser,
-      )}
-    >
-      {message.message}
-    </Text>
+    {message.type === "text" && (
+      <Text className={cx(Styles.message, Styles.messageUser)}>
+        {message.message}
+      </Text>
+    )}
+
+    {message.type === "action" && (
+      <Flex direction="column" gap="xs">
+        <Flex align="center" gap="xs">
+          <Text className={cx(Styles.message, Styles.messageUserAction)}>
+            {message.userMessage}
+          </Text>
+        </Flex>
+      </Flex>
+    )}
+
     <Flex className={Styles.messageActions}>
       {!hideActions && (
         <ActionIcon
@@ -356,7 +364,14 @@ export const Messages = ({
             data-testid="metabot-chat-message"
             message={message}
             hideActions={isDoingScience && messages.length === index + 1}
-            onCopy={() => clipboard.copy(message.message)}
+            onCopy={() => {
+              // TODO: probably want to make this not show up long-term
+              const copyText =
+                message.type === "action"
+                  ? `${message.userMessage}: ${message.message}`
+                  : message.message;
+              clipboard.copy(copyText);
+            }}
           />
         ),
       )}

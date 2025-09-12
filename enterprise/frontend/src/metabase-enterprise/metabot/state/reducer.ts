@@ -17,6 +17,14 @@ export type MetabotUserTextChatMessage = {
   message: string;
 };
 
+export type MetabotUserActionChatMessage = {
+  id: string;
+  role: "user";
+  type: "action";
+  message: string;
+  userMessage: string;
+};
+
 export type MetabotAgentTextChatMessage = {
   id: string;
   role: "agent";
@@ -36,8 +44,12 @@ export type MetabotAgentChatMessage =
   | MetabotAgentTextChatMessage
   | MetabotAgentEditSuggestionChatMessage;
 
-export type MetabotChatMessage =
+export type MetabotUserChatMessage =
   | MetabotUserTextChatMessage
+  | MetabotUserActionChatMessage;
+
+export type MetabotChatMessage =
+  | MetabotUserChatMessage
   | MetabotAgentChatMessage;
 
 export type MetabotErrorMessage = {
@@ -98,12 +110,12 @@ export const metabot = createSlice({
   reducers: {
     addUserMessage: (
       state,
-      action: PayloadAction<Omit<MetabotUserTextChatMessage, "role" | "type">>,
+      action: PayloadAction<Omit<MetabotUserChatMessage, "role">>,
     ) => {
-      const { id, message } = action.payload;
+      const { id, message, ...rest } = action.payload;
 
       state.errorMessages = [];
-      state.messages.push({ id, role: "user", type: "text", message });
+      state.messages.push({ id, role: "user", message, ...rest } as any);
       state.history.push({ id, role: "user", content: message });
     },
     addAgentMessage: (
@@ -127,6 +139,7 @@ export const metabot = createSlice({
       >,
     ) => {
       state.toolCalls = [];
+      // @ts-expect-error - TODO: figure out why this type causes issues
       state.messages.push({
         id: createMessageId(),
         role: "agent",
