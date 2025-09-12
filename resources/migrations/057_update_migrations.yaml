@@ -1130,14 +1130,14 @@ databaseChangeLog:
                     nullable: true
               - column:
                   name: created_at
-                  type: timestamp with time zone
+                  type: ${timestamp_type}
                   remarks: When the record was created
                   constraints:
                     nullable: false
                   defaultValueComputed: current_timestamp
               - column:
                   name: updated_at
-                  type: timestamp with time zone
+                  type: ${timestamp_type}
                   remarks: When the record was last updated
                   constraints:
                     nullable: false
