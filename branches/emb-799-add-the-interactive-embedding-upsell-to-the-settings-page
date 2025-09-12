@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-752-integration-branch-for-embedding-hub",
-    "hash": "8489295766fa2e1123a3c0cb16b024b5b9aa932a"
+    "hash": "7f5509f88e668aa64609b10302ae9a31af8a5688"
   },
   "upstream": {
     "branch": "emb-799-add-the-interactive-embedding-upsell-to-the-settings-page"
