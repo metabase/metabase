@@ -112,27 +112,29 @@ export const MetabotChat = ({
                     t`I can help you explore your metrics and models.`}
                 </Text>
               </Flex>
-              {/* empty state with suggested prompts */}
-              <Stack
-                gap="sm"
-                className={Styles.promptSuggestionsContainer}
-                data-testid="metabot-prompt-suggestions"
-              >
-                <>
-                  {suggestedPrompts.map(({ prompt }, index) => (
-                    <Box key={index}>
-                      <Button
-                        fz="sm"
-                        size="xs"
-                        onClick={() => handleSubmitInput(prompt)}
-                        className={Styles.promptSuggestionButton}
-                      >
-                        {prompt}
-                      </Button>
-                    </Box>
-                  ))}
-                </>
-              </Stack>
+              {/* empty state with suggested prompts - TODO: temporarily disabled */}
+              {!!false && (
+                <Stack
+                  gap="sm"
+                  className={Styles.promptSuggestionsContainer}
+                  data-testid="metabot-prompt-suggestions"
+                >
+                  <>
+                    {suggestedPrompts.map(({ prompt }, index) => (
+                      <Box key={index}>
+                        <Button
+                          fz="sm"
+                          size="xs"
+                          onClick={() => handleSubmitInput(prompt)}
+                          className={Styles.promptSuggestionButton}
+                        >
+                          {prompt}
+                        </Button>
+                      </Box>
+                    ))}
+                  </>
+                </Stack>
+              )}
             </>
           )}
 
