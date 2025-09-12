@@ -27,6 +27,90 @@ import { uploadTranslationDictionaryViaAPI } from "./helpers/e2e-content-transla
 const { H } = cy;
 
 describe("scenarios > content translation > static embedding > dashboards", () => {
+  describe("pivot table renamed column (metabase#63296)", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      uploadTranslationDictionaryViaAPI([
+        { locale: "fr", msgid: "Category", msgstr: "La catégorie" },
+        { locale: "fr", msgid: "Title", msgstr: "Le titre" },
+      ]);
+
+      cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
+
+      cy.signInAsAdmin();
+
+      H.createQuestion(ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY, {
+        idAlias: "productsCountByCreatedAtQuestionId",
+        wrapId: true,
+      });
+
+      H.createQuestion({
+        name: "Pivot table",
+        display: "pivot",
+        query: {
+          aggregation: [["count"]],
+          breakout: [
+            ["field", PRODUCTS.CATEGORY, null],
+            ["field", PRODUCTS.TITLE, null],
+          ],
+          "source-table": PRODUCTS_ID,
+        },
+        visualization_settings: {
+          "pivot_table.column_split": {
+            rows: ["CATEGORY", "TITLE"],
+            columns: [],
+            values: ["count"],
+          },
+          column_settings: {
+            '["name", "CATEGORY"]': {
+              column_title: "Category",
+            },
+          },
+        },
+      });
+    });
+
+    it("should assign the proper colors to a pie", () => {
+      H.createDashboard({
+        name: "the_dashboard",
+      }).then(({ body: { id: dashboardId } }) => {
+        H.visitDashboard(dashboardId);
+        H.editDashboard();
+        H.openQuestionsSidebar();
+
+        H.sidebar().findByText("Pivot table").click();
+
+        H.saveDashboard();
+
+        H.openStaticEmbeddingModal({
+          acceptTerms: false,
+        });
+        H.publishChanges("dashboard", () => {});
+
+        H.visitEmbeddedPage(
+          {
+            resource: { dashboard: dashboardId as number },
+            params: {},
+          },
+          {
+            additionalHashOptions: {
+              locale: "fr",
+            },
+          },
+        );
+
+        cy.wait("@dashboard");
+
+        H.getDashboardCard(0).within(() => {
+          cy.findByText("La catégorie").should("exist");
+        });
+      });
+    });
+  });
+
   describe("card titles and descriptions", () => {
     beforeEach(() => {
       H.restore();
