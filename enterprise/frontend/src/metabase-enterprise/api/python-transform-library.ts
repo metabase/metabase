@@ -17,13 +17,13 @@ export const pythonLibraryApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     getPythonLibrary: builder.query<PythonLibrary, GetPythonLibraryRequest>({
       query: ({ name }) => ({
-        url: `/api/ee/python-transform/user-modules/${name}`,
+        url: `/api/ee/python-transform/library/${name}`,
         method: "GET",
       }),
     }),
     updatePythonLibrary: builder.mutation<void, UpdatePythonLibraryRequest>({
       query: ({ name, source }) => ({
-        url: `/api/ee/python-transform/user-modules/${name}`,
+        url: `/api/ee/python-transform/library/${name}`,
         method: "PUT",
         body: { source },
       }),
