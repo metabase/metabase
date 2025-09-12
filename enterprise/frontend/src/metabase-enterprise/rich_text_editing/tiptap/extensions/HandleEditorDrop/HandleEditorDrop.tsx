@@ -167,11 +167,10 @@ export const HandleEditorDrop = Extension.create({
                     return false;
                   }
 
-                  // Check if dropping into document (not into another FlexContainer, cardEmbed, or resizeNode)
+                  // Check if dropping into document (not into another flexContainer or cardEmbed)
                   if (
                     dropParent.type.name !== "flexContainer" &&
-                    dropParent.type.name !== "cardEmbed" &&
-                    dropParent.type.name !== "resizeNode"
+                    dropParent.type.name !== "cardEmbed"
                   ) {
                     if (cameFromFlexContainer) {
                       // Handle moving from FlexContainer to document
