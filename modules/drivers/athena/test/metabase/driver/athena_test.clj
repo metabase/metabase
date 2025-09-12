@@ -287,7 +287,11 @@
                              (let [metadata (.getMetaData conn)]
                                (#'athena/get-columns metadata catalog (:schema table) (:name table))))))))
             (testing "`describe-table` returns the fields anyway"
-              (is (not-empty (:fields (driver/describe-table :athena db table)))))))))))
+              (is (not-empty (:fields (driver/describe-table :athena db table)))))
+            (testing "`describe-table-fields` uses DESCRIBE if the JDBC driver returns duplicate column names (#58441)"
+              (with-redefs [athena/get-columns (constantly [{:column_name "c" :type_name "bigint"}
+                                                            {:column_name "c" :type_name "string"}])]
+                (is (= nil (:fields (driver/describe-table :athena db table))))))))))))
 
 (deftest column-name-with-question-mark-test
   (testing "Column name with a question mark in it should be compiled correctly (#44915)"
