@@ -36,7 +36,7 @@ export function EmbeddingNav() {
           label={
             <Flex gap="sm" align="center">
               <span>{t`Modular`}</span>
-              {!hasSdkEmbedding && !hasSimpleEmbedding && <UpsellGem />}
+              {(!hasSdkEmbedding || !hasSimpleEmbedding) && <UpsellGem />}
             </Flex>
           }
           icon="embed_modular"
