@@ -69,6 +69,7 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
         description: t`Set up data models for your embedded analytics.`,
         to: "/model/new",
         optional: true,
+        stepId: "create-models",
       },
     ],
   };
