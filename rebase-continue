@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "upstack",
+        "restack"
+      ],
+      "branch": "emb-752-integration-branch-for-embedding-hub"
+    }
+  ]
 }
