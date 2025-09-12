@@ -74,7 +74,12 @@ export function Glossary() {
                     {term.term}
                   </Text>
                 </Box>
-                <Box component="td" valign="top" pr="0">
+                <Box
+                  component="td"
+                  valign="top"
+                  pr="0"
+                  style={{ wordBreak: "break-word" }}
+                >
                   <Text lh="1.2">{term.definition}</Text>
                 </Box>
                 <Box component="td" valign="top" px="0" align="center">
@@ -82,6 +87,7 @@ export function Glossary() {
                     name="pencil"
                     c="text-light"
                     cursor="pointer"
+                    mt={-2} // prevent the row of 1-line definitions from growing
                     onClick={() =>
                       setEditingDefinition({
                         id: term.id,
