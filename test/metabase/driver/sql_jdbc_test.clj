@@ -297,8 +297,9 @@
        (map #(vector (:id %) (:name %)))
        sort))
 
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest rename-tables-test
-  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+  (mt/test-drivers #{:postgres :mysql}
     (testing "rename-tables should rename multiple tables atomically"
       (let [db-id             (mt/id)
             driver            driver/*driver*

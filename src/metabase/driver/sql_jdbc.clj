@@ -18,7 +18,6 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
-   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu])
   (:import
@@ -162,28 +161,6 @@
                                :quoted true
                                :dialect (sql.qp/quote-style driver)))]
     (driver-api/execute-write-sql! db-id sql)))
-
-(defn sql-jdbc-rename-tables-with-tx!
-  "Helper function for SQL JDBC drivers that support transactional table renames.
-   Drivers should call this directly from their rename-tables!* implementation if they support
-   renaming multiple tables within a transaction atomically."
-  [driver db-id sorted-rename-map]
-  (let [sqls (mapv (fn [[from-table to-table]]
-                     (first (sql/format {:alter-table (keyword from-table)
-                                         :rename-table (keyword (name to-table))}
-                                        :quoted true
-                                        :dialect (sql.qp/quote-style driver))))
-                   sorted-rename-map)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
-      (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
-        (doseq [sql sqls]
-          (.addBatch ^java.sql.Statement stmt ^String sql))
-        (.executeBatch ^java.sql.Statement stmt)))))
-
-(defmethod driver/rename-tables!* :sql-jdbc
-  [driver db-id sorted-rename-map]
-  ;; Default implementation for SQL JDBC drivers using transactions
-  (sql-jdbc-rename-tables-with-tx! driver db-id sorted-rename-map))
 
 (defmethod driver/truncate! :sql-jdbc
   [driver db-id table-name]
