@@ -3,11 +3,13 @@
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.gate :as semantic.gate]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.indexer :as semantic.indexer]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase.test.util :as mt]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
@@ -32,7 +34,7 @@
   (Timestamp/from (Instant/parse s)))
 
 (deftest indexing-step-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         model          semantic.tu/mock-embedding-model
         index          (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
@@ -147,33 +149,49 @@
 
 ;; todo not sure I like this cuteness
 (deftest on-indexing-idle-test
-  (testing "idle behavior based on novelty ratio"
-    (let [indexing-state (volatile! {:last-poll-count 100 :last-novel-count 30})]
+  (mt/with-prometheus-system! [_ system]
+    (testing "idle behavior based on novelty ratio"
+      (let [indexing-state (volatile! {:last-poll-count 100 :last-novel-count 30})
+            original-sleep-fn @#'semantic.indexer/sleep
+            sleep-metric-state (volatile! 0)
+            test-sleep-metric (fn []
+                                (testing "Sleep metric grows"
+                                  (let [current-sleep (mt/metric-value system :metabase-search/semantic-indexer-sleep-ms)]
+                                    (is (< @sleep-metric-state current-sleep))
+                                    (vreset! sleep-metric-state current-sleep))))]
 
-      (testing "high novelty ratio (>25%) - no sleep"
-        (with-redefs [semantic.indexer/sleep (fn [ms] (throw (ex-info "Should not sleep" {:ms ms})))]
-          (is (nil? (semantic.indexer/on-indexing-idle indexing-state)))))
+        (testing "high novelty ratio (>25%) - no sleep"
+          (with-redefs [semantic.indexer/sleep (fn [ms] (throw (ex-info "Should not sleep" {:ms ms})))]
+            (is (nil? (semantic.indexer/on-indexing-idle indexing-state)))))
 
-      (testing "medium novelty ratio (10-25%) - small backoff"
-        (vswap! indexing-state assoc :last-novel-count 15) ; 15% novelty
-        (let [sleep-called (atom nil)]
-          (with-redefs [semantic.indexer/sleep #(reset! sleep-called %)]
-            (semantic.indexer/on-indexing-idle indexing-state)
-            (is (= 250 @sleep-called)))))
+        (testing "medium novelty ratio (10-25%) - small backoff"
+          (vswap! indexing-state assoc :last-novel-count 15) ; 15% novelty
+          (let [sleep-called (atom nil)]
+            (with-redefs [semantic.indexer/sleep (fn [ms]
+                                                   (original-sleep-fn ms)
+                                                   (reset! sleep-called ms)) #_#(reset! sleep-called %)]
+              (semantic.indexer/on-indexing-idle indexing-state)
+              (is (= 250 @sleep-called))
 
-      (testing "low novelty ratio (1-10%) - medium backoff"
-        (vswap! indexing-state assoc :last-novel-count 5) ; 5% novelty
-        (let [sleep-called (atom nil)]
-          (with-redefs [semantic.indexer/sleep #(reset! sleep-called %)]
-            (semantic.indexer/on-indexing-idle indexing-state)
-            (is (= 1500 @sleep-called)))))
+              (test-sleep-metric))))
 
-      (testing "very low novelty ratio (<1%) - big backoff"
-        (vswap! indexing-state assoc :last-novel-count 0) ; 0% novelty
-        (let [sleep-called (atom nil)]
-          (with-redefs [semantic.indexer/sleep #(reset! sleep-called %)]
-            (semantic.indexer/on-indexing-idle indexing-state)
-            (is (= 3000 @sleep-called))))))))
+        (testing "low novelty ratio (1-10%) - medium backoff"
+          (vswap! indexing-state assoc :last-novel-count 5) ; 5% novelty
+          (let [sleep-called (atom nil)]
+            (with-redefs [semantic.indexer/sleep (fn [ms]
+                                                   (original-sleep-fn ms)
+                                                   (reset! sleep-called ms)) #_#(reset! sleep-called %)]
+              (semantic.indexer/on-indexing-idle indexing-state)
+              (is (= 1500 @sleep-called))
+
+              (test-sleep-metric))))
+
+        (testing "very low novelty ratio (<1%) - big backoff"
+          (vswap! indexing-state assoc :last-novel-count 0) ; 0% novelty
+          (let [sleep-called (atom nil)]
+            (with-redefs [semantic.indexer/sleep #(reset! sleep-called %)]
+              (semantic.indexer/on-indexing-idle indexing-state)
+              (is (= 3000 @sleep-called)))))))))
 
 (defn- open-loop-thread! ^Closeable [& loop-args]
   (let [caught-ex (volatile! nil)]
@@ -197,7 +215,7 @@
            (log/fatal "Indexing loop thread not exiting during test!")))))))
 
 (deftest indexing-loop-thread-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         index          semantic.tu/mock-index
         metadata-row   {:indexer_last_poll Instant/EPOCH
@@ -266,7 +284,7 @@
             (is (.join thread (Duration/ofSeconds 1)))))))))
 
 (deftest indexing-loop-exit-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         model          semantic.tu/mock-embedding-model
         index          (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
@@ -354,7 +372,7 @@
    (fn [_] (semantic.dlq/drop-dlq-table-if-exists! pgvector index-metadata index-id))))
 
 (deftest quartz-job-run!-test
-  (let [pgvector        semantic.tu/db
+  (let [pgvector        (semantic.env/get-pgvector-datasource!)
         index-metadata  (semantic.tu/unique-index-metadata)
         open-job-thread (fn [& args]
                           (let [caught-ex (volatile! nil)]
@@ -440,23 +458,116 @@
                 (is (nil? @caught-ex))))))))))
 
 (deftest dlq-step-test
-  (let [pgvector       semantic.tu/db
-        index-metadata (semantic.tu/unique-index-metadata)
-        model          semantic.tu/mock-embedding-model
-        index          (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
-        sut            semantic.indexer/dlq-step
-        clock-ref      (volatile! (Instant/parse "2025-01-04T00:00:00Z"))
-        clock          (reify InstantSource (instant [_] @clock-ref))
-        dlq-loop-impl  (volatile! (constantly nil))
-        run-scenario   (fn [{:keys [indexing-state dlq-loop-return]}]
-                         (vreset! dlq-loop-impl (constantly dlq-loop-return))
-                         (let [indexing-state-ref (semantic.indexer/init-indexing-state (get-metadata-row! pgvector index-metadata index))]
-                           (vswap! indexing-state-ref merge indexing-state)
-                           (sut pgvector index-metadata index indexing-state-ref)
-                           @indexing-state-ref))]
-    (with-redefs [semantic.dlq/dlq-retry-loop! (fn [& args] (apply @dlq-loop-impl args))
-                  semantic.indexer/clock       clock
-                  semantic.dlq/clock           clock]
+  (mt/with-prometheus-system! [_ system]
+    (let [pgvector       (semantic.env/get-pgvector-datasource!)
+          index-metadata (semantic.tu/unique-index-metadata)
+          model          semantic.tu/mock-embedding-model
+          index          (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
+          sut            semantic.indexer/dlq-step
+          clock-ref      (volatile! (Instant/parse "2025-01-04T00:00:00Z"))
+          clock          (reify InstantSource (instant [_] @clock-ref))
+          dlq-loop-impl  (volatile! (constantly nil))
+          run-scenario   (fn [{:keys [indexing-state dlq-loop-return]}]
+                           (vreset! dlq-loop-impl (constantly dlq-loop-return))
+                           (let [indexing-state-ref (semantic.indexer/init-indexing-state (get-metadata-row! pgvector index-metadata index))]
+                             (vswap! indexing-state-ref merge indexing-state)
+                             (sut pgvector index-metadata index indexing-state-ref)
+                             @indexing-state-ref))]
+      (with-redefs [semantic.dlq/dlq-retry-loop! (fn [& args] (apply @dlq-loop-impl args))
+                    semantic.indexer/clock       clock
+                    semantic.dlq/clock           clock]
+        (with-open [_            (semantic.tu/open-metadata! pgvector index-metadata)
+                    _            (semantic.tu/open-index! pgvector index)
+                    index-id-ref (semantic.tu/closeable
+                                  (semantic.index-metadata/record-new-index-table! pgvector index-metadata index)
+                                  (constantly nil))
+                    _            (open-dlq! pgvector index-metadata @index-id-ref)]
+
+          (testing "dlq rescheduled after no change"
+            (let [original-last-seen-change (Instant/parse "2025-01-12T03:22:45Z")
+                  {:keys [last-seen-change next-dlq-run]}
+                  (run-scenario {:indexing-state  {:last-seen-change original-last-seen-change}
+                                 :dlq-loop-return {:exit-reason   :no-more-data,
+                                                   :run-time      (Duration/parse "PT42S")
+                                                   :success-count 0
+                                                   :failure-count 0}})
+                  expected-next-dlq-run     (.plus (.instant clock) semantic.indexer/dlq-frequency)]
+              (testing ":last-seen-change not modified - would allow cold exit"
+                (is (= original-last-seen-change last-seen-change)))
+              (is (= expected-next-dlq-run next-dlq-run))))
+
+          (testing "dlq rescheduled after change (no more data, should back off)"
+            (let [{:keys [last-seen-change next-dlq-run]}
+                  (run-scenario {:dlq-loop-return {:exit-reason   :no-more-data,
+                                                   :run-time      (Duration/parse "PT12S")
+                                                   :success-count 1
+                                                   :failure-count 0}})
+                  expected-next-dlq-run (.plus (.instant clock) semantic.indexer/dlq-frequency)]
+              (is (= (.instant clock) last-seen-change))
+              (is (= expected-next-dlq-run next-dlq-run))
+              (testing "Metrics have expected values"
+                (is (== 1 (mt/metric-value system :metabase-search/semantic-indexer-dlq-successes)))
+                (is (== 0 (mt/metric-value system :metabase-search/semantic-indexer-dlq-failures))))))
+
+          (testing "dlq rescheduled immediately after change (ran out of time, more to do)"
+            (let [{:keys [last-seen-change next-dlq-run]}
+                  (run-scenario {:dlq-loop-return {:exit-reason   :ran-out-of-time
+                                                   :run-time      (Duration/parse "PT15S")
+                                                   :success-count 1
+                                                   :failure-count 0}})]
+              (is (= (.instant clock) last-seen-change))
+              (is (= (.instant clock) next-dlq-run))
+              (testing "Metrics have expected values"
+                (is (== 2 (mt/metric-value system :metabase-search/semantic-indexer-dlq-successes)))
+                (is (== 0 (mt/metric-value system :metabase-search/semantic-indexer-dlq-failures))))))
+
+          ;; for now policy for this branch is the same as the above - but may change
+          (testing "dlq rescheduled immediately after change (ran out of time, more to do - failures)"
+            (let [{:keys [last-seen-change next-dlq-run]}
+                  (run-scenario {:dlq-loop-return {:exit-reason   :ran-out-of-time
+                                                   :run-time      (Duration/parse "PT12S")
+                                                   :success-count 2
+                                                   :failure-count 3}})]
+              (is (= (.instant clock) last-seen-change))
+              (is (= (.instant clock) next-dlq-run))
+              (testing "Metrics have expected values"
+                (is (== 4 (mt/metric-value system :metabase-search/semantic-indexer-dlq-successes)))
+                (is (== 3 (mt/metric-value system :metabase-search/semantic-indexer-dlq-failures))))))
+          (testing ":metabase-search/semantic-indexer-dlq-loop-ms have expected value"
+            (is (< 0 (mt/metric-value system :metabase-search/semantic-indexer-dlq-loop-ms)))))))))
+
+(defn- get-dlq-rows! [pgvector index-metadata index-id]
+  (let [q {:select [:*] :from [(semantic.dlq/dlq-table-name-kw index-metadata index-id)]}]
+    (jdbc/execute! pgvector (sql/format q :quoted true) {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
+
+(deftest indexer-stall-and-recovery-test
+  (mt/with-prometheus-system! [_ system]
+    (let [pgvector             (semantic.env/get-pgvector-datasource!)
+          index-metadata       (semantic.tu/unique-index-metadata)
+          model                semantic.tu/mock-embedding-model
+          index                (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
+          clock-ref            (volatile! (Instant/parse "2025-01-04T10:00:00Z"))
+          clock                (reify InstantSource (instant [_] @clock-ref))
+          t1                   (ts "2025-01-01T00:01:00Z")
+          card                 (fn [id] {:model "card" :id (str id) :name "Test" :searchable_text "Content"})
+          version              semantic.gate/search-doc->gate-doc
+          fresh-indexing-state (fn []
+                                 (let [state (semantic.indexer/init-indexing-state (get-metadata-row! pgvector index-metadata index))]
+                                   (vswap! state assoc :next-dlq-run (.instant clock)) ; ensure DLQ is scheduled
+                                   state))
+          growing-metrics [:metabase-search/semantic-indexer-read-documents-ms
+                           :metabase-search/semantic-indexer-write-indexing-ms
+                           :metabase-search/semantic-indexer-write-metadata-ms]
+          growing-metrics-state (volatile! (into {}
+                                                 (map #(vector % 0))
+                                                 growing-metrics))
+          test-metric-growth (fn []
+                               (doseq [metric growing-metrics]
+                                 (testing metric
+                                   (let [metric-value (mt/metric-value system metric)]
+                                     (is (and (< 0 metric-value)
+                                              (<= (metric @growing-metrics-state) metric-value)))
+                                     (vswap! growing-metrics-state assoc metric metric-value)))))]
       (with-open [_            (semantic.tu/open-metadata! pgvector index-metadata)
                   _            (semantic.tu/open-index! pgvector index)
                   index-id-ref (semantic.tu/closeable
@@ -464,143 +575,93 @@
                                 (constantly nil))
                   _            (open-dlq! pgvector index-metadata @index-id-ref)]
 
-        (testing "dlq rescheduled after no change"
-          (let [original-last-seen-change (Instant/parse "2025-01-12T03:22:45Z")
-                {:keys [last-seen-change next-dlq-run]}
-                (run-scenario {:indexing-state  {:last-seen-change original-last-seen-change}
-                               :dlq-loop-return {:exit-reason   :no-more-data,
-                                                 :run-time      (Duration/parse "PT42S")
-                                                 :success-count 0
-                                                 :failure-count 0}})
-                expected-next-dlq-run     (.plus (.instant clock) semantic.indexer/dlq-frequency)]
-            (testing ":last-seen-change not modified - would allow cold exit"
-              (is (= original-last-seen-change last-seen-change)))
-            (is (= expected-next-dlq-run next-dlq-run))))
+        (with-redefs [semantic.indexer/clock         clock
+                      semantic.dlq/clock             clock
+                      ;; assume during this test that we are on the 'confident' gate poll branch.
+                      semantic.indexer/lag-tolerance Duration/ZERO]
 
-        (testing "dlq rescheduled after change (no more data, should back off)"
-          (let [{:keys [last-seen-change next-dlq-run]}
-                (run-scenario {:dlq-loop-return {:exit-reason   :no-more-data,
-                                                 :run-time      (Duration/parse "PT12S")
-                                                 :success-count 1
-                                                 :failure-count 0}})
-                expected-next-dlq-run (.plus (.instant clock) semantic.indexer/dlq-frequency)]
-            (is (= (.instant clock) last-seen-change))
-            (is (= expected-next-dlq-run next-dlq-run))))
-
-        (testing "dlq rescheduled immediately after change (ran out of time, more to do)"
-          (let [{:keys [last-seen-change next-dlq-run]}
-                (run-scenario {:dlq-loop-return {:exit-reason   :ran-out-of-time
-                                                 :run-time      (Duration/parse "PT15S")
-                                                 :success-count 1
-                                                 :failure-count 0}})]
-            (is (= (.instant clock) last-seen-change))
-            (is (= (.instant clock) next-dlq-run))))
-
-        ;; for now policy for this branch is the same as the above - but may change
-        (testing "dlq rescheduled immediately after change (ran out of time, more to do - failures)"
-          (let [{:keys [last-seen-change next-dlq-run]}
-                (run-scenario {:dlq-loop-return {:exit-reason   :ran-out-of-time
-                                                 :run-time      (Duration/parse "PT12S")
-                                                 :success-count 2
-                                                 :failure-count 3}})]
-            (is (= (.instant clock) last-seen-change))
-            (is (= (.instant clock) next-dlq-run))))))))
-
-(defn- get-dlq-rows! [pgvector index-metadata index-id]
-  (let [q {:select [:*] :from [(semantic.dlq/dlq-table-name-kw index-metadata index-id)]}]
-    (jdbc/execute! pgvector (sql/format q :quoted true) {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
-
-(deftest indexer-stall-and-recovery-test
-  (let [pgvector             semantic.tu/db
-        index-metadata       (semantic.tu/unique-index-metadata)
-        model                semantic.tu/mock-embedding-model
-        index                (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
-        clock-ref            (volatile! (Instant/parse "2025-01-04T10:00:00Z"))
-        clock                (reify InstantSource (instant [_] @clock-ref))
-        t1                   (ts "2025-01-01T00:01:00Z")
-        card                 (fn [id] {:model "card" :id (str id) :name "Test" :searchable_text "Content"})
-        version              semantic.gate/search-doc->gate-doc
-        fresh-indexing-state (fn []
-                               (let [state (semantic.indexer/init-indexing-state (get-metadata-row! pgvector index-metadata index))]
-                                 (vswap! state assoc :next-dlq-run (.instant clock)) ; ensure DLQ is scheduled
-                                 state))]
-
-    (with-open [_            (semantic.tu/open-metadata! pgvector index-metadata)
-                _            (semantic.tu/open-index! pgvector index)
-                index-id-ref (semantic.tu/closeable
-                              (semantic.index-metadata/record-new-index-table! pgvector index-metadata index)
-                              (constantly nil))
-                _            (open-dlq! pgvector index-metadata @index-id-ref)]
-
-      (with-redefs [semantic.indexer/clock         clock
-                    semantic.dlq/clock             clock
-                    ;; assume during this test that we are on the 'confident' gate poll branch.
-                    semantic.indexer/lag-tolerance Duration/ZERO]
-
-        (testing "normal indexing without stalls"
-          (let [indexing-state (fresh-indexing-state)]
-            (semantic.gate/gate-documents! pgvector index-metadata [(version (card 1) t1)])
-            (semantic.indexer/indexing-step pgvector index-metadata index indexing-state)
-
-            (is (nil? (:stalled-at @indexing-state)))
-            (is (nil? (:indexer_stalled_at (get-metadata-row! pgvector index-metadata index))))))
-
-        (testing "indexing failure marks as stalled"
-          (let [indexing-state (fresh-indexing-state)]
-            (semantic.gate/gate-documents! pgvector index-metadata [(version (card 2) t1)])
-
-            (with-redefs [semantic.index/upsert-index! (fn [& _] (throw (RuntimeException. "Index failure")))]
-              (is (thrown? RuntimeException (semantic.indexer/indexing-step pgvector index-metadata index indexing-state)))
-              (is (some? (:indexer_stalled_at (get-metadata-row! pgvector index-metadata index))))))
-
-          (testing "stalled indexing before grace period continues to throw"
-            (let [indexing-state (fresh-indexing-state)
-                  stall-time     (:indexer_stalled_at (get-metadata-row! pgvector index-metadata index))
-                  initial-clock  (.instant clock)]
-              (is (some? stall-time))
-              (is (= stall-time (:stalled-at @indexing-state)))
-
-              ;; Advance clock but (just about) stay within grace period
-              (vreset! clock-ref (.plus initial-clock (.minus semantic.indexer/stall-grace-period (Duration/ofSeconds 1))))
-              (with-redefs [semantic.index/upsert-index! (fn [& _] (throw (RuntimeException. "Still failing during grace period")))]
-                (is (thrown? RuntimeException (semantic.indexer/indexing-step pgvector index-metadata index indexing-state))))
-
-              ;; Stall time should not be overwritten (retains original lower value)
-              (let [current-stall-time (:indexer_stalled_at (get-metadata-row! pgvector index-metadata index))]
-                (is (= stall-time current-stall-time))))))
-
-        (testing "recovery from stall clears stall status"
-          (let [indexing-state (fresh-indexing-state)
-                stall-time     (:indexer_stalled_at (get-metadata-row! pgvector index-metadata index))]
-            (is (some? stall-time))
-            (semantic.gate/gate-documents! pgvector index-metadata [(version (card 3) t1)])
-            (semantic.indexer/indexing-step pgvector index-metadata index indexing-state)
-            (is (nil? (:indexer_stalled_at (get-metadata-row! pgvector index-metadata index))))))
-
-        (testing "stalled indexing uses DLQ after grace period"
-          (let [indexing-state    (fresh-indexing-state)
-                initial-watermark (:watermark @indexing-state)]
-            (vswap! indexing-state assoc :stalled-at (Timestamp/from (.instant clock)))
-            (vreset! clock-ref (-> (.instant clock)
-                                   (.plus semantic.indexer/stall-grace-period)
-                                   (.plus (Duration/ofSeconds 1))))
-            (semantic.gate/gate-documents! pgvector index-metadata [(version (card 4) t1)])
-
-            (with-redefs [semantic.index/upsert-index! (fn [& _] (throw (RuntimeException. "Still failing")))]
+          (testing "normal indexing without stalls"
+            (let [indexing-state (fresh-indexing-state)]
+              (semantic.gate/gate-documents! pgvector index-metadata [(version (card 1) t1)])
               (semantic.indexer/indexing-step pgvector index-metadata index indexing-state)
 
-              (testing "DLQ entries created"
-                (let [dlq-rows (get-dlq-rows! pgvector index-metadata @index-id-ref)]
-                  (is (seq dlq-rows))
-                  (is (= ["card_4"] (map :gate_id dlq-rows)))))
+              (is (nil? (:stalled-at @indexing-state)))
+              (is (nil? (:indexer_stalled_at (get-metadata-row! pgvector index-metadata index))))))
 
-              (testing "watermark progresses despite failures"
-                (let [new-watermark (:watermark @indexing-state)]
-                  (is (not= initial-watermark new-watermark))
-                  (is (= -1 (compare (:last-poll initial-watermark) (:last-poll new-watermark)))))))))))))
+          (testing "indexing failure marks as stalled"
+            (let [indexing-state (fresh-indexing-state)]
+              (semantic.gate/gate-documents! pgvector index-metadata [(version (card 2) t1)])
+
+              (with-redefs [semantic.index/upsert-index! (fn [& _] (throw (RuntimeException. "Index failure")))]
+                (is (thrown? RuntimeException (semantic.indexer/indexing-step pgvector index-metadata index indexing-state)))
+                (is (some? (:indexer_stalled_at (get-metadata-row! pgvector index-metadata index)))))
+
+              (test-metric-growth))
+
+            (testing "stalled indexing before grace period continues to throw"
+              (let [indexing-state (fresh-indexing-state)
+                    stall-time     (:indexer_stalled_at (get-metadata-row! pgvector index-metadata index))
+                    initial-clock  (.instant clock)]
+                (is (some? stall-time))
+                (is (= stall-time (:stalled-at @indexing-state)))
+
+                ;; Advance clock but (just about) stay within grace period
+                (vreset! clock-ref (.plus initial-clock (.minus semantic.indexer/stall-grace-period (Duration/ofSeconds 1))))
+                (with-redefs [semantic.index/upsert-index! (fn [& _] (throw (RuntimeException. "Still failing during grace period")))]
+                  (is (thrown? RuntimeException (semantic.indexer/indexing-step pgvector index-metadata index indexing-state))))
+
+                ;; Stall time should not be overwritten (retains original lower value)
+                (let [current-stall-time (:indexer_stalled_at (get-metadata-row! pgvector index-metadata index))]
+                  (is (= stall-time current-stall-time))))
+
+              (test-metric-growth)))
+
+          (testing "recovery from stall clears stall status"
+            (let [indexing-state (fresh-indexing-state)
+                  stall-time     (:indexer_stalled_at (get-metadata-row! pgvector index-metadata index))]
+              (is (some? stall-time))
+              (semantic.gate/gate-documents! pgvector index-metadata [(version (card 3) t1)])
+              (semantic.indexer/indexing-step pgvector index-metadata index indexing-state)
+              (is (nil? (:indexer_stalled_at (get-metadata-row! pgvector index-metadata index))))
+
+              (test-metric-growth)
+
+              (testing ":metabase-search/semantic-indexer-stalled"
+                (is (== 0 (mt/metric-value system :metabase-search/semantic-indexer-stalled))))))
+
+          (testing "stalled indexing uses DLQ after grace period"
+            (let [indexing-state    (fresh-indexing-state)
+                  initial-watermark (:watermark @indexing-state)]
+              (vswap! indexing-state assoc :stalled-at (Timestamp/from (.instant clock)))
+              (vreset! clock-ref (-> (.instant clock)
+                                     (.plus semantic.indexer/stall-grace-period)
+                                     (.plus (Duration/ofSeconds 1))))
+              (semantic.gate/gate-documents! pgvector index-metadata [(version (card 4) t1)])
+
+              (with-redefs [semantic.index/upsert-index! (fn [& _] (throw (RuntimeException. "Still failing")))]
+                (semantic.indexer/indexing-step pgvector index-metadata index indexing-state)
+
+                (testing "DLQ entries created"
+                  (let [dlq-rows (get-dlq-rows! pgvector index-metadata @index-id-ref)]
+                    (is (seq dlq-rows))
+                    (is (= ["card_4"] (map :gate_id dlq-rows)))))
+
+                (testing "watermark progresses despite failures"
+                  (let [new-watermark (:watermark @indexing-state)]
+                    (is (not= initial-watermark new-watermark))
+                    (is (= -1 (compare (:last-poll initial-watermark) (:last-poll new-watermark))))))
+
+                (testing ":metabase-search/semantic-indexer-stalled"
+                  (is (== 1 (mt/metric-value system :metabase-search/semantic-indexer-stalled)))))
+
+              (testing ":metabase-search/semantic-indexer-poll-to-poll-interval-ms"
+                (is (=? {:sum #(< 0 %)
+                         :count #(== 4 %)
+                         :buckets #(= 10 (count %))}
+                        (mt/metric-value system :metabase-search/semantic-indexer-poll-to-poll-interval-ms)))))))))))
 
 (deftest dlq-integration-with-indexer-loop-test
-  (let [pgvector         semantic.tu/db
+  (let [pgvector         (semantic.env/get-pgvector-datasource!)
         index-metadata   (semantic.tu/unique-index-metadata)
         model            semantic.tu/mock-embedding-model
         index            (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
@@ -713,3 +774,23 @@
 
                     (.interrupt thread)
                     (is (.join thread (Duration/ofSeconds 1)) "dies in a reasonable amount of time")))))))))))
+
+(deftest indexer-loop-metric-test
+  (mt/with-prometheus-system! [_ system]
+    (let [pgvector (semantic.env/get-pgvector-datasource!)
+          index-metadata (semantic.tu/unique-index-metadata)
+          metadata-row {:id                42
+                        :indexer_last_poll (ts "2025-01-01T12:00:00Z")
+                        :indexer_last_seen (ts "2025-01-01T11:30:00Z")}
+          index        {:table-name "foo"}]
+      (testing ":metabase-search/semantic-indexer-loop-ms"
+        (with-redefs [semantic.index-metadata/get-active-index-state
+                      (fn [& _]
+                        {:index index :metadata-row metadata-row})
+
+                      semantic.indexer/indexing-loop
+                      (fn [& _]
+                        (Thread/sleep 200)
+                        nil)]
+          (semantic.indexer/quartz-job-run! pgvector index-metadata)
+          (is (<= 0.2 (mt/metric-value system :metabase-search/semantic-indexer-loop-ms))))))))

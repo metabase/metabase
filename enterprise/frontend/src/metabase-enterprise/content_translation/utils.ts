@@ -4,7 +4,11 @@ import _ from "underscore";
 
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import type { HoveredObject } from "metabase/visualizations/types";
-import type { DictionaryArray, Series } from "metabase-types/api";
+import type {
+  DictionaryArray,
+  MaybeTranslatedSeries,
+  Series,
+} from "metabase-types/api";
 
 import { hasTranslations, useTranslateContent } from "./use-translate-content";
 
@@ -43,8 +47,11 @@ export const translateContentString: TranslateContentStringFunction = (
     return msgid;
   }
 
+  const lowerCaseMsgId = msgid.toLowerCase();
+
   const msgstr = dictionary?.find(
-    (row) => row.locale === locale && row.msgid === msgid,
+    (row) =>
+      row.locale === locale && row.msgid.toLowerCase() === lowerCaseMsgId,
   )?.msgstr;
 
   if (!msgstr || !msgstr.trim()) {
@@ -116,7 +123,7 @@ export const useTranslateFieldValuesInHoveredObject = (
 export const translateFieldValuesInSeries = (
   series: Series,
   tc: ContentTranslationFunction,
-) => {
+): MaybeTranslatedSeries => {
   if (!hasTranslations(tc)) {
     return series;
   }
@@ -124,12 +131,18 @@ export const translateFieldValuesInSeries = (
     if (!singleSeries.data) {
       return singleSeries;
     }
+    const untranslatedRows = singleSeries.data.rows.concat();
+
     const translatedRows = singleSeries.data.rows.map((row) =>
       row.map((value) => tc(value)),
     );
     return {
       ...singleSeries,
-      data: { ...singleSeries.data, rows: translatedRows },
+      data: {
+        ...singleSeries.data,
+        untranslatedRows,
+        rows: translatedRows,
+      },
     };
   });
 };

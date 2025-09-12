@@ -3,28 +3,35 @@ import { t } from "ttag";
 
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
-import { Card } from "metabase/ui";
+import { Card, Flex } from "metabase/ui";
 import {
   useListTransformJobsQuery,
   useListTransformTagsQuery,
 } from "metabase-enterprise/api";
+import { TimezoneIndicator } from "metabase-enterprise/transforms/components/TimezoneIndicator";
+import type { JobListParams } from "metabase-enterprise/transforms/types";
 import type { TransformJob } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
-import { RunStatusInfo } from "../../../components/RunStatusInfo";
 import { TagList } from "../../../components/TagList";
 import { getJobUrl } from "../../../urls";
-import { parseLocalTimestamp } from "../../../utils";
+import { parseTimestampWithTimezone } from "../../../utils";
 
 import S from "./JobList.module.css";
 
-export function JobList() {
+export function JobList({ params }: { params: JobListParams }) {
+  const systemTimezone = useSetting("system-timezone");
   const {
     data: jobs = [],
     isLoading: isLoadingJobs,
     error: jobsError,
-  } = useListTransformJobsQuery();
+  } = useListTransformJobsQuery({
+    last_run_start_time: params.lastRunStartTime,
+    next_run_start_time: params.nextRunStartTime,
+    transform_tag_ids: params.transformTagIds,
+  });
   const {
     data: tags = [],
     isLoading: isLoadingTags,
@@ -49,7 +56,17 @@ export function JobList() {
   return (
     <Card p={0} shadow="none" withBorder>
       <AdminContentTable
-        columnTitles={[t`Job`, t`Last run at`, t`Last run status`, t`Tags`]}
+        columnTitles={[
+          t`Job`,
+          <Flex align="center" gap="xs" key="last-run-at">
+            {t`Last run at`} <TimezoneIndicator />
+          </Flex>,
+          <Flex align="center" gap="xs" key="next-run">
+            {t`Next run`} <TimezoneIndicator />
+          </Flex>,
+          t`Transforms`,
+          t`Tags`,
+        ]}
       >
         {jobs.map((job) => (
           <tr
@@ -60,22 +77,21 @@ export function JobList() {
             <td>{job.name}</td>
             <td className={S.nowrap}>
               {job.last_run?.start_time
-                ? parseLocalTimestamp(job.last_run?.start_time).format("lll")
+                ? parseTimestampWithTimezone(
+                    job.last_run?.start_time,
+                    systemTimezone,
+                  ).format("lll")
                 : null}
             </td>
             <td className={S.nowrap}>
-              {job.last_run != null ? (
-                <RunStatusInfo
-                  status={job.last_run.status}
-                  message={job.last_run.message}
-                  endTime={
-                    job.last_run.end_time != null
-                      ? parseLocalTimestamp(job.last_run.end_time).toDate()
-                      : null
-                  }
-                />
-              ) : null}
+              {job.next_run?.start_time
+                ? parseTimestampWithTimezone(
+                    job.next_run?.start_time,
+                    systemTimezone,
+                  ).format("lll")
+                : null}
             </td>
+            <td className={S.nowrap}></td>
             <td>
               <TagList tags={tags} tagIds={job.tag_ids ?? []} />
             </td>

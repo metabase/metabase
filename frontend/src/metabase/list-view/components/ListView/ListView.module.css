@@ -6,6 +6,7 @@
   height: 100%;
   gap: var(--mantine-spacing-xs);
   padding-top: var(--mantine-spacing-xl);
+  padding-inline: var(--mantine-spacing-sm);
 }
 
 .listContainer {
@@ -88,13 +89,13 @@
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-md);
   max-width: var(--max-width);
-
   background: var(--mb-color-bg-white);
   padding: var(--mantine-spacing-md);
 }
 
 .listEntityIcon {
   color: var(--mb-color-text-light);
+
   &:hover {
     color: var(--mb-color-brand);
   }

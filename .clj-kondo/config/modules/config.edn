@@ -516,6 +516,7 @@
            public-sharing
            queries
            query-processor
+           server
            settings
            tiles
            util}}
@@ -573,7 +574,6 @@
    :api  #{metabase.legacy-mbql.normalize
            metabase.legacy-mbql.predicates
            metabase.legacy-mbql.schema
-           metabase.legacy-mbql.schema.helpers
            metabase.legacy-mbql.util}
    :uses #{lib
            models
@@ -590,8 +590,7 @@
            metabase.lib.field
            metabase.lib.field.resolution
            metabase.lib.filter
-           metabase.lib.filter.desugar
-           metabase.lib.filter.desugar.jvm
+           metabase.lib.filter.desugar.jvm ; only so [[metabase.legacy-mbql.jvm-util]] can use defined regexes
            metabase.lib.init
            metabase.lib.join.util
            metabase.lib.metadata
@@ -717,6 +716,7 @@
            metabase.native-query-snippets.core}
    :uses #{api
            collections
+           lib
            models
            permissions
            premium-features
@@ -1097,6 +1097,7 @@
    :api  #{metabase.server.core
            metabase.server.init
            metabase.server.middleware.session
+           metabase.server.settings
            metabase.server.streaming-response} ; TODO -- too many API namespaces
    :uses #{analytics
            api
@@ -1610,6 +1611,17 @@
            premium-features
            util
            enterprise/harbormaster}}
+
+  enterprise/comments
+  {:team "Workflows"
+   :api  #{metabase-enterprise.comments.api
+           metabase-enterprise.comments.init}
+   :uses #{api
+           events
+           models
+           request
+           users
+           util}}
 
   enterprise/content-translation
   {:team "UX West"

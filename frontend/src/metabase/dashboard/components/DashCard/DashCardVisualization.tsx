@@ -209,7 +209,7 @@ interface DashCardVisualizationProps {
 
 export function DashCardVisualization({
   dashcard,
-  series: untranslatedRawSeries,
+  series: rawSeries,
   question,
   metadata,
   getHref,
@@ -236,7 +236,6 @@ export function DashCardVisualization({
     cardTitled,
     dashboard,
     dashcardMenu,
-    editingParameter,
     getClickActionMode,
     isEditing = false,
     shouldRenderAsNightMode,
@@ -249,10 +248,6 @@ export function DashCardVisualization({
 
   const inlineParameters = useSelector((state) =>
     getDashCardInlineValuePopulatedParameters(state, dashcard.id),
-  );
-
-  const rawSeries = PLUGIN_CONTENT_TRANSLATION.useTranslateSeries(
-    untranslatedRawSeries,
   );
 
   const visualizerErrMsg = useMemo(() => {
@@ -275,7 +270,7 @@ export function DashCardVisualization({
     }
   }, [dashcard, rawSeries]);
 
-  const series = useMemo(() => {
+  const untranslatedSeries = useMemo(() => {
     if (
       !dashcard ||
       !rawSeries ||
@@ -326,8 +321,9 @@ export function DashCardVisualization({
     ) as Card;
 
     if (!didEveryDatasetLoad) {
-      return [{ card }];
+      return [{ card }] as RawSeries;
     }
+
     const series: RawSeries = [
       {
         card: extendCardWithDashcardSettings(
@@ -371,6 +367,9 @@ export function DashCardVisualization({
 
     return series;
   }, [rawSeries, dashcard, datasets]);
+
+  const series =
+    PLUGIN_CONTENT_TRANSLATION.useTranslateSeries(untranslatedSeries);
 
   const handleOnUpdateVisualizationSettings = useCallback(
     (settings: VisualizationSettings) => {
@@ -514,17 +513,13 @@ export function DashCardVisualization({
       return null;
     }
 
-    const effectiveParameters = editingParameter
-      ? inlineParameters.filter((param) => param.id === editingParameter.id)
-      : inlineParameters;
-
     return (
       <Group>
-        {effectiveParameters.length > 0 && (
+        {inlineParameters.length > 0 && (
           <CollapsibleDashboardParameterList
             className={S.InlineParametersList}
             triggerClassName={S.InlineParametersMenuTrigger}
-            parameters={effectiveParameters}
+            parameters={inlineParameters}
             isCollapsed={shouldCollapseList}
             isSortable={false}
             widgetsPopoverPosition="bottom-end"
@@ -551,7 +546,6 @@ export function DashCardVisualization({
     dashcard,
     dashcardMenu,
     isEditing,
-    editingParameter,
     inlineParameters,
     onChangeCardAndRun,
     onEditVisualization,

@@ -8,6 +8,7 @@ import { Group, Icon, Text, Textarea, Transition } from "metabase/ui";
 import type { DatabaseData } from "metabase-types/api";
 import { isEngineKey } from "metabase-types/guards";
 
+import type { FormLocation } from "../../types";
 import { setDatabaseFormValues } from "../../utils/schema";
 
 import {
@@ -31,7 +32,7 @@ export function DatabaseConnectionStringField({
     shouldValidate?: boolean,
   ) => Promise<void | FormikErrors<DatabaseData>>;
   engineKey: string | undefined;
-  location: "admin" | "setup" | "embedding_setup";
+  location: FormLocation;
 }) {
   const [status, setStatus] = useState<"success" | "failure" | null>(null);
   const { start: delayedClearStatus, clear: clearTimeout } = useTimeout(
@@ -147,7 +148,7 @@ function ConnectionStringDescription({
       exitDelay={0}
     >
       {(styles) => (
-        <Group style={styles} top={0} pos="absolute" h="lg">
+        <Group style={styles} top={0} pos="absolute" h="lg" component="span">
           {t`You can use a connection string to pre-fill the details below.`}
         </Group>
       )}
@@ -169,8 +170,9 @@ function ConnectionStringDescription({
           c="danger"
           fw="bold"
           fz="sm"
+          component="span"
         >
-          <Group gap="xs">
+          <Group gap="xs" component="span">
             <Icon name="warning_round_filled" c="var(--mb-color-danger)" />
             {t`Couldn’t use this connection string.`}
           </Group>
@@ -194,8 +196,9 @@ function ConnectionStringDescription({
           c="success"
           fw="bold"
           fz="sm"
+          component="span"
         >
-          <Group gap="xs">
+          <Group gap="xs" component="span">
             <Icon
               name="check_filled"
               style={{ color: "var(--mb-color-success)" }}
@@ -207,7 +210,7 @@ function ConnectionStringDescription({
     </Transition>
   );
   return (
-    <Group h="lg" pos="relative">
+    <Group h="lg" pos="relative" component="span">
       {failureMessage}
       {defaultDescription}
       {successMessage}

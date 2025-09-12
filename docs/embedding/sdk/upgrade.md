@@ -7,13 +7,13 @@ summary: How to upgrade your Metabase and Embedded analytics SDK versions, test 
 
 Here's a basic overview of the steps you'll want to take when upgrading your SDK.
 
-## 1. Read the release post and changelog for both Metabase and the Embedded analytics SDK
+## 1. Read the release post and changelog for Metabase and the Embedded analytics SDK
 
 - [Release posts](https://www.metabase.com/releases) give a good overview of what's in each release, and call out breaking changes (which are rare).
-- [Metabase changelogs](https://www.metabase.com/changelog) list Metabase changes.
-- [Embedded analytics SDK changelogs](https://www.metabase.com/changelog/55) list changes specific to the SDK package.
+- [Metabase + Embedding analytics SDK changelogs](https://www.metabase.com/changelog) list Metabase and Embedding analytics SDK changes.
+- [Embedded analytics SDK package changelog](https://github.com/metabase/metabase/blob/release-x.56.x/enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md) list changes specific to the SDK lightweight `@metabase/embedding-sdk-react` package.
 
-Check for any relevant changes, especially breaking changes that require you to update your application's code. If there are breaking changes, we'll have docs that'll walk you through what changes you'll need to make and why.
+Check for any relevant changes, especially deprecations or breaking changes that require you to update your application's code. If there are deprecation changes, we'll have docs that'll walk you through what changes you'll need to make and why.
 
 ## 2. Test the upgrade
 
@@ -25,11 +25,11 @@ You can do this locally or in a dev instance. If your testing setup involves a l
 
 See [upgrading Metabase](../../installation-and-operation/upgrading-metabase.md).
 
-### Upgrade the SDK with npm or yarn
+### Upgrade the SDK with npm or Yarn
 
 You'll want to test the changes locally first, as there may be breaking changes that require you to upgrade your application code.
 
-Check out a new branch in your application and install the next stable version, either with npm or yarn:
+Check out a new branch in your application and install the next stable version, either with npm or Yarn:
 
 Via npm:
 
@@ -37,13 +37,13 @@ Via npm:
 npm install @metabase/embedding-sdk-react@{next-major-version-number}-stable
 ```
 
-For example, if you were upgrading to version 55 of the SDK:
+For example, if you were upgrading to version 56 of the SDK:
 
 ```bash
-npm install @metabase/embedding-sdk-react@55-stable
+npm install @metabase/embedding-sdk-react@56-stable
 ```
 
-If you're using yarn:
+If you're using Yarn:
 
 ```bash
 yarn add @metabase/embedding-sdk-react@{next-major-version-number}-stable
@@ -51,11 +51,14 @@ yarn add @metabase/embedding-sdk-react@{next-major-version-number}-stable
 
 See more on [SDK versions](./version.md).
 
-### If there are breaking changes, make the necessary changes to your application code
+### If there are deprecations or breaking changes changes, make the necessary changes to your application code
 
-Breaking changes are rare, but if you do need to make changes, we'll mention it in the release notes for the new major version and have docs that walk you through the changes.
+Deprecations or breaking changes are rare, but if you do need to make changes, we'll mention it in the release notes for the new major version and have docs that walk you through the changes.
 
 Update or add tests for any application code changes that you make.
+
+In most cases, a deprecated change becomes a breaking change in the release following its deprecation.
+For example, if we plan to remove a prop from an SDK React component, we first mark it as **deprecated**, and then remove it in the next release.
 
 ### Deploy to your staging environment
 
@@ -68,6 +71,12 @@ If all goes well with your local tests, deploy to your staging environment. Chec
 If everything is working in staging, you're ready to deploy to production.
 
 Be sure to deploy your application changes and upgrade your Metabase in parallel so that the SDK version and the Metabase version stay in sync.
+
+### Caching may delay the upgrade by up to a minute
+
+This is intentional. After upgrading, Metabase may still serve the previous, cached version of the SDK Bundle for up to 60 seconds (`Cache-Control: public, max-age=60`). This short cache window helps ensure fast performance while still allowing updates to propagate quickly.
+
+If you don’t see your changes immediately, clear your browser's cache or just wait a minute. After that, the SDK Package will load the newly deployed SDK Bundle.
 
 ### If your instance is pinned on Metabase Cloud, you'll need to request an upgrade
 

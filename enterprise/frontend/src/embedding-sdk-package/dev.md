@@ -1,4 +1,4 @@
-# Docs for development on the sdk
+# Docs for development on the sdk package
 
 These docs are for building the sdk locally, if you just want to use the sdk, please refer to the [sdk documentation](https://www.metabase.com/docs/latest/embedding/sdk/introduction).
 
@@ -84,7 +84,7 @@ TEST_SUITE=metabase-nodejs-react-sdk-embedding-sample-e2e OPEN_UI=false EMBEDDIN
 ```
 
 ##### :warning: Obtaining the Shoppy's Metabase App DB Dump locally
-For the Shoppy's Sample App Tests (`TEST_SUITE=shoppy-e2e`) locally, a proper App DB dump of the Shoppy's Metabase Instance must be placed to the `./e2e/tmp/db_dumps/shoppy_metabase_app_db_dump.sql`
+For the Shoppy's Sample App Tests (`TEST_SUITE=shoppy-e2e`) locally, a proper App DB dump of the Shoppy's Metabase instance must be placed to the `./e2e/tmp/db_dumps/shoppy_metabase_app_db_dump.sql`
 
 You can get it by:
 - Enabling the `Tailscale` and logging in using your work email address.
