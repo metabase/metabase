@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import ActionButton from "metabase/common/components/ActionButton";
+import { ActionButton } from "metabase/common/components/ActionButton";
 import Button from "metabase/common/components/Button";
 import EditBar from "metabase/common/components/EditBar";
 import ButtonsS from "metabase/css/components/buttons.module.css";

@@ -12,7 +12,7 @@ import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { useListModelIndexesQuery } from "metabase/api";
-import ActionButton from "metabase/common/components/ActionButton";
+import { ActionButton } from "metabase/common/components/ActionButton";
 import Button from "metabase/common/components/Button";
 import DebouncedFrame from "metabase/common/components/DebouncedFrame";
 import EditBar from "metabase/common/components/EditBar";

@@ -9,7 +9,7 @@ import {
   useSendUnsavedNotificationMutation,
   useUpdateNotificationMutation,
 } from "metabase/api";
-import ActionButton from "metabase/common/components/ActionButton";
+import { ActionButton } from "metabase/common/components/ActionButton";
 import CS from "metabase/css/core/index.css";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import {

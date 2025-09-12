@@ -8,7 +8,8 @@ import {
   useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
 import { getErrorMessage, useAdminSetting } from "metabase/api/utils";
-import ActionButton, {
+import {
+  ActionButton,
   type ActionButtonHandle,
 } from "metabase/common/components/ActionButton";
 import Alert from "metabase/common/components/Alert";
@@ -236,7 +237,7 @@ export function UploadSettingsFormView({
               disabled={!hasValidSettings}
               failedText={t`Failed to save upload settings`}
               actionFn={handleEnableUploads}
-              primary
+              color="brand"
               useLoadingSpinner
               type="submit"
             />
@@ -250,7 +251,7 @@ export function UploadSettingsFormView({
               failedText={t`Failed to disable uploads`}
               actionFn={handleDisableUploads}
               type="button"
-              danger
+              color="danger"
               useLoadingSpinner
             />
           )
@@ -263,7 +264,7 @@ export function UploadSettingsFormView({
             }
             failedText={t`Failed to enable uploads`}
             actionFn={handleEnableUploads}
-            primary={!!hasValidSettings}
+            color={"brand"}
             disabled={!hasValidSettings || !hasValidDatabases}
             useLoadingSpinner
             type="submit"
