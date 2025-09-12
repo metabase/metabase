@@ -163,7 +163,7 @@
                                                                              "?date=Q1-2014")))))))
           (testing "an empty value should apply if provided as nil in the query params"
             (is (= [[1000]]
-                   (mt/rows (mt/user-http-request :crowberto :get 202 (str (card-query-url card {:_embedding_params {:date "enabled"}}))
+                   (mt/rows (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:date "enabled"}})
                                                   :parameters (json/encode {:date nil}))))))
           (testing "an empty value should apply if provided as nil in the JWT params"
             (is (= [[1000]]

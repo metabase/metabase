@@ -1,7 +1,6 @@
 (ns metabase.embedding.api.common
   (:require
    [clojure.set :as set]
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.eid-translation.core :as eid-translation]

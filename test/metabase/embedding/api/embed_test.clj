@@ -507,7 +507,7 @@
                      (mt/rows (client/client :get 202 (str (card-query-url card "") "?date=Q1-2014")))))))
           (testing "an empty value should apply if provided as nil in the query params"
             (is (= [[1000]]
-                   (mt/rows (client/client :get 202 (str (card-query-url card ""))
+                   (mt/rows (client/client :get 202 (card-query-url card "")
                                            :parameters (json/encode {:date nil}))))))
           (testing "an empty value should apply if provided as nil in the JWT params"
             (is (= [[1000]]
@@ -535,6 +535,32 @@
                     :error      "An error occurred while running the query."
                     :error_type "qp"}
                    (client/client :get 202 (card-query-url card "" {:params {:date ""}}))))))))))
+
+(defn card-with-empty-string-filter
+  []
+  {:dataset_query
+   {:database (mt/id)
+    :type     :native
+    :native   {:query         "SELECT CASE WHEN {{filter}} = '' THEN 10 ELSE 20 END"
+               :template-tags {:filter {:name         "filter"
+                                        :display-name "Filter"
+                                        :id           "_filter_"
+                                        :type         "text"}}}}
+   :enable_embedding true
+   :embedding_params {:filter :enabled}})
+
+(deftest empty-string-value-card-query-test
+  (testing "GET /api/embed/card/:token/query"
+    (with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Card card (card-with-empty-string-filter)]
+        (testing "an empty string value should be passed to the query"
+          (is (= [[10]]
+                 (mt/rows (client/client :get 202 (card-query-url card "")
+                                         :parameters (json/encode {:filter ""}))))))
+        (testing "a non-empty string value should be distinguished from an empty string"
+          (is (= [[20]]
+                 (mt/rows (client/client :get 202 (card-query-url card "")
+                                         :parameters (json/encode {:filter "A"}))))))))))
 
 (defn- card-with-date-field-filter []
   {:dataset_query    {:database (mt/id)
