@@ -11,9 +11,20 @@ import {
   TableColumn,
 } from "metabase/common/components/ItemsTable/BaseItemsTable.styled";
 import CS from "metabase/css/core/index.css";
-import { Box, Button, Center, Group, Icon, Stack, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Center,
+  Group,
+  Icon,
+  Stack,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 
 import { GlossaryEditDefinitionModal } from "./GlossarEditDefinitionModal";
+import S from "./Glossary.module.css";
 import { GlossaryNewDefinitionModal } from "./GlossaryNewDefinitionModal";
 import {
   type GlossaryDefinition,
@@ -68,7 +79,7 @@ export function Glossary() {
           <TBody>
             {mockedGlossary.length === 0 && <EmptyGlossary />}
             {mockedGlossary.map((term, index) => (
-              <tr key={index}>
+              <tr className={S.row} key={index}>
                 <Box component="td" valign="top">
                   <Text lh="1.2" fw="bold">
                     {term.term}
@@ -82,20 +93,29 @@ export function Glossary() {
                 >
                   <Text lh="1.2">{term.definition}</Text>
                 </Box>
-                <Box component="td" valign="top" px="0" align="center">
-                  <Icon
-                    name="pencil"
-                    c="text-light"
-                    cursor="pointer"
-                    mt={-2} // prevent the row of 1-line definitions from growing
-                    onClick={() =>
-                      setEditingDefinition({
-                        id: term.id,
-                        term: term.term,
-                        definition: term.definition,
-                      })
-                    }
-                  />
+                <Box
+                  component="td"
+                  valign="top"
+                  align="center"
+                  px="md"
+                  pt="sm"
+                  pb={0}
+                >
+                  <Tooltip label={t`Edit`}>
+                    <ActionIcon
+                      c="text-light"
+                      className={S.action}
+                      onClick={() =>
+                        setEditingDefinition({
+                          id: term.id,
+                          term: term.term,
+                          definition: term.definition,
+                        })
+                      }
+                    >
+                      <Icon name="pencil" />
+                    </ActionIcon>
+                  </Tooltip>
                 </Box>
               </tr>
             ))}

@@ -1,0 +1,11 @@
+.row {
+  &:hover {
+    .action {
+      display: block;
+    }
+  }
+}
+
+.action {
+  display: none;
+}
