@@ -1,12 +1,9 @@
-import type { UnknownAction } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
-import { useDispatch } from "metabase/lib/redux";
 import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import {
   ActionIcon,
@@ -22,7 +19,6 @@ import {
 } from "metabase/ui";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 import { MetabotResetLongChatButton } from "metabase-enterprise/metabot/components/MetabotChat/MetabotResetLongChatButton";
-import type { SuggestedTransform } from "metabase-types/api";
 
 import { useMetabotAgent, useMetabotChatHandlers } from "../../hooks";
 
@@ -30,27 +26,6 @@ import Styles from "./MetabotChat.module.css";
 import { Messages } from "./MetabotChatMessage";
 import { MetabotThinking } from "./MetabotThinking";
 import { useScrollManager } from "./hooks";
-
-export const ApplySuggestedTransform = ({
-  suggestedTransform,
-}: {
-  suggestedTransform: SuggestedTransform;
-}) => {
-  const dispatch = useDispatch();
-  return (
-    <Box>
-      <Button
-        type="button"
-        onClick={() => {
-          const url = suggestedTransform.id
-            ? `/admin/transforms/${suggestedTransform.id}/query`
-            : `/admin/transforms/new/native`;
-          dispatch(push(url) as UnknownAction);
-        }}
-      >{t`Apply Changes To: ${suggestedTransform.name}`}</Button>
-    </Box>
-  );
-};
 
 export const MetabotChat = () => {
   const metabot = useMetabotAgent();
@@ -180,11 +155,6 @@ export const MetabotChat = () => {
                   }
                 />
               )}
-              {metabot.reactions.suggestedTransform ? (
-                <ApplySuggestedTransform
-                  suggestedTransform={metabot.reactions.suggestedTransform}
-                />
-              ) : null}
               {/* filler - height gets set via ref mutation */}
               <div ref={fillerRef} data-testid="metabot-message-filler" />
               {/* long convo warning */}

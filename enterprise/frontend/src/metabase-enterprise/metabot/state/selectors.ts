@@ -11,6 +11,7 @@ import {
   METABOT_REQUEST_IDS,
 } from "../constants";
 
+import type { MetabotUserTextChatMessage } from "./reducer";
 import type { MetabotStoreState } from "./types";
 
 export const getMetabot = (state: MetabotStoreState) => {
@@ -46,7 +47,7 @@ export const getAgentErrorMessages = createSelector(
 // that exact message will be returned.
 export const getUserPromptForMessageId = createSelector(
   [getMessages, (_, messageId: string) => messageId],
-  (messages, messageId) => {
+  (messages, messageId): MetabotUserTextChatMessage | undefined => {
     const messageIndex = messages.findLastIndex((m) => m.id === messageId);
     const message = messages[messageIndex];
     if (!message) {
@@ -56,20 +57,13 @@ export const getUserPromptForMessageId = createSelector(
     if (message.role === "user") {
       return message;
     } else {
-      return messages.slice(0, messageIndex).findLast((m) => m.role === "user");
+      // TODO: avoid type cast
+      return messages
+        .slice(0, messageIndex)
+        .findLast((m) => m.role === "user") as
+        | MetabotUserTextChatMessage
+        | undefined;
     }
-  },
-);
-
-export const getLastAgentMessagesByType = createSelector(
-  [getMessages, getAgentErrorMessages],
-  (messages, errorMessages) => {
-    if (errorMessages.length > 0) {
-      return errorMessages.map(({ message }) => message);
-    }
-
-    const start = messages.findLastIndex((msg) => msg.role !== "agent") + 1;
-    return messages.slice(start).map(({ message }) => message);
   },
 );
 
@@ -102,7 +96,7 @@ export const getIsLongMetabotConversation = createSelector(
   getMessages,
   (messages) => {
     const totalMessageLength = messages.reduce((sum, msg) => {
-      return sum + msg.message.length;
+      return sum + (msg.type === "text" ? msg.message.length : 0);
     }, 0);
     return totalMessageLength >= LONG_CONVO_MSG_LENGTH_THRESHOLD;
   },

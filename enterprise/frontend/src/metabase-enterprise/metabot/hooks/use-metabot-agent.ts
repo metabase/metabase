@@ -9,7 +9,6 @@ import {
   getAgentErrorMessages,
   getIsLongMetabotConversation,
   getIsProcessing,
-  getLastAgentMessagesByType,
   getMessages,
   getMetabotId,
   getMetabotReactionsState,
@@ -36,9 +35,6 @@ export const useMetabotAgent = () => {
   const messages = useSelector(getMessages as any) as ReturnType<
     typeof getMessages
   >;
-  const lastAgentMessages = useSelector(
-    getLastAgentMessagesByType as any,
-  ) as ReturnType<typeof getLastAgentMessagesByType>;
 
   const errorMessages = useSelector(getAgentErrorMessages as any) as ReturnType<
     typeof getAgentErrorMessages
@@ -159,7 +155,6 @@ export const useMetabotAgent = () => {
     metabotId,
     visible,
     messages,
-    lastAgentMessages,
     errorMessages,
     isLongConversation,
     resetConversation,
