@@ -37,6 +37,7 @@ export function GlossaryNewDefinitionModal({
       <form onSubmit={handleSubmit}>
         <Stack gap="xl" mt="md">
           <TextInput
+            autoFocus
             label={t`Term`}
             placeholder={t`Data science`}
             required
