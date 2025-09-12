@@ -64,13 +64,13 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
 
   const tabs = useMemo(() => {
     return [
+      { name: t`Database`, value: "db", isVisible: true, iconName: "database" },
       {
         name: t`CSV`,
         value: "csv",
         isVisible: shouldShowUploadsPanel,
         iconName: "table2",
       },
-      { name: t`Database`, value: "db", isVisible: true, iconName: "database" },
       {
         name: t`Google Sheets`,
         value: "gsheets",

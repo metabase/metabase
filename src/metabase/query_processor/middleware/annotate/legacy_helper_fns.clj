@@ -23,6 +23,8 @@
                    [:fn
                     {:error/message "Should be a legacy MBQL inner query"}
                     (some-fn :query :source-table :source-query)]]]
+  ;; existing usage -- don't use going forward
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (qp.store/cached [:mlv2-query (hash inner-query)]
     (try
       (lib/query-from-legacy-inner-query

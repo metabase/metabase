@@ -144,6 +144,7 @@
 
 (defn query->source-card-id
   "Return the ID of the Card used as the \"source\" query of this query, if applicable; otherwise return `nil`."
+  {:deprecated "0.57.0"}
   ^Integer [outer-query]
   (let [source-table (get-in outer-query [:query :source-table])]
     (when (string? source-table)
@@ -156,15 +157,18 @@
   "A standard and repeatable way to address a column. Names can collide and sometimes are not unique. Field refs should
   be stable, except we have to exclude the last part as extra information can be tucked in there. Names can be
   non-unique at times, numeric ids are not guaranteed."
+  {:deprecated "0.57.0"}
   [[tyype identifier]]
   [tyype identifier])
 
-(def ^:private field-options-for-identification
+(def ^:private ^{:deprecated "0.57.0"} field-options-for-identification
   "Set of FieldOptions that only mattered for identification purposes." ;; base-type is required for field that use name instead of id
   #{:source-field :join-alias})
 
 (defn- field-normalizer
+  {:deprecated "0.57.0"}
   [field]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (let [[type id-or-name options] (mbql.normalize/normalize-tokens field)]
     [type id-or-name (select-keys options field-options-for-identification)]))
 
@@ -174,6 +178,13 @@
   matched field."
   [field-ref cols]
   (let [[_tag id-or-name _options :as field-ref] (field-normalizer field-ref)]
+  matched field.
+
+  DEPRECATED -- this is broken, please use Lib instead going forward."
+  {:deprecated "0.57.0"}
+  [field-ref cols]
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (let [[_ttype id-or-name options :as field-ref] (field-normalizer field-ref)]
     (or
      ;; try match field_ref first
      (first (filter (fn [field-info]
@@ -188,7 +199,7 @@
                          id-or-name))
                     cols)))))
 
-(def ^:private preserved-keys
+(def ^:private ^{:deprecated "0.57.0"} preserved-keys
   "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging
   metadata, the types returned should be authoritative. But things like semantic_type, display_name, and description
   can be merged on top."
@@ -203,7 +214,9 @@
   metadata in general, so need to blend the saved metadata on top of the computed metadata. First argument should be
   the metadata from a run from the query, and `pre-existing` should be the metadata from the database we wish to
   ensure survives."
+  {:deprecated "0.57.0"}
   [fresh pre-existing]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (let [by-name (m/index-by :name pre-existing)]
     (for [{:keys [source] :as col} fresh]
       (if-let [existing (and (not= :aggregation source)

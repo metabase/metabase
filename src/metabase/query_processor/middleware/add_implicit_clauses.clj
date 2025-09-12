@@ -4,10 +4,13 @@
    [clojure.walk :as walk]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.annotate.legacy-helper-fns :as annotate.legacy-helper-fns]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -112,6 +115,9 @@
              (empty? source-metadata)
              (qp.store/initialized?))
     ;; by 'caching' this result, this log message will only be shown once for a given QP run.
+    ;;
+    ;; deprecated usage
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (qp.store/cached [::should-add-implicit-fields-warning]
       (log/warn (str "Warning: cannot determine fields for an explicit `source-query` unless you also include"
                      " `source-metadata`.\n"
@@ -124,24 +130,37 @@
 (mu/defn- add-implicit-fields
   "For MBQL queries with no aggregation, add a `:fields` key containing all Fields in the source Table as well as any
   expressions definied in the query."
-  [{source-table-id :source-table, :keys [expressions source-metadata], :as inner-query}]
-  (if-not (should-add-implicit-fields? inner-query)
-    inner-query
-    (let [fields      (if source-table-id
-                        (sorted-implicit-fields-for-table source-table-id)
-                        (source-metadata->fields source-metadata))
-          ;; generate a new expression ref clause for each expression defined in the query.
-          expressions (for [[expression-name] expressions]
-                        ;; TODO - we need to wrap this in `u/qualified-name` because `:expressions` uses
-                        ;; keywords as keys. We can remove this call once we fix that.
-                        [:expression (u/qualified-name expression-name)])]
-      ;; if the Table has no Fields, throw an Exception, because there is no way for us to proceed
-      (when-not (seq fields)
-        (throw (ex-info (tru "Table ''{0}'' has no Fields associated with it."
-                             (:name (lib.metadata/table (qp.store/metadata-provider) source-table-id)))
-                        {:type qp.error-type/invalid-query})))
-      ;; add the fields & expressions under the `:fields` clause
-      (assoc inner-query :fields (vec (concat fields expressions))))))
+  [{source-table-id :source-table, :keys [expressions], :as inner-query}]
+  ;; calculate metadata if needed for MBQL source queries.
+  (let [inner-query (or (when (and (:source-query inner-query)
+                                   (not (:source-metadata inner-query))
+                                   (not (:native (:source-query inner-query))))
+                          (when-let [cols (->> (annotate.legacy-helper-fns/legacy-inner-query->mlv2-query (:source-query inner-query))
+                                               lib.metadata.result-metadata/returned-columns
+                                               (mapv lib/lib-metadata-column->legacy-metadata-column)
+                                               not-empty)]
+                            (log/infof "Calculated result metadata for source query: %s" (pr-str (mapv :lib/desired-column-alias cols)))
+                            (assoc inner-query :source-metadata cols)))
+                        inner-query)]
+    (if-not (should-add-implicit-fields? inner-query)
+      inner-query
+      (let [fields      (if source-table-id
+                          (or (not-empty (sorted-implicit-fields-for-table source-table-id))
+                              ;; if the Table has no Fields, throw an Exception, because there is no way for us to
+                              ;; proceed
+                              (throw (ex-info (tru "Table ''{0}'' has no Fields associated with it."
+                                                   (:name (lib.metadata/table (qp.store/metadata-provider) source-table-id)))
+                                              {:type qp.error-type/invalid-query})))
+                          (or (not-empty (source-metadata->fields (:source-metadata inner-query)))
+                              (throw (ex-info "source-metadata->fields unexpectedly returned zero fields"
+                                              {:inner-query inner-query, :type qp.error-type/qp}))))
+            ;; generate a new expression ref clause for each expression defined in the query.
+            expressions (for [[expression-name] expressions]
+                          ;; TODO - we need to wrap this in `u/qualified-name` because `:expressions` uses
+                          ;; keywords as keys. We can remove this call once we fix that.
+                          [:expression (u/qualified-name expression-name)])]
+        ;; add the fields & expressions under the `:fields` clause
+        (assoc inner-query :fields (vec (concat fields expressions)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Add Implicit Breakout Order Bys                                         |
@@ -219,10 +238,10 @@
 
 ;;; TODO (Cam 7/25/25) -- once this is converted to use Lib we can
 ;;; remove [[metabase.query-processor.middleware.ensure-joins-use-source-query/ensure-joins-use-source-query]]
-(defn add-implicit-clauses
+(mu/defn add-implicit-clauses :- ::mbql.s/Query
   "Add an implicit `fields` clause to queries with no `:aggregation`, `breakout`, or explicit `:fields` clauses.
    Add implicit `:order-by` clauses for fields specified in a `:breakout`."
-  [{query-type :type, :as query}]
+  [{query-type :type, :as query} :- ::mbql.s/Query]
   (if (= query-type :native)
     query
     (update query :query add-implicit-mbql-clauses)))

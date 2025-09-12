@@ -132,6 +132,12 @@
             {:name (u.random/random-name)
              :channel_type "channel/metabase-test"}))
 
+   :model/Comment
+   (fn [_] (default-timestamped
+            {:target_type "document"
+             :creator_id  (rasta-id)
+             :content     {:text (u.random/random-name)}}))
+
    :model/Dashboard
    (fn [_] (default-timestamped
             {:creator_id (rasta-id)
@@ -167,6 +173,21 @@
    (fn [_] (default-timestamped
             {:name (u.random/random-name)
              :type "internal"}))
+
+   :model/Document
+   (fn [_] (default-timestamped
+            {:name (u.random/random-name)
+             :document {:type "doc"
+                        :content [{:attrs {:_id (str (random-uuid))}
+                                   :type "paragraph"
+                                   :content [{:type "text"
+                                              :text "Hello"}]}
+                                  {:attrs {:_id (str (random-uuid))}
+                                   :type "paragraph"
+                                   :content [{:type "text"
+                                              :text "World"}]}]}
+             :content_type "application/json+vnd.prose-mirror"
+             :creator_id (rasta-id)}))
 
    :model/Field
    (fn [_] (default-timestamped
@@ -247,19 +268,6 @@
              :details {}
              :schedule_type :daily
              :schedule_hour 15}))
-
-   :model/Document
-   (fn [_] (default-timestamped
-            {:name (u.random/random-name)
-             :document {:type "doc"
-                        :content [{:type "paragraph"
-                                   :content [{:type "text"
-                                              :text "Hello"}]}
-                                  {:type "paragraph"
-                                   :content [{:type "text"
-                                              :text "World"}]}]}
-             :content_type "application/json+vnd.prose-mirror"
-             :creator_id (rasta-id)}))
 
    :model/Revision
    (fn [_] {:user_id (rasta-id)

@@ -69,7 +69,7 @@
 
 (deftest stale-index-cleanup-test
   (mt/with-premium-features #{:semantic-search}
-    (let [pgvector semantic.tu/db
+    (let [pgvector (semantic.env/get-pgvector-datasource!)
           index-metadata (semantic.tu/unique-index-metadata)
           retention-hours 24
           old-time (t/minus (t/offset-date-time) (t/hours (inc retention-hours)))
@@ -133,7 +133,7 @@
 
 (deftest tombstone-cleanup-test
   (mt/with-premium-features #{:semantic-search}
-    (let [pgvector semantic.tu/db
+    (let [pgvector (semantic.env/get-pgvector-datasource!)
           index-metadata (semantic.tu/unique-index-metadata)
           retention-hours (semantic.settings/tombstone-retention-hours)
           old-time (t/minus (t/offset-date-time) (t/hours (inc retention-hours)))
@@ -228,7 +228,7 @@
 
 (deftest repair-table-cleanup-test
   (mt/with-premium-features #{:semantic-search}
-    (let [pgvector semantic.tu/db
+    (let [pgvector (semantic.env/get-pgvector-datasource!)
           retention-hours 2
           old-time (t/minus (t/instant) (t/hours (inc retention-hours))) ; 3 hours ago
           recent-time (t/minus (t/instant) (t/hours 1))]                 ; 1 hour ago
