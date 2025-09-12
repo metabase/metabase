@@ -22,6 +22,7 @@ const {
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
+const DOCS_PATH = __dirname + "/docs";
 const FRONTEND_BUILD_CONFIGS_PATH = __dirname + "/frontend/build";
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
@@ -178,6 +179,10 @@ const config = {
         use: ["source-map-loader"],
       },
       {
+        test: /\.md/,
+        type: "asset/source",
+      },
+      {
         test: /\.svg/,
         type: "asset/source",
         resourceQuery: /source/, // *.svg?source
@@ -212,6 +217,7 @@ const config = {
       "build-configs": FRONTEND_BUILD_CONFIGS_PATH,
       assets: ASSETS_PATH,
       fonts: FONTS_PATH,
+      docs: DOCS_PATH,
       metabase: SRC_PATH,
       "metabase-lib": LIB_SRC_PATH,
       "metabase-enterprise": ENTERPRISE_SRC_PATH,
