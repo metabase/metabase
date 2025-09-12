@@ -3,6 +3,8 @@
    [metabase-enterprise.library.settings :as settings]
    [metabase-enterprise.library.source :as source]
    [metabase-enterprise.library.source.git :as git]
+   [metabase.collections.core :as collections]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [potemkin :as p]))
@@ -29,3 +31,10 @@
                                  ;(settings/git-sync-export-branch)
                                  ))
     (log/infof "Library source configured as %s" <>)))
+
+(defenterprise library-editable?
+  "Should the library be editable. Always false on OSS"
+  :feature :none
+  [collection]
+  (or (not (collections/library-collection? collection))
+      (settings/git-sync-allow-edit)))

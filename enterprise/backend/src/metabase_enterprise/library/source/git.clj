@@ -156,16 +156,6 @@
        (map #(str/replace-first (.getName %) "refs/heads/" ""))
        sort))
 
-(defn can-access-branch-in-repository?
-  "Return true if we can access the given branch in the remote git repository, false otherwise."
-  [{:keys [branch] :as git-source}]
-  (try
-    (boolean (get (set (branches git-source)) branch))
-
-    (catch InvalidRemoteException _ false)
-    (catch TransportException _ false)
-    (catch GitAPIException _ false)))
-
 (defrecord GitSource [git remote-url token]
   source.p/LibrarySource
   (branches [source] (branches source))

@@ -6,7 +6,6 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase-enterprise.library.settings :as library.settings]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common
     :as api
@@ -16,6 +15,7 @@
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.config.core :as config :refer [*request-id*]]
    [metabase.events.core :as events]
+   [metabase.library.core :as library]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
@@ -156,8 +156,7 @@
 (defmethod mi/can-write? :model/Collection
   ([instance]
    (and (not (default-audit-collection? instance))
-        (not (and (library-collection? instance)
-                  (not (library.settings/git-sync-allow-edit))))
+        (library/library-editable? instance)
         (mi/current-user-has-full-permissions? :write instance)))
   ([_model pk]
    (mi/can-write? (t2/select-one :model/Collection pk))))

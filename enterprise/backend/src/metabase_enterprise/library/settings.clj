@@ -15,12 +15,11 @@
 (defn- set-repo-with-verification!-fn [original-key]
   (fn [new-value]
     (setting/set-value-of-type! :string original-key new-value)
-    (let [source (source/source-from-settings)]
-      (if (git/can-access-branch-in-repository? (assoc source
-                                                       :branch
-                                                       (setting/get :git-sync-import-branch)))
-        (git-sync-configured! true)
-        (git-sync-configured! false)))))
+    (if (source/can-access-branch-in-source? (assoc (source/source-from-settings)
+                                                    :branch
+                                                    (setting/get :git-sync-import-branch)))
+      (git-sync-configured! true)
+      (git-sync-configured! false))))
 
 (defsetting git-sync-import-branch
   (deferred-tru "The git branch to pull from, e.g. `main`")

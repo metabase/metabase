@@ -9,7 +9,9 @@
    [metabase.models.serialization :as serdes]
    [metabase.settings.core :as setting]
    [metabase.util.log :as log]
-   [metabase.util.yaml :as yaml]))
+   [metabase.util.yaml :as yaml])
+  (:import
+   (org.eclipse.jgit.api.errors GitAPIException InvalidRemoteException TransportException)))
 
 (set! *warn-on-reflection* true)
 
@@ -107,3 +109,13 @@
   "Binds the `*source*` var to the source defined by the current git settings"
   [binding & body]
   `(do-with-source (fn ~binding ~@body)))
+
+(defn can-access-branch-in-source?
+  "Return true if we can access the given branch in the remote git repository, false otherwise."
+  [source branch]
+  (try
+    (boolean (get (set (source.p/branches source)) branch))
+
+    (catch InvalidRemoteException _ false)
+    (catch TransportException _ false)
+    (catch GitAPIException _ false)))
