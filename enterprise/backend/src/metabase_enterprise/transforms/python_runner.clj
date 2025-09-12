@@ -412,6 +412,7 @@
         table-name->manifest-url (update-vals table-name->id (comp :url #(get objects [:table % :manifest])))
 
         payload                  {:code                code
+                                  :library             (t2/select-fn->fn :path :source :model/PythonLibrary)
                                   :timeout             30
                                   :request_id          run-id
                                   :output_url          (:url output)

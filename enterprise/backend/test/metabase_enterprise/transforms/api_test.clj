@@ -233,24 +233,6 @@
                                                      :name   table-name}})]
             (mt/user-http-request :crowberto :delete 204 (format "ee/transform/%s/table" (:id resp)))))))))
 
-(defn- test-run
-  [transform-id]
-  (let [resp      (mt/user-http-request :crowberto :post 202 (format "ee/transform/%s/run" transform-id))
-        timeout-s 10 ; 10 seconds is our timeout to finish execution and sync
-        limit     (+ (System/currentTimeMillis) (* timeout-s 1000))]
-    (is (=? {:message "Transform run started"}
-            resp))
-    (loop []
-      (when (> (System/currentTimeMillis) limit)
-        (throw (ex-info (str "Transform run timed out after " timeout-s " seconds") {})))
-      (let [resp   (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" transform-id))
-            status (some-> resp :last_run :status keyword)]
-        (when-not (contains? #{:started :succeeded} status)
-          (throw (ex-info (str "Transform run failed with status " status) {:resp resp})))
-        (when-not (some? (:table resp))
-          (Thread/sleep 100)
-          (recur))))))
-
 (defn- check-query-results
   "Verifies that a transform successfully created a table with expected data.
 
@@ -289,19 +271,6 @@
           (str "Expected " (count ids) " rows with category " category
                " in table " table-name ", but got " actual-count)))))
 
-(defn- wait-for-table
-  "Wait for a table to appear in metadata, with timeout.
-   Copied from execute_test.clj - will consolidate later."
-  [table-name timeout-ms]
-  (let [mp    (mt/metadata-provider)
-        limit (+ (System/currentTimeMillis) timeout-ms)]
-    (loop []
-      (Thread/sleep 200)
-      (when (> (System/currentTimeMillis) limit)
-        (throw (ex-info "table has not been created" {:table-name table-name, :timeout-ms timeout-ms})))
-      (or (m/find-first (comp #{table-name} :name) (lib.metadata/tables mp))
-          (recur)))))
-
 (deftest execute-transform-test
   (testing "transform execution with :transforms/table target"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -321,8 +290,8 @@
                                         :target target1}
                     {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
                                                              original)
-                    _                  (do (test-run transform-id)
-                                           (wait-for-table table1-name 5000))
+                    _                  (do (transforms.tu/test-run transform-id)
+                                           (transforms.tu/wait-for-table table1-name 5000))
                     _                  (is (true? (transforms.util/target-table-exists? original)))
                     _                  (check-query-results table1-name [5 11 16] "Gadget")
                     updated            {:name        "Doohickey Products"
@@ -334,37 +303,11 @@
                         (->
                          (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" transform-id) updated)
                          (update-in [:source :query] mbql.normalize/normalize))))
-                (test-run transform-id)
-                (wait-for-table table2-name 5000)
+                (transforms.tu/test-run transform-id)
+                (transforms.tu/wait-for-table table2-name 5000)
                 (is (true? (transforms.util/target-table-exists? original)))
                 (is (true? (transforms.util/target-table-exists? updated)))
                 (check-query-results table2-name [2 3 4 13] "Doohickey")))))))))
-
-(deftest execute-python-transform-test
-  (testing "transform execution with :transforms/table target"
-    (mt/test-drivers #{:h2 :postgres}
-      (mt/with-premium-features #{:transforms}
-        (mt/dataset transforms-dataset/transforms-test
-          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
-            (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
-                                                                     :schema schema
-                                                                     :name   "target_table"}]
-              (let [original           {:name   "Gadget Products"
-                                        :source {:type  "python"
-                                                 :source-database (mt/id)
-                                                 :source-tables {"transforms_customers" (mt/id :transforms_customers)}
-                                                 :body  (str "import pandas as pd\n"
-                                                             "\n"
-                                                             "def transform():\n"
-                                                             "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")}
-                                        :target  (assoc target :database (mt/id))}
-                    {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
-                                                             original)]
-                (test-run transform-id)
-                (wait-for-table table-name 5000)
-                (is (true? (driver/table-exists? driver/*driver* (mt/db) target)))
-                (is (= [["Alice" 25] ["Bob" 30]]
-                       (transforms.tu/table-rows table-name)))))))))))
 
 (deftest get-runs-filter-by-single-transform-id-test
   (testing "GET /api/ee/transform/run - filter by single transform ID"

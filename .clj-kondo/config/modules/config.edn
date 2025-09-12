@@ -1983,6 +1983,15 @@
            upload
            util}}
 
+  enterprise/python-transform
+  {:team "Transform"
+   :api  #{metabase-enterprise.python-transform.api
+           metabase-enterprise.python-transform.core
+           metabase-enterprise.python-transform.init}
+   :uses #{api
+           models
+           util}}
+
   enterprise/upload-management
   {:team "UX West"
    :api  #{metabase-enterprise.upload-management.api}
