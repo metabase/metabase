@@ -270,6 +270,11 @@
       (log/error e "ERROR REMOVING ENCRYPTION.")
       (system-exit! 1))))
 
+(defn ^:command load-and-check
+  {:doc "Load serialized Metabase instance into memory and check dependencies"}
+  [path]
+  (call-enterprise 'metabase-enterprise.dependencies.cmd/load-and-check path))
+
 ;;; ------------------------------------------------ Validate Commands ----------------------------------------------
 
 (defn- arg-list-count-ok? [arg-list arg-count]
