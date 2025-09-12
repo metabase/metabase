@@ -74,6 +74,7 @@
            :type/DateTimeWithTZ
            :type/DateTime
            :type/Dictionary
+           :type/Array
            :type/JSON
            :type/Date
            :type/Text
@@ -110,22 +111,37 @@
                          cols-meta)
    :table_metadata {:table_id table-id}})
 
-(defn- maybe-fixup-v [col v]
-  ;; clickhouse returns bigdecimals for int64 values
+(defn- maybe-fixup-value [col v]
+  ;; the clickhouse driver returns bigdecimals for int64 values
   (if (and (isa? (:base_type col) :type/Integer)
            (or (instance? BigDecimal v)
                (float? v)))
     (bigint v)
     v))
 
+(defn- preprocess-fields-meta [driver fields-meta]
+  (->> fields-meta
+       ;; we are only interested in the parent objects, so we filter out any nested values
+       (filter #(and (nil? (:parent_id %)) (nil? (:nfc_path %))))
+       (map (fn [meta]
+              (if (= driver :bigquery-cloud-sdk)
+                (case (:database_type meta)
+                  ;; the bigquery driver returns a lossy database-type
+                  ;; so we must translate to a valid one, even if it may be lossy
+                  ("ARRAY" "RECORD") (assoc meta :database_type "JSON" :base_type :type/JSON)
+                  "FLOAT" (assoc meta :database_type "FLOAT64")
+                  meta)
+                meta)))))
+
 (defn- write-table-data-to-file! [id temp-file cancel-chan]
   (let [db-id           (t2/select-one-fn :db_id (t2/table-name :model/Table) :id id)
         driver          (t2/select-one-fn :engine :model/Database db-id)
-        all-fields-meta (t2/select [:model/Field :id :name :base_type :effective_type :semantic_type :database_type :database_position :nfc_path :parent_id]
-                                   :table_id id
-                                   :active true
-                                   {:order-by [[:database_position :asc]]})
-        fields-meta (filter #(and (nil? (:parent_id %)) (nil? (:nfc_path %))) all-fields-meta)
+        fields-meta (->> (t2/select [:model/Field :id :name :base_type :effective_type :semantic_type :database_type :database_position :nfc_path :parent_id]
+                                    :table_id id
+                                    :active true
+                                    {:order-by [[:database_position :asc]]})
+                         (preprocess-fields-meta driver))
+
         query {:source-table id}
         manifest (generate-manifest id fields-meta)]
     (execute-mbql-query driver db-id query
@@ -137,7 +153,8 @@
                                   filtered-indices (mapv (fn [col] [(col-name->index (:name col)) col]) filtered-cols)
                                   filtered-rows (eduction (map (fn [row] (mapv (fn [[idx col]]
                                                                                  (let [v (nth row idx)]
-                                                                                   (maybe-fixup-v col v))) filtered-indices)))
+                                                                                   (maybe-fixup-value col v)))
+                                                                               filtered-indices)))
                                                           reducible-rows)]
                               (write-to-stream! os (mapv :name filtered-cols) filtered-rows))))
                         cancel-chan)

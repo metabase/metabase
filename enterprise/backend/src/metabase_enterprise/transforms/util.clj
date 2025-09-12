@@ -167,16 +167,6 @@
     (str/starts-with? dtype-str "date") :type/Date
     :else :type/Text))
 
-(defn- fixup-database-type [driver database-type]
-  (if (= driver :bigquery-cloud-sdk)
-    ;; the bigquery driver returns a lossy database-type
-    ;; so we must retrieve a valid one
-    (case database-type
-      ("ARRAY" "RECORD") "JSON"
-      "FLOAT" "FLOAT64"
-      database-type)
-    database-type))
-
 (mu/defn create-table-from-schema!
   "Create a table from a table-schema"
   [driver :- :keyword
@@ -184,8 +174,7 @@
    table-schema :- ::table-definition]
   (let [{:keys [columns] table-name :name} table-schema
         column-definitions (into {} (map (fn [{:keys [name type database-type]}]
-                                           (let [database-type (fixup-database-type driver database-type)
-                                                 db-type (if database-type
+                                           (let [db-type (if database-type
                                                            [[:raw database-type]]
                                                            (driver/type->database-type driver type))]
                                              [name db-type])))
