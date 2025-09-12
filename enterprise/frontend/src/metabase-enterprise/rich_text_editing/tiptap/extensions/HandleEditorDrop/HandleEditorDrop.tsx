@@ -80,20 +80,27 @@ export const HandleEditorDrop = Extension.create({
 
                       // Calculate the intended insertion index based on drop position
                       let targetIndex = 0;
-                      const containerStart = resolvedPos.before();
-                      let currentPos = containerStart + 1; // Start after container opening
-
-                      for (let i = 0; i < dropParent.childCount; i++) {
-                        const child = dropParent.child(i);
-                        if (dropPos <= currentPos + child.nodeSize / 2) {
-                          targetIndex = i;
-                          break;
+                      const targetCardEmbedDOM =
+                        e.target instanceof Element
+                          ? e.target.closest(".node-cardEmbed")
+                          : null;
+                      if (targetCardEmbedDOM) {
+                        const pos = view.posAtDOM(targetCardEmbedDOM, 0);
+                        const targetCardEmbed = view.state.doc.nodeAt(pos);
+                        if (targetCardEmbed) {
+                          targetIndex =
+                            dropParent.content.content.indexOf(targetCardEmbed);
                         }
-                        currentPos += child.nodeSize;
-                        targetIndex = i + 1; // If past this child, target is after it
+                        const rect = targetCardEmbedDOM.getBoundingClientRect();
+                        const xPct = (e.clientX - rect.left) / rect.width;
+                        if (xPct >= 0.5) {
+                          targetIndex++;
+                        }
                       }
 
-                      if (targetIndex !== sourceIndex) {
+                      if (targetIndex === sourceIndex) {
+                        return true;
+                      } else {
                         // Create array of all children except the dragged one
                         const allChildren = [];
                         for (let i = 0; i < dropParent.childCount; i++) {
