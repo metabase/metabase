@@ -13,8 +13,8 @@
    [toucan2.tools.transformed :as t2.transformed]))
 
 (def search-models
-  "Set of search model string names."
-  #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "indexed-entity" "metric" "card"})
+  "Set of search model string names. Sorted by order to index based on importance and amount of time to index"
+  ["collection" "dashboard" "segment" "database" "action" "table" "indexed-entity" "metric" "card" "dataset"])
 
 (def ^:private search-model->toucan-model
   (into {}
