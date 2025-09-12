@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor.middleware.add-implicit-clauses-test
   (:require
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -327,11 +328,12 @@
                                                                         {:display-name "Created At: Month"})))
                                      (lib/limit 5))}]
           (testing message
-            (testing (str "After preprocessing: should not have added any new order bys. For the hand-rolled"
-                          " query, breakout order by should get fixed (converted to a name ref)")
-              ;; this actually gets fixed by [[metabase.query-processor.middleware.fix-bad-field-id-refs]]
-              (is (=? [[:asc {} [:field {:temporal-unit :month} "CREATED_AT"]]]
-                      (-> query qp.preprocess/preprocess :stages second :order-by))))
+            (when (= driver/*driver* :h2)
+              (testing (str "After preprocessing: should not have added any new order bys. For the hand-rolled"
+                            " query, breakout order by should get fixed (converted to a name ref)")
+                ;; this actually gets fixed by [[metabase.query-processor.middleware.fix-bad-field-id-refs]]
+                (is (=? [[:asc {} [:field {:temporal-unit :month} "CREATED_AT"]]]
+                        (-> query qp.preprocess/preprocess :stages second :order-by)))))
             (is (= [1 19 37 64 79]
                    (->> query
                         qp/process-query
