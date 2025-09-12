@@ -15,9 +15,8 @@
 (defn- set-repo-with-verification!-fn [original-key]
   (fn [new-value]
     (setting/set-value-of-type! :string original-key new-value)
-    (if (source/can-access-branch-in-source? (assoc (source/source-from-settings)
-                                                    :branch
-                                                    (setting/get :git-sync-import-branch)))
+    (if (source/can-access-branch-in-source? (source/source-from-settings)
+                                             (setting/get :git-sync-import-branch))
       (git-sync-configured! true)
       (git-sync-configured! false))))
 
