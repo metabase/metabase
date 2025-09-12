@@ -778,10 +778,9 @@
 
 (mr/def ::get-snippets-result
   "Schema for SQL snippet list results"
-  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-   [:id :int]
-   [:name :string]
-   [:description {:optional true} [:maybe :string]]])
+  [:map
+   {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:structured_output [:sequential ::basic-snippet]]])
 
 (mr/def ::get-snippet-details-arguments
   [:and
