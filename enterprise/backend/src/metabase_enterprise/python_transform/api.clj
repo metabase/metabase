@@ -11,8 +11,9 @@
   [{:keys [path]} :- [:map [:path :string]]
    _query-params]
   (api/check-superuser)
-  (some-> (python-library/get-python-library-by-path path)
-          (select-keys [:source :path :created_at :updated_at])))
+  (-> (python-library/get-python-library-by-path path)
+      api/check-404
+      (select-keys [:source :path :created_at :updated_at])))
 
 (api.macros/defendpoint :put "/library/:path"
   "Update the Python library source code for user modules."

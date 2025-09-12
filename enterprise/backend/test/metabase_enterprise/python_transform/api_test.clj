@@ -17,7 +17,7 @@
 
       (testing "returns nil when no library exists"
         (t2/delete! :model/PythonLibrary)
-        (is (nil? (mt/user-http-request :crowberto :get 204 "ee/python-transform/library/common"))))
+        (is (= "Not found." (mt/user-http-request :crowberto :get 404 "ee/python-transform/library/common"))))
 
       (testing "returns existing library"
         (t2/delete! :model/PythonLibrary)
