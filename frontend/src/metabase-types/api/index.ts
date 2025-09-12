@@ -12,6 +12,7 @@ export * from "./bug-report";
 export * from "./card";
 export * from "./click-behavior";
 export * from "./collection";
+export * from "./comments";
 export * from "./content-translation";
 export * from "./dashboard";
 export * from "./database";

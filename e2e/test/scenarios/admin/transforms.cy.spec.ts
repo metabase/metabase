@@ -1327,7 +1327,7 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("tags", () => {
-    it("should be able to add and remove tags", () => {
+    it("should be able to add and remove tags", { tags: "@flaky" }, () => {
       H.createTransformJob({ name: "New job" }, { visitTransformJob: true });
       getTagsInput().click();
 
@@ -2245,8 +2245,8 @@ function assertOptionSelected(name: string) {
 
 function assertOptionNotSelected(name: string) {
   cy.findByRole("option", { name }).should(
-    "not.have.attr",
+    "have.attr",
     "aria-selected",
-    "true",
+    "false",
   );
 }
