@@ -2023,7 +2023,7 @@
 ;;; [[qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation]] already does
 ;;; basically the same check, this is here mostly to avoid the performance hit of converting to pMBQL and back in
 ;;; queries that have no cumulative aggregations at all. Once we convert the SQL QP to pMBQL we can remove this.
-(mu/defn- has-window-function-aggregations? [inner-query :- driver-api/MBQLQuery]
+(defn- has-window-function-aggregations? [inner-query]
   (or (driver-api/match (mapcat inner-query [:aggregation :expressions])
         #{:cum-sum :cum-count :offset}
         true)

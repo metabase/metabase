@@ -33,6 +33,7 @@
   [{database-id :database, :as _query}]
   (perms/native-download-permission-for-user api/*current-user-id* database-id))
 
+;;; TODO (Cam 9/11/25) -- move this to `lib.walk.util` once my PR that adds it finally gets reviewed
 (mu/defn- any-native-stage?
   "Returns true if any stage of this query is native."
   [query :- ::lib.schema/query]
