@@ -41,21 +41,18 @@ export function PythonLibraryEditorPage({
     useUpdatePythonLibraryMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
-  useEffect(() => {
+  function handleRevert() {
     if (isLoading || error) {
       return;
     }
-    if (library != null) {
+
+    // FIXME: update the api to return 404 when the library doesn't exist
+    // @ts-expect-error: library is "" when the request returns 204
+    if (library != null && library !== "") {
       setSource(library.source || "");
     } else {
       setSource(EMPTY_LIBRARY_SOURCE);
     }
-  }, [isLoading, error, library]);
-
-  const isDirty = source !== library?.source;
-
-  function handleRevert() {
-    setSource(library?.source || "");
   }
 
   async function handleSave() {
@@ -66,6 +63,11 @@ export function PythonLibraryEditorPage({
       sendErrorToast(t`Python library could not be saved`);
     }
   }
+
+  // When the library loads, set the source to the current library source
+  useEffect(handleRevert, [isLoading, error, library]);
+
+  const isDirty = source !== library?.source;
 
   if (isLoading || error) {
     return (
