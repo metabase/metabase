@@ -10,6 +10,7 @@ import { isMac } from "metabase/lib/browser";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 import { Box, Checkbox, Flex, Icon, Stack, Text, Title } from "metabase/ui";
 
+import { SHARED_LIB_IMPORT_NAME } from "../../../constants";
 import { PythonEditor as PythonCodeEditor } from "../../PythonEditor";
 import { ResizableBoxHandle } from "../EditorBody/ResizableBoxHandle";
 
@@ -33,7 +34,6 @@ type PythonEditorProps = {
 };
 
 const EDITOR_HEIGHT = 400;
-const SHARED_LIB_IMPORT_NAME = "lib";
 
 export function PythonEditor({
   script,

@@ -11,30 +11,38 @@ import {
   useUpdatePythonLibraryMutation,
 } from "metabase-enterprise/api/python-transform-library";
 import { PythonEditor } from "metabase-enterprise/transforms/components/PythonEditor";
+import { SHARED_LIB_IMPORT_NAME } from "metabase-enterprise/transforms/constants";
 
 import S from "./PythonLibraryEditorPage.module.css";
 
 export function PythonLibraryEditorPage() {
-  const [code, setCode] = useState("");
+  const [source, setSource] = useState("");
 
-  const { data: library, isLoading, error } = useGetPythonLibraryQuery();
+  const {
+    data: library,
+    isLoading,
+    error,
+  } = useGetPythonLibraryQuery({ name: SHARED_LIB_IMPORT_NAME });
   const [updatePythonLibrary, { isLoading: isSaving }] =
     useUpdatePythonLibraryMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   useEffect(() => {
-    setCode(library?.code || "");
-  }, [library?.code]);
+    setSource(library?.source || "");
+  }, [library?.source]);
 
-  const isDirty = code !== library?.code;
+  const isDirty = source !== library?.source;
 
   function handleRevert() {
-    setCode(library?.code || "");
+    setSource(library?.source || "");
   }
 
   async function handleSave() {
     try {
-      await updatePythonLibrary({ code }).unwrap();
+      await updatePythonLibrary({
+        name: SHARED_LIB_IMPORT_NAME,
+        source,
+      }).unwrap();
       sendSuccessToast(t`Python library saved`);
     } catch (error) {
       sendErrorToast(t`Python library could not be saved`);
@@ -58,8 +66,8 @@ export function PythonLibraryEditorPage() {
         isSaving={isSaving}
       />
       <PythonEditor
-        value={code}
-        onChange={setCode}
+        value={source}
+        onChange={setSource}
         withPandasCompletions
         className={S.editor}
       />
