@@ -961,7 +961,7 @@
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
 
-(api.macros/defendpoint :get "/get-transforms" :- [:merge ::get-transforms-result ::tool-request]
+(api.macros/defendpoint :post "/get-transforms" :- [:merge ::get-transforms-result ::tool-request]
   "Get a list of all known transforms."
   [_route-params
    _query-params
