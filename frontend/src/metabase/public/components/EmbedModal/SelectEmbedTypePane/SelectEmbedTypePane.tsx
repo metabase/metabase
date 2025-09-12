@@ -116,7 +116,7 @@ export function SelectEmbedTypePane({
           illustration={<StaticEmbeddingIllustration />}
           onClick={isStaticEmbeddingEnabled ? goToNextStep : undefined}
           isDisabled={!isStaticEmbeddingEnabled}
-          disabledLink="/admin/settings/embedding-in-other-applications/standalone"
+          disabledLink="/admin/embedding/static"
         >
           <List>
             <List.Item>{t`Embedded, signed charts in iframes.`}</List.Item>
@@ -138,9 +138,7 @@ export function SelectEmbedTypePane({
             isDisabled={
               isInteractiveEmbeddingAvailable && !isInteractiveEmbeddingEnabled
             }
-            disabledLink={
-              "/admin/settings/embedding-in-other-applications/full-app"
-            }
+            disabledLink={"/admin/embedding/interactive"}
           >
             <List>
               {/* eslint-disable-next-line no-literal-metabase-strings -- only admin sees this */}
@@ -157,7 +155,7 @@ export function SelectEmbedTypePane({
 
         {/* REACT SDK */}
         <MaybeLink
-          to="/admin/settings/embedding-in-other-applications/sdk"
+          to="/admin/embedding/modular"
           shouldRenderLink={isEmbeddingSdkEnabled}
           aria-label={t`Embedded analytics SDK`}
         >
@@ -166,7 +164,7 @@ export function SelectEmbedTypePane({
             badge={<UpsellGem />}
             illustration={<SdkIllustration />}
             isDisabled={!isEmbeddingSdkEnabled}
-            disabledLink={"/admin/settings/embedding-in-other-applications/sdk"}
+            disabledLink={"/admin/embedding/modular"}
           >
             <List>
               {/* eslint-disable-next-line no-literal-metabase-strings -- visible only to admin */}

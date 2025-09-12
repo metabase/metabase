@@ -37,10 +37,7 @@ describe("EmbedModalContent", () => {
           withinStaticEmbeddingCard.getByRole("link", {
             name: "Enable in admin settings",
           }),
-        ).toHaveAttribute(
-          "href",
-          "/admin/settings/embedding-in-other-applications/standalone",
-        );
+        ).toHaveAttribute("href", "/admin/embedding/static");
       });
     });
 
@@ -154,10 +151,7 @@ describe("EmbedModalContent", () => {
           withinSdkCard.getByRole("link", {
             name: "Enable in admin settings",
           }),
-        ).toHaveAttribute(
-          "href",
-          "/admin/settings/embedding-in-other-applications/sdk",
-        );
+        ).toHaveAttribute("href", "/admin/embedding/modular");
       });
     });
 
@@ -173,7 +167,7 @@ describe("EmbedModalContent", () => {
         expect(screen.getByRole("link", { name: SDK_TITLE })).toHaveProperty(
           "href",
           // I have no idea why only this URL is absolute in the test, it is relative in the markup 🤷
-          "http://localhost/admin/settings/embedding-in-other-applications/sdk",
+          "http://localhost/admin/embedding/modular",
         );
 
         // We don't show the link at the bottom of the card

@@ -62,6 +62,7 @@
     transparent
   );
   --mb-color-success: #84bb4c;
+  --mb-color-success-darker: var(--mb-base-color-palm-50);
   --mb-color-summarize: #88bf4d;
   --mb-color-error: var(--mb-base-color-lobster-50);
   --mb-color-danger: var(--mb-base-color-lobster-50);
@@ -116,6 +117,7 @@
   --mb-color-syntax-parameters: var(--mb-base-color-mango-40);
   --mb-color-syntax-parameters-active: var(--mb-base-color-mango-10);
   --mb-color-switch-off: var(--mb-base-color-orion-10);
+  --mb-color-shadow-embedding-hub-card: rgba(162, 197, 228, 0.7);
 
   /**
     * Base colors
