@@ -29,7 +29,9 @@
       (log/infof "Field %s does not have FieldValues. Skipping..."
                  (sync-util/name-for-logging field))
 
-      (field-values/inactive? field-values)
+      (and (field-values/inactive? field-values)
+           ; also check for advanced field values
+           (field-values/inactive? (field-values/get-last-used-field-values (u/the-id field))))
       (log/infof "Field %s has not been used since %s. Skipping..."
                  (sync-util/name-for-logging field) (t/format "yyyy-MM-dd" (t/local-date-time (:last_used_at field-values))))
 
@@ -126,4 +128,4 @@
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :cache-field-values database (format "Cache field values in %s"
                                                                  (sync-util/name-for-logging database))
-    (sync-util/run-sync-operation "field values scanning" database sync-field-values-steps)))
+                            (sync-util/run-sync-operation "field values scanning" database sync-field-values-steps)))
