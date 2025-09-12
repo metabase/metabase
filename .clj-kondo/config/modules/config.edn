@@ -551,6 +551,7 @@
   {:team "Workflows"
    :api  #{metabase.glossary.api}
    :uses #{api
+           models
            util}}
 
   indexed-entities

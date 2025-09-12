@@ -1372,7 +1372,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: term
-                  type: ${text.type}
+                  type: varchar(255)
                   remarks: The glossary term or phrase being defined
                   constraints:
                     nullable: false

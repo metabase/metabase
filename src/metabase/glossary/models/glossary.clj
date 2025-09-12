@@ -1,5 +1,6 @@
 (ns metabase.glossary.models.glossary
   (:require
+   [metabase.models.serialization :as serdes]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -16,3 +17,20 @@
    [:id         ms/PositiveInt]
    [:term       ms/NonBlankString]
    [:definition ms/NonBlankString]])
+
+;;; ---------------------- Serialization ----------------------------
+
+(defmethod serdes/entity-id "Glossary" [_ {:keys [term]}]
+  term)
+
+(defmethod serdes/hash-fields :model/Database
+  [_item]
+  [:term])
+
+(defmethod serdes/make-spec "Glossary" [_model-name _opts]
+  {:copy      [:term :definition]
+   :transform {:created_at (serdes/date)
+               :updated_at (serdes/date)}})
+
+(defmethod serdes/storage-path "Glossary" [item _]
+  ["glossary" (:term item)])

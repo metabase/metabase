@@ -17,6 +17,7 @@
    "Collection"
    "Dashboard"
    "Document"
+   "Glossary"
    "NativeQuerySnippet"
    "Timeline"])
 
