@@ -1,5 +1,7 @@
+export type RevisionId = number;
+
 export interface Revision {
-  id: number;
+  id: RevisionId;
   description: string;
   message: string | null;
   timestamp: string;
