@@ -34,7 +34,7 @@
    (log/info "Syncing target" (pr-str target) "for transform")
    (transforms.util/activate-table-and-mark-computed! database target)))
 
-(defn run-transform!
+(defn- run-transform!
   "Run a compiled transform"
   [run-id driver {:keys [db-id target conn-spec] :as transform-details}]
   ;; local run is responsible for status
@@ -70,6 +70,9 @@
                               :query (transforms.util/compile-source source)
                               :target target
                               :conn-spec (driver/connection-spec driver database)}]
+       (when (transforms.util/db-routing-enabled? database)
+         (throw (ex-info "Transforms are not supported on databases with DB routing enabled."
+                         {:driver driver, :database database})))
        (when-not (driver.u/supports? driver feature database)
          (throw (ex-info "The database does not support the requested transform target type."
                          {:driver driver, :database database, :feature feature})))

@@ -53,6 +53,8 @@ export function doesDatabaseSupportTransforms(database?: Database): boolean {
   return (
     !database.is_sample &&
     !database.is_audit &&
+    !database.router_user_attribute &&
+    !database.router_database_id &&
     hasFeature(database, "transforms/table")
   );
 }
