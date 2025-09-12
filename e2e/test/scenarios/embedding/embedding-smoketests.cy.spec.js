@@ -320,7 +320,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 
     cy.log("Verify 2 upsell icons are present in sidebar");
     cy.findByTestId("admin-layout-sidebar")
-      .findAllByLabelText("gem icon")
+      .icon("gem")
       .should("have.length", 2);
   });
 
