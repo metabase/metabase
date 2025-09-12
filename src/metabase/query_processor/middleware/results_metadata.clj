@@ -8,8 +8,8 @@
    [metabase.analyze.core :as analyze]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
@@ -54,7 +54,7 @@
     (mapv standardize-metadata metadata)))
 
 (mu/defn- record-metadata!
-  [{{:keys [card-id]} :info, :as query} :- ::mbql.s/Query
+  [{{:keys [card-id]} :info, :as query} :- ::lib.schema/query
    metadata                             :- [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]
   (try
     ;; At the very least we can skip the Extra DB call to update this Card's metadata results
@@ -67,11 +67,14 @@
                  driver/*driver*
                  ;; pivot queries can run multiple queries, only record metadata for the main query
                  (not= actual-metadata :none)
-                 (driver.u/supports? driver/*driver* :nested-queries (lib.metadata/database (qp.store/metadata-provider)))
+                 (driver.u/supports? driver/*driver* :nested-queries (lib.metadata/database query))
                  card-id
                  ;; don't want to update metadata when we use a Card as a source Card.
                  (not (:qp/source-card-id query))
                  ;; Only update changed metadata
+                 ;;
+                 ;; TODO (Cam 9/11/25) -- use `lib.metadata/general-cached-value` once my PRs that has it gets merged
+                 ;; in
                  (not= (comparable-metadata actual-metadata) (comparable-metadata (qp.store/miscellaneous-value [::card-stored-metadata]))))
         (when-let [error (me/humanize (mr/explain [:sequential ::lib.schema.metadata/lib-or-legacy-column] actual-metadata))]
           (throw (ex-info "Invalid result metadata!" {:error error, :metadata actual-metadata})))
@@ -149,4 +152,6 @@
   (when-let [result-metadata (:result_metadata card)]
     (if-let [error (me/humanize (mr/explain [:sequential ::lib.schema.metadata/lib-or-legacy-column] result-metadata))]
       (log/errorf "Invalid card result metadata, ignoring  it: %s" (pr-str error))
+      ;; TODO (Cam 9/11/25) -- use `lib.metadata/general-cached-value` once my PRs that has it gets merged
+      ;; in
       (qp.store/store-miscellaneous-value! [::card-stored-metadata] result-metadata))))
