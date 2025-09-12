@@ -280,7 +280,7 @@
         pending-updated? (safe-batch-upsert! (pending-table) entries)]
     (when (or active-updated? pending-updated?)
       (u/prog1 (->> entries (map :model) frequencies)
-        (when (= :search/reindexing context)
+        (when (and (= :search/reindexing context) (not search.ingestion/*force-sync*))
           (t2/query ["commit"]))
         (log/trace "indexed documents for " <>)
         (when active-updated?
@@ -296,7 +296,7 @@
                              (map (partial batch-update! context)))
                        (partial merge-with +)
                        document-reducible))]
-    (if (= :search/reindexing context)
+    (if (and (= :search/reindexing context) (not search.ingestion/*force-sync*))
       (t2/with-connection [_conn (mdb/data-source)] (do-index))
       (do-index))))
 
@@ -363,7 +363,7 @@
               (swap! *indexes* assoc :pending nil))
             (maybe-create-pending!)
             (activate-table!))]
-    (if (or true search.ingestion/*force-sync*)
+    (if search.ingestion/*force-sync*
       (reset-logic)
       ;; Creates and tracks tables with a unique transaction so the empty tables are available to other threads
       ;; even while the initial startup and data load may be happening

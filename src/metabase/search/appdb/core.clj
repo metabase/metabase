@@ -174,7 +174,7 @@
       (let [created? (search.index/ensure-ready! opts)]
         (when (or created? re-populate?)
           (log/info "Populating index")
-          (populate-index! :search/updating))))))
+          (populate-index! (if created? :search/reindexing :search/updating)))))))
 
 (defmethod search.engine/reindex! :search.engine/appdb
   [_ {:keys [in-place?]}]
