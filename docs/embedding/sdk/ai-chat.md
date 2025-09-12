@@ -5,6 +5,8 @@ summary: Embed an AI chat component in your app that can create queries from nat
 
 # Embedded analytics SDK - AI chat
 
+![Embedded AI chat](../images/ai-chat.png)
+
 {% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
 You can embed an AI chat in your application similar to [Metabot](../embedded-analytics-js.md) in Metabase.
@@ -22,6 +24,11 @@ You can check out a [demo of the AI chat component](https://embedded-analytics-s
 ```typescript
 {% include_file "{{ dirname }}/snippets/questions/ai-question.tsx" %}
 ```
+
+###
+
+/embedding/sdk/api/MetabotQuestion
+
 
 ## Setting up AI chat
 
