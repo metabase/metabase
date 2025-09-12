@@ -113,7 +113,7 @@
    (ensure-mbql5 #'qp.middleware.enterprise/apply-impersonation)
    (ensure-mbql5 #'qp.middleware.enterprise/attach-destination-db-middleware)
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
-   (ensure-legacy #'qp.persistence/substitute-persisted-query)
+   (ensure-mbql5 #'qp.persistence/substitute-persisted-query)
    (ensure-legacy #'qp.add-implicit-clauses/add-implicit-clauses) ; #61398
    ;; this needs to be done twice, once before adding remaps (since we want to add remaps inside joins) and then again
    ;; after adding any implicit joins. Implicit joins do not need to get remaps since we only use them for fetching
