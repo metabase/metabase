@@ -8,7 +8,9 @@ import {
   useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
 import { getErrorMessage, useAdminSetting } from "metabase/api/utils";
-import ActionButton from "metabase/common/components/ActionButton";
+import ActionButton, {
+  type ActionButtonHandle,
+} from "metabase/common/components/ActionButton";
 import Alert from "metabase/common/components/Alert";
 import Link from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -76,9 +78,9 @@ export function UploadSettingsFormView({
 
   const isHosted = useSetting("is-hosted?");
 
-  const enableButtonRef = useRef<ActionButton>(null);
-  const disableButtonRef = useRef<ActionButton>(null);
-  const updateButtonRef = useRef<ActionButton>(null);
+  const enableButtonRef = useRef<ActionButtonHandle>(null);
+  const disableButtonRef = useRef<ActionButtonHandle>(null);
+  const updateButtonRef = useRef<ActionButtonHandle>(null);
 
   const resetButtons = () => {
     enableButtonRef?.current?.resetState();
