@@ -1,9 +1,8 @@
-import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import type { Dayjs } from "dayjs";
 import { msgid, ngettext } from "ttag";
 
 import type { TimeOnlyOptions } from "metabase/lib/formatting/types";
-import { parseTime } from "metabase/lib/time";
-import { parseTimestamp } from "metabase/lib/time-dayjs";
+import { parseTime, parseTimestamp } from "metabase/lib/time-dayjs";
 import type { DatetimeUnit } from "metabase-types/api/query";
 
 import {
@@ -65,7 +64,7 @@ export function formatTimeWithUnit(
 }
 
 export function formatTime(
-  time: Moment,
+  time: Dayjs,
   unit: DatetimeUnit = "default",
   options: TimeOnlyOptions = {},
 ) {
