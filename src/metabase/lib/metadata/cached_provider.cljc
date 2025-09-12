@@ -56,65 +56,66 @@
 (defn- database [cache metadata-provider]
   (get-in-cache-or-fetch cache [:metadata/database] #(lib.metadata.protocols/database metadata-provider)))
 
-(defn- metadatas [inner-fn k cache uncached-provider metadata-type values]
-  (when (seq values)
-    (log/tracef "Getting %s metadata with Values %s" metadata-type (pr-str (sort values)))
-    (let [metadata-cache (get @cache metadata-type)]
-      (when-not (every? #(contains? metadata-cache %) values)
-        (let [existing-values (set (keys metadata-cache))
-              missing-values  (set/difference (set values) existing-values)]
-          (log/tracef "Already fetched %s: %s" metadata-type (pr-str (sort (set/intersection (set values) existing-values))))
-          (when (seq missing-values)
-            (log/tracef "Need to fetch %s: %s" metadata-type (pr-str (sort missing-values)))
-            (let [fetched-metadatas (inner-fn uncached-provider metadata-type missing-values)
-                  fetched-values       (map k fetched-metadatas)
-                  unfetched-values     (set/difference (set missing-values) (set fetched-values))]
-              (when (seq fetched-values)
-                (log/tracef "Fetched %s: %s" metadata-type (pr-str (sort fetched-values)))
-                (doseq [instance fetched-metadatas]
-                  (store-in-cache! cache [metadata-type (k instance)] instance)))
-              (when (seq unfetched-values)
-                (log/tracef "Failed to fetch %s: %s" metadata-type (pr-str (sort unfetched-values)))
-                (doseq [unfetched-id unfetched-values]
-                  (store-in-cache! cache [metadata-type unfetched-id] ::nil))))))))
+;; cache key used by this function has the shape [<metadata-type> <id-or-name>]
+(defn- metadatas-by-id-or-name
+  [cache uncached-provider {metadata-type :lib/type, id-set :id, name-set :name, :as metadata-spec}]
+  (let [[col-name key-set] (cond
+                             id-set   [:id id-set]
+                             name-set [:name name-set])
+        cache-key          (fn [col-name k]
+                             (case col-name
+                               :id   [metadata-type :id k]
+                               ;; e.g. `[:metadata/column :name {:table-id 1} "CREATED_AT"]`
+                               :name [metadata-type :name (dissoc metadata-spec :lib/type :id :name) k]))]
+    (log/tracef "Getting %s metadata with %s IN %s" metadata-type col-name (pr-str (sort key-set)))
+    (let [existing-keys (into #{}
+                              (let [cache* @cache]
+                                ;; [[get-in]] instead of [[get-in-cache]] because we don't want to filter out the
+                                ;; `::nil` tombstones. Also a little faster to only deref the atom once instead of for
+                                ;; each ID/name
+                                (filter #(get-in cache* (cache-key col-name %))))
+                              key-set)
+          missing-keys (set/difference (set key-set) existing-keys)]
+      (log/tracef "Already fetched %s: %s" metadata-type (pr-str (sort (set/intersection (set key-set) existing-keys))))
+      (when (seq missing-keys)
+        (log/tracef "Need to fetch %s: %s" metadata-type (pr-str (sort missing-keys)))
+        (let [newly-fetched-metadatas (lib.metadata.protocols/metadatas uncached-provider (assoc metadata-spec col-name missing-keys))
+              newly-fetched-keys      (map col-name newly-fetched-metadatas)
+              unfetched-keys          (set/difference (set missing-keys) (set newly-fetched-keys))]
+          (when (seq newly-fetched-keys)
+            (log/tracef "Fetched %s: %s" metadata-type (pr-str (sort newly-fetched-keys)))
+            (doseq [metadata newly-fetched-metadatas
+                    ;; store the object under both its `:id` and its `:name`
+                    col-name [:id :name]
+                    :let     [newly-fetched-key (col-name metadata)]]
+              (store-in-cache! cache (cache-key col-name newly-fetched-key) metadata)))
+          (when (seq unfetched-keys)
+            (log/tracef "Failed to fetch %s: %s" metadata-type (pr-str (sort unfetched-keys)))
+            (doseq [unfetched-key unfetched-keys]
+              (store-in-cache! cache (cache-key col-name unfetched-key) ::nil))))))
     (into []
-          (keep (fn [value]
-                  (get-in-cache cache [metadata-type value])))
-          values)))
+          (comp (keep (fn [k]
+                        (get-in-cache cache (cache-key col-name k))))
+                (lib.metadata.protocols/default-spec-filter-xform metadata-spec))
+          key-set)))
+
+(mu/defn- metadatas
+  [cache uncached-provider {metadata-type :lib/type, id-set :id, name-set :name, :as metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
+  (if (or id-set name-set)
+    (metadatas-by-id-or-name cache uncached-provider metadata-spec)
+    (get-in-cache-or-fetch cache
+                           [::spec metadata-spec]
+                           (fn []
+                             (u/prog1 (lib.metadata.protocols/metadatas uncached-provider metadata-spec)
+                               (doseq [metadata <>
+                                       k        [:id :name]]
+                                 (store-in-cache! cache [metadata-type (k metadata)] metadata)))))))
 
 (defn- cached-metadatas [cache metadata-type metadata-ids]
   (into []
         (keep (fn [id]
-                (get-in-cache cache [metadata-type id])))
+                (get-in-cache cache [metadata-type :id id])))
         metadata-ids))
-
-(defn- tables [metadata-provider cache]
-  (let [fetched-tables (lib.metadata.protocols/tables metadata-provider)]
-    (doseq [table fetched-tables]
-      (store-in-cache! cache [:metadata/table (:id table)] table))
-    fetched-tables))
-
-(defn- metadatas-for-table [metadata-provider cache metadata-type table-id]
-  (let [k     (case metadata-type
-                :metadata/column  ::table-fields
-                :metadata/metric  ::table-metrics
-                :metadata/segment ::table-segments)
-        thunk (fn []
-                (let [objects (lib.metadata.protocols/metadatas-for-table metadata-provider metadata-type table-id)]
-                  (doseq [metadata objects]
-                    (store-in-cache! cache [(:lib/type metadata) (:id metadata)] metadata))
-                  objects))]
-    (get-in-cache-or-fetch cache [k table-id] thunk)))
-
-(defn- metadatas-for-card [metadata-provider cache metadata-type card-id]
-  (let [k     (case metadata-type
-                :metadata/metric ::table-metrics)
-        thunk (fn []
-                (let [objects (lib.metadata.protocols/metadatas-for-card metadata-provider metadata-type card-id)]
-                  (doseq [metadata objects]
-                    (store-in-cache! cache [(:lib/type metadata) (:id metadata)] metadata))
-                  objects))]
-    (get-in-cache-or-fetch cache [k card-id] thunk)))
 
 (defn- setting [metadata-provider cache setting-key]
   (get-in-cache-or-fetch cache [::setting (keyword setting-key)] #(lib.metadata.protocols/setting metadata-provider setting-key)))
@@ -124,16 +125,8 @@
   lib.metadata.protocols/MetadataProvider
   (database [_this]
     (database cache metadata-provider))
-  (metadatas [_this metadata-type ids]
-    (metadatas lib.metadata.protocols/metadatas :id cache metadata-provider metadata-type ids))
-  (metadatas-by-name [_this metadata-type names]
-    (metadatas lib.metadata.protocols/metadatas-by-name :name cache metadata-provider metadata-type names))
-  (tables [_this]
-    (get-in-cache-or-fetch cache [::database-tables] #(tables metadata-provider cache)))
-  (metadatas-for-table [_this metadata-type table-id]
-    (metadatas-for-table metadata-provider cache metadata-type table-id))
-  (metadatas-for-card [_this metadata-type card-id]
-    (metadatas-for-card metadata-provider cache metadata-type card-id))
+  (metadatas [_this metadata-spec]
+    (metadatas cache metadata-provider metadata-spec))
   (setting [_this setting-key]
     (setting metadata-provider cache setting-key))
 

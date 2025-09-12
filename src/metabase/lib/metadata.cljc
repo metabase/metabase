@@ -6,6 +6,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
@@ -48,10 +49,10 @@
    table-id              :- ::lib.schema.id/table]
   (lib.metadata.protocols/fields (->metadata-provider metadata-providerable) table-id))
 
-(mu/defn metadatas-for-table :- [:sequential [:or
-                                              ::lib.schema.metadata/column
-                                              ::lib.schema.metadata/metric
-                                              ::lib.schema.metadata/segment]]
+(mu/defn metadatas-for-table :- [:maybe [:sequential [:or
+                                                      ::lib.schema.metadata/column
+                                                      ::lib.schema.metadata/metric
+                                                      ::lib.schema.metadata/segment]]]
   "Return active (non-archived) metadatas associated with a particular Table, either Fields, Metrics, or
    Segments -- `metadata-type` must be one of either `:metadata/column`, `:metadata/metric`, `:metadata/segment`."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
@@ -188,21 +189,19 @@
   mock provider), fetches them with repeated calls to the appropriate single-object method,
   e.g. [[lib.metadata.protocols/field]].
 
-  The order of the returned objects will match the order of `ids`, but does check that all objects are returned. If
+  The order of the returned objects will match the order of `ids`, but does not check that all objects are returned. If
   you want that behavior, use [[bulk-metadata-or-throw]] instead.
 
   This can also be called for side-effects to warm the cache."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    metadata-type         :- ::lib.schema.metadata/type
    ids                   :- [:maybe [:or [:sequential pos-int?] [:set pos-int?]]]]
-  (when-let [ids (not-empty (cond-> ids
-                              (not (set? ids)) distinct))] ; remove duplicates but preserve order.
+  (when (seq ids)
     (let [provider   (->metadata-provider metadata-providerable)
-          results    (lib.metadata.protocols/metadatas provider metadata-type ids)
-          id->result (into {} (map (juxt :id identity)) results)]
+          results    (lib.metadata.protocols/metadatas provider {:lib/type metadata-type, :id (set ids)})
+          id->result (u/index-by :id results)]
       (into []
-            (comp (map id->result)
-                  (filter some?))
+            (keep id->result)
             ids))))
 
 (defn- missing-bulk-metadata-error [metadata-type id]
