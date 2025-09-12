@@ -5,6 +5,8 @@ summary: Create documents to combine text and charts for long-form analysis. Add
 
 # Documents
 
+{% include plans-blockquote.html feature="Documents" %}
+
 Documents let you tell a story with your data by combining text, charts, and other content.
 
 ## Create a document
@@ -19,7 +21,7 @@ Documents let you tell a story with your data by combining text, charts, and oth
 Type `/` in your document to see available commands:
 
 - **Ask Metabot** to chat with [Metabot](../ai/metabot.md) in the document.
-- **Chart** to insert a table or chart from an existing question or model. You can't add dashboards or other documents, but you can mention them (See the next section).
+- **Chart** to insert a table or chart from an existing question or model. You can't add dashboards or other documents, but you can mention them (see the next section).
 - **Link**. You can mention other items in your Metabase.
 
 ## Mention items with `@`
@@ -71,13 +73,13 @@ You can comment on whole sections like charts, headings, or text blocks. You can
 
 You can:
 
-- React to comments with emojis (which are like pictures pretending to be words). For example, this is a gondola: 🚠.
+- React to comments with emojis (which are like pictures masquerading as words). For example, this is a gondola: 🚠.
 - Link to a comment. Click the **three-dot** menu and select **Copy link**.
 - Resolve comments. Resolved comments appear in a separate tab.
 
 ### Deleting comments
 
-If you never see a comment again:
+If you never want to see a comment again:
 
 1. Resolve the comment.
 2. Find it in the Resolved tab.
