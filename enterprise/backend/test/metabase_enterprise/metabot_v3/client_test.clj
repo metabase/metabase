@@ -42,7 +42,8 @@
     (let [mock-response (make-mock-stream-response ["a1" "a2" "a3"] {"some-model" {:prompt 8 :completion 2}})
           cid           (str (random-uuid))
           req           {:context         {:some "context"}
-                         :messages        [{:role :user :content "stuff"}]
+                         :message         {:role :user :content "stuff"}
+                         :history         []
                          :profile-id      "test-profile"
                          :conversation-id cid
                          :session-id      "test-session"
