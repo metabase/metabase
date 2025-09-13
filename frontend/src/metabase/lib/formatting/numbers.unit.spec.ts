@@ -62,6 +62,47 @@ describe("formatNumber", () => {
     ).toEqual("1.000015e+0");
   });
 
+  describe("compact mode with decimals setting", () => {
+    it("should respect various decimal settings in compact mode (metabase#63145)", () => {
+      const value = 1234567;
+
+      expect(
+        formatNumber(value, {
+          compact: true,
+          decimals: 0,
+        }),
+      ).toBe("1M");
+
+      expect(
+        formatNumber(value, {
+          compact: true,
+          decimals: 1,
+        }),
+      ).toBe("1.2M");
+
+      expect(
+        formatNumber(value, {
+          compact: true,
+          decimals: 2,
+        }),
+      ).toBe("1.23M");
+
+      expect(
+        formatNumber(value, {
+          compact: true,
+          decimals: 3,
+        }),
+      ).toBe("1.235M");
+
+      expect(
+        formatNumber(value, {
+          compact: true,
+          decimals: 4,
+        }),
+      ).toBe("1.2346M");
+    });
+  });
+
   describe("formatNumber – compact rounding (metabase#59454)", () => {
     it("rounds billions with 0 decimals", () => {
       expect(
