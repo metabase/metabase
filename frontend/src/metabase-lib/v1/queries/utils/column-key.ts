@@ -22,12 +22,12 @@ export const getColumnKey = (column: DatasetColumnReference) => {
 };
 
 export type LegacyColumnKeyOptions = {
-  ignoreBaseType?: boolean;
+  excludeBaseType?: boolean;
 };
 
 export const getLegacyColumnKey = (
   column: DatasetColumnReference,
-  { ignoreBaseType }: LegacyColumnKeyOptions = {},
+  { excludeBaseType }: LegacyColumnKeyOptions = {},
 ) => {
   let fieldRef = column.field_ref;
 
@@ -44,7 +44,7 @@ export const getLegacyColumnKey = (
 
   if (isDimensionReferenceWithOptions(fieldRef)) {
     fieldRef = getDimensionReferenceWithoutTemporalUnitAndBinning(fieldRef);
-    if (ignoreBaseType) {
+    if (excludeBaseType) {
       fieldRef = getDimensionReferenceWithoutBaseType(fieldRef);
     }
   }
@@ -90,7 +90,7 @@ export const getObjectColumnSettings = (
 ) => {
   return (
     settings?.[getLegacyColumnKey(column)] ??
-    settings?.[getLegacyColumnKey(column, { ignoreBaseType: true })] ??
+    settings?.[getLegacyColumnKey(column, { excludeBaseType: true })] ??
     settings?.[getColumnKey(column)]
   );
 };

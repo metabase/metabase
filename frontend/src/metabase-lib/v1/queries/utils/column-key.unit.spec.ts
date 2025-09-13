@@ -114,7 +114,7 @@ describe("getLegacyColumnKey", () => {
         field_ref: ["field", 1, { "base-type": "type/DateTime" }],
       }),
       options: {
-        ignoreBaseType: true,
+        excludeBaseType: true,
       },
       expectedKey: JSON.stringify(["ref", ["field", 1, null]]),
     },
@@ -129,7 +129,7 @@ describe("getLegacyColumnKey", () => {
         ],
       }),
       options: {
-        ignoreBaseType: true,
+        excludeBaseType: true,
       },
       expectedKey: JSON.stringify(["ref", ["field", 1, { "source-field": 2 }]]),
     },
@@ -241,7 +241,7 @@ describe("getObjectColumnSettings", () => {
 
   it("should be able to find the setting when `base-type` is not present", () => {
     const settings = {
-      [getLegacyColumnKey(column, { ignoreBaseType: true })]: {
+      [getLegacyColumnKey(column, { excludeBaseType: true })]: {
         column_title: "A",
       },
     };
