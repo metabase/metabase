@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import type { GenerateSqlQueryButtonProps } from "metabase/plugins";
 import { Button, Icon, Tooltip } from "metabase/ui";
+import { trackMetabotSqlClicked } from "metabase-enterprise/ai-sql-generation/analytics";
 import { useLazyGenerateSqlQueryQuery } from "metabase-enterprise/api";
 import * as Lib from "metabase-lib";
 import type { GenerateSqlQueryRequest } from "metabase-types/api";
@@ -23,6 +24,8 @@ export function GenerateSqlQueryButton({
     if (data == null) {
       return;
     }
+
+    trackMetabotSqlClicked();
     onGenerateQuery(getQueryText(request.prompt, data.generated_sql));
   };
 

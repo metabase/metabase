@@ -349,6 +349,34 @@ export type TableEditingEvent =
   | TableEditButtonClickedEvent
   | TableEditingRecordModifiedEvent;
 
+export type MetabotChatOpenedEvent = ValidateEvent<{
+  event: "metabot_chat_opened";
+  triggered_from: "search";
+}>;
+
+export type MetabotRequestSentEvent = ValidateEvent<{
+  event: "metabot_request_sent";
+}>;
+
+export type MetabotFixQueryClickedEvent = ValidateEvent<{
+  event: "metabot_fix_query_clicked";
+}>;
+
+export type MetabotExplainChartClickedEvent = ValidateEvent<{
+  event: "metabot_explain_chart_clicked";
+}>;
+
+export type MetabotSQLClickedEvent = ValidateEvent<{
+  event: "metabot_sql_clicked";
+}>;
+
+export type MetabotEvent =
+  | MetabotChatOpenedEvent
+  | MetabotRequestSentEvent
+  | MetabotFixQueryClickedEvent
+  | MetabotExplainChartClickedEvent
+  | MetabotSQLClickedEvent;
+
 export type SimpleEvent =
   | CustomSMTPSetupClickedEvent
   | CustomSMTPSetupSuccessEvent
@@ -392,4 +420,5 @@ export type SimpleEvent =
   | DocumentCreatedEvent
   | DocumentReplaceCardEvent
   | DocumentUpdatedEvent
-  | DocumentPrintEvent;
+  | DocumentPrintEvent
+  | MetabotEvent;
