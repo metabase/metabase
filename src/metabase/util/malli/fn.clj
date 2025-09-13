@@ -8,6 +8,7 @@
    [metabase.config.core :as config]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
+   [metabase.util.malli.error :as mu.error]
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]
    [net.cgrand.macrovich :as macros]))
@@ -179,32 +180,33 @@
 
 (defn- validate [error-context schema value error-type]
   (when *enforce*
-    (when-let [error (mr/explain schema value)]
-      (let [humanized (me/humanize error {:wrap (core/fn humanize-include-value
-                                                  [{:keys [value message]}]
-                                                  (str message ", got: " (pr-str value)))})
-            details   (merge
-                       {:type      error-type
-                        :error     error
-                        :humanized humanized
-                        :schema    schema
-                        :value     value}
-                       error-context)]
-        (if (or config/is-dev?
-                config/is-test?)
-          ;; In dev and test, throw an exception.
-          (throw (ex-info (case error-type
-                            ::invalid-input  (i18n/tru "Invalid input: {0}" (pr-str humanized))
-                            ::invalid-output (i18n/tru "Invalid output: {0}" (pr-str humanized)))
-                          details))
-          ;; In prod, log a warning.
-          (log/warn
-           (case error-type
-             ::invalid-input  (format "Invalid input - Please report this as an issue on Github: %s"
-                                      (pr-str humanized))
-             ::invalid-output (format "Invalid output - Please report this as an issue on Github: %s"
-                                      (pr-str humanized)))
-           details))))))
+    (binding [mu.error/*context* error-context]
+      (when-let [error (mr/explain schema value)]
+        (let [humanized (me/humanize error {:wrap (core/fn humanize-include-value
+                                                    [{:keys [value message]}]
+                                                    (str message ", got: " (pr-str value)))})
+              details   (merge
+                         {:type      error-type
+                          :error     error
+                          :humanized humanized
+                          :schema    schema
+                          :value     value}
+                         error-context)]
+          (if (or config/is-dev?
+                  config/is-test?)
+            ;; In dev and test, throw an exception.
+            (throw (ex-info (case error-type
+                              ::invalid-input  (i18n/tru "Invalid input: {0}" (pr-str humanized))
+                              ::invalid-output (i18n/tru "Invalid output: {0}" (pr-str humanized)))
+                            details))
+            ;; In prod, log a warning.
+            (log/warn
+             (case error-type
+               ::invalid-input  (format "Invalid input - Please report this as an issue on Github: %s"
+                                        (pr-str humanized))
+               ::invalid-output (format "Invalid output - Please report this as an issue on Github: %s"
+                                        (pr-str humanized)))
+             details)))))))
 
 (defn validate-input
   "Impl for [[metabase.util.malli.fn/fn]]; validates an input argument with `value` against `schema` using a cached

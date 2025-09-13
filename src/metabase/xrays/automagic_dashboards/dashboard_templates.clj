@@ -240,15 +240,18 @@
   [k cards]
   (mapcat (comp k val first) cards))
 
-(def ^:private DimensionForm
-  [:cat
-   [:and
-    [:or :string :keyword]
-    [:fn
-     {:error/message ":dimension"}
-     (comp #{:dimension} qp.util/normalize-token)]]
-   :string
-   [:* :map]])
+(do
+  (def ^:private normalize-dimension
+    (comp #{:dimension} qp.util/normalize-token))
+
+  (def ^:private DimensionForm
+    [:cat
+     [:and
+      [:or :string :keyword]
+      [:fn {:error/message ":dimension"}
+       #'normalize-dimension]]
+     :string
+     [:* :map]]))
 
 (def ^{:arglists '([form])} dimension-form?
   "Does form denote a dimension reference?"

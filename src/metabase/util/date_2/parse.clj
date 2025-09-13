@@ -43,7 +43,8 @@
 
 (def ^:private InstanceOfTemporal
   [:fn
-   {:error/message "Instance of a java.time.temporal.Temporal"}
+   {:error/message "Instance of a java.time.temporal.Temporal"
+    :mr/cache-key ::InstanceOfTemporal}
    (partial instance? Temporal)])
 
 (def ^:private utc-zone-region (t/zone-id "UTC"))
