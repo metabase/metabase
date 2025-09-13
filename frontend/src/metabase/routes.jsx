@@ -9,13 +9,7 @@ import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
 import { Login } from "metabase/auth/components/Login";
 import { Logout } from "metabase/auth/components/Logout";
 import { ResetPassword } from "metabase/auth/components/ResetPassword";
-import {
-  BrowseDatabases,
-  BrowseMetrics,
-  BrowseModels,
-  BrowseSchemas,
-  BrowseTables,
-} from "metabase/browse";
+import { BrowseDatabases, BrowseSchemas, BrowseTables } from "metabase/browse";
 import { ArchiveCollectionModal } from "metabase/collections/components/ArchiveCollectionModal";
 import CollectionLanding from "metabase/collections/components/CollectionLanding";
 import { MoveCollectionModal } from "metabase/collections/components/MoveCollectionModal";
@@ -302,9 +296,7 @@ export const getRoutes = (store) => {
           </Route>
 
           <Route path="browse">
-            <IndexRedirect to="/browse/models" />
-            <Route path="metrics" component={BrowseMetrics} />
-            <Route path="models" component={BrowseModels} />
+            <IndexRedirect to="/browse/databases" />
             <Route path="databases" component={BrowseDatabases} />
             <Route path="databases/:slug" component={BrowseSchemas} />
             <Route

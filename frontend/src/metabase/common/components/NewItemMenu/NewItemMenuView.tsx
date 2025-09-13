@@ -108,6 +108,40 @@ const NewItemMenuView = ({
       );
     }
 
+    // Add divider before Model and Metric items
+    if (hasDataAccess) {
+      items.push(<Menu.Divider key="divider" my="sm" />);
+    }
+
+    if (hasDataAccess) {
+      items.push(
+        <Menu.Item
+          key="model"
+          component={ForwardRefLink}
+          to="/model/new"
+          leftSection={<Icon name="model" />}
+        >
+          {t`Model`}
+        </Menu.Item>,
+      );
+    }
+
+    if (hasDataAccess) {
+      items.push(
+        <Menu.Item
+          key="metric"
+          component={ForwardRefLink}
+          to={Urls.newQuestion({
+            mode: "query",
+            cardType: "metric",
+          })}
+          leftSection={<Icon name="metric" />}
+        >
+          {t`Metric`}
+        </Menu.Item>,
+      );
+    }
+
     // This is a non-standard way of feature gating, akin to using hasPremiumFeature. Do not do this for more complex setups.
     // We hide the "Embed" menu item if the user is not an admin
     if (

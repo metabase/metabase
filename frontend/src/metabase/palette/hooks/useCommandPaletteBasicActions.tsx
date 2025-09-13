@@ -188,30 +188,12 @@ export const useCommandPaletteBasicActions = ({
 
     const browseActions: RegisterShortcutProps[] = [
       {
-        id: "navigate-browse-model",
-        name: t`Browse models`,
-        section: "basic",
-        icon: "model",
-        perform: () => {
-          dispatch(push("/browse/models"));
-        },
-      },
-      {
         id: "navigate-browse-database",
         name: t`Browse databases`,
         section: "basic",
         icon: "database",
         perform: () => {
           dispatch(push("/browse/databases"));
-        },
-      },
-      {
-        id: "navigate-browse-metric",
-        name: t`Browse Metrics`,
-        section: "basic",
-        icon: "metric",
-        perform: () => {
-          dispatch(push("/browse/metrics"));
         },
       },
     ];
