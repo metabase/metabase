@@ -340,9 +340,10 @@ export const _columnSettings = {
   names only and do not depend on field refs.
  */
 function getFieldRefForComparison(fieldRef: DimensionReference) {
-  const newFieldRef = [...fieldRef];
-  if (newFieldRef[2] != null) {
-    newFieldRef[2] = _.omit(fieldRef[2], "base-type");
+  if (fieldRef[2] == null) {
+    return fieldRef;
   }
+  const newFieldRef = [...fieldRef];
+  newFieldRef[2] = _.omit(fieldRef[2], "base-type");
   return newFieldRef;
 }
