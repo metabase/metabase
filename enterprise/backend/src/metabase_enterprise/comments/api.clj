@@ -8,6 +8,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
+   [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.users.api :as api.user]
    [metabase.util :as u]
@@ -223,13 +224,12 @@
   (let [clauses (api.user/user-clauses nil nil nil nil)]
     ;; returns nothing while we're trying to figure out how do we deal with sandboxes and tenants etc
     ;; do not forget to uncomment tests (both api and e2e)
-    {:data   []
-     #_(->> (t2/select [:model/User :id :first_name :last_name]
-                       (-> clauses
-                           (sql.helpers/order-by [:%lower.first_name :asc]
-                                                 [:%lower.last_name :asc]
-                                                 [:id :asc])))
-            (mapv #(assoc % :model "user")))
+    {:data   (->> (t2/select [:model/User :id :first_name :last_name]
+                             (-> clauses
+                                 (sql.helpers/order-by [:%lower.first_name :asc]
+                                                       [:%lower.last_name :asc]
+                                                       [:id :asc])))
+                  (mapv #(assoc % :model "user")))
      :total  (:count (t2/query-one
                       (merge {:select [[[:count [:distinct :core_user.id]] :count]]
                               :from   :core_user}

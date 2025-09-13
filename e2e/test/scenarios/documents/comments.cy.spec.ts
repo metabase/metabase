@@ -712,8 +712,7 @@ H.describeWithSnowplowEE("document comments", () => {
         });
     });
 
-    // TODO: re-enable once BE supports multi-tenant
-    it.skip("supports mentions and can mention yourself", () => {
+    it("supports mentions and can mention yourself", () => {
       startNewCommentIn1ParagraphDocument();
 
       cy.realType("@");
@@ -1494,8 +1493,7 @@ H.describeWithSnowplowEE("document comments", () => {
       });
     });
 
-    // TODO: re-enable once BE supports multi-tenant
-    it.skip("an explicit @mention notifies that person", () => {
+    it("an explicit @mention notifies that person", () => {
       create1ParagraphDocument();
 
       cy.get<DocumentId>("@documentId").then((documentId) => {
