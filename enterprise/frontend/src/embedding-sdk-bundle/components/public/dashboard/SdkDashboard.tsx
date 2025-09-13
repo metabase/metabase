@@ -23,6 +23,7 @@ import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
 } from "embedding-sdk-bundle/hooks/private/use-sdk-dashboard-params";
+import { getResolvedEntityIdForStaticLikeEntity } from "embedding-sdk-bundle/lib/get-resolved-entity-id-for-static-like-entity";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import {
   getFetchStaticTokenFn,
@@ -34,7 +35,6 @@ import type {
 } from "embedding-sdk-bundle/types";
 import type { DashboardEventHandlersProps } from "embedding-sdk-bundle/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
-import type { MetabaseFetchStaticTokenFn } from "embedding-sdk-bundle/types/refresh-token";
 import { useConfirmation } from "metabase/common/hooks";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import {
@@ -52,7 +52,6 @@ import {
 } from "metabase/dashboard/context";
 import { getDashboardComplete, getIsDirty } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
-import { isJWT } from "metabase/lib/utils";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
@@ -132,32 +131,6 @@ export type SdkDashboardInnerProps = SdkDashboardProps &
     >
   >;
 
-// TODO: move from this file
-const getNormalizedDashboardId = async ({
-  dashboardId,
-  isStaticDashboard,
-  customFetchStaticTokenFn,
-}: {
-  dashboardId: SdkDashboardId | null | undefined;
-  isStaticDashboard: boolean;
-  customFetchStaticTokenFn: MetabaseFetchStaticTokenFn | null | undefined;
-}): Promise<SdkDashboardId | null | undefined> => {
-  if (dashboardId === null || dashboardId === undefined || !isStaticDashboard) {
-    return dashboardId;
-  }
-
-  if (isJWT(dashboardId)) {
-    return dashboardId;
-  }
-
-  const fetchedStaticToken = await customFetchStaticTokenFn?.({
-    entityType: "dashboard",
-    entityId: dashboardId,
-  });
-
-  return fetchedStaticToken?.jwt ?? null;
-};
-
 const SdkDashboardInner = ({
   dashboardId: rawDashboardId,
   initialParameters = {},
@@ -193,9 +166,10 @@ const SdkDashboardInner = ({
 
   useEffect(() => {
     const run = async () => {
-      const dashboardId = await getNormalizedDashboardId({
-        dashboardId: rawDashboardId,
-        isStaticDashboard: isStaticEmbedding,
+      const dashboardId = await getResolvedEntityIdForStaticLikeEntity({
+        entityType: "dashboard",
+        entityId: rawDashboardId,
+        isStatic: isStaticEmbedding,
         customFetchStaticTokenFn,
       });
 

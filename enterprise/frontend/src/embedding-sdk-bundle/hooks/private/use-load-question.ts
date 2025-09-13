@@ -1,6 +1,7 @@
 import { useReducer, useRef, useState } from "react";
 import { useAsyncFn, useUnmount } from "react-use";
 
+import { getResolvedEntityIdForStaticLikeEntity } from "embedding-sdk-bundle/lib/get-resolved-entity-id-for-static-like-entity";
 import {
   loadQuestionSdk,
   runQuestionOnNavigateSdk,
@@ -15,13 +16,10 @@ import {
 import type {
   LoadSdkQuestionParams,
   NavigateToNewCardParams,
-  SdkQuestionId,
   SdkQuestionState,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types/question";
-import type { MetabaseFetchStaticTokenFn } from "embedding-sdk-bundle/types/refresh-token";
 import { type Deferred, defer } from "metabase/lib/promise";
-import { isJWT } from "metabase/lib/utils";
 import { setEmbedQuestionEndpoints } from "metabase/services";
 import type Question from "metabase-lib/v1/Question";
 import type { ParameterValuesMap } from "metabase-types/api";
@@ -61,32 +59,6 @@ export interface LoadQuestionHookResult {
     | ((params: NavigateToNewCardParams) => Promise<void>)
     | null;
 }
-
-// TODO: move from this file
-const getNormalizedQuestionId = async ({
-  questionId,
-  isStaticQuestion,
-  customFetchStaticTokenFn,
-}: {
-  questionId: SdkQuestionId | null | undefined;
-  isStaticQuestion: boolean;
-  customFetchStaticTokenFn: MetabaseFetchStaticTokenFn | null | undefined;
-}): Promise<SdkQuestionId | null | undefined> => {
-  if (questionId === null || questionId === undefined || !isStaticQuestion) {
-    return questionId;
-  }
-
-  if (isJWT(questionId)) {
-    return questionId;
-  }
-
-  const fetchedStaticToken = await customFetchStaticTokenFn?.({
-    entityType: "question",
-    entityId: questionId,
-  });
-
-  return fetchedStaticToken?.jwt ?? null;
-};
 
 export function useLoadQuestion({
   questionId,
@@ -135,11 +107,14 @@ export function useLoadQuestion({
     }
 
     try {
-      const normalizedQuestionId = await getNormalizedQuestionId({
-        questionId,
-        isStaticQuestion,
-        customFetchStaticTokenFn,
-      });
+      const normalizedQuestionId = await getResolvedEntityIdForStaticLikeEntity(
+        {
+          entityType: "question",
+          entityId: questionId,
+          isStatic: isStaticQuestion,
+          customFetchStaticTokenFn,
+        },
+      );
 
       if (isStaticQuestion) {
         setEmbedQuestionEndpoints(normalizedQuestionId);
