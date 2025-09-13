@@ -124,6 +124,63 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       H.assertQueryBuilderRowCount(3);
     });
 
+    it("should be able to use the data reference and snippets when writing a SQL transform", () => {
+      H.createSnippet({
+        name: "snippet1",
+        content: "1",
+      });
+
+      visitTransformListPage();
+      getTransformListPage().button("Create a transform").click();
+      H.popover().findByText("SQL query").click();
+      H.popover().findByText(DB_NAME).click();
+
+      function testDataReference() {
+        cy.log("open the data reference");
+        cy.findByTestId("native-query-editor-action-buttons")
+          .findByLabelText("Learn about your data")
+          .click();
+
+        editorSidebar()
+          .should("be.visible")
+          .within(() => {
+            cy.log("The current database should be opened by default");
+            cy.findByText("Data Reference").should("not.exist");
+            cy.findByText("Writable Postgres12").should("be.visible");
+          });
+
+        cy.findByTestId("native-query-editor-action-buttons")
+          .findByLabelText("Learn about your data")
+          .click();
+
+        editorSidebar().should("not.exist");
+      }
+
+      function testSnippets() {
+        cy.findByTestId("native-query-editor-action-buttons")
+          .findByLabelText("SQL Snippets")
+          .click();
+
+        editorSidebar()
+          .should("be.visible")
+          .within(() => {
+            cy.findByText("snippet1").should("be.visible");
+            cy.icon("snippet").click();
+          });
+
+        H.NativeEditor.value().should("eq", "{{snippet: snippet1}}");
+
+        cy.findByTestId("native-query-editor-action-buttons")
+          .findByLabelText("SQL Snippets")
+          .click();
+
+        editorSidebar().should("not.exist");
+      }
+
+      testDataReference();
+      testSnippets();
+    });
+
     it("should be able to create and run a transform from a question or a model", () => {
       function testCardSource({
         type,
@@ -2249,4 +2306,8 @@ function assertOptionNotSelected(name: string) {
     "aria-selected",
     "false",
   );
+}
+
+function editorSidebar() {
+  return cy.findByTestId("editor-sidebar");
 }

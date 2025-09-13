@@ -33,6 +33,7 @@ export const DataReferenceButton = ({
   return (
     <Tooltip label={t`Learn about your data`}>
       <Box
+        aria-label={t`Learn about your data`}
         component="a"
         h={size}
         className={cx(className, DataReferenceButtonS.ButtonRoot, {
