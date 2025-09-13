@@ -56,7 +56,8 @@
    :max_open_connections           100
    :remember_last_set_roles        true
    :http_connection_provider       "HTTP_URL_CONNECTION"
-   :custom_http_params             ""})
+   :custom_http_params             ""
+   :select_sequential_consistency true})
 
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Boolean]         [_ _] "Boolean")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/BigInteger]      [_ _] "Int64")
