@@ -87,7 +87,7 @@ function getSaveButtonTooltip(query: Lib.Query) {
 function areTemplateTagsValid(query: Lib.Query) {
   const { isNative } = Lib.queryDisplayInfo(query);
   if (!isNative) {
-    return false;
+    return true;
   }
 
   const tags = Object.values(Lib.templateTags(query));
