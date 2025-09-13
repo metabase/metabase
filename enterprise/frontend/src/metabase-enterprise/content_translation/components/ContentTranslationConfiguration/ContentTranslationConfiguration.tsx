@@ -125,7 +125,7 @@ export const ContentTranslationConfiguration = () => {
           <DescriptionText>{t`Upload a translation dictionary to translate strings both in Metabase content (like dashboard titles) and in the data itself (like column names and values).`}</DescriptionText>
           <DescriptionText>{t`The dictionary must be a CSV with these columns:`}</DescriptionText>
           <List ms="sm" c="text-medium">
-            <List.Item c="inherit">{t`Locale Code`}</List.Item>
+            <List.Item c="inherit">{t`Language`}</List.Item>
             <List.Item c="inherit">{t`String`}</List.Item>
             <List.Item c="inherit">{t`Translation`}</List.Item>
           </List>
