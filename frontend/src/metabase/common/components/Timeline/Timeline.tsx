@@ -2,6 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Button from "metabase/common/components/Button";
+import { getFormattedTime } from "metabase/common/components/DateTime/DateTime";
 import { color } from "metabase/lib/colors";
 import { getRelativeTime } from "metabase/lib/time-dayjs";
 import type { RevisionOrModerationEvent } from "metabase/plugins";
@@ -59,7 +60,10 @@ export function Timeline({
                   </Tooltip>
                 )}
               </EventHeader>
-              <Timestamp dateTime={timestamp}>
+              <Timestamp
+                dateTime={timestamp}
+                title={getFormattedTime(timestamp)}
+              >
                 {getRelativeTime(timestamp)}
               </Timestamp>
               {revision?.has_multiple_changes && <div>{description}</div>}
