@@ -41,7 +41,6 @@ export function QueryEditor({
     runQuery,
     cancelQuery,
   } = useQueryResults(question);
-  const canSave = Lib.canSave(question.query(), question.type());
   const { isNative } = Lib.queryDisplayInfo(question.query());
 
   const handleChange = async (newQuestion: Question) => {
@@ -84,9 +83,10 @@ export function QueryEditor({
       data-testid="transform-query-editor"
     >
       <EditorHeader
+        question={question}
         isNew={isNew}
+        isQueryDirty={isQueryDirty}
         isSaving={isSaving}
-        canSave={canSave && (isNew || isQueryDirty)}
         onSave={handleSave}
         onCancel={onCancel}
       />
