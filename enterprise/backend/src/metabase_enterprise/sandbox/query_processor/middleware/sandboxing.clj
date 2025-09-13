@@ -8,6 +8,8 @@
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
    [metabase-enterprise.sandbox.models.sandbox :as sandbox]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
+   ;; allowed (for now) since sandboxing needs to manipulate legacy metadata
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]

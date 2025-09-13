@@ -392,3 +392,41 @@
                    (lib/limit 3)
                    (qp/process-query)
                    (->> (mt/formatted-rows [str])))))))))
+
+(deftest ^:parallel breakout-with-expressions-test
+  (let [mp    (lib.tu/mock-metadata-provider
+               (mt/metadata-provider)
+               {:cards [{:id            1
+                         :type          :model
+                         :name          "Model A"
+                         :dataset-query (mt/mbql-query products
+                                          {:source-table $$products
+                                           :expressions  {"Rating Bucket" [:floor $products.rating]}})}
+                        {:id            2
+                         :type          :model
+                         :dataset-query (mt/mbql-query orders
+                                          {:source-table $$orders
+                                           :joins        [{:source-table "card__1"
+                                                           :alias        "model A - Product"
+                                                           :fields       :all
+                                                           :condition    [:=
+                                                                          $orders.product_id
+                                                                          [:field %products.id
+                                                                           {:join-alias "model A - Product"}]]}]})}]})
+        query (lib/query
+               mp
+               {:database (mt/id)
+                :stages   [{:lib/type    :mbql.stage/mbql
+                            :source-card 2
+                            :expressions [[:abs {:lib/expression-name "pivot-grouping"} 0]]
+                            :aggregation [[:sum {:lib/uuid "06f3200a-519c-45fe-ab3a-35dfb44bb623"} [:field {:base-type :type/Number} "SUBTOTAL"]]]
+                            :breakout    [[:field {:base-type :type/Number, :join-alias "model A - Product"}
+                                           "Rating Bucket"]
+                                          [:expression {:base-type :type/Integer, :effective-type :type/Integer}
+                                           "pivot-grouping"]]
+                            :limit       3}]
+                :lib/type :mbql/query})]
+    (is (= [[0.0 0 172500.71]
+            [2.0 0 36791.99]
+            [3.0 0 454525.88]]
+           (mt/formatted-rows [1.0 int 2.0] (qp/process-query query))))))

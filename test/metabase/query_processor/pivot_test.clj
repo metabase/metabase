@@ -348,7 +348,7 @@
 (deftest ^:parallel nested-models-with-expressions-pivot-breakout-names-test
   (testing "#43993 again - breakouts on an expression from the inner model should pass"
     (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                      (mt/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       {:cards [{:id            1
                                                 :type          :model
                                                 :name          "Model A"
@@ -708,8 +708,8 @@
                        {:pivot_rows [0 1]
                         :pivot_cols []})]
       (is (= (mt/$ids orders
-               [[:field %products.category {:source-field %product_id, :base-type :type/Text}]
-                [:field %people.source {:source-field %user_id, :base-type :type/Text}]
+               [[:field %products.category {:source-field %product_id}]
+                [:field %people.source {:source-field %user_id}]
                 [:expression "pivot-grouping"]
                 [:aggregation 0]])
              (mapv :field_ref (mt/cols (qp.pivot/run-pivot-query query))))))))

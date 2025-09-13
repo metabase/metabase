@@ -3,7 +3,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.parameters.chain-filter :as chain-filter]
@@ -32,7 +31,7 @@
     {:case-sensitive false}))
 
 (mu/defn- param->fields
-  [param :- mbql.s/Parameter]
+  [param :- ::lib.schema.parameter/parameter]
   (let [op      (param-type->op (:type param))
         options (or (:options param) (param-type->default-options (:type param)))]
     (for [field-id (params/dashboard-param->field-ids param)]

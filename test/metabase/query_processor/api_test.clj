@@ -333,11 +333,11 @@
                                   encoded? json/encode)]]
           (testing (format "encoded? %b" encoded?)
             (doseq [mp [(lib.tu/remap-metadata-provider
-                         (mt/application-database-metadata-provider (mt/id))
+                         (mt/metadata-provider)
                          (mt/id :venues :category_id)
                          (mt/id :categories :name))
                         (lib.tu/remap-metadata-provider
-                         (mt/application-database-metadata-provider (mt/id))
+                         (mt/metadata-provider)
                          (mt/id :venues :category_id)
                          (mapv first (mt/rows (qp/process-query
                                                (mt/mbql-query categories
