@@ -859,6 +859,8 @@
   Think of `:dispatch-type/*` as similar to how you would use `Object` if you were dispatching
   off of `type` in pure Clojure."
   [x]
+  ;; TODO (Cam 9/8/25) -- it seems like maybe we could add an optimized implementation here for Clj that uses the
+  ;; class hierarchy instead of a series of predicate calls
   (cond
     (nil? x)              :dispatch-type/nil
     (boolean? x)          :dispatch-type/boolean
