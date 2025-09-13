@@ -83,7 +83,7 @@ export const getNormalizedDimensionReference = (
   return mbql;
 };
 
-const getDimensionReferenceWithoutOptions = (
+export const getDimensionReferenceWithoutOptions = (
   mbql: DimensionReferenceWithOptions,
   optionsKeysToOmit: string[],
 ): DimensionReferenceWithOptions => {

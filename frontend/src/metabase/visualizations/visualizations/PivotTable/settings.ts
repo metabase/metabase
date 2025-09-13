@@ -18,6 +18,10 @@ import { ChartSettingsTableFormatting } from "metabase/visualizations/components
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
+import {
+  getDimensionReferenceWithoutOptions,
+  isFieldReference,
+} from "metabase-lib/v1/references";
 import { isDimension } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
@@ -340,10 +344,7 @@ export const _columnSettings = {
   names only and do not depend on field refs.
  */
 function getFieldRefForComparison(fieldRef: DimensionReference) {
-  if (fieldRef[2] == null) {
-    return fieldRef;
-  }
-  const newFieldRef = [...fieldRef];
-  newFieldRef[2] = _.omit(fieldRef[2], "base-type");
-  return newFieldRef;
+  return isFieldReference(fieldRef)
+    ? getDimensionReferenceWithoutOptions(fieldRef, ["base-type"])
+    : fieldRef;
 }
