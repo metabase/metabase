@@ -291,6 +291,10 @@
   "Should we allow users to use transforms?"
   :transforms)
 
+(define-premium-feature ^{:added "0.57.0"} enable-dependencies?
+  "Should we allow users to use dependency tracking?"
+  :dependencies)
+
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
    :ai_sql_fixer                   (enable-ai-sql-fixer?)
@@ -308,6 +312,7 @@
    :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
    :database_auth_providers        (enable-database-auth-providers?)
    :database_routing               (enable-database-routing?)
+   :dependencies                   (enable-dependencies?)
    :development_mode               (development-mode?)
    :disable_password_login         (can-disable-password-login?)
    :documents                      (enable-documents?)

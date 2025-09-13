@@ -428,6 +428,11 @@
    :api  #{metabase.database-routing.core}
    :uses #{premium-features}}
 
+  dependencies
+  {:team "Querying"
+   :api  #{metabase.premium-features.core}
+   :uses #{premium-features}}
+
   driver
   {:team "Drivers"
    :api  #{metabase.driver
@@ -716,6 +721,7 @@
            metabase.native-query-snippets.core}
    :uses #{api
            collections
+           events
            lib
            models
            permissions
@@ -1688,6 +1694,25 @@
            util
            warehouse-schema
            warehouses}}
+
+  enterprise/dependencies
+  {:team "Querying"
+   :api  #{metabase-enterprise.dependencies.core
+           metabase-enterprise.dependencies.init}
+   :uses #{analyze
+           app-db
+           api
+           collections
+           driver
+           events
+           lib
+           lib-be
+           models
+           native-query-snippets
+           premium-features
+           queries
+           query-processor
+           util}}
 
   enterprise/documents
   {:team "UX West"

@@ -8,6 +8,7 @@
    [metabase.driver.common :as driver.common]
    [metabase.driver.h2.actions :as h2.actions]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql :as sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
@@ -641,3 +642,11 @@
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :h2
   [_ e]
   (#{"42S02" "42S03" "42S04"} (sql-jdbc/get-sql-state e)))
+
+(defmethod sql/normalize-unquoted-name :h2
+  [_ name-str]
+  (u/upper-case-en name-str))
+
+(defmethod sql/default-schema :h2
+  [_]
+  "PUBLIC")

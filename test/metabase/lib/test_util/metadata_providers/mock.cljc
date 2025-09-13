@@ -54,7 +54,8 @@
                      :metadata/card                 :cards
                      :metadata/segment              :segments
                      :metadata/native-query-snippet :native-query-snippets
-                     :metadata/metric               :cards)]
+                     :metadata/metric               :cards
+                     :metadata/transform            :transforms)]
     (into []
           (comp (metadata.protocols/default-spec-filter-xform metadata-spec)
                 (map #(assoc % :lib/type metadata-type)))

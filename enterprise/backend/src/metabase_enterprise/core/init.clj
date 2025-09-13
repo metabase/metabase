@@ -12,6 +12,7 @@
    [metabase-enterprise.cache.init]
    [metabase-enterprise.comments.init]
    [metabase-enterprise.database-replication.init]
+   [metabase-enterprise.dependencies.init]
    [metabase-enterprise.documents.init]
    [metabase-enterprise.gsheets.init]
    [metabase-enterprise.llm.init]
