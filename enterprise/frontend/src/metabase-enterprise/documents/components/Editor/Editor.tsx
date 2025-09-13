@@ -23,6 +23,8 @@ import { CommandExtension } from "metabase-enterprise/rich_text_editing/tiptap/e
 import { CommandSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Command/CommandSuggestion";
 import { CustomStarterKit } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
 import { DisableMetabotSidebar } from "metabase-enterprise/rich_text_editing/tiptap/extensions/DisableMetabotSidebar";
+import { FlexContainer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/FlexContainer/FlexContainer";
+import { HandleEditorDrop } from "metabase-enterprise/rich_text_editing/tiptap/extensions/HandleEditorDrop/HandleEditorDrop";
 import { MentionExtension } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Mention/MentionExtension";
 import { MentionSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Mention/MentionSuggestion";
 import {
@@ -31,17 +33,20 @@ import {
 } from "metabase-enterprise/rich_text_editing/tiptap/extensions/MetabotEmbed";
 import { MetabotMentionExtension } from "metabase-enterprise/rich_text_editing/tiptap/extensions/MetabotMention/MetabotMentionExtension";
 import { MetabotMentionSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/MetabotMention/MetabotSuggestion";
+import { ResizeNode } from "metabase-enterprise/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode";
 import { SmartLink } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import { createSuggestionRenderer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/suggestionRenderer";
 
 import S from "./Editor.module.css";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 import type { CardEmbedRef } from "./types";
+
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
   CardEmbed.name,
   MetabotNode.name,
   SmartLink.name,
   Image.name,
+  FlexContainer.name,
   "codeBlock",
 ];
 
@@ -116,6 +121,7 @@ export const Editor: React.FC<EditorProps> = ({
         placeholder: t`Start writing, type "/" to list commands, or "@" to mention an item...`,
       }),
       CardEmbed,
+      FlexContainer,
       MentionExtension.configure({
         suggestion: {
           allow: ({ state }) => !isMetabotBlock(state),
@@ -138,6 +144,8 @@ export const Editor: React.FC<EditorProps> = ({
           render: createSuggestionRenderer(MetabotMentionSuggestion),
         },
       }),
+      ResizeNode,
+      HandleEditorDrop,
     ],
     [siteUrl, getState],
   );

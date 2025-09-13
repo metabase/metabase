@@ -1,5 +1,6 @@
 import { autoUpdate, useFloating } from "@floating-ui/react";
 import { Node, mergeAttributes } from "@tiptap/core";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
 import {
   type NodeViewProps,
   NodeViewWrapper,
@@ -7,8 +8,10 @@ import {
 } from "@tiptap/react";
 import cx from "classnames";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMount, useUnmount } from "react-use";
 import { t } from "ttag";
 
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -46,6 +49,36 @@ import CS from "../extensions.module.css";
 import styles from "./CardEmbedNode.module.css";
 import { ModifyQuestionModal } from "./ModifyQuestionModal";
 import { NativeQueryModal } from "./NativeQueryModal";
+
+interface DropZoneProps {
+  isOver: boolean;
+  side: "left" | "right";
+  disabled?: boolean;
+}
+
+const DropZone = ({ isOver, side, disabled }: DropZoneProps) => {
+  if (disabled) {
+    return null;
+  }
+
+  return (
+    <Box
+      style={{
+        position: "absolute",
+        top: 0,
+        bottom: 0,
+        width: "0.25rem",
+        [side]: "-0.75rem",
+        borderRadius: "0.125rem",
+        backgroundColor: isOver
+          ? "var(--mb-base-color-blue-30)"
+          : "transparent",
+        zIndex: 10,
+        pointerEvents: "all",
+      }}
+    />
+  );
+};
 
 function formatCardEmbed(attrs: CardEmbedAttributes): string {
   if (attrs.name) {
@@ -123,7 +156,26 @@ export const CardEmbed: Node<{
   },
 
   addProseMirrorPlugins() {
-    return [createProseMirrorPlugin("cardEmbed")];
+    return [
+      createProseMirrorPlugin("cardEmbed"),
+      new Plugin({
+        key: new PluginKey("simp"),
+        props: {
+          handleDOMEvents: {
+            dragstart: (view, event) => {
+              const { pos } = view.posAtCoords({
+                left: event.clientX,
+                top: event.clientY,
+              });
+              const node = view.state.doc.nodeAt(pos);
+
+              view.draggingNode = node;
+              return false;
+            },
+          },
+        },
+      }),
+    ];
   },
 
   renderText({ node }) {
@@ -143,6 +195,7 @@ export const CardEmbedComponent = memo(
     const { data: commentsData } = useListCommentsQuery(
       getListCommentsQuery(document),
     );
+
     const comments = commentsData?.comments;
     const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
     const [hovered, setHovered] = useState(false);
@@ -162,6 +215,8 @@ export const CardEmbedComponent = memo(
     const { id, name } = node.attrs;
     const dispatch = useDispatch();
     const canWrite = editor.options.editable;
+
+    const isMountedRef = useRef(false);
 
     let embedIndex = -1;
 
@@ -191,6 +246,14 @@ export const CardEmbedComponent = memo(
     const titleInputRef = useRef<HTMLInputElement>(null);
     const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
     const [isReplaceModalOpen, setIsReplaceModalOpen] = useState(false);
+    const [dragState, setDragState] = useState<{
+      isDraggedOver: boolean;
+      side: "left" | "right" | null;
+    }>({ isDraggedOver: false, side: null });
+    const draggedOverTimeoutRef = useRef<number | undefined>();
+    const cardEmbedRef = useRef<HTMLDivElement>(null);
+
+    const isBeingDragged = editor.view.draggingNode === node;
 
     const displayName = name || card?.name;
     const isNativeQuestion = card?.dataset_query?.type === "native";
@@ -201,6 +264,14 @@ export const CardEmbedComponent = memo(
         titleInputRef.current.select();
       }
     }, [isEditingTitle]);
+
+    useMount(() => {
+      isMountedRef.current = true;
+    });
+
+    useUnmount(() => {
+      isMountedRef.current = false;
+    });
 
     const handleTitleSave = () => {
       const trimmedTitle = editedTitle.trim();
@@ -310,6 +381,38 @@ export const CardEmbedComponent = memo(
       [dispatch, metadata, document],
     );
 
+    const handleDragOver = useCallback(
+      (e: React.DragEvent) => {
+        e.preventDefault();
+
+        const draggingNode = editor.view.draggingNode;
+        if (draggingNode.type.name === "cardEmbed" && cardEmbedRef.current) {
+          const rect = cardEmbedRef.current.getBoundingClientRect();
+          const relativeX = e.clientX - rect.left;
+          const nodeWidth = rect.width;
+
+          // Determine which side based on cursor position
+          let side: "left" | "right" | null = null;
+          if (relativeX < nodeWidth * 0.5) {
+            side = "left";
+          } else if (relativeX >= nodeWidth * 0.5) {
+            side = "right";
+          }
+
+          setDragState({ isDraggedOver: true, side });
+
+          window.clearTimeout(draggedOverTimeoutRef.current);
+
+          draggedOverTimeoutRef.current = window.setTimeout(() => {
+            if (isMountedRef.current) {
+              setDragState({ isDraggedOver: false, side: null });
+            }
+          }, 300);
+        }
+      },
+      [editor.view.draggingNode],
+    );
+
     if (isLoading && !card) {
       return (
         <NodeViewWrapper
@@ -317,6 +420,7 @@ export const CardEmbedComponent = memo(
           className={cx(styles.embedWrapper, CS.root, {
             [CS.open]: isOpen || isHovered,
           })}
+          style={{ position: "relative" }}
         >
           <Box
             className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
@@ -350,6 +454,7 @@ export const CardEmbedComponent = memo(
             [CS.open]: isOpen || isHovered,
           })}
           data-testid="document-card-embed"
+          style={{ position: "relative" }}
         >
           <Box
             className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
@@ -381,8 +486,173 @@ export const CardEmbedComponent = memo(
           ref={refs.setReference}
           onMouseOver={() => setHovered(true)}
           onMouseOut={() => setHovered(false)}
+          data-drag-handle
+          onDragOver={handleDragOver}
+          onDrop={(_e) => {
+            const target = node;
+            const dropped = editor.view.draggingNode;
+            const pos = getPos();
+
+            setDragState({ isDraggedOver: false, side: null });
+
+            if (!pos || target === dropped) {
+              return;
+            }
+
+            const resolvedPos = editor.state.doc.resolve(pos);
+            const { parent } = resolvedPos;
+
+            // Helper function to extract cardEmbed from resizeNode wrapper
+            const extractCardEmbed = (node: any) => {
+              if (node.type.name === "cardEmbed") {
+                return node;
+              }
+              if (
+                node.type.name === "resizeNode" &&
+                node.content.childCount === 1
+              ) {
+                const child = node.content.child(0);
+                if (child.type.name === "cardEmbed") {
+                  return child;
+                }
+              }
+              return null;
+            };
+
+            // Helper function to find position and parent of a node, handling resizeNode wrappers
+            const findNodePositionAndParent = (searchNode: any) => {
+              let foundPos: number | null = null;
+              let foundParent: any = null;
+              let foundNode: any = null;
+
+              editor.state.doc.descendants((node, nodePos, nodeParent) => {
+                if (node === searchNode) {
+                  foundPos = nodePos;
+                  foundParent = nodeParent;
+                  foundNode = node;
+                  return false;
+                }
+                // Also check if this node wraps the search node
+                if (
+                  node.type.name === "resizeNode" &&
+                  node.content.childCount === 1
+                ) {
+                  const child = node.content.child(0);
+                  if (child === searchNode) {
+                    foundPos = nodePos;
+                    foundParent = nodeParent;
+                    foundNode = node; // Return the wrapper node for position tracking
+                    return false;
+                  }
+                }
+              });
+
+              return {
+                pos: foundPos,
+                parent: foundParent,
+                wrapperNode: foundNode,
+              };
+            };
+
+            const droppedCardEmbed = extractCardEmbed(dropped);
+            if (!droppedCardEmbed) {
+              return; // Not a cardEmbed, ignore
+            }
+
+            const targetCardEmbed = extractCardEmbed(target);
+            if (!targetCardEmbed) {
+              return; // Target is not a cardEmbed, ignore
+            }
+
+            // Find the position of the dropped node (could be wrapped)
+            const { pos: droppedPos, wrapperNode: droppedWrapper } =
+              findNodePositionAndParent(dropped);
+
+            if (droppedPos === null) {
+              return;
+            }
+
+            if (
+              parent.type.name === "doc" ||
+              parent.type.name === "resizeNode"
+            ) {
+              // Create new FlexContainer when dropping on a standalone CardEmbed
+              const children =
+                dragState.side === "left"
+                  ? [droppedCardEmbed.copy(), targetCardEmbed.copy()]
+                  : [targetCardEmbed.copy(), droppedCardEmbed.copy()];
+
+              const flexContainer =
+                editor.state.schema.nodes.flexContainer.create({}, children);
+
+              // Wrap the flexContainer in a resizeNode
+              const wrapper = editor.state.schema.nodes.resizeNode.create(
+                { height: 442, minHeight: 250 },
+                [flexContainer],
+              );
+
+              // Determine what to replace - if target is wrapped in resizeNode, replace the wrapper
+              let replacePos = pos;
+              let replaceSize = targetCardEmbed.nodeSize;
+              if (parent.type.name === "resizeNode") {
+                // Target is wrapped, replace the entire resizeNode
+                replacePos = resolvedPos.before();
+                replaceSize = parent.nodeSize;
+              }
+
+              // Create a single transaction for both operations to avoid position shifting
+              const tr = editor.state.tr;
+
+              // First, find and remove the dropped node from its original position
+              const nodeToRemove = droppedWrapper || dropped;
+              let removalHandled = false;
+              editor.state.doc.descendants((node, nodePos) => {
+                if (node === nodeToRemove && !removalHandled) {
+                  tr.delete(nodePos, nodePos + node.nodeSize);
+                  removalHandled = true;
+                  return false;
+                }
+              });
+
+              // Then replace the target with the new FlexContainer
+              // Need to recalculate positions after the removal
+              let adjustedReplacePos = replacePos;
+              if (
+                removalHandled &&
+                droppedPos !== null &&
+                droppedPos < replacePos
+              ) {
+                // If we removed something before the replace position, adjust it
+                const removedSize = nodeToRemove.nodeSize;
+                adjustedReplacePos = replacePos - removedSize;
+              }
+
+              tr.replaceWith(
+                adjustedReplacePos,
+                adjustedReplacePos + replaceSize,
+                wrapper,
+              );
+
+              editor.view.dispatch(tr);
+            }
+          }}
         >
+          {canWrite && id && (
+            <>
+              <DropZone
+                isOver={dragState.isDraggedOver && dragState.side === "left"}
+                side="left"
+                disabled={isBeingDragged}
+              />
+              <DropZone
+                isOver={dragState.isDraggedOver && dragState.side === "right"}
+                side="right"
+                disabled={isBeingDragged}
+              />
+            </>
+          )}
           <Box
+            ref={cardEmbedRef}
             className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
               [styles.selected]: selected,
             })}
@@ -419,15 +689,19 @@ export const CardEmbedComponent = memo(
                     />
                   ) : (
                     <Box className={styles.titleContainer}>
-                      <Text
-                        size="md"
-                        color="text-dark"
-                        fw={700}
-                        onClick={handleTitleClick}
-                        c="pointer"
-                      >
-                        {displayName}
-                      </Text>
+                      <Ellipsified lines={1} tooltip={displayName}>
+                        <Text
+                          className={styles.titleText}
+                          size="md"
+                          color="text-dark"
+                          fw={700}
+                          c="pointer"
+                          truncate="end"
+                          onClick={handleTitleClick}
+                        >
+                          {displayName} ({id})
+                        </Text>
+                      </Ellipsified>
                       {canWrite && (
                         <Icon
                           name="pencil"
