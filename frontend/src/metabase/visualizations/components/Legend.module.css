@@ -35,5 +35,7 @@ fullscreen dashboard mode
 }
 
 .DashCard.LegendItem {
-  font-size: 12px;
+  font-weight: normal;
+  color: var(--mb-color-text-secondary);
+  font-size: 0.75rem;
 }
