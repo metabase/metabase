@@ -1,16 +1,17 @@
 import { useField } from "formik";
-import { useCallback } from "react";
+import { useCallback, useId } from "react";
 import { t } from "ttag";
 
-import FormField from "metabase/common/components/FormField";
+import { Group } from "metabase/ui";
 
+import S from "./DatabaseSectionField.module.css";
 import { SectionButton } from "./DatabaseSectionField.styled";
 
 export interface DatabaseSectionFieldProps {
   name: string;
 }
 
-const DatabaseSectionField = ({
+export const DatabaseSectionField = ({
   name,
 }: DatabaseSectionFieldProps): JSX.Element => {
   const [{ value }, , { setValue }] = useField(name);
@@ -19,18 +20,24 @@ const DatabaseSectionField = ({
     setValue(!value);
   }, [value, setValue]);
 
+  const buttonId = useId();
+  const iconRight = value ? "chevronup" : "chevrondown";
+  const buttonText = value ? t`Hide` : t`Show`;
+
   return (
-    <FormField>
+    <Group className={S.FormField} justify="space-between" mb="md">
+      <label
+        htmlFor={buttonId}
+        className={S.Label}
+      >{t`Advanced options`}</label>
       <SectionButton
         type="button"
-        iconRight={value ? "chevronup" : "chevrondown"}
+        iconRight={iconRight}
         onClick={handleClick}
+        id={buttonId}
       >
-        {value ? t`Hide advanced options` : t`Show advanced options`}
+        {buttonText}
       </SectionButton>
-    </FormField>
+    </Group>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DatabaseSectionField;

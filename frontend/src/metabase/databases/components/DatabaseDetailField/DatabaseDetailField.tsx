@@ -18,7 +18,7 @@ import { FIELD_OVERRIDES } from "../../constants";
 import type { EngineFieldOverride } from "../../types";
 import { DatabaseHostnameWithProviderField } from "../DatabaseHostnameWithProviderField/DatabaseHostnameWithProviderField";
 import DatabaseInfoField from "../DatabaseInfoField";
-import DatabaseSectionField from "../DatabaseSectionField";
+import { DatabaseSectionField } from "../DatabaseSectionField/DatabaseSectionField";
 
 export interface DatabaseDetailFieldProps {
   field: EngineField;
@@ -108,6 +108,9 @@ const getFieldProps = (field: EngineField, override?: EngineFieldOverride) => {
     placeholder: placeholder != null ? String(placeholder) : undefined,
     encoding: field["treat-before-posting"],
     mb: "md",
+    labelProps: {
+      mb: "sm",
+    },
   };
 };
 

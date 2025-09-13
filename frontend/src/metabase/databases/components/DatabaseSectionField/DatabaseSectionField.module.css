@@ -1,0 +1,12 @@
+.FormField {
+  background-color: var(--mb-color-background-info);
+  padding: var(--mantine-spacing-lg);
+  border-radius: var(--mantine-radius-md);
+}
+
+.Label {
+  color: var(--mb-color-text-primary);
+  font-size: var(--mantine-font-size-md);
+  font-weight: 700;
+  line-height: var(--mantine-line-height-md);
+}

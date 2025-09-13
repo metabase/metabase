@@ -109,7 +109,7 @@ describe("admin > database > add", () => {
         H.popover().contains("PostgreSQL").click();
 
         cy.findByTestId("database-form").within(() => {
-          cy.findByText("Show advanced options").click();
+          cy.findByLabelText("Advanced options").click();
           cy.findByLabelText(/Rerun queries for simple explorations/).should(
             "have.attr",
             "data-checked",
@@ -257,8 +257,6 @@ describe("admin > database > add", () => {
       () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("MongoDB").click({ force: true });
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains("Additional connection string options");
 
         H.typeAndBlurUsingLabel("Display name", "QA Mongo");
         H.typeAndBlurUsingLabel("Host", "localhost");
@@ -268,8 +266,10 @@ describe("admin > database > add", () => {
         H.typeAndBlurUsingLabel("Password", "metasample123");
         H.typeAndBlurUsingLabel("Authentication database (optional)", "admin");
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Show advanced options").click();
+        cy.findByLabelText("Advanced options").click();
+        cy.findByLabelText(
+          "Additional connection string options (optional)",
+        ).should("be.visible");
 
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Save").should("not.be.disabled").click();
@@ -360,8 +360,7 @@ describe("admin > database > add", () => {
     it("should add MySQL database and redirect to db info page", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("MySQL").click({ force: true });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Show advanced options").click();
+      cy.findByLabelText("Advanced options").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Additional JDBC connection string options");
 
@@ -620,8 +619,7 @@ describe("scenarios > admin > databases > sample database", () => {
       .and("contain", "sample-database.db");
 
     cy.log("should be possible to modify the connection settings");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Show advanced options").click();
+    cy.findByLabelText("Advanced options").click();
     // `auto_run_queries` toggle should be ON by default
     cy.findByLabelText(/Rerun queries for simple explorations/)
       .should("have.attr", "data-checked", "true")
@@ -691,7 +689,7 @@ describe("scenarios > admin > databases > sample database", () => {
   it("allows to save the default schedule (metabase#57198)", () => {
     visitDatabase(SAMPLE_DB_ID);
     editDatabase();
-    cy.findByRole("button", { name: /Show advanced options/ }).click();
+    cy.findByRole("button", { name: /Advanced options/ }).click();
     cy.findByLabelText(/Choose when syncs and scans happen/).click({
       force: true,
     });
