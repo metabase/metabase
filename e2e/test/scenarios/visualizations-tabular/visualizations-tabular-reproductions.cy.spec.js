@@ -1069,11 +1069,7 @@ describe("issue 50346", () => {
         ["sum", ["field", ORDERS.TOTAL, { "base-type": "type/Float" }]],
       ],
       breakout: [
-        [
-          "field",
-          PRODUCTS.CATEGORY,
-          { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
-        ],
+        ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
         [
           "field",
           PRODUCTS.VENDOR,

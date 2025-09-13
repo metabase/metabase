@@ -23,6 +23,7 @@ import type {
   Card,
   DatasetColumn,
   DatasetData,
+  DimensionReference,
   PivotTableColumnSplitSetting,
   RawSeries,
   Series,
@@ -303,7 +304,13 @@ export const _columnSettings = {
         .slice(0, -1)
         .some(
           (row) =>
-            _.isEqual(row, column.name) || _.isEqual(row, column.field_ref),
+            _.isEqual(row, column.name) ||
+            (Array.isArray(row) &&
+              column.field_ref != null &&
+              _.isEqual(
+                getFieldRefForComparison(row),
+                getFieldRefForComparison(column.field_ref),
+              )),
         );
     },
     getHidden: (
@@ -326,3 +333,16 @@ export const _columnSettings = {
     getDefault: displayNameForColumn,
   },
 };
+
+/*
+  HACK: when comparing field refs for pivot viz settings, ignore `base-type`.
+  Sometimes it's present, sometimes it's not. New pivot settings use column
+  names only and do not depend on field refs.
+ */
+function getFieldRefForComparison(fieldRef: DimensionReference) {
+  const newFieldRef = [...fieldRef];
+  if (newFieldRef[2] != null) {
+    newFieldRef[2] = _.omit(fieldRef[2], "base-type");
+  }
+  return newFieldRef;
+}
