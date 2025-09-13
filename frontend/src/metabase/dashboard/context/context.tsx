@@ -71,6 +71,7 @@ export type DashboardContextOwnProps = {
         "isEditing" | "downloadsEnabled"
       >) => DashboardActionButtonList);
   isDashcardVisible?: (dc: DashboardCard) => boolean;
+  isStaticEmbedding?: boolean;
   /**
    * I want this to be optional, and error out when it's not passed, so it's obvious we need to pass it.
    * Forcing passing it isn't ideal since we only need to do this in a couple of places
@@ -152,6 +153,7 @@ const DashboardContextProviderInner = forwardRef(
       isLoadingWithoutCards,
       parameters,
       isEmbeddingIframe,
+      isStaticEmbedding,
 
       // redux actions
       addCardToDashboard,
@@ -410,6 +412,7 @@ const DashboardContextProviderInner = forwardRef(
           parameters,
           parameterValues,
           isEmbeddingIframe,
+          isStaticEmbedding,
 
           // redux actions
           addCardToDashboard,

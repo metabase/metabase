@@ -21,6 +21,7 @@ import type {
 } from "embedding-sdk-bundle/types/question";
 import type { MetabaseFetchStaticTokenFn } from "embedding-sdk-bundle/types/refresh-token";
 import { type Deferred, defer } from "metabase/lib/promise";
+import { isJWT } from "metabase/lib/utils";
 import { setEmbedQuestionEndpoints } from "metabase/services";
 import type Question from "metabase-lib/v1/Question";
 import { isObject } from "metabase-types/guards";
@@ -72,10 +73,7 @@ const getNormalizedQuestionId = async ({
     return questionId;
   }
 
-  const isStaticToken =
-    typeof questionId === "string" && questionId.includes(".");
-
-  if (isStaticToken) {
+  if (isJWT(questionId)) {
     return questionId;
   }
 
