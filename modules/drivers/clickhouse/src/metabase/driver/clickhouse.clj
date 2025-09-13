@@ -309,7 +309,7 @@
         (str/starts-with? msg "Code: 81"))))
 
 (defmethod driver/compile-transform :clickhouse
-  [driver {:keys [query output-table]}]
+  [driver query output-table]
   (let [pieces [(sql.qp/format-honeysql driver {:create-table output-table})
                 ;; TODO(rileythomp, 2025-08-22): Is there a better way to do this?
                 ;; i.e. only do this if we don't have a non-nullable field to use as a primary key?
@@ -323,3 +323,9 @@
   [driver conn-spec schema]
   (let [sql [[(format "CREATE DATABASE IF NOT EXISTS `%s`;" schema)]]]
     (driver/execute-raw-queries! driver conn-spec sql)))
+
+(defmethod driver/compile-rename-table :clickhouse
+  [driver old-name new-name]
+  [(format "RENAME TABLE %s TO %s;"
+           (first (sql.qp/format-honeysql driver (keyword old-name)))
+           (first (sql.qp/format-honeysql driver (keyword (namespace old-name) new-name))))])

@@ -942,7 +942,7 @@
   (= (sql-jdbc/get-sql-state e) "S0002"))
 
 (defmethod driver/compile-transform :sqlserver
-  [driver {:keys [query output-table]}]
+  [driver query output-table]
   (let [^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))
         ^Select parsed-query (macaw/parsed-query query)
         ^PlainSelect select-body (.getSelectBody parsed-query)]
@@ -969,3 +969,8 @@
   [driver conn-spec schema]
   (let [sql [[(format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA [%s];');" schema schema)]]]
     (driver/execute-raw-queries! driver conn-spec sql)))
+
+(defmethod driver/compile-rename-table :sqlserver
+  [driver old-name new-name]
+  [(format "EXEC sp_rename '%s', '%s';"
+           (first (sql.qp/format-honeysql driver (keyword old-name))) new-name)])
