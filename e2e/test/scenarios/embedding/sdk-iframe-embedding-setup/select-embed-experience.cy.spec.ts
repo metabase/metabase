@@ -161,10 +161,9 @@ H.describeWithSnowplow(suiteTitle, () => {
     );
   });
 
-  // TODO: fix this flaky test
   it(
     "localizes the iframe preview when ?locale is passed",
-    { tags: "@skip" },
+    { tags: "@flaky" },
     () => {
       visitNewEmbedPage({ locale: "fr" });
 
