@@ -3,9 +3,14 @@
   (:require
    [clojure.set :as set]
    [metabase-enterprise.metabot-v3.query-analyzer :as query-analyzer]
+   [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.humanization :as u.humanization]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
   (:import
@@ -59,12 +64,61 @@
          all-tables (concat priority-tables fill-tables)
          all-tables (take all-tables-limit all-tables)]
      (mapv (fn [{:keys [fields] :as table}]
-             (merge (select-keys table [:name :schema :description])
+             (merge (select-keys table [:id :name :schema :description])
                     {:columns (mapv (fn [{:keys [database_type] :as field}]
-                                      (merge (select-keys field [:name :description])
+                                      (merge (select-keys field [:id :name :description])
                                              {:data_type database_type}))
                                     fields)}))
            all-tables))))
+
+(defn enhanced-database-tables
+  "Get database tables formatted with the new metabot tools schema format.
+
+  Returns tables with :type, :display_name, :database_id, :database_schema, :fields (with field-id), :metrics.
+  This format is used by metabot context and other modern tools."
+  ([database-id]
+   (enhanced-database-tables database-id nil))
+  ([database-id {:keys [all-tables-limit priority-tables exclude-table-ids]
+                 :or {all-tables-limit max-database-tables
+                      priority-tables []
+                      exclude-table-ids #{}}}]
+   (let [priority-table-ids (set (map :id priority-tables))
+         ;; Fetch most viewed tables, excluding priority tables and excluded tables
+         fill-tables (t2/select [:model/Table :id :db_id :name :schema :description]
+                                :db_id database-id
+                                :active true
+                                :visibility_type nil
+                                {:where    (mi/visible-filter-clause :model/Table
+                                                                     :id
+                                                                     {:user-id       api/*current-user-id*
+                                                                      :is-superuser? api/*is-superuser?*}
+                                                                     {:perms/view-data      :unrestricted
+                                                                      :perms/create-queries :query-builder-and-native})
+                                 :order-by [[:view_count :desc]]
+                                 :limit    all-tables-limit})
+         fill-tables (remove #(or (priority-table-ids (:id %))
+                                  (exclude-table-ids (:id %))) fill-tables)
+         all-tables (concat priority-tables fill-tables)
+         all-tables (take all-tables-limit all-tables)]
+     (lib.metadata.jvm/with-metadata-provider-cache
+       (let [mp (lib.metadata.jvm/application-database-metadata-provider database-id)
+             table-ids (map :id all-tables)
+             _ (lib.metadata/bulk-metadata mp :metadata/table table-ids)]
+         (mapv (fn [{:keys [id name schema description]}]
+                 (let [table-query (lib/query mp (lib.metadata/table mp id))
+                       cols (->> (lib/visible-columns table-query)
+                                 (map #(metabot-v3.tools.u/add-table-reference table-query %)))
+                       field-id-prefix (metabot-v3.tools.u/table-field-id-prefix id)]
+                   {:id id
+                    :type :table
+                    :name name
+                    :display_name (u.humanization/name->human-readable-name :simple name)
+                    :database_id database-id
+                    :database_schema schema
+                    :description description
+                    :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column table-query %2 %1 field-id-prefix) cols))
+                    :metrics []}))
+               all-tables))))))
 
 (defn similar?
   "Check if two strings are similar using Levenshtein distance with a max distance of 4."
