@@ -50,6 +50,8 @@
     :model/DashboardCardSeries
     :model/LoginHistory
     :model/FieldValues
+    :model/MetabotConversation
+    :model/MetabotMessage
     :model/ModelIndex
     :model/ModelIndexValue
     :model/ModerationReview

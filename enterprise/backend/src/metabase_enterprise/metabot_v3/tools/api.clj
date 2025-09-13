@@ -45,20 +45,6 @@
       (log/error e "Bad AI service token")
       nil)))
 
-(defn handle-envelope
-  "Executes the AI loop in the context of a new session. Returns the response of the AI service."
-  [{:keys [metabot-id] :as e}]
-  (let [session-id (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)]
-    (try
-      (metabot-v3.client/request (assoc e :session-id session-id))
-      (catch Exception ex
-        (let [d (ex-data ex)]
-          (if-let [assistant-message (:assistant-message d)]
-            (envelope/add-message (or (:envelope d) e)
-                                  {:role :assistant
-                                   :content assistant-message})
-            (throw ex)))))))
-
 (defn streaming-handle-envelope
   "Executes the AI loop in the context of a new session. Returns the response of the AI service."
   [{:keys [metabot-id] :as e}]
