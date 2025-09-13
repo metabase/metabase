@@ -1085,12 +1085,10 @@ describe("issue 50346", () => {
     display: "pivot",
     visualization_settings: {
       "pivot_table.column_split": {
+        // mix field refs with and without `base-type` to make sure we support
+        // both cases
         rows: [
-          [
-            "field",
-            PRODUCTS.CATEGORY,
-            { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
-          ],
+          ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
           [
             "field",
             PRODUCTS.VENDOR,
