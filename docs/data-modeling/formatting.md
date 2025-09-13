@@ -119,12 +119,13 @@ Only applies to table visualizations. Displays a bar for each value to show larg
 
 ### Style
 
-Lets you choose to display the number as a plain number, a percent, in scientific notation, or as a currency.
+Lets you choose to display the number as a plain number, a percent, in scientific notation, as a currency, or as a data size.
 
 - **Normal** - Display as a regular number
 - **Percent** - Display as a percentage
 - **Scientific notation** - Display in scientific format (e.g., 1.23e+4)
 - **Currency** - Display with currency formatting
+- **Data size** - Display bytes with appropriate units (e.g., 1024 as "1 KiB" or "1 KB")
 
 ### Where to display the unit of currency
 
@@ -152,6 +153,15 @@ Lets you put a symbol, word, etc. before this number (e.g., "$" for currency).
 ### Add a suffix
 
 Lets you put a symbol, word, etc. after this number (e.g., "dollars", "%", "units").
+
+### Data size formatting options
+
+When using the **Data size** style for numbers, you have additional options:
+
+- **Unit system** - Choose between binary units (KiB, MiB, GiB using 1024 base) or decimal units (KB, MB, GB using 1000 base)
+- **Where to display the unit** - For table visualizations, choose whether to show units in the column header or in each cell
+
+Data size formatting is automatically detected for columns with names containing keywords like "file_size", "bytes", "bandwidth", or "_data".
 
 ### Currency
 

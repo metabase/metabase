@@ -11,6 +11,7 @@ import {
 } from "metabase-lib/v1/types/constants";
 import {
   getFieldType,
+  isDataSize,
   isDimension,
   isInteger,
   isMetric,
@@ -204,6 +205,24 @@ describe("isa", () => {
       expect(
         isNumber({ base_type: TYPE.Integer, semantic_type: TYPE.PK }),
       ).toBe(false);
+    });
+  });
+
+  describe("isDataSize", () => {
+    it("should detect data size semantic type", () => {
+      expect(isDataSize({ semantic_type: TYPE.DataSize })).toBe(true);
+      expect(isDataSize({ semantic_type: TYPE.Bandwidth })).toBe(true);
+      expect(isDataSize({ semantic_type: TYPE.DataTransfer })).toBe(true);
+      expect(isDataSize({ semantic_type: TYPE.StorageCapacity })).toBe(true);
+    });
+
+    it("should return false for non-data-size types", () => {
+      expect(isDataSize({ semantic_type: TYPE.Text })).toBe(false);
+      expect(isDataSize({ semantic_type: TYPE.Integer })).toBe(false);
+      expect(isDataSize({ semantic_type: TYPE.Currency })).toBe(false);
+      expect(isDataSize({})).toBe(false);
+      // Following the existing pattern in the codebase, null returns null (falsy)
+      expect(isDataSize(null)).toBeFalsy();
     });
   });
 });
