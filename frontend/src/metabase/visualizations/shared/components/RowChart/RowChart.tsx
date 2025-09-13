@@ -1,5 +1,5 @@
 import type { NumberValue } from "d3-scale";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import type { HoveredData } from "metabase/visualizations/shared/types/events";
 import type { ChartTicksFormatters } from "metabase/visualizations/shared/types/format";
@@ -199,8 +199,13 @@ export const RowChart = <TDatum,>({
       stackOffset,
       xScaleType,
       xValueRange,
+      theme,
     ],
   );
+
+  useEffect(() => {
+    console.log("RowChart theme useEffect", theme);
+  }, [theme]);
 
   const paddedXScale = useMemo(
     () =>
