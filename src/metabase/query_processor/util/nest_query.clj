@@ -31,6 +31,8 @@
        ;; The remove line is taken from the add-implicit-clauses middleware. It shouldn't be necessary, because any
        ;; unused fields should be dropped from the inner query. It also shouldn't hurt anything, because the outer
        ;; query shouldn't use these fields in the first place.
+       ;;
+       ;; TODO (Cam 9/12/25) -- this shouldn't be necessary anymore
        (remove #(#{:sensitive :retired} (:visibility-type %)))
        (map (fn [field]
               [:field (u/the-id field) nil]))))
@@ -155,8 +157,12 @@
             (remove-unused [refs]
               (into []
                     (comp (filter used?*)
-                          (m/distinct-by (fn [[_tag _id-or-name opts]]
-                                           (::add/desired-alias opts))))
+                          (m/distinct-by (fn [[_tag _id-or-name opts, :as _a-ref]]
+                                           (or (::add/desired-alias opts)
+                                               ;; if the field ref doesn't have a desired alias (probably because we
+                                               ;; added it in this namespace and haven't generated yet, then always
+                                               ;; keep it... just use a random UUID that should always be distinct
+                                               (random-uuid)))))
                     refs))]
       (update source :fields remove-unused))))
 

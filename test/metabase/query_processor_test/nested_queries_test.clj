@@ -665,7 +665,7 @@
             ;; include the unit; however `:unit` is still `:year` so the frontend can use the correct formatting to
             ;; display values of the column.
             (is (=? [(assoc date-col  :field_ref [:field (mt/id :checkins :date) nil], :unit :year)
-                     (assoc count-col :field_ref [:field "count" {:base-type :type/BigInteger}])]
+                     (assoc count-col :field_ref [:field "count" {:base-type keyword?}])]
                     (mt/cols
                      (qp/process-query (query-with-source-card 1 lib.schema.id/saved-questions-virtual-database-id)))))))))))
 
@@ -1072,23 +1072,23 @@
                (mt/formatted-rows
                 [str str int]
                 results)))
-        (is (= (mt/$ids venues
-                 [{:name         (mt/format-name "name")
-                   :display_name "Name"
-                   :id           %name
-                   :field_ref    $name
-                   :base_type    :type/Text}
-                  {:name         (mt/format-name "name_2")
-                   :display_name "c → Name"
-                   :id           %categories.name
-                   :field_ref    &c.categories.name
-                   :base_type    :type/Text}
-                  {:name         "count"
-                   :display_name "Count"
-                   :field_ref    [:field "count" {:base-type :type/BigInteger}]
-                   :base_type    (:base_type (qp.test-util/aggregate-col :count))}])
-               (for [col (mt/cols results)]
-                 (select-keys col [:name :display_name :id :field_ref :base_type]))))))))
+        (is (=? (mt/$ids venues
+                  [{:name         (mt/format-name "name")
+                    :display_name "Name"
+                    :id           %name
+                    :field_ref    $name
+                    :base_type    :type/Text}
+                   {:name         (mt/format-name "name_2")
+                    :display_name "c → Name"
+                    :id           %categories.name
+                    :field_ref    &c.categories.name
+                    :base_type    :type/Text}
+                   {:name         "count"
+                    :display_name "Count"
+                    :field_ref    [:field "count" {:base-type keyword?}]
+                    :base_type    (:base_type (qp.test-util/aggregate-col :count))}])
+                (for [col (mt/cols results)]
+                  (select-keys col [:name :display_name :id :field_ref :base_type]))))))))
 
 (deftest ^:parallel remapped-fks-test
   (testing "Should be able to use a question with remapped FK columns as a Saved Question (#10474)"
@@ -1201,17 +1201,17 @@
       (doseq [level (range 0 4)]
         (testing (format "with %d level(s) of nesting" level)
           (letfn [(run-query []
-                    (let [query (-> (mt/mbql-query orders
-                                      {:source-table $$orders
-                                       :joins        [{:fields       :all
-                                                       :source-table $$products
-                                                       :condition    [:= $product_id &Products.products.id]
-                                                       :alias        "Products"}]
-                                       :order-by     [[:asc $id]]
-                                       :limit        2})
-                                    ;; existing usage, do not use this going forward
-                                    #_{:clj-kondo/ignore [:deprecated-var]}
-                                    (mt/nest-query level))]
+                    (let [query (-> (lib/query
+                                     (mt/metadata-provider)
+                                     (mt/mbql-query orders
+                                       {:source-table $$orders
+                                        :joins        [{:fields       :all
+                                                        :source-table $$products
+                                                        :condition    [:= $product_id &Products.products.id]
+                                                        :alias        "Products"}]
+                                        :order-by     [[:asc $id]]
+                                        :limit        2}))
+                                    (as-> $query (nth (iterate lib/append-stage $query) level)))]
                       (qp/process-query query)))]
             (testing "with no FK remappings"
               (let [result (run-query)]
