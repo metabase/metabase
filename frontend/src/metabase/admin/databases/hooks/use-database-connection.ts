@@ -2,20 +2,24 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
+import { getDefaultEngineKey } from "metabase/databases/utils/engine";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_DB_ROUTING } from "metabase/plugins";
-import type { DatabaseId } from "metabase-types/api";
+import type { DatabaseId, Engine, EngineKey } from "metabase-types/api";
 
 interface UseDatabaseConnectionProps {
   databaseId?: string;
+  engines?: Record<EngineKey, Engine>;
 }
 
 export const useDatabaseConnection = ({
   databaseId,
+  engines,
 }: UseDatabaseConnectionProps) => {
   const dispatch = useDispatch();
   const queryParams = new URLSearchParams(location.search);
-  const preselectedEngine = queryParams.get("engine") ?? undefined;
+  const preselectedEngine =
+    queryParams.get("engine") ?? getDefaultEngineKey(engines || {});
   const addingNewDatabase = databaseId === undefined;
 
   const databaseReq = useGetDatabaseQuery(

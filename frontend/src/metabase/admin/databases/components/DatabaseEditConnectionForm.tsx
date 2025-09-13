@@ -40,6 +40,7 @@ export const DatabaseEditConnectionForm = withRouter(
     handleSaveDb,
     onSubmitted,
     onCancel,
+    onEngineChange,
     route,
     location,
     config,
@@ -52,6 +53,7 @@ export const DatabaseEditConnectionForm = withRouter(
     handleSaveDb?: (database: DatabaseData) => Promise<{ id: DatabaseId }>;
     onSubmitted: (savedDB: { id: DatabaseId }) => void;
     onCancel: () => void;
+    onEngineChange?: (engineKey: string | undefined) => void;
     route: Route;
     location: LocationDescriptorObject;
     autofocusFieldName?: string;
@@ -98,6 +100,7 @@ export const DatabaseEditConnectionForm = withRouter(
               onSubmit={handleSubmit}
               setIsDirty={setIsDirty}
               location={formLocation}
+              onEngineChange={onEngineChange}
             />
           ) : (
             <Text my="md">{t`This database is managed by Metabase Cloud and cannot be modified.`}</Text>

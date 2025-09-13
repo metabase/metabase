@@ -1,0 +1,100 @@
+import { useDisclosure } from "@mantine/hooks";
+import { Link } from "react-router";
+import { c, t } from "ttag";
+
+import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
+import { useSetting } from "metabase/common/hooks";
+import { getHelpUrl } from "metabase/common/utils/help-url";
+import CS from "metabase/css/core/index.css";
+import { getEngines } from "metabase/databases/selectors";
+import { useSelector } from "metabase/lib/redux";
+import { getDocsUrl, getIsPaidPlan } from "metabase/selectors/settings";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Divider,
+  Flex,
+  Icon,
+  Title,
+} from "metabase/ui";
+import type { EngineKey } from "metabase-types/api";
+
+import { EmbeddedEngineDocContent } from "./EmbeddedEngineDocContent/EmbeddedEngineDocContent";
+
+interface Props {
+  engineKey: EngineKey;
+  onClose: VoidFunction;
+}
+
+export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
+  const engines = useSelector(getEngines);
+  const docsUrl = useSelector((state) =>
+    getDocsUrl(state, { page: `/databases/connections/${engineKey}` }),
+  );
+  const [showUserModal, { toggle: toggleUserModal }] = useDisclosure(false);
+  const isPaidPlan = useSelector(getIsPaidPlan);
+  const version = useSetting("version");
+  const talkToExpertUrl = getHelpUrl(isPaidPlan, version.tag);
+
+  if (!engines[engineKey]) {
+    return null;
+  }
+
+  const driverName = engines[engineKey]?.["driver-name"];
+
+  return (
+    <>
+      <Box p="xl" w="100%">
+        <Flex align="baseline" justify="space-between" mb="md">
+          <Title order={2} size="h4">
+            {c("{0} is the database engine name").t`Add ${driverName}`}
+          </Title>
+          <ActionIcon aria-label={t`Close panel`} onClick={onClose}>
+            <Icon name="close" />
+          </ActionIcon>
+        </Flex>
+        <Button
+          className={CS.link}
+          component={Link}
+          leftSection={<Icon name="reference" />}
+          p={0}
+          target="_blank"
+          to={docsUrl}
+          variant="subtle"
+        >
+          {t`Read the full docs`}
+        </Button>
+        <Divider variant="dashed" />
+        <Button
+          className={CS.link}
+          leftSection={<Icon name="mail" />}
+          onClick={toggleUserModal}
+          p={0}
+          variant="subtle"
+        >
+          {t`Invite a teammate to help you`}
+        </Button>
+        <Divider variant="dashed" />
+        {isPaidPlan && (
+          <>
+            <Button
+              className={CS.link}
+              component={Link}
+              leftSection={<Icon name="person" />}
+              p={0}
+              target="_blank"
+              to={talkToExpertUrl}
+              variant="subtle"
+            >
+              {t`Talk to an expert`}
+            </Button>
+            <Divider variant="dashed" />
+          </>
+        )}
+        <EmbeddedEngineDocContent engineKey={engineKey} />
+      </Box>
+      {showUserModal && <NewUserModal onClose={toggleUserModal} />}
+    </>
+  );
+};
