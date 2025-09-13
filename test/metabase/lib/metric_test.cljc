@@ -108,13 +108,30 @@
     metric-metadata))
 
 (deftest ^:parallel metric-expression-display-info-test
-  (are [metric] (=? {:display-name      "CC"
+  (are [metric] (=? {:name              "sum_of_cans"  ; :name should remain stable
+                     :display-name      "CC"
                      :long-display-name "CC"
                      :effective-type    :type/Integer
                      :description       "Number of toucans plus number of pelicans"}
                     (lib/display-info query-with-metric metric))
     (update metric-clause 1 assoc :display-name "CC")
     (assoc metric-metadata :display-name "CC")))
+
+(deftest ^:parallel metric-name-stability-test
+  (testing "When a metric's display name is changed, the :name field should remain stable"
+    (let [original-display-info (lib/display-info query-with-metric metric-clause)
+          renamed-metric (update metric-clause 1 assoc :display-name "Renamed Display Name")
+          renamed-display-info (lib/display-info query-with-metric renamed-metric)]
+      (is (= (:name original-display-info)
+             (:name renamed-display-info))
+          "The :name field should remain stable when only display-name changes")
+      (is (not= (:display-name original-display-info)
+                (:display-name renamed-display-info))
+          "The :display-name should change when explicitly set")
+      (is (= "sum_of_cans" (:name renamed-display-info))
+          "The :name should always be the stable column name")
+      (is (= "Renamed Display Name" (:display-name renamed-display-info))
+          "The :display-name should reflect the new display name"))))
 
 (deftest ^:parallel unknown-display-info-test
   (is (=? {:effective-type    :type/*
