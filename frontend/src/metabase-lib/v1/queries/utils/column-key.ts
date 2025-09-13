@@ -21,7 +21,7 @@ export const getColumnKey = (column: DatasetColumnReference) => {
   return JSON.stringify(["name", column.name]);
 };
 
-type LegacyColumnKeyOptions = {
+export type LegacyColumnKeyOptions = {
   ignoreBaseType?: boolean;
 };
 
