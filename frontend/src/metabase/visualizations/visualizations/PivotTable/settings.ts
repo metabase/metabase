@@ -19,8 +19,8 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 import {
-  getDimensionReferenceWithoutOptions,
-  isFieldReference,
+  getDimensionReferenceWithoutBaseType,
+  isDimensionReferenceWithOptions,
 } from "metabase-lib/v1/references";
 import { isDimension } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -339,12 +339,12 @@ export const _columnSettings = {
 };
 
 /*
-  HACK: when comparing field refs for pivot viz settings, ignore `base-type`.
+  When comparing field refs for pivot viz settings, ignore `base-type`.
   Sometimes it's present, sometimes it's not. New pivot settings use column
   names only and do not depend on field refs.
  */
 function getFieldRefForComparison(fieldRef: DimensionReference) {
-  return isFieldReference(fieldRef)
-    ? getDimensionReferenceWithoutOptions(fieldRef, ["base-type"])
+  return isDimensionReferenceWithOptions(fieldRef)
+    ? getDimensionReferenceWithoutBaseType(fieldRef)
     : fieldRef;
 }
