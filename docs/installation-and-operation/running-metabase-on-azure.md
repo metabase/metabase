@@ -64,6 +64,8 @@ Then choose an admin username and password of your choice.
 
 Click **Next** until you get to the final page, then click **Create**. It'll take some time for Azure to create the database. Once the creation is complete, click on the **Go to resource** button.
 
+Select **Settings > Server parameters** then in the filter box, enter "azure.extensions" to locate the azure.extensions parameter.  Click the **Value** drop down and click the checkbox next to "CITEXT".  Click the **Save** button at the top of the screen.
+
 ## Step 4: Create the private endpoint connection
 
 On the properties page for the Azure for PostgreSQL database, you can manage parameters for your database. You'll create the **Private Endpoint** to the database, so all traffic from the web application is routed internally through Azure's network.
@@ -121,10 +123,10 @@ Return to the application configuration page and click on **Settings** -> **Conf
 
 You'll need to add the [environment Variables](../configuring-metabase/environment-variables.md) for connecting Metabase to its [PostgreSQL Application Database](../installation-and-operation/configuring-application-database.md#postgresql). Make sure that you use the full **MB_DB_CONNECTION_URI**.
 
-Also, take into account that the username in Azure PostgreSQL is `user@name_of_your_database_engine` so in this case the entire connection uri would be as follows:
+The entire connection uri would be as follows:
 
 ```
-postgresql://databasePrivateIPAddress:port/postgres?user=user@name_of_your_database_engine&password=configuredpassword&ssl=true&sslmode=required
+postgresql://databasePrivateIPAddress:port/postgres?user=user&password=configuredpassword&ssl=true&sslmode=required
 ```
 
 For example, if your values are:
@@ -138,10 +140,8 @@ For example, if your values are:
 then your connection string would be:
 
 ```
-postgresql://10.0.2.4:5432/postgres?user=metabase%40metabase-app-database&password=Password1!&ssl=true&sslmode=require
+postgresql://10.0.2.4:5432/postgres?user=metabase&password=Password1!&ssl=true&sslmode=require
 ```
-
-Note: the "@" character has been replaced for "%40", as the "@" will no longer work in versions > 43
 
 Click **Save** and the instance will restart.
 
@@ -194,7 +194,7 @@ Azure does not let users create a database upon service creation, that's the rea
 In the example above the connection string would be
 
 ```
-postgresql://10.0.2.4:5432/metabase?user=metabase@metabase-app-database&password=Password1!&ssl=true&sslmode=require
+postgresql://10.0.2.4:5432/metabase?user=metabase&password=Password1!&ssl=true&sslmode=require
 ```
 
 If you have trouble connecting, refer to the [postgres configuration instructions](../installation-and-operation/configuring-application-database.md#postgresql) as you may run into a problem with an `@` symbol in the username portion of the connection string. Using a combination of `MB_DB_CONNECTION_URI` with separate `MB_DB_USER` and `MB_DB_PASSWORD` fields also works.
