@@ -2,31 +2,38 @@ import { type ReactNode, type Ref, forwardRef, useState } from "react";
 import { useUpdateEffect } from "react-use";
 import { t } from "ttag";
 
-import { Button, Icon, Loader } from "metabase/ui";
+import { Button, Icon, Loader, Tooltip } from "metabase/ui";
 import type { TransformRun } from "metabase-types/api";
 
 const RECENT_TIMEOUT = 5000;
 
 type RunButtonProps = {
   run: TransformRun | null | undefined;
-  isLoading: boolean;
   isDisabled?: boolean;
+  isStarting?: boolean;
+  isCanceling?: boolean;
+  allowCancellation?: boolean;
   onRun: () => void;
+  onCancel?: () => void;
 };
 
 export const RunButton = forwardRef(function RunButton(
   {
     run,
-    isLoading,
+    isStarting = false,
+    isCanceling = false,
     isDisabled: isExternallyDisabled = false,
     onRun,
+    onCancel,
+    allowCancellation = false,
   }: RunButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
   const [isRecent, setIsRecent] = useState(false);
   const { label, color, leftSection, isDisabled } = getRunButtonInfo({
     run,
-    isLoading,
+    isStarting,
+    isCanceling,
     isRecent,
     isDisabled: isExternallyDisabled,
   });
@@ -37,24 +44,38 @@ export const RunButton = forwardRef(function RunButton(
     return () => clearTimeout(timeoutId);
   }, [run]);
 
+  const isStartingOrStarted = run?.status === "started" || isStarting;
+
   return (
-    <Button
-      ref={ref}
-      variant="filled"
-      color={color}
-      leftSection={leftSection}
-      disabled={isDisabled}
-      data-testid="run-button"
-      onClick={onRun}
-    >
-      {label}
-    </Button>
+    <Button.Group>
+      <Button
+        ref={ref}
+        variant="filled"
+        color={color}
+        leftSection={leftSection}
+        disabled={isDisabled}
+        data-testid="run-button"
+        onClick={onRun}
+      >
+        {label}
+      </Button>
+      {allowCancellation && isStartingOrStarted && (
+        <Tooltip label={t`Cancel`}>
+          <Button
+            onClick={onCancel}
+            rightSection={<Icon name="close" aria-hidden />}
+            data-testid="cancel-button"
+          />
+        </Tooltip>
+      )}
+    </Button.Group>
   );
 });
 
 type RunButtonOpts = {
   run: TransformRun | null | undefined;
-  isLoading: boolean;
+  isStarting: boolean;
+  isCanceling: boolean;
   isRecent: boolean;
   isDisabled: boolean;
 };
@@ -68,14 +89,24 @@ type RunButtonInfo = {
 
 function getRunButtonInfo({
   run,
-  isLoading,
+  isStarting,
+  isCanceling,
   isRecent,
   isDisabled,
 }: RunButtonOpts): RunButtonInfo {
-  if (run?.status === "started" || isLoading) {
+  if (run?.status === "started" || isStarting) {
     return {
       label: t`Running now…`,
       leftSection: <Loader size="sm" />,
+      isDisabled: true,
+    };
+  }
+
+  if (run?.status === "canceling" || isCanceling) {
+    return {
+      label: t`Canceling…`,
+      leftSection: <Loader size="sm" />,
+      color: "text-secondary",
       isDisabled: true,
     };
   }
@@ -93,6 +124,15 @@ function getRunButtonInfo({
       label: t`Ran successfully`,
       color: "success",
       leftSection: <Icon name="check" aria-hidden />,
+      isDisabled,
+    };
+  }
+
+  if (run.status === "canceled") {
+    return {
+      label: t`Canceled`,
+      color: "var(--mb-base-color-dubloon-30)",
+      leftSection: <Icon name="close" color="white" aria-hidden />,
       isDisabled,
     };
   }

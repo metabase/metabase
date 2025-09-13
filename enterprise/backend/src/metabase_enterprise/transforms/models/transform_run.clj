@@ -154,6 +154,12 @@
                  :id id
                  :is_active true))
 
+(defn running-run-for-transform-id
+  "Return a single active transform run or nil."
+  [transform-id]
+  (t2/select-one :model/TransformRun
+                 :transform_id transform-id
+                 :is_active true))
 (defn- timestamp-constraint
   [field-name date-string]
   (let [{:keys [start end]}
