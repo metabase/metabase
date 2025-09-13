@@ -24,9 +24,17 @@ import {
   useSdkDashboardParams,
 } from "embedding-sdk-bundle/hooks/private/use-sdk-dashboard-params";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
-import type { MetabaseQuestion } from "embedding-sdk-bundle/types";
+import {
+  getFetchStaticTokenFn,
+  getIsStatic,
+} from "embedding-sdk-bundle/store/selectors";
+import type {
+  MetabaseQuestion,
+  SdkDashboardId,
+} from "embedding-sdk-bundle/types";
 import type { DashboardEventHandlersProps } from "embedding-sdk-bundle/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
+import type { MetabaseFetchStaticTokenFn } from "embedding-sdk-bundle/types/refresh-token";
 import { useConfirmation } from "metabase/common/hooks";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import {
@@ -44,11 +52,13 @@ import {
 } from "metabase/dashboard/context";
 import { getDashboardComplete, getIsDirty } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
+import { isJWT } from "metabase/lib/utils";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { getErrorPage } from "metabase/selectors/app";
+import { setEmbedDashboardEndpoints } from "metabase/services";
 import type { CardDisplayType } from "metabase-types/api";
 
 import type {
@@ -122,8 +132,34 @@ export type SdkDashboardInnerProps = SdkDashboardProps &
     >
   >;
 
-const SdkDashboardInner = ({
+// TODO: move from this file
+const getNormalizedDashboardId = async ({
   dashboardId,
+  isStaticDashboard,
+  customFetchStaticTokenFn,
+}: {
+  dashboardId: SdkDashboardId | null | undefined;
+  isStaticDashboard: boolean;
+  customFetchStaticTokenFn: MetabaseFetchStaticTokenFn | null | undefined;
+}): Promise<SdkDashboardId | null | undefined> => {
+  if (dashboardId === null || dashboardId === undefined || !isStaticDashboard) {
+    return dashboardId;
+  }
+
+  if (isJWT(dashboardId)) {
+    return dashboardId;
+  }
+
+  const fetchedStaticToken = await customFetchStaticTokenFn?.({
+    entityType: "dashboard",
+    entityId: dashboardId,
+  });
+
+  return fetchedStaticToken?.jwt ?? null;
+};
+
+const SdkDashboardInner = ({
+  dashboardId: rawDashboardId,
   initialParameters = {},
   withTitle = true,
   withCardTitle = true,
@@ -149,6 +185,31 @@ const SdkDashboardInner = ({
   dataPickerProps,
   onVisualizationChange,
 }: SdkDashboardInnerProps) => {
+  const [dashboardId, setDashboardId] = useState<SdkDashboardId | null>(null);
+  const [dashboardIdLoading, setDashboardIdLoading] = useState(true);
+
+  const isStaticEmbedding = useSdkSelector(getIsStatic);
+  const customFetchStaticTokenFn = useSdkSelector(getFetchStaticTokenFn);
+
+  useEffect(() => {
+    const run = async () => {
+      const dashboardId = await getNormalizedDashboardId({
+        dashboardId: rawDashboardId,
+        isStaticDashboard: isStaticEmbedding,
+        customFetchStaticTokenFn,
+      });
+
+      setDashboardId(dashboardId ?? null);
+      setDashboardIdLoading(false);
+
+      if (isStaticEmbedding) {
+        setEmbedDashboardEndpoints(dashboardId);
+      }
+    };
+
+    run();
+  }, [customFetchStaticTokenFn, isStaticEmbedding, rawDashboardId]);
+
   const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
     onLoad,
     onLoadWithoutCards,
@@ -158,12 +219,10 @@ const SdkDashboardInner = ({
   const { isBreadcrumbEnabled, reportLocation } = useSdkBreadcrumbs();
 
   const { displayOptions } = useSdkDashboardParams({
-    dashboardId,
     withDownloads,
     withTitle,
     withCardTitle,
     hiddenParameters,
-    initialParameters,
   });
 
   const {
@@ -228,7 +287,7 @@ const SdkDashboardInner = ({
   const { modalContent, show } = useConfirmation();
   const isDashboardDirty = useSelector(getIsDirty);
 
-  if (isLocaleLoading) {
+  if (dashboardIdLoading || isLocaleLoading) {
     return (
       <SdkDashboardStyledWrapper className={className} style={style}>
         <SdkLoader />
@@ -244,7 +303,7 @@ const SdkDashboardInner = ({
   if (!dashboardId || isDashboardNotFound) {
     return (
       <SdkDashboardStyledWrapper className={className} style={style}>
-        <DashboardNotFoundError id={dashboardId} />
+        <DashboardNotFoundError id={dashboardId ?? ""} />
       </SdkDashboardStyledWrapper>
     );
   }
@@ -263,6 +322,7 @@ const SdkDashboardInner = ({
     <DashboardContextProvider
       ref={dashboardContextProviderRef}
       dashboardId={dashboardId}
+      isStaticEmbedding={isStaticEmbedding}
       parameterQueryParams={initialParameters}
       navigateToNewCardFromDashboard={
         navigateToNewCardFromDashboard !== undefined

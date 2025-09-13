@@ -35,9 +35,12 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
 
   const dispatch = useDispatch();
+  const { isStaticEmbedding } = useDashboardContext();
 
   useMount(() => {
-    dispatch(fetchPulseFormInput());
+    if (!isStaticEmbedding) {
+      dispatch(fetchPulseFormInput());
+    }
   });
 
   const isEditing = useSelector(getIsEditing);
