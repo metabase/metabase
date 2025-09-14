@@ -27,7 +27,7 @@ const registerVisualizationsOnce = _.once(registerVisualizations);
 
 interface InitDataLoaderParameters {
   reduxStore: SdkStore;
-  isStatic: boolean;
+  isStatic?: boolean;
   authConfig: MetabaseAuthConfig;
 }
 

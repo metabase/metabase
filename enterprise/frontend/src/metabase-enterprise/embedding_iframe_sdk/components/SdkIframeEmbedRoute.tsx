@@ -17,15 +17,15 @@ import type { MetabaseFetchStaticTokenFnData } from "embedding-sdk-bundle/types/
 import type { MetabaseAuthConfig } from "embedding-sdk-package";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { createTracker } from "metabase/lib/analytics-untyped";
-import { uuid } from "metabase/lib/uuid";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { Box } from "metabase/ui";
 
 import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
 import type {
-  MetabaseEmbeddingSetRequestStaticTokenData,
+  SdkIframeEmbedSetStaticTokenMessage,
   SdkIframeEmbedSettings,
+  SdkIframeEmbedTagFetchStaticTokenMessage,
 } from "../types/embed";
 
 import { MetabaseBrowser } from "./MetabaseBrowser";
@@ -45,33 +45,24 @@ const store = getSdkStore();
 createTracker(store);
 
 export const SdkIframeEmbedRoute = () => {
-  const { sendMessage, waitForIncomingMessage, embedSettings } =
+  const { transferFunctionCallMessages, embedSettings } =
     useSdkIframeEmbedEventBus({
       onSettingsChanged,
     });
 
   const fetchStaticToken = useCallback(
     async (data: MetabaseFetchStaticTokenFnData) => {
-      const messageId = uuid();
+      const result = await transferFunctionCallMessages<
+        SdkIframeEmbedTagFetchStaticTokenMessage,
+        SdkIframeEmbedSetStaticTokenMessage
+      >({
+        messageName: "metabase.embed.fetchStaticToken",
+        resultMessageName: "metabase.embed.fetchStaticTokenResult",
+      })(data);
 
-      sendMessage({
-        type: "metabase.embed.fetchStaticToken",
-        data: {
-          ...data,
-          messageId,
-        },
-      });
-
-      const incomingMessageData =
-        await waitForIncomingMessage<MetabaseEmbeddingSetRequestStaticTokenData>(
-          (message) =>
-            message.type === "metabase.embed.setStaticToken" &&
-            message.data.messageId === messageId,
-        );
-
-      return incomingMessageData.staticToken;
+      return result.staticToken;
     },
-    [sendMessage, waitForIncomingMessage],
+    [transferFunctionCallMessages],
   );
 
   // The embed settings won't be available until the parent sends it via postMessage.

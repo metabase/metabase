@@ -18,54 +18,67 @@ import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 import type { CollectionId } from "metabase-types/api";
 
+export type SdkIframeMessageWithMessageId<TMessage> = TMessage & {
+  data: { messageId: string };
+};
+
 /** Events that the embed.js script listens for */
 export type SdkIframeEmbedTagMessage =
-  | { type: "metabase.embed.iframeReady" }
-  | { type: "metabase.embed.requestSessionToken" }
-  | {
-      type: "metabase.embed.fetchStaticToken";
-      data: SdkIframeEmbedTagFetchStaticTokenData;
-    };
+  | SdkIframeEmbedTagIframeReadyMessage
+  | SdkIframeEmbedTagRequestSessionTokenMessage
+  | SdkIframeEmbedTagFetchStaticTokenMessage;
 
-export type SdkIframeEmbedTagFetchStaticTokenData =
-  MetabaseFetchStaticTokenFnData & {
+export type SdkIframeEmbedTagIframeReadyMessage = {
+  type: "metabase.embed.iframeReady";
+};
+export type SdkIframeEmbedTagRequestSessionTokenMessage = {
+  type: "metabase.embed.requestSessionToken";
+};
+export type SdkIframeEmbedTagFetchStaticTokenMessage = {
+  type: "metabase.embed.fetchStaticToken";
+  data: MetabaseFetchStaticTokenFnData & {
     messageId: string;
   };
+};
 
 /** Events that the sdk embed route listens for */
 export type SdkIframeEmbedMessage =
-  | {
-      type: "metabase.embed.setSettings";
-      data: SdkIframeEmbedSettings;
-    }
-  | {
-      type: "metabase.embed.submitSessionToken";
-      data: {
-        authMethod: MetabaseAuthMethod;
-        sessionToken: MetabaseEmbeddingSessionToken;
-      };
-    }
-  | {
-      type: "metabase.embed.reportAuthenticationError";
-      data: {
-        error: MetabaseError<MetabaseErrorCode, unknown>;
-      };
-    }
-  | {
-      type: "metabase.embed.reportAnalytics";
-      data: {
-        usageAnalytics: EmbeddedAnalyticsJsEventSchema;
-        embedHostUrl: string;
-      };
-    }
-  | {
-    type: "metabase.embed.setStaticToken";
-    data: MetabaseEmbeddingSetRequestStaticTokenData;
-  };
+  | SdkIframeEmbedSetSettingsMessage
+  | SdkIframeEmbedSubmitSessionTokenMessage
+  | SdkIframeEmbedReportAuthenticationError
+  | SdkIframeEmbedReportAnalytics
+  | SdkIframeEmbedSetStaticTokenMessage;
 
-export type MetabaseEmbeddingSetRequestStaticTokenData = {
-  messageId: string;
-  staticToken: UserBackendJwtResponse;
+export type SdkIframeEmbedSetSettingsMessage = {
+  type: "metabase.embed.setSettings";
+  data: SdkIframeEmbedSettings;
+};
+export type SdkIframeEmbedSubmitSessionTokenMessage = {
+  type: "metabase.embed.submitSessionToken";
+  data: {
+    authMethod: MetabaseAuthMethod;
+    sessionToken: MetabaseEmbeddingSessionToken;
+  };
+};
+export type SdkIframeEmbedReportAuthenticationError = {
+  type: "metabase.embed.reportAuthenticationError";
+  data: {
+    error: MetabaseError<MetabaseErrorCode, unknown>;
+  };
+};
+export type SdkIframeEmbedReportAnalytics = {
+  type: "metabase.embed.reportAnalytics";
+  data: {
+    usageAnalytics: EmbeddedAnalyticsJsEventSchema;
+    embedHostUrl: string;
+  };
+}
+export type SdkIframeEmbedSetStaticTokenMessage = {
+  type: "metabase.embed.fetchStaticTokenResult";
+  data: {
+    messageId: string;
+    staticToken: UserBackendJwtResponse;
+  };
 };
 
 // --- Embed Option Interfaces ---
@@ -215,3 +228,7 @@ export type SdkIframeEmbedSettingKey =
   | keyof QuestionEmbedOptions
   | keyof ExplorationEmbedOptions
   | keyof BrowserEmbedOptions;
+
+export type CallFunctionFromParentFrameData<TData> = TData & {
+  messageId: string;
+};

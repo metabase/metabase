@@ -3,12 +3,14 @@ import { match } from "ts-pattern";
 
 import { trackSchemaEvent } from "metabase/lib/analytics";
 import { isWithinIframe } from "metabase/lib/dom";
+import { uuid } from "metabase/lib/uuid";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 
 import type {
   SdkIframeEmbedMessage,
   SdkIframeEmbedSettings,
   SdkIframeEmbedTagMessage,
+  SdkIframeMessageWithMessageId,
 } from "../types/embed";
 
 type Handler = (event: MessageEvent<SdkIframeEmbedMessage>) => void;
@@ -18,19 +20,14 @@ type UsageAnalytics = {
   embedHostUrl: string;
 };
 
-const WAIT_FOR_INCOMING_MESSAGE_MAX_WAIT_TIME = 10000;
+// The parent frame logic may be async, so we give it up to 15 seconds to respond to cover possible slow network connection
+const WAIT_FOR_INCOMING_MESSAGE_MAX_WAIT_TIME = 15000;
 
 export function useSdkIframeEmbedEventBus({
   onSettingsChanged,
 }: {
   onSettingsChanged?: (settings: SdkIframeEmbedSettings) => void;
-}): {
-  sendMessage: (message: SdkIframeEmbedTagMessage) => void;
-  waitForIncomingMessage: <TData extends SdkIframeEmbedMessage["data"]>(
-    handler: (event: SdkIframeEmbedMessage) => boolean,
-  ) => Promise<TData>;
-  embedSettings: SdkIframeEmbedSettings | null;
-} {
+}) {
   const [embedSettings, setEmbedSettings] =
     useState<SdkIframeEmbedSettings | null>(null);
   const [usageAnalytics, setUsageAnalytics] = useState<UsageAnalytics | null>(
@@ -42,10 +39,10 @@ export function useSdkIframeEmbedEventBus({
   }, []);
 
   const waitForIncomingMessage = useCallback(
-    async <TData extends SdkIframeEmbedMessage["data"]>(
-      handler: (event: SdkIframeEmbedMessage) => boolean,
-    ): Promise<TData> => {
-      return new Promise<TData>((resolve, reject) => {
+    async <TMessage extends SdkIframeEmbedMessage>(
+      handler: (message: TMessage) => boolean,
+    ): Promise<TMessage["data"]> => {
+      return new Promise<TMessage["data"]>((resolve, reject) => {
         let waitTimeout = 0;
 
         waitTimeout = window.setTimeout(() => {
@@ -54,11 +51,12 @@ export function useSdkIframeEmbedEventBus({
         }, WAIT_FOR_INCOMING_MESSAGE_MAX_WAIT_TIME);
 
         const messageHandler = (event: MessageEvent<SdkIframeEmbedMessage>) => {
-          const isExpectedMessage = handler(event.data);
+          const message = event.data as TMessage;
+          const isExpectedMessage = handler(message);
 
           if (isExpectedMessage) {
             window.clearTimeout(waitTimeout);
-            resolve(event.data.data as TData);
+            resolve(message.data);
           }
         };
 
@@ -66,6 +64,42 @@ export function useSdkIframeEmbedEventBus({
       });
     },
     [],
+  );
+
+  const transferFunctionCallMessages = useCallback(
+    <
+      TDataMessage extends
+        SdkIframeMessageWithMessageId<SdkIframeEmbedTagMessage>,
+      TResultMessage extends
+        SdkIframeMessageWithMessageId<SdkIframeEmbedMessage>,
+    >({
+      messageName,
+      resultMessageName,
+    }: {
+      messageName: TDataMessage["type"];
+      resultMessageName: TResultMessage["type"];
+    }) => {
+      return async (
+        data: Omit<TDataMessage["data"], "messageId">,
+      ): Promise<TResultMessage["data"]> => {
+        const messageId = uuid();
+
+        sendMessage({
+          type: messageName,
+          data: {
+            ...data,
+            messageId,
+          },
+        } as TDataMessage);
+
+        return waitForIncomingMessage<TResultMessage>(
+          (message) =>
+            message.type === resultMessageName &&
+            message.data.messageId === messageId,
+        );
+      };
+    },
+    [sendMessage, waitForIncomingMessage],
   );
 
   useEffect(() => {
@@ -109,7 +143,7 @@ export function useSdkIframeEmbedEventBus({
     }
   }, [embedSettings?.instanceUrl, usageAnalytics]);
 
-  return { sendMessage, waitForIncomingMessage, embedSettings };
+  return { sendMessage, transferFunctionCallMessages, embedSettings };
 }
 
 export function isMetabaseInstance(instanceUrl: string, embedHostUrl: string) {
