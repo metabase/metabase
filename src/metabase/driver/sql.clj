@@ -513,7 +513,7 @@
                        (validate-column-reference driver metadata-provider expr-str
                                                   table-aliases tables-map metadata-context)
                        true)]
-    [{:name expr-str :valid-select valid-select}]))
+    [{:name expr-str :lib/type :metadata/column :base-type :type/* :valid-select valid-select}]))
 
 (defn- expand-select-item
   "Expand a single select item, applying alias if present"
@@ -569,12 +569,16 @@
             select-items)
       [])))
 
+(defmethod driver/native-result-metadata :sql
+  [driver metadata-provider native-query]
+  (let [parsed     (macaw/parsed-query native-query)
+        db-tables  (driver-api/tables metadata-provider)
+        tables-map (create-tables-map driver db-tables parsed)]
+    (extract-result-metadata driver metadata-provider parsed db-tables tables-map)))
+
 (defmethod driver/validate-native-query-fields :sql
   [driver metadata-provider query]
-  (let [parsed     (macaw/parsed-query query)
-        db-tables  (driver-api/tables metadata-provider)
-        tables-map (create-tables-map driver db-tables parsed)
-        result     (extract-result-metadata driver metadata-provider parsed db-tables tables-map)]
+  (let [result (driver/native-result-metadata driver metadata-provider query)]
     ;; Return true if all selected columns are valid
     (every? :valid-select result)))
 

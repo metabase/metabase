@@ -7,13 +7,17 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.driver :as driver]
    [metabase.lib-be.metadata.jvm :as lib-be.metadata.jvm]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.core :as native-query-snippets]
    [metabase.queries.schema :as queries.schema]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.setup :as qp.setup]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -55,17 +59,17 @@
   [_route-params
    _query-params
    body :- ::card-body]
-  (let [database-id   (-> body :dataset_query :database)
-        base-provider (lib-be.metadata.jvm/application-database-metadata-provider database-id)
-        original      (lib.metadata/card base-provider (:id body))
-        card          (-> original
-                          (assoc :dataset-query (:dataset_query body)
-                                 :type          (:type body (:type original)))
-                          (dissoc :result-metadata)
-                          (cond-> #_card
-                           (:result_metadata body) (assoc :result-metadata (:result_metadata body))))
+  (let [database-id    (-> body :dataset_query :database)
+        base-provider  (lib-be.metadata.jvm/application-database-metadata-provider database-id)
+        original       (lib.metadata/card base-provider (:id body))
+        card           (-> original
+                           (assoc :dataset-query (:dataset_query body)
+                                  :type          (:type body (:type original)))
+                           (dissoc :result-metadata)
+                           (cond-> #_card
+                            (:result_metadata body) (assoc :result-metadata (:result_metadata body))))
         ;; TODO: This sucks - it's getting all cards for the same database_id, which is slow and over-reaching.
-        all-cards     (t2/select-fn-set :id :model/Card :database_id database-id :archived false)
+        all-cards      (t2/select-fn-set :id :model/Card :database_id database-id :archived false)
         all-transforms (t2/select-fn-set :id :model/Transform)
         breakages      (dependencies/check-cards-have-sound-refs base-provider [card] all-cards all-transforms)]
     (broken-cards-response breakages)))
@@ -78,16 +82,40 @@
   ;; FIXME: This is just a stub - implement it!
   {:success true})
 
+(defn- card-uses-snippet?
+  [card {snippet-id :id snippet-name :name}]
+  (let [template-tags (-> card :dataset-query :native :template-tags vals)]
+    (some #(and (= (:type %) :snippet)
+                (or (= (:snippet-id %) snippet-id)
+                    (= (:name %) snippet-name))) template-tags)))
+
+(defn- calculate-native-result-metadata
+  [metadata-provider query]
+  (let [driver (:engine (lib.metadata/database metadata-provider))]
+    (qp.setup/with-qp-setup [query (lib/query metadata-provider query)]
+      (->> (qp.compile/compile-with-inline-parameters query)
+           :query
+           (driver/native-result-metadata driver metadata-provider)))))
+
+(defn- reset-result-metadata-if-uses-snippet
+  [mp card-id snippet]
+  (let [card (lib.metadata/card mp card-id)]
+    (cond-> card
+      (card-uses-snippet? card snippet)
+      (assoc :result-metadata (calculate-native-result-metadata mp (:dataset-query card))))))
+
 (defn- broken-by-snippet
   [database-id snippet]
-  (let [provider       (-> (lib-be.metadata.jvm/application-database-metadata-provider database-id)
-                           lib.metadata.cached-provider/cached-metadata-provider
-                           (doto (lib.metadata.protocols/store-metadata! snippet)))
-        ;; TODO: This sucks - it's getting all cards for the same database_id, which is slow and over-reaching.
+  (let [;; TODO: This sucks - it's getting all cards for the same database_id, which is slow and over-reaching.
         all-cards      (t2/select-fn-set :id :model/Card :database_id database-id :archived false)
         all-transforms (t2/select-fn-set :id :model/Transform)
-        breakages      (dependencies/check-cards-have-sound-refs provider all-cards all-transforms)]
-    (keys breakages)))
+        base-mp        (doto (lib-be.metadata.jvm/application-database-metadata-provider database-id)
+                         (lib.metadata.protocols/store-metadata! snippet))
+        updated-cards  (map #(reset-result-metadata-if-uses-snippet base-mp % snippet) all-cards)
+        provider       (doto (lib.metadata.cached-provider/cached-metadata-provider base-mp)
+
+                         (lib.metadata.protocols/store-metadatas! updated-cards))]
+    (dependencies/check-cards-have-sound-refs provider all-cards all-transforms)))
 
 (api.macros/defendpoint :post "/check_snippet"
   "Check a proposed edit to a native snippet, and return the cards, etc. which will be broken."
@@ -98,20 +126,21 @@
        [:id      {:optional false} ms/PositiveInt]
        [:name    {:optional true}  native-query-snippets/NativeQuerySnippetName]
        [:content {:optional true}  :string]]]
-  (let [original   (t2/select-one :model/NativeQuerySnippet id)
-        _          (when (and snippet-name
-                              (not= snippet-name (:name original))
-                              (t2/exists? :model/NativeQuerySnippet :name snippet-name))
-                     (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
-                                     {:status-code 400})))
-        snippet    (cond-> (m/assoc-some original
-                                         :lib/type :metadata/native-query-snippet
-                                         :name snippet-name
-                                         :content content)
-                     content native-query-snippets/add-template-tags)
-        broken-ids (mapcat #(broken-by-snippet % snippet)
-                           (t2/select-fn-vec :id :model/Database))]
-    (broken-cards-response broken-ids)))
+  (let [original  (t2/select-one :model/NativeQuerySnippet id)
+        _         (when (and snippet-name
+                             (not= snippet-name (:name original))
+                             (t2/exists? :model/NativeQuerySnippet :name snippet-name))
+                    (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
+                                    {:status-code 400})))
+        snippet   (cond-> (m/assoc-some original
+                                        :lib/type :metadata/native-query-snippet
+                                        :name snippet-name
+                                        :content content)
+                    content native-query-snippets/add-template-tags)
+        breakages (->> (t2/select-fn-vec :id :model/Database)
+                       (map #(broken-by-snippet % snippet))
+                       (apply merge-with merge))]
+    (broken-cards-response breakages)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."

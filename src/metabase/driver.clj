@@ -1186,6 +1186,13 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti native-result-metadata
+  "Gets the result-metadata for a native query using static analysis (i.e., without actually
+  going to the database)."
+  {:added "0.57.0" :arglists '([driver metadata-provider native-query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti validate-native-query-fields
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
