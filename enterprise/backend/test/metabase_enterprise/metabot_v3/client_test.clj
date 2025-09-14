@@ -62,10 +62,10 @@
                 (is (string? body))
                 (is (=? {:user_id (mt/user->id :crowberto)}
                         conv))
-                (is (=? [{:total 0
-                          :role  :user
-                          :data  {:role "user" :content "stuff"}}
-                         {:total 10
-                          :role  :assistant
-                          :data  {:role "assistant" :content "a1a2a3"}}]
+                (is (=? [{:total_tokens 0
+                          :role         :user
+                          :data         [{:role "user" :content "stuff"}]}
+                         {:total_tokens 10
+                          :role         :assistant
+                          :data         [{:role "assistant" :content "a1a2a3"}]}]
                         messages))))))))))
