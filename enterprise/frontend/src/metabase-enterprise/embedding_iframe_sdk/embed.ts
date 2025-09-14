@@ -20,7 +20,7 @@ import type {
   SdkIframeEmbedEventHandler,
   SdkIframeEmbedMessage,
   SdkIframeEmbedSettings,
-  SdkIframeEmbedTagFetchStaticTokenData,
+  SdkIframeEmbedTagFetchStaticTokenMessage,
   SdkIframeEmbedTagMessage,
 } from "./types/embed";
 import { attributeToSettingKey, parseAttributeValue } from "./webcomponents";
@@ -504,7 +504,9 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
     };
   }
 
-  private async _fetchStaticToken(data: SdkIframeEmbedTagFetchStaticTokenData) {
+  private async _fetchStaticToken(
+    data: SdkIframeEmbedTagFetchStaticTokenMessage["data"],
+  ) {
     const { fetchStaticToken } = this.properties;
 
     if (!fetchStaticToken) {
@@ -515,7 +517,7 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
 
     const staticToken = await fetchStaticToken(data);
 
-    this._sendMessage("metabase.embed.setStaticToken", {
+    this._sendMessage("metabase.embed.fetchStaticTokenResult", {
       messageId: data.messageId,
       staticToken,
     });
