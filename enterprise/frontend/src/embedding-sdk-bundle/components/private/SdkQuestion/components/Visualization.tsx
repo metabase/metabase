@@ -9,6 +9,8 @@ import {
   SdkLoader,
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { shouldRunCardQuery } from "embedding-sdk-bundle/lib/sdk-question";
+import { useSdkSelector } from "embedding-sdk-bundle/store";
+import { getIsStaticEmbedding } from "embedding-sdk-bundle/store/selectors";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import CS from "metabase/css/core/index.css";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
@@ -48,10 +50,13 @@ export const QuestionVisualization = ({
     updateQuestion,
     originalId,
   } = useSdkQuestionContext();
+  const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
 
   // When visualizing a question for the first time, there is no query result yet.
   const isQueryResultLoading =
-    question && shouldRunCardQuery(question) && !queryResults;
+    question &&
+    shouldRunCardQuery(question, isStaticEmbedding) &&
+    !queryResults;
 
   if (isLocaleLoading || isQuestionLoading || isQueryResultLoading) {
     return <SdkLoader />;

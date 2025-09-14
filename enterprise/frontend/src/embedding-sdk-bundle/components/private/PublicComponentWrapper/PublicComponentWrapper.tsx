@@ -5,7 +5,7 @@ import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponen
 import { SdkLoader } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkLoader";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import {
-  getIsStatic,
+  getIsStaticEmbedding,
   getLoginStatus,
   getUsageProblem,
 } from "embedding-sdk-bundle/store/selectors";
@@ -19,7 +19,7 @@ export const PublicComponentWrapper = forwardRef<
   HTMLDivElement,
   PublicComponentWrapperProps
 >(function PublicComponentWrapper({ children, className, style }, ref) {
-  const isStatic = useSdkSelector(getIsStatic);
+  const isStatic = useSdkSelector(getIsStaticEmbedding);
   const loginStatus = useSdkSelector(getLoginStatus);
   const usageProblem = useSdkSelector(getUsageProblem);
 
