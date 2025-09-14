@@ -13,6 +13,7 @@ import type { Dispatch, GetState } from "metabase-types/store";
 
 interface RunQuestionOnNavigateParams extends NavigateToNewCardParams {
   originalQuestion?: Question;
+  isStaticEmbedding: boolean;
   onQuestionChange: (question: Question) => void;
   onClearQueryResults: () => void;
 }
@@ -24,6 +25,7 @@ export const runQuestionOnNavigateSdk =
     getState: GetState,
   ): Promise<SdkQuestionState | null> => {
     let {
+      isStaticEmbedding,
       nextCard,
       previousCard,
       originalQuestion,
@@ -54,6 +56,7 @@ export const runQuestionOnNavigateSdk =
       question: new Question(nextCard, getMetadata(getState())),
       originalQuestion,
       cancelDeferred,
+      isStaticEmbedding,
     });
 
     return state as SdkQuestionState;

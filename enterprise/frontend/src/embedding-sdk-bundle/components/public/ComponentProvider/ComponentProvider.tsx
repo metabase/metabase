@@ -8,7 +8,7 @@ import { getSdkStore } from "embedding-sdk-bundle/store";
 import {
   setErrorComponent,
   setEventHandlers,
-  setIsStatic,
+  setIsStaticEmbedding,
   setLoaderComponent,
   setPlugins,
 } from "embedding-sdk-bundle/store/reducer";
@@ -54,7 +54,7 @@ export const ComponentProviderInternal = ({
   useInitDataInternal({ reduxStore, isStatic, authConfig });
 
   useEffect(() => {
-    reduxStore.dispatch(setIsStatic(isStatic));
+    reduxStore.dispatch(setIsStaticEmbedding(isStatic));
   }, [reduxStore, isStatic]);
 
   useEffect(() => {

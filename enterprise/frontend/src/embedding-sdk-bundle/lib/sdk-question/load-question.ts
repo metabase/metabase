@@ -1,16 +1,19 @@
 import _ from "underscore";
 
+import { getIsStaticEmbedding } from "embedding-sdk-bundle/store/selectors";
+import type {
+  SdkDispatch,
+  SdkStoreState,
+} from "embedding-sdk-bundle/store/types";
 import type {
   LoadSdkQuestionParams,
   SdkQuestionState,
 } from "embedding-sdk-bundle/types/question";
-import { getIsStatic } from "embedding-sdk-bundle/store/selectors";
 import { resolveCards } from "metabase/query_builder/actions";
 import { getParameterValuesForQuestion } from "metabase/query_builder/actions/core/parameterUtils";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
-import type { Dispatch, GetState } from "metabase-types/store";
 
 export const loadQuestionSdk =
   ({
@@ -21,8 +24,8 @@ export const loadQuestionSdk =
     targetDashboardId,
   }: LoadSdkQuestionParams) =>
   async (
-    dispatch: Dispatch,
-    getState: GetState,
+    dispatch: SdkDispatch,
+    getState: () => SdkStoreState,
   ): Promise<
     Required<Pick<SdkQuestionState, "question">> &
       Pick<SdkQuestionState, "originalQuestion" | "parameterValues">
@@ -37,7 +40,7 @@ export const loadQuestionSdk =
       deserializedCard,
     });
 
-    const isStatic = getIsStatic(getState());
+    const isStatic = getIsStaticEmbedding(getState());
 
     if (!isStatic) {
       await dispatch(loadMetadataForCard(card));

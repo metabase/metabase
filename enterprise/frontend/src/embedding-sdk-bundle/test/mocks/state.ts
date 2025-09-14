@@ -29,6 +29,7 @@ export const createMockSdkState = ({
   return {
     metabaseInstanceUrl: "",
     metabaseInstanceVersion: null,
+    isStaticEmbedding: false,
     loginStatus: createMockLoginStatusState(),
     token: createMockTokenState(),
     usageProblem: null,
@@ -37,6 +38,7 @@ export const createMockSdkState = ({
     loaderComponent: null,
     errorComponent: null,
     fetchRefreshTokenFn: null,
+    fetchStaticTokenFn: null,
     ...opts,
   };
 };

@@ -27,7 +27,7 @@ import { getResolvedEntityIdForStaticLikeEntity } from "embedding-sdk-bundle/lib
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import {
   getFetchStaticTokenFn,
-  getIsStatic,
+  getIsStaticEmbedding,
 } from "embedding-sdk-bundle/store/selectors";
 import type {
   MetabaseQuestion,
@@ -161,7 +161,7 @@ const SdkDashboardInner = ({
   const [dashboardId, setDashboardId] = useState<SdkDashboardId | null>(null);
   const [dashboardIdLoading, setDashboardIdLoading] = useState(true);
 
-  const isStaticEmbedding = useSdkSelector(getIsStatic);
+  const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
   const customFetchStaticTokenFn = useSdkSelector(getFetchStaticTokenFn);
 
   useEffect(() => {
@@ -169,7 +169,7 @@ const SdkDashboardInner = ({
       const dashboardId = await getResolvedEntityIdForStaticLikeEntity({
         entityType: "dashboard",
         entityId: rawDashboardId,
-        isStatic: isStaticEmbedding,
+        isStaticEmbedding,
         customFetchStaticTokenFn,
       });
 

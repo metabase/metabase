@@ -12,7 +12,7 @@ import {
 import { QuestionVisualization } from "embedding-sdk-bundle/components/private/SdkQuestion/components/Visualization";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import { shouldRunCardQuery } from "embedding-sdk-bundle/lib/sdk-question";
-import { getIsStatic } from "embedding-sdk-bundle/store/selectors";
+import { getIsStaticEmbedding } from "embedding-sdk-bundle/store/selectors";
 import type { SdkQuestionTitleProps } from "embedding-sdk-bundle/types/question";
 import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
@@ -89,7 +89,7 @@ export const SdkQuestionDefaultView = ({
   } = useSdkQuestionContext();
 
   const { isBreadcrumbEnabled, reportLocation } = useSdkBreadcrumbs();
-  const isStaticQuestion = useLazySelector(getIsStatic);
+  const isStaticEmbedding = useLazySelector(getIsStaticEmbedding);
 
   const isNewQuestion = originalId === "new";
   const isQuestionSaved = question?.isSaved();
@@ -125,7 +125,9 @@ export const SdkQuestionDefaultView = ({
 
   // When visualizing a question for the first time, there is no query result yet.
   const isQueryResultLoading =
-    question && shouldRunCardQuery(question, isStaticQuestion) && !queryResults;
+    question &&
+    shouldRunCardQuery(question, isStaticEmbedding) &&
+    !queryResults;
 
   useEffect(() => {
     if (
