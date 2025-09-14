@@ -1,13 +1,14 @@
 (ns metabase.util.performance
   "Functions and utilities for faster processing. This namespace is compatible with both Clojure and ClojureScript.
   However, some functions are either not only available in CLJS, or offer passthrough non-improved functions."
-  (:refer-clojure :exclude [reduce mapv run! some every? concat select-keys update-keys #?(:cljs clj->js)])
+  (:refer-clojure :exclude [reduce mapv run! some every? concat select-keys update-keys empty? not-empty first
+                            #?(:cljs clj->js)])
   #?@(:clj ()
       :cljs [(:require
               [cljs.core :as core]
               [goog.object :as gobject])])
   #?@(:clj [(:import (clojure.lang ITransientCollection LazilyPersistentVector RT)
-                     (java.util ArrayList HashMap Iterator))]
+                     (java.util ArrayList HashMap Iterator List))]
       :default ()))
 
 #?(:clj (set! *warn-on-reflection* true))
@@ -39,6 +40,35 @@
     (transient? coll) persistent!))
 
 ;; Collection functions
+
+(defn empty?
+  "Like `clojure.core/empty`, but uses `List.isEmpty()` method or `count` which are usually allocation-free."
+  [coll]
+  #?(:clj (if (instance? List coll)
+            (.isEmpty ^List coll)
+            (= (count coll) 0))
+     :cljs (clojure.core/empty? coll)))
+
+(defn not-empty
+  "Like `clojure.core/not-empty`, but uses more efficient `empty?` implementation."
+  [coll]
+  #?(:clj (when-not (empty? coll)
+            coll)
+     :cljs (clojure.core/not-empty coll)))
+
+(defn first
+  "Like `clojure.core/first`, but is allocation-free when `coll` implements java.util.List."
+  [coll]
+  #?(:clj (if (instance? List coll)
+            (when-not (.isEmpty ^List coll)
+              (.get ^List coll 0))
+            (clojure.core/first coll))
+     :cljs (clojure.core/first coll)))
+
+(defn second
+  "Like `clojure.core/second`, but uses `RT/nth` directly for allocation-free access."
+  [coll]
+  (RT/nth coll 1 nil))
 
 #?(:clj
    (defn reduce
@@ -289,6 +319,25 @@
                              m m)
                   maybe-persistent!
                   (with-meta (meta m)))))
+
+(defn update-vals
+  "Like `clojure.core/update-vals`, but doesn't recreate the collection if no vals are changed after applying `f`. Works
+  for both maps and vectors."
+  [coll f]
+  (cond (nil? coll) {}
+        ;; Fallback for non-editable collections where transients aren't supported.
+        (not (editable? coll))
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (clojure.core/update-vals coll f)
+        :else (-> (reduce-kv (fn [acc k v]
+                               (let [v' (f v)]
+                                 ;; Skip update if val is unchanged (=), but check for identity as it is faster.
+                                 (if (or (identical? v v') (= v v'))
+                                   acc
+                                   (assoc+ acc k v'))))
+                             coll coll)
+                  maybe-persistent!
+                  (with-meta (meta coll)))))
 
 ;; clojure.walk reimplementation. Partially adapted from https://github.com/tonsky/clojure-plus.
 
