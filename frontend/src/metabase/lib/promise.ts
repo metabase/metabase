@@ -4,7 +4,10 @@ export type CancellablePromise<T> = Promise<T> & {
   cancel: () => void;
 };
 
-// return a promise wrapping the provided one but with a "cancel" method
+/**
+ * @deprecated - this is stupid don't use it
+ * returns a promise wrapping the provided one but with a "cancel" method
+ */
 export function cancelable<T>(promise: Promise<T>): CancellablePromise<T> {
   let canceled = false;
 
