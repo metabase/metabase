@@ -1,3 +1,5 @@
+import { updateMetadata } from "metabase/lib/redux/metadata";
+import { QueryMetadataSchema } from "metabase/schema";
 import type {
   Dashboard,
   DashboardQueryMetadata,
@@ -11,6 +13,8 @@ import {
   provideDashboardQueryMetadataTags,
   provideDatabaseCandidateListTags,
 } from "./tags";
+import { handleQueryFulfilled } from "./utils/lifecycle";
+
 export const automagicDashboardsApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     getXrayDashboardQueryMetadata: builder.query<
@@ -24,6 +28,10 @@ export const automagicDashboardsApi = Api.injectEndpoints({
       }),
       providesTags: (metadata) =>
         metadata ? provideDashboardQueryMetadataTags(metadata) : [],
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, QueryMetadataSchema)),
+        ),
     }),
     listDatabaseXrays: builder.query<DatabaseXray[], DatabaseId>({
       query: (id) => `/api/automagic-dashboards/database/${id}/candidates`,
@@ -42,6 +50,10 @@ export const automagicDashboardsApi = Api.injectEndpoints({
           params,
         };
       },
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, QueryMetadataSchema)),
+        ),
     }),
   }),
 });
