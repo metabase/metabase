@@ -330,7 +330,10 @@ export const UtilApi = {
 };
 
 export function setPublicQuestionEndpoints(uuid) {
-  setCardEndpoints(`/api/public/card/${encodeURIComponent(uuid)}`);
+  setCardEndpoints({
+    base: "/api/public",
+    encodedToken: encodeURIComponent(uuid),
+  });
 }
 
 export function setPublicDashboardEndpoints(uuid) {
@@ -339,7 +342,7 @@ export function setPublicDashboardEndpoints(uuid) {
 
 export function setEmbedQuestionEndpoints(token) {
   const encodedToken = encodeURIComponent(token);
-  setCardEndpoints(`${embedBase}/card/${encodedToken}`);
+  setCardEndpoints({ base: embedBase, encodedToken });
   PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(encodedToken);
 }
 
@@ -353,7 +356,9 @@ function GET_with(url, omitKeys) {
   return (data, options) => GET(url)({ ..._.omit(data, omitKeys) }, options);
 }
 
-function setCardEndpoints(prefix) {
+function setCardEndpoints({ base, encodedToken }) {
+  const prefix = `${base}/card/${encodedToken}`;
+
   // RTK query
   PLUGIN_API.getRemappedCardParameterValueUrl = (_dashboardId, parameterId) =>
     `${prefix}/params/${encodeURIComponent(parameterId)}/remapping`;
@@ -372,6 +377,12 @@ function setCardEndpoints(prefix) {
   });
   CardApi.query = GET_with(`${prefix}/query`, [
     // Params below are not supported by `/api/embed/card/:cardId/query` endpoint
+    "cardId",
+    "ignore_cache",
+    "collection_preview",
+    "parameters",
+  ]);
+  CardApi.query_pivot = GET_with(`${base}/pivot/card/${encodedToken}/query`, [
     "cardId",
     "ignore_cache",
     "collection_preview",
@@ -409,6 +420,8 @@ function setDashboardEndpoints(prefix) {
     }),
     overrideExisting: true,
   });
+  DashboardApi.cardQuery = EmbedApi.dashboardCardQuery;
+  DashboardApi.cardQueryPivot = EmbedApi.dashboardCardQueryPivot;
   DashboardApi.parameterValues = GET_with(`${prefix}/params/:paramId/values`, [
     "dashId",
   ]);
