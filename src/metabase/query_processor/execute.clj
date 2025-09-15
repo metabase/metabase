@@ -1,5 +1,6 @@
 (ns metabase.query-processor.execute
   (:require
+   [metabase.lib.core :as lib]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.cache :as cache]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
@@ -60,11 +61,15 @@
 
 (def ^:private execute* nil)
 
-(defn- run [query rff]
+(mu/defn- run [query :- ::qp.schema/any-query
+               rff   :- ::qp.schema/rff]
   ;; if the query has a `:qp/compiled` key (i.e., this query was compiled from MBQL), rename it to `:native`, so the
   ;; driver implementations only need to look for one key. Can't really do this any sooner because it will break schema
   ;; checks in the middleware
   (let [query (cond-> query
+                ;; TODO (Cam 9/15/25) -- update this and downstream code (drivers) to handle MBQL 5
+                (:lib/type query) lib/->legacy-MBQL)
+        query (cond-> query
                 (not (:native query)) (assoc :native (:qp/compiled query)))]
     (qp.pipeline/*run* query rff)))
 
