@@ -267,40 +267,6 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     cy.findByText(/Site URL/i);
   });
 
-  // Unskip when mocking Cloud in Cypress is fixed (#18289)
-  it(
-    "should hide self-hosted settings when running Metabase Cloud",
-    { tags: "@skip" },
-    () => {
-      H.setupMetabaseCloud();
-      cy.visit("/admin/settings/general");
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Site Name");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Site URL").should("not.exist");
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Email").should("not.exist");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Updates").should("not.exist");
-    },
-  );
-
-  // Unskip when mocking Cloud in Cypress is fixed (#18289)
-  it(
-    "should hide the store link when running Metabase Cloud",
-    { tags: "@skip" },
-    () => {
-      H.setupMetabaseCloud();
-      cy.visit("/admin/settings/general");
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Metabase Admin");
-      cy.findByLabelText("store icon").should("not.exist");
-    },
-  );
-
   describe(" > slack settings", () => {
     it("should present the form and display errors", () => {
       cy.visit("/admin/settings/notifications");
@@ -337,21 +303,6 @@ describe("scenarios > admin > settings (EE)", () => {
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
   });
-
-  // Unskip when mocking Cloud in Cypress is fixed (#18289)
-  it(
-    "should hide Enterprise page when running Metabase Cloud",
-    { tags: "@skip" },
-    () => {
-      H.setupMetabaseCloud();
-      cy.visit("/admin/settings/general");
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Site Name");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Enterprise").should("not.exist");
-    },
-  );
 
   it("should hide the store link when running Metabase EE", () => {
     cy.visit("/admin/settings/license");
