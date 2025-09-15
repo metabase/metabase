@@ -41,6 +41,7 @@
     FieldValue
     FieldValueList
     InsertAllRequest
+    InsertAllRequest$RowToInsert
     QueryJobConfiguration
     Schema
     Table
@@ -897,40 +898,49 @@
 
 (defn- convert-value-for-insertion
   [base-type value]
-  (if-not (string? value)
-    value
-    (case base-type
-      :type/JSON
-      (.toString (JsonParser/parseString value))
+  (condp #(isa? %2 %1) base-type
+    :type/JSON
+    (.toString (JsonParser/parseString value))
 
-      (:type/Dictionary :type/Array)
-      (JsonParser/parseString value)
+    :type/Dictionary
+    (JsonParser/parseString value)
 
-      :type/Integer
-      (parse-long value)
+    :type/Array
+    (JsonParser/parseString value)
 
-      :type/Float
-      (parse-double value)
+    :type/Integer
+    (parse-long value)
 
-      :type/Boolean
-      (parse-boolean value)
+    :type/Float
+    (parse-double value)
 
-      :type/Numeric
-      (bigdec value)
+    :type/Boolean
+    (parse-boolean value)
 
-      :type/Decimal
-      (bigdec value)
+    :type/Numeric
+    (bigdec value)
 
-      (:type/Date :type/DateTime :type/DateTimeWithLocalTZ)
-      (u.date/format (u.date/parse value))
+    :type/Decimal
+    (bigdec value)
 
-      value)))
+    :type/Date
+    (u.date/format (u.date/parse value))
+
+    :type/DateTime
+    (u.date/format (u.date/parse value))
+
+    :type/DateTimeWithLocalTZ
+    (u.date/format (u.date/parse value))
+
+    value))
+
+(defmethod driver/string->val :bigquery-cloud-sdk
+  [_driver column-def string-val]
+  (convert-value-for-insertion (:type column-def) string-val))
 
 (defmethod driver/insert-from-source! [:bigquery-cloud-sdk :rows]
   [_driver db-id {table-name :name :keys [columns]} {:keys [data]}]
-
-  (let [col-meta (m/index-by :name columns)
-        col-names (map :name columns)
+  (let [col-names (map :name columns)
         {:keys [details]} (t2/select-one :model/Database db-id)
 
         client (database-details->client details)
@@ -940,17 +950,11 @@
 
         table-id (.getTableId (get-table client project-id dataset-id table-name))
 
-        prepared-rows (map #(into {}
-                                  (map (fn [col-name value]
-                                         (let [ty (:type (get col-meta col-name))]
-                                           [col-name (convert-value-for-insertion ty value)]))
-                                       col-names %))
-                           data)]
-
+        prepared-rows (map #(into {} (map vector col-names %)) data)]
     (doseq [chunk (partition-all (or driver/*insert-chunk-rows* 1000) prepared-rows)]
       (let [insert-request-builder (InsertAllRequest/newBuilder table-id)]
         (doseq [^java.util.Map row chunk]
-          (.addRow insert-request-builder row))
+          (.addRow insert-request-builder (InsertAllRequest$RowToInsert/of row)))
         (let [insert-request (.build insert-request-builder)
               response (.insertAll client insert-request)]
           (when (.hasErrors response)

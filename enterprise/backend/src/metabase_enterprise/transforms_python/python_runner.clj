@@ -72,18 +72,19 @@
   [base-type]
   (when base-type
     (some #(when (isa? base-type %) %)
-          [:type/Float
+          [:type/Decimal
+           :type/Float
            :type/Integer
+           :type/BigInteger
            :type/Boolean
            :type/DateTimeWithTZ
            :type/DateTime
+           :type/Date
            :type/Dictionary
+           :type/UUID
            :type/Array
            :type/JSON
-           :type/Date
-           :type/Text
-           :type/UUID
-           :type/Decimal])))
+           :type/Text])))
 
 (defn- closest-ancestor [t pred]
   (loop [remaining (conj PersistentQueue/EMPTY [t])]

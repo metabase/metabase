@@ -3,7 +3,6 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
@@ -627,45 +626,67 @@
 
 (defn- convert-value-for-insertion
   [base-type value]
-  (if-not (string? value)
-    value
-    (case base-type
-      (:type/JSON :type/Dictionary :type/Array)
-      (json/decode value)
+  (condp #(isa? %2 %1) base-type
+    :type/JSON
+    (json/decode value)
 
-      :type/Integer
-      (parse-long value)
+    :type/Dictionary
+    (json/decode value)
 
-      (:type/Number :type/BigInteger)
-      (bigint value)
+    :type/Array
+    (json/decode value)
 
-      :type/Float
-      (parse-double value)
+    :type/Integer
+    (parse-long value)
 
-      :type/Decimal
-      (bigdec value)
+    :type/BigInteger
+    (bigint value)
 
-      :type/Boolean
-      (parse-boolean value)
+    :type/Float
+    (parse-double value)
 
-      (:type/Date :type/DateTime :type/DateTimeWithTZ :type/Time :type/TimeWithTZ :type/Instant)
-      (u.date/parse value)
+    :type/Decimal
+    (bigdec value)
 
-      :type/UUID
-      (parse-uuid value)
+    :type/Number
+    (bigint value)
 
-      value)))
+    :type/Boolean
+    (parse-boolean value)
+
+    :type/Date
+    (u.date/parse value)
+
+    :type/DateTime
+    (u.date/parse value)
+
+    :type/DateTimeWithTZ
+    (u.date/parse value)
+
+    :type/Time
+    (u.date/parse value)
+
+    :type/TimeWithTZ
+    (u.date/parse value)
+
+    :type/Instant
+    (u.date/parse value)
+
+    :type/UUID
+    (parse-uuid value)
+
+    value))
+
+(defmethod driver/string->val :mongo
+  [_driver column-def string-val]
+  (convert-value-for-insertion (:type column-def) string-val))
 
 (defmethod driver/insert-from-source! [:mongo :rows]
   [_driver db-id {table-name :name :keys [columns]} {:keys [data]}]
-  (let [col-names (mapv :name columns)
-        col-meta (m/index-by :name columns)]
+  (let [col-names (mapv :name columns)]
     (mongo.connection/with-mongo-database [^MongoDatabase db db-id]
       (let [collection (mongo.util/collection db (name table-name))
-            documents (map #(into {} (map (fn [col-name value]
-                                            (let [ty (:type (get col-meta col-name))]
-                                              [col-name (convert-value-for-insertion ty value)]))
-                                          col-names %))
+            documents (map #(into {} (map vector col-names %))
                            data)]
         (if (> (bounded-count 2 documents) 1)
           (mongo.util/insert-many collection documents)

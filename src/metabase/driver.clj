@@ -1326,35 +1326,44 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti string->val
+  "Parse a string value for insertion based on driver and column definition.
+
+  Takes:
+  - driver: The database driver
+  - column-def: Column definition map with `:type` and optionally `:database-type`/`:nullable?`
+  - string-val: The string value to parse
+
+  Drivers should implement this when their insertion mechanism cannot handle string values directly
+  and needs them converted to proper types.
+
+  Default implementation returns the value unchanged, assuming the driver's insertion mechanism
+  can handle string values directly."
+  {:added "0.57.0", :arglists '([driver column-def string-val])}
+  (fn [driver _ _] (dispatch-on-initialized-driver driver))
+  :hierarchy #'hierarchy)
+
+(defmethod string->val ::driver [_driver _column-def val]
+  val)
+
 (defmulti insert-from-source!
   "Inserts data from a data source into an existing table. Table must exist. Blocks until completion.
 
   `table-definition` is a map with `:name` (may be schema-qualified) and `:columns`
   (vector of maps with `:name` and optional `:type`, `:database-type`). Column order must match data row order.
 
-  `data-source` dispatches on `:type`. Built-in types include `:csv-file`/`:jsonl-file` (with `:file`) and `:rows`
+  `data-source` dispatches on `:type`. Built-in types include `:jsonl-file` (with `:file`) and `:rows`
   (with `:data` as reducible of row vectors). Drivers may implement additional types.
 
   Implementations may leave partial data on failure, the method makes no rollback guarantees.
   Data visibility to other connections is not guaranteed immediately.
 
-  Default implementations for `:csv-file` and `jsonl-file` data-sources are provided, which delegate to a `:rows`
+  Default implementation for `jsonl-file` data-source is provided, which delegate to a `:rows`
   data-source. Non-jdbc drivers must at least implement a `:rows` datasource."
   {:added "0.57.0", :arglists '([driver database-id table-definition data-source])}
   (fn [driver _ _ data-source]
     [(dispatch-on-initialized-driver driver) (:type data-source)])
   :hierarchy #'hierarchy)
-
-(defmethod insert-from-source! [::driver :csv-file]
-  [driver db-id {:keys [columns] :as table-definition} {:keys [file]}]
-  (with-open [rdr (io/reader file)]
-    (let [csv-rows (csv/read-csv rdr)
-          header (first csv-rows)
-          data-rows (map (fn [rows]
-                           (let [m (zipmap header rows)]
-                             (mapv #(get m (:name %)) columns)))
-                         (rest csv-rows))]
-      (insert-from-source! driver db-id table-definition {:type :rows :data data-rows}))))
 
 (defmethod insert-from-source! [::driver :jsonl-file]
   [driver db-id {:keys [columns] :as table-definition} {:keys [file]}]
@@ -1362,7 +1371,12 @@
     (let [lines (line-seq rdr)
           data-rows (map (fn [line]
                            (let [m (json/decode line)]
-                             (mapv #(get m (:name %)) columns)))
+                             (mapv (fn [column]
+                                     (let [raw-val (get m (:name column))]
+                                       (if (string? raw-val)
+                                         (string->val driver column raw-val)
+                                         raw-val)))
+                                   columns)))
                          lines)]
       (insert-from-source! driver db-id table-definition {:type :rows :data data-rows}))))
 

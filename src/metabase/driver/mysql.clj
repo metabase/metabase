@@ -938,21 +938,11 @@
         (finally
           (.delete temp-file))))))
 
-(defmethod driver/insert-from-source! [:mysql :jsonl-file]
-  [driver db-id {:keys [columns] :as table-definition} {:keys [file]}]
-  (with-open [rdr (jio/reader file)]
-    (let [lines (line-seq rdr)
-          data-rows (map (fn [line]
-                           (let [m (json/decode line)]
-                             (mapv (fn [column]
-                                     (let [value (get m (:name column))]
-                                       (if (and (string? value)
-                                                (isa? (:type column) :type/DateTimeWithTZ))
-                                         (t/offset-date-time value)
-                                         value)))
-                                   columns)))
-                         lines)]
-      (driver/insert-from-source! driver db-id table-definition {:type :rows :data data-rows}))))
+(defmethod driver/string->val :mysql
+  [_driver column-def val]
+  (if (isa? (:type column-def) :type/DateTimeWithTZ)
+    (t/offset-date-time val)
+    val))
 
 (defn- parse-grant
   "Parses the contents of a row from the output of a `SHOW GRANTS` statement, to extract the data needed
