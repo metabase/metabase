@@ -4,12 +4,12 @@ import { t } from "ttag";
 import { Button, Group, Modal, Stack, TextInput, Textarea } from "metabase/ui";
 
 type GlossaryEditDefinitionModalProps = {
-  id?: string;
+  id?: number;
   term?: string;
   definition?: string;
   opened: boolean;
   onClose: () => void;
-  onSubmit: (id: string, term: string, definition: string) => void;
+  onSubmit: (id: number, term: string, definition: string) => void;
 };
 
 export function GlossaryEditDefinitionModal({

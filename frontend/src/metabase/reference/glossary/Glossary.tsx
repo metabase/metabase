@@ -3,6 +3,13 @@ import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
+import {
+  type GlossaryItem,
+  useCreateGlossaryMutation,
+  useDeleteGlossaryMutation,
+  useListGlossaryQuery,
+  useUpdateGlossaryMutation,
+} from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import {
   ColumnHeader,
@@ -29,22 +36,20 @@ import {
 import { GlossaryEditDefinitionModal } from "./GlossarEditDefinitionModal";
 import S from "./Glossary.module.css";
 import { GlossaryNewDefinitionModal } from "./GlossaryNewDefinitionModal";
-import {
-  type GlossaryDefinition,
-  useMockedGlossary,
-} from "./use-mocked-glossary";
 
 export function Glossary() {
   const [newDefinitionOpened, newDefinitionHandler] = useDisclosure();
   const [editingDefinition, setEditingDefinition] =
-    useState<GlossaryDefinition | null>(null);
+    useState<GlossaryItem | null>(null);
   const [deletingDefinition, setDeletingDefinition] =
-    useState<GlossaryDefinition | null>(null);
+    useState<GlossaryItem | null>(null);
   const [popoverDefinition, setPopoverDefinition] =
-    useState<GlossaryDefinition | null>(null);
+    useState<GlossaryItem | null>(null);
 
-  const { mockedGlossary, addDefinition, updateDefinition, deleteDefinition } =
-    useMockedGlossary();
+  const { data: glossary = [] } = useListGlossaryQuery();
+  const [createGlossary] = useCreateGlossaryMutation();
+  const [updateGlossary] = useUpdateGlossaryMutation();
+  const [deleteGlossary] = useDeleteGlossaryMutation();
 
   return (
     <div>
@@ -84,8 +89,8 @@ export function Glossary() {
             </tr>
           </thead>
           <TBody>
-            {mockedGlossary.length === 0 && <EmptyGlossary />}
-            {mockedGlossary.map((term, index) => {
+            {glossary.length === 0 && <EmptyGlossary />}
+            {glossary.map((term, index) => {
               const popoverOpened = popoverDefinition?.id === term.id;
 
               return (
@@ -178,7 +183,9 @@ export function Glossary() {
       <GlossaryNewDefinitionModal
         opened={newDefinitionOpened}
         onClose={newDefinitionHandler.close}
-        onSubmit={addDefinition}
+        onSubmit={(term, definition) => {
+          void createGlossary({ term, definition });
+        }}
       />
 
       <GlossaryEditDefinitionModal
@@ -187,7 +194,9 @@ export function Glossary() {
         definition={editingDefinition?.definition}
         opened={editingDefinition !== null}
         onClose={() => setEditingDefinition(null)}
-        onSubmit={updateDefinition}
+        onSubmit={(id, term, definition) => {
+          void updateGlossary({ id, term, definition });
+        }}
       />
 
       <ConfirmModal
@@ -197,7 +206,7 @@ export function Glossary() {
         onClose={() => setDeletingDefinition(null)}
         onConfirm={() => {
           if (deletingDefinition) {
-            deleteDefinition(deletingDefinition.id);
+            void deleteGlossary({ id: deletingDefinition.id });
             setDeletingDefinition(null);
           }
         }}
