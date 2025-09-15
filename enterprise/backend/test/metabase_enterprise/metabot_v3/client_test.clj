@@ -51,11 +51,11 @@
                          :state           {:some "state"}}]
       (mt/with-dynamic-fn-redefs [http/post (mock-post! mock-response)]
         (mt/with-current-user (mt/user->id :crowberto)
-          ((let [res  (metabot-v3.client/streaming-request req)
-                 body (consume-streaming-response res)]
-             (is (instance? StreamingResponse res))
-             (is (= "text/event-stream; charset=utf-8" (:content-type (.options ^StreamingResponse res))))
-             (is (string? body))
-             (is (=? [{:_type :TEXT :content "a1a2a3"}
-                      {:_type :FINISH_MESSAGE :finish_reason "stop"}]
-                     (metabot-v3.util/aisdk->messages "assistant" (str/split-lines body)))))))))))
+          (let [res  (metabot-v3.client/streaming-request req)
+                body (consume-streaming-response res)]
+            (is (instance? StreamingResponse res))
+            (is (= "text/event-stream; charset=utf-8" (:content-type (.options ^StreamingResponse res))))
+            (is (string? body))
+            (is (=? [{:_type :TEXT :content "a1a2a3"}
+                     {:_type :FINISH_MESSAGE :finish_reason "stop"}]
+                    (metabot-v3.util/aisdk->messages "assistant" (str/split-lines body))))))))))
