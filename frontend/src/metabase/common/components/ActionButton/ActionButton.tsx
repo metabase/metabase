@@ -55,8 +55,7 @@ const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
     const [active, setActive] = useState(false);
     const [result, setResult] = useState<null | "failed" | "success">(null);
     const timeout = useRef<null | ReturnType<typeof setTimeout>>(null);
-    const actionPromise = useRef<CancellablePromise<any> | null>(null);
-    const buttonRef = useRef<HTMLButtonElement>(null);
+    const actionPromise = useRef<CancellablePromise<unknown> | null>(null);
 
     const resetTimeout = () => {
       timeout.current && clearTimeout(timeout.current);
@@ -102,7 +101,7 @@ const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
           setResult("success");
           resetStateOnTimeout();
         },
-        (error: any) => {
+        (error: Error & { isCanceled?: boolean }) => {
           if (!error.isCanceled) {
             console.error(error);
             setActive(false);
@@ -117,7 +116,6 @@ const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
 
     return (
       <Button
-        ref={buttonRef}
         {...buttonProps}
         data-action-status={actionStatus}
         className={
@@ -134,7 +132,7 @@ const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
         {active ? (
           useLoadingSpinner ? (
             <Center px="2rem">
-              <Loader size="sm" color="white" />
+              <Loader size="sm" color="white" data-testid="loading-indicator" />
             </Center>
           ) : (
             activeText
