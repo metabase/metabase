@@ -323,7 +323,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
           });
         });
 
-        it("1st stage breakout", { tags: "@skip" }, () => {
+        it("1st stage breakout", () => {
           QSHelpers.setup1stStageBreakoutFilter();
 
           QSHelpers.verifyDashcardCellValues({
