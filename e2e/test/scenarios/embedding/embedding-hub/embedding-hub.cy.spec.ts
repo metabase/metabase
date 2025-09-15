@@ -56,7 +56,7 @@ describe("scenarios - embedding hub", () => {
       });
     });
 
-    it("Uploading CSVs should mark the 'Add Data' step as done", () => {
+    it("Uploading CSVs to sample database should mark the 'Add Data' step as done", () => {
       cy.intercept("GET", "/api/ee/embedding-hub/checklist").as("getChecklist");
 
       cy.log("Enable CSV uploads");

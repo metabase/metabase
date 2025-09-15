@@ -13,9 +13,13 @@
   (or (t2/exists? :model/Database {:where [:and
                                            [:= :is_sample false]
                                            [:= :is_audit false]]})
-      (t2/exists? :model/Table {:where [:and
-                                        [:= :active true]
-                                        [:= :is_upload true]]})))
+      ;; check for CSV uploads to sample db
+      ;; as the sample db is excluded from the above query
+      (when-let [sample-db-id (t2/select-one-pk :model/Database :is_sample true)]
+        (t2/exists? :model/Table {:where [:and
+                                          [:= :active true]
+                                          [:= :is_upload true]
+                                          [:= :db_id sample-db-id]]}))))
 
 (defn- has-user-created-dashboard? []
   (let [example-dashboard-id (appearance/example-dashboard-id)
