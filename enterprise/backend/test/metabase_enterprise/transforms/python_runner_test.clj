@@ -20,7 +20,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
-   [metabase.util.json :as json]
+   [metabase.util.json :as kjson]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -52,7 +52,7 @@
 
 (def ^:private test-id 1)
 
-(defn- execute [{:keys [code tables]}]
+(defn- execute! [{:keys [code tables]}]
   (with-open [shared-storage-ref (python-runner/open-s3-shared-storage! (or tables {}))]
     (let [server-url     (transforms.settings/python-execution-server-url)
           cancel-chan    (a/promise-chan)
@@ -80,7 +80,7 @@
                               "\n"
                               "def transform():\n"
                               "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")
-          result         (execute {:code transform-code})]
+          result         (execute! {:code transform-code})]
       (is (=? {:output "name,age\nAlice,25\nBob,30\n"
                :stdout "Successfully saved 2 rows to S3\nSuccessfully saved output manifest with 2 fields"
                :stderr ""}
@@ -88,9 +88,9 @@
 
 (deftest ^:parallel transform-function-missing-test
   (testing "handles missing transform function"
-    (let [result (execute {:code (str "import pandas as pd\n"
-                                      "\n"
-                                      "# No transform function defined")})]
+    (let [result (execute! {:code (str "import pandas as pd\n"
+                                       "\n"
+                                       "# No transform function defined")})]
       (is (=? {:exit_code 1
                :stderr    "ERROR: User script must define a 'transform()' function"
                :stdout    ""}
@@ -98,8 +98,8 @@
 
 (deftest ^:parallel transform-function-wrong-return-type-test
   (testing "handles transform function returning non-DataFrame"
-    (let [result (execute {:code (str "def transform():\n"
-                                      "    return 'not a dataframe'")})]
+    (let [result (execute! {:code (str "def transform():\n"
+                                       "    return 'not a dataframe'")})]
       (is (=? {:exit_code 1
                :stderr    "ERROR: Transform function must return a pandas DataFrame, got <class 'str'>"
                :stdout    ""}
@@ -107,8 +107,8 @@
 
 (deftest ^:parallel transform-function-error-test
   (testing "handles transform function with error"
-    (let [result            (execute {:code (str "def transform():\n"
-                                                 "    raise ValueError('Something went wrong')")})
+    (let [result            (execute! {:code (str "def transform():\n"
+                                                  "    raise ValueError('Something went wrong')")})
           expected-template (str "ERROR: Transform function failed: Something went wrong\n"
                                  "Traceback (most recent call last):\n"
                                  "  File \"/app/external/src/transform_runner.py\", line ___LINE___, in main\n"
@@ -131,7 +131,7 @@
                               "def transform():\n"
                               "    data = {'x': [1, 2, 3], 'y': [10, 20, 30], 'z': ['a', 'b', 'c']}\n"
                               "    return pd.DataFrame(data)")
-          result         (execute {:code transform-code})]
+          result         (execute! {:code transform-code})]
       (is (=? {:output "x,y,z\n1,10,a\n2,20,b\n3,30,c\n"
                :stdout "Successfully saved 3 rows to S3\nSuccessfully saved output manifest with 3 fields"
                :stderr ""}
@@ -145,7 +145,7 @@
                                 "def transform():\n"
                                 "    data = {'name': ['Charlie', 'Dana'], 'score': [85, 92]}\n"
                                 "    return pd.DataFrame(data)")
-            result         (execute {:code transform-code})]
+            result         (execute! {:code transform-code})]
         (is (=? {:output "name,score\nCharlie,85\nDana,92\n"
                  :stdout "Successfully saved 2 rows to S3\nSuccessfully saved output manifest with 2 fields"
                  :stderr ""}
@@ -166,8 +166,8 @@
                                   "\n"
                                   "def transform(students):\n"
                                   "    return students")
-              result         (execute {:code   transform-code
-                                       :tables {"students" (mt/id :students)}})]
+              result         (execute! {:code  transform-code
+                                        :tables {"students" (mt/id :students)}})]
 
           (is (=? {:output   "id,name,score\n1,Alice,85\n2,Bob,92\n3,Charlie,88\n4,Dana,90\n"
                    :output-manifest {:fields [{:base_type "Integer",
@@ -241,16 +241,18 @@
                                   "        'average_score': [round(avg_score, 2)]\n"
                                   "    })\n"
                                   "    return result")
-              result         (execute {:code   transform-code
-                                       :tables {"students" (mt/id :students)}})]
+              result         (execute! {:code  transform-code
+                                        :tables {"students" (mt/id :students)}})]
 
-          (is (=? {:output   "student_count,average_score\n4,88.75\n"
+          (is (=? {:output          "{\"student_count\":4,\"average_score\":88.75}\n"
                    :output-manifest {:version "0.1.0",
                                      :fields  [{:name "student_count", :dtype "int64"}
                                                {:name "average_score", :dtype "float64"}]}
-                   :stdout   (str "Successfully saved 1 rows to S3\n"
-                                  "Successfully saved output manifest with 2 fields")
-                   :stderr   ""}
+                   :stdout          (str "Successfully saved 1 rows to S3\n"
+                                         "Successfully saved output manifest with 2 fields")
+                   :stderr          (str "Parsed id as Integer\n"
+                                         "Parsed name as Text\n"
+                                         "Parsed score as Integer")}
                   result)))))))
 
 (defn- datetime-equal?
@@ -291,8 +293,8 @@
                                 "def transform(sample_table):\n"
                                 "    df = sample_table.copy()\n"
                                 "    return df")
-            result (execute {:code transform-code
-                             :tables {"sample_table" (mt/id :sample_table)}})
+            result (execute! {:code  transform-code
+                              :tables {"sample_table" (mt/id :sample_table)}})
             csv-data (csv/read-csv (:output result))
             headers (first csv-data)
             rows (rest csv-data)
@@ -377,7 +379,7 @@
                                   "        {'radius': 10, 'area': calculate_circle_area(10), 'price': format_currency(314.16)}\n"
                                   "    ]\n"
                                   "    return pd.DataFrame(data)")
-              result         (execute {:code transform-code})]
+              result         (execute! {:code transform-code})]
           (is (=? {:output #(and (str/includes? % "radius,area,price")
                                  (str/includes? % "5,78.5")
                                  (str/includes? % "$78.54")
@@ -399,7 +401,7 @@
                                   "\n"
                                   "def transform():\n"
                                   "    return pd.DataFrame({'status': ['ok']})")
-              result         (execute {:code transform-code})]
+              result         (execute! {:code transform-code})]
           (is (=? {:output "status\nok\n"
                    :stdout "Successfully saved 1 rows to CSV\nSuccessfully saved output manifest with 1 fields"
                    :stderr ""}
@@ -418,7 +420,7 @@
                                   "\n"
                                   "def transform():\n"
                                   "    return pd.DataFrame({'value': [some_function()]})")
-              result         (execute {:code transform-code})]
+              result         (execute! {:code transform-code})]
           (is (=? {:error     "Execution failed"
                    :exit-code 1
                    :stderr    #(str/includes? % "No module named 'common'")}
@@ -463,8 +465,8 @@
                                 "\n"
                                 "def transform(" table-name "):\n"
                                 "    return " table-name)
-            result (execute {:code transform-code
-                             :tables {table-name (mt/id qualified-table-name)}})
+            result (execute! {:code  transform-code
+                              :tables {table-name (mt/id qualified-table-name)}})
 
             metadata (:output-manifest result)]
 
