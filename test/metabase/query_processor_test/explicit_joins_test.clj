@@ -431,10 +431,10 @@
                   ;; that use them as keys
                   (is (= [[:field (mt/id :people :id) nil]
                           [:field (mt/id :people :id) {:join-alias "peeps"}]
-                          [:field "USER_ID"   {:base-type :type/Integer, :join-alias "peeps"}]
-                          [:field "count"     {:base-type :type/Integer, :join-alias "peeps"}]
-                          [:field "USER_ID_2" {:base-type :type/Integer, :join-alias "peeps"}]
-                          [:field "count_2"   {:base-type :type/Integer, :join-alias "peeps"}]]
+                          [:field "USER_ID"     {:base-type :type/Integer, :join-alias "peeps"}]
+                          [:field "ord1__count" {:base-type :type/Integer, :join-alias "peeps"}]
+                          [:field "USER_ID_2"   {:base-type :type/Integer, :join-alias "peeps"}]
+                          [:field "ord2__count" {:base-type :type/Integer, :join-alias "peeps"}]]
                          (map :field_ref (qp.preprocess/query->expected-cols query))))))
               (testing "the query runs and returns correct data"
                 (is (= {:columns [cid cid2 cuser-id ccount cuser-id2 ccount2]
