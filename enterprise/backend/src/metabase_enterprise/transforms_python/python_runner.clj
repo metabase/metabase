@@ -340,6 +340,7 @@
            shared-storage
            table-name->id
            cancel-chan]}]
+  ;; TODO there's scope for some parallelism here, in particular across different databases
   (doseq [id (vals table-name->id)
           :let [{:keys [s3-client bucket-name objects]} shared-storage
                 {data-path :path} (get objects [:table id :data])
@@ -406,16 +407,20 @@
                                    {:error string-if-error}))
                                string-if-error)))))
 
+(defn- cancel-python-code-http-call! [server-url run-id]
+  (http/post (str server-url "/cancel")
+             {:content-type :json
+              :body         (json/encode {:request_id run-id})
+              :async?       true}
+             #_success #(log/debug %)
+             #_failure #(log/error %)))
+
 (defn open-cancellation-process!
   "Starts a core.async process that optimistically sends a cancellation request to the python executor if cancel-chan receives a value.
   Returns a channel that will receive either the async http call j.u.c.FutureTask in the case of cancellation, or nil when the cancel-chan is closed."
   [server-url run-id cancel-chan]
   (a/go (when (a/<! cancel-chan)
-          (http/post (str server-url "/cancel")
-                     {:content-type :json
-                      :body         (json/encode {:request_id run-id})
-                      :async?       true}
-                     identity identity))))
+          (cancel-python-code-http-call! server-url run-id))))
 
 ;; temporary, we should not need to realize data/events files into memory longer term
 (defn read-output-objects

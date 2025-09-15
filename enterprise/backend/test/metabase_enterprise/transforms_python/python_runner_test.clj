@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase-enterprise.transforms.python-runner-test
+(ns ^:mb/driver-tests metabase-enterprise.transforms-python.python-runner-test
   (:require
    [clojure.core.async :as a]
    [clojure.data.csv :as csv]
@@ -20,7 +20,6 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
-   [metabase.util.json :as kjson]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
