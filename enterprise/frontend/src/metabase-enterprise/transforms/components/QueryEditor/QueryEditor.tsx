@@ -90,13 +90,10 @@ export function QueryEditor({
   ]);
 
   const handleInsertSnippet = (snippet: NativeQuerySnippet) => {
-    const query = question.legacyNativeQuery();
-    if (!query) {
-      return;
-    }
+    const query = question.query();
+    const text = Lib.rawNativeQuery(query);
 
     const range = selectionRange[0];
-    const text = query.queryText();
     if (!range) {
       return;
     }
@@ -111,8 +108,8 @@ export function QueryEditor({
       `{{snippet: ${snippet.name}}}` +
       text.slice(selectionEnd);
 
-    const datasetQuery = query.setQueryText(newText).datasetQuery();
-    handleChange(question.setDatasetQuery(datasetQuery));
+    const newQuery = Lib.withNativeQuery(query, newText);
+    handleChange(question.setQuery(newQuery));
   };
 
   const [modalSnippet, setModalSnippet] = useState<NativeQuerySnippet | null>(
