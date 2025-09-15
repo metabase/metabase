@@ -92,13 +92,13 @@ export function QueryEditor({
   const handleInsertSnippet = (snippet: NativeQuerySnippet) => {
     const query = question.legacyNativeQuery();
     if (!query) {
-      throw new Error("No query found");
+      return;
     }
 
     const range = selectionRange[0];
     const text = query.queryText();
     if (!range) {
-      throw new Error("No selection range found");
+      return;
     }
 
     const { start, end } = range;
