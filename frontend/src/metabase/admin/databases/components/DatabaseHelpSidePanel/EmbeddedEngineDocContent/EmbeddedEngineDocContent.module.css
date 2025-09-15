@@ -11,7 +11,7 @@
   h2,
   h3,
   h4 {
-    margin-top: 0.5rem;
+    margin: 0.5rem 0;
     display: inline-block;
   }
 
@@ -31,9 +31,5 @@
 
   code {
     text-wrap: auto;
-  }
-
-  .hidden {
-    display: none;
   }
 }

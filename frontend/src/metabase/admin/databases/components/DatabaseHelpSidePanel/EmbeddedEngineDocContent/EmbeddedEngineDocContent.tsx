@@ -1,22 +1,24 @@
 import { useRef } from "react";
-import ReactMarkdown from "react-markdown";
 import { useMount } from "react-use";
 
+import Markdown from "metabase/common/components/Markdown";
+import { Alert, Box, Loader, Text } from "metabase/ui";
 import type { EngineKey } from "metabase-types/api";
 
 import S from "./EmbeddedEngineDocContent.module.css";
-import { useEngineDocMarkdownContent } from "./useEngineDocMarkdownContent";
 import {
-  hideUnnecessaryMarkdownElements,
+  hideUnnecessaryElements,
   markdownComponentsOverride,
-} from "./utils";
+} from "./markdown-utils";
+import { useEngineDocMarkdownContent } from "./useEngineDocMarkdownContent";
 
 interface Props {
   engineKey: EngineKey;
 }
 
 export const EmbeddedEngineDocContent = ({ engineKey }: Props) => {
-  const engineDocContent = useEngineDocMarkdownContent(engineKey);
+  const { markdownContent, isLoading, loadingError } =
+    useEngineDocMarkdownContent(engineKey);
   const markdownRef = useRef<HTMLDivElement>(null);
 
   useMount(() => {
@@ -25,8 +27,8 @@ export const EmbeddedEngineDocContent = ({ engineKey }: Props) => {
     }
 
     const observer = new MutationObserver(() => {
-      // Using observer to ensure hideUnnecessaryMarkdownElements is called after the markdown is rendered
-      hideUnnecessaryMarkdownElements(markdownRef.current);
+      // Using observer to ensure hideUnnecessaryElements is called after the markdown is rendered
+      hideUnnecessaryElements(markdownRef.current);
     });
 
     observer.observe(markdownRef.current, { childList: true, subtree: true });
@@ -37,13 +39,22 @@ export const EmbeddedEngineDocContent = ({ engineKey }: Props) => {
   });
 
   return (
-    <div ref={markdownRef}>
-      <ReactMarkdown
-        className={S.markdown}
-        components={markdownComponentsOverride}
-      >
-        {engineDocContent || ""}
-      </ReactMarkdown>
-    </div>
+    <Box ref={markdownRef} w="100%">
+      {loadingError && (
+        <Alert color="bg-dark" variant="outline" mt="xl">
+          <Text>{loadingError}</Text>
+        </Alert>
+      )}
+      {isLoading ? (
+        <Loader mx="auto" mt="xl" display="block" data-testid="loader" />
+      ) : (
+        <Markdown
+          className={S.markdown}
+          components={markdownComponentsOverride}
+        >
+          {markdownContent || ""}
+        </Markdown>
+      )}
+    </Box>
   );
 };

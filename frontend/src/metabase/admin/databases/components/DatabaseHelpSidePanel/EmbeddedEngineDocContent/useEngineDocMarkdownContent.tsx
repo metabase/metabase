@@ -1,47 +1,44 @@
 import { useEffect, useState } from "react";
+import { t } from "ttag";
 
 import type { EngineKey } from "metabase-types/api";
 
-const ENGINE_DOC_MAPPING: Partial<Record<EngineKey, string>> = {
-  athena: "athena",
-  "bigquery-cloud-sdk": "bigquery",
-  clickhouse: "clickhouse",
-  databricks: "databricks",
-  "druid-jdbc": "druid",
-  druid: "druid",
-  mysql: "mysql",
-  oracle: "oracle",
-  postgres: "postgresql",
-  "presto-jdbc": "presto",
-  redshift: "redshift",
-  snowflake: "snowflake",
-  sparksql: "sparksql",
-  sqlite: "sqlite",
-  sqlserver: "sql-server",
-  starburst: "starburst",
-  vertica: "vertica",
-};
+import { ENGINE_DOC_MAP } from "./constants";
 
 export const useEngineDocMarkdownContent = (engineKey: EngineKey) => {
-  const [docMDContent, setDocMDContent] = useState<string>();
+  const [markdownContent, setMarkdownContent] = useState<string>();
+  const [loadingError, setLoadingError] = useState<string>();
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   useEffect(() => {
-    const docFileName = ENGINE_DOC_MAPPING[engineKey];
+    const docFileName = ENGINE_DOC_MAP[engineKey];
 
     if (!docFileName) {
-      setDocMDContent(undefined);
+      setMarkdownContent(undefined);
+      setLoadingError(t`Failed to load detailed documentation`);
       return;
     }
 
+    setIsLoading(true);
+    setLoadingError(undefined);
+
     import(`docs/databases/connections/${docFileName}.md`)
       .then((result: { default: string }) => {
-        setDocMDContent(result.default);
+        setMarkdownContent(result.default);
       })
       .catch((err) => {
-        console.error(`Failed to load documentation for ${engineKey}:`, err);
-        setDocMDContent(undefined);
+        setMarkdownContent(undefined);
+        setLoadingError(t`Failed to load detailed documentation`);
+        console.error(
+          "Failed to load documentation for engine:",
+          engineKey,
+          err,
+        );
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
   }, [engineKey]);
 
-  return docMDContent;
+  return { markdownContent, loadingError, isLoading };
 };

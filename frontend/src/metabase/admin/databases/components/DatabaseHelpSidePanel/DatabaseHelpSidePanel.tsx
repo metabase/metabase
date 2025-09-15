@@ -9,6 +9,8 @@ import CS from "metabase/css/core/index.css";
 import { getEngines } from "metabase/databases/selectors";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl, getIsPaidPlan } from "metabase/selectors/settings";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import {
   ActionIcon,
   Box,
@@ -20,7 +22,10 @@ import {
 } from "metabase/ui";
 import type { EngineKey } from "metabase-types/api";
 
-import { EmbeddedEngineDocContent } from "./EmbeddedEngineDocContent/EmbeddedEngineDocContent";
+import {
+  ENGINE_DOC_MAP,
+  EmbeddedEngineDocContent,
+} from "./EmbeddedEngineDocContent";
 
 interface Props {
   engineKey: EngineKey;
@@ -30,12 +35,16 @@ interface Props {
 export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
   const engines = useSelector(getEngines);
   const docsUrl = useSelector((state) =>
-    getDocsUrl(state, { page: `/databases/connections/${engineKey}` }),
+    getDocsUrl(state, {
+      page: `databases/connections/${ENGINE_DOC_MAP[engineKey]}`,
+    }),
   );
   const [showUserModal, { toggle: toggleUserModal }] = useDisclosure(false);
   const isPaidPlan = useSelector(getIsPaidPlan);
   const version = useSetting("version");
   const talkToExpertUrl = getHelpUrl(isPaidPlan, version.tag);
+  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+  const isAdmin = useSelector(getUserIsAdmin);
 
   if (!engines[engineKey]) {
     return null;
@@ -54,29 +63,37 @@ export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
             <Icon name="close" />
           </ActionIcon>
         </Flex>
-        <Button
-          className={CS.link}
-          component={Link}
-          leftSection={<Icon name="reference" />}
-          p={0}
-          target="_blank"
-          to={docsUrl}
-          variant="subtle"
-        >
-          {t`Read the full docs`}
-        </Button>
-        <Divider variant="dashed" />
-        <Button
-          className={CS.link}
-          leftSection={<Icon name="mail" />}
-          onClick={toggleUserModal}
-          p={0}
-          variant="subtle"
-        >
-          {t`Invite a teammate to help you`}
-        </Button>
-        <Divider variant="dashed" />
-        {isPaidPlan && (
+        {showMetabaseLinks && (
+          <>
+            <Button
+              className={CS.link}
+              component={Link}
+              leftSection={<Icon name="reference" />}
+              p={0}
+              target="_blank"
+              to={docsUrl}
+              variant="subtle"
+            >
+              {t`Read the full docs`}
+            </Button>
+            <Divider variant="dashed" />
+          </>
+        )}
+        {isAdmin && (
+          <>
+            <Button
+              className={CS.link}
+              leftSection={<Icon name="mail" />}
+              onClick={toggleUserModal}
+              p={0}
+              variant="subtle"
+            >
+              {t`Invite a teammate to help you`}
+            </Button>
+            <Divider variant="dashed" />
+          </>
+        )}
+        {showMetabaseLinks && isPaidPlan && (
           <>
             <Button
               className={CS.link}

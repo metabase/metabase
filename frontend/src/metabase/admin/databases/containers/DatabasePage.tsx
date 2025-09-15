@@ -54,7 +54,13 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
             md: `xl`,
           }}
         >
-          <Flex mb="lg" align="center" justify="space-between">
+          <Flex
+            mb="lg"
+            align="center"
+            justify="space-between"
+            wrap="wrap"
+            columnGap="lg"
+          >
             <Title order={1} fz="h2">
               {title}
             </Title>
@@ -90,7 +96,11 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
       {showSidePanel && !!selectedEngineKey && (
         <>
           <Divider orientation="vertical" h="100%" />
-          <Flex h="100%" flex="1 0 26.5rem" component={ScrollArea}>
+          <Flex
+            component={ScrollArea}
+            flex={{ sm: "1 0 20rem", md: "1 0 26.5rem", base: "1 0 100%" }}
+            h="100%"
+          >
             <DatabaseHelpSidePanel
               engineKey={selectedEngineKey}
               onClose={toggleSidePanel}
