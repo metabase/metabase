@@ -730,6 +730,8 @@
                             [int str]
                             (qp/process-query query))))))))))))))
 
+;;; TODO (Cam 9/9/25) -- I added this in #61114 but I don't remember exactly what I was testing... I think this is a
+;;; port of one of the Cypress e2e tests but I don't remember which one. Give this a better name.
 (deftest ^:parallel x-test
   (mt/test-drivers (mt/normal-drivers)
     (let [query (lib/query

@@ -246,6 +246,8 @@
           (is (= [{:name         "NAME"
                    :display_name "Name"
                    :base_type    :type/Text}]
+                 ;; existing usage -- don't use going forward
+                 #_{:clj-kondo/ignore [:deprecated-var]}
                  (qp.store/miscellaneous-value [::qp.results-metadata/card-stored-metadata]))))))))
 
 ;;; adapted from [[metabase.queries.api.card-test/model-card-test-2]]

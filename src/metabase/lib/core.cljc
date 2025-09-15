@@ -7,7 +7,7 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
-   [metabase.lib.card :as lib.card]
+   [metabase.lib.card]
    [metabase.lib.column-group :as lib.column-group]
    [metabase.lib.common :as lib.common]
    [metabase.lib.convert :as lib.convert]
@@ -31,6 +31,7 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util]
    [metabase.lib.limit :as lib.limit]
+   [metabase.lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
    [metabase.lib.metric :as lib.metric]
@@ -52,12 +53,13 @@
    [metabase.lib.template-tags :as lib.template-tags]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.walk.util]
    [metabase.util.namespaces :as shared.ns]))
 
 (comment lib.aggregation/keep-me
          lib.binning/keep-me
          lib.breakout/keep-me
-         lib.card/keep-me
+         metabase.lib.card
          lib.column-group/keep-me
          lib.common/keep-me
          lib.convert/keep-me
@@ -81,6 +83,7 @@
          lib.join/keep-me
          metabase.lib.join.util/keep-me
          lib.limit/keep-me
+         metabase.lib.metadata/keep-me
          lib.metadata.calculation/keep-me
          lib.metadata.composed-provider/keep-me
          lib.metric/keep-me
@@ -100,7 +103,8 @@
          lib.table/keep-me
          lib.template-tags/keep-me
          lib.temporal-bucket/keep-me
-         lib.util/keep-me)
+         lib.util/keep-me
+         metabase.lib.walk.util/keep-me)
 
 (shared.ns/import-fns
  [lib.aggregation
@@ -140,6 +144,8 @@
   breakouts
   breakouts-metadata
   remove-all-breakouts]
+ [metabase.lib.card
+  card->underlying-query]
  [lib.column-group
   columns-group-columns
   group-columns]
@@ -328,6 +334,8 @@
   current-limit
   limit
   max-rows-limit]
+ [metabase.lib.metadata
+  general-cached-value]
  [lib.metadata.calculation
   column-name
   describe-query
@@ -434,4 +442,8 @@
   previous-stage-number
   query-stage
   source-table-id
-  update-query-stage])
+  update-query-stage]
+ [metabase.lib.walk.util
+  all-source-card-ids
+  all-source-table-ids
+  all-template-tags])

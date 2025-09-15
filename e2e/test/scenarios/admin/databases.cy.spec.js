@@ -255,10 +255,7 @@ describe("admin > database > add", () => {
       "should add Mongo database and redirect to db info page",
       { tags: "@mongo" },
       () => {
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains("MongoDB").click({ force: true });
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains("Additional connection string options");
+        H.popover().contains("MongoDB").click();
 
         H.typeAndBlurUsingLabel("Display name", "QA Mongo");
         H.typeAndBlurUsingLabel("Host", "localhost");
@@ -268,11 +265,14 @@ describe("admin > database > add", () => {
         H.typeAndBlurUsingLabel("Password", "metasample123");
         H.typeAndBlurUsingLabel("Authentication database (optional)", "admin");
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Show advanced options").click();
+        cy.findByRole("button", { name: /Show advanced options/ }).click();
+        cy.findByLabelText(
+          "Additional connection string options (optional)",
+        ).should("be.visible");
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Save").should("not.be.disabled").click();
+        cy.findByRole("button", { name: /Save/ })
+          .should("not.be.disabled")
+          .click();
 
         cy.wait("@createDatabase");
 
@@ -492,8 +492,44 @@ describe("scenarios > admin > databases > exceptions", () => {
     cy.button("Save").click();
     cy.wait("@createDatabase");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("DATABASE CONNECTION ERROR").should("exist");
+    cy.findByTestId("database-form")
+      .parent()
+      .within(() => {
+        cy.findByText("DATABASE CONNECTION ERROR").should("be.visible");
+      });
+  });
+
+  it("should show specific error message when error is on host or port", () => {
+    cy.intercept("POST", "/api/database", (req) => {
+      req.reply({
+        statusCode: 400,
+        body: {
+          message: "DATABASE CONNECTION ERROR",
+          errors: {
+            host: "Check your host",
+            port: "Check your port",
+          },
+        },
+      });
+    }).as("createDatabase");
+
+    cy.visit("/admin/databases/create");
+
+    H.typeAndBlurUsingLabel("Display name", "Test");
+    H.typeAndBlurUsingLabel("Database name", "db");
+    H.typeAndBlurUsingLabel("Username", "admin");
+
+    cy.button("Save").click();
+    cy.wait("@createDatabase");
+
+    cy.findByTestId("database-form")
+      .parent()
+      .within(() => {
+        cy.findByText("DATABASE CONNECTION ERROR").should("not.exist");
+        cy.findByText(
+          /Make sure your Host and Port settings are correct/,
+        ).should("be.visible");
+      });
   });
 
   it("should handle non-existing databases (metabase#11037)", () => {

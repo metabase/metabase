@@ -1,14 +1,17 @@
-(ns metabase-enterprise.sandbox.models.group-table-access-policy
+(ns metabase-enterprise.sandbox.models.sandbox
   "Model definition for sandboxes, aka Group Table Access Policies (old name). A sandbox is used to control access to a
   certain Table for a certain PermissionsGroup. Whenever a member of that group attempts to query the Table in question,
   a Saved Question specified by the GTAP is instead used as the source of the query.
 
-  See documentation in [[metabase.permissions.models.permissions]] for more information about the Metabase permissions system."
+  See documentation in [[metabase.permissions.models.permissions]] for more information about the Metabase permissions
+  system."
   (:require
    [medley.core :as m]
    [metabase.audit-app.core :as audit]
-   [metabase.classloader.core :as classloader]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -17,16 +20,15 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/GroupTableAccessPolicy [_model] :sandboxes)
+(methodical/defmethod t2/table-name :model/Sandbox [_model] :sandboxes)
 
-(doto :model/GroupTableAccessPolicy
+(doto :model/Sandbox
   (derive :metabase/model)
   ;;; only admins can work with sandboxes
   (derive ::mi/read-policy.superuser)
@@ -37,7 +39,7 @@
    mbql.normalize/normalize
    attribute-remappings))
 
-(t2/deftransforms :model/GroupTableAccessPolicy
+(t2/deftransforms :model/Sandbox
   {:attribute_remappings {:in  (comp mi/json-in normalize-attribute-remapping-targets)
                           :out (comp normalize-attribute-remapping-targets mi/json-out-without-keywordization)}})
 
@@ -51,24 +53,29 @@
                          :query    {:source-table table-id}}))]
              [(:name col) col])))
 
-(defn check-column-types-match
+(mu/defn check-column-types-match
   "Assert that the base type of `col`, returned by a GTAP source query, matches the base type of `table-col`, a column
   from the original Table being sandboxed."
-  {:arglists '([col table-col])}
-  [col {table-col-base-type :base_type}]
+  [col       :- [:or
+                 ::lib.schema.metadata/column
+                 ::mbql.s/legacy-column-metadata]
+   table-col :- [:maybe [:or
+                         ::lib.schema.metadata/column
+                         ::mbql.s/legacy-column-metadata]]]
   ;; These errors might get triggered by API endpoints or by the QP (this code is used in the
-  ;; `row-level-restrictions` middleware). So include `:type` and `:status-code` information in the ExceptionInfo
+  ;; `sandboxing` middleware). So include `:type` and `:status-code` information in the ExceptionInfo
   ;; data so it can be passed along if applicable.
-  (when table-col-base-type
-    (when-not (isa? (keyword (:base_type col)) table-col-base-type)
-      (let [msg (tru "Sandbox Questions can''t return columns that have different types than the Table they are sandboxing.")]
-        (throw (ex-info msg
-                        {:type        qp.error-type/bad-configuration
-                         :status-code 400
-                         :message     msg
-                         :new-col     col
-                         :expected    table-col-base-type
-                         :actual      (:base_type col)}))))))
+  (when-let [table-col-base-type ((some-fn :base-type :base_type) table-col)]
+    (let [col-base-type ((some-fn :base-type :base_type) col)]
+      (when-not (isa? col-base-type table-col-base-type)
+        (let [msg (tru "Sandbox Questions can''t return columns that have different types than the Table they are sandboxing.")]
+          (throw (ex-info msg
+                          {:type        qp.error-type/bad-configuration
+                           :status-code 400
+                           :message     msg
+                           :new-col     col
+                           :expected    table-col-base-type
+                           :actual      (:base_type col)})))))))
 
 (defn- merge-sandbox-into-graph
   "Merges a single sandboxing policy into the permissions graph. Adjusts permissions at the database or schema level,
@@ -114,7 +121,7 @@
   "Augments a provided permissions graph with active sandboxing policies."
   :feature :sandboxes
   [graph & {:keys [group-ids group-id db-id audit?]}]
-  (let [sandboxes (t2/select :model/GroupTableAccessPolicy
+  (let [sandboxes (t2/select :model/Sandbox
                              {:select [:s.group_id :s.table_id :t.db_id :t.schema]
                               :from [[:sandboxes :s]]
                               :join [[:metabase_table :t] [:= :s.table_id :t.id]]
@@ -137,15 +144,14 @@
    ;; not all sandboxes have Cards
    (when card-id
      ;; not all Cards have saved result metadata
-     (when-let [result-metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+     (when-let [result-metadata (not-empty (t2/select-one-fn :result_metadata :model/Card :id card-id))]
        (check-columns-match-table table-id result-metadata))))
 
-  ([table-id :- ms/PositiveInt result-metadata-columns]
-   ;; prevent circular refs
-   (classloader/require 'metabase.query-processor)
+  ([table-id :- ::lib.schema.id/table result-metadata-columns]
    (let [table-cols (table-field-names->cols table-id)]
-     (doseq [col  result-metadata-columns
-             :let [table-col (get table-cols (:name col))]]
+     (doseq [col   result-metadata-columns
+             :let  [table-col (get table-cols (:name col))]
+             :when table-col]
        (check-column-types-match col table-col)))))
 
 (defenterprise pre-update-check-sandbox-constraints
@@ -154,7 +160,7 @@
   :feature :sandboxes
   [{new-result-metadata :result_metadata, card-id :id} changes]
   (when (contains? changes :result_metadata)
-    (when-let [gtaps-using-this-card (not-empty (t2/select [:model/GroupTableAccessPolicy :id :table_id] :card_id card-id))]
+    (when-let [gtaps-using-this-card (not-empty (t2/select [:model/Sandbox :id :table_id] :card_id card-id))]
       (let [original-result-metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)]
         (when-not (= original-result-metadata new-result-metadata)
           (doseq [{table-id :table_id} gtaps-using-this-card]
@@ -180,13 +186,13 @@
        ;; This allows existing values to be "cleared" by being set to nil
        (do
          (when (some #(contains? sandbox %) [:card_id :attribute_remappings])
-           (t2/update! :model/GroupTableAccessPolicy
+           (t2/update! :model/Sandbox
                        id
                        (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
-         (t2/select-one :model/GroupTableAccessPolicy :id id))
-       (first (t2/insert-returning-instances! :model/GroupTableAccessPolicy sandbox))))))
+         (t2/select-one :model/Sandbox :id id))
+       (first (t2/insert-returning-instances! :model/Sandbox sandbox))))))
 
-(t2/define-before-insert :model/GroupTableAccessPolicy
+(t2/define-before-insert :model/Sandbox
   [{:keys [table_id group_id], :as gtap}]
   (let [db-id (database/table-id->database-id table_id)]
     ;; Remove native query access to the DB when saving a sandbox
@@ -195,7 +201,7 @@
   (u/prog1 gtap
     (check-columns-match-table gtap)))
 
-(t2/define-before-update :model/GroupTableAccessPolicy
+(t2/define-before-update :model/Sandbox
   [{:keys [id], :as updates}]
   (u/prog1 updates
     (let [original (t2/original updates)

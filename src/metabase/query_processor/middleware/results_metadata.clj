@@ -72,10 +72,11 @@
                  ;; don't want to update metadata when we use a Card as a source Card.
                  (not (:qp/source-card-id query))
                  ;; Only update changed metadata
-                 ;;
-                 ;; TODO (Cam 9/11/25) -- use `lib.metadata/general-cached-value` once my PRs that has it gets merged
-                 ;; in
-                 (not= (comparable-metadata actual-metadata) (comparable-metadata (qp.store/miscellaneous-value [::card-stored-metadata]))))
+                 (not= (comparable-metadata actual-metadata)
+                       (comparable-metadata
+                        ;; existing usage -- don't use going forward
+                        #_{:clj-kondo/ignore [:deprecated-var]}
+                        (qp.store/miscellaneous-value [::card-stored-metadata]))))
         (when-let [error (me/humanize (mr/explain [:sequential ::lib.schema.metadata/lib-or-legacy-column] actual-metadata))]
           (throw (ex-info "Invalid result metadata!" {:error error, :metadata actual-metadata})))
         (t2/update! :model/Card card-id {:result_metadata actual-metadata
@@ -152,6 +153,6 @@
   (when-let [result-metadata (:result_metadata card)]
     (if-let [error (me/humanize (mr/explain [:sequential ::lib.schema.metadata/lib-or-legacy-column] result-metadata))]
       (log/errorf "Invalid card result metadata, ignoring  it: %s" (pr-str error))
-      ;; TODO (Cam 9/11/25) -- use `lib.metadata/general-cached-value` once my PRs that has it gets merged
-      ;; in
+      ;; existing usage -- don't use going forward
+      #_{:clj-kondo/ignore [:deprecated-var]}
       (qp.store/store-miscellaneous-value! [::card-stored-metadata] result-metadata))))

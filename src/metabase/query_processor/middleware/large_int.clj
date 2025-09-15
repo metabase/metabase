@@ -82,8 +82,8 @@
   (let [rff' (when js-int-to-string?
                (fn [metadata]
                  (let [mask (column-index-mask (:cols metadata))]
-                   ;; TODO (Cam 9/11/25) -- update this to use the `lib.metadata/general-cached-value` or whatever
-                   ;; it's called from my other PRs waiting on review.
+                   ;; existing usage -- don't use going forward
+                   #_{:clj-kondo/ignore [:deprecated-var]}
                    (qp.store/store-miscellaneous-value! [::column-index-mask] mask)
                    (result-large-int->string mask (rff metadata)))))]
     (or rff' rff)))
