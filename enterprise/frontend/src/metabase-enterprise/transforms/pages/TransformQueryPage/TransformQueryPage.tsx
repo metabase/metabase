@@ -10,9 +10,9 @@ import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import { PythonTransformEditor } from "metabase-enterprise/transforms/components/PythonTransformEditor";
 import type { Transform, TransformSource } from "metabase-types/api";
 
+import { PythonTransformEditor } from "../../components/PythonTransformEditor";
 import { QueryEditor } from "../../components/QueryEditor";
 import { getTransformUrl } from "../../urls";
 
