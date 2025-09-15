@@ -11,6 +11,7 @@ import type { Card, CardId, DatasetQuery, Transform } from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
 import { getTransformListUrl, getTransformUrl } from "../../urls";
+import { NewPythonTransformPage } from "../NewPythonTransformPage";
 
 import { CreateTransformModal } from "./CreateTransformModal";
 
@@ -20,7 +21,7 @@ type NewTransformQueryPageParams = {
 };
 
 type NewTransformQueryPageParsedParams = {
-  type?: DatasetQuery["type"];
+  type?: DatasetQuery["type"] | "python";
   cardId?: CardId;
 };
 
@@ -30,6 +31,20 @@ type NewTransformQueryPageProps = {
 
 export function NewTransformQueryPage({ params }: NewTransformQueryPageProps) {
   const { type, cardId } = getParsedParams(params);
+  if (type === "python") {
+    return <NewPythonTransformPage />;
+  }
+
+  return <NewQueryTransformQueryPage type={type} cardId={cardId} />;
+}
+
+function NewQueryTransformQueryPage({
+  type,
+  cardId,
+}: {
+  type?: DatasetQuery["type"];
+  cardId?: CardId;
+}) {
   const {
     data: card,
     isLoading,
@@ -89,8 +104,12 @@ function getParsedParams({
   type,
   cardId,
 }: NewTransformQueryPageParams): NewTransformQueryPageParsedParams {
+  if (type === "python") {
+    return { type: "python" };
+  }
+
   return {
-    type: type === "native" ? "native" : type === "python" ? "query" : "query",
+    type: type === "native" ? "native" : "query",
     cardId: cardId != null ? Urls.extractEntityId(cardId) : undefined,
   };
 }
