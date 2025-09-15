@@ -50,7 +50,7 @@ type EditorBodyProps = {
   modalSnippet?: NativeQuerySnippet | null;
   onChangeModalSnippet: (snippet: NativeQuerySnippet | null) => void;
   onChangeNativeEditorSelection: (range: SelectionRange[]) => void;
-  nativeEditorSelectedText?: string;
+  nativeEditorSelectedText?: string | null;
 
   databases: ApiDatabase[];
 };
