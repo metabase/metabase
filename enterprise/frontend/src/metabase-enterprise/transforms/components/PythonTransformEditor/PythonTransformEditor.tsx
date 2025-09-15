@@ -90,7 +90,7 @@ export function PythonTransformEditor({
       w="100%"
       h="100%"
       bg="bg-white"
-      data-testid="python-transform-editor"
+      data-testid="transform-query-editor"
       gap={0}
     >
       <EditorHeader

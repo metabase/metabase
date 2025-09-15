@@ -250,7 +250,13 @@ export function PythonDataPicker({
   );
 
   return (
-    <Stack p="md" gap="md" h="100%" className={S.dataPicker}>
+    <Stack
+      p="md"
+      gap="md"
+      h="100%"
+      className={S.dataPicker}
+      data-testid="python-data-picker"
+    >
       <Box>
         <Text size="sm" fw="bold" mb="xs">
           {t`Source Database`}
