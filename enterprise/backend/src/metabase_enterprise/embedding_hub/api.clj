@@ -10,9 +10,12 @@
    [toucan2.core :as t2]))
 
 (defn- has-user-added-database? []
-  (t2/exists? :model/Database {:where [:and
-                                       [:= :is_sample false]
-                                       [:= :is_audit false]]}))
+  (or (t2/exists? :model/Database {:where [:and
+                                           [:= :is_sample false]
+                                           [:= :is_audit false]]})
+      (t2/exists? :model/Table {:where [:and
+                                        [:= :active true]
+                                        [:= :is_upload true]]})))
 
 (defn- has-user-created-dashboard? []
   (let [example-dashboard-id (appearance/example-dashboard-id)
