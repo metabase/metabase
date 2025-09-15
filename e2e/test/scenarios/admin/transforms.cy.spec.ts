@@ -699,43 +699,37 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       assertTableDoesNotExistError();
     });
 
-    it(
-      "should be able to delete the target and restore the same target back",
-      { tags: "@flaky" },
-      () => {
-        cy.log("create and run a transform");
-        createMbqlTransform({ visitTransform: true });
-        runTransformAndWaitForSuccess();
+    it("should be able to delete the target and restore the same target back", () => {
+      cy.log("create and run a transform");
+      createMbqlTransform({ visitTransform: true });
+      runTransformAndWaitForSuccess();
 
-        cy.log("delete the old target without creating the new one");
-        getTransformPage().button("Change target").click();
-        H.modal().within(() => {
-          cy.findByLabelText("Table name").clear().type(TARGET_TABLE_2);
-          cy.findByLabelText("Delete transform_table").click();
-          cy.button("Change target and delete the old one").click();
-          cy.wait("@deleteTransformTable");
-          cy.wait("@updateTransform");
-        });
+      cy.log("delete the old target without creating the new one");
+      getTransformPage().button("Change target").click();
+      H.modal().within(() => {
+        cy.findByLabelText("Table name").clear().type(TARGET_TABLE_2);
+        cy.findByLabelText("Delete transform_table").click();
+        cy.button("Change target and delete the old one").click();
+        cy.wait("@deleteTransformTable");
+        cy.wait("@updateTransform");
+      });
 
-        cy.log("change the target back to the original one");
-        getTransformPage().button("Change target").click();
-        H.modal().within(() => {
-          cy.findByLabelText("Table name").clear().type(TARGET_TABLE);
-          cy.button("Change target").click();
-          cy.wait("@updateTransform");
-        });
+      cy.log("change the target back to the original one");
+      getTransformPage().button("Change target").click();
+      H.modal().within(() => {
+        cy.findByLabelText("Table name").clear().type(TARGET_TABLE);
+        cy.button("Change target").click();
+        cy.wait("@updateTransform");
+      });
 
-        cy.log("run the transform to re-create the original target");
-        runTransformAndWaitForSuccess();
+      cy.log("run the transform to re-create the original target");
+      runTransformAndWaitForSuccess();
 
-        cy.log("verify the target is available");
-        getTableLink().click();
-        H.queryBuilderHeader()
-          .findByText("Transform Table")
-          .should("be.visible");
-        H.assertQueryBuilderRowCount(3);
-      },
-    );
+      cy.log("verify the target is available");
+      getTableLink().click();
+      H.queryBuilderHeader().findByText("Transform Table").should("be.visible");
+      H.assertQueryBuilderRowCount(3);
+    });
 
     it("should not allow to overwrite an existing table when changing the target", () => {
       createMbqlTransform({ visitTransform: true });
@@ -1182,58 +1176,53 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
   });
 });
 
-describe(
-  "scenarios > admin > transforms > databases without :schemas",
-  { tags: "@flaky" },
-  () => {
-    const DB_NAME = "QA MySQL8";
+describe("scenarios > admin > transforms > databases without :schemas", () => {
+  const DB_NAME = "QA MySQL8";
 
-    beforeEach(() => {
-      H.restore("mysql-8");
-      cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
-      H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
+  beforeEach(() => {
+    H.restore("mysql-8");
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
 
-      cy.intercept("PUT", "/api/field/*").as("updateField");
-      cy.intercept("POST", "/api/ee/transform").as("createTransform");
-      cy.intercept("PUT", "/api/ee/transform/*").as("updateTransform");
-      cy.intercept("DELETE", "/api/ee/transform/*").as("deleteTransform");
-      cy.intercept("DELETE", "/api/ee/transform/*/table").as(
-        "deleteTransformTable",
-      );
-      cy.intercept("POST", "/api/ee/transform-tag").as("createTag");
-      cy.intercept("PUT", "/api/ee/transform-tag/*").as("updateTag");
-      cy.intercept("DELETE", "/api/ee/transform-tag/*").as("deleteTag");
+    cy.intercept("PUT", "/api/field/*").as("updateField");
+    cy.intercept("POST", "/api/ee/transform").as("createTransform");
+    cy.intercept("PUT", "/api/ee/transform/*").as("updateTransform");
+    cy.intercept("DELETE", "/api/ee/transform/*").as("deleteTransform");
+    cy.intercept("DELETE", "/api/ee/transform/*/table").as(
+      "deleteTransformTable",
+    );
+    cy.intercept("POST", "/api/ee/transform-tag").as("createTag");
+    cy.intercept("PUT", "/api/ee/transform-tag/*").as("updateTag");
+    cy.intercept("DELETE", "/api/ee/transform-tag/*").as("deleteTag");
+  });
+
+  it("should be not be possible to create a new schema when updating a transform target", () => {
+    createMbqlTransform({
+      databaseId: WRITABLE_DB_ID,
+      sourceTable: "ORDERS",
+      visitTransform: true,
+      targetSchema: null,
     });
 
-    it("should be not be possible to create a new schema when updating a transform target", () => {
-      createMbqlTransform({
-        databaseId: WRITABLE_DB_ID,
-        sourceTable: "ORDERS",
-        visitTransform: true,
-        targetSchema: null,
-      });
+    getTransformPage().button("Change target").click();
 
-      getTransformPage().button("Change target").click();
+    H.modal().findByLabelText("Schema").should("not.exist");
+  });
 
-      H.modal().findByLabelText("Schema").should("not.exist");
+  it("should be not be possible to create a new schema when the database does not support schemas", () => {
+    cy.log("create a new transform");
+    visitTransformListPage();
+    getTransformListPage().button("Create a transform").click();
+    H.popover().findByText("Query builder").click();
+
+    H.entityPickerModal().within(() => {
+      cy.findByText(DB_NAME).click();
+      cy.findByText("Orders").click();
     });
-
-    it("should be not be possible to create a new schema when the database does not support schemas", () => {
-      cy.log("create a new transform");
-      visitTransformListPage();
-      getTransformListPage().button("Create a transform").click();
-      H.popover().findByText("Query builder").click();
-
-      H.entityPickerModal().within(() => {
-        cy.findByText(DB_NAME).click();
-        cy.findByText("Orders").click();
-      });
-      getQueryEditor().button("Save").click();
-      H.modal().findByLabelText("Schema").should("not.exist");
-    });
-  },
-);
+    getQueryEditor().button("Save").click();
+    H.modal().findByLabelText("Schema").should("not.exist");
+  });
+});
 
 describe("scenarios > admin > transforms > jobs", () => {
   beforeEach(() => {
@@ -1366,7 +1355,7 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("tags", () => {
-    it("should be able to add and remove tags", { tags: "@flaky" }, () => {
+    it("should be able to add and remove tags", () => {
       H.createTransformJob({ name: "New job" }, { visitTransformJob: true });
       getTagsInput().click();
 
