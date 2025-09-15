@@ -91,8 +91,6 @@ export function EditorBody({
       <PythonEditor
         script={pythonSource?.body || ""}
         isRunnable={isRunnable}
-        isRunning={isRunning}
-        isResultDirty={isResultDirty}
         onChange={handlePythonChange}
         onRunScript={onRunQuery}
         onCancelScript={onCancelQuery}
