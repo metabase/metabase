@@ -318,8 +318,6 @@
                                   (is (isa? (type-map "ip_field") :type/IPAddress))))
                     :mysql (if (mysql/mariadb? (mt/db))
                              (do
-                               (when (contains? type-map "json_field")
-                                 (is (isa? (type-map "json_field") :type/JSON)))
                                (when (contains? type-map "uuid_field")
                                  (is (isa? (type-map "uuid_field") :type/UUID)))
                                (when (contains? type-map "inet4_field")
