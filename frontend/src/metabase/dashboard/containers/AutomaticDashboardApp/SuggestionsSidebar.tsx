@@ -108,7 +108,7 @@ export const SuggestionsSidebar = ({
 }: {
   related: RelatedDashboardXRays;
 }) => (
-  <Flex direction="column" py="md" px="xl">
+  <Flex direction="column" py="md" px="xl" role="complementary">
     <Title py="sm" px={0} order={2}>{t`More X-rays`}</Title>
     <SuggestionsList suggestions={related} />
   </Flex>

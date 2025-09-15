@@ -19,28 +19,55 @@ describe("scenarios > home > homepage", () => {
     cy.intercept("POST", "/api/card/*/query").as("getQuestionQuery");
   });
 
-  describe("after setup", () => {
-    beforeEach(() => {
-      H.restore("setup");
+  H.describeWithSnowplow("after setup", () => {
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
     });
 
-    it("should display x-rays for the sample database", () => {
+    beforeEach(() => {
+      H.resetSnowplow();
+      H.restore("setup");
       cy.signInAsAdmin();
+      H.enableTracking();
+    });
 
+    it("should display x-rays for the Sample Database", () => {
       cy.visit("/");
       cy.wait("@getXrayCandidates");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Try out these sample x-rays to see what Metabase can do.");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders").click();
+      cy.findByTestId("home-page").within(() => {
+        cy.findByText(
+          "Try out these sample x-rays to see what Metabase can do.",
+        );
+        cy.findAllByRole("link").contains("Orders").click();
+        cy.wait("@getXrayDashboard");
+      });
 
-      cy.wait("@getXrayDashboard");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("More X-rays");
+      H.expectUnstructuredSnowplowEvent({
+        event: "x-ray_clicked",
+        triggered_from: "homepage",
+      });
+
+      cy.findByRole("complementary").within(() => {
+        cy.findByRole("heading", { name: "More X-rays" }).should("be.visible");
+        cy.findByText("People").click();
+        cy.wait("@getXrayDashboard");
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "x-ray_clicked",
+        triggered_from: "suggestion_sidebar",
+      });
+
+      cy.intercept("POST", "/api/dashboard/save").as("saveDashboard");
+      cy.findByTestId("automatic-dashboard-header").button("Save this").click();
+      cy.wait("@saveDashboard");
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "x-ray_saved",
+      });
     });
 
     it("should display x-rays for a user database", () => {
-      cy.signInAsAdmin();
       H.addSqliteDatabase();
 
       cy.get("@sqliteID").then((dbId) => {
@@ -68,7 +95,6 @@ describe("scenarios > home > homepage", () => {
     });
 
     it("homepage should not flicker when syncing databases and showing xrays", () => {
-      cy.signInAsAdmin();
       cy.addSQLiteDatabase();
 
       cy.intercept("/api/database", (req) => {
@@ -103,7 +129,6 @@ describe("scenarios > home > homepage", () => {
     });
 
     it("should allow switching between multiple schemas for x-rays", () => {
-      cy.signInAsAdmin();
       cy.addSQLiteDatabase({ name: "sqlite" });
       cy.intercept("/api/automagic-*/database/**", getXrayCandidates());
 
