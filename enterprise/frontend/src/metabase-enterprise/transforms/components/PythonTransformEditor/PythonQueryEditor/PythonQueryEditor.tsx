@@ -11,8 +11,8 @@ import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWit
 import { Box, Checkbox, Flex, Icon, Stack, Text, Title } from "metabase/ui";
 import { getPythonLibraryUrl } from "metabase-enterprise/transforms/urls";
 
-import { SHARED_LIB_IMPORT_PATH } from "../../constants";
-import { PythonEditor as PythonCodeEditor } from "../PythonEditor";
+import { SHARED_LIB_IMPORT_PATH } from "../../../constants";
+import { PythonEditor as PythonCodeEditor } from "../../PythonEditor";
 
 import { ExecutionOutputTable } from "./ExecutionOutputTable";
 import S from "./PythonQueryEditor.module.css";
