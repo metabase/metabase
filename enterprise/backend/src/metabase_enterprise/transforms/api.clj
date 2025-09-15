@@ -269,6 +269,7 @@
 ;; hack
 (def ^:private python-test-run-id Integer/MAX_VALUE)
 
+;; TODO this should move to the transforms-python module
 (api.macros/defendpoint :post "/test-python"
   "Test Python code execution without creating a transform."
   [_route-params
@@ -301,6 +302,7 @@
       (finally
         (transforms.canceling/chan-end-run! run-id)))))
 
+;; TODO this should move to the transforms-python module
 (api.macros/defendpoint :post "/test-python/cancel"
   "Cancel the current test-python execution."
   [_route-params
