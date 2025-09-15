@@ -3,7 +3,10 @@ import { createContext, useContext, useEffect, useMemo } from "react";
 import { useLoadQuestion } from "embedding-sdk-bundle/hooks/private/use-load-question";
 import { transformSdkQuestion } from "embedding-sdk-bundle/lib/transform-question";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
-import { getPlugins } from "embedding-sdk-bundle/store/selectors";
+import {
+  getIsStaticEmbedding,
+  getPlugins,
+} from "embedding-sdk-bundle/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import {
@@ -13,7 +16,6 @@ import {
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
 import { setEntityTypes } from "metabase/redux/embedding-data-picker";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
-import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 
@@ -53,6 +55,8 @@ export const SdkQuestionProvider = ({
   navigateToNewCard: userNavigateToNewCard,
   onVisualizationChange,
 }: SdkQuestionProviderProps) => {
+  const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
+
   const handleCreateQuestion = useCreateQuestion();
   const handleSaveQuestion = useSaveQuestion();
 
@@ -129,7 +133,7 @@ export const SdkQuestionProvider = ({
         question &&
         getEmbeddingMode({
           question,
-          queryMode: EmbeddingSdkMode,
+          isStaticEmbedding,
           plugins: plugins as InternalMetabasePluginsConfig,
         })
       );
