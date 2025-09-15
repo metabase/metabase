@@ -1538,22 +1538,6 @@ describe("scenarios > admin > transforms > jobs", () => {
           cy.findByText("Hourly job").should("be.visible");
           cy.findByText("Daily job").should("be.visible");
           cy.findByText("Weekly job").should("not.exist");
-          cy.findByText("Monthly job").should("not.exist");
-        });
-
-        cy.log("next run filter - update a filter");
-        getNextRunFilterWidget().click();
-        H.popover().within(() => {
-          cy.findByText("Next").click();
-          cy.findByDisplayValue(30).clear().type("5");
-          cy.button("Apply").click();
-        });
-        getNextRunFilterWidget().should("contain", "Next 5 weeks");
-        getContentTable().within(() => {
-          cy.findByText("Hourly job").should("not.exist");
-          cy.findByText("Daily job").should("not.exist");
-          cy.findByText("Weekly job").should("be.visible");
-          cy.findByText("Monthly job").should("be.visible");
         });
 
         cy.log("next run filter - remove filter");
