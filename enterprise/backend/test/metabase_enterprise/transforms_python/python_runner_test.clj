@@ -172,42 +172,36 @@
           (is (=? {:output   "id,name,score\n1,Alice,85\n2,Bob,92\n3,Charlie,88\n4,Dana,90\n"
                    :output-manifest {:fields [{:base_type "Integer",
                                                :database_type "int4",
-                                               :dtype "int64",
                                                :effective_type "Integer",
                                                :name "id",
                                                :root_type "Integer",
                                                :semantic_type "PK"}
                                               {:base_type "Text",
                                                :database_type "varchar",
-                                               :dtype "object",
                                                :effective_type "Text",
                                                :name "name",
                                                :root_type "Text",
                                                :semantic_type "Name"}
                                               {:base_type "Integer",
                                                :database_type "int4",
-                                               :dtype "int64",
                                                :effective_type "Integer",
                                                :name "score",
                                                :root_type "Integer",
                                                :semantic_type "Score"}],
                                      :source_metadata {:fields [{:base_type "Integer",
                                                                  :database_type "int4",
-                                                                 :dtype "int64",
                                                                  :effective_type "Integer",
                                                                  :name "id",
                                                                  :root_type "Integer",
                                                                  :semantic_type "PK"}
                                                                 {:base_type "Text",
                                                                  :database_type "varchar",
-                                                                 :dtype "object",
                                                                  :effective_type "Text",
                                                                  :name "name",
                                                                  :root_type "Text",
                                                                  :semantic_type "Name"}
                                                                 {:base_type "Integer",
                                                                  :database_type "int4",
-                                                                 :dtype "int64",
                                                                  :effective_type "Integer",
                                                                  :name "score",
                                                                  :root_type "Integer",
@@ -246,8 +240,8 @@
 
           (is (=? {:output          "{\"student_count\":4,\"average_score\":88.75}\n"
                    :output-manifest {:version "0.1.0",
-                                     :fields  [{:name "student_count", :dtype "int64"}
-                                               {:name "average_score", :dtype "float64"}]}
+                                     :fields  [{:name "student_count", :base_type "Integer"}
+                                               {:name "average_score", :base_type "Float"}]}
                    :stdout          (str "Successfully saved 1 rows to S3\n"
                                          "Successfully saved output manifest with 2 fields")
                    :stderr          (str "Parsed id as Integer\n"
@@ -317,7 +311,7 @@
         (is (= "3" (get-col row3 "id")))
         (is (= "Product C" (get-col row3 "name")))
         (is (datetime-equal? "2024-03-11T06:00:00Z" (get-col row3 "scheduled_for")))
-        (testing "dtypes are preserved correctly"
+        (testing "types are preserved correctly"
           (is (= {"id"            :type/Integer
                   "name"          :type/Text
                   "description"   :type/Text
@@ -328,8 +322,8 @@
                   "created_date"  :type/Date
                   "updated_at"    :type/DateTime
                   "scheduled_for" :type/DateTimeWithTZ}
-                 (u/for-map [{:keys [name dtype]} (:fields metadata)]
-                   [name (transforms.util/dtype->base-type dtype)]))))))))
+                 (u/for-map [{:keys [name base_type]} (:fields metadata)]
+                   [name (keyword "type" base_type)]))))))))
 
 (deftest python-transform-scheduled-job-test
   (mt/test-helpers-set-global-values!
@@ -474,7 +468,7 @@
           (is (= #{"id" "price" "active" "created_tz" "created_at" "created_date" "description"}
                  (set (map :name (:fields metadata))))))
 
-        (testing "dtypes are preserved correctly"
+        (testing "types are preserved correctly"
           (is (= {"id"           :type/Integer
                   "price"        :type/Float
                   "active"       :type/Boolean
@@ -482,8 +476,8 @@
                   "created_at"   :type/DateTime
                   "created_date" :type/Date
                   "description"  :type/Text}
-                 (u/for-map [{:keys [name dtype]} (:fields metadata)]
-                   [name (transforms.util/dtype->base-type dtype)]))))
+                 (u/for-map [{:keys [name base_type]} (:fields metadata)]
+                   [name (keyword "type" base_type)]))))
 
         ;; cleanup
         (driver/drop-table! driver db-id qualified-table-name)))))
