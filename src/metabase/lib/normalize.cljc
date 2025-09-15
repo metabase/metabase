@@ -8,8 +8,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.log :as log]))
 
 (defn- lib-type [x]
   (when (map? x)
@@ -53,12 +52,9 @@
   default-error-fn)
 
 (defn- coercer [schema]
-  (mr/cached ::coercer
-             schema
-             (fn []
-               (let [respond identity
-                     raise   #'*error-fn*] ; capture var rather than the bound value at the time this is eval'ed
-                 (mc/coercer schema (mtx/transformer mtx/default-value-transformer {:name :normalize}) respond raise)))))
+  (let [respond identity
+        raise   #'*error-fn*] ; capture var rather than the bound value at the time this is eval'ed
+    (mc/coercer schema (mtx/transformer mtx/default-value-transformer {:name :normalize}) respond raise)))
 
 (defn normalize
   "Ensure some part of an MBQL query `x`, e.g. a clause or map, is in the right shape after coming in from JavaScript or

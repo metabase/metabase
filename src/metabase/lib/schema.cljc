@@ -400,7 +400,7 @@
     ;; TODO (Cam 6/12/25) -- why in the HECC is `:lib/metadata` not a required key here? It's virtually REQUIRED for
     ;; anything to work correctly outside of the low-level conversion code. We should make it required and then fix
     ;; whatever breaks.
-    [:lib/metadata {:optional true} ::lib.schema.metadata/metadata-provider]
+    #_[:lib/metadata {:optional true} ::lib.schema.metadata/metadata-provider]
     [:database {:optional true} [:multi {:dispatch (partial = id/saved-questions-virtual-database-id)}
                                  [true  ::id/saved-questions-virtual-database]
                                  [false ::id/database]]]
@@ -429,7 +429,7 @@
     [:update-row {:optional true} [:maybe [:ref ::actions/row]]]]
    ;;
    ;; CONSTRAINTS
-   [:ref ::lib.schema.util/unique-uuids]
+   #_[:ref ::lib.schema.util/unique-uuids]
    (common/disallowed-keys
     {:filter       ":filter is not allowed in MBQL 5, and it's not allowed in the top-level of a stage in any MBQL version"
      :source-query ":source-query is not allowed in MBQL 5, and it's not allowed in the top-level of a stage in any MBQL version"
