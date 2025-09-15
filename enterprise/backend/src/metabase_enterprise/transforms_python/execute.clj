@@ -215,7 +215,7 @@
           (let [temp-file (File/createTempFile "transform-output-" ".jsonl")]
             (when-not (seq (:fields output-manifest))
               (throw (ex-info "No fields in metadata"
-                              {:metadata               #p output-manifest
+                              {:metadata               output-manifest
                                :raw-body               body
                                :events                 events
                                ::transform-run-message (message-log->transform-run-message message-log)})))

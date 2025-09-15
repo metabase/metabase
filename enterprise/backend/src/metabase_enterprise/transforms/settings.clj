@@ -117,3 +117,14 @@
   :export? false
   :encryption :no
   :audit :getter)
+
+(setting/defsetting python-runner-api-token
+  (deferred-tru "API token for authorizing with the python-runner service.")
+  :type       :string
+  :visibility :internal
+  :default    (when is-not-prod? "dev-token-12345")
+  :feature    :transforms
+  :doc        false
+  :export?    false
+  :encryption :when-encryption-key-set
+  :audit      :never)
