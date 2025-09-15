@@ -144,13 +144,7 @@ export function Glossary() {
                         </Text>
                       </Box>
 
-                      <Box
-                        component="td"
-                        valign="top"
-                        align="center"
-                        p="sm"
-                        // pt="md"
-                      >
+                      <Box component="td" valign="top" align="center" p="sm">
                         <Popover
                           opened={popoverOpened}
                           onChange={() => setPopoverDefinition(null)}
@@ -230,10 +224,8 @@ export function Glossary() {
 
 function EmptyGlossaryBody() {
   return (
-    <Center p="sm">
+    <Center>
       <Text c="text-secondary">{t`No terms found.`}</Text>
     </Center>
   );
 }
-
-// (Old EmptyGlossary table row-based component removed in favor of CommonTable's emptyBody)

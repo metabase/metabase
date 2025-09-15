@@ -3,9 +3,14 @@
 }
 .table {
   background-color: var(--mb-color-bg-white);
+  border: none;
 
   thead th {
     padding-block: var(--mantine-spacing-sm);
+  }
+
+  tbody td {
+    padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
   }
 }
 .row {
@@ -13,11 +18,6 @@
     .action {
       visibility: visible;
     }
-  }
-
-  td {
-    padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
-    border-bottom: none;
   }
 }
 
