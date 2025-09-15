@@ -229,13 +229,15 @@
                     :description          "Number of toucans plus number of pelicans",
                     :aggregation-position 0}]
                   (map #(lib/display-info query-with-metric %)
-                       metrics)))))))
+                       metrics))))))))
 
+(deftest ^:parallel available-metrics-test-2
   (testing "Should return the available metrics as sorted"
     (let [query   (lib/query metadata-provider-with-multiple-metrics (meta/table-metadata :venues))
           metrics (lib.metric/available-metrics query)]
-      (is (=? [{:id second-metric-id} {:id metric-id}] metrics))))
+      (is (=? [{:id second-metric-id} {:id metric-id}] metrics)))))
 
+(deftest ^:parallel available-metrics-test-3
   (testing "Metrics based on cards are available"
     (let [metric {:name "Metrics"
                   :id 2
@@ -252,20 +254,28 @@
                {:cards [metric]}))]
       (is (=? [(assoc metric :lib/type :metadata/metric)]
               (-> (lib/query mp (lib.metadata/card lib.tu/metadata-provider-with-model 1))
-                  lib/available-metrics)))))
+                  lib/available-metrics))))))
+
+(deftest ^:parallel available-metrics-test-4
   (testing "query with different Table -- don't return Metrics"
-    (is (nil? (lib.metric/available-metrics (lib/query metadata-provider (meta/table-metadata :orders))))))
+    (is (nil? (lib.metric/available-metrics (lib/query metadata-provider (meta/table-metadata :orders)))))))
+
+(deftest ^:parallel available-metrics-test-5
   (testing "for subsequent stages -- don't return Metrics (#37173)"
     (let [query (lib/append-stage (lib/query metadata-provider (meta/table-metadata :venues)))]
       (is (nil? (lib.metric/available-metrics query)))
       (are [stage-number] (nil? (lib.metric/available-metrics query stage-number))
-        1 -1)))
+        1 -1))))
+
+(deftest ^:parallel available-metrics-test-6
   (testing "query with different source table joining the metrics table -- don't return Metrics"
     (let [query (-> (lib/query metadata-provider (meta/table-metadata :categories))
                     (lib/join (-> (lib/join-clause (lib/query metadata-provider (meta/table-metadata :venues))
                                                    [(lib/= (meta/field-metadata :venues :price) 4)])
                                   (lib/with-join-fields :all))))]
-      (is (nil? (lib.metric/available-metrics query)))))
+      (is (nil? (lib.metric/available-metrics query))))))
+
+(deftest ^:parallel available-metrics-test-7
   (testing "query based on a card -- don't return Metrics"
     (doseq [card-key [:venues :venues/native]]
       (let [query (lib/query metadata-provider-with-cards (card-key (lib.tu/mock-cards)))]

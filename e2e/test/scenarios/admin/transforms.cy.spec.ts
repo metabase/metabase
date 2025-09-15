@@ -821,7 +821,6 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
   describe("queries", () => {
     it("should render a readOnly preview of the MBQL query", () => {
       cy.log("create a new transform that has all the steps");
-      createMbqlTransform({ visitTransform: true });
       H.getTableId({ name: "Animals" }).then((tableId) => {
         H.getFieldId({ tableId, name: "score" }).then((ANIMAL_SCORE) => {
           H.getFieldId({ tableId, name: "name" }).then((ANIMAL_NAME) => {
@@ -965,6 +964,42 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         H.entityPickerModal().should("not.exist");
         H.popover({ skipVisibilityCheck: true }).should("not.exist");
       }
+    });
+
+    it("should hide empty sections in read-only mode", () => {
+      H.getTableId({ name: "Animals" }).then((tableId) => {
+        H.createTransform(
+          {
+            name: "MBQL transform",
+            source: {
+              type: "query",
+              query: {
+                database: WRITABLE_DB_ID,
+                type: "query",
+                query: {
+                  "source-table": tableId,
+                  aggregation: [["count"]],
+                },
+              },
+            },
+            target: {
+              type: "table",
+              name: TARGET_TABLE,
+              schema: TARGET_SCHEMA,
+            },
+            tag_ids: [],
+          },
+          { visitTransform: true },
+        );
+
+        H.getNotebookStep("summarize")
+          .scrollIntoView()
+          .should("be.visible")
+          .within(() => {
+            cy.findByText("by").should("not.exist");
+            cy.findByTestId("breakout-step").should("not.exist");
+          });
+      });
     });
 
     it("should be able to update a MBQL query", () => {

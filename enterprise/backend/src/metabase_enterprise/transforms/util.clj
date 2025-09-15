@@ -122,3 +122,10 @@
   (-> run
       (u/update-some :start_time utc-timestamp-string)
       (u/update-some :end_time   utc-timestamp-string)))
+
+(defn db-routing-enabled?
+  "Returns whether or not the given database is either a router or destination database"
+  [db-or-id]
+  (or (t2/exists? :model/DatabaseRouter :database_id (u/the-id db-or-id))
+      (some->> (:router-database-id db-or-id)
+               (t2/exists? :model/DatabaseRouter :database_id))))

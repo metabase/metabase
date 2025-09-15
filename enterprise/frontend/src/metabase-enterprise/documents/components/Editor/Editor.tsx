@@ -1,7 +1,6 @@
 import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extension-placeholder";
-import type { EditorState } from "@tiptap/pm/state";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import cx from "classnames";
@@ -16,25 +15,28 @@ import { getSetting } from "metabase/selectors/settings";
 import { Box, Loader } from "metabase/ui";
 import { getMentionsCache } from "metabase-enterprise/documents/selectors";
 import type { DocumentsStoreState } from "metabase-enterprise/documents/types";
+import { isMetabotBlock } from "metabase-enterprise/documents/utils/editorNodeUtils";
 import { getMentionsCacheKey } from "metabase-enterprise/documents/utils/mentionsUtils";
+import { EditorBubbleMenu } from "metabase-enterprise/rich_text_editing/tiptap/components/EditorBubbleMenu/EditorBubbleMenu";
+import { CardEmbed } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
+import { CommandExtension } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Command/CommandExtension";
+import { CommandSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Command/CommandSuggestion";
+import { CustomStarterKit } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
+import { DisableMetabotSidebar } from "metabase-enterprise/rich_text_editing/tiptap/extensions/DisableMetabotSidebar";
+import { MentionExtension } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Mention/MentionExtension";
+import { MentionSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Mention/MentionSuggestion";
+import {
+  MetabotNode,
+  type PromptSerializer,
+} from "metabase-enterprise/rich_text_editing/tiptap/extensions/MetabotEmbed";
+import { MetabotMentionExtension } from "metabase-enterprise/rich_text_editing/tiptap/extensions/MetabotMention/MetabotMentionExtension";
+import { MetabotMentionSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/MetabotMention/MetabotSuggestion";
+import { SmartLink } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
+import { createSuggestionRenderer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/suggestionRenderer";
 
 import S from "./Editor.module.css";
-import { EditorBubbleMenu } from "./EditorBubbleMenu";
-import { CardEmbed } from "./extensions/CardEmbed/CardEmbedNode";
-import { CommandExtension } from "./extensions/Command/CommandExtension";
-import { CommandSuggestion } from "./extensions/Command/CommandSuggestion";
-import { CustomStarterKit } from "./extensions/CustomStarterKit/CustomStarterKit";
-import { DisableMetabotSidebar } from "./extensions/DisableMetabotSidebar";
-import { MentionExtension } from "./extensions/Mention/MentionExtension";
-import { MentionSuggestion } from "./extensions/Mention/MentionSuggestion";
-import { MetabotNode, type PromptSerializer } from "./extensions/MetabotEmbed";
-import { MetabotMentionExtension } from "./extensions/MetabotMention/MetabotMentionExtension";
-import { MetabotMentionSuggestion } from "./extensions/MetabotMention/MetabotSuggestion";
-import { SmartLink } from "./extensions/SmartLink/SmartLinkNode";
-import { createSuggestionRenderer } from "./extensions/suggestionRenderer";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 import type { CardEmbedRef } from "./types";
-
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
   CardEmbed.name,
   MetabotNode.name,
@@ -67,9 +69,6 @@ const getMetabotPromptSerializer =
       return acc;
     }, payload);
   };
-
-const isMetabotBlock = (state: EditorState): boolean =>
-  state.selection.$head.parent.type.name === "metabot";
 
 export interface EditorProps {
   onEditorReady?: (editor: TiptapEditor) => void;
@@ -148,6 +147,7 @@ export const Editor: React.FC<EditorProps> = ({
       extensions,
       content: initialContent || "",
       autofocus: false,
+      editable,
       immediatelyRender: false,
       onUpdate: ({ editor }) => {
         if (onChange) {
@@ -236,10 +236,13 @@ export const Editor: React.FC<EditorProps> = ({
         }}
       >
         <EditorContent data-testid="document-content" editor={editor} />
-        <EditorBubbleMenu
-          editor={editor}
-          disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
-        />
+
+        {editable && (
+          <EditorBubbleMenu
+            editor={editor}
+            disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
+          />
+        )}
       </Box>
     </Box>
   );
