@@ -77,23 +77,22 @@
   (-> timestamp-string parse-instant str))
 
 (defn test-run
-  "Run test a transform and wait for completion"
   [transform-id]
   (let [resp      (mt/user-http-request :crowberto :post 202 (format "ee/transform/%s/run" transform-id))
         timeout-s 10 ; 10 seconds is our timeout to finish execution and sync
         limit     (+ (System/currentTimeMillis) (* timeout-s 1000))]
     (is (=? {:message "Transform run started"}
             resp))
-    (loop []
+    (loop [last-resp nil]
       (when (> (System/currentTimeMillis) limit)
-        (throw (ex-info (str "Transform run timed out after " timeout-s " seconds") {})))
+        (throw (ex-info (str "Transform run timed out after " timeout-s " seconds") {:resp last-resp})))
       (let [resp   (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" transform-id))
             status (some-> resp :last_run :status keyword)]
         (when-not (contains? #{:started :succeeded} status)
-          (throw (ex-info (str "Transform run failed with status " status) {:resp resp})))
+          (throw (ex-info (str "Transform run failed with status " status) {:resp resp :status status})))
         (when-not (some? (:table resp))
           (Thread/sleep 100)
-          (recur))))))
+          (recur resp))))))
 
 (defn wait-for-table
   "Wait for a table to appear in metadata, with timeout."

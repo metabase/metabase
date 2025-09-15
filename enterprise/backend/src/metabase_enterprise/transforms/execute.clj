@@ -1,25 +1,13 @@
 (ns metabase-enterprise.transforms.execute
   (:require
-   [clojure.core.async :as a]
-   [clojure.java.io :as io]
-   [clojure.string :as str]
-   [metabase-enterprise.transforms.canceling :as canceling]
    [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
-   [metabase-enterprise.transforms.models.transform-run :as transform-run]
-   [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
-   [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.util :as u]
-   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2])
-  (:import
-   (java.io Closeable File)
-   (java.time Duration)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
