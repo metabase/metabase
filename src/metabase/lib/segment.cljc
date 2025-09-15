@@ -1,5 +1,6 @@
 (ns metabase.lib.segment
   "A Segment is a saved MBQL query stage snippet with `:filter`. Segments are always boolean expressions."
+  (:refer-clojure :exclude [mapv])
   (:require
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
@@ -11,7 +12,8 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv]]))
 
 (defn- resolve-segment [query segment-id]
   (when (integer? segment-id)

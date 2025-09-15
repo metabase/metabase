@@ -28,6 +28,7 @@
   Removing empty clauses like `{:aggregation nil}` or `{:breakout []}`.
 
   Token normalization occurs first, followed by canonicalization, followed by removing empty clauses."
+  (:refer-clojure :exclude [mapv every? some select-keys])
   (:require
    [clojure.set :as set]
    [medley.core :as m]
@@ -42,7 +43,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf]
+   [metabase.util.performance :as perf :refer [mapv every? some select-keys]]
    [metabase.util.time :as u.time]))
 
 (defn- mbql-clause?

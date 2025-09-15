@@ -1,8 +1,8 @@
 (ns metabase.lib.js.metadata
+  (:refer-clojure :exclude [keywordize-keys])
   (:require
    [clojure.core.protocols]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [goog]
    [goog.object :as gobject]
    [medley.core :as m]
@@ -11,7 +11,8 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.performance :as perf]))
 
 ;;; metabase-lib/metadata/Metadata comes in an object like
 ;;;
@@ -282,7 +283,7 @@
       :coercion-strategy                (keyword v)
       :effective-type                   (keyword v)
       :fingerprint                      (if (map? v)
-                                          (walk/keywordize-keys v)
+                                          (perf/keywordize-keys v)
                                           (js->clj v :keywordize-keys true))
       :has-field-values                 (keyword v)
 
@@ -555,7 +556,7 @@
       ;; thing at once.
       clojure.core.protocols/Datafiable
       (datafy [_this]
-        (walk/postwalk
+        (perf/postwalk
          (fn [form]
            (if (delay? form)
              (deref form)

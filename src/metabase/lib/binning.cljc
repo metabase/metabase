@@ -1,4 +1,5 @@
 (ns metabase.lib.binning
+  (:refer-clojure :exclude [mapv select-keys])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -14,7 +15,8 @@
    [metabase.util :as u]
    [metabase.util.formatting.numbers :as fmt.num]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv select-keys]]))
 
 (defmulti with-binning-method
   "Implementation for [[with-binning]]. Implement this to tell [[with-binning]] how to add binning to a particular MBQL

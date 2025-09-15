@@ -157,8 +157,9 @@
      (^long [c1 c2 c3 c4] (min (count c1) (count c2) (count c3) (count c4)))))
 
 (defn mapv
-  "Like `clojure.core/mapv`, but iterates multiple collections more efficiently and uses Java iterators under the
-  hood (the CLJ version). CLJS version is only optimized for a single collection arity."
+  "Drop-in replacement for `clojure.core/mapv`.
+  Iterates multiple collections more efficiently and uses Java iterators under the hood (the CLJ version). CLJS
+  version is only optimized for a single collection arity."
   ([f coll1]
    (let [n (count coll1)]
      (cond (= n 0) []
@@ -190,7 +191,8 @@
       (core/mapv f coll1 coll2 coll3 coll4))))
 
 (defn run!
-  "Like `clojure.core/run!`, but iterates collections more efficiently and uses Java iterators under the hood."
+  "Drop-in replacement for `clojure.core/run!`.
+  Iterates collections more efficiently and uses Java iterators under the hood."
   ([f coll1]
    (reduce (fn [_ x] (f x)) nil coll1)))
 
@@ -206,17 +208,19 @@
       ([x y z & args] (mapv #(apply % x y z args) fns)))))
 
 (defn some
-  "Like `clojure.core/some` but uses our custom `reduce` which in turn uses iterators."
+  "Drop-in replacement for `clojure.core/some`.
+  Uses our custom `reduce` which in turn uses iterators."
   [f coll]
   (unreduced (reduce #(when-let [match (f %2)] (reduced match)) nil coll)))
 
 (defn every?
-  "Like `clojure.core/every?` but uses our custom `reduce` which in turn uses iterators."
+  "Drop-in replacement for `clojure.core/every?`.
+  Uses our custom `reduce` which in turn uses iterators."
   [f coll]
   (unreduced (reduce #(if (f %2) true (reduced false)) true coll)))
 
 (defn concat
-  "Like `clojure.core/concat` but accumulates the result into a vector."
+  "Like `clojure.core/concat` but accumulates the result into a vector. NOT a drop-in replacement."
   ([a b]
    (into (vec a) b))
   ([a b c]
@@ -264,7 +268,7 @@
              (first coll-of-colls)))))
 
 (defn select-keys
-  "Like `clojure.walk/select-keys`, but much more efficient."
+  "Drop-in replacement for `clojure.walk/select-keys`, but much more efficient."
   [m keyseq]
   (let [absent #?(:clj (Object.) :cljs #js{})]
     (persistent! (reduce (fn [acc k]
@@ -275,7 +279,8 @@
                          (transient {}) keyseq))))
 
 (defn update-keys
-  "Like `clojure.core/update-keys`, but doesn't recreate the collection if no keys are changed after applying `f`."
+  "Drop-in replacement for `clojure.core/update-keys`.
+  Doesn't recreate the collection if no keys are changed after applying `f`."
   [m f]
   (cond (nil? m) {}
         ;; Fallback for non-editable collections where transients aren't supported.
@@ -297,7 +302,7 @@
 ;; clojure.walk reimplementation. Partially adapted from https://github.com/tonsky/clojure-plus.
 
 (defn walk
-  "Like `clojure.walk/walk`, but optimized for efficiency and has the following behavior differences:
+  "Drop-in replacement for `clojure.walk/walk`. Optimized for efficiency and has the following behavior differences:
   - Doesn't walk over map entries. When descending into a map, walks keys and values separately.
   - Uses transients and reduce where possible and tries to return the same input `form` if no changes were made."
   [inner outer form]
@@ -337,18 +342,20 @@
     :else (outer form)))
 
 (defn prewalk
-  "Like `clojure.walk/prewalk`, but uses a more efficient `metabase.util.performance/walk` underneath."
+  "Drop-in replacement for `clojure.walk/prewalk`.
+  Uses a more efficient `metabase.util.performance/walk` underneath."
   [f form]
   (walk (fn prewalker [form] (walk prewalker identity (f form))) identity (f form)))
 
 (defn postwalk
-  "Like `clojure.walk/postwalk`, but uses a more efficient `metabase.util.performance/walk` underneath."
+  "Drop-in replacement for `clojure.walk/postwalk`.
+  Uses a more efficient `metabase.util.performance/walk` underneath."
   [f form]
   (walk (fn postwalker [form] (walk postwalker f form)) f form))
 
 (defn keywordize-keys
-  "Like `clojure.walk/keywordize-keys`, but uses a more efficient `metabase.util.performance/walk` underneath and
-  preserves original metadata on the transformed maps."
+  "Drop-in replacement for `clojure.walk/keywordize-keys`.
+  Uses `metabase.util.performance/walk` underneath and preserves original metadata on the transformed maps."
   [m]
   (postwalk
    (fn [form]

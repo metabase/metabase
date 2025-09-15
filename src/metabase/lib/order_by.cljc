@@ -1,4 +1,5 @@
 (ns metabase.lib.order-by
+  (:refer-clojure :exclude [some mapv])
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
@@ -15,7 +16,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [some mapv]]))
 
 (lib.hierarchy/derive :asc  ::order-by-clause)
 (lib.hierarchy/derive :desc ::order-by-clause)

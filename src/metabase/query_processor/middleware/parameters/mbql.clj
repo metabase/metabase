@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.parameters.mbql
   "Code for handling parameter substitution in MBQL queries."
+  (:refer-clojure :exclude [every?])
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -18,7 +19,8 @@
    [metabase.query-processor.parameters.operators :as params.ops]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [every?]]))
 
 (set! *warn-on-reflection* true)
 

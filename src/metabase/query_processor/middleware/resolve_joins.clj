@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.resolve-joins
   "Middleware that fetches tables that will need to be joined, referred to by `:field` clauses with `:source-field`
   options, and adds information to the query about what joins should be done and how they should be performed."
-  (:refer-clojure :exclude [alias])
+  (:refer-clojure :exclude [alias every? mapv])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -10,7 +10,8 @@
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.walk :as lib.walk]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [every? mapv]]))
 
 (mu/defn- merge-defaults :- ::lib.schema.join/join
   [join]

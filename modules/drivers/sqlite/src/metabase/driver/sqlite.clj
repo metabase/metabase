@@ -1,4 +1,5 @@
 (ns metabase.driver.sqlite
+  (:refer-clojure :exclude [mapv])
   (:require
    [clojure.java.io :as io]
    [clojure.set :as set]
@@ -17,7 +18,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv]])
   (:import
    (java.sql Connection ResultSet Types)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)

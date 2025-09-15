@@ -1,10 +1,12 @@
 (ns metabase.driver.sql-jdbc.metadata
   "SQL JDBC implementation of [[metabase.driver/query-result-metadata]]."
+  (:refer-clojure :exclude [mapv])
   (:require
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv]]))
 
 (set! *warn-on-reflection* true)
 

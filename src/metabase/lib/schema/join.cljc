@@ -1,11 +1,13 @@
 (ns metabase.lib.schema.join
   "Schemas for things related to joins."
+  (:refer-clojure :exclude [mapv every?])
   (:require
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [mapv every?]]))
 
 (mr/def ::fields
   "The Fields to include in the results *if* a top-level `:fields` clause *is not* specified. This can be either

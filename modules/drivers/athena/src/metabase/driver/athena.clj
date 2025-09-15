@@ -1,5 +1,5 @@
 (ns metabase.driver.athena
-  (:refer-clojure :exclude [second])
+  (:refer-clojure :exclude [some select-keys mapv])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -18,7 +18,8 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.performance :refer [some select-keys mapv]])
   (:import
    (java.sql
     Connection

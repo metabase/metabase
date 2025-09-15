@@ -1,4 +1,5 @@
 (ns metabase.driver.mongo.execute
+  (:refer-clojure :exclude [every? mapv])
   (:require
    [clojure.core.async :as a]
    [clojure.set :as set]
@@ -12,7 +13,8 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [every? mapv]])
   (:import
    (com.mongodb.client
     AggregateIterable
