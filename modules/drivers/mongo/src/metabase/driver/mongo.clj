@@ -576,14 +576,15 @@
     (some-> (mongo.util/collection db (name table-name))
             .drop)))
 
-(defmethod driver/rename-table! :mongo
-  [_driver db-id old-table-name new-table-name]
+(defmethod driver/rename-tables!* :mongo
+  [_driver db-id sorted-rename-map]
   (mongo.connection/with-mongo-database [^MongoDatabase db db-id]
-    (let [old-collection (mongo.util/collection db (name old-table-name))]
-      (.renameCollection old-collection
-                         (com.mongodb.MongoNamespace.
-                          (.getName db)
-                          (name new-table-name))))))
+    (doseq [[old-table-name new-table-name] sorted-rename-map]
+      (let [old-collection (mongo.util/collection db (name old-table-name))]
+        (.renameCollection old-collection
+                           (com.mongodb.MongoNamespace.
+                            (.getName db)
+                            (name new-table-name)))))))
 
 (defmethod driver/drop-transform-target! [:mongo :table]
   [driver database target]

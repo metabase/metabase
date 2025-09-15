@@ -266,11 +266,14 @@
        (let [sql (create-table!-sql driver table-name column-definitions :primary-key primary-key)]
          (.execute stmt sql))))))
 
-(defmethod driver/rename-table! :clickhouse
-  [_driver db-id old-table-name new-table-name]
-  (let [sql [(format "RENAME TABLE %s TO %s" (quote-name old-table-name) (quote-name new-table-name))]]
+(defmethod driver/rename-tables!* :clickhouse
+  [_driver db-id sorted-rename-map]
+  (let [rename-clauses (map (fn [[old-table-name new-table-name]]
+                              (format "%s TO %s" (quote-name old-table-name) (quote-name new-table-name)))
+                            sorted-rename-map)
+        sql (format "RENAME TABLE %s" (str/join ", " rename-clauses))]
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
-      (jdbc/execute! conn sql))))
+      (jdbc/execute! conn [sql]))))
 
 (defmethod driver/insert-into! :clickhouse
   [driver db-id table-name column-names values]

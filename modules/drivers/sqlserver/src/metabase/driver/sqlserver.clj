@@ -993,8 +993,11 @@
   (let [sql [[(format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA [%s];');" schema schema)]]]
     (driver/execute-raw-queries! driver conn-spec sql)))
 
-(defmethod driver/rename-table! :sqlserver
-  [_driver db-id old-table-name new-table-name]
-  (let [sql (format "EXEC sp_rename '%s', '%s'" (name old-table-name) (name new-table-name))]
-    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
-      (jdbc/execute! conn sql))))
+(defmethod driver/rename-tables!* :sqlserver
+  [_driver db-id sorted-rename-map]
+  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+    (with-open [stmt (.createStatement ^java.sql.Connection (:connection conn))]
+      (doseq [[old-table-name new-table-name] sorted-rename-map]
+        (let [sql (format "EXEC sp_rename '%s', '%s';" (name old-table-name) (name new-table-name))]
+          (.addBatch ^java.sql.Statement stmt ^String sql)))
+      (.executeBatch ^java.sql.Statement stmt))))
