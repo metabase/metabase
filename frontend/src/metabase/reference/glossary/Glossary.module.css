@@ -1,15 +1,30 @@
+.card {
+  box-shadow: 0 0.5rem 1.25rem var(--mb-color-shadow);
+}
+.table {
+  background-color: var(--mb-color-bg-white);
+
+  thead th {
+    padding-block: var(--mantine-spacing-sm);
+  }
+}
 .row {
   &:hover {
     .action {
-      display: block;
+      visibility: visible;
     }
+  }
+
+  td {
+    padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+    border-bottom: none;
   }
 }
 
 .action {
-  display: none;
+  visibility: hidden;
 }
 
 .visible {
-  display: block;
+  visibility: visible;
 }

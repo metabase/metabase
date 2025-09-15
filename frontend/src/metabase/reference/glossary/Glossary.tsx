@@ -1,4 +1,3 @@
-import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
@@ -11,18 +10,13 @@ import {
   useUpdateGlossaryMutation,
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import {
-  ColumnHeader,
-  ItemCell,
-  TBody,
-  Table,
-  TableColumn,
-} from "metabase/common/components/ItemsTable/BaseItemsTable.styled";
+import { Table as CommonTable } from "metabase/common/components/Table/Table";
 import CS from "metabase/css/core/index.css";
 import {
   ActionIcon,
   Box,
   Button,
+  Card,
   Center,
   Group,
   Icon,
@@ -33,18 +27,16 @@ import {
   rem,
 } from "metabase/ui";
 
-import { GlossaryEditDefinitionModal } from "./GlossarEditDefinitionModal";
 import S from "./Glossary.module.css";
-import { GlossaryNewDefinitionModal } from "./GlossaryNewDefinitionModal";
+import { GlossaryRowEditor } from "./GlossaryRowEditor";
 
 export function Glossary() {
-  const [newDefinitionOpened, newDefinitionHandler] = useDisclosure();
-  const [editingDefinition, setEditingDefinition] =
-    useState<GlossaryItem | null>(null);
   const [deletingDefinition, setDeletingDefinition] =
     useState<GlossaryItem | null>(null);
   const [popoverDefinition, setPopoverDefinition] =
     useState<GlossaryItem | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   const { data: glossary = [] } = useListGlossaryQuery();
   const [createGlossary] = useCreateGlossaryMutation();
@@ -52,14 +44,13 @@ export function Glossary() {
   const [deleteGlossary] = useDeleteGlossaryMutation();
 
   return (
-    <div>
+    <Stack w="100%">
       <Group
         align="center"
         wrap="nowrap"
         px="2.625rem"
         h="3rem"
         mt="2rem"
-        mb="0.5rem"
         justify="space-between"
       >
         <Text fw="bold" fz="1.5rem">{t`Glossary`}</Text>
@@ -68,164 +59,181 @@ export function Glossary() {
           variant="default"
           size="sm"
           leftSection={<Icon name="add" />}
-          onClick={newDefinitionHandler.open}
+          onClick={() => {
+            setCreating(true);
+          }}
         >{t`New definition`}</Button>
       </Group>
-      <div className={cx(CS.wrapper, CS.wrapperTrim)}>
-        <Stack mb="lg" gap="xs" align="flex-start">
-          <Text c="text-secondary">{t`Paragraph describing the motivation for this glossary and its purpose.`}</Text>
-        </Stack>
-        <Table>
-          <colgroup>
-            <TableColumn width="22.5%" />
-            <TableColumn width="70%" />
-            <TableColumn width="7.5%" />
-          </colgroup>
-          <thead>
-            <tr>
-              <ColumnHeader>{t`Term`}</ColumnHeader>
-              <ColumnHeader>{t`Definition`}</ColumnHeader>
-              <ColumnHeader />
-            </tr>
-          </thead>
-          <TBody>
-            {glossary.length === 0 && <EmptyGlossary />}
-            {glossary.map((term, index) => {
+      <Stack w="100%" gap={0} className={cx(CS.wrapper, CS.wrapperTrim)}>
+        <Card px="lg" className={cx(CS.bordered, S.card)}>
+          <CommonTable
+            className={S.table}
+            columns={[
+              { name: t`Term`, key: "term", sortable: false },
+              { name: t`Definition`, key: "definition", sortable: false },
+              { name: "", key: "actions", sortable: false },
+            ]}
+            rows={
+              [
+                ...(creating
+                  ? ([{ id: "__create__", kind: "create" }] as const)
+                  : []),
+                ...glossary,
+              ] as Array<GlossaryItem | { id: string; kind: "create" }>
+            }
+            cols={
+              <>
+                <col style={{ minWidth: "22.5%", maxWidth: "22.5%" }} />
+                <col style={{ width: "70%" }} />
+                <col style={{ width: "7.5%" }} />
+              </>
+            }
+            emptyBody={<EmptyGlossaryBody />}
+            rowRenderer={(row) => {
+              // Create row
+              if ((row as any).kind === "create") {
+                return (
+                  <tr className={S.row}>
+                    <GlossaryRowEditor
+                      mode="create"
+                      item={{ term: "", definition: "" }}
+                      onCancel={() => setCreating(false)}
+                      onSave={async (term, definition) => {
+                        await createGlossary({ term, definition });
+                        setCreating(false);
+                      }}
+                    />
+                  </tr>
+                );
+              }
+
+              const term = row as GlossaryItem;
               const popoverOpened = popoverDefinition?.id === term.id;
+              const isEditing = editingId === term.id;
 
               return (
-                <tr className={S.row} key={index}>
-                  <Box component="td" valign="top">
-                    <Text lh="1.2" fw="bold">
-                      {term.term}
-                    </Text>
-                  </Box>
-                  <Box
-                    component="td"
-                    valign="top"
-                    pr="0"
-                    style={{ wordBreak: "break-word" }}
-                  >
-                    <Text lh="1.2">{term.definition}</Text>
-                  </Box>
+                <tr className={S.row}>
+                  {isEditing ? (
+                    <GlossaryRowEditor
+                      mode="edit"
+                      item={term}
+                      onCancel={() => setEditingId(null)}
+                      onSave={async (newTerm, newDefinition) => {
+                        await updateGlossary({
+                          id: term.id,
+                          term: newTerm,
+                          definition: newDefinition,
+                        });
+                        setEditingId(null);
+                      }}
+                    />
+                  ) : (
+                    <>
+                      <Box component="td" valign="top">
+                        <Text lh="1.2" fw="bold" pt="xs">
+                          {term.term}
+                        </Text>
+                      </Box>
+                      <Box
+                        component="td"
+                        valign="top"
+                        style={{ wordBreak: "break-word" }}
+                      >
+                        <Text lh="1.2" pt="xs">
+                          {term.definition}
+                        </Text>
+                      </Box>
 
-                  <Box
-                    component="td"
-                    valign="top"
-                    align="center"
-                    px="md"
-                    pt="sm"
-                    pb={0}
-                  >
-                    <Popover
-                      opened={popoverOpened}
-                      onChange={() => setPopoverDefinition(null)}
-                      width={rem(140)}
-                      position="bottom-end"
-                    >
-                      <Popover.Target>
-                        <ActionIcon
-                          c="text-light"
-                          className={cx(S.action, {
-                            [S.visible]: popoverOpened,
-                          })}
-                          onClick={() =>
-                            setPopoverDefinition((definition) =>
-                              definition === term ? null : term,
-                            )
-                          }
+                      <Box
+                        component="td"
+                        valign="top"
+                        align="center"
+                        p="sm"
+                        // pt="md"
+                      >
+                        <Popover
+                          opened={popoverOpened}
+                          onChange={() => setPopoverDefinition(null)}
+                          width={rem(140)}
+                          position="bottom-end"
                         >
-                          <Icon name="ellipsis" />
-                        </ActionIcon>
-                      </Popover.Target>
+                          <Popover.Target>
+                            <ActionIcon
+                              variant="subtle"
+                              c="text-light"
+                              className={cx(S.action, {
+                                [S.visible]: popoverOpened,
+                              })}
+                              onClick={() =>
+                                setPopoverDefinition((definition) =>
+                                  definition === term ? null : term,
+                                )
+                              }
+                            >
+                              <Icon name="ellipsis" />
+                            </ActionIcon>
+                          </Popover.Target>
 
-                      <Popover.Dropdown p="xs">
-                        <Menu>
-                          <Menu.Item
-                            leftSection={<Icon name="pencil" />}
-                            onClick={() => {
-                              setEditingDefinition({
-                                id: term.id,
-                                term: term.term,
-                                definition: term.definition,
-                              });
-                              setPopoverDefinition(null);
-                            }}
-                          >
-                            {t`Edit`}
-                          </Menu.Item>
-
-                          <Menu.Item
-                            leftSection={<Icon name="trash" />}
-                            data-testid="comment-action-panel-delete"
-                            onClick={() => {
-                              setDeletingDefinition({
-                                id: term.id,
-                                term: term.term,
-                                definition: term.definition,
-                              });
-                              setPopoverDefinition(null);
-                            }}
-                          >
-                            {t`Delete`}
-                          </Menu.Item>
-                        </Menu>
-                      </Popover.Dropdown>
-                    </Popover>
-                  </Box>
+                          <Popover.Dropdown p="xs">
+                            <Menu>
+                              <Menu.Item
+                                leftSection={<Icon name="pencil" />}
+                                onClick={() => {
+                                  setEditingId(term.id);
+                                  setPopoverDefinition(null);
+                                }}
+                              >
+                                {t`Edit`}
+                              </Menu.Item>
+                              <Menu.Item
+                                leftSection={<Icon name="trash" />}
+                                data-testid="comment-action-panel-delete"
+                                onClick={() => {
+                                  setDeletingDefinition({
+                                    id: term.id,
+                                    term: term.term,
+                                    definition: term.definition,
+                                  });
+                                  setPopoverDefinition(null);
+                                }}
+                              >
+                                {t`Delete`}
+                              </Menu.Item>
+                            </Menu>
+                          </Popover.Dropdown>
+                        </Popover>
+                      </Box>
+                    </>
+                  )}
                 </tr>
               );
-            })}
-          </TBody>
-        </Table>
-      </div>
+            }}
+          />
+        </Card>
 
-      <GlossaryNewDefinitionModal
-        opened={newDefinitionOpened}
-        onClose={newDefinitionHandler.close}
-        onSubmit={(term, definition) => {
-          void createGlossary({ term, definition });
-        }}
-      />
-
-      <GlossaryEditDefinitionModal
-        id={editingDefinition?.id}
-        term={editingDefinition?.term}
-        definition={editingDefinition?.definition}
-        opened={editingDefinition !== null}
-        onClose={() => setEditingDefinition(null)}
-        onSubmit={(id, term, definition) => {
-          void updateGlossary({ id, term, definition });
-        }}
-      />
-
-      <ConfirmModal
-        confirmButtonText={t`Delete`}
-        opened={deletingDefinition != null}
-        title={t`Delete “${deletingDefinition?.term}”`}
-        onClose={() => setDeletingDefinition(null)}
-        onConfirm={() => {
-          if (deletingDefinition) {
-            void deleteGlossary({ id: deletingDefinition.id });
-            setDeletingDefinition(null);
-          }
-        }}
-      />
-    </div>
+        <ConfirmModal
+          confirmButtonText={t`Delete`}
+          opened={deletingDefinition != null}
+          title={t`Delete “${deletingDefinition?.term}”`}
+          onClose={() => setDeletingDefinition(null)}
+          onConfirm={() => {
+            if (deletingDefinition) {
+              void deleteGlossary({ id: deletingDefinition.id });
+              setDeletingDefinition(null);
+            }
+          }}
+        />
+      </Stack>
+    </Stack>
   );
 }
 
-function EmptyGlossary() {
+function EmptyGlossaryBody() {
   return (
-    <tr>
-      <ItemCell colSpan={3}>
-        <Center p="sm">
-          <Text
-            c="text-secondary
-          "
-          >{t`No terms found.`}</Text>
-        </Center>
-      </ItemCell>
-    </tr>
+    <Center p="sm">
+      <Text c="text-secondary">{t`No terms found.`}</Text>
+    </Center>
   );
 }
+
+// (Old EmptyGlossary table row-based component removed in favor of CommonTable's emptyBody)
