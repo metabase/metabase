@@ -104,8 +104,8 @@
 
 (def ^:private always-allowed-iframe-hosts
   ["'self'"
-   "https://www.metabase.com/changelog/"
-   "https://www.metabase.com/releases/"])
+   "https://www.metabase.com/"
+   "https://metabase.com/"])
 
 (defn- parse-allowed-iframe-hosts*
   [hosts-string]
