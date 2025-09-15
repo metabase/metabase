@@ -31,7 +31,6 @@
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.core :as t2]
-   [toucan2.model :as t2.model]
    [toucan2.protocols :as t2.protocols]
    [toucan2.realize :as t2.realize]))
 
@@ -1168,6 +1167,8 @@
     (unarchive-collection! collection updates)))
 
 (declare check-non-library-dependencies)
+(declare moving-from-library?)
+(declare check-library-dependents)
 
 (mu/defn move-collection!
   "Move a Collection and all its descendant Collections from its current `location` to a `new-location`."
@@ -1196,7 +1197,9 @@
                            into-library? (assoc :type "library"))
                  :where  [:like :location (str orig-children-location "%")]})
         (when into-library?
-          (check-non-library-dependencies collection))))))
+          (check-non-library-dependencies collection))
+        (when (moving-from-library? (parent-id* collection) (parent-id* {:location new-location}))
+          (check-library-dependents collection))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Toucan IModel & Perms Method Impls                                       |
@@ -1430,8 +1433,55 @@
 
 ;;; -------------------------------------------------- Library -------------------------------------------------------
 
+(defn library-dependents
+  "Find depedents of a model that are contained in the library. For cards checks if there are any other queries that
+  reference this card. For collections checks dependents of all cards in the collection or subcollections. For all
+  other models it returns an empty seq. Only checks for immediate dependents.
+
+  Args:
+    model: the model to check dependents for.
+
+  Returns:
+    sequence of models immediately dependent on the provided model"
+  [{:keys [id] :as model}]
+  (case (t2/model model)
+    :model/Collection
+    (let [all-descendants (u/traverse [["Collection" id]] #(serdes/descendants (first %) (second %)))
+          {cards "Card"} (->> all-descendants keys (u/group-by first second))]
+      (mapcat #(library-dependents (t2/instance :model/Card :id %)) cards))
+
+    :model/Card
+    ;; TODO: also check for models referenced through actions
+    (concat
+     (t2/select :model/Dashboard {:select [:d.id]
+                                  :from [[:report_dashboard :d]]
+                                  :join [[:report_dashboardcard :dc]
+                                         [:= :d.id :dc.dashboard_id]]
+                                  :left-join [[:dashboardcard_series :dcs]
+                                              [:= :dc.id :dcs.dashboardcard_id]]
+                                  :where [:or
+                                          [:= :dc.card_id id]
+                                          [:= :dcs.card_id id]]})
+     (t2/select :model/Card {:select [:c.id]
+                             :from [[:report_card :m]]
+                             :join [[:report_card :c] [:and
+                                                       [:= :c.database_id :m.database_id]
+                                                       [:or
+                                                              ;; Card used in parameters
+                                                        [:like :c.parameters (format "%%\"card-id\":%s%%" id)]
+                                                              ;; Card used in template tags
+                                                        [:like :c.dataset_query (format "%%\"card-id\":%s%%" id)]
+                                                              ;; Card used as source
+                                                        [:like :c.dataset_query (format "%%card__%s%%" id)]
+                                                        [:like :c.dataset_query (format "%%#%s%%" id)]]]]
+                             :inner-join [[:collection :col]
+                                          [:and [:= :c.collection_id :col.id]
+                                           [:= :col.type [:inline "library"]]]]
+                             :where [:and [:= :m.id id] [:not :c.archived]]}))
+    []))
+
 (defn non-library-dependencies
-  "Find dependencies of a model -- that are possible to contain in the >ibrary -- that are not contained the in Library
+  "Find dependencies of a model -- that are possible to contain in the library -- that are not contained the in Library
   collection or in subcollections of the Library collection. Uses serdes/descendants to list dependencies of a model.
 
   Args:
@@ -1454,14 +1504,31 @@
     model: the model to check depedencies for
 
   Returns:
-    nil
+    the model
 
   Raises:
-    ex-info object with non-library-dependencies and a 400 status code  "
+    ex-info object with non-library-dependencies and a 400 status code"
   [model]
   (when-let [non-library-deps (not-empty (non-library-dependencies model))]
     (throw (ex-info (str (deferred-tru "Model has non-library dependencies")) {:non-library-models non-library-deps
                                                                                :status-code 400})))
+  model)
+
+(defn check-library-dependents
+  "Throws if a model has library-dependents.
+
+  Args:
+    model: the model to check depedencies for
+
+  Returns:
+    the model
+
+  Raises:
+    ex-info object with non-library-dependencies and a 400 status code"
+  [model]
+  (when-let [library-deps (not-empty (library-dependents model))]
+    (throw (ex-info (str (deferred-tru "Model has library dependents")) {:library-models library-deps
+                                                                         :status-code 400})))
   model)
 
 (defn moving-into-library?
@@ -1479,6 +1546,22 @@
        (t2/exists? :model/Collection {:where [:and [:= :id new-collection-id] [:= :type "library"]]})
        (or (nil? old-collection-id)
            (t2/exists? :model/Collection {:where [:and [:= :id old-collection-id] [:or [:<> :type "library"] [:= :type nil]]]}))))
+
+(defn moving-from-library?
+  "Tests if a move from old-collection-id to new-collection-id means the object is moving from a library collection to a
+  non-library collection.
+
+  Args:
+    old-collection-id: id of the collection the object is being moved from
+    new-collection-id: id of the collection the object is being moved to
+
+  Returns:
+    true if the old collection is not part of the library and the new collection is."
+  [old-collection-id new-collection-id]
+  (and (not (nil? old-collection-id))
+       (t2/exists? :model/Collection {:where [:and [:= :id old-collection-id] [:= :type "library"]]})
+       (or (nil? new-collection-id)
+           (t2/exists? :model/Collection {:where [:and [:= :id new-collection-id] [:or [:<> :type "library"] [:= :type nil]]]}))))
 
 ;;; -------------------------------------------------- IModel Impl ---------------------------------------------------
 

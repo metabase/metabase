@@ -1142,3 +1142,117 @@
                                               :type :query
                                               :query {:source-table (str "card__" non-library-source-id)}}}
                :actor {:id (mt/user->id :rasta)}})))))))
+
+(deftest update-card-library-dependents-prevents-move-from-library-test
+  (testing "update-card! should prevent moving card out of library collection when it has library dependents"
+    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "library"}
+                   :model/Collection {regular-coll-id :id} {}
+                   :model/Card {library-card-id :id :as library-card} {:collection_id library-coll-id
+                                                                       :name "Library card"}
+                   :model/Card {dependent-card-id :id} {:collection_id library-coll-id
+                                                        :name "Card dependent on library card"
+                                                        :dataset_query {:database (mt/id)
+                                                                        :type :query
+                                                                        :query {:source-table (str "card__" library-card-id)}}}]
+      (testing "Cannot move library card to regular collection when library dependents exist"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Model has library dependents"
+             (card/update-card!
+              {:card-before-update library-card
+               :card-updates {:collection_id regular-coll-id}
+               :actor {:id (mt/user->id :rasta)}}))))
+
+      (testing "Can move library card when no library dependents exist"
+        (t2/delete! :model/Card :id dependent-card-id)
+        (let [updated-card (card/update-card!
+                            {:card-before-update library-card
+                             :card-updates {:collection_id regular-coll-id}
+                             :actor {:id (mt/user->id :rasta)}})]
+          (is (some? updated-card))
+          (is (= regular-coll-id (:collection_id updated-card))))))))
+
+(deftest update-card-library-dependents-with-parameters-test
+  (testing "update-card! should prevent moving card out of library collection when dependents reference it via parameters"
+    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "library"}
+                   :model/Collection {regular-coll-id :id} {}
+                   :model/Card {library-card-id :id :as library-card} {:collection_id library-coll-id
+                                                                       :name "Library card"}
+                   :model/Card {dependent-card-id :id} {:collection_id library-coll-id
+                                                        :name "Card with parameter reference"
+                                                        :parameters [{:id "test-param"
+                                                                      :type :category
+                                                                      :card_id library-card-id}]}]
+      (testing "Cannot move library card when dependents reference it via parameters"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Model has library dependents"
+             (card/update-card!
+              {:card-before-update library-card
+               :card-updates {:collection_id regular-coll-id}
+               :actor {:id (mt/user->id :rasta)}})))))))
+
+(deftest update-card-library-dependents-with-template-tags-test
+  (testing "update-card! should prevent moving card out of library collection when dependents reference it via template tags"
+    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "library"}
+                   :model/Collection {regular-coll-id :id} {}
+                   :model/Card {library-card-id :id :as library-card} {:collection_id library-coll-id
+                                                                       :name "Library card"}
+                   :model/Card {dependent-card-id :id} {:collection_id library-coll-id
+                                                        :name "Card with template tag reference"
+                                                        :dataset_query {:database (mt/id)
+                                                                        :type :native
+                                                                        :native {:query "SELECT * FROM {{#123-abc}}"
+                                                                                 :template-tags {"123-abc" {:id "123-abc"
+                                                                                                            :name "123-abc"
+                                                                                                            :display-name "Test Template Tag"
+                                                                                                            :type :card
+                                                                                                            :card-id library-card-id}}}}}]
+      (testing "Cannot move library card when dependents reference it via template tags"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Model has library dependents"
+             (card/update-card!
+              {:card-before-update library-card
+               :card-updates {:collection_id regular-coll-id}
+               :actor {:id (mt/user->id :rasta)}})))))))
+
+(deftest update-card-library-dependents-allows-move-within-library-test
+  (testing "update-card! should allow moving card between library collections even with library dependents"
+    (mt/with-temp [:model/Collection {library-coll-1-id :id} {:type "library"}
+                   :model/Collection {library-coll-2-id :id} {:type "library"}
+                   :model/Card {library-card-id :id :as library-card} {:collection_id library-coll-1-id
+                                                                       :name "Library card"}
+                   :model/Card {dependent-card-id :id} {:collection_id library-coll-1-id
+                                                        :name "Card dependent on library card"
+                                                        :dataset_query {:database (mt/id)
+                                                                        :type :query
+                                                                        :query {:source-table (str "card__" library-card-id)}}}]
+      (testing "Can move library card between library collections"
+        (let [updated-card (card/update-card!
+                            {:card-before-update library-card
+                             :card-updates {:collection_id library-coll-2-id}
+                             :actor {:id (mt/user->id :rasta)}})]
+          (is (some? updated-card))
+          (is (= library-coll-2-id (:collection_id updated-card))))))))
+
+(deftest update-card-library-dependents-allows-non-collection-updates-test
+  (testing "update-card! should allow non-collection updates to library cards with dependents"
+    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "library"}
+                   :model/Card {library-card-id :id :as library-card} {:collection_id library-coll-id
+                                                                       :name "Library card"}
+                   :model/Card {dependent-card-id :id} {:collection_id library-coll-id
+                                                        :name "Card dependent on library card"
+                                                        :dataset_query {:database (mt/id)
+                                                                        :type :query
+                                                                        :query {:source-table (str "card__" library-card-id)}}}]
+      (testing "Can update name and description of library card with dependents"
+        (let [updated-card (card/update-card!
+                            {:card-before-update library-card
+                             :card-updates {:name "Updated Library Card"
+                                            :description "Updated description"}
+                             :actor {:id (mt/user->id :rasta)}})]
+          (is (some? updated-card))
+          (is (= "Updated Library Card" (:name updated-card)))
+          (is (= "Updated description" (:description updated-card)))
+          (is (= library-coll-id (:collection_id updated-card))))))))

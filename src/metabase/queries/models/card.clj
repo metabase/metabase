@@ -1117,7 +1117,10 @@
                    "`card-before-update`:" (pr-str card-before-update)
                    "`card-updates`:" (pr-str card-updates))))
     (when (collections/library-collection? (or (:collection_id card-updates) (:collection_id card-before-update)))
-      (collections/check-non-library-dependencies card-before-update)))
+      (collections/check-non-library-dependencies card-before-update))
+    (when (and (api/column-will-change? :collection_id card-before-update card-updates)
+               (collections/moving-from-library? (:collection_id card-before-update) (:collection_id card-updates)))
+      (collections/check-library-dependents card-before-update)))
   ;; Fetch the updated Card from the DB
   (let [card (t2/select-one :model/Card :id (:id card-before-update))]
     ;;; TODO -- this should be triggered indirectly by `:event/card-update`

@@ -5,7 +5,6 @@
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.eid-translation.core :as eid-translation]

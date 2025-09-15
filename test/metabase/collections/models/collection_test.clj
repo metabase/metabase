@@ -2251,7 +2251,7 @@
         (is (= "/" (:location unchanged-coll))
             "Collection location should remain unchanged after failed move")))))
 
-(deftest move-collection!-dependency-checking-transaction-rollback-test
+(deftest ^:parallel move-collection!-dependency-checking-transaction-rollback-test
   (testing "move-collection! transaction rollback when dependency check fails after updates"
     (mt/with-temp [:model/Collection {non-library-id :id} {:name "Non-Library" :location "/" :type nil}
                    :model/Collection {parent-id :id} {:name "Parent" :location "/"}
@@ -2285,7 +2285,7 @@
         (is (= (format "/%d/" coll-id) (:location unchanged-child))
             "Child collection location should remain unchanged after transaction rollback")))))
 
-(deftest move-collection!-no-dependency-checking-without-library-flag-test
+(deftest ^:parallel move-collection!-no-dependency-checking-without-library-flag-test
   (testing "move-collection! without into-library? flag does not check dependencies"
     (mt/with-temp [:model/Collection {non-library-id :id} {:name "Non-Library" :location "/" :type nil}
                    :model/Collection {parent-id :id} {:name "Parent" :location "/"}
@@ -2307,3 +2307,632 @@
             "Collection should not have library type")
         (is (= (format "/%d/" parent-id) (:location moved-coll))
             "Collection should be moved to new location")))))
+
+(deftest ^:parallel moving-from-library?-test
+  (testing "moving-from-library? function behavior"
+    (mt/with-temp [:model/Collection {library-id :id} {:name "Library" :type "library"}
+                   :model/Collection {regular-coll-id :id} {:name "Regular Collection"}
+                   :model/Collection {other-library-id :id} {:name "Other Library" :type "library"}]
+
+      (testing "when moving from library to non-library collection"
+        (is (true? (collection/moving-from-library? library-id regular-coll-id))
+            "Should return true when moving from library to regular collection"))
+
+      (testing "when moving from library to library collection"
+        (is (false? (collection/moving-from-library? library-id other-library-id))
+            "Should return false when moving from library to library collection"))
+
+      (testing "when moving from non-library to library collection"
+        (is (false? (collection/moving-from-library? regular-coll-id library-id))
+            "Should return false when moving from regular to library collection"))
+
+      (testing "when moving from non-library to non-library collection"
+        (mt/with-temp [:model/Collection {other-regular-id :id} {:name "Other Regular"}]
+          (is (false? (collection/moving-from-library? regular-coll-id other-regular-id))
+              "Should return false when moving between non-library collections")))
+
+      (testing "when old collection ID is nil"
+        (is (false? (collection/moving-from-library? nil regular-coll-id))
+            "Should return false when old collection ID is nil"))
+
+      (testing "when moving from library to root (new collection ID is nil)"
+        (is (true? (collection/moving-from-library? library-id nil))
+            "Should return true when moving from library to root collection"))
+
+      (testing "when both collection IDs are nil"
+        (is (false? (collection/moving-from-library? nil nil))
+            "Should return false when both collection IDs are nil"))
+
+      (testing "when collection IDs don't exist"
+        (is (false? (collection/moving-from-library? 99999 88888))
+            "Should return false when collection IDs don't exist")))))
+
+(deftest ^:parallel library-dependents-no-dependents-test
+  (testing "when there are no dependents"
+    (mt/with-temp [:model/Collection {library-id :id} {:name "Library" :type "library"}
+                   :model/Card {card-id :id} {:name "Test Card"
+                                              :collection_id library-id
+                                              :database_id (mt/id)
+                                              :dataset_query {:database (mt/id)
+                                                              :type :query
+                                                              :query {:source-table (mt/id :venues)}}}]
+      (is (= [] (collection/library-dependents (t2/instance :model/Card {:id card-id})))
+          "Should return empty seq when card has no dependents"))))
+
+(deftest ^:parallel library-dependents-in-library-test
+  (testing "when card has dependents in library"
+    (mt/with-temp [:model/Collection {library-id :id} {:name "Library" :type "library"}
+                   :model/Card {base-card-id :id} {:name "Base Card"
+                                                   :collection_id library-id
+                                                   :database_id (mt/id)
+                                                   :dataset_query {:database (mt/id)
+                                                                   :type :query
+                                                                   :query {:source-table (mt/id :venues)}}}
+                   :model/Card {dep-card :id :as dep-card-obj} {:name "Dependent Card"
+                                                                :collection_id library-id
+                                                                :database_id (mt/id)
+                                                                :dataset_query {:database (mt/id)
+                                                                                :type :query
+                                                                                :query {:source-table (str "card__" base-card-id)}}}]
+      (let [dependents (collection/library-dependents (t2/instance :model/Card {:id base-card-id}))]
+        (is (= 1 (count dependents))
+            "Should find one dependent")
+        (is (= dep-card (:id (first dependents)))
+            "Should return the dependent card")))))
+
+(deftest ^:parallel library-dependents-outside-library-test
+  (testing "when dependents are outside library"
+    (mt/with-temp [:model/Collection {library-id :id} {:name "Library" :type "library"}
+                   :model/Collection {regular-id :id} {:name "Regular"}
+                   :model/Card {base-card-id :id} {:name "Base Card"
+                                                   :collection_id library-id
+                                                   :database_id (mt/id)
+                                                   :dataset_query {:database (mt/id)
+                                                                   :type :query
+                                                                   :query {:source-table (mt/id :venues)}}}
+                   :model/Card {outside-card :id} {:name "Outside Card"
+                                                   :collection_id regular-id
+                                                   :database_id (mt/id)
+                                                   :dataset_query {:database (mt/id)
+                                                                   :type :query
+                                                                   :query {:source-table (str "card__" base-card-id)}}}]
+      (is (= [] (collection/library-dependents (t2/instance :model/Card {:id base-card-id})))
+          "Should not return dependents outside the library"))))
+
+(deftest ^:parallel library-dependents-archived-test
+  (testing "when dependents are archived"
+    (mt/with-temp [:model/Collection {library-id :id} {:name "Library" :type "library"}
+                   :model/Card {base-card-id :id} {:name "Base Card"
+                                                   :collection_id library-id
+                                                   :database_id (mt/id)
+                                                   :dataset_query {:database (mt/id)
+                                                                   :type :query
+                                                                   :query {:source-table (mt/id :venues)}}}
+                   :model/Card {archived-card :id} {:name "Archived Card"
+                                                    :collection_id library-id
+                                                    :database_id (mt/id)
+                                                    :archived true
+                                                    :dataset_query {:database (mt/id)
+                                                                    :type :query
+                                                                    :query {:source-table (str "card__" base-card-id)}}}]
+      (is (= [] (collection/library-dependents (t2/instance :model/Card {:id base-card-id})))
+          "Should not return archived dependents"))))
+
+(deftest ^:parallel library-dependents-non-card-models-test
+  (testing "for non-card models"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Test Dashboard"}]
+      (is (= [] (collection/library-dependents (t2/instance :model/Dashboard {:id dash-id})))
+          "Should return empty seq for non-card models"))))
+
+(deftest ^:parallel library-dependents-with-parameters-test
+  (testing "when card has dependents using parameters"
+    (mt/with-temp [:model/Collection {library-id :id} {:name "Library" :type "library"}
+                   :model/Card {base-card-id :id} {:name "Base Card"
+                                                   :collection_id library-id
+                                                   :database_id (mt/id)
+                                                   :dataset_query {:database (mt/id)
+                                                                   :type :query
+                                                                   :query {:source-table (mt/id :venues)}}}
+                   :model/Card {dep-card-id :id} {:name "Dependent Card with Params"
+                                                  :collection_id library-id
+                                                  :database_id (mt/id)
+                                                  :dataset_query {:database (mt/id)
+                                                                  :type :query
+                                                                  :query {:source-table (mt/id :venues)}}
+                                                  :parameters [{:id "param1"
+                                                                :type "card"
+                                                                :card-id base-card-id}]}]
+      ;; Create a card with parameters, then update it to have the correct JSON format
+      ;; The parameters should be stored as JSON with "card-id" (hyphenated)
+      (let [dependents (collection/library-dependents (t2/instance :model/Card {:id base-card-id}))]
+        (is (= 1 (count dependents))
+            "Should find one dependent using parameters")
+        (is (= dep-card-id (:id (first dependents)))
+            "Should return the dependent card using parameters")))))
+
+(deftest ^:parallel library-dependents-with-template-tags-test
+  (testing "when card has dependents using template tags"
+    (mt/with-temp [:model/Collection {library-id :id} {:name "Library" :type "library"}
+                   :model/Card {base-card-id :id} {:name "Base Card"
+                                                   :collection_id library-id
+                                                   :database_id (mt/id)
+                                                   :dataset_query {:database (mt/id)
+                                                                   :type :query
+                                                                   :query {:source-table (mt/id :venues)}}}
+                   :model/Card {dep-card-id :id} {:name "Dependent Card with Template Tags"
+                                                  :collection_id library-id
+                                                  :database_id (mt/id)
+                                                  :dataset_query {:database (mt/id)
+                                                                  :type :native
+                                                                  :native {:query "SELECT * FROM {{card}}"
+                                                                           :template-tags {:card {:type "card"
+                                                                                                  :display-name "Card"
+                                                                                                  :card-id base-card-id}}}}}]
+      ;; Create a card with template tags
+      ;; The dataset_query should contain "card-id" in the template tags
+      (let [dependents (collection/library-dependents (t2/instance :model/Card {:id base-card-id}))]
+        (is (= 1 (count dependents))
+            "Should find one dependent using template tags")
+        (is (= dep-card-id (:id (first dependents)))
+            "Should return the dependent card using template tags")))))
+
+(deftest ^:parallel library-dependents-with-multiple-types-test
+  (testing "when card has multiple types of dependents"
+    (mt/with-temp [:model/Collection {library-id :id} {:name "Library" :type "library"}
+                   :model/Card {base-card-id :id} {:name "Base Card"
+                                                   :collection_id library-id
+                                                   :database_id (mt/id)
+                                                   :dataset_query {:database (mt/id)
+                                                                   :type :query
+                                                                   :query {:source-table (mt/id :venues)}}}
+                   :model/Card {dep1-id :id} {:name "Dependent with source reference"
+                                              :collection_id library-id
+                                              :database_id (mt/id)
+                                              :dataset_query {:database (mt/id)
+                                                              :type :query
+                                                              :query {:source-table (str "card__" base-card-id)}}}
+                   :model/Card {dep2-id :id} {:name "Dependent with parameters"
+                                              :collection_id library-id
+                                              :database_id (mt/id)
+                                              :dataset_query {:database (mt/id)
+                                                              :type :query
+                                                              :query {:source-table (mt/id :venues)}}
+                                              :parameters [{:id "param1"
+                                                            :type "card"
+                                                            :card-id base-card-id}]}
+                   :model/Card {dep3-id :id} {:name "Dependent with template tags"
+                                              :collection_id library-id
+                                              :database_id (mt/id)
+                                              :dataset_query {:database (mt/id)
+                                                              :type :native
+                                                              :native {:query "SELECT * FROM {{card}}"
+                                                                       :template-tags {:card {:type "card"
+                                                                                              :display-name "Card"
+                                                                                              :card-id base-card-id}}}}}]
+      (let [dependents (collection/library-dependents (t2/instance :model/Card {:id base-card-id}))]
+        (is (= 3 (count dependents))
+            "Should find all three types of dependents")
+        (is (= #{dep1-id dep2-id dep3-id} (set (map :id dependents)))
+            "Should return all dependent cards")))))
+
+(deftest ^:parallel library-dependents-with-collection-test
+  (testing "when a collection is passed to library-dependents"
+    (mt/with-temp [:model/Collection {library-id :id} {:name "Library" :type "library"}
+                   :model/Collection {source-coll-id :id} {:name "Source Collection" :location "/"}
+                   :model/Card {base-card-id :id} {:name "Base Card"
+                                                   :collection_id source-coll-id
+                                                   :database_id (mt/id)
+                                                   :dataset_query {:database (mt/id)
+                                                                   :type :query
+                                                                   :query {:source-table (mt/id :venues)}}}
+                   :model/Card {dep-card-id :id} {:name "Dependent Card"
+                                                  :collection_id library-id
+                                                  :database_id (mt/id)
+                                                  :dataset_query {:database (mt/id)
+                                                                  :type :query
+                                                                  :query {:source-table (str "card__" base-card-id)}}}]
+      (let [dependents (collection/library-dependents (t2/instance :model/Collection {:id source-coll-id}))]
+        (is (= 1 (count dependents))
+            "Should find dependents of cards in the collection")
+        (is (= dep-card-id (:id (first dependents)))
+            "Should return the dependent card")))))
+
+(deftest ^:parallel library-dependents-with-collection-no-cards-test
+  (testing "when a collection with no cards is passed to library-dependents"
+    (mt/with-temp [:model/Collection {empty-coll-id :id} {:name "Empty Collection" :location "/"}]
+      (let [dependents (collection/library-dependents (t2/instance :model/Collection {:id empty-coll-id}))]
+        (is (= [] dependents)
+            "Should return empty seq for collection with no cards")))))
+
+(deftest ^:parallel library-dependents-with-nested-collection-test
+  (testing "when a collection with nested subcollections is passed to library-dependents"
+    (mt/with-temp [:model/Collection {library-id :id} {:name "Library" :type "library"}
+                   :model/Collection {parent-coll-id :id} {:name "Parent Collection" :location "/"}
+                   :model/Collection {child-coll-id :id} {:name "Child Collection"
+                                                          :location (format "/%d/" parent-coll-id)}
+                   :model/Card {base-card-1-id :id} {:name "Base Card 1"
+                                                     :collection_id parent-coll-id
+                                                     :database_id (mt/id)
+                                                     :dataset_query {:database (mt/id)
+                                                                     :type :query
+                                                                     :query {:source-table (mt/id :venues)}}}
+                   :model/Card {base-card-2-id :id} {:name "Base Card 2"
+                                                     :collection_id child-coll-id
+                                                     :database_id (mt/id)
+                                                     :dataset_query {:database (mt/id)
+                                                                     :type :query
+                                                                     :query {:source-table (mt/id :venues)}}}
+                   :model/Card {dep-card-1-id :id} {:name "Dependent Card 1"
+                                                    :collection_id library-id
+                                                    :database_id (mt/id)
+                                                    :dataset_query {:database (mt/id)
+                                                                    :type :query
+                                                                    :query {:source-table (str "card__" base-card-1-id)}}}
+                   :model/Card {dep-card-2-id :id} {:name "Dependent Card 2"
+                                                    :collection_id library-id
+                                                    :database_id (mt/id)
+                                                    :dataset_query {:database (mt/id)
+                                                                    :type :query
+                                                                    :query {:source-table (str "card__" base-card-2-id)}}}]
+      (let [dependents (collection/library-dependents (t2/instance :model/Collection {:id parent-coll-id}))]
+        (is (= 2 (count dependents))
+            "Should find dependents of cards in parent and child collections")
+        (is (= #{dep-card-1-id dep-card-2-id} (set (map :id dependents)))
+            "Should return both dependent cards")))))
+
+(deftest ^:parallel library-dependents-with-other-models-test
+  (testing "when other model types are passed to library-dependents"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Test Dashboard"}
+                   :model/Pulse {pulse-id :id} {:name "Test Pulse"}]
+      (is (= [] (collection/library-dependents (t2/instance :model/Dashboard {:id dash-id})))
+          "Should return empty seq for Dashboard models")
+      (is (= [] (collection/library-dependents (t2/instance :model/Pulse {:id pulse-id})))
+          "Should return empty seq for Pulse models"))))
+
+(deftest ^:parallel check-library-dependents-throws-test
+  (testing "check-library-dependents throws when model has library dependents"
+    (mt/with-temp [:model/Collection {library-id :id} {:name "Library" :type "library"}
+                   :model/Card {base-card-id :id} {:name "Base Card"
+                                                   :collection_id library-id
+                                                   :database_id (mt/id)
+                                                   :dataset_query {:database (mt/id)
+                                                                   :type :query
+                                                                   :query {:source-table (mt/id :venues)}}}
+                   :model/Card {dep-card-id :id} {:name "Dependent Card"
+                                                  :collection_id library-id
+                                                  :database_id (mt/id)
+                                                  :dataset_query {:database (mt/id)
+                                                                  :type :query
+                                                                  :query {:source-table (str "card__" base-card-id)}}}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Model has library dependents"
+                            (collection/check-library-dependents (t2/instance :model/Card {:id base-card-id})))
+          "Should throw exception when model has library dependents")
+
+      (try
+        (collection/check-library-dependents (t2/instance :model/Card {:id base-card-id}))
+        (catch clojure.lang.ExceptionInfo e
+          (let [data (ex-data e)]
+            (is (= 400 (:status-code data))
+                "Exception should have 400 status code")
+            (is (= 1 (count (:library-models data)))
+                "Exception data should contain the library dependent")
+            (is (= dep-card-id (-> data :library-models first :id))
+                "Exception data should contain the correct dependent card ID")))))))
+
+(deftest check-library-dependents-no-dependents-test
+  (testing "check-library-dependents returns model when no library dependents"
+    (mt/with-temp [:model/Card {card-id :id} {:name "Test Card"
+                                              :database_id (mt/id)
+                                              :dataset_query {:database (mt/id)
+                                                              :type :query
+                                                              :query {:source-table (mt/id :venues)}}}]
+      (let [card (t2/instance :model/Card {:id card-id})
+            result (collection/check-library-dependents card)]
+        (is (= card result)
+            "Should return the same model when no library dependents")))))
+
+(deftest ^:parallel check-library-dependents-with-collection-test
+  (testing "check-library-dependents with Collection model"
+    (mt/with-temp [:model/Collection {library-id :id} {:name "Library" :type "library"}
+                   :model/Collection {source-coll-id :id} {:name "Source Collection" :location "/"}
+                   :model/Card {base-card-id :id} {:name "Base Card"
+                                                   :collection_id source-coll-id
+                                                   :database_id (mt/id)
+                                                   :dataset_query {:database (mt/id)
+                                                                   :type :query
+                                                                   :query {:source-table (mt/id :venues)}}}
+                   :model/Card {dep-card-id :id} {:name "Dependent Card"
+                                                  :collection_id library-id
+                                                  :database_id (mt/id)
+                                                  :dataset_query {:database (mt/id)
+                                                                  :type :query
+                                                                  :query {:source-table (str "card__" base-card-id)}}}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Model has library dependents"
+                            (collection/check-library-dependents (t2/instance :model/Collection {:id source-coll-id})))
+          "Should throw exception when collection contains cards with library dependents"))))
+
+(deftest ^:parallel library-dependents-with-dashboard-test
+  (testing "library-dependents should return dashboards in library collections that contain the card"
+    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "library"}
+                   :model/Collection {regular-coll-id :id} {}
+                   :model/Card {library-card-id :id} {:collection_id library-coll-id
+                                                      :name "Library card"}
+                   :model/Dashboard {library-dashboard-id :id} {:collection_id library-coll-id
+                                                                :name "Library dashboard"}
+                   :model/Dashboard {regular-dashboard-id :id} {:collection_id regular-coll-id
+                                                                :name "Regular dashboard"}
+                   :model/DashboardCard _ {:card_id library-card-id
+                                           :dashboard_id library-dashboard-id
+                                           :row 0 :col 0
+                                           :size_x 4 :size_y 4}
+                   :model/DashboardCard _ {:card_id library-card-id
+                                           :dashboard_id regular-dashboard-id
+                                           :row 0 :col 0
+                                           :size_x 4 :size_y 4}]
+
+      (testing "Returns only dashboards in library collections"
+        (let [dependents (collection/library-dependents (t2/instance :model/Card {:id library-card-id}))]
+          (is (some #(and (= :model/Dashboard (t2/model %)) (= library-dashboard-id (:id %))) dependents)
+              "Should include dashboard in library collection")
+          (is (not (some #(and (= :model/Dashboard (t2/model %)) (= regular-dashboard-id (:id %))) dependents))
+              "Should not include dashboard in regular collection"))))))
+
+(deftest ^:parallel library-dependents-with-dashboard-in-nested-library-test
+  (testing "library-dependents should return dashboards in nested library collections"
+    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "library"}
+                   :model/Collection {nested-library-coll-id :id} {:type "library"
+                                                                   :location (format "/%d/" library-coll-id)}
+                   :model/Card {library-card-id :id} {:collection_id library-coll-id
+                                                      :name "Library card"}
+                   :model/Dashboard {nested-dashboard-id :id} {:collection_id nested-library-coll-id
+                                                               :name "Nested library dashboard"}
+                   :model/DashboardCard _ {:card_id library-card-id
+                                           :dashboard_id nested-dashboard-id
+                                           :row 0 :col 0
+                                           :size_x 4 :size_y 4}]
+
+      (testing "Returns dashboards from nested library collections"
+        (let [dependents (collection/library-dependents (t2/instance :model/Card {:id library-card-id}))]
+          (is (some #(and (= :model/Dashboard (t2/model %)) (= nested-dashboard-id (:id %))) dependents)
+              "Should include dashboard in nested library collection"))))))
+
+(deftest ^:parallel library-dependents-with-archived-dashboard-test
+  (testing "library-dependents should not return archived dashboards"
+    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "library"}
+                   :model/Card {library-card-id :id} {:collection_id library-coll-id
+                                                      :name "Library card"}
+                   :model/Dashboard {archived-dashboard-id :id} {:collection_id library-coll-id
+                                                                 :name "Archived library dashboard"
+                                                                 :archived true}
+                   :model/DashboardCard _ {:card_id library-card-id
+                                           :dashboard_id archived-dashboard-id
+                                           :row 0 :col 0
+                                           :size_x 4 :size_y 4}]
+
+      (testing "Does not return archived dashboards"
+        (let [dependents (collection/library-dependents (t2/instance :model/Card {:id library-card-id}))]
+          (is (not (some #(and (= :model/Dashboard (t2/model %)) (= archived-dashboard-id (:id %))) dependents))
+              "Should not include archived dashboard even if in library collection"))))))
+
+(deftest ^:parallel library-dependents-with-dashboard-series-test
+  (testing "library-dependents should return dashboards that reference cards through dashboard card series"
+    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "library"}
+                   :model/Card {library-card-id :id} {:collection_id library-coll-id
+                                                      :name "Library card"}
+                   :model/Card {other-card-id :id} {:collection_id library-coll-id
+                                                    :name "Other card"}
+                   :model/Dashboard {library-dashboard-id :id} {:collection_id library-coll-id
+                                                                :name "Library dashboard"}
+                   :model/DashboardCard {dashcard-id :id} {:card_id other-card-id
+                                                           :dashboard_id library-dashboard-id
+                                                           :row 0 :col 0
+                                                           :size_x 4 :size_y 4}
+                   :model/DashboardCardSeries _ {:dashboardcard_id dashcard-id
+                                                 :card_id library-card-id
+                                                 :position 0}]
+
+      (testing "Returns dashboards that reference cards through series"
+        (let [dependents (collection/library-dependents (t2/instance :model/Card {:id library-card-id}))]
+          (is (some #(and (= :model/Dashboard (t2/model %)) (= library-dashboard-id (:id %))) dependents)
+              "Should include dashboard that references card through series"))))))
+
+(deftest ^:parallel library-dependents-mixed-dashboard-and-card-dependencies-test
+  (testing "library-dependents should return both dashboard and card dependencies"
+    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "library"}
+                   :model/Card {source-card-id :id} {:collection_id library-coll-id
+                                                     :name "Source card"}
+                   :model/Card {dependent-card-id :id} {:collection_id library-coll-id
+                                                        :name "Dependent card"
+                                                        :dataset_query {:database (mt/id)
+                                                                        :type :query
+                                                                        :query {:source-table (str "card__" source-card-id)}}}
+                   :model/Dashboard {library-dashboard-id :id} {:collection_id library-coll-id
+                                                                :name "Library dashboard"}
+                   :model/DashboardCard _ {:card_id source-card-id
+                                           :dashboard_id library-dashboard-id
+                                           :row 0 :col 0
+                                           :size_x 4 :size_y 4}]
+
+      (testing "Returns both card and dashboard dependencies"
+        (let [dependents (collection/library-dependents (t2/instance :model/Card {:id source-card-id}))
+              dependent-models (map t2/model dependents)]
+          (is (some #(= :model/Card %) dependent-models)
+              "Should include dependent cards")
+          (is (some #(= :model/Dashboard %) dependent-models)
+              "Should include dependent dashboards"))))))
+
+(deftest ^:parallel move-collection!-from-library-with-dependents-prevents-move-test
+  (testing "move-collection! prevents moving a collection from library when it has library dependents"
+    (mt/with-temp [:model/Collection {library-parent-id :id} {:name "Library Parent"
+                                                              :location "/"
+                                                              :type "library"}
+                   :model/Collection {child-library-id :id :as child-library} {:name "Child Library Collection"
+                                                                               :location (format "/%d/" library-parent-id)
+                                                                               :type "library"}
+                   :model/Collection {regular-parent-id :id} {:name "Regular Parent"
+                                                              :location "/"
+                                                              :type nil}
+                   :model/Card {library-card-id :id} {:name "Library Card"
+                                                      :collection_id child-library-id
+                                                      :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
+                                                        :collection_id library-parent-id
+                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" library-card-id)})}]
+
+      (testing "Throws exception when trying to move collection with library dependents"
+        (let [ex (is (thrown? Exception
+                              (collection/move-collection! child-library (format "/%d/" regular-parent-id)))
+                     "Should throw exception when moving collection with library dependents")]
+          (is (= "Model has library dependents" (ex-message ex))
+              "Exception should have correct message")
+          (let [ex-data (ex-data ex)]
+            (is (= 400 (:status-code ex-data))
+                "Exception should have 400 status code")
+            (is (contains? ex-data :library-models)
+                "Exception should contain library dependents"))))
+
+      (testing "Collection remains unchanged after failed move"
+        (let [unchanged-coll (t2/select-one :model/Collection :id child-library-id)]
+          (is (= "library" (:type unchanged-coll))
+              "Collection type should remain library after failed move")
+          (is (= (format "/%d/" library-parent-id) (:location unchanged-coll))
+              "Collection location should remain unchanged after failed move"))))))
+
+(deftest ^:parallel move-collection!-from-library-with-dashboard-dependents-prevents-move-test
+  (testing "move-collection! prevents moving a collection from library when it has dashboard dependents"
+    (mt/with-temp [:model/Collection {library-parent-id :id} {:name "Library Parent"
+                                                              :location "/"
+                                                              :type "library"}
+                   :model/Collection {child-library-id :id :as child-library} {:name "Child Library Collection"
+                                                                               :location (format "/%d/" library-parent-id)
+                                                                               :type "library"}
+                   :model/Collection {regular-parent-id :id} {:name "Regular Parent"
+                                                              :location "/"
+                                                              :type nil}
+                   :model/Card {library-card-id :id} {:name "Library Card"
+                                                      :collection_id child-library-id
+                                                      :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Dashboard {library-dashboard-id :id} {:name "Library Dashboard"
+                                                                :collection_id library-parent-id}
+                   :model/DashboardCard _ {:card_id library-card-id
+                                           :dashboard_id library-dashboard-id
+                                           :row 0 :col 0
+                                           :size_x 4 :size_y 4}]
+
+      (testing "Throws exception when trying to move collection with dashboard dependents"
+        (let [ex (is (thrown? Exception
+                              (collection/move-collection! child-library (format "/%d/" regular-parent-id)))
+                     "Should throw exception when moving collection with dashboard dependents")]
+          (is (= "Model has library dependents" (ex-message ex))
+              "Exception should have correct message")
+          (let [ex-data (ex-data ex)]
+            (is (= 400 (:status-code ex-data))
+                "Exception should have 400 status code")
+            (is (contains? ex-data :library-models)
+                "Exception should contain library dependents"))))
+
+      (testing "Collection remains unchanged after failed move"
+        (let [unchanged-coll (t2/select-one :model/Collection :id child-library-id)]
+          (is (= "library" (:type unchanged-coll))
+              "Collection type should remain library after failed move")
+          (is (= (format "/%d/" library-parent-id) (:location unchanged-coll))
+              "Collection location should remain unchanged after failed move"))))))
+
+(deftest ^:parallel move-collection!-from-library-no-dependents-allows-move-test
+  (testing "move-collection! allows moving a collection from library when it has no library dependents"
+    (mt/with-temp [:model/Collection {library-parent-id :id} {:name "Library Parent"
+                                                              :location "/"
+                                                              :type "library"}
+                   :model/Collection {child-library-id :id :as child-library} {:name "Child Library Collection"
+                                                                               :location (format "/%d/" library-parent-id)
+                                                                               :type "library"}
+                   :model/Collection {regular-parent-id :id} {:name "Regular Parent"
+                                                              :location "/"
+                                                              :type nil}
+                   :model/Card {library-card-id :id} {:name "Library Card"
+                                                      :collection_id child-library-id
+                                                      :dataset_query (mt/native-query {:query "SELECT 1"})}]
+
+      (testing "Successfully moves collection when no dependents exist"
+        (collection/move-collection! child-library (format "/%d/" regular-parent-id))
+
+        (let [moved-coll (t2/select-one :model/Collection :id child-library-id)]
+          (is (nil? (:type moved-coll))
+              "Collection type should be cleared when moved out of library")
+          (is (= (format "/%d/" regular-parent-id) (:location moved-coll))
+              "Collection should be moved to new location"))))))
+
+(deftest ^:parallel move-collection!-from-library-to-library-allows-move-test
+  (testing "move-collection! allows moving a collection from one library to another library"
+    (mt/with-temp [:model/Collection {library-parent1-id :id} {:name "Library Parent 1"
+                                                               :location "/"
+                                                               :type "library"}
+                   :model/Collection {library-parent2-id :id} {:name "Library Parent 2"
+                                                               :location "/"
+                                                               :type "library"}
+                   :model/Collection {child-library-id :id :as child-library} {:name "Child Library Collection"
+                                                                               :location (format "/%d/" library-parent1-id)
+                                                                               :type "library"}
+                   :model/Card {library-card-id :id} {:name "Library Card"
+                                                      :collection_id child-library-id
+                                                      :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
+                                                        :collection_id library-parent1-id
+                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" library-card-id)})}]
+
+      (testing "Successfully moves collection from one library to another"
+        (collection/move-collection! child-library (format "/%d/" library-parent2-id))
+
+        (let [moved-coll (t2/select-one :model/Collection :id child-library-id)]
+          (is (= "library" (:type moved-coll))
+              "Collection type should remain library when moved between libraries")
+          (is (= (format "/%d/" library-parent2-id) (:location moved-coll))
+              "Collection should be moved to new library location"))))))
+
+(deftest ^:parallel move-collection!-from-library-with-nested-dependents-prevents-move-test
+  (testing "move-collection! prevents moving a collection from library when nested collections have dependents"
+    (mt/with-temp [:model/Collection {library-parent-id :id} {:name "Library Parent"
+                                                              :location "/"
+                                                              :type "library"}
+                   :model/Collection {child-library-id :id :as child-library} {:name "Child Library Collection"
+                                                                               :location (format "/%d/" library-parent-id)
+                                                                               :type "library"}
+                   :model/Collection {grandchild-library-id :id} {:name "Grandchild Library Collection"
+                                                                  :location (format "/%d/%d/" library-parent-id child-library-id)
+                                                                  :type "library"}
+                   :model/Collection {regular-parent-id :id} {:name "Regular Parent"
+                                                              :location "/"
+                                                              :type nil}
+                   :model/Card {library-card-id :id} {:name "Library Card"
+                                                      :collection_id grandchild-library-id
+                                                      :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
+                                                        :collection_id library-parent-id
+                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" library-card-id)})}]
+
+      (testing "Throws exception when trying to move collection with nested dependents"
+        (let [ex (is (thrown? Exception
+                              (collection/move-collection! child-library (format "/%d/" regular-parent-id)))
+                     "Should throw exception when moving collection with nested dependents")]
+          (is (= "Model has library dependents" (ex-message ex))
+              "Exception should have correct message")
+          (let [ex-data (ex-data ex)]
+            (is (= 400 (:status-code ex-data))
+                "Exception should have 400 status code")
+            (is (contains? ex-data :library-models)
+                "Exception should contain library dependents"))))
+
+      (testing "Collection and nested collections remain unchanged after failed move"
+        (let [unchanged-coll (t2/select-one :model/Collection :id child-library-id)]
+          (is (= "library" (:type unchanged-coll))
+              "Collection type should remain library after failed move")
+          (is (= (format "/%d/" library-parent-id) (:location unchanged-coll))
+              "Collection location should remain unchanged after failed move"))
+
+        (let [unchanged-grandchild (t2/select-one :model/Collection :id grandchild-library-id)]
+          (is (= "library" (:type unchanged-grandchild))
+              "Grandchild collection type should remain library after failed move")
+          (is (= (format "/%d/%d/" library-parent-id child-library-id) (:location unchanged-grandchild))
+              "Grandchild collection location should remain unchanged after failed move"))))))

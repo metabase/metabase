@@ -11,5 +11,7 @@
  [metabase.collections.models.collection
   library-collection?
   check-non-library-dependencies
+  check-library-dependents
   moving-into-library?
+  moving-from-library?
   non-library-dependencies])
