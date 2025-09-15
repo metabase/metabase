@@ -14,7 +14,7 @@ export function PythonEditor({
   ...rest
 }: {
   value: string;
-  onChange: (value: string) => void;
+  onChange?: (value: string) => void;
   withPandasCompletions?: boolean;
   className?: string;
   readOnly?: boolean;
