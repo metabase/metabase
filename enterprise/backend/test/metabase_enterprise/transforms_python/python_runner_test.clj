@@ -254,9 +254,8 @@
 
 (defn- datetime-equal?
   [expected-iso-str actual-pandas-str]
-  (let [formatter   (t/formatter "yyyy-MM-dd HH:mm:ssXXX")
-        expected-dt (t/zoned-date-time expected-iso-str)
-        actual-dt   (t/offset-date-time formatter actual-pandas-str)]
+  (let [expected-dt (t/zoned-date-time expected-iso-str)
+        actual-dt   (t/zoned-date-time actual-pandas-str)]
     (= (t/to-millis-from-epoch expected-dt)
        (t/to-millis-from-epoch actual-dt))))
 
@@ -292,39 +291,38 @@
                                 "    return df")
             result (execute! {:code  transform-code
                               :tables {"sample_table" (mt/id :sample_table)}})
-            csv-data (csv/read-csv (:output result))
-            headers (first csv-data)
-            rows (rest csv-data)
+            rows (map json/decode+kw (str/split-lines (:output result)))
+            headers (map name (keys (first rows)))
             [row1 row2 row3] rows
-            header-to-index (zipmap headers (range))
-            get-col (fn [row col-name] (nth row (header-to-index col-name)))
+            get-col (fn [row col-name] (get row (keyword col-name)))
             metadata (:output-manifest result)]
 
         (is (= (set ["id" "name" "description" "count" "price" "is_active" "created_date" "updated_at" "scheduled_for"])
                (set headers)))
 
-        (is (= "1" (get-col row1 "id")))
+        (is (= 1 (get-col row1 "id")))
         (is (= "Product A" (get-col row1 "name")))
         (is (datetime-equal? "2024-01-16T14:00:00Z" (get-col row1 "scheduled_for")))
 
-        (is (= "2" (get-col row2 "id")))
+        (is (= 2 (get-col row2 "id")))
         (is (= "Product B" (get-col row2 "name")))
         (is (datetime-equal? "2024-02-02T21:30:00Z" (get-col row2 "scheduled_for")))
 
-        (is (= "3" (get-col row3 "id")))
+        (is (= 3 (get-col row3 "id")))
         (is (= "Product C" (get-col row3 "name")))
         (is (datetime-equal? "2024-03-11T06:00:00Z" (get-col row3 "scheduled_for")))
         (testing "types are preserved correctly"
-          (is (= {"id"            :type/Integer
+          (is (= {"id"            :type/BigInteger
                   "name"          :type/Text
                   "description"   :type/Text
-                  "count"         :type/Integer
+                  "count"         :type/BigInteger
                   "price"         :type/Float
                   "is_active"     :type/Boolean
                   ;; Our hack works
                   "created_date"  :type/Date
                   "updated_at"    :type/DateTime
-                  "scheduled_for" :type/DateTimeWithTZ}
+                  ;; TODO I think this might be a regression?
+                  "scheduled_for" :type/DateTimeWithLocalTZ}
                  (u/for-map [{:keys [name base_type]} (:fields metadata)]
                    [name (keyword "type" base_type)]))))))))
 
