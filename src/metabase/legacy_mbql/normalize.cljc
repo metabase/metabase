@@ -413,10 +413,6 @@
                            k ((if (simple-keyword? k)
                                 u/->snake_case_en
                                 u/->kebab-case-en) k)
-                           _ (when (= k :fingerprint)
-                               (when-let [base-type (first (keys (:type v)))]
-                                 (assert (isa? base-type :type/*)
-                                         (str "BAD FINGERPRINT! " (pr-str v)))))
                            v (case k
                                (:base_type
                                 :effective_type
