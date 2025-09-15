@@ -4,7 +4,6 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time.api :as t]
    [metabase-enterprise.transforms-python.execute :as transforms.execute]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms.settings :as transforms.settings]
@@ -16,12 +15,15 @@
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (def test-id 42)
+
+(def supported-drivers #{:h2 :postgres :mysql :bigquery-cloud-sdk :sqlserver :mongo})
 
 (defn- execute!
   "Execute a Python transform with the given code and tables"
@@ -130,7 +132,13 @@
                          {:name "uuid_field" :type :type/UUID :nullable? true}
                          {:name "datetimeoffset_field" :type :type/DateTimeWithTZ :nullable? true :database-type "datetimeoffset"}]
                :data [[1 "550e8400-e29b-41d4-a716-446655440000" "2024-01-01 12:00:00 -05:00"]
-                      [2 nil nil]]}})
+                      [2 nil nil]]}
+   :mongo {:columns [{:name "id" :type :type/Integer :nullable? false}
+                     {:name "uuid_field" :type :type/UUID :nullable? true}
+                     {:name "array_field" :type :type/Array :nullable? true :database-type "array"}
+                     {:name "dict_field" :type :type/Dictionary :nullable? true :database-type "object"}]
+           :data [[1 #uuid "550e8400-e29b-41d4-a716-446655440000" [1, 2, 3] {"nested" "object"}]
+                  [2 nil nil nil]]}})
 
 (defn- create-test-table-with-data!
   "Create a test table with the given schema and data for the current driver."
@@ -148,9 +156,18 @@
 
     (when (seq data)
       (driver/insert-from-source! driver db-id table-schema
-                                  {:type :rows :data (map (fn [row] (map #(if (and (= :sqlserver driver) (boolean? %))
-                                                                            (if % 1 0)
-                                                                            %) row)) data)}))
+                                  {:type :rows
+                                   :data (map (fn [row]
+                                                (map #(cond
+                                                        (and (= :sqlserver driver) (boolean? %))
+                                                        (if % 1 0)
+
+                                                        (and (= :mongo driver) (string? %) (try (u.date/parse %) (catch Exception _)))
+                                                        (u.date/parse %)
+
+                                                        :else
+                                                        %) row))
+                                              data)}))
 
     (sync/sync-database! (mt/db) {:scan :schema})
 
@@ -208,7 +225,7 @@
 
 (deftest create-table-test
   (testing "Test we can create base table"
-    (mt/test-drivers #{:h2 :postgres :mysql :bigquery-cloud-sdk :sqlserver}
+    (mt/test-drivers supported-drivers
       (mt/with-empty-db
         (let [table-name (mt/random-name)
 
@@ -222,7 +239,7 @@
 
 (deftest base-types-python-transform-test
   (testing "Test Python transforms with base types across all supported drivers"
-    (mt/test-drivers #{:h2 :postgres :mysql :bigquery-cloud-sdk :sqlserver}
+    (mt/test-drivers supported-drivers
       (mt/with-empty-db
         (let [table-name (mt/random-name)
               table-id (create-test-table-with-data!
@@ -260,7 +277,7 @@
 
 (deftest exotic-types-python-transform-test
   (testing "Test Python transforms with driver-specific exotic types"
-    (mt/test-drivers #{:h2 :postgres :mysql :bigquery-cloud-sdk :sqlserver}
+    (mt/test-drivers supported-drivers
       (mt/with-empty-db
         (when-let [exotic-config (get driver-exotic-types driver/*driver*)]
           (let [table-name (mt/random-name)
@@ -324,6 +341,18 @@
                                           (when (contains? type-map "dict_field")
                                             (is (isa? (type-map "dict_field") :type/JSON))))
 
+                    :mongo (do
+                             #_(when (contains? type-map "uuid_field")
+                                 (is (isa? (type-map "uuid_field") :type/UUID)))
+                             (when (contains? type-map "json_field")
+                               (is (isa? (type-map "json_field") :type/JSON)))
+                             (when (contains? type-map "array_field")
+                               (is (isa? (type-map "array_field") :type/Array)))
+                             (when (contains? type-map "dict_field")
+                               (is (isa? (type-map "dict_field") :type/Dictionary)))
+                             (when (contains? type-map "bson_id")
+                               (is (isa? (type-map "bson_id") :type/MongoBSONID))))
+
                     :sqlserver (do
                                  (when (contains? type-map "uuid_field")
                                    (is (isa? (type-map "uuid_field") :type/UUID)))
@@ -334,7 +363,7 @@
 
 (deftest edge-cases-python-transform-test
   (testing "Test Python transforms with edge cases: null values, empty strings, extreme values"
-    (mt/test-drivers #{:h2 :postgres :mysql :bigquery-cloud-sdk :sqlserver}
+    (mt/test-drivers supported-drivers
       (mt/with-empty-db
         (let [table-name (mt/random-name)
               edge-case-schema {:columns [{:name "id" :type :type/Integer :nullable? false}
@@ -390,7 +419,7 @@
                 (is (isa? (type-map "int_field") :type/Integer))
                 (is (isa? (type-map "float_field") :type/Float))
                 (is (isa? (type-map "bool_field") :type/Boolean))
-                (is (isa? (type-map "date_field") :type/Date)))
+                (is (isa? (type-map "date_field") (if (= driver/*driver* :mongo) :type/Instant :type/Date))))
 
               (testing "Computed columns have correct types"
                 (is (isa? (type-map "text_length") :type/Integer))
@@ -413,7 +442,7 @@
 
 (deftest idempotent-transform-test
   (testing "Test that running the same transform multiple times produces identical results"
-    (mt/test-drivers #{:h2 :postgres :mysql :bigquery-cloud-sdk :sqlserver}
+    (mt/test-drivers supported-drivers
       (mt/with-empty-db
         (let [table-name (mt/random-name)
               table-id (create-test-table-with-data!
@@ -464,7 +493,7 @@
 
 (deftest comprehensive-e2e-python-transform-test
   (testing "End-to-end test using execute-python-transform! across all supported drivers with comprehensive type coverage"
-    (mt/test-drivers #{:h2 :postgres :mysql :bigquery-cloud-sdk :sqlserver}
+    (mt/test-drivers supported-drivers
       (mt/with-empty-db
         (mt/with-premium-features #{:transforms}
           (let [table-name (mt/random-name)
@@ -985,7 +1014,7 @@
                           large-values-schema
                           (:data large-values-schema))
 
-              ;; Transform that processes large values
+                ;; Transform that processes large values
                 transform-code (str "import pandas as pd\n"
                                     "import numpy as np\n"
                                     "\n"
@@ -1027,22 +1056,22 @@
                   (is (= 4 (count rows)) "Should have 4 rows")
                   (is (> (count headers) 6) "Should have computed columns")
 
-                ;; Check computed columns exist
+                  ;; Check computed columns exist
                   (is (contains? (set headers) "text_length") "Should calculate text length")
                   (is (contains? (set headers) "is_large_positive") "Should detect large numbers")
                   (is (contains? (set headers) "has_unicode") "Should detect unicode"))
 
                 (testing "Large value operations maintain precision"
                   (let [first-row (first rows)]
-                  ;; Text length should be very large for first row
+                    ;; Text length should be very large for first row
                     (when-let [length (get first-row "text_length")]
                       (is (> length 9000) "Should handle very long text correctly"))
 
-                  ;; Should detect unicode in second row
+                    ;; Should detect unicode in second row
                     (let [second-row (second rows)
                           has-unicode (get second-row "has_unicode")]
                       (is (contains? #{true "True" "true" 1 "1"} has-unicode)
                           "Should detect unicode characters"))))))
 
-          ;; Cleanup
+            ;; Cleanup
             (cleanup-table! table-id))))))
