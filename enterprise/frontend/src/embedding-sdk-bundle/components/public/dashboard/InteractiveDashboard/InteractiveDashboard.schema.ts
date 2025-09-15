@@ -24,7 +24,7 @@ const propsSchema: Yup.SchemaOf<InteractiveDashboardProps> = Yup.object({
     onBeforeSave: Yup.mixed().optional(),
     onRun: Yup.mixed().optional(),
     onSave: Yup.mixed().optional(),
-    plugins: Yup.object().optional(),
+    plugins: Yup.mixed().optional(),
     style: Yup.mixed().optional(),
     targetCollection: Yup.mixed().optional(),
     title: Yup.mixed().optional(),
