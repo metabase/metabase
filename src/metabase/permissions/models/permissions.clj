@@ -164,6 +164,7 @@
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.config.core :as config]
+   [metabase.library.core :as library]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.path :as permissions.path]
@@ -278,7 +279,10 @@
 
 (defmethod mi/perms-objects-set :perms/use-parent-collection-perms
   [instance read-or-write]
-  (perms-objects-set-for-parent-collection instance read-or-write))
+  (if (or (= read-or-write :read)
+          (library/library-editable? (or (:collection instance) (:collection_id instance))))
+    (perms-objects-set-for-parent-collection instance read-or-write)
+    #{"library-access"}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               ENTITY + LIFECYCLE                                               |

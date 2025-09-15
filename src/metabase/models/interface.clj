@@ -887,3 +887,11 @@
 (defmethod exclude-internal-content-hsql :default
   [_model & _]
   [:= [:inline 1] [:inline 1]])
+
+(methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_write]
+  [_model k cards]
+  (instances-with-hydrated-data
+   cards k
+   #(map (juxt :id can-write?) (t2/hydrate cards :collection))
+   :id
+   {:default false}))

@@ -3,7 +3,7 @@
    [metabase.premium-features.core :refer [defenterprise]]))
 
 (defenterprise library-editable?
-  "Should the library be editable. Always false on OSS"
+  "Should the library be editable. Always true on OSS"
   metabase-enterprise.library.core
   [_collection]
-  false)
+  true)

@@ -41,21 +41,19 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/library)
   (derive :hook/entity-id)
   (derive :hook/git-sync-protected))
 
 (defmethod mi/can-write? :model/Dashboard
   ([instance]
    ;; Dashboards in audit collection should be read only
-   (if (and
-        ;; We want to make sure there's an existing audit collection before doing the equality check below.
-        ;; If there is no audit collection, this will be nil:
-        (some? (:id (audit/default-audit-collection)))
-        ;; Is a direct descendant of audit collection
-        (= (:collection_id instance) (:id (audit/default-audit-collection))))
-     false
-     (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :write))))
+   (and (not (and
+              ;; We want to make sure there's an existing audit collection before doing the equality check below.
+              ;; If there is no audit collection, this will be nil:
+              (some? (:id (audit/default-audit-collection)))
+              ;; Is a direct descendant of audit collection
+              (= (:collection_id instance) (:id (audit/default-audit-collection)))))
+        (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Dashboard :id pk))))
 

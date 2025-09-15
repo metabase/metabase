@@ -33,7 +33,7 @@
     (log/infof "Library source configured as %s" <>)))
 
 (defenterprise library-editable?
-  "Should the library be editable. Always false on OSS"
+  "Should the library be editable. Always true on OSS"
   :feature :none
   [collection]
   (or (not (collections/library-collection? collection))
