@@ -142,15 +142,14 @@
                          ;; Note that this will analyze the query with any upstream changes included!
                          (let [new-cols (-> (lib/query mp (:query source))
                                             lib/returned-columns)
-                               by-name  (m/index-by :name existing-cols)]
+                               by-name  (m/index-by :lib/desired-column-alias existing-cols)]
                            (into [] (for [col new-cols
-                                          :let [old-col (by-name (:name col))]]
-                                      (u/prog1 (merge (select-keys old-col [:name :display-name
-                                                                            :base-type :effective-type :semantic-type])
-                                                      {:lib/type :metadata/field
-                                                       :id       (or (:id old-col) (fake-id))
-                                                       :table-id (:id output-table)})
-                                        (tap> [`transform-cols 'old-col old-col 'col col '=> <>]))))))
+                                          :let [old-col (by-name (:lib/desired-column-alias col))]]
+                                      (merge (select-keys col [:name :display-name
+                                                               :base-type :effective-type :semantic-type])
+                                             {:lib/type :metadata/column
+                                              :id       (or (:id old-col) (fake-id))
+                                              :table-id (:id output-table)})))))
         outputs-by-id   (delay (m/index-by :id @output-cols))]
     ;; NOTE: Any newly added output columns can't be looked up directly by ID, with this version.
     ;; The `output-cols` code above can be adapted to add them to the `*overrides` atom, but YAGNI for now.
@@ -173,7 +172,7 @@
             tables     (lib.metadata/tables (inner-mp mp))
             s+n->table (m/index-by (juxt :schema :name) tables)]
         (doseq [transform (-> (.*overrides mp) deref :metadata/transform vals)]
-          (setup-transform! mp s+n->table transform))))))
+          (setup-transform! mp s+n->table (deref transform)))))))
 
 (defmethod add-override :transform [^OverridingMetadataProvider mp _entity-type id updates]
   ;; Transforms are complicated:

@@ -77,7 +77,8 @@
           card1-cols (-> (lib/query mp1 card1)
                          lib/returned-columns)
 
-          transform  {:id     123
+          transform  {:lib/type :metadata/transform
+                      :id     123
                       :name   "The Transform"
                       :source {:type  :query
                                :query (-> (lib/query mp1 (lib.metadata/card mp1 1))
@@ -121,13 +122,10 @@
                 (->> (lib.metadata/card mp 1)
                      (lib/query mp)
                      lib/returned-columns))))
-      ;; FIXME: This is incorrect! The test is failing; the downstream card is returning the wrong columns, which
-      ;; implies that it's getting the old fields from the output table, or similar! Need to debug into why the
-      ;; OverrideMetadataProvider transforms logic isn't working for this case.
-      #_(testing "downstream card (which selects all) is also correct"
-          (is (=? [{:name "CREATED_AT"}
-                   {:name "count"}]
-                  (->> (lib.metadata/card mp 2)
-                       (lib/query mp)
-                       lib/returned-columns
-                       (sort-by :name))))))))
+      (testing "downstream card (which selects all) is also correct"
+        (is (=? [{:name "CREATED_AT"}
+                 {:name "count"}]
+                (->> (lib.metadata/card mp 2)
+                     (lib/query mp)
+                     lib/returned-columns
+                     (sort-by :name))))))))
