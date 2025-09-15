@@ -18,10 +18,7 @@ export const userKeyValueApi = Api.injectEndpoints({
         url: `/api/user-key-value/namespace/${namespace}/key/${key}`,
         body,
       }),
-      async onQueryStarted(
-        { key, namespace, value },
-        { dispatch, queryFulfilled },
-      ) {
+      onQueryStarted({ key, namespace, value }, { dispatch, queryFulfilled }) {
         const kvResult = dispatch(
           userKeyValueApi.util.updateQueryData(
             "getUserKeyValue",

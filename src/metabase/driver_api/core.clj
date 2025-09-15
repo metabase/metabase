@@ -14,6 +14,7 @@
    [metabase.config.core :as config]
    [metabase.connection-pool :as connection-pool]
    [metabase.database-routing.core :as database-routing]
+   [metabase.driver-api.impl]
    [metabase.events.core :as events]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -139,6 +140,7 @@
  mdb/make-subname
  mdb/query-canceled-exception?
  mdb/spec
+ metabase.driver-api.impl/cached
  mi/instance-of?
  nest-query/nest-expressions
  premium-features/is-hosted?
@@ -152,7 +154,6 @@
  qp.relative-datetime/maybe-cacheable-relative-datetime-honeysql
  qp.setup/with-qp-setup
  qp.store/->legacy-metadata
- qp.store/cached
  qp.store/initialized?
  qp.store/metadata-provider
  qp.store/with-metadata-provider

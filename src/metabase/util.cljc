@@ -1183,8 +1183,7 @@
 (defn index-by
   "(index-by first second [[1 3] [1 4] [2 5]]) => {1 4, 2 5}"
   ([kf]
-   (map (fn [x]
-          [(kf x) x])))
+   (map (juxt kf identity)))
   ([kf coll]
    (into {} (index-by kf) coll))
   ([kf vf coll]
