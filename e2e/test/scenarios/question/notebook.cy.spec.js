@@ -228,42 +228,47 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
   });
 
-  describe(
-    "popover rendering issues (metabase#15502)",
-    { tags: "@skip" },
-    () => {
-      beforeEach(() => {
-        H.restore();
-        cy.signInAsAdmin();
-        cy.viewport(1280, 720);
-        H.startNewQuestion();
-        cy.findByTextEnsureVisible("Sample Database").click();
-        cy.findByTextEnsureVisible("Orders").click();
+  describe("popover rendering issues (metabase#15502)", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      cy.viewport(1280, 720);
+      H.startNewQuestion();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
+        H.entityPickerModalItem(2, "Orders").click();
       });
+    });
 
-      it("popover should not render outside of viewport regardless of the screen resolution (metabase#15502-1)", () => {
-        // Initial filter popover usually renders correctly within the viewport
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Add filters to narrow your answer").as("filter").click();
-        H.popover().isRenderedWithinViewport();
-        // Click anywhere outside this popover to close it because the issue with rendering happens when popover opens for the second time
-        cy.icon("gear").click();
-        cy.get("@filter").click();
-        H.popover().isRenderedWithinViewport();
-      });
+    it("popover should not render outside of viewport regardless of the screen resolution (metabase#15502-1)", () => {
+      H.getNotebookStep("filter")
+        .findByText("Add filters to narrow your answer")
+        .click();
 
-      it("popover should not cover the button that invoked it (metabase#15502-2)", () => {
-        // Initial summarize/metric popover usually renders initially without blocking the button
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Pick a function or metric").as("metric").click();
-        // Click outside to close this popover
-        cy.icon("gear").click();
-        // Popover invoked again blocks the button making it impossible to click the button for the third time
-        cy.get("@metric").click();
-        cy.get("@metric").click();
-      });
-    },
-  );
+      H.popover().isRenderedWithinViewport();
+      // Click anywhere outside this popover to close it because the issue with rendering happens when popover opens for the second time
+      cy.icon("gear").click();
+      H.getNotebookStep("filter")
+        .findByText("Add filters to narrow your answer")
+        .click();
+      H.popover().isRenderedWithinViewport();
+    });
+
+    it("popover should not cover the button that invoked it (metabase#15502-2)", () => {
+      H.getNotebookStep("summarize")
+        .findByText("Pick a function or metric")
+        .click();
+      // Click outside to close this popover
+      cy.icon("gear").click();
+      // Popover invoked again blocks the button making it impossible to click the button for the third time
+      H.getNotebookStep("summarize")
+        .findByText("Pick a function or metric")
+        .click();
+      H.getNotebookStep("summarize")
+        .findByText("Pick a function or metric")
+        .click();
+    });
+  });
 
   describe("arithmetic (metabase#13175, metabase#18094)", () => {
     beforeEach(() => {
@@ -470,51 +475,55 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     H.visualize();
   });
 
-  // flaky test
   it(
     "should show an info popover when hovering over a field picker option for a table",
-    { tags: "@skip" },
+    { tags: "@flaky" },
     () => {
       H.startNewQuestion();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Sample Database").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Orders").click();
-
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
+        H.entityPickerModalItem(2, "Orders").click();
+      });
       cy.findByTestId("fields-picker").click();
+      H.popover()
+        .findByText("Total")
+        .closest("label")
+        .findByLabelText("More info")
+        .trigger("mouseover");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Total").trigger("mouseenter");
-
-      H.popover().contains("The total billed amount.");
-      H.popover().contains("80.36");
+      H.popover()
+        .should("have.length", 2)
+        // the info popover is the second in the document
+        .last()
+        .contains("The total billed amount.");
     },
   );
 
-  // flaky test
   it(
     "should show an info popover when hovering over a field picker option for a saved question",
-    { tags: "@skip" },
+    { tags: "@flaky" },
     () => {
       H.createNativeQuestion({
         name: "question a",
         native: { query: "select 'foo' as a_column" },
       });
-
-      // start a custom question with question a
       H.startNewQuestion();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved Questions").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("question a").click();
-
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Collections").click();
+        cy.findByText("question a").click();
+      });
       cy.findByTestId("fields-picker").click();
+      H.popover()
+        .findByText("A_COLUMN")
+        .closest("label")
+        .findByLabelText("More info")
+        .trigger("mouseover");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("A_COLUMN").trigger("mouseenter");
-
-      H.popover().contains("A_COLUMN");
-      H.popover().contains("No description");
+      H.popover()
+        .should("have.length", 2)
+        // the info popover is the second in the document
+        .last()
+        .contains("No description");
     },
   );
 
