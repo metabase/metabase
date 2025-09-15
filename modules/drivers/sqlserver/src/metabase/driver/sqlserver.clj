@@ -3,6 +3,8 @@
   (:require
    [clojure.data.xml :as xml]
    [clojure.java.io :as io]
+
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [honey.sql :as sql]
@@ -118,6 +120,27 @@
     :varchar          :type/Text
     :xml              :type/*
     (keyword "int identity") :type/Integer} column-type)) ; auto-incrementing integer (ie pk) field
+
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for SQL Server that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+(defmethod type->database-type :type/Boolean [_] [:bit])
+(defmethod type->database-type :type/Date [_] [:date])
+(defmethod type->database-type :type/DateTime [_] [:datetime2])
+(defmethod type->database-type :type/DateTimeWithTZ [_] [:datetimeoffset])
+(defmethod type->database-type :type/Decimal [_] [:decimal])
+(defmethod type->database-type :type/Float [_] [:float])
+(defmethod type->database-type :type/Integer [_] [:int])
+(defmethod type->database-type :type/Number [_] [:bigint])
+(defmethod type->database-type :type/Text [_] [:text])
+(defmethod type->database-type :type/Time [_] [:time])
+(defmethod type->database-type :type/UUID [_] [:uniqueidentifier])
+
+(defmethod driver/type->database-type :sqlserver
+  [_driver base-type]
+  (type->database-type base-type))
 
 (defmethod sql-jdbc.conn/connection-details->spec :sqlserver
   [_ {:keys [user password db host port instance domain ssl]
@@ -969,3 +992,9 @@
   [driver conn-spec schema]
   (let [sql [[(format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA [%s];');" schema schema)]]]
     (driver/execute-raw-queries! driver conn-spec sql)))
+
+(defmethod driver/rename-table! :sqlserver
+  [_driver db-id old-table-name new-table-name]
+  (let [sql (format "EXEC sp_rename '%s', '%s'" (name old-table-name) (name new-table-name))]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+      (jdbc/execute! conn sql))))

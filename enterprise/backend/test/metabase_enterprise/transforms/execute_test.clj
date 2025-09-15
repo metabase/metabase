@@ -5,7 +5,8 @@
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
-   [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
+   [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
+   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.lib.core :as lib]
@@ -13,6 +14,7 @@
    [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.test.data.sql :as sql.tx]
    [toucan2.core :as t2]
    [toucan2.util :as u]))
 
@@ -130,6 +132,24 @@
                           ["2024-01-23T00:00:00Z" 14.99]]
                          query-result)))))))))))
 
+(deftest create-table-from-schema!-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (let [driver       driver/*driver*
+          db-id        (mt/id)
+          table-name   (mt/random-name)
+          schema-name  (sql.tx/session-schema driver)
+          table-schema {:name    (if schema-name
+                                   (keyword schema-name table-name)
+                                   (keyword table-name))
+                        :columns [{:name "id" :type :type/Integer :nullable? false}
+                                  {:name "name" :type :type/Text :nullable? true}]}]
+      (mt/as-admin
+        (testing "create-table-from-schema! should create the table successfully"
+          (transforms.util/create-table-from-schema! driver db-id table-schema)
+          (let [table-exists? (driver/table-exists? driver db-id {:schema schema-name :name table-name})]
+            (is (some? table-exists?) "Table should exist in the database schema")
+            (driver/drop-table! driver db-id (:name table-schema))))))))
+
 (deftest transform-schema-created-if-needed-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table :schemas]})
     (mt/dataset transforms-dataset/transforms-test
@@ -224,3 +244,87 @@
             (driver/execute-raw-queries! driver/*driver* spec
                                          [[(format "DROP OWNED BY %s;" no-schema-user)]
                                           [(format "DROP ROLE IF EXISTS %s;" no-schema-user)]])))))))
+
+(deftest atomic-python-transform-swap-test
+  (testing "Python transform execution with atomic table swap"
+    (mt/test-drivers #{:h2 :postgres}
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+            (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
+                                                                     :schema schema
+                                                                     :name   "atomic_python_swap"}]
+              (let [initial-transform {:name   "Python Transform Initial"
+                                       :source {:type  "python"
+                                                :source-tables {}
+                                                :body  (str "import pandas as pd\n"
+                                                            "\n"
+                                                            "def transform():\n"
+                                                            "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")}
+                                       :target (assoc target :database (mt/id))}]
+                (mt/with-temp [:model/Transform transform initial-transform]
+                  (transforms.execute/execute-python-transform! transform {:run-method :manual})
+                  (wait-for-table table-name 10000)
+
+                  (let [initial-rows (transforms.tu/table-rows table-name)]
+                    (is (= [["Alice" 25] ["Bob" 30]] initial-rows) "Initial data should be Alice and Bob")
+
+                    (t2/update! :model/Transform (:id transform)
+                                {:source {:type "python"
+                                          :source-tables {}
+                                          :body (str "import pandas as pd\n"
+                                                     "\n"
+                                                     "def transform():\n"
+                                                     "    return pd.DataFrame({'name': ['Charlie', 'Diana', 'Eve'], 'age': [35, 40, 45]})")}}))
+
+                  (let [swap-latch (java.util.concurrent.CountDownLatch. 1)
+                        original-rename-tables-atomic! transforms.util/rename-tables!]
+                    (with-redefs [transforms.util/rename-tables! (fn [driver db-id rename-pairs]
+                                                                   (.await swap-latch)
+                                                                   (original-rename-tables-atomic! driver db-id rename-pairs))]
+                      (let [transform-future (future
+                                               (transforms.execute/execute-python-transform!
+                                                (t2/select-one :model/Transform (:id transform))
+                                                {:run-method :manual}))]
+                        (is (= [["Alice" 25] ["Bob" 30]]
+                               (transforms.tu/table-rows table-name))
+                            "Original data should still be accessible during transform")
+                        (.countDown swap-latch)
+                        @transform-future
+                        (is (= [["Charlie" 35] ["Diana" 40] ["Eve" 45]]
+                               (transforms.tu/table-rows table-name))
+                            "Table should now contain Charlie, Diana, and Eve")))))))))))))
+
+(deftest python-transform-temp-table-cleanup-test
+  (testing "Python transform cleans up temp tables on success"
+    (mt/test-drivers #{:h2 :postgres}
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+            (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
+                                                                     :schema schema
+                                                                     :name   "python_cleanup_test"}]
+              (let [transform-def {:name   "Python Transform Cleanup"
+                                   :source {:type  "python"
+                                            :source-tables {}
+                                            :body  (str "import pandas as pd\n"
+                                                        "\n"
+                                                        "def transform():\n"
+                                                        "    return pd.DataFrame({'col1': [1, 2, 3], 'col2': ['a', 'b', 'c']})")}
+                                   :target (assoc target :database (mt/id))}]
+                (mt/with-temp [:model/Transform transform transform-def]
+                  (transforms.execute/execute-python-transform! transform {:run-method :manual})
+                  (wait-for-table table-name 10000)
+
+                  (transforms.execute/execute-python-transform! transform {:run-method :manual})
+
+                  (let [db-id (mt/id)
+                        tables (t2/select :model/Table :db_id db-id :active true)
+                        new-table-pattern (re-pattern (str ".*" table-name "_" transforms.execute/temp-table-suffix-new "_.*"))
+                        old-table-pattern (re-pattern (str ".*" table-name "_" transforms.execute/temp-table-suffix-old "_.*"))]
+                    (is (not-any? #(or (re-matches new-table-pattern (:name %))
+                                       (re-matches old-table-pattern (:name %))) tables)
+                        (str "No temp tables (_" transforms.execute/temp-table-suffix-new "_ or _" transforms.execute/temp-table-suffix-old "_) should remain after successful Python transform"))
+
+                    (is (= [[1 "a"] [2 "b"] [3 "c"]] (transforms.tu/table-rows table-name))
+                        "Table should contain the expected data after swap")))))))))))

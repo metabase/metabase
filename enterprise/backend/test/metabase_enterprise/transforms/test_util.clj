@@ -1,6 +1,7 @@
 (ns metabase-enterprise.transforms.test-util
   (:require
    [clojure.string :as str]
+   [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.test :as mt]
@@ -52,6 +53,12 @@
     `(mt/with-model-cleanup [:model/Transform]
        ~@body)))
 
+(defn table-rows
+  [table-name]
+  (mt/rows (mt/process-query {:database (mt/id)
+                              :query    {:source-table (t2/select-one-pk :model/Table :name table-name)}
+                              :type     :query})))
+
 (defn parse-timestamp
   "Parse a local datetime and convert it to a ZonedDateTime in the default timezone."
   ^ZonedDateTime [timestamp-string]
@@ -68,3 +75,36 @@
   "Parse a local datetime and convert it to a string encoding a ZonedDateTime in the default timezone."
   ^String [timestamp-string]
   (-> timestamp-string parse-instant str))
+
+(defn test-run
+  "Run test a transform and wait for completion"
+  [transform-id]
+  (let [resp      (mt/user-http-request :crowberto :post 202 (format "ee/transform/%s/run" transform-id))
+        timeout-s 10 ; 10 seconds is our timeout to finish execution and sync
+        limit     (+ (System/currentTimeMillis) (* timeout-s 1000))]
+    (is (=? {:message "Transform run started"}
+            resp))
+    (loop []
+      (when (> (System/currentTimeMillis) limit)
+        (throw (ex-info (str "Transform run timed out after " timeout-s " seconds") {})))
+      (let [resp   (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" transform-id))
+            status (some-> resp :last_run :status keyword)]
+        (when-not (contains? #{:started :succeeded} status)
+          (throw (ex-info (str "Transform run failed with status " status) {:resp resp})))
+        (when-not (some? (:table resp))
+          (Thread/sleep 100)
+          (recur))))))
+
+(defn wait-for-table
+  "Wait for a table to appear in metadata, with timeout."
+  [^String table-name timeout-ms]
+  (let [timer (u/start-timer)]
+    (loop []
+      (let [table (t2/select-one :model/Table :name table-name)]
+        (cond
+          table table
+          (> (u/since-ms timer) timeout-ms)
+          (throw (ex-info (format "Table %s did not appear after %dms" table-name timeout-ms)
+                          {:table-name table-name :timeout-ms timeout-ms}))
+          :else (do (Thread/sleep 100)
+                    (recur)))))))

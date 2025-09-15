@@ -20,3 +20,7 @@ export type JobListParams = {
   nextRunStartTime?: string;
   transformTagIds?: TransformTagId[];
 };
+
+export type PythonLibraryEditorPageParams = {
+  path: string;
+};

@@ -7,9 +7,11 @@
 
 (p/import-vars
  [metabase.upload.impl
+  create-from-csv-and-sync!
   can-create-upload?
   current-database
   delete-upload!
   model-hydrate-based-on-upload
+  table-identifier
   update-action-schema
   update-csv!])

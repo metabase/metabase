@@ -1,8 +1,0 @@
-.codeEditor {
-  :global {
-    .cm-gutter {
-      background-color: var(--mb-color-brand-light);
-      color: var(--mb-color-brand);
-    }
-  }
-}

@@ -2,6 +2,7 @@
   "Driver for ClickHouse databases"
   (:require
    [clojure.core.memoize :as memoize]
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -212,6 +213,27 @@
     :metabase.upload/datetime                 "Nullable(DateTime64(3))"
     :metabase.upload/offset-datetime          nil))
 
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for ClickHouse that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+(defmethod type->database-type :type/Boolean [_] [[:raw "Nullable(Boolean)"]])
+(defmethod type->database-type :type/Float [_] [[:raw "Nullable(Float64)"]])
+(defmethod type->database-type :type/Integer [_] [[:raw "Nullable(Int64)"]])
+(defmethod type->database-type :type/Number [_] [[:raw "Nullable(Int64)"]])
+(defmethod type->database-type :type/Text [_] [[:raw "Nullable(String)"]])
+(defmethod type->database-type :type/TextLike [_] [[:raw "Nullable(String)"]])
+(defmethod type->database-type :type/Date [_] [[:raw "Nullable(Date32)"]])
+(defmethod type->database-type :type/DateTime [_] [[:raw "Nullable(DateTime64(3))"]])
+(defmethod type->database-type :type/DateTimeWithTZ [_]
+  ;; ?
+  [[:raw "Nullable(DateTime64(3))"]])
+
+(defmethod driver/type->database-type :clickhouse
+  [_driver base-type]
+  (type->database-type base-type))
+
 (defmethod driver/table-name-length-limit :clickhouse
   [_driver]
   ;; FIXME: This is a lie because you're really limited by a filesystems' limits, because Clickhouse uses
@@ -241,7 +263,14 @@
    {:write? true}
    (fn [^java.sql.Connection conn]
      (with-open [stmt (.createStatement conn)]
-       (.execute stmt (create-table!-sql driver table-name column-definitions :primary-key primary-key))))))
+       (let [sql (create-table!-sql driver table-name column-definitions :primary-key primary-key)]
+         (.execute stmt sql))))))
+
+(defmethod driver/rename-table! :clickhouse
+  [_driver db-id old-table-name new-table-name]
+  (let [sql [(format "RENAME TABLE %s TO %s" (quote-name old-table-name) (quote-name new-table-name))]]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+      (jdbc/execute! conn sql))))
 
 (defmethod driver/insert-into! :clickhouse
   [driver db-id table-name column-names values]
