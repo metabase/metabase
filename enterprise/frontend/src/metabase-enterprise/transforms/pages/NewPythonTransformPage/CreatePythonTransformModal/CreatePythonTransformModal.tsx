@@ -44,8 +44,8 @@ export function CreatePythonTransformModal({
   const initialValues: FormValues = {
     name: "",
     description: null,
-    targetSchema: "public",
-    targetName: "",
+    targetSchema: null,
+    targetName: null,
   };
 
   const handleSubmit = async (values: FormValues) => {
