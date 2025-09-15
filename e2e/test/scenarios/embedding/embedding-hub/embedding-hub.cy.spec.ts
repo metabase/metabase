@@ -57,7 +57,9 @@ describe("scenarios - embedding hub", () => {
     });
 
     it("Uploading CSVs should mark the 'Add Data' step as done", () => {
-      cy.log("Enable uploads first");
+      cy.intercept("GET", "/api/ee/embedding-hub/checklist").as("getChecklist");
+
+      cy.log("Enable CSV uploads");
       cy.request("PUT", "/api/setting/uploads-settings", {
         value: {
           db_id: 1, // Sample Database ID
@@ -68,19 +70,15 @@ describe("scenarios - embedding hub", () => {
 
       cy.visit("/admin/embedding/setup-guide");
 
-      cy.log("Set up intercept for checklist updates");
-      cy.intercept("GET", "/api/ee/embedding-hub/checklist").as("getChecklist");
-
-      cy.log("Verify 'Add data' step is initially not done");
+      cy.log("'Add data' should not be marked as done");
       cy.findByTestId("admin-layout-content")
         .findByText("Add data")
         .closest("button")
-        .should("not.have.attr", "data-done", "true");
+        .findByText("Done")
+        .should("not.exist");
 
-      cy.log("Click on 'Add data' to open modal");
       cy.findByTestId("admin-layout-content").findByText("Add data").click();
 
-      cy.log("Switch to CSV tab in Add data modal");
       H.modal().within(() => {
         cy.findByText("CSV").click();
 
@@ -98,18 +96,18 @@ describe("scenarios - embedding hub", () => {
           { force: true },
         );
 
-        cy.log("Upload the file");
         cy.button("Upload").should("be.enabled").click();
       });
 
-      cy.log("Wait for checklist to update");
       cy.wait("@getChecklist");
 
-      cy.log("Verify 'Add data' step is now marked as done");
+      cy.log("'Add data' should be marked as done");
       cy.findByTestId("admin-layout-content")
         .findByText("Add data")
         .closest("button")
-        .should("have.attr", "data-done", "true");
+        .scrollIntoView()
+        .findByText("Done")
+        .should("be.visible");
     });
 
     it('"Create models" link should navigate correctly', () => {
