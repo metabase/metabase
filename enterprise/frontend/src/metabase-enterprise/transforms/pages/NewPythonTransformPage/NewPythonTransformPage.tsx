@@ -7,8 +7,7 @@ import type { PythonTransformSource, Transform } from "metabase-types/api";
 
 import { PythonTransformEditor } from "../../components/PythonTransformEditor";
 import { getTransformListUrl, getTransformUrl } from "../../urls";
-
-import { CreatePythonTransformModal } from "./CreatePythonTransformModal";
+import { CreateTransformModal } from "../NewTransformQueryPage/CreateTransformModal";
 
 const DEFAULT_PYTHON_SOURCE: PythonTransformSource = {
   type: "python",
@@ -60,7 +59,7 @@ export function NewPythonTransformPage() {
         onCancel={handleCancelClick}
       />
       {isModalOpened && (
-        <CreatePythonTransformModal
+        <CreateTransformModal
           source={source}
           onCreate={handleCreate}
           onClose={closeModal}

@@ -24,18 +24,18 @@ import { trackTransformCreated } from "metabase-enterprise/transforms/analytics"
 import { SchemaFormSelect } from "metabase-enterprise/transforms/components/SchemaFormSelect";
 import type {
   CreateTransformRequest,
-  DatasetQuery,
   Transform,
+  TransformSource,
 } from "metabase-types/api";
 
 type CreateTransformModalProps = {
-  query: DatasetQuery;
+  source: TransformSource;
   onCreate: (transform: Transform) => void;
   onClose: () => void;
 };
 
 export function CreateTransformModal({
-  query,
+  source,
   onCreate,
   onClose,
 }: CreateTransformModalProps) {
@@ -43,7 +43,7 @@ export function CreateTransformModal({
     <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
       <FocusTrap.InitialFocus />
       <CreateTransformForm
-        query={query}
+        source={source}
         onCreate={onCreate}
         onClose={onClose}
       />
@@ -52,7 +52,7 @@ export function CreateTransformModal({
 }
 
 type CreateTransformFormProps = {
-  query: DatasetQuery;
+  source: TransformSource;
   onCreate: (transform: Transform) => void;
   onClose: () => void;
 };
@@ -72,11 +72,12 @@ const NEW_TRANSFORM_SCHEMA = Yup.object({
 });
 
 function CreateTransformForm({
-  query,
+  source,
   onCreate,
   onClose,
 }: CreateTransformFormProps) {
-  const { database: databaseId } = query;
+  const databaseId =
+    source.type === "query" ? source.query.database : source["source-database"];
 
   const {
     data: database,
@@ -111,7 +112,7 @@ function CreateTransformForm({
     if (!databaseId) {
       throw new Error("Database ID is required");
     }
-    const request = getCreateRequest(query, values, databaseId);
+    const request = getCreateRequest(source, values, databaseId);
     const transform = await createTransform(request).unwrap();
 
     trackTransformCreated({ transformId: transform.id });
@@ -138,6 +139,11 @@ function CreateTransformForm({
             placeholder={t`This is optional`}
             minRows={4}
             maxRows={10}
+          />
+          <SchemaFormSelect
+            name="targetSchema"
+            label={t`Schema`}
+            data={schemas}
           />
           {supportsSchemas && (
             <SchemaFormSelect
@@ -174,17 +180,14 @@ function getInitialValues(schemas: string[]): NewTransformValues {
 }
 
 function getCreateRequest(
-  query: DatasetQuery,
+  source: TransformSource,
   { name, description, targetName, targetSchema }: NewTransformValues,
   databaseId: number,
 ): CreateTransformRequest {
   return {
     name: name,
     description,
-    source: {
-      type: "query",
-      query,
-    },
+    source,
     target: {
       type: "table",
       name: targetName,

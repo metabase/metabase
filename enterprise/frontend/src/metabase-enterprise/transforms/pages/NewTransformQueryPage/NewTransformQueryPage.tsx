@@ -7,7 +7,13 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import Question from "metabase-lib/v1/Question";
-import type { Card, CardId, DatasetQuery, Transform } from "metabase-types/api";
+import type {
+  Card,
+  CardId,
+  DatasetQuery,
+  QueryTransformSource,
+  Transform,
+} from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
 import { getTransformListUrl, getTransformUrl } from "../../urls";
@@ -55,15 +61,15 @@ function NewQueryTransformQueryPage({
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  return <NewTransformPageBody initialQuery={getInitialQuery(card, type)} />;
+  return <NewTransformPageBody initialSource={getInitialSource(card, type)} />;
 }
 
 type NewTransformPageBodyProps = {
-  initialQuery: DatasetQuery;
+  initialSource: QueryTransformSource;
 };
 
-function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
-  const [query, setQuery] = useState(initialQuery);
+function NewTransformPageBody({ initialSource }: NewTransformPageBodyProps) {
+  const [source, setSource] = useState(initialSource);
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const dispatch = useDispatch();
@@ -72,8 +78,8 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
     dispatch(push(getTransformUrl(transform.id)));
   };
 
-  const handleSaveClick = (newQuery: DatasetQuery) => {
-    setQuery(newQuery);
+  const handleSaveClick = (newSource: QueryTransformSource) => {
+    setSource(newSource);
     openModal();
   };
 
@@ -84,14 +90,14 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
   return (
     <>
       <QueryEditor
-        initialQuery={initialQuery}
+        initialSource={initialSource}
         isNew
         onSave={handleSaveClick}
         onCancel={handleCancelClick}
       />
       {isModalOpened && (
         <CreateTransformModal
-          query={query}
+          source={source}
           onCreate={handleCreate}
           onClose={closeModal}
         />
@@ -114,11 +120,14 @@ function getParsedParams({
   };
 }
 
-function getInitialQuery(
+function getInitialSource(
   card: Card | undefined,
   type: DatasetQuery["type"] | undefined,
 ) {
-  return card != null
-    ? card.dataset_query
-    : Question.create({ type }).datasetQuery();
+  const query =
+    card != null
+      ? card.dataset_query
+      : Question.create({ type }).datasetQuery();
+
+  return { type: "query" as const, query };
 }
