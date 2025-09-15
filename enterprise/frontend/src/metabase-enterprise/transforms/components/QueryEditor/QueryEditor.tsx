@@ -4,7 +4,7 @@ import { useListDatabasesQuery } from "metabase/api";
 import { Center, Flex, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { DatasetQuery } from "metabase-types/api";
+import type { QueryTransformSource } from "metabase-types/api";
 
 import { useQueryMetadata } from "../../hooks/use-query-metadata";
 import { useQueryResults } from "../../hooks/use-query-results";
@@ -16,21 +16,23 @@ import { EditorVisualization } from "./EditorVisualization";
 import S from "./QueryEditor.module.css";
 
 type QueryEditorProps = {
-  initialQuery: DatasetQuery;
+  initialSource: QueryTransformSource;
   isNew?: boolean;
   isSaving?: boolean;
-  onSave: (newQuery: DatasetQuery) => void;
+  onSave: (source: QueryTransformSource) => void;
   onCancel: () => void;
 };
 
 export function QueryEditor({
-  initialQuery,
+  initialSource,
   isNew = true,
   isSaving = false,
   onSave,
   onCancel,
 }: QueryEditorProps) {
-  const { question, isQueryDirty, setQuestion } = useQueryState(initialQuery);
+  const { question, isQueryDirty, setQuestion } = useQueryState(
+    initialSource.query,
+  );
   const { isInitiallyLoaded } = useQueryMetadata(question);
   const {
     result,
@@ -49,7 +51,7 @@ export function QueryEditor({
   };
 
   const handleSave = () => {
-    onSave(question.datasetQuery());
+    onSave({ type: "query", query: question.datasetQuery() });
   };
 
   const handleCmdEnter = () => {
