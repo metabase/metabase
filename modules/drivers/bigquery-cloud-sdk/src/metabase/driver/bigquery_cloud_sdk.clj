@@ -886,7 +886,8 @@
             (if (and (instance? com.google.cloud.bigquery.BigQueryException e)
                      (str/includes? (.getMessage e) "streaming data"))
               ;; rename failed, we must create + drop
-              (let [create-sql (driver/compile-transform driver (format "SELECT * FROM %s" old-table-str) new-table-name)
+              (let [create-sql (driver/compile-transform driver {:query (format "SELECT * FROM %s" old-table-str)
+                                                                 :output-table new-table-name})
                     drop-sql (driver/compile-drop-table driver old-table-name)]
                 (driver/execute-raw-queries! driver database (concat create-sql drop-sql)))
               (throw e))))))))
