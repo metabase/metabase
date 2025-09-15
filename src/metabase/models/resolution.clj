@@ -70,7 +70,7 @@
     :model/PulseCard                         metabase.pulse.models.pulse-card
     :model/PulseChannel                      metabase.pulse.models.pulse-channel
     :model/PulseChannelRecipient             metabase.pulse.models.pulse-channel-recipient
-    :model/PythonLibrary                     metabase-enterprise.transforms.python-runner.models.python-library
+    :model/PythonLibrary                     metabase-enterprise.transforms-python.models.python-library
     :model/Query                             metabase.queries.models.query
     :model/QueryAction                       metabase.actions.models
     :model/QueryCache                        metabase.cache.models.query-cache
