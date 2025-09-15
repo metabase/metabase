@@ -19,7 +19,7 @@ export const pythonLibraryApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     getPythonLibrary: builder.query<PythonLibrary, GetPythonLibraryRequest>({
       query: ({ path }) => ({
-        url: `/api/ee/python-transform/library/${path}`,
+        url: `/api/ee/transforms-python/library/${path}`,
         method: "GET",
       }),
       providesTags: (library) =>
@@ -27,7 +27,7 @@ export const pythonLibraryApi = EnterpriseApi.injectEndpoints({
     }),
     updatePythonLibrary: builder.mutation<void, UpdatePythonLibraryRequest>({
       query: ({ path, source }) => ({
-        url: `/api/ee/python-transform/library/${path}`,
+        url: `/api/ee/transforms-python/library/${path}`,
         method: "PUT",
         body: { source },
       }),

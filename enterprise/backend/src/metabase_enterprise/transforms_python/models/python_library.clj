@@ -1,4 +1,4 @@
-(ns metabase-enterprise.python-transform.models.python-library
+(ns metabase-enterprise.transforms-python.models.python-library
   (:require
    [metabase.app-db.core :as app-db]
    [metabase.util.i18n :refer [tru]]
