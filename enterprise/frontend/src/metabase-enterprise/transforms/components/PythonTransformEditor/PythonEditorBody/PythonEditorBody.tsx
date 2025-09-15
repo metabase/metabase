@@ -35,16 +35,6 @@ export function PythonEditorBody({
   isRunning,
   isDirty,
 }: PythonEditorBodyProps) {
-  const hasSharedLib = hasImport(source, SHARED_LIB_IMPORT_PATH);
-
-  function handleToggleSharedLib() {
-    if (hasImport(source, SHARED_LIB_IMPORT_PATH)) {
-      onChange(removeImport(source, SHARED_LIB_IMPORT_PATH));
-    } else {
-      onChange(insertImport(source, SHARED_LIB_IMPORT_PATH));
-    }
-  }
-
   return (
     <ResizableBox
       className={S.root}
@@ -71,23 +61,63 @@ export function PythonEditorBody({
           />
         </Box>
       </Flex>
-      <Stack className={S.libraryActions} p="md" gap="sm">
-        <Checkbox
-          label={t`Import common library`}
-          checked={hasSharedLib}
-          onChange={handleToggleSharedLib}
-          size="sm"
-        />
-        <Flex
-          component={Link}
-          target="_blank"
-          to={getPythonLibraryUrl({ path: SHARED_LIB_IMPORT_PATH })}
-          gap="sm"
-        >
-          <Icon name="pencil" />
-          {t`Edit common library`}
-        </Flex>
-      </Stack>
+      <SharedLibraryActions source={source} onChange={onChange} />
     </ResizableBox>
+  );
+}
+
+function SharedLibraryActions({
+  source,
+  onChange,
+}: {
+  source: string;
+  onChange: (source: string) => void;
+}) {
+  return (
+    <Stack className={S.libraryActions} p="md" gap="sm">
+      <SharedLibraryImportToggle source={source} onChange={onChange} />
+      <SharedLibraryEditLink />
+    </Stack>
+  );
+}
+
+function SharedLibraryImportToggle({
+  source,
+  onChange,
+}: {
+  source: string;
+  onChange: (source: string) => void;
+}) {
+  const hasSharedLib = hasImport(source, SHARED_LIB_IMPORT_PATH);
+
+  function handleToggleSharedLib() {
+    if (hasImport(source, SHARED_LIB_IMPORT_PATH)) {
+      onChange(removeImport(source, SHARED_LIB_IMPORT_PATH));
+    } else {
+      onChange(insertImport(source, SHARED_LIB_IMPORT_PATH));
+    }
+  }
+
+  return (
+    <Checkbox
+      label={t`Import common library`}
+      checked={hasSharedLib}
+      onChange={handleToggleSharedLib}
+      size="sm"
+    />
+  );
+}
+
+function SharedLibraryEditLink() {
+  return (
+    <Flex
+      component={Link}
+      target="_blank"
+      to={getPythonLibraryUrl({ path: SHARED_LIB_IMPORT_PATH })}
+      gap="sm"
+    >
+      <Icon name="pencil" />
+      {t`Edit common library`}
+    </Flex>
   );
 }
