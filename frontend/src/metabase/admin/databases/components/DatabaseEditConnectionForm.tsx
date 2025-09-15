@@ -10,11 +10,11 @@ import { GenericError } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
-import {
-  DatabaseForm,
-  type DatabaseFormConfig,
-} from "metabase/databases/components/DatabaseForm";
-import type { FormLocation } from "metabase/databases/types";
+import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
+import type {
+  DatabaseFormConfig,
+  FormLocation,
+} from "metabase/databases/types";
 import { useDispatch } from "metabase/lib/redux";
 import { Text } from "metabase/ui";
 import type {
