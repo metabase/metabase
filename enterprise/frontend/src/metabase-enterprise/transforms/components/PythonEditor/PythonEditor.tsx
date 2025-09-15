@@ -10,11 +10,13 @@ export function PythonEditor({
   onChange,
   withPandasCompletions,
   className,
+  readOnly,
 }: {
   value: string;
-  onChange: (value: string) => void;
+  onChange?: (value: string) => void;
   withPandasCompletions?: boolean;
   className?: string;
+  readOnly?: boolean;
 }) {
   return (
     <CodeEditor
@@ -23,6 +25,7 @@ export function PythonEditor({
       onChange={onChange}
       language="python"
       extensions={withPandasCompletions ? completion : undefined}
+      readOnly={readOnly}
     />
   );
 }
