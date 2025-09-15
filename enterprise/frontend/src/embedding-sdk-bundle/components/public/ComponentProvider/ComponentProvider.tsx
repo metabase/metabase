@@ -28,7 +28,6 @@ import { PortalContainer } from "../../private/SdkPortalContainer";
 import { SdkUsageProblemDisplay } from "../../private/SdkUsageProblem";
 
 type ComponentProviderInternalProps = ComponentProviderProps & {
-  isStatic: boolean;
   reduxStore: SdkStore;
 };
 
@@ -54,7 +53,7 @@ export const ComponentProviderInternal = ({
   useInitDataInternal({ reduxStore, isStatic, authConfig });
 
   useEffect(() => {
-    reduxStore.dispatch(setIsStaticEmbedding(isStatic));
+    reduxStore.dispatch(setIsStaticEmbedding(isStatic || false));
   }, [reduxStore, isStatic]);
 
   useEffect(() => {
@@ -123,13 +122,11 @@ export const ComponentProviderInternal = ({
 };
 
 export type ComponentProviderProps = MetabaseProviderProps & {
-  isStatic?: boolean;
   reduxStore?: SdkStore;
 };
 
 export const ComponentProvider = memo(function ComponentProvider({
   children,
-  isStatic,
   ...props
 }: ComponentProviderProps) {
   const reduxStoreRef = useRef<SdkStore | null>(null);
@@ -143,7 +140,6 @@ export const ComponentProvider = memo(function ComponentProvider({
       <MetabotProvider>
         <ComponentProviderInternal
           {...props}
-          isStatic={isStatic ?? false}
           reduxStore={reduxStoreRef.current!}
         >
           {children}
