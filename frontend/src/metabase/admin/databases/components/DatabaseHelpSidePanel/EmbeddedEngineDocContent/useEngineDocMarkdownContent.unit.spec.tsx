@@ -10,6 +10,10 @@ jest.mock("docs/databases/connections/athena.md", () => {
 });
 
 describe("useEngineDocMarkdownContent", () => {
+  beforeEach(() => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+  });
+
   describe("when markdown content loads successfully", () => {
     it("should return the markdownContent", async () => {
       const { result } = renderHook(() =>

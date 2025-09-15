@@ -54,7 +54,7 @@ export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
 
   return (
     <>
-      <Box p="xl" w="100%">
+      <Box p="xl" w="100%" data-testid="database-help-side-panel">
         <Flex align="baseline" justify="space-between" mb="md">
           <Title order={2} size="h4">
             {c("{0} is the database engine name").t`Add ${driverName}`}

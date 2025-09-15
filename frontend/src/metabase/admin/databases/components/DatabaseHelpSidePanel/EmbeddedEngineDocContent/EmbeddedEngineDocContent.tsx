@@ -6,15 +6,17 @@ import { Alert, Box, Loader, Text } from "metabase/ui";
 import type { EngineKey } from "metabase-types/api";
 
 import S from "./EmbeddedEngineDocContent.module.css";
-import {
-  hideUnnecessaryElements,
-  markdownComponentsOverride,
-} from "./markdown-utils";
+import { MarkdownLink } from "./MarkdownLink";
+import { hideUnnecessaryElements } from "./markdown-utils";
 import { useEngineDocMarkdownContent } from "./useEngineDocMarkdownContent";
 
 interface Props {
   engineKey: EngineKey;
 }
+
+const markdownComponentsOverride = {
+  a: MarkdownLink,
+};
 
 export const EmbeddedEngineDocContent = ({ engineKey }: Props) => {
   const { markdownContent, isLoading, loadingError } =

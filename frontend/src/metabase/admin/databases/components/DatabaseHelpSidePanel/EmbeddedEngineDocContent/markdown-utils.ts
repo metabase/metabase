@@ -1,9 +1,3 @@
-import { MarkdownLink } from "./MarkdownLink";
-
-export const markdownComponentsOverride = {
-  a: MarkdownLink,
-};
-
 /**
  * Hides elements rendered from the markdown doc that we don't want to show in the side panel.
  * These include h1 and other introductory elements, as well as jekyll template includes.
