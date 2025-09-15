@@ -1,5 +1,5 @@
 import type { Location } from "history";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -84,9 +84,9 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
   const isLoading = isLoadingRuns || isLoadingTransforms || isLoadingTags;
   const error = runsError ?? transformsError ?? tagsError;
 
-  useEffect(() => {
+  if (isPolling !== isPollingNeeded(data?.data)) {
     setIsPolling(isPollingNeeded(data?.data));
-  }, [data?.data]);
+  }
 
   if (!data || isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
