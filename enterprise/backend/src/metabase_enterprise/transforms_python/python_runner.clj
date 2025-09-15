@@ -34,8 +34,8 @@
 (set! *warn-on-reflection* true)
 
 ;; Longer duration for inputs than for outputs, to compensate for the duration of the code execution itself.
-(def ^:private ^Duration presigned-get-url-duration (Duration/ofMinutes 30))
-(def ^:private ^Duration presigned-put-url-duration (Duration/ofHours 5))
+(def ^:private ^Duration presigned-get-duration (Duration/ofMinutes 30))
+(def ^:private ^Duration presigned-put-duration (Duration/ofHours 5))
 
 (defn- safe-delete
   "Safely delete a file."
@@ -247,7 +247,7 @@
   "Generate GET URL using container presigner"
   [^S3Presigner presigner ^String bucket-name ^String key]
   (let [request (-> (GetObjectPresignRequest/builder)
-                    (.signatureDuration presigned-get-url-duration)
+                    (.signatureDuration presigned-get-duration)
                     (.getObjectRequest (get-object-request bucket-name key))
                     (.build))]
     (.toString (.url (.presignGetObject presigner request)))))
@@ -256,7 +256,7 @@
   "Generate PUT URL using container presigner"
   [^S3Presigner presigner ^String bucket-name ^String key]
   (let [request (-> (PutObjectPresignRequest/builder)
-                    (.signatureDuration presigned-put-url-duration)
+                    (.signatureDuration presigned-put-duration)
                     (.putObjectRequest (put-object-request bucket-name key))
                     (.build))]
     (.toString (.url (.presignPutObject presigner request)))))
