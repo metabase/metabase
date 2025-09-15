@@ -33,6 +33,7 @@ export function RunCancelButton({
       return;
     }
     const { error } = await cancelTransformRun(transform.id);
+    closeCancelConfirmationModal();
     if (error && !isResourceNotFoundError(error)) {
       sendErrorToast(t`Failed to cancel transform`);
     } else {
@@ -72,8 +73,7 @@ export function RunCancelButton({
         opened={isConfirmCancelationModalOpen}
         onClose={closeCancelConfirmationModal}
         onConfirm={() => {
-          void handleCancel();
-          closeCancelConfirmationModal();
+          handleCancel();
         }}
         closeButtonText={t`No`}
       />
