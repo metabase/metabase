@@ -17,7 +17,7 @@ import type {
   RecentItem,
 } from "metabase-types/api";
 
-import { PythonEditor } from "../PythonEditor";
+import { PythonQueryEditor } from "../PythonQueryEditor";
 
 import S from "./EditorBody.module.css";
 import { ResizableBoxHandle } from "./ResizableBoxHandle";
@@ -88,7 +88,7 @@ export function EditorBody({
 
   if (isPython) {
     return (
-      <PythonEditor
+      <PythonQueryEditor
         script={pythonSource?.body || ""}
         isRunnable={isRunnable}
         onChange={handlePythonChange}

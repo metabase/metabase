@@ -16,7 +16,7 @@ import { PythonEditor as PythonCodeEditor } from "../../PythonEditor";
 import { ResizableBoxHandle } from "../EditorBody/ResizableBoxHandle";
 
 import { ExecutionOutputTable } from "./ExecutionOutputTable";
-import S from "./PythonEditor.module.css";
+import S from "./PythonQueryEditor.module.css";
 import {
   type ExecutionResult,
   hasImport,
@@ -36,7 +36,7 @@ type PythonEditorProps = {
 
 const EDITOR_HEIGHT = 400;
 
-export function PythonEditor({
+export function PythonQueryEditor({
   script,
   isRunnable,
   onChange,
