@@ -77,7 +77,7 @@ describe("scenarios > visualizations > progress chart", () => {
       cy.findByText("Value").should("be.visible");
 
       // Default should be first column (Count)
-      cy.findByDisplayValue("Count").should("exist");
+      cy.findByDisplayValue("Count").should("be.visible");
 
       // Change to Sum of Total
       cy.findByDisplayValue("Count").click();
@@ -89,7 +89,7 @@ describe("scenarios > visualizations > progress chart", () => {
 
     // Verify the field changed
     H.vizSettingsSidebar().within(() => {
-      cy.findByDisplayValue("Sum of Total").should("exist");
+      cy.findByDisplayValue("Sum of Total").should("be.visible");
     });
   });
 
@@ -167,7 +167,7 @@ describe("scenarios > visualizations > progress chart", () => {
 
     // Goal should show Count selected in the input
     H.vizSettingsSidebar().within(() => {
-      cy.findByText("Count").should("exist");
+      cy.findByText("Count").should("be.visible");
     });
   });
 
@@ -189,7 +189,7 @@ describe("scenarios > visualizations > progress chart", () => {
 
     H.queryBuilderMain().within(() => {
       cy.findByText("18,760").should("be.visible");
-      cy.contains("Goal 1,000").should("exist");
+      cy.contains("Goal 1,000").should("be.visible");
     });
   });
 
@@ -210,20 +210,18 @@ describe("scenarios > visualizations > progress chart", () => {
       cy.findByText("Display").click();
 
       // Initially should show number input with placeholder
-      cy.findByPlaceholderText("Enter goal value").should("exist");
+      cy.findByPlaceholderText("Enter goal value").should("be.visible");
 
       // Click dropdown to select a column
       cy.findByText("Goal").parent().parent().icon("chevrondown").click();
     });
 
-    H.popover().within(() => {
-      // Select Sum of Total column
-      cy.findByText("Sum of Total").click();
-    });
+    // Select Sum of Total column
+    H.popover().findByText("Sum of Total").click();
 
     // Should now show the column name in a read-only text input
     H.vizSettingsSidebar().within(() => {
-      cy.findByText("Sum of Total").should("exist");
+      cy.findByText("Sum of Total").should("be.visible");
 
       // Click dropdown again to switch back to custom value
       cy.findByText("Goal").parent().parent().icon("chevrondown").click();
@@ -238,6 +236,40 @@ describe("scenarios > visualizations > progress chart", () => {
       cy.findByPlaceholderText("Enter goal value")
         .should("exist")
         .should("have.focus");
+    });
+  });
+
+  it("should handle native query with both value and goal columns", () => {
+    const query = 'select 75000 as "value", 100000 as "goal";';
+
+    H.visitQuestionAdhoc({
+      display: "progress",
+      dataset_query: {
+        type: "native",
+        native: {
+          query,
+        },
+        database: SAMPLE_DATABASE.id,
+      },
+    });
+
+    // Open visualization settings to configure value and goal columns
+    H.openVizSettingsSidebar();
+    H.vizSettingsSidebar().within(() => {
+      cy.findByText("Display").click();
+
+      // Configure goal to use the "goal" column
+      cy.findByText("Goal").parent().parent().icon("chevrondown").click();
+    });
+
+    H.popover().findByText("goal").click();
+
+    // Verify the progress bar displays correctly with native query data
+    H.queryBuilderMain().within(() => {
+      // Should show the first row's value
+      cy.findByText("75,000").should("be.visible");
+      // Should show goal from the goal column
+      cy.findByText("Goal 100,000").should("be.visible");
     });
   });
 });

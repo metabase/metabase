@@ -118,7 +118,7 @@ export default class Progress extends Component {
 
         if (typeof goalSetting === "string") {
           const column = data.cols.find((col) => col.name === goalSetting);
-          return column && isNumeric(column);
+          return !!(column && isNumeric(column));
         }
 
         return false;

@@ -2,7 +2,7 @@ import { ClipPath } from "@visx/clip-path";
 import { Group } from "@visx/group";
 import { scaleLinear } from "@visx/scale";
 import { useMemo } from "react";
-import { t } from "ttag";
+import { c } from "ttag";
 
 import { formatValue } from "metabase/lib/formatting";
 import {
@@ -185,8 +185,9 @@ export const ProgressBar = ({
         </Text>
         <Text fontSize={layout.fontSize} textAnchor="end" x={xMax}>
           {metrics.hasValidGoal
-            ? t`Goal ${String(formatValue(data.goal, columnSettings) ?? data.goal)}`
-            : t`Goal: Not set`}
+            ? c("Label showing goal value in progress chart")
+                .t`Goal ${String(formatValue(data.goal, columnSettings) ?? data.goal)}`
+            : c("Label when no goal is set in progress chart").t`Goal: Not set`}
         </Text>
       </Group>
       {hasDevWatermark && (

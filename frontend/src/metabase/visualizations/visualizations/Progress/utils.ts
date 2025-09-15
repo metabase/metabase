@@ -98,7 +98,10 @@ export const calculateProgressMetrics = (
   let arrowPercent = 0;
 
   if (hasValidValue && hasValidGoal) {
-    barPercent = Math.max(0, value < goal ? value / goal : goal / value);
+    barPercent = barPercent =
+      value === goal
+        ? 1
+        : Math.max(0, value < goal ? value / goal : goal / value);
     arrowPercent = Math.max(0, value < goal ? value / goal : 1);
   }
 
