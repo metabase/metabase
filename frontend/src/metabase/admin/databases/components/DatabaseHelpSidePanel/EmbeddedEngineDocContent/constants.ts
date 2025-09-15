@@ -1,5 +1,6 @@
 import type { EngineKey } from "metabase-types/api";
 
+// Maps engine key to the markdown file in docs/databases/connections/
 export const ENGINE_DOC_MAP: Partial<Record<EngineKey, string>> = {
   athena: "athena",
   "bigquery-cloud-sdk": "bigquery",

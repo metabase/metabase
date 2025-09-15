@@ -8,6 +8,9 @@ jest.mock(
   "docs/databases/connections/postgresql.md",
   () => "Postgres Markdown content",
 );
+jest.mock("docs/databases/connections/athena.md", () => {
+  throw new Error("Failed to import file");
+});
 
 describe("EmbeddedEngineDocContent", () => {
   it("renders markdown content", async () => {
@@ -26,8 +29,8 @@ describe("EmbeddedEngineDocContent", () => {
     });
   });
 
-  it("renders an alert with error message when markdown loading fails", async () => {
-    const errorEngineKey = "athena"; // Loading this engine will throw an error as it is not mocked
+  it("renders an alert with error message when markdown fails to load", async () => {
+    const errorEngineKey = "athena"; // Loading this engine throws an error
     jest.spyOn(console, "error").mockImplementationOnce(() => {});
     render(<EmbeddedEngineDocContent engineKey={errorEngineKey} />);
 
