@@ -44,17 +44,52 @@ describe("scenarios > home > homepage", () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "x-ray_clicked",
+        event_detail: "table",
         triggered_from: "homepage",
       });
 
       cy.findByRole("complementary").within(() => {
         cy.findByRole("heading", { name: "More X-rays" }).should("be.visible");
-        cy.findByText("People").click();
+        cy.findByRole("heading", { name: "Zoom in" })
+          .parent()
+          .findByText("Source fields")
+          .click();
         cy.wait("@getXrayDashboard");
       });
 
       H.expectUnstructuredSnowplowEvent({
         event: "x-ray_clicked",
+        event_detail: "zoom-in",
+        triggered_from: "suggestion_sidebar",
+      });
+
+      cy.findByRole("complementary").within(() => {
+        cy.findByRole("heading", { name: "More X-rays" }).should("be.visible");
+        cy.findByRole("heading", { name: "Zoom out" })
+          .parent()
+          .findByText("People")
+          .click();
+        cy.wait("@getXrayDashboard");
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "x-ray_clicked",
+        event_detail: "zoom-out",
+        triggered_from: "suggestion_sidebar",
+      });
+
+      cy.findByRole("complementary").within(() => {
+        cy.findByRole("heading", { name: "More X-rays" }).should("be.visible");
+        cy.findByRole("heading", { name: "Related" })
+          .parent()
+          .findByText("Orders")
+          .click();
+        cy.wait("@getXrayDashboard");
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "x-ray_clicked",
+        event_detail: "related",
         triggered_from: "suggestion_sidebar",
       });
 

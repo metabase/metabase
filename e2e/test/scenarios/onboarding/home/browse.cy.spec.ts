@@ -116,6 +116,7 @@ H.describeWithSnowplow("scenarios > browse", () => {
     H.expectNoBadSnowplowEvents();
     H.expectUnstructuredSnowplowEvent({
       event: "x-ray_clicked",
+      event_detail: "table",
       triggered_from: "browse_database",
     });
   });

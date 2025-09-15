@@ -10,6 +10,7 @@ export const trackTableClick = (tableId: ConcreteTableId) =>
 export const trackBrowseXRayClicked = () => {
   trackSimpleEvent({
     event: "x-ray_clicked",
+    event_detail: "table",
     triggered_from: "browse_database",
   });
 };

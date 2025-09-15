@@ -6,6 +6,7 @@ import type {
 import type { KeyboardShortcutId } from "metabase/palette/shortcuts";
 import type {
   Engine,
+  RelatedDashboardXRays,
   TransformId,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -342,10 +343,28 @@ export type DatabaseHelpClickedEvent = ValidateEvent<{
   triggered_from: "admin" | "setup";
 }>;
 
-export type XRayClickedEvent = ValidateEvent<{
+export type XRayTableClickedEvent = ValidateEvent<{
   event: "x-ray_clicked";
-  triggered_from: "homepage" | "browse_database" | "suggestion_sidebar";
+  event_detail: "table";
+  triggered_from: "homepage" | "browse_database";
 }>;
+
+export type XRayDataReferenceClickedEvent = ValidateEvent<{
+  event: "x-ray_clicked";
+  event_detail: "table" | "field" | "segment";
+  triggered_from: "data_reference";
+}>;
+
+export type XRaySuggestionClickedEvent = ValidateEvent<{
+  event: "x-ray_clicked";
+  event_detail: keyof RelatedDashboardXRays;
+  triggered_from: "suggestion_sidebar";
+}>;
+
+export type XRayClickedEvent =
+  | XRayTableClickedEvent
+  | XRayDataReferenceClickedEvent
+  | XRaySuggestionClickedEvent;
 
 export type XRaySavedEvent = ValidateEvent<{
   event: "x-ray_saved";

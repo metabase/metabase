@@ -65,7 +65,7 @@ const SuggestionsList = ({
                 key={itemIndex}
                 to={item.url}
                 className={cx(CS.hoverParent, CS.hoverVisibility, S.ItemLink)}
-                onClick={trackSuggestedXRayClicked}
+                onClick={() => trackSuggestedXRayClicked(suggestionKey)}
               >
                 <Card className={CS.p2} hoverable>
                   <Flex align="center">
