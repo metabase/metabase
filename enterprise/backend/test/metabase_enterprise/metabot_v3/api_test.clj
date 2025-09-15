@@ -7,7 +7,8 @@
    [metabase-enterprise.metabot-v3.client-test :as client-test]
    [metabase-enterprise.metabot-v3.util :as metabot.u]
    [metabase.test :as mt]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,21 +27,34 @@
                                               ((client-test/mock-post! mock-response) url opts))]
         (testing "Streaming request"
           (doseq [metabot-id [nil (str (random-uuid))]]
-            (reset! ai-requests [])
-            (let [response (mt/user-http-request :rasta :post 202 "ee/metabot-v3/v2/agent-streaming"
-                                                 (-> {:message         (:content question)
-                                                      :context         {}
-                                                      :conversation_id conversation-id
-                                                      :history         [historical-message]
-                                                      :state           {}}
-                                                     (m/assoc-some :metabot_id metabot-id)))]
-              (is (=? [{:messages        [historical-message question]
-                        :conversation_id conversation-id}]
-                      @ai-requests))
-              (is (=? [{:_type   :TEXT
-                        :role    "assistant"
-                        :content "Hello from streaming!"}
-                       {:_type         :FINISH_MESSAGE
-                        :finish_reason "stop"
-                        :usage         {:some-model {:prompt 12 :completion 3}}}]
-                      (metabot.u/aisdk->messages "assistant" (str/split-lines response)))))))))))
+            (mt/with-model-cleanup [:model/MetabotMessage
+                                    [:model/MetabotConversation :created_at]]
+              (reset! ai-requests [])
+              (let [response (mt/user-http-request :rasta :post 202 "ee/metabot-v3/v2/agent-streaming"
+                                                   (-> {:message         (:content question)
+                                                        :context         {}
+                                                        :conversation_id conversation-id
+                                                        :history         [historical-message]
+                                                        :state           {}}
+                                                       (m/assoc-some :metabot_id metabot-id)))
+                    conv     (t2/select-one :model/MetabotConversation :id conversation-id)
+                    messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
+                (is (=? [{:messages        [historical-message question]
+                          :conversation_id conversation-id}]
+                        @ai-requests))
+                (is (=? [{:_type   :TEXT
+                          :role    "assistant"
+                          :content "Hello from streaming!"}
+                         {:_type         :FINISH_MESSAGE
+                          :finish_reason "stop"
+                          :usage         {:some-model {:prompt 12 :completion 3}}}]
+                        (metabot.u/aisdk->messages "assistant" (str/split-lines response))))
+                (is (=? {:user_id (mt/user->id :rasta)}
+                        conv))
+                (is (=? [{:total_tokens 0
+                          :role         :user
+                          :data         [{:role "user" :content (:content question)}]}
+                         {:total_tokens 15
+                          :role         :assistant
+                          :data         [{:role "assistant" :content "Hello from streaming!"}]}]
+                        messages))))))))))
