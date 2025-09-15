@@ -3,11 +3,11 @@ import { t } from "ttag";
 import Button from "metabase/common/components/Button";
 import EditBar from "metabase/common/components/EditBar";
 import { Tooltip } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
+
+import type { QueryValidationResult } from "../types";
 
 type EditorHeaderProps = {
-  question: Question;
+  validationResult: QueryValidationResult;
   isNew: boolean;
   isQueryDirty: boolean;
   isSaving: boolean;
@@ -16,17 +16,19 @@ type EditorHeaderProps = {
 };
 
 export function EditorHeader({
-  question,
+  validationResult,
   isNew,
   isQueryDirty,
   isSaving,
   onSave,
   onCancel,
 }: EditorHeaderProps) {
-  const query = question.query();
-  const canSave = canSaveTransform(query, isNew, isQueryDirty, isSaving);
-  const saveButtonLabel = getSaveButtonLabel(isNew, isSaving);
-  const saveButtonTooltip = getSaveButtonTooltip(query);
+  const canSave = canSaveTransform(
+    validationResult,
+    isNew,
+    isQueryDirty,
+    isSaving,
+  );
 
   return (
     <EditBar
@@ -36,11 +38,11 @@ export function EditorHeader({
         <Button key="cancel" small onClick={onCancel}>{t`Cancel`}</Button>,
         <Tooltip
           key="save"
-          label={saveButtonTooltip}
-          disabled={saveButtonTooltip == null}
+          label={validationResult.message}
+          disabled={validationResult.message == null}
         >
           <Button onClick={onSave} primary small disabled={!canSave}>
-            {saveButtonLabel}
+            {getSaveButtonLabel(isNew, isSaving)}
           </Button>
         </Tooltip>,
       ]}
@@ -65,31 +67,10 @@ function getSaveButtonLabel(isNew: boolean, isSaving: boolean) {
 }
 
 function canSaveTransform(
-  query: Lib.Query,
+  validationResult: QueryValidationResult,
   isNew: boolean,
   isQueryDirty: boolean,
   isSaving: boolean,
 ) {
-  return (
-    (isNew || isQueryDirty) &&
-    !isSaving &&
-    Lib.canSave(query, "question") &&
-    areTemplateTagsValid(query)
-  );
-}
-
-function getSaveButtonTooltip(query: Lib.Query) {
-  if (!areTemplateTagsValid(query)) {
-    return `Variables in transforms aren't supported.`;
-  }
-}
-
-function areTemplateTagsValid(query: Lib.Query) {
-  const { isNative } = Lib.queryDisplayInfo(query);
-  if (!isNative) {
-    return true;
-  }
-
-  const tags = Object.values(Lib.templateTags(query));
-  return tags.every((t) => t.type === "card" || t.type === "snippet");
+  return (isNew || isQueryDirty) && !isSaving && validationResult.isValid;
 }

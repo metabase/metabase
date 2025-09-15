@@ -7,13 +7,14 @@ import type Question from "metabase-lib/v1/Question";
 import type { DatasetQuery } from "metabase-types/api";
 
 import { useQueryMetadata } from "../../hooks/use-query-metadata";
-import { useQueryResults } from "../../hooks/use-query-results";
-import { useQueryState } from "../../hooks/use-query-state";
 
 import { EditorBody } from "./EditorBody";
 import { EditorHeader } from "./EditorHeader";
 import { EditorVisualization } from "./EditorVisualization";
 import S from "./QueryEditor.module.css";
+import { useQueryResults } from "./use-query-results";
+import { useQueryState } from "./use-query-state";
+import { useQueryValidation } from "./use-query-validation";
 
 type QueryEditorProps = {
   initialQuery: DatasetQuery;
@@ -41,7 +42,9 @@ export function QueryEditor({
     runQuery,
     cancelQuery,
   } = useQueryResults(question);
-  const { isNative } = Lib.queryDisplayInfo(question.query());
+  const query = question.query();
+  const { isNative } = Lib.queryDisplayInfo(query);
+  const validationResult = useQueryValidation(query);
 
   const handleChange = async (newQuestion: Question) => {
     setQuestion(newQuestion);
@@ -83,7 +86,7 @@ export function QueryEditor({
       data-testid="transform-query-editor"
     >
       <EditorHeader
-        question={question}
+        validationResult={validationResult}
         isNew={isNew}
         isQueryDirty={isQueryDirty}
         isSaving={isSaving}
