@@ -21,6 +21,7 @@ import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensur
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import api from "metabase/lib/api";
+import { refreshSiteSettings } from "metabase/redux/settings";
 import registerVisualizations from "metabase/visualizations/register";
 
 const registerVisualizationsOnce = _.once(registerVisualizations);
@@ -47,7 +48,7 @@ export const useInitData = () => {
 
   useInitDataInternal({
     reduxStore,
-    isStatic: false,
+    isStatic: props.isStatic,
     authConfig,
   });
 };
@@ -112,6 +113,10 @@ export const useInitDataInternal = ({
   }, [authConfig.fetchStaticToken, fetchStaticTokenFnFromStore, dispatch]);
 
   useMount(function initializeData() {
+    if (isStatic) {
+      dispatch(refreshSiteSettings());
+    }
+
     if (!isStatic && isAuthUninitialized()) {
       dispatch(initAuth(authConfig));
     }
