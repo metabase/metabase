@@ -1465,7 +1465,7 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("filtering", () => {
-    it("should be able to filter jobs ", { tags: "@flaky" }, () => {
+    it("should be able to filter jobs ", () => {
       cy.log("run hourly job so know that was recently run");
       visitJobListPage();
 
@@ -1545,15 +1545,15 @@ describe("scenarios > admin > transforms > jobs", () => {
         getNextRunFilterWidget().click();
         H.popover().within(() => {
           cy.findByText("Next").click();
-          cy.findByDisplayValue(30).clear().type("2");
+          cy.findByDisplayValue(30).clear().type("5");
           cy.button("Apply").click();
         });
-        getNextRunFilterWidget().should("contain", "Next 2 weeks");
+        getNextRunFilterWidget().should("contain", "Next 5 weeks");
         getContentTable().within(() => {
           cy.findByText("Hourly job").should("not.exist");
           cy.findByText("Daily job").should("not.exist");
           cy.findByText("Weekly job").should("be.visible");
-          cy.findByText("Monthly job").should("not.exist");
+          cy.findByText("Monthly job").should("be.visible");
         });
 
         cy.log("next run filter - remove filter");
