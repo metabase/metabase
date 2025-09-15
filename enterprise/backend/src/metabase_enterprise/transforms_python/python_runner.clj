@@ -10,13 +10,14 @@
    [metabase.driver :as driver]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   ;; TODO check that querying team are ok with us accessing this directly, otherwise make another plan
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.query-processor.store :as qp.store]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (clojure.lang IDeref)
+   (clojure.lang IDeref PersistentQueue)
    (java.io BufferedWriter Closeable File OutputStream OutputStreamWriter)
    (java.net URI)
    (java.nio.charset StandardCharsets)
@@ -56,7 +57,6 @@
   [driver db-id query respond cancel-chan]
   (driver/with-driver driver
     (let [native (qp.compile/compile {:type :query, :database db-id :query query})
-
           query  {:database db-id
                   :type     :native
                   :native   native}]
@@ -82,7 +82,7 @@
            :type/Decimal])))
 
 (defn- closest-ancestor [t pred]
-  (loop [remaining (conj clojure.lang.PersistentQueue/EMPTY [t])]
+  (loop [remaining (conj PersistentQueue/EMPTY [t])]
     (when-let [t (first remaining)]
       (if (pred t)
         t
@@ -124,6 +124,7 @@
        ;; we are only interested in the parent objects, so we filter out any nested values
        (filter #(and (nil? (:parent_id %)) (nil? (:nfc_path %))))
        (map (fn [meta]
+              ;; TODO move this into driver method
               (if (= driver :bigquery-cloud-sdk)
                 (case (:database_type meta)
                   ;; the bigquery driver returns a lossy database-type
@@ -134,169 +135,139 @@
                 meta)))))
 
 (defn- write-table-data-to-file! [id temp-file cancel-chan]
-  (let [db-id           (t2/select-one-fn :db_id (t2/table-name :model/Table) :id id)
-        driver          (t2/select-one-fn :engine :model/Database db-id)
+  (let [db-id       (t2/select-one-fn :db_id (t2/table-name :model/Table) :id id)
+        driver      (t2/select-one-fn :engine :model/Database db-id)
         fields-meta (->> (t2/select [:model/Field :id :name :base_type :effective_type :semantic_type :database_type :database_position :nfc_path :parent_id]
                                     :table_id id
                                     :active true
                                     {:order-by [[:database_position :asc]]})
                          (preprocess-fields-meta driver))
 
-        query {:source-table id}
-        manifest (generate-manifest id fields-meta)]
+        query       {:source-table id}
+        manifest    (generate-manifest id fields-meta)]
     (execute-mbql-query driver db-id query
                         (fn [{cols-meta :cols} reducible-rows]
                           (with-open [os (io/output-stream temp-file)]
                             (let [filtered-col-meta (m/index-by :name fields-meta)
-                                  filtered-cols (filter #(contains? filtered-col-meta (:name %)) cols-meta)
-                                  col-name->index (into {} (map-indexed (fn [i col] [(:name col) i]) cols-meta))
-                                  filtered-indices (mapv (fn [col] [(col-name->index (:name col)) col]) filtered-cols)
-                                  filtered-rows (eduction (map (fn [row] (mapv (fn [[idx col]]
-                                                                                 (let [v (nth row idx)]
-                                                                                   (maybe-fixup-value col v)))
-                                                                               filtered-indices)))
-                                                          reducible-rows)]
+                                  filtered-cols     (filter #(contains? filtered-col-meta (:name %)) cols-meta)
+                                  col-name->index   (into {} (map-indexed (fn [i col] [(:name col) i]) cols-meta))
+                                  filtered-indices  (mapv (fn [col] [(col-name->index (:name col)) col]) filtered-cols)
+                                  filtered-rows     (eduction (map (fn [row]
+                                                                     (mapv (fn [[idx col]]
+                                                                             (let [v (nth row idx)]
+                                                                               (maybe-fixup-value col v)))
+                                                                           filtered-indices)))
+                                                              reducible-rows)]
                               (write-to-stream! os (mapv :name filtered-cols) filtered-rows))))
                         cancel-chan)
     manifest))
 
+(defmacro ^:private maybe-with-endpoint* [builder endpoint]
+  `(do (when-let [region# (transforms.settings/python-storage-s-3-region)]
+         (.region ~builder (Region/of region#)))
+       (when ~endpoint (.endpointOverride ~builder (URI/create ~endpoint)))
+       ~builder))
+
 (defn- maybe-with-endpoint-s3-client [^S3ClientBuilder builder endpoint]
-  (let [region (transforms.settings/python-storage-s-3-region)]
-    (case [(some? endpoint) (some? region)]
-      [true true]   (doto builder
-                      (.endpointOverride (URI/create endpoint))
-                      (.region (Region/of region)))
-      [true false]  (log/warn "Ignoring endpoint because region is not defined")
-      [false true]  (.region builder (Region/of region))
-      [false false] builder)))
+  (maybe-with-endpoint* builder endpoint))
 
 (defn- maybe-with-endpoint-s3-presigner [^S3Presigner$Builder builder endpoint]
-  (let [region (transforms.settings/python-storage-s-3-region)]
-    (case [(some? endpoint) (some? region)]
-      [true true]   (doto builder
-                      (.endpointOverride (URI/create endpoint))
-                      (.region (Region/of region)))
-      [true false]  (log/warn "Ignoring endpoint because region is not defined")
-      [false true]  (.region builder (Region/of region))
-      [false false] (.region builder (Region/US_EAST_1)))))
+  (maybe-with-endpoint* builder endpoint))
 
-(defn- create-s3-configuration
+(defn- s3-configuration
   "Create S3Configuration with path-style access setting"
   ^S3Configuration []
   (-> (S3Configuration/builder)
       (.pathStyleAccessEnabled (transforms.settings/python-storage-s-3-path-style-access))
       (.build)))
 
-(defn- build-put-object-request
-  "Build a PutObjectRequest with bucket and key"
-  [^String bucket-name ^String key]
-  (-> (PutObjectRequest/builder)
-      (.bucket bucket-name)
-      (.key key)
-      (.build)))
+(defn- put-object-request [^String bucket-name ^String key]
+  (-> (PutObjectRequest/builder) (.bucket bucket-name) (.key key) .build))
 
-(defn- build-get-object-request
-  "Build a GetObjectRequest with bucket and key"
-  [^String bucket-name ^String key]
-  (-> (GetObjectRequest/builder)
-      (.bucket bucket-name)
-      (.key key)
-      (.build)))
+(defn- get-object-request [^String bucket-name ^String key]
+  (-> (GetObjectRequest/builder) (.bucket bucket-name) (.key key) .build))
 
-(defn- build-delete-object-request
-  "Build a DeleteObjectRequest with bucket and key"
-  [^String bucket-name ^String key]
-  (-> (DeleteObjectRequest/builder)
-      (.bucket bucket-name)
-      (.key key)
-      (.build)))
+(defn- delete-object-request [^String bucket-name ^String key]
+  (-> (DeleteObjectRequest/builder) (.bucket bucket-name) (.key key) .build))
 
 (def ^:private ^Duration presigned-url-duration
   "Default duration for presigned URLs"
   (Duration/ofHours 1))
 
+(defmacro ^:private maybe-with-credentials*
+  "Use macro to avoid reflection, as their is no shared interface between S3ClientBuilder and S3Presigner$Builder"
+  [builder]
+  `(let [access-key# (transforms.settings/python-storage-s-3-access-key)
+         secret-key# (transforms.settings/python-storage-s-3-secret-key)]
+     (if (or access-key# secret-key#)
+       (if-not (and access-key# secret-key#)
+         (do (log/warnf "Ignoring %s because %s is not defined"
+                        (if access-key# "access-key" "secret-key")
+                        (if (not access-key#) "access-key" "secret-key"))
+             (.credentialsProvider ~builder (DefaultCredentialsProvider/create)))
+         (.credentialsProvider ~builder
+                               (StaticCredentialsProvider/create
+                                (AwsBasicCredentials/create access-key# secret-key#))))
+       (.credentialsProvider ~builder (DefaultCredentialsProvider/create)))))
+
 (defn- maybe-with-credentials-s3-client [^S3ClientBuilder builder]
-  (let [access-key (transforms.settings/python-storage-s-3-access-key)
-        secret-key (transforms.settings/python-storage-s-3-secret-key)]
-    (if (or access-key secret-key)
-      (if-not (and access-key secret-key)
-        (do (log/warnf "Ignoring %s because %s is not defined"
-                       (if access-key "access-key" "secret-key")
-                       (if (not access-key) "access-key" "secret-key"))
-            (.credentialsProvider builder (DefaultCredentialsProvider/create)))
-        (.credentialsProvider builder
-                              (StaticCredentialsProvider/create
-                               (AwsBasicCredentials/create access-key secret-key))))
-      (.credentialsProvider builder (DefaultCredentialsProvider/create)))))
+  (maybe-with-credentials* builder))
 
 (defn- maybe-with-credentials-s3-presigner [^S3Presigner$Builder builder]
-  (let [access-key (transforms.settings/python-storage-s-3-access-key)
-        secret-key (transforms.settings/python-storage-s-3-secret-key)]
-    (if (or access-key secret-key)
-      (if-not (and access-key secret-key)
-        (do (log/warnf "Ignoring %s because %s is not defined"
-                       (if access-key "access-key" "secret-key")
-                       (if (not access-key) "access-key" "secret-key"))
-            builder)
-        (.credentialsProvider builder
-                              (StaticCredentialsProvider/create
-                               (AwsBasicCredentials/create access-key secret-key))))
-      builder)))
+  (maybe-with-credentials* builder))
 
 ;; We just recreate the client every time, to keep things simple if config is changed.
 (defn- create-s3-client
   "Create S3 client for host operations (uploads, reads)"
   ^S3Client []
-  (let [^S3ClientBuilder builder (S3Client/builder)]
-    (doto builder
-      (maybe-with-endpoint-s3-client (transforms.settings/python-storage-s-3-endpoint))
-      maybe-with-credentials-s3-client
-      (.serviceConfiguration (create-s3-configuration)))
-    (.build builder)))
+  (.build
+   (doto (S3Client/builder)
+     (maybe-with-endpoint-s3-client (transforms.settings/python-storage-s-3-endpoint))
+     maybe-with-credentials-s3-client
+     (.serviceConfiguration (s3-configuration)))))
 
 (defn- create-s3-presigner-for-container
-  "Create S3 presigner for container operations (presigned URLs).
-  Uses container-endpoint if different from host endpoint."
+  "Create S3 presigner for container operations (presigned URLs). Uses distinct container-endpoint if relevant."
   ^S3Presigner []
   (let [container-endpoint (transforms.settings/python-storage-s-3-container-endpoint)
-        builder (S3Presigner/builder)]
-    (doto builder
-      (maybe-with-endpoint-s3-presigner (or container-endpoint (transforms.settings/python-storage-s-3-endpoint)))
-      maybe-with-credentials-s3-presigner
-      (.serviceConfiguration (create-s3-configuration)))
-    (.build builder)))
+        endpoint           (or container-endpoint (transforms.settings/python-storage-s-3-endpoint))]
+    (.build
+     (doto (S3Presigner/builder)
+       (maybe-with-endpoint-s3-presigner endpoint)
+       maybe-with-credentials-s3-presigner
+       (.serviceConfiguration (s3-configuration))))))
 
 (defn- upload-file-to-s3
   "Upload file using host client"
   [^S3Client s3-client ^String bucket-name ^String key ^File file]
-  (let [^PutObjectRequest request (build-put-object-request bucket-name key)]
+  (let [^PutObjectRequest request (put-object-request bucket-name key)]
     (.putObject s3-client request (RequestBody/fromFile file))))
 
 (defn- generate-presigned-get-url
   "Generate GET URL using container presigner"
   [^S3Presigner presigner ^String bucket-name ^String key]
-  (let [^GetObjectRequest get-request (build-get-object-request bucket-name key)
+  (let [^GetObjectRequest get-request            (get-object-request bucket-name key)
         ^GetObjectPresignRequest presign-request (-> (GetObjectPresignRequest/builder)
                                                      (.signatureDuration presigned-url-duration)
                                                      (.getObjectRequest get-request)
                                                      (.build))
-        presigned ^PresignedGetObjectRequest (.presignGetObject presigner presign-request)]
+        presigned                                (.presignGetObject presigner presign-request)]
     (.toString (.url presigned))))
 
 (defn- generate-presigned-put-url
   "Generate PUT URL using container presigner"
   [^S3Presigner presigner ^String bucket-name ^String key]
-  (let [^PutObjectRequest put-request (build-put-object-request bucket-name key)
+  (let [^PutObjectRequest put-request            (put-object-request bucket-name key)
         ^PutObjectPresignRequest presign-request (-> (PutObjectPresignRequest/builder)
                                                      (.signatureDuration presigned-url-duration)
                                                      (.putObjectRequest put-request)
                                                      (.build))
-        presigned ^PresignedPutObjectRequest (.presignPutObject presigner presign-request)]
+        presigned                                ^PresignedPutObjectRequest (.presignPutObject presigner presign-request)]
     (.toString (.url presigned))))
 
 (defn- delete-s3-object [^S3Client s3-client ^String bucket-name ^String key]
   (try
-    (let [^DeleteObjectRequest request (build-delete-object-request bucket-name key)]
+    (let [^DeleteObjectRequest request (delete-object-request bucket-name key)]
       (.deleteObject s3-client request))
     (catch Exception e
       (log/debugf e "Error deleting s3 object %s" key)
@@ -311,7 +282,7 @@
   ([s3-client bucket-name key] (read-from-s3 s3-client bucket-name key ::throw))
   ([^S3Client s3-client ^String bucket-name ^String key not-found]
    (try
-     (let [^GetObjectRequest request (build-get-object-request bucket-name key)
+     (let [^GetObjectRequest request (get-object-request bucket-name key)
            response                  (.getObject s3-client request)]
        (slurp response))
      (catch NoSuchKeyException e
@@ -335,26 +306,24 @@
         work-dir-name       (str prefix "run-" (System/nanoTime) "-" (rand-int 10000))
         container-presigner (create-s3-presigner-for-container)
         bucket-name         (transforms.settings/python-storage-s-3-bucket)
-        loc
-        (fn [method relative-path]
-          ;; save a tracking root to a well known location
-          ;; later can ls these to collect those objects whose ttl has elapsed
-          ;; (OR setup a retention policy in s3?)
-          (let [path (str work-dir-name "/" relative-path)]
-            {:path   path
-             :method method
-             :url    (case method :put (generate-presigned-put-url container-presigner bucket-name path)
-                           :get (generate-presigned-get-url container-presigner bucket-name path))}))]
-    {:s3-client   (create-s3-client)                        ;; do not like mixing interactive things with descriptions, but its damn convenient to have it here for now
+        ref                 (fn [method relative-path]
+                              (let [path (str work-dir-name "/" relative-path)]
+                                {:path   path
+                                 :method method
+                                 :url    (case method
+                                           :put (generate-presigned-put-url container-presigner bucket-name path)
+                                           :get (generate-presigned-get-url container-presigner bucket-name path))}))]
+    ;; a smell to be mixing interactive things with descriptions, but its damn convenient to have it here for now
+    {:s3-client   (create-s3-client)
      :bucket-name bucket-name
      :objects
      (into
-      {:output          (loc :put "output.csv")
-       :output-manifest (loc :put "output-manifest.json")
-       :events          (loc :put "events.jsonl")}
+      {:output          (ref :put "output.csv")
+       :output-manifest (ref :put "output-manifest.json")
+       :events          (ref :put "events.jsonl")}
       (for [[table-name id] table-name->id]
-        {[:table id :manifest] (loc :get (str "-table-" (name table-name) "-" id ".manifest.json"))
-         [:table id :data]     (loc :get (str "-table-" (name table-name) "-" id ".jsonl"))}))}))
+        {[:table id :manifest] (ref :get (str "table-" (name table-name) "-" id ".manifest.json"))
+         [:table id :data]     (ref :get (str "table-" (name table-name) "-" id ".jsonl"))}))}))
 
 (defn open-s3-shared-storage!
   "Returns a deref'able shared storage value, (.close) will optimistically delete any s3 objects named in storage (data files for tables, metadata files etc).
@@ -364,7 +333,9 @@
     (reify IDeref
       (deref [_] shared-storage)
       Closeable
-      (close [_] (cleanup-s3-objects (:s3-client shared-storage) (:bucket-name shared-storage) (map :path (vals (:objects shared-storage))))))))
+      (close [_] (cleanup-s3-objects (:s3-client shared-storage)
+                                     (:bucket-name shared-storage)
+                                     (map :path (vals (:objects shared-storage))))))))
 
 (defn copy-tables-to-s3!
   "Writes table content to their corresponding objects named in shared-storage, see (open-shared-storage!).
@@ -375,10 +346,10 @@
            cancel-chan]}]
   (doseq [id (vals table-name->id)
           :let [{:keys [s3-client bucket-name objects]} shared-storage
-                {data-path :path}     (get objects [:table id :data])
+                {data-path :path} (get objects [:table id :data])
                 {manifest-path :path} (get objects [:table id :manifest])]]
-    (let [temp-file       (File/createTempFile data-path "")
-          manifest-file   (File/createTempFile manifest-path "")]
+    (let [temp-file     (File/createTempFile data-path "")
+          manifest-file (File/createTempFile manifest-path "")]
       (try
         ;; Write table data to temporary file and get manifest
         (let [manifest (transforms.instrumentation/with-stage-timing [run-id :data-transfer :dwh-to-file]
@@ -386,7 +357,7 @@
           ;; Write manifest to file
           (with-open [writer (io/writer manifest-file)]
             (json/encode-to manifest writer {}))
-          (let [file-size (.length temp-file)
+          (let [file-size     (.length temp-file)
                 manifest-size (.length manifest-file)]
             (transforms.instrumentation/record-data-transfer! run-id :dwh-to-file file-size nil)
 
@@ -408,8 +379,9 @@
   (let [{:keys [objects]} shared-storage
         {:keys [output output-manifest events]} objects
 
-        table-name->url          (update-vals table-name->id (comp :url #(get objects [:table % :data])))
-        table-name->manifest-url (update-vals table-name->id (comp :url #(get objects [:table % :manifest])))
+        url-for-path             (fn [path] (:url (get objects path)))
+        table-name->url          (update-vals table-name->id #(url-for-path [:table % :data]))
+        table-name->manifest-url (update-vals table-name->id #(url-for-path [:table % :manifest]))
 
         payload                  {:code                code
                                   :library             (t2/select-fn->fn :path :source :model/PythonLibrary)
@@ -457,6 +429,6 @@
         output-content          (read-from-s3 s3-client bucket-name (:path output) nil)
         output-manifest-content (read-from-s3 s3-client bucket-name (:path output-manifest) "{}")
         events-content          (read-from-s3 s3-client bucket-name (:path events))]
-    {:output output-content
+    {:output          output-content
      :output-manifest (json/decode+kw output-manifest-content)
-     :events (mapv json/decode+kw (str/split-lines events-content))}))
+     :events          (mapv json/decode+kw (str/split-lines events-content))}))
