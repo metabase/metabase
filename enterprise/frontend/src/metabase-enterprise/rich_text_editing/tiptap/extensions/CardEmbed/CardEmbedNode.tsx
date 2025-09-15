@@ -50,6 +50,8 @@ import styles from "./CardEmbedNode.module.css";
 import { ModifyQuestionModal } from "./ModifyQuestionModal";
 import { NativeQueryModal } from "./NativeQueryModal";
 
+export const DROP_ZONE_COLOR = "var(--mb-base-color-blue-30)";
+
 interface DropZoneProps {
   isOver: boolean;
   side: "left" | "right";
@@ -68,7 +70,7 @@ const DropZone = ({ isOver, side, disabled }: DropZoneProps) => {
         top: 0,
         bottom: 0,
         width: "0.25rem",
-        [side]: "-0.75rem",
+        [side]: "-0.625rem",
         borderRadius: "0.125rem",
         backgroundColor: isOver
           ? "var(--mb-base-color-blue-30)"
@@ -110,6 +112,7 @@ export const CardEmbed: Node<{
   atom: true,
   draggable: true,
   selectable: true,
+  disableDropCursor: true,
 
   addAttributes() {
     return {
@@ -699,7 +702,7 @@ export const CardEmbedComponent = memo(
                           truncate="end"
                           onClick={handleTitleClick}
                         >
-                          {displayName} ({id})
+                          {displayName}
                         </Text>
                       </Ellipsified>
                       {canWrite && (

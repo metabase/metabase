@@ -23,6 +23,7 @@ export const ResizeNode: Node<{
   atom: true,
   draggable: false,
   selectable: true,
+  disableDropCursor: true,
 
   addAttributes() {
     return {

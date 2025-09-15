@@ -30,6 +30,7 @@ export const FlexContainer: Node<{
   defining: true,
   draggable: false,
   selectable: false,
+  disableDropCursor: true,
 
   addAttributes() {
     return {
