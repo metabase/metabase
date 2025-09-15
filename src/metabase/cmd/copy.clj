@@ -113,13 +113,15 @@
     :model/NotificationRecipient
     :model/NotificationCard]
    (when config/ee-available?
-     [:model/GroupTableAccessPolicy
+     [:model/Sandbox
       :model/ConnectionImpersonation
       :model/Metabot
       :model/MetabotEntity
       :model/MetabotPrompt
       :model/Document
-      :model/DocumentBookmark])))
+      :model/DocumentBookmark
+      :model/Comment
+      :model/CommentReaction])))
 
 (defn- objects->colums+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`
@@ -362,7 +364,7 @@
   (str (name (t2/table-name model)) "_id_seq"))
 
 ;;; we changed the table name to `sandboxes` but never updated the underlying ID sequences or constraint names.
-(defmethod postgres-id-sequence-name :model/GroupTableAccessPolicy
+(defmethod postgres-id-sequence-name :model/Sandbox
   [_model]
   "group_table_access_policy_id_seq")
 

@@ -1400,7 +1400,7 @@
                     (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
 
 ;;; see also [[metabase.query-processor.util.add-alias-info-test/resolve-incorrect-field-ref-for-expression-test]]
-;;; and [[metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test/evil-field-ref-for-an-expression-test]]
+;;; and [[metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test/evil-field-ref-for-an-expression-test]]
 (deftest ^:parallel evil-field-ref-for-an-expression-test
   (testing "If we accidentally use a :field ref for an :expression, the query should still compile correctly"
     ;; (this is actually mostly checking that `add-alias-info` or someone else rewrites the `:field` ref as an

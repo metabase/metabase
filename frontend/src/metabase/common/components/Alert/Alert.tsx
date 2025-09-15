@@ -14,7 +14,7 @@ export interface AlertProps {
   variant?: AlertVariant;
   onClose?: () => void;
 }
-
+/** @deprecated - use metabase/ui alert instead **/
 const Alert = ({
   children,
   hasBorder = true,

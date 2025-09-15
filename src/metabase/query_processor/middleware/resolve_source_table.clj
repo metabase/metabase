@@ -6,6 +6,7 @@
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]))
 
+;;; TODO (Cam 9/11/25) -- update this to use the `lib.walk.util` functions once #63321 is merged
 (mu/defn  ^:private query->source-table-ids :- [:maybe [:set {:min 1} ::lib.schema.id/table]]
   "Fetch a set of all `:source-table` IDs anywhere in `query`."
   [query]

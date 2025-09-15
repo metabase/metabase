@@ -16,7 +16,7 @@
         (doall @data-perms/*sandboxes-for-user*)
 
         ;; make the cache wrong
-        (t2/delete! :model/GroupTableAccessPolicy :group_id (:id &group))
+        (t2/delete! :model/Sandbox :group_id (:id &group))
 
         ;; subsequent calls should still use the cache, and not hit the DB at all
         (t2/with-call-count [call-count]
