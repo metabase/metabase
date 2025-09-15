@@ -235,7 +235,7 @@
                                  columns)
         primary-key-opts (select-keys table-schema [:primary-key])]
     (log/infof "Creating table %s with %d columns" table-name (count columns))
-    (driver/create-table! driver database-id #p table-name #p column-definitions primary-key-opts)))
+    (driver/create-table! driver database-id table-name column-definitions primary-key-opts)))
 
 (defn drop-table!
   "Drop a table in the database."

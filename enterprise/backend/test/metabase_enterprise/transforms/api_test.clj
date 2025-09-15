@@ -846,3 +846,28 @@
               (is (= "Transforms are not supported on databases with DB routing enabled."
                      (mt/user-http-request :crowberto :put 400 (format "ee/transform/%s" (:id transform))
                                            (assoc transform :name "Gadget Products 2")))))))))))
+
+(deftest get-python-transform-with-different-target-database-test
+  (testing "GET /api/ee/transform/:id correctly fetches target table from different database"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Database target-db {:engine :h2
+                                                :details {:db "mem:target-db"}}
+                     :model/Table target-table {:db_id (:id target-db)
+                                                :schema "PUBLIC"
+                                                :name "python_target_table"
+                                                :active true}
+                     :model/Transform transform {:name "Python Transform Cross DB"
+                                                 :source {:type "python"
+                                                          :source-database (mt/id)
+                                                          :source-tables {}
+                                                          :body "def transform():\n    pass"}
+                                                 :target {:type "table"
+                                                          :schema "PUBLIC"
+                                                          :name "python_target_table"
+                                                          :database (:id target-db)}}]
+        (let [response (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id transform)))]
+          (is (=? {:id     (:id target-table)
+                   :name   "python_target_table"
+                   :schema "PUBLIC"
+                   :db_id  (:id target-db)}
+                  (:table response))))))))
