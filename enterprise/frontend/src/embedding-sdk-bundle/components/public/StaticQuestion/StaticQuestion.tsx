@@ -23,9 +23,9 @@ import {
   SdkQuestion,
   type SdkQuestionProps,
 } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
-import { StaticQuestionSdkMode } from "embedding-sdk-bundle/components/public/StaticQuestion/mode";
 import { Group, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import { EmbeddingSdkStaticMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkStaticMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 
@@ -93,7 +93,7 @@ const _StaticQuestion = ({
       question &&
       getEmbeddingMode({
         question,
-        queryMode: StaticQuestionSdkMode,
+        queryMode: EmbeddingSdkStaticMode,
       })
     );
   };
