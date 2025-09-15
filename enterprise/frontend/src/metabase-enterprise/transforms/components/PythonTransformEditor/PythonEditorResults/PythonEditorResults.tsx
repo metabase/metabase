@@ -1,114 +1,35 @@
 import type { ReactNode } from "react";
-import { ResizableBox } from "react-resizable";
 import { c, t } from "ttag";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import DebouncedFrame from "metabase/common/components/DebouncedFrame";
-import Link from "metabase/common/components/Link";
 import { LoadingSpinner } from "metabase/common/components/MetadataInfo/MetadataInfo.styled";
 import { isMac } from "metabase/lib/browser";
-import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
-import { Box, Checkbox, Flex, Icon, Stack, Text, Title } from "metabase/ui";
-import { getPythonLibraryUrl } from "metabase-enterprise/transforms/urls";
+import { Box, Flex, Icon, Stack, Text, Title } from "metabase/ui";
 
-import { SHARED_LIB_IMPORT_PATH } from "../../../constants";
-import { PythonEditor as PythonCodeEditor } from "../../PythonEditor";
+import type { ExecutionResult } from "../utils";
 
 import { ExecutionOutputTable } from "./ExecutionOutputTable";
-import S from "./PythonQueryEditor.module.css";
-import { ResizableBoxHandle } from "./ResizableBoxHandle";
-import {
-  type ExecutionResult,
-  hasImport,
-  insertImport,
-  removeImport,
-  useTestPythonScript,
-} from "./utils";
+import S from "./PythonEditorResults.module.css";
 
 type PythonEditorProps = {
-  script: string;
-  isRunnable: boolean;
-  onChange: (script: string) => void;
-  onRunScript?: () => Promise<void>;
-  onCancelScript?: () => void;
-  tables?: Record<string, number>;
+  isRunning?: boolean;
+  executionResult?: ExecutionResult | null;
 };
 
-const EDITOR_HEIGHT = 400;
-
-export function PythonQueryEditor({
-  script,
-  isRunnable,
-  onChange,
-  tables = {},
+export function PythonEditorResults({
+  executionResult,
+  isRunning,
 }: PythonEditorProps) {
-  const { isRunning, isDirty, cancel, run, executionResult } =
-    useTestPythonScript(script, tables);
-
-  const hasSharedLib = hasImport(script, SHARED_LIB_IMPORT_PATH);
-  function handleToggleSharedLib() {
-    if (hasImport(script, SHARED_LIB_IMPORT_PATH)) {
-      onChange(removeImport(script, SHARED_LIB_IMPORT_PATH));
-    } else {
-      onChange(insertImport(script, SHARED_LIB_IMPORT_PATH));
-    }
-  }
-
   return (
-    <Stack h="100%" w="100%" gap={0}>
-      <ResizableBox
-        className={S.root}
-        axis="y"
-        height={EDITOR_HEIGHT}
-        handle={<ResizableBoxHandle />}
-        resizeHandles={["s"]}
-      >
-        <Flex h="100%" align="end" bg="bg-light">
-          <PythonCodeEditor
-            value={script}
-            onChange={onChange}
-            withPandasCompletions
-          />
-
-          <Box p="md">
-            <RunButtonWithTooltip
-              disabled={!isRunnable}
-              isRunning={isRunning}
-              isDirty={isDirty}
-              onRun={run}
-              onCancel={cancel}
-              getTooltip={() => t`Run Python script`}
-            />
-          </Box>
-        </Flex>
-        <Stack className={S.libraryActions} p="md" gap="sm">
-          <Checkbox
-            label={t`Import common library`}
-            checked={hasSharedLib}
-            onChange={handleToggleSharedLib}
-            size="sm"
-          />
-          <Flex
-            component={Link}
-            target="_blank"
-            to={getPythonLibraryUrl({ path: SHARED_LIB_IMPORT_PATH })}
-            gap="sm"
-          >
-            <Icon name="pencil" />
-            {t`Edit common library`}
-          </Flex>
-        </Stack>
-      </ResizableBox>
-
-      <DebouncedFrame className={S.visualization}>
-        {executionResult ? (
-          <ExecutionResult executionResult={executionResult} />
-        ) : (
-          <EmptyState />
-        )}
-        {isRunning && <LoadingState />}
-      </DebouncedFrame>
-    </Stack>
+    <DebouncedFrame className={S.visualization}>
+      {executionResult ? (
+        <ExecutionResults executionResult={executionResult} />
+      ) : (
+        <EmptyState />
+      )}
+      {isRunning && <LoadingState />}
+    </DebouncedFrame>
   );
 }
 
@@ -144,7 +65,7 @@ function EmptyState() {
   );
 }
 
-function ExecutionResult({
+function ExecutionResults({
   executionResult,
 }: {
   executionResult: ExecutionResult | null;

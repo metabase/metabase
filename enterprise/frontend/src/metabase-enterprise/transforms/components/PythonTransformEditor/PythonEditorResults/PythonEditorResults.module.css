@@ -1,12 +1,3 @@
-.root {
-  border-bottom: 1px solid var(--mb-color-border);
-}
-
-.editor {
-  width: 100%;
-  height: 100%;
-}
-
 .logs {
   white-space: pre;
   border: 1px solid var(--mb-color-border);
@@ -59,10 +50,4 @@
   bottom: 0;
   right: 0;
   background-color: rgba(255, 255, 255, 0.5);
-}
-
-.libraryActions {
-  position: absolute;
-  top: 0;
-  right: 0;
 }
