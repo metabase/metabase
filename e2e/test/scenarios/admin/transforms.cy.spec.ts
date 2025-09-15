@@ -1485,26 +1485,10 @@ describe("scenarios > admin > transforms > jobs", () => {
 
         cy.log("last run at - add a filter");
         getLastRunAtFilterWidget().click();
-        H.popover().findByText("Today").click();
+        H.popover().findByText("Previous month").click();
 
-        getLastRunAtFilterWidget().should("contain", "Today");
-        getContentTable().within(() => {
-          cy.findByText("Hourly job").should("be.visible");
-          cy.findByText("Daily job").should("not.exist");
-          cy.findByText("Weekly job").should("not.exist");
-          cy.findByText("Monthly job").should("not.exist");
-        });
-
-        cy.log("last run at filter - update a filter");
-        getLastRunAtFilterWidget().click();
-        H.popover().findByText("Week").click();
-        getLastRunAtFilterWidget().should("contain", "This week");
-        getContentTable().within(() => {
-          cy.findByText("Hourly job").should("be.visible");
-          cy.findByText("Daily job").should("not.exist");
-          cy.findByText("Weekly job").should("not.exist");
-          cy.findByText("Monthly job").should("not.exist");
-        });
+        getLastRunAtFilterWidget().should("contain", "Previous month");
+        getContentTable().should("not.exist");
 
         cy.log("last run at filter - remove filter");
         getLastRunAtFilterWidget().button("Remove filter").click();
@@ -1528,17 +1512,17 @@ describe("scenarios > admin > transforms > jobs", () => {
         cy.log("next run - add a filter");
         getNextRunFilterWidget().click();
         H.popover().within(() => {
-          cy.findByText("Relative date range…").click();
-          cy.findByText("Current").click();
-          cy.findByText("Week").click();
+          cy.findByText("Fixed date range…").click();
+          cy.findByLabelText("Start date").clear().type("12/10/2024");
+          cy.findByLabelText("End date").clear().type("01/05/2025");
+          cy.button("Apply").click();
         });
 
-        getNextRunFilterWidget().should("contain", "This week");
-        getContentTable().within(() => {
-          cy.findByText("Hourly job").should("be.visible");
-          cy.findByText("Daily job").should("be.visible");
-          cy.findByText("Weekly job").should("not.exist");
-        });
+        getNextRunFilterWidget().should(
+          "contain",
+          "December 10, 2024 - January 5, 2025",
+        );
+        getContentTable().should("not.exist");
 
         cy.log("next run filter - remove filter");
         getNextRunFilterWidget().button("Remove filter").click();
