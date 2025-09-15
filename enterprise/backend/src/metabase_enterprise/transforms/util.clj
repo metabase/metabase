@@ -17,7 +17,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.random :as random]
    [toucan2.core :as t2])
   (:import
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -221,22 +220,6 @@
    [:name :keyword]
    [:columns [:sequential ::column-definition]]
    [:primary-key {:optional true} [:sequential :string]]])
-
-(defn dtype->base-type
-  "Maps pandas dtype strings directly to Metabase base types in the type hierarchy."
-  [dtype-str]
-  (cond
-    (str/starts-with? dtype-str "int") :type/Integer
-    (str/starts-with? dtype-str "Int") :type/Integer
-    (str/starts-with? dtype-str "float") :type/Float
-    (str/starts-with? dtype-str "Float") :type/Float
-    (str/starts-with? dtype-str "bool") :type/Boolean
-    ;; datetime64[ns, timezone] indicates timezone-aware datetime
-    (str/starts-with? dtype-str "datetime64[ns, ") :type/DateTimeWithTZ
-    (str/starts-with? dtype-str "datetime") :type/DateTime
-    ;; this is not a real dtype, pandas uses 'object', but we override it if there's source or custom field metadata
-    (str/starts-with? dtype-str "date") :type/Date
-    :else :type/Text))
 
 (mu/defn create-table-from-schema!
   "Create a table from a table-schema"

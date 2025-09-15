@@ -27,6 +27,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
    (java.io File)
@@ -800,6 +801,7 @@
 (defmethod type->database-type :type/TextLike [_] [:text])
 (defmethod type->database-type :type/Text [_] [:text])
 (defmethod type->database-type :type/Number [_] [:bigint])
+(defmethod type->database-type :type/Integer [_] [:int])
 (defmethod type->database-type :type/Float [_] [:double])
 (defmethod type->database-type :type/Decimal [_] [:decimal])
 (defmethod type->database-type :type/Boolean [_] [:boolean])
@@ -915,7 +917,7 @@
   (if (not= (get-global-variable db-id "local_infile") "ON")
     ;; If it isn't turned on, fall back to the generic "INSERT INTO ..." way
     ((get-method driver/insert-into! :sql-jdbc) driver db-id table-name column-names values)
-    (let [temp-file (File/createTempFile table-name ".tsv")
+    (let [temp-file (File/createTempFile (name table-name) ".tsv")
           file-path (.getAbsolutePath temp-file)]
       (try
         (let [tsvs    (map (partial row->tsv driver (count column-names)) values)
@@ -935,6 +937,22 @@
              (jdbc/execute! {:connection conn} sql))))
         (finally
           (.delete temp-file))))))
+
+(defmethod driver/insert-from-source! [:mysql :jsonl-file]
+  [driver db-id {:keys [columns] :as table-definition} {:keys [file]}]
+  (with-open [rdr (jio/reader file)]
+    (let [lines (line-seq rdr)
+          data-rows (map (fn [line]
+                           (let [m (json/decode line)]
+                             (mapv (fn [column]
+                                     (let [value (get m (:name column))]
+                                       (if (and (string? value)
+                                                (isa? (:type column) :type/DateTimeWithTZ))
+                                         (t/offset-date-time value)
+                                         value)))
+                                   columns)))
+                         lines)]
+      (driver/insert-from-source! driver db-id table-definition {:type :rows :data data-rows}))))
 
 (defn- parse-grant
   "Parses the contents of a row from the output of a `SHOW GRANTS` statement, to extract the data needed

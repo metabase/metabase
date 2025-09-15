@@ -26,6 +26,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
    (java.sql
@@ -963,6 +964,21 @@
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :sqlserver
   [_ e]
   (= (sql-jdbc/get-sql-state e) "S0002"))
+
+(defmethod driver/insert-from-source! [:sqlserver :jsonl-file]
+  [driver db-id {:keys [columns] :as table-definition} {:keys [file]}]
+  (with-open [rdr (io/reader file)]
+    (let [lines (line-seq rdr)
+          data-rows (map (fn [line]
+                           (let [m (json/decode line)]
+                             (mapv (fn [column]
+                                     (let [value (get m (:name column))]
+                                       (if (boolean? value)
+                                         (if value 1 0)
+                                         value)))
+                                   columns)))
+                         lines)]
+      (driver/insert-from-source! driver db-id table-definition {:type :rows :data data-rows}))))
 
 (defmethod driver/compile-transform :sqlserver
   [driver {:keys [query output-table]}]
