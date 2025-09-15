@@ -11,11 +11,7 @@ import {
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
 import { PythonTransformEditor } from "metabase-enterprise/transforms/components/PythonTransformEditor";
-import type {
-  DatasetQuery,
-  PythonTransformSource,
-  Transform,
-} from "metabase-types/api";
+import type { Transform, TransformSource } from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
 import { getTransformUrl } from "../../urls";
@@ -58,27 +54,10 @@ export function TransformQueryPageBody({
   const dispatch = useDispatch();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
-  const handleDatasetSave = async (query: DatasetQuery) => {
+  const handleSourceSave = async (source: TransformSource) => {
     const { error } = await updateTransform({
       id: transform.id,
-      source: {
-        type: "query",
-        query,
-      },
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update transform query`);
-    } else {
-      sendSuccessToast(t`Transform query updated`);
-      dispatch(push(getTransformUrl(transform.id)));
-    }
-  };
-
-  const handlePythonSave = async (source: PythonTransformSource) => {
-    const { error } = await updateTransform({
-      id: transform.id,
-      source: source,
+      source,
     });
 
     if (error) {
@@ -99,17 +78,17 @@ export function TransformQueryPageBody({
         initialSource={transform.source}
         isNew={false}
         isSaving={isLoading}
-        onSave={handlePythonSave}
+        onSave={handleSourceSave}
         onCancel={handleCancel}
       />
     );
   }
   return (
     <QueryEditor
-      initialQuery={transform.source.query}
+      initialSource={transform.source}
       isNew={false}
       isSaving={isLoading}
-      onSave={handleDatasetSave}
+      onSave={handleSourceSave}
       onCancel={handleCancel}
     />
   );
