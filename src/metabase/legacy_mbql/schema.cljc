@@ -6,7 +6,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [malli.core :as mc]
-   [malli.error :as me]
    [metabase.legacy-mbql.schema.helpers :as helpers :refer [is-clause?]]
    [metabase.legacy-mbql.schema.macros :refer [defclause one-of]]
    [metabase.lib.schema.actions :as lib.schema.actions]
@@ -25,7 +24,6 @@
    [metabase.lib.schema.settings :as lib.schema.settings]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -392,17 +390,6 @@
 (def ^{:added "0.39.0"} field
   "Schema for a `:field` clause."
   (with-meta [:ref ::field] {:clause-name :field}))
-
-(def ^{:added "0.39.0"} field:id
-  "Schema for a `:field` clause, with the added constraint that it must use an integer Field ID."
-  (with-meta
-   [:and
-    field
-    [:fn
-     {:error/message "Must be a :field with an integer Field ID."}
-     (fn [[_ id-or-name]]
-       (integer? id-or-name))]]
-   {:clause-name :field}))
 
 (mr/def ::field-or-expression-ref
   [:schema
@@ -1688,6 +1675,8 @@
   "Schema for a valid dimension clause."
   (with-meta [:ref ::dimension] {:clause-name :dimension}))
 
+(defmethod options-style-method :dimension [_tag] ::options-style.last-unless-empty)
+
 (defclause variable
   target template-tag)
 
@@ -1808,19 +1797,3 @@
    (lib.schema.common/disallowed-keys
     {:source-table "An outer query must not include inner-query keys like :source-table; this might cause us to confuse it with an inner query"
      :source-query "An outer query must not include inner-query keys like :source-query; this might cause us to confuse it with an inner query"})])
-
-(def ^{:arglists '([query])} valid-query?
-  "Is this a valid outer query? (Pre-compling a validator is more efficient.)"
-  (mr/validator Query))
-
-(defn validate-query
-  "Validator for an outer query; throw an Exception explaining why the query is invalid if it is. Returns query if
-  valid."
-  [query]
-  (if (valid-query? query)
-    query
-    (let [error     (mr/explain Query query)
-          humanized (me/humanize error)]
-      (throw (ex-info (i18n/tru "Invalid query: {0}" (pr-str humanized))
-                      {:error    humanized
-                       :original error})))))

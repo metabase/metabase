@@ -29,7 +29,6 @@
 
   Token normalization occurs first, followed by canonicalization, followed by removing empty clauses."
   (:require
-   #?@(:cljs [[clojure.walk :as walk]])
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.legacy-mbql.predicates :as mbql.preds]
@@ -37,6 +36,7 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
+   [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -393,6 +393,10 @@
   [clause]
   (-> clause normalize-tokens canonicalize-mbql-clauses))
 
+(mu/defn- normalize-fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]
+  [fingerprint :- [:maybe :map]]
+  (lib.normalize/normalize ::lib.schema.metadata.fingerprint/fingerprint fingerprint))
+
 (mu/defn normalize-source-metadata
   "Normalize source/results metadata for a single column."
   [metadata :- :map]
@@ -414,16 +418,10 @@
                                 :unit
                                 :lib/source) (keyword v)
                                :field_ref    (normalize-field-ref v)
-                               :fingerprint  (#?(:clj perf/keywordize-keys :cljs walk/keywordize-keys) v)
+                               :fingerprint  (normalize-fingerprint v)
                                :binning_info (m/update-existing v :binning_strategy keyword)
                                #_else
                                v)]
-                       ;; sanity check
-                       (when (= k :fingerprint)
-                         (when-let [base-type (first (keys (:type v)))]
-                           (assert (isa? base-type :type/*)
-                                   (str "BAD FINGERPRINT! Invalid base-type: " (pr-str base-type) " " (pr-str v)))))
-
                        [k v]))))
         metadata))
 
@@ -471,7 +469,7 @@
    ;;
    ;; HACK TODO (Cam 7/17/25) -- seems icky for the legacy MBQL schema to have to know about namespaced keys like
    ;; this. I guess this can go away once we stop converting back and forth between MBQL 4 and 5 inside the QP
-   :metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/original-metadata
+   :metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata
    identity})
 
 (defn normalize-tokens
@@ -607,6 +605,7 @@
     3
     (let [[_ field unit] clause]
       (-> (canonicalize-implicit-field-id field)
+          #_{:clj-kondo/ignore [:deprecated-var]}
           (mbql.u/with-temporal-unit unit)))
 
     4

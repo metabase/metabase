@@ -82,15 +82,15 @@
    (fn [_query _path-type _path stage-or-join]
      (dissoc stage-or-join :qp/stage-is-from-source-card))))
 
-(defn remove-gtapped-table-keys
-  "Pre-processing middleware. Removes any instances of the `:query-permissions/gtapped-table` key which is added by the
+(defn remove-sandboxed-table-keys
+  "Pre-processing middleware. Removes any instances of the `:query-permissions/sandboxed-table` key which is added by the
   row-level-restriction middleware when sandboxes are resolved in a query. Since we rely on this for permission
   enforcement, we want to disallow users from passing it in themselves (like the functions above)."
   [query]
   (lib.walk/walk
    query
    (fn [_query _path-type _path stage-or-join]
-     (dissoc stage-or-join :query-permissions/gtapped-table))))
+     (dissoc stage-or-join :query-permissions/sandboxed-table))))
 
 (mu/defn check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."

@@ -420,8 +420,6 @@ export function visitPublicDashboard(
 
 export const goToAuthOverviewPage = () => {
   cy.findByTestId("admin-layout-sidebar")
-    .findAllByText("Overview") // auth overview page
-    .should("have.length", 2)
-    .first()
+    .findByText("Overview") // auth overview page
     .click();
 };

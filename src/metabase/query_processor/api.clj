@@ -43,7 +43,7 @@
   is a wrapper for the function of the same name in the QP util namespace; it adds additional permissions checking as
   well."
   [outer-query]
-  (when-let [source-card-id (qp.util/query->source-card-id outer-query)]
+  (when-let [source-card-id #_{:clj-kondo/ignore [:deprecated-var]} (qp.util/query->source-card-id outer-query)]
     (log/infof "Source query for this query is Card %s" (pr-str source-card-id))
     (api/read-check :model/Card source-card-id)
     source-card-id))
