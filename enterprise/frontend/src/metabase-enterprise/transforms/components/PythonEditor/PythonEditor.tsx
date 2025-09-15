@@ -11,6 +11,7 @@ export function PythonEditor({
   withPandasCompletions,
   className,
   readOnly,
+  ...rest
 }: {
   value: string;
   onChange?: (value: string) => void;
@@ -26,6 +27,7 @@ export function PythonEditor({
       language="python"
       extensions={withPandasCompletions ? completion : undefined}
       readOnly={readOnly}
+      {...rest}
     />
   );
 }
