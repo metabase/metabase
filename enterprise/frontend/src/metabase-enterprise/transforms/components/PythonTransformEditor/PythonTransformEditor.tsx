@@ -4,8 +4,8 @@ import { Flex, Stack } from "metabase/ui";
 import type { PythonTransformSource } from "metabase-types/api";
 
 import { PythonDataPicker } from "../PythonDataPicker";
+import { PythonQueryEditor } from "../PythonQueryEditor";
 import { EditorHeader } from "../QueryEditor/EditorHeader";
-import { PythonQueryEditor } from "../QueryEditor/PythonQueryEditor";
 
 import { updateTransformSignature } from "./utils";
 
