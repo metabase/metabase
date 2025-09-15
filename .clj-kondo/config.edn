@@ -173,6 +173,7 @@
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
      metabase.notification.models/create-notification!
      metabase.pulse.send/send-pulse!
+     metabase-enterprise.transforms-python.python-runner-test/execute!
      ;; Safe in tests, where we typically use a private, temporary index per thread.
      metabase.search.core/reindex!
      metabase.util/run-count!

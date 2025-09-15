@@ -1,7 +1,6 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms-python.python-runner-test
   (:require
    [clojure.core.async :as a]
-   [clojure.data.csv :as csv]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
