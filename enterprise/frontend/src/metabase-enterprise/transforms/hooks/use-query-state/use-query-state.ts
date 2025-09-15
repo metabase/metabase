@@ -27,13 +27,29 @@ export function useQueryState(
     [query, metadata],
   );
 
-  const proposedQuestion = useMemo(
-    () =>
-      proposedQuery
-        ? Question.create({ dataset_query: proposedQuery, metadata })
-        : undefined,
-    [proposedQuery, metadata],
-  );
+  const proposedQuestion = useMemo(() => {
+    if (!proposedQuery) {
+      return undefined;
+    }
+
+    const question = Question.create({
+      dataset_query: proposedQuery,
+      metadata,
+    });
+    const { isNative } = Lib.queryDisplayInfo(question.query());
+
+    if (isNative) {
+      const nativeQuery = question.legacyNativeQuery();
+      if (nativeQuery) {
+        const queryText = nativeQuery.queryText();
+        // For native queries, ensure template tags are processed
+        const updatedQuery = nativeQuery.setQueryText(queryText);
+        return updatedQuery.question();
+      }
+    }
+
+    return question;
+  }, [proposedQuery, metadata]);
 
   const isQueryDirty = useMemo(
     () => !Lib.areLegacyQueriesEqual(query, initialQuery),
