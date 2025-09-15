@@ -1,1 +1,1 @@
-export { PythonTransformEditor } from "./PythonTransformEditor";
+export * from "./PythonTransformEditor";

@@ -5,7 +5,7 @@ import type { PythonTransformSource } from "metabase-types/api";
 
 import { PythonDataPicker } from "../PythonDataPicker";
 import { EditorHeader } from "../QueryEditor/EditorHeader";
-import { PythonEditor } from "../QueryEditor/PythonEditor";
+import { PythonQueryEditor } from "../QueryEditor/PythonQueryEditor";
 
 type PythonTransformEditorProps = {
   initialSource: PythonTransformSource;
@@ -223,7 +223,7 @@ ${tableAliases
           onChange={handleDataChange}
         />
 
-        <PythonEditor
+        <PythonQueryEditor
           script={source.body}
           isRunnable={true}
           onChange={handleScriptChange}
