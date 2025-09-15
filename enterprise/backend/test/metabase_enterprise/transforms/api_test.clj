@@ -412,10 +412,10 @@
             (with-redefs [transforms.execute/python-message-loop-poll-sleep-duration Duration/ZERO
                           transforms.execute/transfer-file-to-db                     (if-some [e (:writeback-ex scenario)]
                                                                                        (fn [& _] (throw e))
-                                                                                       @#'metabase-enterprise.transforms.execute/transfer-file-to-db)]
-              (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
-                                                                       :schema schema
-                                                                       :name   "result"}]
+                                                                                       @#'transforms.execute/transfer-file-to-db)]
+              (with-transform-cleanup! [target {:type   "table"
+                                                :schema schema
+                                                :name   "result"}]
                 (let [transform-id      (create-transform scenario target)
                       observed-messages (with-open [observer ^Closeable (open-message-value-observer transform-id)]
                                           (block-on-run scenario target transform-id)
