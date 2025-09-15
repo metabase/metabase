@@ -421,22 +421,20 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       createMbqlTransform({ visitTransform: true });
       getTagsInput().click();
 
-      H.popover().within(() => {
-        cy.findByRole("option", { name: "hourly" }).click();
-        cy.wait("@updateTransform");
-        assertOptionSelected("hourly");
-        assertOptionNotSelected("daily");
+      H.popover().findByRole("option", { name: "hourly" }).click();
+      cy.wait("@updateTransform");
+      assertOptionSelected("hourly");
+      assertOptionNotSelected("daily");
 
-        cy.findByRole("option", { name: "daily" }).click();
-        cy.wait("@updateTransform");
-        assertOptionSelected("hourly");
-        assertOptionSelected("daily");
+      H.popover().findByRole("option", { name: "daily" }).click();
+      cy.wait("@updateTransform");
+      assertOptionSelected("hourly");
+      assertOptionSelected("daily");
 
-        cy.findByRole("option", { name: "hourly" }).click();
-        cy.wait("@updateTransform");
-        assertOptionNotSelected("hourly");
-        assertOptionSelected("daily");
-      });
+      H.popover().findByRole("option", { name: "hourly" }).click();
+      cy.wait("@updateTransform");
+      assertOptionNotSelected("hourly");
+      assertOptionSelected("daily");
     });
 
     it("should be able to create tags inline", () => {
@@ -1368,26 +1366,24 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("tags", () => {
-    it("should be able to add and remove tags", { tags: "@flaky" }, () => {
+    it("should be able to add and remove tags", () => {
       H.createTransformJob({ name: "New job" }, { visitTransformJob: true });
       getTagsInput().click();
 
-      H.popover().within(() => {
-        cy.findByRole("option", { name: "hourly" }).click();
-        cy.wait("@updateJob");
-        assertOptionSelected("hourly");
-        assertOptionNotSelected("daily");
+      H.popover().findByRole("option", { name: "hourly" }).click();
+      cy.wait("@updateJob");
+      assertOptionSelected("hourly");
+      assertOptionNotSelected("daily");
 
-        cy.findByRole("option", { name: "daily" }).click();
-        cy.wait("@updateJob");
-        assertOptionSelected("hourly");
-        assertOptionSelected("daily");
+      H.popover().findByRole("option", { name: "daily" }).click();
+      cy.wait("@updateJob");
+      assertOptionSelected("hourly");
+      assertOptionSelected("daily");
 
-        cy.findByRole("option", { name: "hourly" }).click();
-        cy.wait("@updateJob");
-        assertOptionNotSelected("hourly");
-        assertOptionSelected("daily");
-      });
+      H.popover().findByRole("option", { name: "hourly" }).click();
+      cy.wait("@updateJob");
+      assertOptionNotSelected("hourly");
+      assertOptionSelected("daily");
     });
   });
 
@@ -2084,6 +2080,10 @@ function getTagsInput() {
   return cy.findByPlaceholderText("Add tags");
 }
 
+function getTagsInputContainer() {
+  return getTagsInput().parent();
+}
+
 function getContentTable() {
   return cy.findByTestId("admin-content-table");
 }
@@ -2277,17 +2277,9 @@ function assertTableDoesNotExistError({
 }
 
 function assertOptionSelected(name: string) {
-  cy.findByRole("option", { name }).should(
-    "have.attr",
-    "aria-selected",
-    "true",
-  );
+  getTagsInputContainer().findByText(name).should("be.visible");
 }
 
 function assertOptionNotSelected(name: string) {
-  cy.findByRole("option", { name }).should(
-    "not.have.attr",
-    "aria-selected",
-    "true",
-  );
+  getTagsInputContainer().findByText(name).should("not.exist");
 }
