@@ -21,7 +21,7 @@ type ManageSectionProps = {
 
 export function ManageSection({ transform }: ManageSectionProps) {
   const sectionLabel =
-    transform.source.type === "python" ? t`Python Script` : t`Query`;
+    transform.source.type === "python" ? t`Python script` : t`Query`;
 
   return (
     <TitleSection
