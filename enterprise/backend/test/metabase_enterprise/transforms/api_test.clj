@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.models.transform-run]
    [metabase-enterprise.transforms.models.transform-tag]
@@ -410,10 +411,10 @@
                   (assert (not= :timeout (try (deref fut 1000 :timeout) (catch Throwable _))) "Observation thread did not exit!")))))
 
           (run-scenario [scenario schema]
-            (with-redefs [transforms.execute/python-message-loop-poll-sleep-duration Duration/ZERO
-                          transforms.execute/transfer-file-to-db                     (if-some [e (:writeback-ex scenario)]
-                                                                                       (fn [& _] (throw e))
-                                                                                       @#'transforms.execute/transfer-file-to-db)]
+            (with-redefs [transforms-python.execute/python-message-loop-poll-sleep-duration Duration/ZERO
+                          transforms-python.execute/transfer-file-to-db                     (if-some [e (:writeback-ex scenario)]
+                                                                                              (fn [& _] (throw e))
+                                                                                              @#'transforms-python.execute/transfer-file-to-db)]
               (with-transform-cleanup! [target {:type   "table"
                                                 :schema schema
                                                 :name   "result"}]
