@@ -2,7 +2,7 @@
   --button-height-md: calc(2.5rem * var(--mantine-scale));
   --button-height-compact-md: calc(1.5rem * var(--mantine-scale));
 
-  font-family: var(--mb-default-font-family);
+  font-family: var(--mb-default-font-family), sans-serif;
   padding-inline: rem(15px);
   overflow: hidden;
   line-height: 1.15; /* mimic line-height ratio from mantine v6 */
