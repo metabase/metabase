@@ -203,3 +203,10 @@
   [driver database-id rename-map]
   (log/infof "Renaming tables: %s" (pr-str rename-map))
   (driver/rename-tables! driver database-id rename-map))
+
+(defn db-routing-enabled?
+  "Returns whether or not the given database is either a router or destination database"
+  [db-or-id]
+  (or (t2/exists? :model/DatabaseRouter :database_id (u/the-id db-or-id))
+      (some->> (:router-database-id db-or-id)
+               (t2/exists? :model/DatabaseRouter :database_id))))

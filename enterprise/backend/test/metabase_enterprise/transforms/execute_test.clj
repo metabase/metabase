@@ -328,3 +328,28 @@
 
                     (is (= [[1 "a"] [2 "b"] [3 "c"]] (transforms.tu/table-rows table-name))
                         "Table should contain the expected data after swap")))))))))))
+
+(deftest run-mbql-transform-fails-with-routing-test
+  (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table]})
+    (mt/with-premium-features #{:database-routing}
+      (with-transform-cleanup! [target-table {:type   :table
+                                              :schema (t2/select-one-fn :schema :model/Table (mt/id :products))
+                                              :name   "products"}]
+        (let [mp (mt/metadata-provider)
+              products (lib.metadata/table mp (mt/id :products))
+              query (lib/query mp products)]
+          (mt/with-temp [:model/Database _destination {:engine driver/*driver*
+                                                       :router_database_id (mt/id)
+                                                       :details {:destination_database true}}
+                         :model/DatabaseRouter _ {:database_id (mt/id)
+                                                  :user_attribute "db_name"}
+                         :model/Transform transform {:name   "transform"
+                                                     :source {:type  :query
+                                                              :query query}
+                                                     :target target-table}]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Transforms are not supported on databases with DB routing enabled."
+                 (mt/with-current-user (mt/user->id :crowberto)
+                   (transforms.execute/run-mbql-transform! transform {:run-method :manual}))))))))))
+>>>>>>> origin/master

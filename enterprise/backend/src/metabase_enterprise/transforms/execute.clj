@@ -98,13 +98,16 @@
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
            feature (transforms.util/required-database-feature transform)
-           transform-details {:db db
+           transform-details {:db database
                               :transform-type (keyword (:type target))
                               :conn-spec (driver/connection-spec driver database)
                               :query (transforms.util/compile-source source)
                               :output-schema (:schema target)
                               :output-table (transforms.util/qualified-table-name driver target)}
            opts {:overwrite? true}]
+       (when (transforms.util/db-routing-enabled? database)
+         (throw (ex-info "Transforms are not supported on databases with DB routing enabled."
+                         {:driver driver, :database database})))
        (when-not (driver.u/supports? driver feature database)
          (throw (ex-info "The database does not support the requested transform target type."
                          {:driver driver, :database database, :feature feature})))

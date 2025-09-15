@@ -78,14 +78,11 @@
           bad-query     (assoc-in correct-query [:native :template-tags "foo" :name] "filter")]
       (testing (str "correct-query " (pr-str correct-query))
         (is (not (me/humanize (mr/explain mbql.s/Query correct-query))))
-        (is (= correct-query
-               (mbql.s/validate-query correct-query))))
+        (is (mr/validate ::mbql.s/Query correct-query)))
       (testing (str "bad-query " (pr-str bad-query))
         (is (me/humanize (mr/explain mbql.s/Query bad-query)))
-        (is (thrown-with-msg?
-             #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core.ExceptionInfo)
-             #"keys in template tag map must match the :name of their values"
-             (mbql.s/validate-query bad-query)))))))
+        (is (= {:native {:template-tags ["keys in template tag map must match the :name of their values"]}}
+               (me/humanize (mr/explain ::mbql.s/Query bad-query))))))))
 
 (deftest ^:parallel coalesce-aggregation-test
   (testing "should be able to nest aggregation functions within a coalesce"
@@ -100,8 +97,7 @@
                      [:coalesce [:sum [:field 36 {:base-type :type/Float}]] 1]]
                     {:name "Avg discount", :display-name "Avg discount"}]]}
                  :parameters []}]
-      (is (not (me/humanize (mr/explain mbql.s/Query query))))
-      (is (= query (mbql.s/validate-query query))))))
+      (is (not (me/humanize (mr/explain mbql.s/Query query)))))))
 
 (deftest ^:parallel year-of-era-test
   (testing "year-of-era aggregations should be recognized"
@@ -112,8 +108,7 @@
                   :aggregation [[:count]],
                   :breakout [[:field 49 {:base-type :type/Date, :temporal-unit :year-of-era, :source-field 43}]]}
                  :parameters []}]
-      (is (not (me/humanize (mr/explain mbql.s/Query query))))
-      (is (= query (mbql.s/validate-query query))))))
+      (is (not (me/humanize (mr/explain mbql.s/Query query)))))))
 
 (deftest ^:parallel aggregation-reference-test
   (are [schema] (nil? (me/humanize (mr/explain schema [:aggregation 0])))

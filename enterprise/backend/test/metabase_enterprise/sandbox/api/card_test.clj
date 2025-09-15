@@ -18,8 +18,8 @@
                        :model/Table                      table {:db_id (u/the-id db)}
                        :model/Field                      _field {:table_id (u/the-id table) :name "field"}
                        :model/PermissionsGroup           group {}
-                       :model/GroupTableAccessPolicy     _ {:group_id (u/the-id group)
-                                                            :table_id (u/the-id table)}]
+                       :model/Sandbox     _ {:group_id (u/the-id group)
+                                             :table_id (u/the-id table)}]
           (perms/add-user-to-group! (mt/user->id :rasta) group)
           (mt/with-db db
             (mt/with-no-data-perms-for-all-users!
@@ -40,8 +40,8 @@
                      :model/PermissionsGroup           group {}
                      :model/Card                       card {:name "Some Name"
                                                              :collection_id (u/the-id collection)}
-                     :model/GroupTableAccessPolicy     _    {:group_id (u/the-id group)
-                                                             :table_id (u/the-id table)}]
+                     :model/Sandbox     _    {:group_id (u/the-id group)
+                                              :table_id (u/the-id table)}]
         (perms/add-user-to-group! (mt/user->id :rasta) group)
         (mt/with-db db
           (mt/with-no-data-perms-for-all-users!
@@ -64,8 +64,8 @@
                      :model/PermissionsGroup           group {}
                      :model/Card                       card {:name "Some Name"
                                                              :collection_id (u/the-id collection)}
-                     :model/GroupTableAccessPolicy     _    {:group_id (u/the-id group)
-                                                             :table_id (u/the-id table)}]
+                     :model/Sandbox     _    {:group_id (u/the-id group)
+                                              :table_id (u/the-id table)}]
         (perms/add-user-to-group! (mt/user->id :rasta) group)
         (mt/with-db db
           (mt/with-no-data-perms-for-all-users!
@@ -86,8 +86,8 @@
                      :model/Table                      other-table {:db_id (u/the-id db)}
                      :model/Field                      _field {:table_id (u/the-id table) :name "field"}
                      :model/PermissionsGroup           group {}
-                     :model/GroupTableAccessPolicy     _    {:group_id (u/the-id group)
-                                                             :table_id (u/the-id table)}]
+                     :model/Sandbox     _    {:group_id (u/the-id group)
+                                              :table_id (u/the-id table)}]
         (perms/add-user-to-group! (mt/user->id :rasta) group)
         (mt/with-db db
           (mt/with-no-data-perms-for-all-users!

@@ -148,6 +148,7 @@ export const dashboardApi = Api.injectEndpoints({
             listTag("dashboard"),
             idTag("dashboard", id),
             tag("parameter-values"),
+            listTag("revision"),
           ]),
       }),
       deleteDashboard: builder.mutation<void, DashboardId>({
