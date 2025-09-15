@@ -33,6 +33,8 @@
    :DATA           "2:"
    :ERROR          "3:"
    :FINISH_MESSAGE "d:"
+   :FINISH_STEP    "e:"
+   :START_STEP     "f:"
    :TOOL_CALL      "9:"
    :TOOL_RESULT    "a:"})
 

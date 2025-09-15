@@ -11,7 +11,7 @@
 
 (mr/def ::message
   [:map
-   [:role                         ::role]
+   [:role                          ::role]
    [:content    {:optional true}   [:maybe :string]]
    [:tool_calls {:optional true}   [:maybe [:map
                                             [:id :string]
