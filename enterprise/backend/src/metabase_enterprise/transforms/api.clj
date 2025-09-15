@@ -69,7 +69,7 @@
              :name "gadget_products"}}])
 
 ;; TODO this and target-database-id can be transforms multimethods?
-(defn- source-database-id
+(defn- target-database-id
   [transform]
   (if (transforms.util/python-transform? transform)
     (-> transform :source :source-database)
@@ -83,18 +83,17 @@
 
 (defn- check-database-feature
   [transform]
-  (when (transforms.util/query-transform? transform)
-    (let [database (api/check-400 (t2/select-one :model/Database (source-database-id transform))
-                                  (deferred-tru "The source database cannot be found."))
-          feature (transforms.util/required-database-feature transform)]
-      (api/check-400 (not (:is_sample database))
-                     (deferred-tru "Cannot run transforms on the sample database."))
-      (api/check-400 (not (:is_audit database))
-                     (deferred-tru "Cannot run transforms on audit databases."))
-      (api/check-400 (driver.u/supports? (:engine database) feature database)
-                     (deferred-tru "The database does not support the requested transform target type."))
-      (api/check-400 (not (transforms.util/db-routing-enabled? database))
-                     (deferred-tru "Transforms are not supported on databases with DB routing enabled.")))))
+  (let [database (api/check-400 (t2/select-one :model/Database (target-database-id transform))
+                                (deferred-tru "The target database cannot be found."))
+        feature (transforms.util/required-database-feature transform)]
+    (api/check-400 (not (:is_sample database))
+                   (deferred-tru "Cannot run transforms on the sample database."))
+    (api/check-400 (not (:is_audit database))
+                   (deferred-tru "Cannot run transforms on audit databases."))
+    (api/check-400 (driver.u/supports? (:engine database) feature database)
+                   (deferred-tru "The database does not support the requested transform target type."))
+    (api/check-400 (not (transforms.util/db-routing-enabled? database))
+                   (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
 
 (api.macros/defendpoint :get "/"
   "Get a list of transforms."
