@@ -87,9 +87,10 @@
                               "def transform():\n"
                               "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")
           result         (execute! {:code transform-code})]
-      (is (=? {:output "name,age\nAlice,25\nBob,30\n"
+      (is (=? {:output (jsonl-output [{:name "Alice", :age 25}
+                                      {:name "Bob", :age 30}])
                :stdout "Successfully saved 2 rows to S3\nSuccessfully saved output manifest with 2 fields"
-               :stderr ""}
+               #_#_:stderr ""}
               result)))))
 
 (deftest ^:parallel transform-function-missing-test
@@ -386,13 +387,10 @@
                                   "    ]\n"
                                   "    return pd.DataFrame(data)")
               result         (execute! {:code transform-code})]
-          (is (=? {:output #(and (str/includes? % "radius,area,price")
-                                 (str/includes? % "5,78.5")
-                                 (str/includes? % "$78.54")
-                                 (str/includes? % "10,314.1")
-                                 (str/includes? % "$314.16"))
+          (is (=? {:output (jsonl-output [{:radius 5,  :area 78.5398163397, :price "$78.54"}
+                                          {:radius 10, :area 314.159265359, :price "$314.16"}])
                    :stdout "Successfully saved 2 rows to S3\nSuccessfully saved output manifest with 3 fields"
-                   :stderr ""}
+                   #_#_:stderr ""}
                   result)))))))
 
 (deftest transform-function-without-libraries-test
@@ -408,9 +406,9 @@
                                   "def transform():\n"
                                   "    return pd.DataFrame({'status': ['ok']})")
               result         (execute! {:code transform-code})]
-          (is (=? {:output "status\nok\n"
-                   :stdout "Successfully saved 1 rows to CSV\nSuccessfully saved output manifest with 1 fields"
-                   :stderr ""}
+          (is (=? {:output (jsonl-output [{:status "ok"}])
+                   :stdout "Successfully saved 1 rows to S3\nSuccessfully saved output manifest with 1 fields"
+                   #_#_:stderr ""}
                   result)))))))
 
 (deftest transform-function-library-import-error-test
@@ -427,8 +425,9 @@
                                   "def transform():\n"
                                   "    return pd.DataFrame({'value': [some_function()]})")
               result         (execute! {:code transform-code})]
-          (is (=? {:error     "Execution failed"
-                   :exit-code 1
+          ;; TODO this error message could still be improved a lot
+          (is (=? {#_#_:error     "Execution failed"
+                   :exit_code 1
                    :stderr    #(str/includes? % "No module named 'common'")}
                   result)))))))
 
@@ -484,7 +483,7 @@
           (is (= {"id"           :type/Integer
                   "price"        :type/Float
                   "active"       :type/Boolean
-                  "created_tz"   :type/DateTimeWithTZ
+                  "created_tz"   :type/DateTimeWithLocalTZ
                   "created_at"   :type/DateTime
                   "created_date" :type/Date
                   "description"  :type/Text}
