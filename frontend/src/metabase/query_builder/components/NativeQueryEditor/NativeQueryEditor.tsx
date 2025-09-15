@@ -375,7 +375,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                           const proposedQuery =
                             proposedQuestion.legacyNativeQuery();
                           if (proposedQuery) {
-                            setDatasetQuery(proposedQuery);
+                            this.onChange(proposedQuery.queryText());
                             onAcceptProposed(proposedQuery.datasetQuery());
                           }
                         }}
