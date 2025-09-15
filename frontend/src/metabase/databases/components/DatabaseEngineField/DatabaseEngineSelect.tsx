@@ -63,7 +63,6 @@ function DatabaseIcon({ engineKey }: { engineKey: string | undefined }) {
   );
 }
 
-//
 const renderSelectOption: SelectProps["renderOption"] = ({ option }) => {
   return (
     <SelectItem>
