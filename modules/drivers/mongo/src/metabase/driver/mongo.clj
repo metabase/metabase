@@ -1,8 +1,6 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
   (:require
-   [clojure.data.csv :as csv]
-   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
@@ -594,33 +592,38 @@
   [_driver database]
   (:details database))
 
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for MongoDB that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+(defmethod type->database-type :type/TextLike [_] "string")
+(defmethod type->database-type :type/Text [_] "string")
+(defmethod type->database-type :type/Number [_] "long")
+(defmethod type->database-type :type/Integer [_] "int")
+(defmethod type->database-type :type/BigInteger [_] "long")
+(defmethod type->database-type :type/Float [_] "double")
+(defmethod type->database-type :type/Decimal [_] "decimal")
+(defmethod type->database-type :type/Boolean [_] "bool")
+(defmethod type->database-type :type/Date [_] "date")
+(defmethod type->database-type :type/DateTime [_] "date")
+(defmethod type->database-type :type/DateTimeWithTZ [_] "date")
+(defmethod type->database-type :type/Time [_] "date")
+(defmethod type->database-type :type/TimeWithTZ [_] "date")
+(defmethod type->database-type :type/Instant [_] "date")
+(defmethod type->database-type :type/UUID [_] "uuid")
+(defmethod type->database-type :type/JSON [_] "object")
+(defmethod type->database-type :type/SerializedJSON [_] "string")
+(defmethod type->database-type :type/Array [_] "array")
+(defmethod type->database-type :type/Dictionary [_] "object")
+(defmethod type->database-type :type/MongoBSONID [_] "objectId")
+(defmethod type->database-type :type/MongoBinData [_] "binData")
+(defmethod type->database-type :type/IPAddress [_] "string")
+(defmethod type->database-type :default [_] "object")
+
 (defmethod driver/type->database-type :mongo
   [_driver base-type]
-  (case base-type
-    :type/TextLike "string"
-    :type/Text "string"
-    :type/Number "long"
-    :type/Integer "int"
-    :type/BigInteger "long"
-    :type/Float "double"
-    :type/Decimal "decimal"
-    :type/Boolean "bool"
-    :type/Date "date"
-    :type/DateTime "date"
-    :type/DateTimeWithTZ "date"
-    :type/Time "date"
-    :type/TimeWithTZ "date"
-    :type/Instant "date"
-    :type/UUID "uuid"
-    :type/JSON "object"
-    :type/SerializedJSON "string"
-    :type/Array "array"
-    :type/Dictionary "object"
-    :type/MongoBSONID "objectId"
-    :type/MongoBinData "binData"
-    :type/IPAddress "string"
-    ;; Default fallback
-    "object"))
+  (type->database-type base-type))
 
 (defn- convert-value-for-insertion
   [base-type value]
