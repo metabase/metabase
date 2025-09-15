@@ -15,6 +15,7 @@ type Props = {
   value: string;
   onChange?: (value: string) => void;
   extensions?: Extension[];
+  "data-testid"?: string;
 };
 
 export function CodeEditor({
@@ -27,6 +28,7 @@ export function CodeEditor({
   value,
   onChange,
   extensions: externalExtensions,
+  ...rest
 }: Props) {
   const extensions = useExtensions({
     language,
@@ -48,6 +50,7 @@ export function CodeEditor({
       value={value}
       onChange={onChange}
       highlightRanges={highlightRanges}
+      {...rest}
     />
   );
 }
