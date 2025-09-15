@@ -846,7 +846,7 @@
                       metabase.driver.sql.query-processor-test
                       metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
                       metabase-enterprise.advanced-permissions.query-processor.middleware.permissions-test
-                      metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}
+                      metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test]}}
 
   ;; test the notification system
   ;;    clj -X:dev:ee:ee-dev:test:test/notification
@@ -866,7 +866,7 @@
                       metabase.driver.sql.query-processor-test
                       metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
                       metabase-enterprise.advanced-permissions.query-processor.middleware.permissions-test
-                      metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}
+                      metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test]}}
 
   ;; test search-related stuff.
   ;;

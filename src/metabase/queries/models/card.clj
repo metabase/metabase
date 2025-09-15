@@ -216,7 +216,7 @@
   (when (map? query)
     (let [query-type (lib/normalized-query-type query)]
       (case query-type
-        :query      (-> query mbql.normalize/normalize qp.util/query->source-card-id)
+        :query      (-> query mbql.normalize/normalize #_{:clj-kondo/ignore [:deprecated-var]} qp.util/query->source-card-id)
         :mbql/query (-> query lib/normalize lib.util/source-card-id)
         nil))))
 
@@ -236,7 +236,7 @@
     (doseq [[db-id table-ids] db-id->table-ids
             :let  [mp (lib.metadata.jvm/application-database-metadata-provider db-id)]
             :when (seq table-ids)]
-      (lib.metadata.protocols/metadatas mp :metadata/table table-ids))))
+      (lib.metadata.protocols/metadatas mp {:lib/type :metadata/table, :id (set table-ids)}))))
 
 (defn with-can-run-adhoc-query
   "Adds `:can_run_adhoc_query` to each card."
@@ -528,7 +528,7 @@
 
 (defenterprise pre-update-check-sandbox-constraints
   "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
-  metabase-enterprise.sandbox.models.group-table-access-policy
+  metabase-enterprise.sandbox.models.sandbox
   [_ _])
 
 (defn- update-parameters-using-card-as-values-source
@@ -545,17 +545,19 @@
         (let [model                  (case po-type :card 'Card :dashboard 'Dashboard)
               {:keys [parameters]}   (t2/select-one [model :parameters] :id po-id)
               affected-param-ids-set (cond
-                                      ;; update all parameters that use this card as source
+                                       ;; update all parameters that use this card as source
                                        (:archived changes)
                                        (set (map :parameter_id param-cards))
 
-                                      ;; update only parameters that have value_field no longer in this card
+                                       ;; update only parameters that have value_field no longer in this card
                                        (:result_metadata changes)
                                        (let [param-id->parameter (m/index-by :id parameters)]
                                          (->> param-cards
                                               (filter (fn [param-card]
-                                                       ;; if cant find the value-field in result_metadata, then we should
-                                                       ;; remove it
+                                                        ;; if cant find the value-field in result_metadata, then we should
+                                                        ;; remove it
+                                                        ;; existing usage -- do not use this in new code
+                                                        #_{:clj-kondo/ignore [:deprecated-var]}
                                                         (nil? (qp.util/field->field-info
                                                                (get-in (param-id->parameter (:parameter_id param-card)) [:values_source_config :value_field])
                                                                (:result_metadata changes)))))

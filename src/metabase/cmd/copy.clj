@@ -115,7 +115,7 @@
     ;; 57+
     :model/Glossary]
    (when config/ee-available?
-     [:model/GroupTableAccessPolicy
+     [:model/Sandbox
       :model/ConnectionImpersonation
       :model/Metabot
       :model/MetabotEntity
@@ -366,7 +366,7 @@
   (str (name (t2/table-name model)) "_id_seq"))
 
 ;;; we changed the table name to `sandboxes` but never updated the underlying ID sequences or constraint names.
-(defmethod postgres-id-sequence-name :model/GroupTableAccessPolicy
+(defmethod postgres-id-sequence-name :model/Sandbox
   [_model]
   "group_table_access_policy_id_seq")
 
