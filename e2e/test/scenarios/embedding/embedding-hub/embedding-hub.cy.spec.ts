@@ -56,6 +56,62 @@ describe("scenarios - embedding hub", () => {
       });
     });
 
+    it("Uploading CSVs should mark the 'Add Data' step as done", () => {
+      cy.log("Enable uploads first");
+      cy.request("PUT", "/api/setting/uploads-settings", {
+        value: {
+          db_id: 1, // Sample Database ID
+          schema_name: "PUBLIC",
+          table_prefix: null,
+        },
+      });
+
+      cy.visit("/admin/embedding/setup-guide");
+
+      cy.log("Set up intercept for checklist updates");
+      cy.intercept("GET", "/api/ee/embedding-hub/checklist").as("getChecklist");
+
+      cy.log("Verify 'Add data' step is initially not done");
+      cy.findByTestId("admin-layout-content")
+        .findByText("Add data")
+        .closest("button")
+        .should("not.have.attr", "data-done", "true");
+
+      cy.log("Click on 'Add data' to open modal");
+      cy.findByTestId("admin-layout-content").findByText("Add data").click();
+
+      cy.log("Switch to CSV tab in Add data modal");
+      H.modal().within(() => {
+        cy.findByText("CSV").click();
+
+        cy.log("Upload a CSV file");
+        cy.get("#add-data-modal-upload-csv-input").selectFile(
+          {
+            contents: Cypress.Buffer.from(
+              "header1,header2\nvalue1,value2",
+              "utf8",
+            ),
+            fileName: "test-upload.csv",
+            mimeType: "text/csv",
+            lastModified: Date.now(),
+          },
+          { force: true },
+        );
+
+        cy.log("Upload the file");
+        cy.button("Upload").should("be.enabled").click();
+      });
+
+      cy.log("Wait for checklist to update");
+      cy.wait("@getChecklist");
+
+      cy.log("Verify 'Add data' step is now marked as done");
+      cy.findByTestId("admin-layout-content")
+        .findByText("Add data")
+        .closest("button")
+        .should("have.attr", "data-done", "true");
+    });
+
     it('"Create models" link should navigate correctly', () => {
       cy.visit("/admin/embedding/setup-guide");
 
