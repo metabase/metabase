@@ -50,8 +50,9 @@ export const DatabaseEngineSelect = ({
 };
 
 function DatabaseIcon({ engineKey }: { engineKey: string | undefined }) {
+  const defaultIcon = <Icon name="database" size={ICON_SIZE} />;
   if (!engineKey) {
-    return null;
+    return defaultIcon;
   }
 
   const logoSource = getEngineLogo(engineKey);
@@ -59,7 +60,7 @@ function DatabaseIcon({ engineKey }: { engineKey: string | undefined }) {
   return logoSource ? (
     <img src={logoSource} width={ICON_SIZE} height={ICON_SIZE} alt="" />
   ) : (
-    <Icon name="database" size={ICON_SIZE} />
+    defaultIcon
   );
 }
 
