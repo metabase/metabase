@@ -1,5 +1,5 @@
 import { useDisclosure, useHotkeys } from "@mantine/hooks";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { useListDatabasesQuery } from "metabase/api";
 import type { SelectionRange } from "metabase/query_builder/components/NativeQueryEditor/types";
@@ -89,6 +89,21 @@ export function QueryEditor({
     { start: { row: 0, column: 0 }, end: { row: 0, column: 0 } },
   ]);
 
+  const selectedText = useMemo(() => {
+    const range = selectionRange[0];
+    if (!range) {
+      return null;
+    }
+
+    const query = question.query();
+    const text = Lib.rawNativeQuery(query);
+    const { start, end } = range;
+
+    const selectionStart = locationToPosition(text, start);
+    const selectionEnd = locationToPosition(text, end);
+    return text.slice(selectionStart, selectionEnd);
+  }, [question, selectionRange]);
+
   const handleInsertSnippet = (snippet: NativeQuerySnippet) => {
     const query = question.query();
     const text = Lib.rawNativeQuery(query);
@@ -163,6 +178,7 @@ export function QueryEditor({
             modalSnippet={modalSnippet}
             onChangeModalSnippet={setModalSnippet}
             onChangeNativeEditorSelection={setSelectionRange}
+            nativeEditorSelectedText={selectedText}
           />
           <EditorVisualization
             question={question}

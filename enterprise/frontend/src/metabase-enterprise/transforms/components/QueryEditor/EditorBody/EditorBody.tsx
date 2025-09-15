@@ -50,6 +50,7 @@ type EditorBodyProps = {
   modalSnippet?: NativeQuerySnippet | null;
   onChangeModalSnippet: (snippet: NativeQuerySnippet | null) => void;
   onChangeNativeEditorSelection: (range: SelectionRange[]) => void;
+  nativeEditorSelectedText?: string;
 
   databases: ApiDatabase[];
 };
@@ -71,6 +72,7 @@ export function EditorBody({
   modalSnippet,
   onChangeModalSnippet,
   onChangeNativeEditorSelection,
+  nativeEditorSelectedText,
 }: EditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
   const reportTimezone = useSetting("report-timezone-long");
@@ -132,6 +134,7 @@ export function EditorBody({
         return !doesDatabaseSupportTransforms(database);
       }}
       setNativeEditorSelectedRange={onChangeNativeEditorSelection}
+      nativeEditorSelectedText={nativeEditorSelectedText}
     />
   ) : (
     <ResizableBox
