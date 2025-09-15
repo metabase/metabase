@@ -340,9 +340,7 @@
 (defn execute-python-transform!
   "Execute a Python transform by calling the python runner.
 
-  This is executing synchronously, but supports being kicked off in the background
-  by delivering the `start-promise` just before the start when the beginning of the execution has been booked
-  in the database."
+  Blocks until the transform returns."
   [transform {:keys [run-method start-promise]}]
   (when (transforms.util/python-transform? transform)
     (try
