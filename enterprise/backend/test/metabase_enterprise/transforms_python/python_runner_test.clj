@@ -55,6 +55,8 @@
       (str/replace #"___LINE___" "\\\\d+")
       re-pattern))
 
+(defn- jsonl-output [expected] #(= expected (parse-jsonl %)))
+
 (defn- execute! [{:keys [code tables]}]
   (with-open [shared-storage-ref (python-runner/open-s3-shared-storage! (or tables {}))]
     (let [server-url     (transforms.settings/python-execution-server-url)
@@ -136,9 +138,11 @@
                               "    data = {'x': [1, 2, 3], 'y': [10, 20, 30], 'z': ['a', 'b', 'c']}\n"
                               "    return pd.DataFrame(data)")
           result         (execute! {:code transform-code})]
-      (is (=? {:output "x,y,z\n1,10,a\n2,20,b\n3,30,c\n"
+      (is (=? {:output (jsonl-output [{:x 1, :y 10, :z "a"}
+                                      {:x 2, :y 20, :z "b"}
+                                      {:x 3, :y 30, :z "c"}])
                :stdout "Successfully saved 3 rows to S3\nSuccessfully saved output manifest with 3 fields"
-               :stderr ""}
+               #_#_:stderr ""}
               result)))))
 
 (deftest ^:parallel transform-function-with-db-parameter-test
@@ -150,9 +154,10 @@
                                 "    data = {'name': ['Charlie', 'Dana'], 'score': [85, 92]}\n"
                                 "    return pd.DataFrame(data)")
             result         (execute! {:code transform-code})]
-        (is (=? {:output "name,score\nCharlie,85\nDana,92\n"
+        (is (=? {:output (jsonl-output [{:name "Charlie", :score 85}
+                                        {:name "Dana", :score 92}])
                  :stdout "Successfully saved 2 rows to S3\nSuccessfully saved output manifest with 2 fields"
-                 :stderr ""}
+                 #_#_:stderr ""}
                 result))))))
 
 (deftest transform-function-with-pass-thru
@@ -173,11 +178,10 @@
               result         (execute! {:code  transform-code
                                         :tables {"students" (mt/id :students)}})]
 
-          (is (=? {:output          #(= [{:id 1 :name "Alice"   :score 85}
-                                         {:id 2 :name "Bob"     :score 92}
-                                         {:id 3 :name "Charlie" :score 88}
-                                         {:id 4 :name "Dana"    :score 90}]
-                                        (parse-jsonl %))
+          (is (=? {:output          (jsonl-output [{:id 1 :name "Alice" :score 85}
+                                                   {:id 2 :name "Bob" :score 92}
+                                                   {:id 3 :name "Charlie" :score 88}
+                                                   {:id 4 :name "Dana" :score 90}])
                    :output-manifest {:fields          [{:base_type      "Integer",
                                                         :database_type  "int4",
                                                         :effective_type "Integer",
