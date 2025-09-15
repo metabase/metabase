@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
    [metabase-enterprise.transforms.settings :as transforms.settings]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -32,6 +33,18 @@
    (software.amazon.awssdk.services.s3.presigner.model GetObjectPresignRequest PutObjectPresignRequest)))
 
 (set! *warn-on-reflection* true)
+
+(defn- authorization-headers
+  "Returns HTTP headers with Authorization bearer token if configured.
+  Throws configuration error in production if token is not set."
+  []
+  (let [api-token (transforms.settings/python-runner-api-token)]
+    (if api-token
+      {"Authorization" (str "Bearer " api-token)}
+      (if config/is-prod?
+        (throw (ex-info "Python runner API token is required in production but not configured"
+                        {:error-type :configuration-error}))
+        {}))))
 
 ;; Longer duration for inputs than for outputs, to compensate for the duration of the code execution itself.
 (def ^:private ^Duration presigned-get-duration (Duration/ofMinutes 30))
@@ -295,7 +308,8 @@
                :accept           :json
                :throw-exceptions false
                :as               :json
-               :query-params     {:request_id run-id}})))
+               :query-params     {:request_id run-id}
+               :headers          (authorization-headers)})))
 
 (defn- s3-shared-storage [table-name->id]
   (let [prefix              (some-> (transforms.settings/python-storage-s-3-prefix) (str "/"))
@@ -396,7 +410,8 @@
                                                :accept           :json
                                                :body             (json/encode payload)
                                                :throw-exceptions false
-                                               :as               :json}))]
+                                               :as               :json
+                                               :headers          (authorization-headers)}))]
     ;; when a 500 is returned we observe a string in the body (despite the python returning json)
     ;; always try to parse the returned string as json before yielding (could tighten this up at some point)
     (update response :body (fn [string-if-error]
@@ -411,7 +426,8 @@
   (http/post (str server-url "/cancel")
              {:content-type :json
               :body         (json/encode {:request_id run-id})
-              :async?       true}
+              :async?       true
+              :headers      (authorization-headers)}
              #_success #(log/debug %)
              #_failure #(log/error %)))
 
