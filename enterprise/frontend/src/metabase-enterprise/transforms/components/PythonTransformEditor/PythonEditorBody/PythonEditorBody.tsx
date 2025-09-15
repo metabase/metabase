@@ -48,6 +48,7 @@ export function PythonEditorBody({
           value={source}
           onChange={onChange}
           withPandasCompletions
+          data-testid="python-editor"
         />
 
         <Box p="md">
