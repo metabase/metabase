@@ -56,6 +56,60 @@ describe("scenarios - embedding hub", () => {
       });
     });
 
+    it("Uploading CSVs to sample database should mark the 'Add Data' step as done", () => {
+      cy.intercept("GET", "/api/ee/embedding-hub/checklist").as("getChecklist");
+
+      cy.log("Enable CSV uploads");
+      cy.request("PUT", "/api/setting/uploads-settings", {
+        value: {
+          db_id: 1, // Sample Database ID
+          schema_name: "PUBLIC",
+          table_prefix: null,
+        },
+      });
+
+      cy.visit("/admin/embedding/setup-guide");
+
+      cy.log("'Add data' should not be marked as done");
+      cy.findByTestId("admin-layout-content")
+        .findByText("Add data")
+        .closest("button")
+        .findByText("Done")
+        .should("not.exist");
+
+      cy.findByTestId("admin-layout-content").findByText("Add data").click();
+
+      H.modal().within(() => {
+        cy.findByText("CSV").click();
+
+        cy.log("Upload a CSV file");
+        cy.get("#add-data-modal-upload-csv-input").selectFile(
+          {
+            contents: Cypress.Buffer.from(
+              "header1,header2\nvalue1,value2",
+              "utf8",
+            ),
+            fileName: "test-upload.csv",
+            mimeType: "text/csv",
+            lastModified: Date.now(),
+          },
+          { force: true },
+        );
+
+        cy.button("Upload").should("be.enabled").click();
+      });
+
+      cy.wait("@getChecklist");
+
+      cy.log("'Add data' should be marked as done");
+      cy.findByTestId("admin-layout-content")
+        .findByText("Add data")
+        .closest("button")
+        .scrollIntoView()
+        .findByText("Done")
+        .should("be.visible");
+    });
+
     it('"Create models" link should navigate correctly', () => {
       cy.visit("/admin/embedding/setup-guide");
 

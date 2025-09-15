@@ -1,5 +1,7 @@
 import { Api } from "metabase/api";
 
+import { listTag } from "./tags";
+
 type CheckListApiStep =
   | "create-dashboard"
   | "add-data"
@@ -16,6 +18,7 @@ export const embeddingHubApi = Api.injectEndpoints({
         method: "GET",
         url: "/api/ee/embedding-hub/checklist",
       }),
+      providesTags: [listTag("embedding-hub-checklist")],
     }),
   }),
 });

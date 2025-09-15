@@ -1,6 +1,6 @@
 (ns metabase-enterprise.embedding-hub.api
   (:require
-   [metabase-enterprise.sso.settings :as sso]
+   [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.appearance.core :as appearance]
@@ -10,9 +10,16 @@
    [toucan2.core :as t2]))
 
 (defn- has-user-added-database? []
-  (t2/exists? :model/Database {:where [:and
-                                       [:= :is_sample false]
-                                       [:= :is_audit false]]}))
+  (or (t2/exists? :model/Database {:where [:and
+                                           [:= :is_sample false]
+                                           [:= :is_audit false]]})
+      ;; check for CSV uploads to sample db
+      ;; as the sample db is excluded from the above query
+      (when-let [sample-db-id (t2/select-one-pk :model/Database :is_sample true)]
+        (t2/exists? :model/Table {:where [:and
+                                          [:= :active true]
+                                          [:= :is_upload true]
+                                          [:= :db_id sample-db-id]]}))))
 
 (defn- has-user-created-dashboard? []
   (let [example-dashboard-id (appearance/example-dashboard-id)
@@ -27,11 +34,11 @@
 
 (defn- has-configured-sandboxes? []
   (and (premium-features/has-feature? :sandboxes)
-       (t2/exists? :model/GroupTableAccessPolicy)))
+       (t2/exists? :model/Sandbox)))
 
 (defn- has-configured-sso? []
-  (or (and (premium-features/has-feature? :sso-jwt) (sso/jwt-enabled) (sso/jwt-configured))
-      (and (premium-features/has-feature? :sso-saml) (sso/saml-enabled) (sso/saml-configured))))
+  (or (and (premium-features/has-feature? :sso-jwt) (sso-settings/jwt-enabled) (sso-settings/jwt-configured))
+      (and (premium-features/has-feature? :sso-saml) (sso-settings/saml-enabled) (sso-settings/saml-configured))))
 
 (defn- embedding-hub-checklist []
   {"add-data"                      (has-user-added-database?)
