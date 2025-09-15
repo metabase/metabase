@@ -1,3 +1,12 @@
+import { useRef, useState } from "react";
+import { t } from "ttag";
+
+import {
+  type ExecutePythonResponse,
+  useExecutePythonMutation,
+} from "metabase-enterprise/transforms/api/python-runner";
+import type { PythonTransformSource } from "metabase-types/api";
+
 export function updateTransformSignature(
   script: string,
   tables: Record<string, { id: number; name: string }>,
@@ -123,4 +132,82 @@ ${tableAliases
 `;
 
   return script + functionTemplate;
+}
+
+export type ExecutionResult = {
+  output?: string;
+  stdout?: string;
+  stderr?: string;
+  error?: string;
+};
+
+type TestPythonScriptState = {
+  isRunning: boolean;
+  isDirty: boolean;
+  executionResult: ExecutionResult | null;
+  run: () => void;
+  cancel: () => void;
+};
+
+export function useTestPythonTransform(
+  source: PythonTransformSource,
+): TestPythonScriptState {
+  const [executePython, { isLoading: isRunning, originalArgs }] =
+    useExecutePythonMutation();
+  const abort = useRef<(() => void) | null>(null);
+  const [executionResult, setData] = useState<ExecutePythonResponse | null>(
+    null,
+  );
+
+  const isDirty = originalArgs?.code !== source.body;
+
+  const run = async () => {
+    const request = executePython({
+      code: source.body,
+      tables: source["source-tables"],
+    });
+    abort.current = () => request.abort();
+
+    try {
+      const data = await request.unwrap();
+      setData(data);
+    } catch (error) {
+      if (typeof error === "object" && error !== null) {
+        if ("name" in error && error.name === "AbortError") {
+          setData({ error: t`Python script execution was canceled` });
+          return;
+        }
+
+        if ("message" in error && typeof error.message === "string") {
+          setData({ error: error.message });
+          return;
+        }
+
+        if (
+          "data" in error &&
+          typeof error.data === "object" &&
+          error.data !== null &&
+          "error" in error.data &&
+          typeof error.data.error === "string"
+        ) {
+          setData({ error: error?.data?.error });
+          return;
+        }
+      }
+
+      setData({ error: t`An unknown error occurred` });
+    }
+  };
+
+  const cancel = () => {
+    abort.current?.();
+  };
+
+  return {
+    isRunning,
+    isDirty,
+    cancel,
+    run,
+    executionResult,
+  };
 }

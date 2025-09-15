@@ -1,3 +1,4 @@
+import { useHotkeys } from "@mantine/hooks";
 import { useState } from "react";
 
 import { Flex, Stack } from "metabase/ui";
@@ -6,13 +7,15 @@ import type { PythonTransformSource } from "metabase-types/api";
 import { EditorHeader } from "../QueryEditor/EditorHeader";
 
 import { PythonDataPicker } from "./PythonDataPicker";
-import { PythonQueryEditor } from "./PythonQueryEditor";
-import { updateTransformSignature } from "./utils";
+import { PythonEditorBody } from "./PythonEditorBody";
+import { PythonEditorResults } from "./PythonEditorResults";
+import { updateTransformSignature, useTestPythonTransform } from "./utils";
 
 type PythonTransformEditorProps = {
   initialSource: PythonTransformSource;
   isNew?: boolean;
   isSaving?: boolean;
+  isRunnable?: boolean;
   onSave: (newSource: PythonTransformSource) => void;
   onCancel: () => void;
 };
@@ -21,11 +24,15 @@ export function PythonTransformEditor({
   initialSource,
   isNew = true,
   isSaving = false,
+  isRunnable = true,
   onSave,
   onCancel,
 }: PythonTransformEditorProps) {
   const [source, setSource] = useState(initialSource);
   const [isSourceDirty, setIsSourceDirty] = useState(false);
+
+  const { isRunning, isDirty, cancel, run, executionResult } =
+    useTestPythonTransform(source);
 
   const handleScriptChange = (body: string) => {
     const newSource = {
@@ -61,6 +68,16 @@ export function PythonTransformEditor({
     onSave(source);
   };
 
+  const handleCmdEnter = () => {
+    if (isRunning) {
+      cancel();
+    } else if (isRunnable) {
+      run();
+    }
+  };
+
+  useHotkeys([["mod+Enter", handleCmdEnter]], []);
+
   const canSave = Boolean(
     source.body.trim() &&
       source["source-database"] &&
@@ -89,13 +106,21 @@ export function PythonTransformEditor({
           tables={source["source-tables"]}
           onChange={handleDataChange}
         />
-
-        <PythonQueryEditor
-          script={source.body}
-          isRunnable={true}
-          onChange={handleScriptChange}
-          tables={source["source-tables"]}
-        />
+        <Stack w="100%" h="100%" gap={0}>
+          <PythonEditorBody
+            isRunnable={isRunnable}
+            isRunning={isRunning}
+            isDirty={isDirty}
+            onRun={run}
+            onCancel={cancel}
+            source={source.body}
+            onChange={handleScriptChange}
+          />
+          <PythonEditorResults
+            isRunning={isRunning}
+            executionResult={executionResult}
+          />
+        </Stack>
       </Flex>
     </Stack>
   );
