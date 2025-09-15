@@ -126,9 +126,9 @@
                                         :type (some->> base_type (keyword "type"))
                                         :database-type database_type
                                         :nullable? true})
-                                     #p (:fields metadata))}
+                                     (:fields metadata))}
         data-source (assoc data-source :table-schema table-schema)]
-    (transforms.util/create-table-from-schema! driver db-id #p table-schema)
+    (transforms.util/create-table-from-schema! driver db-id table-schema)
     (driver/insert-from-source! driver db-id table-schema data-source)))
 
 (defn- transfer-file-to-db [driver db {:keys [target] :as transform} metadata temp-file]
