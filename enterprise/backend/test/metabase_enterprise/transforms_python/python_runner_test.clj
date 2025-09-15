@@ -25,6 +25,12 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private last-job-run-id (atom 0))
+
+(defn next-job-run-id [] (swap! last-job-run-id inc))
+
+(defn- parse-jsonl [s] (map json/decode+kw (str/split-lines s)))
+
 (defn template->regex
   "Convert a template string with $var$ placeholders to a regex pattern.
    Example: template->regex 'File ___PATH___/script.py, line ___LINE___'
@@ -49,10 +55,6 @@
       (str/replace #"___PATH___" "(/[\\\\w-]+)+")
       (str/replace #"___LINE___" "\\\\d+")
       re-pattern))
-
-(def ^:private last-job-run-id (atom 0))
-
-(defn next-job-run-id [] (swap! last-job-run-id inc))
 
 (defn- execute! [{:keys [code tables]}]
   (with-open [shared-storage-ref (python-runner/open-s3-shared-storage! (or tables {}))]
@@ -172,49 +174,55 @@
               result         (execute! {:code  transform-code
                                         :tables {"students" (mt/id :students)}})]
 
-          (is (=? {:output   "id,name,score\n1,Alice,85\n2,Bob,92\n3,Charlie,88\n4,Dana,90\n"
-                   :output-manifest {:fields [{:base_type "Integer",
-                                               :database_type "int4",
-                                               :effective_type "Integer",
-                                               :name "id",
-                                               :root_type "Integer",
-                                               :semantic_type "PK"}
-                                              {:base_type "Text",
-                                               :database_type "varchar",
-                                               :effective_type "Text",
-                                               :name "name",
-                                               :root_type "Text",
-                                               :semantic_type "Name"}
-                                              {:base_type "Integer",
-                                               :database_type "int4",
-                                               :effective_type "Integer",
-                                               :name "score",
-                                               :root_type "Integer",
-                                               :semantic_type "Score"}],
-                                     :source_metadata {:fields [{:base_type "Integer",
-                                                                 :database_type "int4",
-                                                                 :effective_type "Integer",
-                                                                 :name "id",
-                                                                 :root_type "Integer",
-                                                                 :semantic_type "PK"}
-                                                                {:base_type "Text",
-                                                                 :database_type "varchar",
-                                                                 :effective_type "Text",
-                                                                 :name "name",
-                                                                 :root_type "Text",
-                                                                 :semantic_type "Name"}
-                                                                {:base_type "Integer",
-                                                                 :database_type "int4",
-                                                                 :effective_type "Integer",
-                                                                 :name "score",
-                                                                 :root_type "Integer",
-                                                                 :semantic_type "Score"}],
+          (is (=? {:output          #(= [{:id 1 :name "Alice"   :score 85}
+                                         {:id 2 :name "Bob"     :score 92}
+                                         {:id 3 :name "Charlie" :score 88}
+                                         {:id 4 :name "Dana"    :score 90}]
+                                        (parse-jsonl %))
+                   :output-manifest {:fields          [{:base_type      "Integer",
+                                                        :database_type  "int4",
+                                                        :effective_type "Integer",
+                                                        :name           "id",
+                                                        :root_type      "Integer",
+                                                        :semantic_type  "PK"}
+                                                       {:base_type      "Text",
+                                                        :database_type  "varchar",
+                                                        :effective_type "Text",
+                                                        :name           "name",
+                                                        :root_type      "Text",
+                                                        :semantic_type  "Name"}
+                                                       {:base_type      "Integer",
+                                                        :database_type  "int4",
+                                                        :effective_type "Integer",
+                                                        :name           "score",
+                                                        :root_type      "Integer",
+                                                        :semantic_type  "Score"}],
+                                     :source_metadata {:fields         [{:base_type      "Integer",
+                                                                         :database_type  "int4",
+                                                                         :effective_type "Integer",
+                                                                         :name           "id",
+                                                                         :root_type      "Integer",
+                                                                         :semantic_type  "PK"}
+                                                                        {:base_type      "Text",
+                                                                         :database_type  "varchar",
+                                                                         :effective_type "Text",
+                                                                         :name           "name",
+                                                                         :root_type      "Text",
+                                                                         :semantic_type  "Name"}
+                                                                        {:base_type      "Integer",
+                                                                         :database_type  "int4",
+                                                                         :effective_type "Integer",
+                                                                         :name           "score",
+                                                                         :root_type      "Integer",
+                                                                         :semantic_type  "Score"}],
                                                        :table_metadata {:table_id (mt/malli=? int?)},
-                                                       :version "0.1.0"},
-                                     :version "0.1.0"}
-                   :stdout   (str "Successfully saved 4 rows to S3\n"
-                                  "Successfully saved output manifest with 3 fields")
-                   :stderr   ""}
+                                                       :version        "0.1.0"},
+                                     :version         "0.1.0"}
+                   :stdout          (str "Successfully saved 4 rows to S3\n"
+                                         "Successfully saved output manifest with 3 fields")
+                   :stderr          (str "Parsed id as Integer\n"
+                                         "Parsed name as Text\n"
+                                         "Parsed score as Integer")}
                   result)))))))
 
 (deftest transform-function-with-working-database-test
@@ -291,7 +299,7 @@
                                 "    return df")
             result (execute! {:code  transform-code
                               :tables {"sample_table" (mt/id :sample_table)}})
-            rows (map json/decode+kw (str/split-lines (:output result)))
+            rows (parse-jsonl (:output result))
             headers (map name (keys (first rows)))
             [row1 row2 row3] rows
             get-col (fn [row col-name] (get row (keyword col-name)))
