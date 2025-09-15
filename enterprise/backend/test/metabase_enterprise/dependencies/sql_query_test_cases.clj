@@ -744,7 +744,7 @@
                       ELSE 'C'
                  END AS grade,
                  CASE WHEN attendance > 0.9 THEN 'Good'
-                      ELSE 'Needs Improvement' 
+                      ELSE 'Needs Improvement'
                  END AS attendance_status
           FROM students"
     :expected [{:name "name"} {:name "grade"} {:name "attendance_status"}]}])
