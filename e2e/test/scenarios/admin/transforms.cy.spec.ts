@@ -124,6 +124,48 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       H.assertQueryBuilderRowCount(3);
     });
 
+    it("should be able to create and run a Python transform", () => {
+      cy.log("create a new transform");
+      visitTransformListPage();
+      getTransformListPage().button("Create a transform").click();
+      H.popover().findByText("Python script").click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_create",
+        event_detail: "python",
+        triggered_from: "transform-page-create-menu",
+      });
+
+      cy.findByTestId("python-data-picker")
+        .findByPlaceholderText("Select a table")
+        .click();
+
+      H.popover().findByText("Orders").click();
+
+      getQueryEditor().button("Save").click();
+
+      H.modal().within(() => {
+        cy.findByLabelText("Name").clear().type("Python transform");
+        cy.findByLabelText("Table name").clear().type("python_transform");
+        cy.button("Save").click();
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_created",
+      });
+
+      cy.log("run the transform and make sure its table can be queried");
+      runTransformAndWaitForSuccess();
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_trigger_manual_run",
+        triggered_from: "transform-page",
+      });
+
+      getTableLink().click();
+      H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
+      H.assertQueryBuilderRowCount(3);
+    });
+
     it("should be able to create and run a transform from a question or a model", () => {
       function testCardSource({
         type,
