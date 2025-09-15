@@ -643,7 +643,7 @@
                             (mc/type-properties schema))
                   error-friendly? (:error/friendly props)
                   error-message-or-fn (:error/message props)
-                  error-message (if (fn? error-message-or-fn) (error-message-or-fn) error-message-or-fn)
+                  error-message (if (fn? error-message-or-fn) (str (error-message-or-fn)) (str error-message-or-fn))
                   fallback-message (i18n/tru "Types are incompatible.")
                   message (if error-friendly? error-message fallback-message)]
               {:message message
