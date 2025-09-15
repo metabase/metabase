@@ -482,3 +482,11 @@
 
   (execute! "select name from `%s`.metabase_test_tracking.datasets order by accessed_at" (project-id))
   (database-exists?! (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
+
+(defn ^:private get-test-data-name
+  []
+  (test-dataset-id
+   (tx/get-dataset-definition (or data.impl/*dbdef-used-to-create-db*
+                                  (tx/default-dataset :bigquery-cloud-sdk)))))
+
+(defmethod sql.tx/session-schema :bigquery-cloud-sdk [_driver] (get-test-data-name))

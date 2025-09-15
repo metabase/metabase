@@ -107,7 +107,10 @@ function CreateTransformForm({
   }
 
   const handleSubmit = async (values: NewTransformValues) => {
-    const request = getCreateRequest(query, values);
+    if (!databaseId) {
+      throw new Error("Database ID is required");
+    }
+    const request = getCreateRequest(query, values, databaseId);
     const transform = await createTransform(request).unwrap();
 
     trackTransformCreated({ transformId: transform.id });
@@ -174,6 +177,7 @@ function getInitialValues(
 function getCreateRequest(
   query: DatasetQuery,
   { name, description, targetName, targetSchema }: NewTransformValues,
+  databaseId: number,
 ): CreateTransformRequest {
   return {
     name: name,
@@ -186,6 +190,7 @@ function getCreateRequest(
       type: "table",
       name: targetName,
       schema: targetSchema,
+      database: databaseId,
     },
   };
 }

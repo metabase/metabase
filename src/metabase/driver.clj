@@ -9,6 +9,8 @@
    [[metabase.driver.sql-jdbc]] for more details."
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
+   [clojure.data.csv :as csv]
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.auth-provider.core :as auth-provider]
@@ -18,6 +20,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [potemkin :as p]))
 
@@ -1268,6 +1271,15 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti rename-tables!
+  "Rename multiple tables atomically within a transaction. Takes a map of {from-table to-table}.
+   Uses topological sorting to determine the correct order to avoid conflicts.
+   This is a simpler, composable operation compared to swap-table! that only handles renaming.
+   Table names may be qualified by schema e.g. schema.table"
+  {:added "0.57.0", :arglists '([driver db-id rename-map])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti truncate!
   "Delete the current contents of `table-name`.
   If something like a SQL TRUNCATE statement is supported, we use that, but may otherwise fall back to explicitly
@@ -1277,6 +1289,35 @@
   {:added "0.50.0", :arglists '([driver db-id table-name])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti rename-tables!*
+  "Driver-specific implementation of table renaming. Takes a pre-sorted map of {from-table to-table}.
+   The input map has already been topologically sorted by the public rename-tables! function.
+   Implementations should perform the actual rename operations atomically as supported by the database.
+   NOTE: Do not call this directly - use rename-tables! instead which handles the topological sort."
+  {:added "0.57.0", :arglists '([driver db-id sorted-rename-map])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defn rename-tables!
+  "Rename multiple tables atomically. Takes a map of {from-table to-table}.
+   Performs topological sort to determine correct rename order, then delegates to driver-specific implementation.
+   Implementations should use transactions, compound operations, or metadata locks as supported by the database.
+   Table names may be qualified by schema e.g. :schema/table"
+  {:added "0.57.0"}
+  [driver db-id rename-map]
+  (let [sorted-rename-map (-> rename-map
+                              (update-vals vector)
+                              u/topological-sort
+                              (update-vals first))]
+    (rename-tables!* driver db-id sorted-rename-map)))
+
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+(defn rename-table!
+  "Rename a single table."
+  {:added "0.57.0"}
+  [driver db-id from-table to-table]
+  (rename-tables!* driver db-id {from-table to-table}))
 
 (defmulti insert-into!
   "Insert `values` into a table named `table-name`. `values` is a lazy sequence of rows, where each row's order matches
@@ -1293,6 +1334,46 @@
   {:added "0.47.0", :arglists '([driver db-id table-name column-names values])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti insert-from-source!
+  "Inserts data from a data source into an existing table. Table must exist. Blocks until completion.
+
+  `table-definition` is a map with `:name` (may be schema-qualified) and `:columns`
+  (vector of maps with `:name` and optional `:type`, `:database-type`). Column order must match data row order.
+
+  `data-source` dispatches on `:type`. Built-in types include `:csv-file`/`:jsonl-file` (with `:file`) and `:rows`
+  (with `:data` as reducible of row vectors). Drivers may implement additional types.
+
+  Implementations may leave partial data on failure, the method makes no rollback guarantees.
+  Data visibility to other connections is not guaranteed immediately.
+
+  Default implementations for `:csv-file` and `jsonl-file` data-sources are provided, which delegate to a `:rows`
+  data-source. Non-jdbc drivers must at least implement a `:rows` datasource."
+  {:added "0.57.0", :arglists '([driver database-id table-definition data-source])}
+  (fn [driver _ _ data-source]
+    [(dispatch-on-initialized-driver driver) (:type data-source)])
+  :hierarchy #'hierarchy)
+
+(defmethod insert-from-source! [::driver :csv-file]
+  [driver db-id {:keys [columns] :as table-definition} {:keys [file]}]
+  (with-open [rdr (io/reader file)]
+    (let [csv-rows (csv/read-csv rdr)
+          header (first csv-rows)
+          data-rows (map (fn [rows]
+                           (let [m (zipmap header rows)]
+                             (mapv #(get m (:name %)) columns)))
+                         (rest csv-rows))]
+      (insert-from-source! driver db-id table-definition {:type :rows :data data-rows}))))
+
+(defmethod insert-from-source! [::driver :jsonl-file]
+  [driver db-id {:keys [columns] :as table-definition} {:keys [file]}]
+  (with-open [rdr (io/reader file)]
+    (let [lines (line-seq rdr)
+          data-rows (map (fn [line]
+                           (let [m (json/decode line)]
+                             (mapv #(get m (:name %)) columns)))
+                         lines)]
+      (insert-from-source! driver db-id table-definition {:type :rows :data data-rows}))))
 
 (defmulti add-columns!
   "Add columns given by `column-definitions` to a table named `table-name`. If the table doesn't exist it will throw an error.
@@ -1359,6 +1440,12 @@
   - [:generated-always :as :identity]"
   {:changelog-test/ignore true, :added "0.47.0", :arglists '([driver upload-type])}
   dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti type->database-type
+  "Returns the database type for a given Metabase type as a HoneySQL spec."
+  {:added "0.57.0", :arglists '([driver base-type])}
+  (fn [driver _base-type] driver)
   :hierarchy #'hierarchy)
 
 (defmulti allowed-promotions

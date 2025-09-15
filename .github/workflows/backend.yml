@@ -195,6 +195,7 @@ jobs:
       - name: Run cljfmt
         run: ./bin/mage cljfmt-all --force-check
 
+
   be-tests-result:
     needs:
       - be-linter-eastwood

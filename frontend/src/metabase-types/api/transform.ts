@@ -25,10 +25,18 @@ export type Transform = {
 export type SuggestedTransform = Partial<Pick<Transform, "id">> &
   Pick<Transform, "name" | "description" | "source" | "target">;
 
-export type TransformSource = {
+export type PythonTransformSource = {
+  type: "python";
+  body: string;
+  "source-database": number;
+  "source-tables": Record<string, number>; // alias -> table-id mapping
+};
+export type QueryTransformSource = {
   type: "query";
   query: DatasetQuery;
 };
+
+export type TransformSource = QueryTransformSource | PythonTransformSource;
 
 export type TransformTargetType = "table";
 
@@ -36,6 +44,7 @@ export type TransformTarget = {
   type: TransformTargetType;
   name: string;
   schema: string | null;
+  database: number;
 };
 
 export type TransformRun = {

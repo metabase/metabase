@@ -25,6 +25,7 @@ export function EditorHeader({
       title={getTitle(isNew, name)}
       admin
       buttons={[
+        <Button key="cancel" small onClick={onCancel}>{t`Cancel`}</Button>,
         <Button
           key="save"
           onClick={onSave}
@@ -34,7 +35,6 @@ export function EditorHeader({
         >
           {getSaveButtonLabel(isNew, isSaving)}
         </Button>,
-        <Button key="cancel" small onClick={onCancel}>{t`Cancel`}</Button>,
       ]}
     />
   );

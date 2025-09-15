@@ -18,7 +18,12 @@ import {
   getMetabotSuggestedTransform,
   setSuggestedTransform,
 } from "metabase-enterprise/metabot/state";
-import type { DatasetQuery, Transform } from "metabase-types/api";
+import { PythonTransformEditor } from "metabase-enterprise/transforms/components/PythonTransformEditor";
+import type {
+  DatasetQuery,
+  PythonTransformSource,
+  Transform,
+} from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
 import { getTransformUrl } from "../../urls";
@@ -90,7 +95,7 @@ export function TransformQueryPageBody({
     });
   };
   const onAcceptProposed = async (query: DatasetQuery) => {
-    await handleSave(query);
+    await handleDatasetSave(query);
     dispatch(setSuggestedTransform(undefined));
     metabot.submitInput({
       type: "action",
@@ -101,7 +106,7 @@ export function TransformQueryPageBody({
     });
   };
 
-  const handleSave = async (query: DatasetQuery) => {
+  const handleDatasetSave = async (query: DatasetQuery) => {
     const { error } = await updateTransform({
       id: transform.id,
       source: {
@@ -118,10 +123,35 @@ export function TransformQueryPageBody({
     }
   };
 
+  const handlePythonSave = async (source: PythonTransformSource) => {
+    const { error } = await updateTransform({
+      id: transform.id,
+      source: source,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update transform query`);
+    } else {
+      sendSuccessToast(t`Transform query updated`);
+      dispatch(push(getTransformUrl(transform.id)));
+    }
+  };
+
   const handleCancel = () => {
     dispatch(push(getTransformUrl(transform.id)));
   };
 
+  if (transform.source.type === "python") {
+    return (
+      <PythonTransformEditor
+        initialSource={transform.source}
+        isNew={false}
+        isSaving={isLoading}
+        onSave={handlePythonSave}
+        onCancel={handleCancel}
+      />
+    );
+  }
   return (
     <AdminSettingsLayout fullWidthContent key={transform.id}>
       <QueryEditor
@@ -129,7 +159,7 @@ export function TransformQueryPageBody({
         transform={transform}
         isNew={false}
         isSaving={isLoading}
-        onSave={handleSave}
+        onSave={handleDatasetSave}
         onChange={setLatestQuery}
         onCancel={handleCancel}
         proposedQuery={proposedQuery}

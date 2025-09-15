@@ -1,8 +1,11 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
   (:require
+   [clojure.data.csv :as csv]
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
@@ -17,6 +20,7 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [taoensso.nippy :as nippy])
@@ -552,6 +556,116 @@
       (log/errorf "Unexpected error while encoding Mongo BSON query: %s" (ex-message e))
       (log/debugf e "Query:\n%s" native-form)
       native-form)))
+
+(defmethod driver/create-table! :mongo
+  [_driver database-id table-name _column-definitions & {:keys [primary-key]}]
+  ;; MongoDB collections are created implicitly when first document is inserted
+  ;; We can create an empty collection explicitly if needed
+  (mongo.connection/with-mongo-database [^MongoDatabase db database-id]
+    (.createCollection db (name table-name))
+    ;; Create indexes for any primary key fields
+    (when primary-key
+      (doseq [pk-field primary-key]
+        (mongo.util/create-index
+         (mongo.util/collection db (name table-name))
+         {pk-field 1})))))
+
+(defmethod driver/drop-table! :mongo
+  [_driver db-id table-name]
+  (mongo.connection/with-mongo-database [^MongoDatabase db db-id]
+    (some-> (mongo.util/collection db (name table-name))
+            .drop)))
+
+(defmethod driver/rename-table! :mongo
+  [_driver db-id old-table-name new-table-name]
+  (mongo.connection/with-mongo-database [^MongoDatabase db db-id]
+    (let [old-collection (mongo.util/collection db (name old-table-name))]
+      (.renameCollection old-collection
+                         (com.mongodb.MongoNamespace.
+                          (.getName db)
+                          (name new-table-name))))))
+
+(defmethod driver/drop-transform-target! [:mongo :table]
+  [driver database target]
+  (driver/drop-table! driver (:id database) (:name target)))
+
+(defmethod driver/connection-spec :mongo
+  [_driver database]
+  (:details database))
+
+(defmethod driver/type->database-type :mongo
+  [_driver base-type]
+  (case base-type
+    :type/TextLike "string"
+    :type/Text "string"
+    :type/Number "long"
+    :type/Integer "int"
+    :type/BigInteger "long"
+    :type/Float "double"
+    :type/Decimal "decimal"
+    :type/Boolean "bool"
+    :type/Date "date"
+    :type/DateTime "date"
+    :type/DateTimeWithTZ "date"
+    :type/Time "date"
+    :type/TimeWithTZ "date"
+    :type/Instant "date"
+    :type/UUID "uuid"
+    :type/JSON "object"
+    :type/SerializedJSON "string"
+    :type/Array "array"
+    :type/Dictionary "object"
+    :type/MongoBSONID "objectId"
+    :type/MongoBinData "binData"
+    :type/IPAddress "string"
+    ;; Default fallback
+    "object"))
+
+(defn- convert-value-for-insertion
+  [base-type value]
+  (if-not (string? value)
+    value
+    (case base-type
+      (:type/JSON :type/Dictionary :type/Array)
+      (json/decode value)
+
+      :type/Integer
+      (parse-long value)
+
+      (:type/Number :type/BigInteger)
+      (bigint value)
+
+      :type/Float
+      (parse-double value)
+
+      :type/Decimal
+      (bigdec value)
+
+      :type/Boolean
+      (parse-boolean value)
+
+      (:type/Date :type/DateTime :type/DateTimeWithTZ :type/Time :type/TimeWithTZ :type/Instant)
+      (u.date/parse value)
+
+      :type/UUID
+      (parse-uuid value)
+
+      value)))
+
+(defmethod driver/insert-from-source! [:mongo :rows]
+  [_driver db-id {table-name :name :keys [columns]} {:keys [data]}]
+  (let [col-names (mapv :name columns)
+        col-meta (m/index-by :name columns)]
+    (mongo.connection/with-mongo-database [^MongoDatabase db db-id]
+      (let [collection (mongo.util/collection db (name table-name))
+            documents (map #(into {} (map (fn [col-name value]
+                                            (let [ty (:type (get col-meta col-name))]
+                                              [col-name (convert-value-for-insertion ty value)]))
+                                          col-names %))
+                           data)]
+        (if (> (bounded-count 2 documents) 1)
+          (mongo.util/insert-many collection documents)
+          (mongo.util/insert-one collection (first documents)))))))
 
 ;; Following code is using monger. Leaving it here for a reference as it could be transformed when there is need
 ;; for ssl experiments.

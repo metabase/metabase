@@ -1,7 +1,10 @@
 (ns metabase-enterprise.transforms.api
   (:require
+   [clojure.core.async :as a]
+   [clojure.string :as str]
    [metabase-enterprise.transforms.api.transform-job]
    [metabase-enterprise.transforms.api.transform-tag]
+   [metabase-enterprise.transforms.canceling :as transforms.canceling]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.models.transform :as transform.model]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
@@ -29,12 +32,21 @@
 (set! *warn-on-reflection* true)
 
 (mr/def ::transform-source
-  [:map
-   [:type [:= "query"]]
-   [:query [:map [:database :int]]]])
+  [:multi {:dispatch (comp keyword :type)}
+   [:query
+    [:map
+     [:type [:= "query"]]
+     [:query [:map [:database :int]]]]]
+   [:python
+    [:map {:closed true}
+     [:source-database {:optional true} :int]
+     [:source-tables   [:map-of :string :int]]
+     [:type [:= "python"]]
+     [:body :string]]]])
 
 (mr/def ::transform-target
   [:map
+   [:database {:optional true} :int]
    [:type [:enum "table"]]
    [:schema {:optional true} [:or ms/NonBlankString :nil]]
    [:name :string]])
@@ -57,19 +69,22 @@
 
 (defn- source-database-id
   [transform]
-  (-> transform :source :query :database))
+  (if (transforms.util/python-transform? transform)
+    (-> transform :source :source-database)
+    (-> transform :source :query :database)))
 
 (defn- check-database-feature
   [transform]
-  (let [database (api/check-400 (t2/select-one :model/Database (source-database-id transform))
-                                (deferred-tru "The source database cannot be found."))
-        feature (transforms.util/required-database-feature transform)]
-    (api/check-400 (not (:is_sample database))
-                   (deferred-tru "Cannot run transforms on the sample database."))
-    (api/check-400 (not (:is_audit database))
-                   (deferred-tru "Cannot run transforms on audit databases."))
-    (api/check-400 (driver.u/supports? (:engine database) feature database)
-                   (deferred-tru "The database does not support the requested transform target type."))))
+  (when (transforms.util/query-transform? transform)
+    (let [database (api/check-400 (t2/select-one :model/Database (source-database-id transform))
+                                  (deferred-tru "The source database cannot be found."))
+          feature (transforms.util/required-database-feature transform)]
+      (api/check-400 (not (:is_sample database))
+                     (deferred-tru "Cannot run transforms on the sample database."))
+      (api/check-400 (not (:is_audit database))
+                     (deferred-tru "Cannot run transforms on audit databases."))
+      (api/check-400 (driver.u/supports? (:engine database) feature database)
+                     (deferred-tru "The database does not support the requested transform target type.")))))
 
 (defn get-transforms
   "Get a list of transforms."
@@ -182,9 +197,10 @@
           new (merge old body)
           target-fields #(-> % :target (select-keys [:schema :name]))]
       (check-database-feature new)
-      (when-let [{:keys [cycle-str]} (transforms.ordering/get-transform-cycle new)]
-        (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
-                        {:status-code 400})))
+      (when (transforms.util/query-transform? old)
+        (when-let [{:keys [cycle-str]} (transforms.ordering/get-transform-cycle new)]
+          (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
+                          {:status-code 400}))))
       (api/check (not (and (not= (target-fields old) (target-fields new))
                            (transforms.util/target-table-exists? new)))
                  403
@@ -217,11 +233,14 @@
 (api.macros/defendpoint :post "/:id/cancel"
   "Cancel the current run for a given transform."
   [{:keys [id]} :- [:map
-                    [:id :string]]]
+                    [:id ms/PositiveInt]]]
   (log/info "canceling transform " id)
   (api/check-superuser)
-  (let [run (api/check-404 (transform-run/running-run-for-run-id id))]
-    (transform-run-cancelation/mark-cancel-started-run! (:id run)))
+  (let [transform (api/check-404 (t2/select-one :model/Transform id))
+        run (api/check-404 (transform-run/running-run-for-transform-id id))]
+    (transform-run-cancelation/mark-cancel-started-run! (:id run))
+    (when (transforms.util/python-transform? transform)
+      (transforms.canceling/cancel-run! (:id run))))
   nil)
 
 (api.macros/defendpoint :post "/:id/run"
@@ -232,9 +251,16 @@
   (api/check-superuser)
   (let [transform (api/check-404 (t2/select-one :model/Transform id))
         start-promise (promise)]
-    (u.jvm/in-virtual-thread*
-     (transforms.execute/run-mbql-transform! transform {:start-promise start-promise
-                                                        :run-method :manual}))
+    (if (transforms.util/python-transform? transform)
+      (u.jvm/in-virtual-thread*
+       (transforms.execute/execute-python-transform! transform {:start-promise start-promise
+                                                                :message-log   (atom {:pre-python  []
+                                                                                      :python      nil
+                                                                                      :post-python []})
+                                                                :run-method :manual}))
+      (u.jvm/in-virtual-thread*
+       (transforms.execute/run-mbql-transform! transform {:start-promise start-promise
+                                                          :run-method :manual})))
     (when (instance? Throwable @start-promise)
       (throw @start-promise))
     (let [result @start-promise
@@ -243,6 +269,53 @@
       (-> (response/response {:message (deferred-tru "Transform run started")
                               :run_id run-id})
           (assoc :status 202)))))
+
+;; hack
+(def ^:private python-test-run-id Integer/MAX_VALUE)
+
+(api.macros/defendpoint :post "/test-python"
+  "Test Python code execution without creating a transform."
+  [_route-params
+   _query-params
+   body :- [:map
+            [:code :string]
+            [:tables [:map-of :string :int]]]]
+  (log/info "test python code execution")
+  (api/check-superuser)
+  (let [run-id python-test-run-id
+        cancel-chan (a/promise-chan)]
+    (transforms.canceling/chan-start-run! run-id cancel-chan)
+    (try
+      (let [{:keys [response output events]} (transforms.execute/test-python-transform! (:code body) (:tables body) run-id cancel-chan)
+            {:keys [body status]} response]
+        (if (= status 200)
+          (do
+            (log/info "Python test execution succeeded")
+            (-> (response/response {:message (deferred-tru "Python code executed successfully")
+                                    :result  {:body (assoc body :output output)}})
+                (assoc :status 200)))
+          (do
+            (log/error "Error executing Python test code")
+            (-> (response/response {:message   (deferred-tru "Python code execution failed")
+                                    :error     body
+                                    :stdout    (->> events (filter #(= "stdout" (:stream %))) (map :message) (str/join "\n"))
+                                    :stderr    (->> events (filter #(= "stderr" (:stream %))) (map :message) (str/join "\n"))
+                                    :exit_code (:exit_code (:exit_code body))})
+                (assoc :status status)))))
+      (finally
+        (transforms.canceling/chan-end-run! run-id)))))
+
+(api.macros/defendpoint :post "/test-python/cancel"
+  "Cancel the current test-python execution."
+  [_route-params
+   _query-params]
+  (log/info "canceling test python execution")
+  (api/check-superuser)
+  (if (transforms.canceling/chan-signal-cancel! python-test-run-id)
+    (-> (response/response {:message (deferred-tru "Python test canceled")})
+        (assoc :status 200))
+    (-> (response/response {:message (deferred-tru "No running Python test to cancel")})
+        (assoc :status 404))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform` routes."

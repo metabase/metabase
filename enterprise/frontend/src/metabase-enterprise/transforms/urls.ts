@@ -7,7 +7,11 @@ import type {
   TransformJobId,
 } from "metabase-types/api";
 
-import type { JobListParams, RunListParams } from "./types";
+import type {
+  JobListParams,
+  PythonLibraryEditorPageParams,
+  RunListParams,
+} from "./types";
 
 export const ROOT_URL = "/admin/transforms";
 
@@ -15,7 +19,9 @@ export function getTransformListUrl() {
   return ROOT_URL;
 }
 
-export function getNewTransformFromTypeUrl(type: DatasetQuery["type"]) {
+export function getNewTransformFromTypeUrl(
+  type: DatasetQuery["type"] | "python",
+) {
   return `${ROOT_URL}/new/${type}`;
 }
 
@@ -120,4 +126,8 @@ export function getTableMetadataUrl(
   databaseId: DatabaseId,
 ) {
   return `/admin/datamodel/database/${databaseId}/schema/${databaseId}:${encodeURIComponent(schema ?? "")}/table/${tableId}`;
+}
+
+export function getPythonLibraryUrl({ path }: PythonLibraryEditorPageParams) {
+  return `/admin/transforms/library/${path}`;
 }

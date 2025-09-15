@@ -7,7 +7,8 @@
    [metabase.driver.util :as driver.u]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.data.sql :as sql.tx]))
 
 (deftest ^:parallel base-type-inference-test
   (is (= :type/Text
@@ -88,3 +89,29 @@
                   [2 456.0 0.789 789.0]]
                  (mt/formatted-rows [int double double double]
                                     (mt/run-mbql-query json-decimals-table)))))))))
+
+(deftest insert-from-source!-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (let [driver       driver/*driver*
+          db-id        (mt/id)
+          table-name   (mt/random-name)
+          schema-name  (sql.tx/session-schema driver)
+          qualified-table-name (if schema-name
+                                 (keyword schema-name table-name)
+                                 (keyword table-name))
+          column-definitions {"id" [:int], "name" [:text]}]
+      (mt/as-admin
+        (driver/create-table! driver db-id qualified-table-name column-definitions {})
+
+        (testing "insert-from-source! should insert new rows correctly"
+          (let [new-rows     [[2 "New Luke"] [3 "New Leia"]]
+                data-source  {:type :rows :data new-rows}
+                rows-inserted (driver/insert-from-source! driver db-id
+                                                          {:table-name qualified-table-name
+                                                           :columns (mapv (fn [name]
+                                                                            {:name name})
+                                                                          (keys column-definitions))}
+                                                          data-source)]
+            (is (= (count new-rows) rows-inserted))))
+
+        (driver/drop-table! driver db-id qualified-table-name)))))

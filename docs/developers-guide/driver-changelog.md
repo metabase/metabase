@@ -17,7 +17,16 @@ title: Driver interface changelog
   metabase.driver/connection-spec, metabase.driver/table-exists?, metabase.driver.sql/normalize-name,
   and metabase.driver.sql/default-schema to implement sql transforms.
 
+- Added `metabase.driver/rename-tables!*` multimethod for atomic table renaming operations. Takes a map of {from-table to-table}
+  pairs that has been topologically sorted.
+
 - Added the driver multi-methods `metabase.driver/schema-exists?` and `metabase.driver/create-schema-if-needed!` which should be implemented by drivers that support `:schemas` and `:transforms/table`.
+
+- Added `metabase.driver/type->database-type` multimethod that returns the database type for a given Metabase type (from the type hierarchy) as a HoneySQL spec. Unlike `upload-type->database-type` which is specific to upload types, this method handles general Metabase base types.
+
+- Added `metabase.driver/rename-table!` multimethod to rename a table from one name to another. Both table names may be qualified by schema (e.g., `schema.table`). This is currently used for transform operations and uploads.
+
+- Added `metabase.driver/insert-from-source!` multimethod that abstracts data insertion from various sources into existing tables. This multimethod dispatches on both the driver and the data source type (`:rows` or `:csv-file`). It allows drivers to optimize based on the data source type and returns the number of rows inserted. Default implementations are provided for both `:rows` and `:csv-file` source types.
 
 - `metabase.driver/humanize-connection-error-message` now takes a list of all messages in the exception chain,
   instead of just the top-level message as a string.
