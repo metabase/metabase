@@ -347,6 +347,11 @@
   []
   {:segments (t2/count :model/Segment)})
 
+(defn- metric-metrics
+  "Get metrics based on Metrics."
+  []
+  {:metrics (t2/count :model/Card :type :metric :archived false)})
+
 ;;; Execution Metrics
 
 (defn- execution-metrics-sql []
@@ -474,6 +479,7 @@
                       :execution  (execution-metrics)
                       :field      (field-metrics)
                       :group      (group-metrics)
+                      :metric     (metric-metrics)
                       :pulse      (pulse-metrics)
                       :alert      (alert-metrics)
                       :question   (question-metrics)
