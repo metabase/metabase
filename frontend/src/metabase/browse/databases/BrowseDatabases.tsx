@@ -99,6 +99,7 @@ const CardImageWrapper = ({ database }: { database: string }) => {
         alt={t`${database} database logo`}
         h="xl"
         w="xl"
+        p="xs"
       />
     </Box>
   );
