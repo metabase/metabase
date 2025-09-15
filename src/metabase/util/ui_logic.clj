@@ -156,9 +156,9 @@
     (let [column-index (->> columns
                             (map-indexed vector)
                             (filter #(= goal-setting (:name (second %))))
-                            (first)
-                            (first))]
-      (when (and column-index rows (seq rows))
+                            first
+                            first)]
+      (when (and column-index (seq rows))
         (let [raw-value (nth (first rows) column-index nil)]
           (cond
             (nil? raw-value) 0
