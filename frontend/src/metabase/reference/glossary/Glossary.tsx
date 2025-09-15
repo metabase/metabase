@@ -64,7 +64,7 @@ export function Glossary() {
           }}
         >{t`New definition`}</Button>
       </Group>
-      <Stack w="100%" gap={0} className={cx(CS.wrapper, CS.wrapperTrim)}>
+      <Stack w="100%" gap={0} m={0} className={cx(CS.wrapper, CS.wrapperTrim)}>
         <Card px="lg" className={cx(CS.bordered, S.card)}>
           <CommonTable
             className={S.table}
