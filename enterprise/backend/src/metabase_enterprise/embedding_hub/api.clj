@@ -1,6 +1,6 @@
 (ns metabase-enterprise.embedding-hub.api
   (:require
-   [metabase-enterprise.sso.settings :as sso]
+   [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.appearance.core :as appearance]
@@ -34,11 +34,11 @@
 
 (defn- has-configured-sandboxes? []
   (and (premium-features/has-feature? :sandboxes)
-       (t2/exists? :model/GroupTableAccessPolicy)))
+       (t2/exists? :model/Sandbox)))
 
 (defn- has-configured-sso? []
-  (or (and (premium-features/has-feature? :sso-jwt) (sso/jwt-enabled) (sso/jwt-configured))
-      (and (premium-features/has-feature? :sso-saml) (sso/saml-enabled) (sso/saml-configured))))
+  (or (and (premium-features/has-feature? :sso-jwt) (sso-settings/jwt-enabled) (sso-settings/jwt-configured))
+      (and (premium-features/has-feature? :sso-saml) (sso-settings/saml-enabled) (sso-settings/saml-configured))))
 
 (defn- embedding-hub-checklist []
   {"add-data"                      (has-user-added-database?)
