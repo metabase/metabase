@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Route } from "react-router";
 import { t } from "ttag";
 
@@ -18,7 +18,10 @@ import {
 import type { EngineKey } from "metabase-types/api";
 
 import { DatabaseEditConnectionForm } from "../components/DatabaseEditConnectionForm";
-import { DatabaseHelpSidePanel } from "../components/DatabaseHelpSidePanel";
+import {
+  DatabaseHelpSidePanel,
+  ENGINE_DOC_MAP,
+} from "../components/DatabaseHelpSidePanel";
 import { useDatabaseConnection } from "../hooks/use-database-connection";
 
 interface DatabasePageProps {
@@ -30,14 +33,23 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
   const engines = useSelector(getEngines);
   const { database, databaseReq, handleCancel, handleOnSubmit, title, config } =
     useDatabaseConnection({ databaseId: params.databaseId, engines });
-  const [showSidePanel, { toggle: toggleSidePanel }] = useDisclosure(false);
+  const [showSidePanel, { toggle: toggleSidePanel, close: closeSidePanel }] =
+    useDisclosure(false);
   const [selectedEngineKey, setSelectedEngineKey] = useState<EngineKey>(
     database?.engine as EngineKey,
   );
+  const helpContentsExist =
+    !!selectedEngineKey && !!ENGINE_DOC_MAP[selectedEngineKey];
 
   const onEngineChange = (engineKey?: string) => {
     setSelectedEngineKey(engineKey as EngineKey);
   };
+
+  useEffect(() => {
+    if (!helpContentsExist) {
+      closeSidePanel();
+    }
+  }, [closeSidePanel, helpContentsExist]);
 
   return (
     <Flex direction="row" h="100%">
@@ -64,7 +76,7 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
             <Title order={1} fz="h2">
               {title}
             </Title>
-            {!!selectedEngineKey && (
+            {helpContentsExist && (
               <Text>
                 {t`Need a hand?`}{" "}
                 <Button
@@ -93,7 +105,7 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
           />
         </Box>
       </Box>
-      {showSidePanel && !!selectedEngineKey && (
+      {showSidePanel && (
         <>
           <Divider orientation="vertical" h="100%" />
           <Flex
