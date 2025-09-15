@@ -15,56 +15,56 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [pretty.core :as pretty]))
 
 (set! *warn-on-reflection* true)
 
-(defn- metadatas [inner-fn delegate overrides metadata-type metadata-keys]
+(defn- metadatas [delegate overrides {metadata-type :lib/type
+                                      :keys [id name card-id table-id]
+                                      :as metadata-spec}]
   (let [type-overrides  (get overrides metadata-type)
-        overridden-keys (set (keys type-overrides))
-        missing-keys    (remove overridden-keys metadata-keys)]
-    (concat (map deref (keep #(get type-overrides %) metadata-keys))
-            (when (seq missing-keys)
-              (inner-fn delegate metadata-type missing-keys)))))
+        metadata-keys   (set (or id name))]
+    (log/tracef "OverridingMetadataProvider request for %s" metadata-spec)
+    (cond
+      ;; For tables, fields, cards, snippets and transforms, return overrides if present and delegate if not.
+      (#{:metadata/table :metadata/field :metadata/card
+         :metadata/transform :metadata/native-query-snippet} metadata-type)
+      (let [overrides       (if (seq id)
+                              (into [] (comp (keep #(get type-overrides %))
+                                             (map deref))
+                                    id)
 
-(defn- inner-with-replacements [metadata-type inner-metadatas overrides]
-  (let [type-overrides (get overrides metadata-type)]
-    (for [metadata inner-metadatas
-          :let [override (get type-overrides (:id metadata))]]
-      (or (and override @override)
-          metadata))))
+                              (into [] (comp (map deref)
+                                             (filter (comp name :name)))
+                                    (vals type-overrides)))
+            override-key    (if (seq id) :id :name)
+            overridden-keys (into #{} (map override-key) overrides)
+            missing-keys    (remove overridden-keys metadata-keys)]
+        (log/tracef "Overridden keys %s; missing keys %s" (sort overridden-keys) (sort missing-keys))
+        (cond-> overrides
+          (seq missing-keys)
+          (concat (lib.metadata.protocols/metadatas delegate {:lib/type    metadata-type
+                                                              override-key (set missing-keys)}))))
 
-(defn- metadatas-for-x
-  "For an overridden table (= a transform), there should be a companion override for the fake `metadata-type`
-  `::table-columns` keyed by the table ID."
-  [delegate inner-fn cols-key overrides metadata-type parent-id]
-  (if-let [overridden-columns (and (= metadata-type :metadata/column)
-                                   (get-in overrides [cols-key parent-id]))]
-    @overridden-columns
-    (inner-fn delegate metadata-type parent-id)))
+      ;; For columns, return overrides if they're present.
+      (= metadata-type :metadata/column)
+      (if-let [overridden-columns (if card-id
+                                    (get-in overrides [::card-columns  card-id])
+                                    (get-in overrides [::table-columns table-id]))]
+        @overridden-columns
+        (lib.metadata.protocols/metadatas delegate metadata-spec))
+
+      :else (throw (ex-info "Unknown :lib/metadata type for OverridingMetadataProvider" metadata-spec)))))
 
 (declare setup-transform! setup-transforms!)
 
 (deftype OverridingMetadataProvider [delegate *overrides]
   lib.metadata.protocols/MetadataProvider
   (database [_this] (lib.metadata.protocols/database delegate))
-  (metadatas [this metadata-type metadata-ids]
+  (metadatas [this metadata-spec]
     (setup-transforms! this)
-    (metadatas lib.metadata.protocols/metadatas delegate @*overrides metadata-type metadata-ids))
-  (metadatas-by-name [this metadata-type names]
-    (setup-transforms! this)
-    (metadatas lib.metadata.protocols/metadatas-by-name delegate @*overrides metadata-type names))
-  (tables [this]
-    (setup-transforms! this)
-    (inner-with-replacements :metadata/table (lib.metadata.protocols/tables delegate) @*overrides))
-  (metadatas-for-table [this metadata-type table-id]
-    (setup-transforms! this)
-    (metadatas-for-x delegate lib.metadata.protocols/metadatas-for-table
-                     ::table-columns @*overrides metadata-type table-id))
-  (metadatas-for-card [this metadata-type card-id]
-    (setup-transforms! this)
-    (metadatas-for-x delegate lib.metadata.protocols/metadatas-for-card
-                     ::card-columns @*overrides metadata-type card-id))
+    (metadatas delegate @*overrides metadata-spec))
   (setting [_this setting-key]
     (lib.metadata.protocols/setting delegate setting-key))
 
@@ -83,10 +83,11 @@
 
   pretty/PrettyPrintable
   (pretty [_this]
-    (list `overriding-metadata-provider (update-vals @*overrides keys))))
+    (list `overriding-metadata-provider (update-vals @*overrides #(cond-> % (map? %) keys)))))
 
 (defmulti add-override
   "Given an `OverridingMetadataProvider`, an `entity-type` and that entity, add this entity as an override."
+  {:arglists '([metadata-provider entity-type id updates-or-nil])}
   (fn [_mp entity-type _id _updates]
     entity-type))
 
@@ -108,7 +109,7 @@
                                              (lib.metadata/card id)
                                              (dissoc :result-metadata)))
                                        updates))
-                 ;; This uses the outer OMP and so the overrides are visible!
+     ;; This uses the outer OMP and so the overrides are visible!
      [::card-columns id] (delay (lib/returned-columns (lib.metadata/card mp id)))}))
 
 (defonce ^:private last-fake-id (atom 2000000000))
