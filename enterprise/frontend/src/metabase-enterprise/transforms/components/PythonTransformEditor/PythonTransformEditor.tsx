@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Flex, Stack } from "metabase/ui";
 import type { PythonTransformSource } from "metabase-types/api";
@@ -15,7 +15,6 @@ type PythonTransformEditorProps = {
   isSaving?: boolean;
   onSave: (newSource: PythonTransformSource) => void;
   onCancel: () => void;
-  onSourceChange?: (newSource: PythonTransformSource) => void;
 };
 
 export function PythonTransformEditor({
@@ -24,16 +23,9 @@ export function PythonTransformEditor({
   isSaving = false,
   onSave,
   onCancel,
-  onSourceChange,
 }: PythonTransformEditorProps) {
   const [source, setSource] = useState(initialSource);
   const [isSourceDirty, setIsSourceDirty] = useState(false);
-
-  useEffect(() => {
-    if (onSourceChange) {
-      onSourceChange(source);
-    }
-  }, [source, onSourceChange]);
 
   const handleScriptChange = (body: string) => {
     const newSource = {
