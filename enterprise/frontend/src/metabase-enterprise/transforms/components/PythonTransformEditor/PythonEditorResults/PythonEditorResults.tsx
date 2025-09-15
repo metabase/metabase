@@ -23,14 +23,20 @@ export function PythonEditorResults({
 }: PythonEditorProps) {
   return (
     <DebouncedFrame className={S.visualization}>
-      {executionResult ? (
-        <ExecutionResults executionResult={executionResult} />
-      ) : (
-        <EmptyState />
-      )}
+      <ExecutionResultHeader executionResult={executionResult} />
+      <ExecutionResults executionResult={executionResult} />
       {isRunning && <LoadingState />}
     </DebouncedFrame>
   );
+}
+
+function ExecutionResultHeader({
+  executionResult,
+}: {
+  executionResult?: ExecutionResult | null;
+}) {
+  const message = getMessageForExecutionResult(executionResult);
+  return <Flex w="100%">{message}</Flex>;
 }
 
 function getRunQueryShortcut() {
@@ -68,18 +74,14 @@ function EmptyState() {
 function ExecutionResults({
   executionResult,
 }: {
-  executionResult: ExecutionResult | null;
+  executionResult?: ExecutionResult | null;
 }) {
   if (!executionResult) {
-    return null;
+    return <EmptyState />;
   }
-
-  const message = getMessageForExecutionResult(executionResult);
 
   return (
     <Stack gap={0}>
-      {message}
-
       <ExecutionLogs
         label={t`Standard output:`}
         content={executionResult.stdout}
@@ -94,10 +96,15 @@ function ExecutionResults({
   );
 }
 
-function getMessageForExecutionResult(executionResult: ExecutionResult) {
+function getMessageForExecutionResult(
+  executionResult?: ExecutionResult | null,
+) {
+  if (!executionResult) {
+    return null;
+  }
   if (executionResult.error) {
     return (
-      <Box className={S.error} p="sm">
+      <Box className={S.error} p="sm" w="100%">
         <Flex gap="sm">
           <Icon name="warning" />
           <Stack gap={0}>
@@ -113,7 +120,7 @@ function getMessageForExecutionResult(executionResult: ExecutionResult) {
 
   if (!executionResult.output) {
     return (
-      <Flex className={S.info} p="sm" bdrs="xs" gap="sm" align="center">
+      <Flex className={S.info} p="sm" gap="sm" align="center" w="100%">
         <Icon name="info" />
         {t`No results to display.`}
       </Flex>
@@ -121,7 +128,7 @@ function getMessageForExecutionResult(executionResult: ExecutionResult) {
   }
 
   return (
-    <Flex className={S.success} p="sm" gap="sm" align="center">
+    <Flex className={S.success} p="sm" gap="sm" align="center" w="100%">
       <Icon name="check" />
       {t`Script executed successfully.`}
     </Flex>
