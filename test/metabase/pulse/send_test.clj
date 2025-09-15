@@ -687,9 +687,9 @@
                                      :as pulse}   {:creator_id      (mt/user->id :rasta)
                                                    :name            (mt/random-name)
                                                    :alert_condition "rows"}
-                       :model/PulseChannel _      (merge {:pulse_id       pulse-id
-                                                          :channel_type   :slack
-                                                          :enabled        true
-                                                          :details        {:channel "#random"}})]
+                       :model/PulseChannel _      {:pulse_id       pulse-id
+                                                   :channel_type   :slack
+                                                   :enabled        true
+                                                   :details        {:channel "#random"}}]
           (pulse.send/send-pulse! pulse)
           (is (false? @pulse-sent-called?)))))))

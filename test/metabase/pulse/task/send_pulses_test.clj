@@ -242,34 +242,34 @@
         (mt/with-model-cleanup [:model/Pulse]
           (notification.tu/with-captured-channel-send!
             (let [sent-pulse-ids (atom #{})
-                  send-pulse-called (atom 0)]
-              (let [original-send-pulse!* @#'task.send-pulses/send-pulse!*]
-                (with-redefs [;; run the job every second - must be before creating PulseChannel
-                              u.cron/schedule-map->cron-string (constantly "* * * 1/1 * ? *")
-                              task.send-pulses/send-pulse!*    (fn [pulse-id channel-ids trigger]
-                                                                 (swap! send-pulse-called inc)
-                                                                 (original-send-pulse!* pulse-id channel-ids trigger))
-                              pulse.send/send-pulse! (fn [pulse-id & _args]
-                                                       (swap! sent-pulse-ids conj pulse-id))]
-                  (mt/with-temp [:model/Pulse {pulse-id :id} {:creator_id      (mt/user->id :rasta)
-                                                              :name            (mt/random-name)
-                                                              :alert_condition "rows"}
-                                 :model/PulseChannel _ (merge {:pulse_id       pulse-id
-                                                               :channel_type   :slack
-                                                               :enabled        true
-                                                               :details        {:channel "#random"}}
-                                                              daily-at-6pm)]
-                    (testing "trigger exists after creation"
-                      (is (= 1 (count (pulse-channel-test/send-pulse-triggers pulse-id)))))
+                  send-pulse-called (atom 0)
+                  original-send-pulse!* @#'task.send-pulses/send-pulse!*]
+              (with-redefs [;; run the job every second - must be before creating PulseChannel
+                            u.cron/schedule-map->cron-string (constantly "* * * 1/1 * ? *")
+                            task.send-pulses/send-pulse!*    (fn [pulse-id channel-ids trigger]
+                                                               (swap! send-pulse-called inc)
+                                                               (original-send-pulse!* pulse-id channel-ids trigger))
+                            pulse.send/send-pulse! (fn [pulse-id & _args]
+                                                     (swap! sent-pulse-ids conj pulse-id))]
+                (mt/with-temp [:model/Pulse {pulse-id :id} {:creator_id      (mt/user->id :rasta)
+                                                            :name            (mt/random-name)
+                                                            :alert_condition "rows"}
+                               :model/PulseChannel _ (merge {:pulse_id       pulse-id
+                                                             :channel_type   :slack
+                                                             :enabled        true
+                                                             :details        {:channel "#random"}}
+                                                            daily-at-6pm)]
+                  (testing "trigger exists after creation"
+                    (is (= 1 (count (pulse-channel-test/send-pulse-triggers pulse-id)))))
 
-                    (testing "waiting for cron job to fire"
-                      (is (u/poll {:thunk      #(pos? @send-pulse-called)
-                                   :done?      identity
-                                   :timeout-ms 2000})
-                          "send-pulse!* was never called - cron job may not be firing"))
+                  (testing "waiting for cron job to fire"
+                    (is (u/poll {:thunk      #(pos? @send-pulse-called)
+                                 :done?      identity
+                                 :timeout-ms 2000})
+                        "send-pulse!* was never called - cron job may not be firing"))
 
-                    (testing "alert was not sent (no call to pulse.send/send-pulse!)"
-                      (is (empty? @sent-pulse-ids)))))))))))))
+                  (testing "alert was not sent (no call to pulse.send/send-pulse!)"
+                    (is (empty? @sent-pulse-ids))))))))))))
 
 (def ^:private daily-at-8am
   {:schedule_type  "daily"
