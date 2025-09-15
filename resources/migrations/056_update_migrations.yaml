@@ -373,6 +373,18 @@ databaseChangeLog:
                     AND mt2.name = SUBSTRING(metabase_table.name, 1, POSITION('__mbarchiv__' IN metabase_table.name) - 1)
                     AND mt2.id != metabase_table.id);
 
+  - changeSet:
+      id: v56.2025-09-15T11:27:00
+      author: piranha
+      comment: Add an index on report_card.type since we're using this field for filtering all the time
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_type
+            columns:
+              - column:
+                  name: type
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
