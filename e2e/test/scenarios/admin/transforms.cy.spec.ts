@@ -25,7 +25,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
     H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
     cy.intercept("PUT", "/api/field/*").as("updateField");
     cy.intercept("POST", "/api/ee/transform").as("createTransform");
@@ -1189,7 +1189,7 @@ describe("scenarios > admin > transforms > databases without :schemas", () => {
     H.restore("mysql-8");
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
     cy.intercept("PUT", "/api/field/*").as("updateField");
     cy.intercept("POST", "/api/ee/transform").as("createTransform");
@@ -1237,7 +1237,7 @@ describe("scenarios > admin > transforms > jobs", () => {
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
     cy.intercept("POST", "/api/ee/transform-job").as("createJob");
     cy.intercept("PUT", "/api/ee/transform-job/*").as("updateJob");
