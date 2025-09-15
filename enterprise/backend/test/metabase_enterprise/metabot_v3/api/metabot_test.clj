@@ -2,9 +2,9 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase-enterprise.metabot-v3.api.metabot :as metabot-v3.api.metabot]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
+   [metabase-enterprise.metabot-v3.suggested-prompts :as metabot-v3.suggested-prompts]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -215,7 +215,7 @@
                                                       :collection_id collection-id-1}]
 
         (testing "should update use_verified_content field"
-          (with-redefs [metabot-v3.api.metabot/generate-sample-prompts (constantly nil)]
+          (with-redefs [metabot-v3.suggested-prompts/generate-sample-prompts (constantly nil)]
             (let [response (mt/user-http-request :crowberto :put 200
                                                  (format "ee/metabot-v3/metabot/%d" metabot-id)
                                                  {:use_verified_content true})]
@@ -226,7 +226,7 @@
                 (is (true? (:use_verified_content updated-metabot)))))))
 
         (testing "should update collection_id field"
-          (with-redefs [metabot-v3.api.metabot/generate-sample-prompts (constantly nil)]
+          (with-redefs [metabot-v3.suggested-prompts/generate-sample-prompts (constantly nil)]
             (let [response (mt/user-http-request :crowberto :put 200
                                                  (format "ee/metabot-v3/metabot/%d" metabot-id)
                                                  {:collection_id collection-id-2})]
@@ -237,7 +237,7 @@
                 (is (= collection-id-2 (:collection_id updated-metabot)))))))
 
         (testing "should update collection_id to null"
-          (with-redefs [metabot-v3.api.metabot/generate-sample-prompts (constantly nil)]
+          (with-redefs [metabot-v3.suggested-prompts/generate-sample-prompts (constantly nil)]
             (let [response (mt/user-http-request :crowberto :put 200
                                                  (format "ee/metabot-v3/metabot/%d" metabot-id)
                                                  {:collection_id nil})]
@@ -247,7 +247,7 @@
                 (is (= nil (:collection_id updated-metabot)))))))
 
         (testing "should update all fields simultaneously"
-          (with-redefs [metabot-v3.api.metabot/generate-sample-prompts (constantly nil)]
+          (with-redefs [metabot-v3.suggested-prompts/generate-sample-prompts (constantly nil)]
             (let [response (mt/user-http-request :crowberto :put 200
                                                  (format "ee/metabot-v3/metabot/%d" metabot-id)
                                                  {:use_verified_content false
@@ -286,7 +286,7 @@
               (is (= nil (:collection_id unchanged-metabot))))
 
             ;; Verify that updating other fields still works
-            (with-redefs [metabot-v3.api.metabot/generate-sample-prompts (constantly nil)]
+            (with-redefs [metabot-v3.suggested-prompts/generate-sample-prompts (constantly nil)]
               (let [response (mt/user-http-request :crowberto :put 200
                                                    (format "ee/metabot-v3/metabot/%d" metabot-id)
                                                    {:use_verified_content true})]
@@ -331,7 +331,7 @@
             (let [original-prompt-ids #{prompt-id-1 prompt-id-2}]
 
               (testing "should regenerate prompts when use_verified_content changes"
-                (with-redefs [metabot-v3.api.metabot/generate-sample-prompts
+                (with-redefs [metabot-v3.suggested-prompts/generate-sample-prompts
                               (fn [metabot-id]
                                 (t2/insert! :model/MetabotPrompt {:metabot_id metabot-id
                                                                   :prompt "new prompt after verified change"
@@ -349,7 +349,7 @@
                     (is (= "new prompt after verified change" (:prompt (first current-prompts)))))))
 
               (testing "should regenerate prompts when collection_id changes"
-                (with-redefs [metabot-v3.api.metabot/generate-sample-prompts
+                (with-redefs [metabot-v3.suggested-prompts/generate-sample-prompts
                               (fn [metabot-id]
                                 (t2/insert! :model/MetabotPrompt {:metabot_id metabot-id
                                                                   :prompt "new prompt after collection change"
@@ -376,7 +376,7 @@
 
                             ;; Make a PUT request that doesn't change verified content or collection_id
                             ;; (This would be if we add other fields to update in the future)
-                  (with-redefs [metabot-v3.api.metabot/generate-sample-prompts
+                  (with-redefs [metabot-v3.suggested-prompts/generate-sample-prompts
                                 (fn [_] (throw (Exception. "Should not be called")))]
                     (mt/user-http-request :crowberto :put 200
                                           (format "ee/metabot-v3/metabot/%d" metabot-id)
