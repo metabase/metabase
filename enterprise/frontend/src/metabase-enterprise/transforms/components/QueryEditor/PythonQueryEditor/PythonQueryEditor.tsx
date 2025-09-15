@@ -83,7 +83,7 @@ export function PythonQueryEditor({
         </Flex>
         <Stack className={S.libraryActions} p="md" gap="sm">
           <Checkbox
-            label={t`Import shared library`}
+            label={t`Import common library`}
             checked={hasSharedLib}
             onChange={handleToggleSharedLib}
             size="sm"
@@ -95,7 +95,7 @@ export function PythonQueryEditor({
             gap="sm"
           >
             <Icon name="pencil" />
-            {t`Edit shared library`}
+            {t`Edit common library`}
           </Flex>
         </Stack>
       </ResizableBox>
