@@ -29,7 +29,7 @@
    (software.amazon.awssdk.services.s3 S3Client S3ClientBuilder S3Configuration)
    (software.amazon.awssdk.services.s3.model DeleteObjectRequest GetObjectRequest NoSuchKeyException PutObjectRequest)
    (software.amazon.awssdk.services.s3.presigner S3Presigner S3Presigner$Builder)
-   (software.amazon.awssdk.services.s3.presigner.model GetObjectPresignRequest PresignedGetObjectRequest PresignedPutObjectRequest PutObjectPresignRequest)))
+   (software.amazon.awssdk.services.s3.presigner.model GetObjectPresignRequest PutObjectPresignRequest)))
 
 (set! *warn-on-reflection* true)
 
@@ -181,13 +181,13 @@
       (.pathStyleAccessEnabled (transforms.settings/python-storage-s-3-path-style-access))
       (.build)))
 
-(defn- put-object-request [^String bucket-name ^String key]
+(defn- put-object-request ^PutObjectRequest [^String bucket-name ^String key]
   (-> (PutObjectRequest/builder) (.bucket bucket-name) (.key key) .build))
 
-(defn- get-object-request [^String bucket-name ^String key]
+(defn- get-object-request ^GetObjectRequest [^String bucket-name ^String key]
   (-> (GetObjectRequest/builder) (.bucket bucket-name) (.key key) .build))
 
-(defn- delete-object-request [^String bucket-name ^String key]
+(defn- delete-object-request ^DeleteObjectRequest [^String bucket-name ^String key]
   (-> (DeleteObjectRequest/builder) (.bucket bucket-name) (.key key) .build))
 
 (def ^:private ^Duration presigned-url-duration
@@ -246,29 +246,24 @@
 (defn- generate-presigned-get-url
   "Generate GET URL using container presigner"
   [^S3Presigner presigner ^String bucket-name ^String key]
-  (let [^GetObjectRequest get-request            (get-object-request bucket-name key)
-        ^GetObjectPresignRequest presign-request (-> (GetObjectPresignRequest/builder)
-                                                     (.signatureDuration presigned-url-duration)
-                                                     (.getObjectRequest get-request)
-                                                     (.build))
-        presigned                                (.presignGetObject presigner presign-request)]
-    (.toString (.url presigned))))
+  (let [request (-> (GetObjectPresignRequest/builder)
+                    (.signatureDuration presigned-url-duration)
+                    (.getObjectRequest (get-object-request bucket-name key))
+                    (.build))]
+    (.toString (.url (.presignGetObject presigner request)))))
 
 (defn- generate-presigned-put-url
   "Generate PUT URL using container presigner"
   [^S3Presigner presigner ^String bucket-name ^String key]
-  (let [^PutObjectRequest put-request            (put-object-request bucket-name key)
-        ^PutObjectPresignRequest presign-request (-> (PutObjectPresignRequest/builder)
-                                                     (.signatureDuration presigned-url-duration)
-                                                     (.putObjectRequest put-request)
-                                                     (.build))
-        presigned                                ^PresignedPutObjectRequest (.presignPutObject presigner presign-request)]
-    (.toString (.url presigned))))
+  (let [request (-> (PutObjectPresignRequest/builder)
+                    (.signatureDuration presigned-url-duration)
+                    (.putObjectRequest (put-object-request bucket-name key))
+                    (.build))]
+    (.toString (.url (.presignPutObject presigner request)))))
 
 (defn- delete-s3-object [^S3Client s3-client ^String bucket-name ^String key]
   (try
-    (let [^DeleteObjectRequest request (delete-object-request bucket-name key)]
-      (.deleteObject s3-client request))
+    (.deleteObject s3-client (delete-object-request bucket-name key))
     (catch Exception e
       (log/debugf e "Error deleting s3 object %s" key)
       ;; Ignore deletion errors - object might not exist, or we might not have permissions
