@@ -20,6 +20,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -49,13 +50,16 @@
       (str/replace #"___LINE___" "\\\\d+")
       re-pattern))
 
-(def ^:private test-id 1)
+(def ^:private last-job-run-id (atom 0))
+
+(defn next-job-run-id [] (swap! last-job-run-id inc))
 
 (defn- execute! [{:keys [code tables]}]
   (with-open [shared-storage-ref (python-runner/open-s3-shared-storage! (or tables {}))]
     (let [server-url     (transforms.settings/python-execution-server-url)
           cancel-chan    (a/promise-chan)
           table-name->id (or tables {})
+          test-id        (next-job-run-id)
           _              (python-runner/copy-tables-to-s3! {:run-id         test-id
                                                             :shared-storage @shared-storage-ref
                                                             :table-name->id table-name->id
