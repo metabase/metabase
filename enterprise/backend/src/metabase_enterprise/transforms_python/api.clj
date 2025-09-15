@@ -1,6 +1,6 @@
-(ns metabase-enterprise.python-transform.api
+(ns metabase-enterprise.transforms-python.api
   (:require
-   [metabase-enterprise.python-transform.models.python-library :as python-library]
+   [metabase-enterprise.transforms-python.models.python-library :as python-library]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -25,6 +25,6 @@
   (python-library/update-python-library-source! path (:source body)))
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/api/ee/python-transform` routes."
+  "`/api/ee/transforms-python` routes."
   (handlers/routes
    (api.macros/ns-handler *ns* +auth)))

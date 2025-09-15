@@ -5,6 +5,7 @@
    [clojurewerkz.quartzite.schedule.calendar-interval :as calendar-interval]
    [clojurewerkz.quartzite.triggers :as triggers]
    [flatland.ordered.set :as ordered-set]
+   [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
    [metabase-enterprise.transforms.models.job-run :as transforms.job-run]
@@ -77,7 +78,7 @@
   (log/info "Executing job transform" (pr-str transform-id))
   (if (transforms.util/python-transform? transform)
     (transforms.instrumentation/with-stage-timing [run-id :computation :python-execution]
-      (transforms.execute/execute-python-transform! transform {:run-method run-method}))
+      (transforms-python.execute/execute-python-transform! transform {:run-method run-method}))
     (transforms.instrumentation/with-stage-timing [run-id :computation :mbql-query]
       (transforms.execute/run-mbql-transform! transform {:run-method run-method})))
 

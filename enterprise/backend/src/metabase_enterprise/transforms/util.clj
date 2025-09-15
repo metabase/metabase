@@ -1,9 +1,16 @@
 (ns metabase-enterprise.transforms.util
   (:require
+   [clojure.core.async :as a]
+   [clojure.string :as str]
    [java-time.api :as t]
+   [metabase-enterprise.transforms.canceling :as canceling]
+   [metabase-enterprise.transforms.models.transform-run :as transform-run]
+   [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.sync.core :as sync]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -33,6 +40,68 @@
   "Check if this is a Python transform."
   [transform]
   (= :python (-> transform :source :type keyword)))
+
+(defn try-start-unless-already-running
+  "Helper"
+  [id run-method]
+  (try
+    (transform-run/start-run! id {:run_method run-method})
+    (catch java.sql.SQLException e
+      (if (= (.getSQLState e) "23505")
+        (throw (ex-info "Transform is already running"
+                        {:error :already-running
+                         :transform-id id}
+                        e))
+        (throw e)))))
+
+(defn run-cancelable-transform!
+  "Run a compiled transform"
+  [run-id driver {:keys [db conn-spec output-schema]} run-transform!]
+  ;; local run is responsible for status, using canceling lifecycle
+  (try
+    (when (driver.u/supports? driver :schemas db)
+      (when-not (driver/schema-exists? driver (:id db) output-schema)
+        (driver/create-schema-if-needed! driver conn-spec output-schema)))
+    (canceling/chan-start-timeout-vthread! run-id (transforms.settings/transform-timeout))
+    (let [cancel-chan (a/promise-chan)
+          ret (binding [qp.pipeline/*canceled-chan* cancel-chan]
+                (canceling/chan-start-run! run-id cancel-chan)
+                (run-transform! cancel-chan))]
+      (transform-run/succeed-started-run! run-id)
+      ret)
+    (catch Throwable t
+      (transform-run/fail-started-run! run-id {:message (.getMessage t)})
+      (throw t))
+    (finally
+      (canceling/chan-end-run! run-id))))
+
+(declare activate-table-and-mark-computed!)
+
+(defn sync-target!
+  "Sync target of a transform"
+  ([transform-id run-id]
+   (let [{:keys [source target]} (t2/select-one :model/Transform transform-id)
+         db (get-in source [:query :database])
+         database (t2/select-one :model/Database db)]
+     (sync-target! target database run-id)))
+  ([target database _run-id]
+   ;; sync the new table (note that even a failed sync status means that the execution succeeded)
+   (log/info "Syncing target" (pr-str target) "for transform")
+   (activate-table-and-mark-computed! database target)))
+
+(defn save-log-as-message!
+  "Save a message log as transform run message."
+  [run-id message-log]
+  (when message-log
+    (let [{:keys [pre-python python post-python]} @message-log]
+      (t2/update! :model/TransformRun
+                  :id run-id
+                  {:message (str/join "\n" (concat pre-python
+                                                   (for [{:keys [stream message]} python]
+                                                     (if (= "stdout" stream)
+                                                       (str "\033[32m" message "\033[0m")
+                                                       (str "\033[31m" message "\033[0m")))
+                                                   post-python))}))))
 
 (defn target-table-exists?
   "Test if the target table of a transform already exists."
@@ -166,7 +235,7 @@
                                  columns)
         primary-key-opts (select-keys table-schema [:primary-key])]
     (log/infof "Creating table %s with %d columns" table-name (count columns))
-    (driver/create-table! driver database-id table-name column-definitions primary-key-opts)))
+    (driver/create-table! driver database-id #p table-name #p column-definitions primary-key-opts)))
 
 (defn drop-table!
   "Drop a table in the database."

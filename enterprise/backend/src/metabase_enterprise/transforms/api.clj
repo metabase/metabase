@@ -2,6 +2,7 @@
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
+   [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
    [metabase-enterprise.transforms.api.transform-job]
    [metabase-enterprise.transforms.api.transform-tag]
    [metabase-enterprise.transforms.canceling :as transforms.canceling]
@@ -245,8 +246,8 @@
         start-promise (promise)]
     (if (transforms.util/python-transform? transform)
       (u.jvm/in-virtual-thread*
-       (transforms.execute/execute-python-transform! transform {:start-promise start-promise
-                                                                :run-method :manual}))
+       (transforms-python.execute/execute-python-transform! transform {:start-promise start-promise
+                                                                       :run-method :manual}))
       (u.jvm/in-virtual-thread*
        (transforms.execute/run-mbql-transform! transform {:start-promise start-promise
                                                           :run-method :manual})))
@@ -275,7 +276,7 @@
         cancel-chan (a/promise-chan)]
     (transforms.canceling/chan-start-run! run-id cancel-chan)
     (try
-      (let [{:keys [response output events]} (transforms.execute/test-python-transform! (:code body) (:tables body) run-id cancel-chan)
+      (let [{:keys [response output events]} (transforms-python.execute/test-python-transform! (:code body) (:tables body) run-id cancel-chan)
             {:keys [body status]} response]
         (if (= status 200)
           (do

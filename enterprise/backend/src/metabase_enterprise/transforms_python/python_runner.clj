@@ -1,4 +1,4 @@
-(ns metabase-enterprise.transforms.python-runner
+(ns metabase-enterprise.transforms-python.python-runner
   (:require
    [clj-http.client :as http]
    [clojure.core.async :as a]

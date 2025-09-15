@@ -1,7 +1,7 @@
-(ns metabase-enterprise.python-transform.models.python-library-test
+(ns metabase-enterprise.transforms-python.models.python-library-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.python-transform.models.python-library :as python-library]
+   [metabase-enterprise.transforms-python.models.python-library :as python-library]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

@@ -1,8 +1,8 @@
-(ns ^:mb/driver-tests metabase-enterprise.python-transform.e2e-test
+(ns ^:mb/driver-tests metabase-enterprise.transforms-python.e2e-test
   "End-to-end tests for Python library functionality."
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.python-transform.models.python-library :as python-library]
+   [metabase-enterprise.transforms-python.models.python-library :as python-library]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [metabase.driver :as driver]
@@ -12,7 +12,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest python-transform-with-library-test
+(deftest transforms-python-with-library-test
   (testing "Python transform execution with common library"
     (mt/test-drivers #{:h2 :postgres}
       (mt/with-premium-features #{:transforms}
@@ -59,7 +59,7 @@
                     (is (= ["Hello, Alice!" "Hello, Bob!" "Hello, Charlie!" "Hello, David!" "Hello, Eve!"]
                            (map #(nth % 3) rows)))))))))))))
 
-(deftest execute-python-transform-test
+(deftest execute-transforms-python-test
   (testing "transform execution with :transforms/table target"
     (mt/test-drivers #{:h2 :postgres}
       (mt/with-premium-features #{:transforms}
