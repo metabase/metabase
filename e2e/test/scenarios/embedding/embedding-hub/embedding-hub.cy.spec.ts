@@ -1,3 +1,5 @@
+import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
+
 const { H } = cy;
 
 describe("scenarios - embedding hub", () => {
@@ -65,6 +67,29 @@ describe("scenarios - embedding hub", () => {
 
       cy.log("Should navigate to model creation page");
       cy.url().should("include", "/model/new");
+    });
+
+    it("Embed in production step should be locked until JWT is enabled", () => {
+      cy.visit("/admin/embedding/setup-guide");
+
+      cy.findByTestId("admin-layout-content")
+        .findByText("Embed in production")
+        .scrollIntoView()
+        .should("be.visible")
+        .closest("button")
+        .icon("lock")
+        .should("be.visible");
+
+      enableJwtAuth();
+      cy.reload();
+
+      cy.findByTestId("admin-layout-content")
+        .findByText("Embed in production")
+        .scrollIntoView()
+        .should("be.visible")
+        .closest("button")
+        .icon("lock")
+        .should("not.exist");
     });
   });
 });
