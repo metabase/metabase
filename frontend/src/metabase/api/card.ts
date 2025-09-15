@@ -146,6 +146,7 @@ export const cardApi = Api.injectEndpoints({
             listTag("card"),
             idTag("card", payload.id),
             idTag("table", `card__${payload.id}`),
+            listTag("revision"),
           ];
 
           if (payload.dashboard_id != null) {

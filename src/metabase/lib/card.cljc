@@ -125,8 +125,9 @@
                                 (sequential? cols) cols))]
      (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
            card-id           (when card-or-id-or-nil (u/the-id card-or-id-or-nil))
-           field-ids         (keep :id cols)
-           fields            (lib.metadata.protocols/metadatas metadata-provider :metadata/column field-ids)
+           field-ids         (not-empty (into #{} (keep :id) cols))
+           fields            (when field-ids
+                               (lib.metadata.protocols/metadatas metadata-provider {:lib/type :metadata/column, :id field-ids}))
            field-id->field   (m/index-by :id fields)]
        (mapv #(->card-metadata-column metadata-provider % card-id (get field-id->field (:id %))) cols)))))
 
