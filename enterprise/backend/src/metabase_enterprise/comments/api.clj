@@ -8,7 +8,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
-   [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.users.api :as api.user]
    [metabase.util :as u]
