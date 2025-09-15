@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-752-integration-branch-for-embedding-hub",
     "hash": "5f90f4a300f1063d50194c068c1420a5863ce437"
+  },
+  "upstream": {
+    "branch": "emb-805-check-for-csv-uploads-in-embedding-hub-checklist-endpoint"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 63501,
+        "gqlID": "PR_kwDOAczgH86oooDt"
+      }
+    }
   }
 }
