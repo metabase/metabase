@@ -5,23 +5,34 @@ import {
   type ExecutePythonResponse,
   useExecutePythonMutation,
 } from "metabase-enterprise/transforms/api/python-runner";
+import type { RowValue } from "metabase-types/api";
 
-export function parseCSV(csv: string): { headers: string[]; rows: string[][] } {
-  if (!csv || !csv.trim()) {
+export type Row = Record<string, RowValue>;
+
+export function parseOutput(output: string): {
+  headers: string[];
+  rows: Row[];
+} {
+  if (!output?.trim()) {
     return { headers: [], rows: [] };
   }
 
-  const lines = csv.trim().split("\n");
-  if (lines.length === 0) {
-    return { headers: [], rows: [] };
+  const lines = output.trim().split("\n");
+  const headers = new Set<string>();
+  const rows: Row[] = [];
+
+  for (const line of lines) {
+    const data = JSON.parse(line) as Row;
+    for (const key in data) {
+      headers.add(key);
+    }
+    rows.push(data);
   }
 
-  const headers = lines[0].split(",").map((h) => h.trim());
-  const rows = lines.slice(1).map((line) => {
-    return line.split(",").map((cell) => cell.trim());
-  });
-
-  return { headers, rows };
+  return {
+    headers: Array.from(headers),
+    rows,
+  };
 }
 
 export type ExecutionResult = {
