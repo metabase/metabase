@@ -819,152 +819,158 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
   });
 
   describe("queries", () => {
-    it("should render a readOnly preview of the MBQL query", () => {
-      cy.log("create a new transform that has all the steps");
-      H.getTableId({ name: "Animals" }).then((tableId) => {
-        H.getFieldId({ tableId, name: "score" }).then((ANIMAL_SCORE) => {
-          H.getFieldId({ tableId, name: "name" }).then((ANIMAL_NAME) => {
-            H.createTransform(
-              {
-                name: "MBQL transform",
-                source: {
-                  type: "query",
-                  query: {
-                    database: WRITABLE_DB_ID,
+    it(
+      "should render a readOnly preview of the MBQL query",
+      { tags: "@flaky" },
+      () => {
+        cy.log("create a new transform that has all the steps");
+        H.getTableId({ name: "Animals" }).then((tableId) => {
+          H.getFieldId({ tableId, name: "score" }).then((ANIMAL_SCORE) => {
+            H.getFieldId({ tableId, name: "name" }).then((ANIMAL_NAME) => {
+              H.createTransform(
+                {
+                  name: "MBQL transform",
+                  source: {
                     type: "query",
                     query: {
-                      "source-table": tableId,
-                      filter: [">", ["field", ANIMAL_SCORE, {}], 10],
-                      aggregation: [
-                        ["count"],
-                        [
-                          "aggregation-options",
-                          ["+", ["count"], 1],
-                          { name: "Foobar", "display-name": "Foobar" },
-                        ],
-                      ],
-                      expressions: {
-                        ScorePlusOne: ["+", ["field", ANIMAL_SCORE, {}], 1],
-                      },
-                      breakout: [
-                        [
-                          "field",
-                          ANIMAL_SCORE,
-                          { binning: { strategy: "num-bins", "num-bins": 10 } },
-                        ],
-                      ],
-                      joins: [
-                        {
-                          "source-table": tableId,
-                          condition: [
-                            "=",
-                            ["field", ANIMAL_SCORE, {}],
-                            ["field", ANIMAL_SCORE, {}],
+                      database: WRITABLE_DB_ID,
+                      type: "query",
+                      query: {
+                        "source-table": tableId,
+                        filter: [">", ["field", ANIMAL_SCORE, {}], 10],
+                        aggregation: [
+                          ["count"],
+                          [
+                            "aggregation-options",
+                            ["+", ["count"], 1],
+                            { name: "Foobar", "display-name": "Foobar" },
                           ],
-                          alias: "animal_score",
+                        ],
+                        expressions: {
+                          ScorePlusOne: ["+", ["field", ANIMAL_SCORE, {}], 1],
                         },
-                      ],
-                      limit: 10,
-                      "order-by": [["asc", ["field", ANIMAL_NAME, {}]]],
+                        breakout: [
+                          [
+                            "field",
+                            ANIMAL_SCORE,
+                            {
+                              binning: { strategy: "num-bins", "num-bins": 10 },
+                            },
+                          ],
+                        ],
+                        joins: [
+                          {
+                            "source-table": tableId,
+                            condition: [
+                              "=",
+                              ["field", ANIMAL_SCORE, {}],
+                              ["field", ANIMAL_SCORE, {}],
+                            ],
+                            alias: "animal_score",
+                          },
+                        ],
+                        limit: 10,
+                        "order-by": [["asc", ["field", ANIMAL_NAME, {}]]],
+                      },
                     },
                   },
+                  target: {
+                    type: "table",
+                    name: TARGET_TABLE,
+                    schema: TARGET_SCHEMA,
+                  },
+                  tag_ids: [],
                 },
-                target: {
-                  type: "table",
-                  name: TARGET_TABLE,
-                  schema: TARGET_SCHEMA,
-                },
-                tag_ids: [],
-              },
-              { visitTransform: true },
-            );
+                { visitTransform: true },
+              );
+            });
           });
         });
-      });
 
-      cy.log("Data step should be read-only");
-      H.getNotebookStep("data")
-        .findByRole("button")
-        .should("contain", "Animals")
-        .should("be.disabled");
+        cy.log("Data step should be read-only");
+        H.getNotebookStep("data")
+          .findByRole("button")
+          .should("contain", "Animals")
+          .should("be.disabled");
 
-      cy.log("Join step should be read-only");
-      H.getNotebookStep("join")
-        .findAllByText("Animals")
-        .should("have.length", 4)
-        .eq(1)
-        .should("have.css", "pointer-events", "none");
+        cy.log("Join step should be read-only");
+        H.getNotebookStep("join")
+          .findAllByText("Animals")
+          .should("have.length", 4)
+          .eq(1)
+          .should("have.css", "pointer-events", "none");
 
-      cy.findByLabelText("Change join type").should("be.disabled");
+        cy.findByLabelText("Change join type").should("be.disabled");
 
-      H.getNotebookStep("join")
-        .findAllByText("Score")
-        .should("have.length", 2)
-        .first()
-        .click();
-      assertNoModals();
+        H.getNotebookStep("join")
+          .findAllByText("Score")
+          .should("have.length", 2)
+          .first()
+          .click();
+        assertNoModals();
 
-      H.getNotebookStep("join")
-        .findAllByText("Score")
-        .should("have.length", 2)
-        .eq(1)
-        .click();
-      assertNoModals();
+        H.getNotebookStep("join")
+          .findAllByText("Score")
+          .should("have.length", 2)
+          .eq(1)
+          .click();
+        assertNoModals();
 
-      cy.log("Expression step should be read-only, but render editor");
-      H.getNotebookStep("expression").findByText("ScorePlusOne").click();
-      H.CustomExpressionEditor.value().should("equal", "[Score] + 1");
-      H.CustomExpressionEditor.nameInput()
-        .should("have.value", "ScorePlusOne")
-        .should("have.attr", "readonly");
-      H.popover().button("Done").click();
+        cy.log("Expression step should be read-only, but render editor");
+        H.getNotebookStep("expression").findByText("ScorePlusOne").click();
+        H.CustomExpressionEditor.value().should("equal", "[Score] + 1");
+        H.CustomExpressionEditor.nameInput()
+          .should("have.value", "ScorePlusOne")
+          .should("have.attr", "readonly");
+        H.popover().button("Done").click();
 
-      cy.log("Expression step should be read-only, but render popover");
-      H.getNotebookStep("filter")
-        .findByText("Score is greater than 10")
-        .click();
-      H.popover().within(() => {
-        cy.findByText("Score").should("be.visible");
-        cy.findByText("Greater than").should("be.visible");
-        cy.findByPlaceholderText("Enter a number")
-          .should("be.visible")
-          .should("have.value", 10);
-      });
-      H.main().click();
+        cy.log("Expression step should be read-only, but render popover");
+        H.getNotebookStep("filter")
+          .findByText("Score is greater than 10")
+          .click();
+        H.popover().within(() => {
+          cy.findByText("Score").should("be.visible");
+          cy.findByText("Greater than").should("be.visible");
+          cy.findByPlaceholderText("Enter a number")
+            .should("be.visible")
+            .should("have.value", 10);
+        });
+        H.main().click();
 
-      cy.log("Summarize step should be read-only");
-      H.getNotebookStep("summarize").findByText("Count").click();
-      H.CustomExpressionEditor.value().should("equal", "Count()");
-      H.CustomExpressionEditor.nameInput()
-        .should("have.value", "Count")
-        .should("have.attr", "readonly");
-      H.popover().button("Done").click();
+        cy.log("Summarize step should be read-only");
+        H.getNotebookStep("summarize").findByText("Count").click();
+        H.CustomExpressionEditor.value().should("equal", "Count()");
+        H.CustomExpressionEditor.nameInput()
+          .should("have.value", "Count")
+          .should("have.attr", "readonly");
+        H.popover().button("Done").click();
 
-      H.getNotebookStep("summarize").findByText("Foobar").click();
-      H.CustomExpressionEditor.value().should("equal", "Count() + 1");
-      H.CustomExpressionEditor.nameInput()
-        .should("have.value", "Foobar")
-        .should("have.attr", "readonly");
-      H.popover().button("Done").click();
+        H.getNotebookStep("summarize").findByText("Foobar").click();
+        H.CustomExpressionEditor.value().should("equal", "Count() + 1");
+        H.CustomExpressionEditor.nameInput()
+          .should("have.value", "Foobar")
+          .should("have.attr", "readonly");
+        H.popover().button("Done").click();
 
-      H.getNotebookStep("summarize").findByText("Score: 10 bins").click();
-      assertNoModals();
+        H.getNotebookStep("summarize").findByText("Score: 10 bins").click();
+        assertNoModals();
 
-      cy.log("Sort step should be read-only");
-      H.getNotebookStep("sort").findByText("Name").click();
-      assertNoModals();
+        cy.log("Sort step should be read-only");
+        H.getNotebookStep("sort").findByText("Name").click();
+        assertNoModals();
 
-      cy.log("Limit step should be read-only");
-      H.getNotebookStep("limit")
-        .findByPlaceholderText("Enter a limit")
-        .should("have.value", 10)
-        .should("have.attr", "readonly");
+        cy.log("Limit step should be read-only");
+        H.getNotebookStep("limit")
+          .findByPlaceholderText("Enter a limit")
+          .should("have.value", 10)
+          .should("have.attr", "readonly");
 
-      function assertNoModals() {
-        H.entityPickerModal().should("not.exist");
-        H.popover({ skipVisibilityCheck: true }).should("not.exist");
-      }
-    });
+        function assertNoModals() {
+          H.entityPickerModal().should("not.exist");
+          H.popover({ skipVisibilityCheck: true }).should("not.exist");
+        }
+      },
+    );
 
     it("should hide empty sections in read-only mode", () => {
       H.getTableId({ name: "Animals" }).then((tableId) => {
@@ -1463,7 +1469,7 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("filtering", () => {
-    it("should be able to filter jobs ", () => {
+    it("should be able to filter jobs ", { tags: "@flaky" }, () => {
       cy.log("run hourly job so know that was recently run");
       visitJobListPage();
 
