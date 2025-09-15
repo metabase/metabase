@@ -33,6 +33,10 @@
 
 (set! *warn-on-reflection* true)
 
+;; Longer duration for inputs than for outputs, to compensate for the duration of the code execution itself.
+(def ^:private ^Duration presigned-get-url-duration (Duration/ofMinutes 30))
+(def ^:private ^Duration presigned-put-url-duration (Duration/ofHours 5))
+
 (defn- safe-delete
   "Safely delete a file."
   [^File file]
@@ -190,10 +194,6 @@
 (defn- delete-object-request ^DeleteObjectRequest [^String bucket-name ^String key]
   (-> (DeleteObjectRequest/builder) (.bucket bucket-name) (.key key) .build))
 
-(def ^:private ^Duration presigned-url-duration
-  "Default duration for presigned URLs"
-  (Duration/ofHours 1))
-
 (defmacro ^:private maybe-with-credentials*
   "Use macro to avoid reflection, as their is no shared interface between S3ClientBuilder and S3Presigner$Builder"
   [builder]
@@ -247,7 +247,7 @@
   "Generate GET URL using container presigner"
   [^S3Presigner presigner ^String bucket-name ^String key]
   (let [request (-> (GetObjectPresignRequest/builder)
-                    (.signatureDuration presigned-url-duration)
+                    (.signatureDuration presigned-get-url-duration)
                     (.getObjectRequest (get-object-request bucket-name key))
                     (.build))]
     (.toString (.url (.presignGetObject presigner request)))))
@@ -256,7 +256,7 @@
   "Generate PUT URL using container presigner"
   [^S3Presigner presigner ^String bucket-name ^String key]
   (let [request (-> (PutObjectPresignRequest/builder)
-                    (.signatureDuration presigned-url-duration)
+                    (.signatureDuration presigned-put-url-duration)
                     (.putObjectRequest (put-object-request bucket-name key))
                     (.build))]
     (.toString (.url (.presignPutObject presigner request)))))
