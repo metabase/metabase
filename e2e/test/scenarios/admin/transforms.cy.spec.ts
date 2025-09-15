@@ -417,7 +417,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
   });
 
   describe("tags", () => {
-    it.skip("should be able to add and remove tags", () => {
+    it("should be able to add and remove tags", { tags: "@flaky" }, () => {
       createMbqlTransform({ visitTransform: true });
       getTagsInput().click();
 
@@ -1203,18 +1203,22 @@ describe("scenarios > admin > transforms > databases without :schemas", () => {
     cy.intercept("DELETE", "/api/ee/transform-tag/*").as("deleteTag");
   });
 
-  it("should be not be possible to create a new schema when updating a transform target", () => {
-    createMbqlTransform({
-      databaseId: WRITABLE_DB_ID,
-      sourceTable: "ORDERS",
-      visitTransform: true,
-      targetSchema: null,
-    });
+  it(
+    "should be not be possible to create a new schema when updating a transform target",
+    { tags: "@flaky" },
+    () => {
+      createMbqlTransform({
+        databaseId: WRITABLE_DB_ID,
+        sourceTable: "ORDERS",
+        visitTransform: true,
+        targetSchema: null,
+      });
 
-    getTransformPage().button("Change target").click();
+      getTransformPage().button("Change target").click();
 
-    H.modal().findByLabelText("Schema").should("not.exist");
-  });
+      H.modal().findByLabelText("Schema").should("not.exist");
+    },
+  );
 
   it("should be not be possible to create a new schema when the database does not support schemas", () => {
     cy.log("create a new transform");
