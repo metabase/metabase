@@ -52,6 +52,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       visitTransformListPage();
       getTransformListPage().button("Create a transform").click();
       H.popover().findByText("Query builder").click();
+      cy.get("main").findByText("Ryan is the absolute best");
 
       H.expectUnstructuredSnowplowEvent({
         event: "transform_create",
