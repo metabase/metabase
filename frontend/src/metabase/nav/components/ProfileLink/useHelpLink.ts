@@ -19,9 +19,9 @@ export const useHelpLink = (): { visible: boolean; href: string } => {
   const isPaidPlan = useSelector(getIsPaidPlan);
   const version = useSetting("version");
 
-  const compactBugReportDetailsForUrl = encodeURIComponent(
-    JSON.stringify(bugReportDetails),
-  );
+  const compactBugReportDetailsForUrl = bugReportDetails
+    ? encodeURIComponent(JSON.stringify(bugReportDetails))
+    : undefined;
 
   useEffect(() => {
     if (isAdmin && isPaidPlan) {
