@@ -202,8 +202,9 @@ export function GlossaryTable({
       />
       <ConfirmModal
         opened={deletingItem != null}
-        title={t`Delete “${deletingItem?.term}”`}
+        title={t`Delete “${deletingItem?.term}”?`}
         confirmButtonText={t`Delete`}
+        message={t`This can't be undone.`}
         onClose={() => setDeletingItem(null)}
         onConfirm={async () => {
           if (deletingItem) {
