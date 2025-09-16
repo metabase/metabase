@@ -85,6 +85,9 @@ export function PythonTransformEditor({
       Object.keys(source["source-tables"]).length > 0,
   );
 
+  const showDebugger =
+    new URLSearchParams(window.location.search).get("debugger") === "1";
+
   return (
     <Stack
       w="100%"
@@ -115,11 +118,14 @@ export function PythonTransformEditor({
             onCancel={cancel}
             source={source.body}
             onChange={handleScriptChange}
+            withDebugger={showDebugger}
           />
-          <PythonEditorResults
-            isRunning={isRunning}
-            executionResult={executionResult}
-          />
+          {showDebugger && (
+            <PythonEditorResults
+              isRunning={isRunning}
+              executionResult={executionResult}
+            />
+          )}
         </Stack>
       </Flex>
     </Stack>

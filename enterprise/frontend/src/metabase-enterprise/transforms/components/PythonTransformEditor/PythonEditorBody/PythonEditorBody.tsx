@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { ResizableBox } from "react-resizable";
 import { t } from "ttag";
 
@@ -22,6 +23,7 @@ type PythonEditorBodyProps = {
   isRunning?: boolean;
   isDirty?: boolean;
   tables?: Record<string, number>;
+  withDebugger?: boolean;
 };
 
 const EDITOR_HEIGHT = 400;
@@ -34,15 +36,10 @@ export function PythonEditorBody({
   onCancel,
   isRunning,
   isDirty,
+  withDebugger,
 }: PythonEditorBodyProps) {
   return (
-    <ResizableBox
-      className={S.root}
-      axis="y"
-      height={EDITOR_HEIGHT}
-      handle={<ResizableBoxHandle />}
-      resizeHandles={["s"]}
-    >
+    <MaybeResizableBox resizable={withDebugger}>
       <Flex h="100%" align="end" bg="bg-light">
         <PythonEditor
           value={source}
@@ -51,18 +48,43 @@ export function PythonEditorBody({
           data-testid="python-editor"
         />
 
-        <Box p="md">
-          <RunButtonWithTooltip
-            disabled={!isRunnable}
-            isRunning={isRunning}
-            isDirty={isDirty}
-            onRun={onRun}
-            onCancel={onCancel}
-            getTooltip={() => t`Run Python script`}
-          />
-        </Box>
+        {withDebugger && (
+          <Box p="md">
+            <RunButtonWithTooltip
+              disabled={!isRunnable}
+              isRunning={isRunning}
+              isDirty={isDirty}
+              onRun={onRun}
+              onCancel={onCancel}
+              getTooltip={() => t`Run Python script`}
+            />
+          </Box>
+        )}
       </Flex>
       <SharedLibraryActions source={source} onChange={onChange} />
+    </MaybeResizableBox>
+  );
+}
+
+function MaybeResizableBox({
+  resizable,
+  children,
+}: {
+  resizable?: boolean;
+  children?: ReactNode;
+}) {
+  if (!resizable) {
+    return <Box h="100%">{children}</Box>;
+  }
+
+  return (
+    <ResizableBox
+      axis="y"
+      height={EDITOR_HEIGHT}
+      handle={<ResizableBoxHandle />}
+      resizeHandles={["s"]}
+    >
+      {children}
     </ResizableBox>
   );
 }
