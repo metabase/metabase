@@ -206,11 +206,11 @@
         (replace-python-logs! message-log events))
       (if (not= 200 status)
         (throw (ex-info "Python runner call failed"
-                        {:status-code     400
-                         :api-status-code status
-                         :body            body
-                         :events          events
-                         ::transform-run-message (message-log->transform-run-message message-log)}))
+                        {:status-code           400
+                         :api-status-code       status
+                         :body                  body
+                         :events                events
+                         :transform-run-message (message-log->transform-run-message message-log)}))
         (try
           (let [temp-file (File/createTempFile "transform-output-" ".jsonl")]
             (when-not (seq (:fields output-manifest))
@@ -218,7 +218,7 @@
                               {:metadata               output-manifest
                                :raw-body               body
                                :events                 events
-                               ::transform-run-message (message-log->transform-run-message message-log)})))
+                               :transform-run-message  (message-log->transform-run-message message-log)})))
             (try
               (with-open [writer (io/writer temp-file)]
                 (.write writer ^String output))
@@ -232,7 +232,7 @@
           (catch Exception e
             (log/error e "Failed to to create resulting table")
             (throw (ex-info "Failed to create the resulting table"
-                            {::transform-run-message (message-log->transform-run-message message-log)}
+                            {:transform-run-message (message-log->transform-run-message message-log)}
                             e))))))))
 
 (defn execute-python-transform!

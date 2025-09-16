@@ -69,7 +69,8 @@
       (transform-run/succeed-started-run! run-id)
       ret)
     (catch Throwable t
-      (transform-run/fail-started-run! run-id {:message (.getMessage t)})
+      (let [{:keys [transform-run-message]} (ex-data t)]
+        (transform-run/fail-started-run! run-id {:message (or transform-run-message (.getMessage t))}))
       (throw t))
     (finally
       (canceling/chan-end-run! run-id))))

@@ -450,7 +450,7 @@
                       :expect-status :failed
                       :expected ["42", "is the answer"]
                       :writeback-ex (Exception. "Boom!")}]]
-      (mt/test-drivers #{:h2 :postgres}                     ;; todo define driver feature (other tests do this also)
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/with-premium-features #{:transforms}
           (mt/dataset transforms-dataset/transforms-test
             (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
