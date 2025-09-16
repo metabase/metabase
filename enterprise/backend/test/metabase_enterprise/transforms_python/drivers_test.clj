@@ -23,7 +23,7 @@
 
 (def test-id 42)
 
-(def supported-drivers #{:h2 :postgres :mysql :bigquery-cloud-sdk :sqlserver :mongo})
+(def supported-drivers #{:h2 :postgres :mysql :bigquery-cloud-sdk :sqlserver :mongo :snowflake})
 
 (defn- execute!
   "Execute a Python transform with the given code and tables"
@@ -370,7 +370,7 @@
                 (testing "Base type preservation"
                   (let [type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
                                    [name (keyword "type" base_type)])]
-                    (is (isa? (type-map "id") :type/Integer))
+                    (is (isa? (type-map "id") (if (= driver/*driver* :snowflake) :type/Number :type/Integer)))
                     (is (isa? (type-map "name") :type/Text))
                     (is (isa? (type-map "price") :type/Float))
                     (is (isa? (type-map "active") :type/Boolean))
@@ -426,7 +426,7 @@
                                  [name (keyword "type" base_type)])]
 
                   (testing "Original columns preserved"
-                    (is (isa? (type-map "id") :type/Integer))
+                    (is (isa? (type-map "id") (if (= driver/*driver* :snowflake) :type/Number :type/Integer)))
                     (is (isa? (type-map "text_field") :type/Text))
                     (is (isa? (type-map "int_field") :type/Integer))
                     (is (isa? (type-map "float_field") :type/Float))
