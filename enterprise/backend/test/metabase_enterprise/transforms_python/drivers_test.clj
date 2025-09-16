@@ -493,7 +493,7 @@
   (testing "End-to-end test using execute-python-transform! across all supported drivers with comprehensive type coverage"
     (mt/test-drivers supported-drivers
       (mt/with-empty-db
-        (mt/with-premium-features #{:transforms}
+        (mt/with-premium-features #{:transforms-python}
           (let [table-name (mt/random-name)
                 source-table-name (mt/random-name)
 

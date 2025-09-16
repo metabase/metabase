@@ -11,7 +11,7 @@
 (deftest atomic-python-transform-swap-test
   (testing "Python transform execution with atomic table swap"
     (mt/test-drivers #{:mysql :postgres}
-      (mt/with-premium-features #{:transforms}
+      (mt/with-premium-features #{:transforms-python}
         (mt/dataset transforms-dataset/transforms-test
           (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
             (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
@@ -61,7 +61,7 @@
 (deftest python-transform-temp-table-cleanup-test
   (testing "Python transform cleans up temp tables on success"
     (mt/test-drivers #{:mysql :postgres}
-      (mt/with-premium-features #{:transforms}
+      (mt/with-premium-features #{:transforms-python}
         (mt/dataset transforms-dataset/transforms-test
           (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
             (with-transform-cleanup! [{table-name :name :as target} {:type   "table"

@@ -343,7 +343,7 @@
     (mt/with-temp-scheduler!
       (task/init! ::transforms.schedule/RunTransform)
       (mt/test-drivers #{:h2 :postgres}
-        (mt/with-premium-features #{:transforms}
+        (mt/with-premium-features #{:transforms-python}
           (mt/dataset transforms-dataset/transforms-test
             (transforms.tu/with-transform-cleanup! [target {:type   "table"
                                                             :schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
