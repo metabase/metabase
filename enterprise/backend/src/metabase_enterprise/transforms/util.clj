@@ -1,6 +1,7 @@
 (ns metabase-enterprise.transforms.util
   (:require
    [clojure.core.async :as a]
+   [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.transforms.canceling :as canceling]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
@@ -69,8 +70,9 @@
       (transform-run/succeed-started-run! run-id)
       ret)
     (catch Throwable t
-      (let [{:keys [transform-run-message]} (ex-data t)]
-        (transform-run/fail-started-run! run-id {:message (or transform-run-message (.getMessage t))}))
+      (let [{:keys [transform-run-message]} (ex-data t)
+            message (str/join "\n" (remove str/blank? [transform-run-message (.getMessage t)]))]
+        (transform-run/fail-started-run! run-id {:message message}))
       (throw t))
     (finally
       (canceling/chan-end-run! run-id))))

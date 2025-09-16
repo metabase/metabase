@@ -61,6 +61,17 @@
                 (is (= [["Alice" 25] ["Bob" 30]]
                        (transforms.tu/table-rows table-name)))))))))))
 
+(defn- subsequence?
+  "Returns true if sequence ys is a subsequence of xs:
+  every element of ys appears in xs in the same order,
+  though not necessarily contiguously."
+  [xs ys]
+  (cond
+    (empty? ys) true
+    (empty? xs) false
+    (= (first xs) (first ys)) (recur (rest xs) (rest ys))
+    :else (recur (rest xs) ys)))
+
 (deftest python-transform-logging-test
   (letfn [(program->source [program]
             (->> (concat ["import pandas as pd"
@@ -165,7 +176,7 @@
                      {:desc "crash during writeback"
                       :program ["print(42)" "print(\"is the answer\")"]
                       :expect-status :failed
-                      :expected ["42", "is the answer"]
+                      :expected ["42" "is the answer" "Failed to create the resulting table"]
                       :writeback-ex (Exception. "Boom!")}]]
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/with-premium-features #{:transforms}
@@ -192,7 +203,7 @@
                         (testing "scenario takes time, we should see partial messages for immediate feedback"
                           (is (< 1 (count observed-messages)))))
                       (testing "message includes the expected lines"
-                        (is (str/includes? message (str/join "\n" expected)))))))))))))))
+                        (is (subsequence? (str/split-lines message) expected))))))))))))))
 
 (deftest get-python-transform-with-different-target-database-test
   (testing "GET /api/ee/transform/:id correctly fetches target table from different database"
