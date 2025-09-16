@@ -73,6 +73,7 @@ jobs:
           openldap: true
           webhook: true
           snowplow: true
+          python-runner: true
           postgres: ${{ inputs.name != 'mongo' }}
           mysql: ${{ inputs.name != 'mongo' }}
           mongo: ${{ inputs.name == 'mongo' }}
