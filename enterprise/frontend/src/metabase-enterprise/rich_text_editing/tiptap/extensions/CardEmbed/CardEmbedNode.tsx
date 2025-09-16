@@ -743,6 +743,14 @@ export const CardEmbedComponent = memo(
                       </Menu.Target>
                       <Menu.Dropdown>
                         <Menu.Item
+                          onClick={() => {
+                            // TODO
+                          }}
+                          leftSection={<Icon name="add_message" size={14} />}
+                        >
+                          {t`Comment`}
+                        </Menu.Item>
+                        <Menu.Item
                           onClick={handleEditVisualizationSettings}
                           disabled={!canWrite}
                           leftSection={<Icon name="palette" size={14} />}
