@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms.execute-test
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
@@ -34,6 +35,19 @@
 (defn- table-name->qp-table
   [mp table-name]
   (->> table-name mt/id (lib.metadata/table mp)))
+
+(defn- wait-for-table
+  "Wait for a table to appear in metadata, with timeout.
+   Copied from execute_test.clj - will consolidate later."
+  [table-name timeout-ms]
+  (let [mp    (mt/metadata-provider)
+        limit (+ (System/currentTimeMillis) timeout-ms)]
+    (loop []
+      (Thread/sleep 200)
+      (when (> (System/currentTimeMillis) limit)
+        (throw (ex-info "table has not been created" {:table-name table-name, :timeout-ms timeout-ms})))
+      (or (m/find-first (comp #{table-name} :name) (lib.metadata/tables mp))
+          (recur)))))
 
 (deftest execute-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
