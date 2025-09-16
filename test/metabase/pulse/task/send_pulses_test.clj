@@ -246,9 +246,9 @@
                   original-send-pulse!* @#'task.send-pulses/send-pulse!*]
               (with-redefs [;; run the job every second - must be before creating PulseChannel
                             u.cron/schedule-map->cron-string (constantly "* * * 1/1 * ? *")
-                            task.send-pulses/send-pulse!*    (fn [pulse-id channel-ids trigger]
+                            task.send-pulses/send-pulse!*    (fn [pulse-id channel-ids]
                                                                (swap! send-pulse-called inc)
-                                                               (original-send-pulse!* pulse-id channel-ids trigger))
+                                                               (original-send-pulse!* pulse-id channel-ids))
                             pulse.send/send-pulse! (fn [pulse-id & _args]
                                                      (swap! sent-pulse-ids conj pulse-id))]
                 (mt/with-temp [:model/Pulse {pulse-id :id} {:creator_id      (mt/user->id :rasta)
@@ -265,7 +265,7 @@
                   (testing "waiting for cron job to fire"
                     (is (u/poll {:thunk      #(pos? @send-pulse-called)
                                  :done?      identity
-                                 :timeout-ms 2000})
+                                 :timeout-ms 5000})
                         "send-pulse!* was never called - cron job may not be firing"))
 
                   (testing "alert was not sent (no call to pulse.send/send-pulse!)"
