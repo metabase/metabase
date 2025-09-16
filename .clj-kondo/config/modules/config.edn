@@ -885,19 +885,6 @@
            enterprise/advanced-permissions
            enterprise/sandbox}}
 
-  python-runner
-  {:team "Workflows"
-   :api  #{metabase.python-runner.api
-           metabase.python-runner.core
-           metabase.python-runner.init}
-   :uses #{api
-           driver
-           models
-           query-processor
-           request
-           util
-           enterprise/transforms}}
-
   queries
   {:team "Querying"
    :api  #{metabase.queries.api
@@ -1983,10 +1970,7 @@
    :api  #{metabase-enterprise.transforms.api
            metabase-enterprise.transforms.core
            metabase-enterprise.transforms.init
-           metabase-enterprise.transforms.instrumentation
-           metabase-enterprise.transforms.util
-           ;; TODO: Remove this from API once we remove the python-runner callback to metabase
-           metabase-enterprise.transforms.settings}
+           metabase-enterprise.transforms.util}
    :uses #{analytics
            api
            app-db
@@ -2004,7 +1988,6 @@
            sync
            task
            task-history
-           ;; TODO: Remove this once we're using a better file format than CSV
            upload
            util
            enterprise/transforms-python}}
@@ -2012,17 +1995,14 @@
   enterprise/transforms-python
   {:team "Querying"
    :api  #{metabase-enterprise.transforms-python.api
-           metabase-enterprise.transforms-python.core
-           metabase-enterprise.transforms-python.execute
-           metabase-enterprise.transforms-python.init
-           metabase-enterprise.transforms-python.models.python-library
-           metabase-enterprise.transforms-python.python-runner}
+           metabase-enterprise.transforms-python.settings}
    :uses #{api
            app-db
            config
            driver
            models
            query-processor
+           settings
            util
            enterprise/transforms}}
 
