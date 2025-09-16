@@ -1120,18 +1120,21 @@
                                           :description "Simple select on People table"
                                           :source {:type "query"
                                                    :query (mt/native-query {:query "SELECT * FROM PEOPLE"})}
-                                          :target {:type "table" :name "t1_table" :schema nil}}
+                                          :target {:type "table"
+                                                   :name "t1_table"}}
                      :model/Transform t2 {:name "MBQL Transform"
                                           :description "Simple MQBL query on Products table"
                                           :source {:type "query"
                                                    :query (mt/mbql-query products)}
-                                          :target {:type "table" :name "t2_table" :schema nil}}
-                     ;; TODO make this a Python transform
-                     :model/Transform t3 {:name "Orders Transform"
-                                          :description "Simple select on Orders table"
-                                          :source {:type "query"
-                                                   :query (mt/native-query {:query "SELECT * FROM ORDERS"})}
-                                          :target {:type "table" :name "t2_table" :schema nil}}]
+                                          :target {:type "table"
+                                                   :name "t2_table"}}
+                     :model/Transform t3 {:name "Python Transform"
+                                          :description "Simple python transform"
+                                          :source {:type "python"
+                                                   :body "print('hello world')"
+                                                   :source-tables {}}
+                                          :target {:type "table"
+                                                   :name "t2_table"}}]
         (testing "With insufficient permissions"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :post 403 "ee/metabot-tools/get-transforms"
@@ -1158,13 +1161,15 @@
                                           :description "Simple select on People table"
                                           :source {:type "query"
                                                    :query (mt/native-query {:query "SELECT * FROM PEOPLE"})}
-                                          :target {:type "table" :name "t1_table" :schema nil}}
-                     ;; TODO make this a Python transform
-                     :model/Transform t2 {:name "Orders Transform"
-                                          :description "Simple select on Orders table"
-                                          :source {:type "query"
-                                                   :query (mt/native-query {:query "SELECT * FROM ORDERS"})}
-                                          :target {:type "table" :name "t2_table" :schema nil}}]
+                                          :target {:type "table"
+                                                   :name "t1_table"}}
+                     :model/Transform t2 {:name "Python Transform"
+                                          :description "Simple Python transform"
+                                          :source {:type "python"
+                                                   :body "print('hello world')"
+                                                   :source-tables {}}
+                                          :target {:type "table"
+                                                   :name "t2_table"}}]
         (testing "With insufficient permissions"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :post 403 "ee/metabot-tools/get-transform-details"
