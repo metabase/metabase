@@ -302,6 +302,15 @@
      (recur query stage-number (lib.ref/ref aggregable))
      (lib.util/add-summary-clause query stage-number :aggregation aggregable))))
 
+(mu/defn aggregations :- [:maybe [:sequential ::lib.schema.aggregation/aggregation]]
+  "Get the aggregations in a given stage of a query."
+  ([query]
+   (aggregations query -1))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int]
+   (not-empty (:aggregation (lib.util/query-stage query stage-number)))))
+
 (mu/defn aggregations-metadata :- [:maybe [:sequential ::lib.metadata.calculation/column-metadata-with-source]]
   "Get metadata about the aggregations in a given stage of a query."
   ([query]
