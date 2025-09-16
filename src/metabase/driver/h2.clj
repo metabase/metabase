@@ -14,6 +14,7 @@
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -643,7 +644,7 @@
   [_ e]
   (#{"42S02" "42S03" "42S04"} (sql-jdbc/get-sql-state e)))
 
-(defmethod sql/normalize-unquoted-name :h2
+(defmethod sql.normalize/normalize-unquoted-name :h2
   [_ name-str]
   (u/upper-case-en name-str))
 

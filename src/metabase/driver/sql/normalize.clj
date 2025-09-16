@@ -1,0 +1,31 @@
+(ns metabase.driver.sql.normalize
+  (:require
+   [clojure.string :as str]
+   [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.util :as u]))
+
+(defmulti normalize-unquoted-name
+  "Normalize an unquoted table/column name according to the database's rules."
+  {:arglists '([driver name-str])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod normalize-unquoted-name :sql
+  [_ name-str]
+  (u/lower-case-en name-str))
+
+(defn normalize-name
+  "Normalizes the (primarily table/column) name passed in.
+  Should return a value that matches the name listed in the appdb."
+  [driver name-str]
+  (let [quote-style (sql.qp/quote-style driver)
+        quote-char (if (= quote-style :mysql) \` \")]
+    (if (and (= (first name-str) quote-char)
+             (= (last name-str) quote-char))
+      (let [quote-quote (str quote-char quote-char)
+            quote (str quote-char)]
+        (-> name-str
+            (subs 1 (dec (count name-str)))
+            (str/replace quote-quote quote)))
+      (normalize-unquoted-name driver name-str))))
