@@ -1,24 +1,15 @@
+import type {
+  ExecutePythonTransformRequest,
+  ExecutePythonTransformResponse,
+} from "metabase-types/api";
+
 import { EnterpriseApi } from "./api";
-
-export interface ExecutePythonRequest {
-  code: string;
-  tables: Record<string, number>;
-}
-
-export interface ExecutePythonResponse {
-  output?: string;
-  stdout?: string;
-  stderr?: string;
-  error?: string;
-  exit_code?: number;
-  timeout?: boolean;
-}
 
 export const pythonRunnerApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     executePython: builder.mutation<
-      ExecutePythonResponse,
-      ExecutePythonRequest
+      ExecutePythonTransformResponse,
+      ExecutePythonTransformRequest
     >({
       query: ({ code, tables }) => ({
         url: "/api/ee/transform/test-python",
