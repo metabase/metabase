@@ -9,9 +9,9 @@
 
 (p/import-vars
  [metabase.collections.models.collection
-  library-collection?
-  check-non-library-dependencies
-  check-library-dependents
-  moving-into-library?
-  moving-from-library?
-  non-library-dependencies])
+  remote-synced-collection?
+  check-non-remote-synced-dependencies
+  check-remote-synced-dependents
+  moving-into-remote-synced?
+  moving-from-remote-synced?
+  non-remote-synced-dependencies])

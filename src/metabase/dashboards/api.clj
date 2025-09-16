@@ -143,8 +143,8 @@
                          ;; Ok, now save the Dashboard
 
                          (u/prog1 (first (t2/insert-returning-instances! :model/Dashboard dashboard-data))
-                           (when (collections/library-collection? collection_id)
-                             (collections/check-non-library-dependencies <>))))]
+                           (when (collections/remote-synced-collection? collection_id)
+                             (collections/check-non-remote-synced-dependencies <>))))]
     (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
     (analytics/track-event! :snowplow/dashboard
                             {:event        :dashboard-created
@@ -529,9 +529,9 @@
                            (u/prog1 (cond-> dash
                                       (seq uncopied)
                                       (assoc :uncopied uncopied))
-                             (when (collections/moving-into-library? (:collection_id existing-dashboard)
-                                                                     collection_id)
-                               (collections/check-non-library-dependencies <>)))))]
+                             (when (collections/moving-into-remote-synced? (:collection_id existing-dashboard)
+                                                                           collection_id)
+                               (collections/check-non-remote-synced-dependencies <>)))))]
     (analytics/track-event! :snowplow/dashboard
                             {:event        :dashboard-created
                              :dashboard-id (u/the-id dashboard)})
@@ -979,8 +979,8 @@
                        (merge
                         (select-keys tabs-changes-stats [:created-tab-ids :deleted-tab-ids :total-num-tabs])
                         (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards])))))
-           (when (collections/library-collection? (:collection_id dash-updates))
-             (collections/check-non-library-dependencies (t2/select-one :model/Dashboard id))))
+           (when (collections/remote-synced-collection? (:collection_id dash-updates))
+             (collections/check-non-remote-synced-dependencies (t2/select-one :model/Dashboard id))))
          true))
       (let [dashboard (t2/select-one :model/Dashboard id)]
         ;; skip publishing the event if it's just a change in its collection position

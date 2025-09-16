@@ -19,29 +19,29 @@
     (write-files! [_ _ _ _] nil)))
 
 (deftest branches-endpoint-test
-  (testing "GET /api/ee/library/branches"
+  (testing "GET /api/ee/remote-sync/branches"
 
     (testing "successful response with configured source"
       (with-redefs [source/source-from-settings (constantly (mock-git-source :branches ["main" "develop" "feature-branch"]))]
-        (mt/user-http-request :crowberto :get 200 "ee/library/branches")
+        (mt/user-http-request :crowberto :get 200 "ee/remote-sync/branches")
         (is (= {:items ["main" "develop" "feature-branch"]}
-               (mt/user-http-request :crowberto :get 200 "ee/library/branches")))))
+               (mt/user-http-request :crowberto :get 200 "ee/remote-sync/branches")))))
 
     (testing "requires superuser permissions"
       (with-redefs [source/source-from-settings (constantly (mock-git-source))]
         (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 "ee/library/branches")))))
+               (mt/user-http-request :rasta :get 403 "ee/remote-sync/branches")))))
 
     (testing "error when git source not configured"
       (with-redefs [source/source-from-settings (constantly nil)]
-        (let [response (mt/user-http-request :crowberto :get 400 "ee/library/branches")]
+        (let [response (mt/user-http-request :crowberto :get 400 "ee/remote-sync/branches")]
           (is (= {:status "error"
                   :message "Git source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}
                  response)))))
 
     (testing "error handling for git repository errors"
       (with-redefs [source/source-from-settings (constantly (mock-git-source :error-on-branches? true))]
-        (let [response (mt/user-http-request :crowberto :get 400 "ee/library/branches")]
+        (let [response (mt/user-http-request :crowberto :get 400 "ee/remote-sync/branches")]
           (is (= {:status "error"
                   :message "Repository not found: Please check the repository URL"}
                  response)))))))

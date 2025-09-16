@@ -3063,10 +3063,10 @@
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :delete 403 (str "/collection/" a-id))))))
 
-(deftest api-move-collection-into-library-dependency-checking-success-test
+(deftest api-move-collection-into-remote-synced-dependency-checking-success-test
   (testing "PUT /api/collection/:id with parent_id in library succeeds when all dependencies are in library"
-    (mt/with-temp [:model/Collection {library-id :id} {:name "Library" :location "/" :type "library"}
-                   :model/Collection {parent-id :id} {:name "Parent" :location (format "/%d/" library-id) :type "library"}
+    (mt/with-temp [:model/Collection {library-id :id} {:name "Library" :location "/" :type "remote-synced"}
+                   :model/Collection {parent-id :id} {:name "Parent" :location (format "/%d/" library-id) :type "remote-synced"}
                    :model/Collection {coll-id :id} {:name "Collection to Move"
                                                     :location "/"
                                                     :type nil}
@@ -3085,11 +3085,11 @@
         (is (= parent-id (:parent_id response))
             "Collection should be moved to library parent")))))
 
-(deftest api-move-collection-into-library-dependency-checking-failure-test
+(deftest api-move-collection-into-remote-synced-dependency-checking-failure-test
   (testing "PUT /api/collection/:id with parent_id in library throws 400 when dependencies exist outside library"
     (mt/with-temp [:model/Collection {non-library-id :id} {:name "Non-Library" :location "/" :type nil}
-                   :model/Collection {library-id :id} {:name "Library" :location "/" :type "library"}
-                   :model/Collection {parent-id :id} {:name "Parent" :location (format "/%d/" library-id) :type "library"}
+                   :model/Collection {library-id :id} {:name "Library" :location "/" :type "remote-synced"}
+                   :model/Collection {parent-id :id} {:name "Parent" :location (format "/%d/" library-id) :type "remote-synced"}
                    :model/Collection {coll-id :id} {:name "Collection to Move"
                                                     :location "/"
                                                     :type nil}
@@ -3103,8 +3103,8 @@
       (let [response (mt/user-http-request :crowberto :put 400 (str "collection/" coll-id)
                                            {:parent_id parent-id})]
         ;; Verify error response contains dependency information
-        (is (str/includes? (:message response) "non-library dependencies")
-            "Error message should mention non-library dependencies"))
+        (is (str/includes? (:message response) "non-remote-synced dependencies")
+            "Error message should mention non-remote-synced dependencies"))
 
       ;; Verify the transaction was rolled back - collection should not be moved or changed
       (let [unchanged-coll (t2/select-one :model/Collection :id coll-id)]
@@ -3113,11 +3113,11 @@
         (is (= "/" (:location unchanged-coll))
             "Collection location should remain unchanged after failed move")))))
 
-(deftest api-move-collection-into-library-dependency-checking-transaction-rollback-test
+(deftest api-move-collection-into-remote-synced-dependency-checking-transaction-rollback-test
   (testing "PUT /api/collection/:id transaction rollback when dependency check fails after updates"
     (mt/with-temp [:model/Collection {non-library-id :id} {:name "Non-Library" :location "/" :type nil}
-                   :model/Collection {library-id :id} {:name "Library" :location "/" :type "library"}
-                   :model/Collection {parent-id :id} {:name "Parent" :location (format "/%d/" library-id) :type "library"}
+                   :model/Collection {library-id :id} {:name "Library" :location "/" :type "remote-synced"}
+                   :model/Collection {parent-id :id} {:name "Parent" :location (format "/%d/" library-id) :type "remote-synced"}
                    :model/Collection {coll-id :id} {:name "Collection to Move"
                                                     :location "/"
                                                     :type nil}
@@ -3147,7 +3147,7 @@
         (is (= (format "/%d/" coll-id) (:location unchanged-child))
             "Child collection location should remain unchanged after transaction rollback")))))
 
-(deftest api-move-collection-outside-library-no-dependency-checking-test
+(deftest api-move-collection-outside-remote-synced-no-dependency-checking-test
   (testing "PUT /api/collection/:id to non-library parent does not check dependencies"
     (mt/with-temp [:model/Collection {non-library-id :id} {:name "Non-Library" :location "/" :type nil}
                    :model/Collection {parent-id :id} {:name "Parent" :location "/" :type nil}

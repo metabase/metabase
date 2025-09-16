@@ -937,8 +937,8 @@
                                               (u/prog1 (t2/insert-returning-instance! :model/Card (cond-> card-data
                                                                                                     metadata
                                                                                                     (assoc :result_metadata metadata)))
-                                                (when (collections/library-collection? (:collection_id <>))
-                                                  (collections/check-non-library-dependencies <>))))]
+                                                (when (collections/remote-synced-collection? (:collection_id <>))
+                                                  (collections/check-non-remote-synced-dependencies <>))))]
      (let [{:keys [dashboard_id]} card]
        (when (and dashboard_id autoplace-dashboard-questions?)
          (autoplace-dashcard-for-card! dashboard_id (:dashboard_tab_id input-card-data) card)))
@@ -1116,11 +1116,11 @@
         (log/debug e
                    "`card-before-update`:" (pr-str card-before-update)
                    "`card-updates`:" (pr-str card-updates))))
-    (when (collections/library-collection? (or (:collection_id card-updates) (:collection_id card-before-update)))
-      (collections/check-non-library-dependencies card-before-update))
+    (when (collections/remote-synced-collection? (or (:collection_id card-updates) (:collection_id card-before-update)))
+      (collections/check-non-remote-synced-dependencies card-before-update))
     (when (and (api/column-will-change? :collection_id card-before-update card-updates)
-               (collections/moving-from-library? (:collection_id card-before-update) (:collection_id card-updates)))
-      (collections/check-library-dependents card-before-update)))
+               (collections/moving-from-remote-synced? (:collection_id card-before-update) (:collection_id card-updates)))
+      (collections/check-remote-synced-dependents card-before-update)))
   ;; Fetch the updated Card from the DB
   (let [card (t2/select-one :model/Card :id (:id card-before-update))]
     ;;; TODO -- this should be triggered indirectly by `:event/card-update`

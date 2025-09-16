@@ -14,62 +14,62 @@
               :content [{:type "text"
                          :text text}]}]})
 
-(deftest library-permissions-with-git-sync-allow-edit-false-test
-  (testing "can_write should be false for library collection items when git-sync-allow-edit is false"
+(deftest remote-synced-permissions-with-git-sync-allow-edit-false-test
+  (testing "can_write should be false for remote-synced collection items when git-sync-allow-edit is false"
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-temporary-setting-values [library.settings/git-sync-allow-edit false]
         (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
-                                                                :type "library"}]
+                                                                :type "remote-synced"}]
 
-          (testing "Cards in library collections have can_write=false"
+          (testing "Cards in remote-synced collections have can_write=false"
             (mt/with-temp [:model/Card {card-id :id} {:name "Library Card"
                                                       :collection_id library-coll-id
                                                       :dataset_query (mt/native-query {:query "SELECT 1"})}]
               (is (false? (mi/can-write? (t2/select-one :model/Card :id card-id)))
-                  "Card in library collection should not be writable when git-sync-allow-edit is false")))
+                  "Card in remote-synced collection should not be writable when git-sync-allow-edit is false")))
 
-          (testing "Dashboards in library collections have can_write=false"
+          (testing "Dashboards in remote-synced collections have can_write=false"
             (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Library Dashboard"
                                                                 :collection_id library-coll-id}]
               (is (false? (mi/can-write? (t2/select-one :model/Dashboard :id dashboard-id)))
-                  "Dashboard in library collection should not be writable when git-sync-allow-edit is false")))
+                  "Dashboard in remote-synced collection should not be writable when git-sync-allow-edit is false")))
 
-          (testing "Documents in library collections have can_write=false"
+          (testing "Documents in remote-synced collections have can_write=false"
             (mt/with-temp [:model/Document {document-id :id} {:name "Library Document"
                                                               :document (text->prose-mirror-ast "Library content")
                                                               :collection_id library-coll-id}]
               (is (false? (mi/can-write? (t2/select-one :model/Document :id document-id)))
-                  "Document in library collection should not be writable when git-sync-allow-edit is false"))))))))
+                  "Document in remote-synced collection should not be writable when git-sync-allow-edit is false"))))))))
 
-(deftest library-permissions-with-git-sync-allow-edit-true-test
-  (testing "can_write should be true for library collection items when git-sync-allow-edit is true"
+(deftest remote-synced-permissions-with-git-sync-allow-edit-true-test
+  (testing "can_write should be true for remote-synced collection items when git-sync-allow-edit is true"
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-temporary-setting-values [library.settings/git-sync-allow-edit true]
         (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
-                                                                :type "library"}]
+                                                                :type "remote-synced"}]
 
-          (testing "Cards in library collections have can_write=true"
+          (testing "Cards in remote-synced collections have can_write=true"
             (mt/with-temp [:model/Card {card-id :id} {:name "Library Card"
                                                       :collection_id library-coll-id
                                                       :dataset_query (mt/native-query {:query "SELECT 1"})}]
               (is (true? (mi/can-write? (t2/select-one :model/Card :id card-id)))
-                  "Card in library collection should be writable when git-sync-allow-edit is true")))
+                  "Card in remote-synced collection should be writable when git-sync-allow-edit is true")))
 
-          (testing "Dashboards in library collections have can_write=true"
+          (testing "Dashboards in remote-synced collections have can_write=true"
             (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Library Dashboard"
                                                                 :collection_id library-coll-id}]
               (is (true? (mi/can-write? (t2/select-one :model/Dashboard :id dashboard-id)))
-                  "Dashboard in library collection should be writable when git-sync-allow-edit is true")))
+                  "Dashboard in remote-synced collection should be writable when git-sync-allow-edit is true")))
 
-          (testing "Documents in library collections have can_write=true"
+          (testing "Documents in remote-synced collections have can_write=true"
             (mt/with-temp [:model/Document {document-id :id} {:name "Library Document"
                                                               :document (text->prose-mirror-ast "Library content")
                                                               :collection_id library-coll-id}]
               (is (true? (mi/can-write? (t2/select-one :model/Document :id document-id)))
-                  "Document in library collection should be writable when git-sync-allow-edit is true"))))))))
+                  "Document in remote-synced collection should be writable when git-sync-allow-edit is true"))))))))
 
-(deftest non-library-permissions-unaffected-by-git-sync-allow-edit-test
-  (testing "can_write for non-library collection items should be unaffected by git-sync-allow-edit setting"
+(deftest non-remote-synced-permissions-unaffected-by-git-sync-allow-edit-test
+  (testing "can_write for non-remote-synced collection items should be unaffected by git-sync-allow-edit setting"
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-temp [:model/Collection {regular-coll-id :id} {:name "Regular Collection"
                                                               :type nil}]
@@ -98,66 +98,66 @@
                   (is (true? (mi/can-write? (t2/select-one :model/Document :id document-id)))
                       "Document in regular collection should always be writable regardless of git-sync-allow-edit"))))))))))
 
-(deftest nested-library-collection-permissions-test
-  (testing "can_write for items in nested library collections should respect git-sync-allow-edit"
+(deftest nested-remote-synced-collection-permissions-test
+  (testing "can_write for items in nested remote-synced collections should respect git-sync-allow-edit"
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-temp [:model/Collection {parent-library-id :id} {:name "Parent Library Collection"
-                                                                :type "library"}
+                                                                :type "remote-synced"}
                      :model/Collection {child-library-id :id} {:name "Child Library Collection"
                                                                :location (format "/%d/" parent-library-id)
-                                                               :type "library"}]
+                                                               :type "remote-synced"}]
 
         (testing "When git-sync-allow-edit is false"
           (mt/with-temporary-setting-values [library.settings/git-sync-allow-edit false]
 
-            (testing "Cards in nested library collections have can_write=false"
+            (testing "Cards in nested remote-synced collections have can_write=false"
               (mt/with-temp [:model/Card {card-id :id} {:name "Nested Library Card"
                                                         :collection_id child-library-id
                                                         :dataset_query (mt/native-query {:query "SELECT 1"})}]
                 (is (false? (mi/can-write? (t2/select-one :model/Card :id card-id)))
-                    "Card in nested library collection should not be writable when git-sync-allow-edit is false")))
+                    "Card in nested remote-synced collection should not be writable when git-sync-allow-edit is false")))
 
-            (testing "Dashboards in nested library collections have can_write=false"
+            (testing "Dashboards in nested remote-synced collections have can_write=false"
               (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Nested Library Dashboard"
                                                                   :collection_id child-library-id}]
                 (is (false? (mi/can-write? (t2/select-one :model/Dashboard :id dashboard-id)))
-                    "Dashboard in nested library collection should not be writable when git-sync-allow-edit is false")))
+                    "Dashboard in nested remote-synced collection should not be writable when git-sync-allow-edit is false")))
 
-            (testing "Documents in nested library collections have can_write=false"
+            (testing "Documents in nested remote-synced collections have can_write=false"
               (mt/with-temp [:model/Document {document-id :id} {:name "Nested Library Document"
                                                                 :document (text->prose-mirror-ast "Nested library content")
                                                                 :collection_id child-library-id}]
                 (is (false? (mi/can-write? (t2/select-one :model/Document :id document-id)))
-                    "Document in nested library collection should not be writable when git-sync-allow-edit is false")))))
+                    "Document in nested remote-synced collection should not be writable when git-sync-allow-edit is false")))))
 
         (testing "When git-sync-allow-edit is true"
           (mt/with-temporary-setting-values [library.settings/git-sync-allow-edit true]
 
-            (testing "Cards in nested library collections have can_write=true"
+            (testing "Cards in nested remote-synced collections have can_write=true"
               (mt/with-temp [:model/Card {card-id :id} {:name "Nested Library Card"
                                                         :collection_id child-library-id
                                                         :dataset_query (mt/native-query {:query "SELECT 1"})}]
                 (is (true? (mi/can-write? (t2/select-one :model/Card :id card-id)))
-                    "Card in nested library collection should be writable when git-sync-allow-edit is true")))
+                    "Card in nested remote-synced collection should be writable when git-sync-allow-edit is true")))
 
-            (testing "Dashboards in nested library collections have can_write=true"
+            (testing "Dashboards in nested remote-synced collections have can_write=true"
               (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Nested Library Dashboard"
                                                                   :collection_id child-library-id}]
                 (is (true? (mi/can-write? (t2/select-one :model/Dashboard :id dashboard-id)))
-                    "Dashboard in nested library collection should be writable when git-sync-allow-edit is true")))
+                    "Dashboard in nested remote-synced collection should be writable when git-sync-allow-edit is true")))
 
-            (testing "Documents in nested library collections have can_write=true"
+            (testing "Documents in nested remote-synced collections have can_write=true"
               (mt/with-temp [:model/Document {document-id :id} {:name "Nested Library Document"
                                                                 :document (text->prose-mirror-ast "Nested library content")
                                                                 :collection_id child-library-id}]
                 (is (true? (mi/can-write? (t2/select-one :model/Document :id document-id)))
-                    "Document in nested library collection should be writable when git-sync-allow-edit is true")))))))))
+                    "Document in nested remote-synced collection should be writable when git-sync-allow-edit is true")))))))))
 
 (deftest mixed-collection-types-permissions-test
   (testing "can_write behavior should differ between library and regular collections in same test"
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
-                                                              :type "library"}
+                                                              :type "remote-synced"}
                      :model/Collection {regular-coll-id :id} {:name "Regular Collection"
                                                               :type nil}]
 
@@ -201,7 +201,7 @@
   (testing "can_write behavior should differ between library and regular collections in same test when the user is a super user"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
-                                                              :type "library"}
+                                                              :type "remote-synced"}
                      :model/Collection {regular-coll-id :id} {:name "Regular Collection"
                                                               :type nil}]
 
@@ -241,13 +241,13 @@
                 (is (true? (mi/can-write? (t2/select-one :model/Document :id regular-document-id)))
                     "Regular document should be writable")))))))))
 
-(deftest library-collection-itself-permissions-test
-  (testing "can_write for library collections themselves should respect git-sync-allow-edit"
+(deftest remote-synced-collection-itself-permissions-test
+  (testing "can_write for remote-synced collections themselves should respect git-sync-allow-edit"
 
     (testing "When git-sync-allow-edit is false"
       (mt/with-temporary-setting-values [library.settings/git-sync-allow-edit false]
         (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
-                                                                :type "library"}]
+                                                                :type "remote-synced"}]
           (mt/with-current-user (mt/user->id :rasta))
           (is (false? (mi/can-write? (t2/select-one :model/Collection :id library-coll-id)))
               "Library collection itself should not be writable when git-sync-allow-edit is false"))))
@@ -255,7 +255,7 @@
     (testing "When git-sync-allow-edit is true"
       (mt/with-temporary-setting-values [library.settings/git-sync-allow-edit true]
         (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
-                                                                :type "library"}]
+                                                                :type "remote-synced"}]
           (mt/with-current-user (mt/user->id :rasta)
             (is (true? (mi/can-write? (t2/select-one :model/Collection :id library-coll-id)))
                 "Library collection itself should be writable when git-sync-allow-edit is true")))))

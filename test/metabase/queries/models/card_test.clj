@@ -1058,14 +1058,14 @@
 
 (deftest create-card-library-collection-non-library-deps-test
   (testing "create-card! should throw exception when saving to library collection with non-library dependencies"
-    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "library"}
+    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "remote-synced"}
                    :model/Collection {regular-coll-id :id} {}
                    :model/Card {source-card-id :id} {:collection_id regular-coll-id
                                                      :name "Non-library source card"}]
       (testing "Card with non-library source card dependency cannot be created in library collection"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Model has non-library dependencies"
+             #"Model has non-remote-synced dependencies"
              (card/create-card!
               {:name "Card with non-library dependency"
                :display "table"
@@ -1089,7 +1089,7 @@
 
 (deftest update-card-library-collection-non-library-deps-test
   (testing "update-card! should throw exception when moving to library collection with non-library dependencies"
-    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "library"}
+    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "remote-synced"}
                    :model/Collection {regular-coll-id :id} {}
                    :model/Card {source-card-id :id} {:collection_id regular-coll-id
                                                      :name "Non-library source card"}
@@ -1101,14 +1101,14 @@
       (testing "Card with non-library dependencies cannot be moved to library collection"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Model has non-library dependencies"
+             #"Model has non-remote-synced dependencies"
              (card/update-card!
               {:card-before-update card
                :card-updates {:collection_id library-coll-id}
                :actor {:id (mt/user->id :rasta)}}))))
 
       (testing "Card with library dependencies can be moved to library collection"
-        (mt/with-temp [:model/Collection {another-library-coll-id :id} {:type "library"}
+        (mt/with-temp [:model/Collection {another-library-coll-id :id} {:type "remote-synced"}
                        :model/Card {library-source-card-id :id} {:collection_id another-library-coll-id
                                                                  :name "Library source card"}
                        :model/Card {movable-card-id :id :as movable-card} {:collection_id regular-coll-id
@@ -1125,7 +1125,7 @@
 
 (deftest update-card-existing-library-card-non-library-deps-test
   (testing "update-card! should throw exception when card in library collection gains non-library dependencies"
-    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "library"}
+    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "remote-synced"}
                    :model/Collection {regular-coll-id :id} {}
                    :model/Card {non-library-source-id :id} {:collection_id regular-coll-id
                                                             :name "Non-library source"}
@@ -1135,7 +1135,7 @@
       (testing "Cannot update library card to have non-library dependencies"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Model has non-library dependencies"
+             #"Model has non-remote-synced dependencies"
              (card/update-card!
               {:card-before-update card
                :card-updates {:dataset_query {:database (mt/id)
@@ -1145,7 +1145,7 @@
 
 (deftest update-card-library-dependents-prevents-move-from-library-test
   (testing "update-card! should prevent moving card out of library collection when it has library dependents"
-    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "library"}
+    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "remote-synced"}
                    :model/Collection {regular-coll-id :id} {}
                    :model/Card {library-card-id :id :as library-card} {:collection_id library-coll-id
                                                                        :name "Library card"}
@@ -1157,7 +1157,7 @@
       (testing "Cannot move library card to regular collection when library dependents exist"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Model has library dependents"
+             #"Model has remote-synced dependents"
              (card/update-card!
               {:card-before-update library-card
                :card-updates {:collection_id regular-coll-id}
@@ -1174,7 +1174,7 @@
 
 (deftest update-card-library-dependents-with-parameters-test
   (testing "update-card! should prevent moving card out of library collection when dependents reference it via parameters"
-    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "library"}
+    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "remote-synced"}
                    :model/Collection {regular-coll-id :id} {}
                    :model/Card {library-card-id :id :as library-card} {:collection_id library-coll-id
                                                                        :name "Library card"}
@@ -1186,7 +1186,7 @@
       (testing "Cannot move library card when dependents reference it via parameters"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Model has library dependents"
+             #"Model has remote-synced dependents"
              (card/update-card!
               {:card-before-update library-card
                :card-updates {:collection_id regular-coll-id}
@@ -1194,7 +1194,7 @@
 
 (deftest update-card-library-dependents-with-template-tags-test
   (testing "update-card! should prevent moving card out of library collection when dependents reference it via template tags"
-    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "library"}
+    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "remote-synced"}
                    :model/Collection {regular-coll-id :id} {}
                    :model/Card {library-card-id :id :as library-card} {:collection_id library-coll-id
                                                                        :name "Library card"}
@@ -1211,7 +1211,7 @@
       (testing "Cannot move library card when dependents reference it via template tags"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Model has library dependents"
+             #"Model has remote-synced dependents"
              (card/update-card!
               {:card-before-update library-card
                :card-updates {:collection_id regular-coll-id}
@@ -1219,8 +1219,8 @@
 
 (deftest update-card-library-dependents-allows-move-within-library-test
   (testing "update-card! should allow moving card between library collections even with library dependents"
-    (mt/with-temp [:model/Collection {library-coll-1-id :id} {:type "library"}
-                   :model/Collection {library-coll-2-id :id} {:type "library"}
+    (mt/with-temp [:model/Collection {library-coll-1-id :id} {:type "remote-synced"}
+                   :model/Collection {library-coll-2-id :id} {:type "remote-synced"}
                    :model/Card {library-card-id :id :as library-card} {:collection_id library-coll-1-id
                                                                        :name "Library card"}
                    :model/Card {dependent-card-id :id} {:collection_id library-coll-1-id
@@ -1238,7 +1238,7 @@
 
 (deftest update-card-library-dependents-allows-non-collection-updates-test
   (testing "update-card! should allow non-collection updates to library cards with dependents"
-    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "library"}
+    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "remote-synced"}
                    :model/Card {library-card-id :id :as library-card} {:collection_id library-coll-id
                                                                        :name "Library card"}
                    :model/Card {dependent-card-id :id} {:collection_id library-coll-id

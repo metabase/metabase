@@ -57,11 +57,11 @@
   [source branch]
   (->IngestableSource source branch (atom nil)))
 
-(defn- library-path
+(defn- remote-sync-path
   [opts entity]
-  (let [base-path   (serdes/storage-path entity opts)
-        dirnames    (drop-last base-path)
-        basename    (str (last base-path) ".yaml")]
+  (let [base-path (serdes/storage-path entity opts)
+        dirnames (drop-last base-path)
+        basename (str (last base-path) ".yaml")]
     (str/join File/separator (map v2.storage/escape-segment (concat dirnames [basename])))))
 
 (defn- ->file-spec
@@ -70,7 +70,7 @@
   (when (instance? Exception entity)
     ;; Just short-circuit if there are errors.
     (throw entity))
-  {:path (library-path opts entity)
+  {:path (remote-sync-path opts entity)
    :content (yaml/generate-string entity {:dumper-options {:flow-style :block :split-lines false}})})
 
 (defn store!

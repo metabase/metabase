@@ -25,7 +25,7 @@
   "Reloads the Metabase entities from the "
   [branch]
   (if-let [source (source/source-from-settings)]
-    (let [library-collection (t2/select-one :model/Collection :entity_id collection/library-entity-id)]
+    (let [remote-sync-collection (t2/select-one :model/Collection :entity_id collection/library-entity-id)]
       (try
         (git/fetch! source)
         ;; Load all entities from Git first - this handles creates/updates via entity_id matching
@@ -40,8 +40,8 @@
                                      (map (fn [[model entities]]
                                             [model (set (map :id entities))]))
                                      (into {}))
-              affected-collection-ids (collection/collection->descendant-ids library-collection)]
-          ;; Now delete any library content that was NOT part of the import
+              affected-collection-ids (collection/collection->descendant-ids remote-sync-collection)]
+          ;; Now delete any remote sync content that was NOT part of the import
           (doseq [model [:model/Collection
                          :model/Card
                          :model/Dashboard
@@ -54,18 +54,18 @@
               (when (seq affected-collection-ids)
                 (t2/delete! :model/Collection
                             :id [:in affected-collection-ids]
-                            ;; if we didn't sync any, then delete all collections in the library
+                            ;; if we didn't sync any, then delete all collections in the remote sync
                             :entity_id (if (seq entity-ids)
                                          [:not-in entity-ids]
                                          :entity_id)))
               (t2/delete! model
-                          :collection_id [:in (cons (u/the-id library-collection) affected-collection-ids)]
+                          :collection_id [:in (cons (u/the-id remote-sync-collection) affected-collection-ids)]
                           :entity_id (if (seq entity-ids)
                                        [:not-in entity-ids]
                                        :entity_id)))))
-        (lib.events/publish-library-sync! "import" nil api/*current-user-id*
-                                          {:branch (or branch (:source-branch source))
-                                           :status "success"})
+        (lib.events/publish-remote-sync-sync! "import" nil api/*current-user-id*
+                                              {:branch (or branch (:source-branch source))
+                                               :status "success"})
         (log/info "Successfully reloaded entities from git repository")
         {:status :success
          :message "Successfully reloaded from git repository"}
@@ -87,15 +87,15 @@
 
                             :else
                             (format "Failed to reload from git repository: %s" (.getMessage e)))]
-            (lib.events/publish-library-sync! "import" nil api/*current-user-id*
-                                              {:branch (or branch (:source-branch source))
-                                               :status "error"
-                                               :message (.getMessage e)})
+            (lib.events/publish-remote-sync-sync! "import" nil api/*current-user-id*
+                                                  {:branch (or branch (:source-branch source))
+                                                   :status "error"
+                                                   :message (.getMessage e)})
             {:status :error
              :message error-msg
              :details {:error-type (type e)}}))))
     {:status :error
-     :message "Library source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}))
+     :message "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}))
 
 (api.macros/defendpoint :post "/import"
   "Reload Metabase content from Git repository source of truth.
@@ -125,55 +125,55 @@
               :message "Unexpected error occurred during reload"}})))
 
 (api.macros/defendpoint :get "/unsynced-changes"
-  "Does this Metabase Library contain unsynced changes?"
+  "Does this Metabase Remote Sync collection contain unsynced changes?"
   []
   (api/check-superuser)
-  (if-let [library-collection (t2/select-one :model/Collection :entity_id collection/library-entity-id)]
-    (let [most-recent-sync (t2/select-one [:model/LibraryChangeLog :created_at]
+  (if-let [remote-sync-collection (t2/select-one :model/Collection :entity_id collection/library-entity-id)]
+    (let [most-recent-sync (t2/select-one [:model/RemoteSyncChangeLog :created_at]
                                           :sync_type "import"
                                           :status "success"
                                           {:order-by [[:created_at :desc]]})
           last-sync-time (:created_at most-recent-sync)
-          library-collection-ids (collection/collection->descendant-ids library-collection)
-          all-library-collection-ids (cons (u/the-id library-collection) library-collection-ids)]
+          remote-sync-collection-ids (collection/collection->descendant-ids remote-sync-collection)
+          all-remote-sync-collection-ids (cons (u/the-id remote-sync-collection) remote-sync-collection-ids)]
       (if last-sync-time
         (let [unsynced-collections (t2/select [:model/Collection :id :name :created_at :authority_level]
                                               {:where
                                                [:and
-                                                [:in :id all-library-collection-ids]
+                                                [:in :id all-remote-sync-collection-ids]
                                                 [:> :created_at last-sync-time]]})
               unsynced-cards (t2/select [:model/Card :id :name :description :created_at :updated_at :collection_id :display :query_type]
                                         {:where
                                          [:and
-                                          [:in :collection_id all-library-collection-ids]
+                                          [:in :collection_id all-remote-sync-collection-ids]
                                           [:or
                                            [:> :created_at last-sync-time]
                                            [:> :updated_at last-sync-time]]]})
               unsynced-dashboards (t2/select [:model/Dashboard :id :name :description :created_at :updated_at :collection_id]
                                              {:where
                                               [:and
-                                               [:in :collection_id all-library-collection-ids]
+                                               [:in :collection_id all-remote-sync-collection-ids]
                                                [:or
                                                 [:> :created_at last-sync-time]
                                                 [:> :updated_at last-sync-time]]]})
               unsynced-snippets (t2/select [:model/NativeQuerySnippet :id :name :created_at :updated_at :collection_id]
                                            {:where
                                             [:and
-                                             [:in :collection_id all-library-collection-ids]
+                                             [:in :collection_id all-remote-sync-collection-ids]
                                              [:or
                                               [:> :created_at last-sync-time]
                                               [:> :updated_at last-sync-time]]]})
               unsynced-timelines (t2/select [:model/Timeline :id :name :created_at :updated_at :collection_id]
                                             {:where
                                              [:and
-                                              [:in :collection_id all-library-collection-ids]
+                                              [:in :collection_id all-remote-sync-collection-ids]
                                               [:or
                                                [:> :created_at last-sync-time]
                                                [:> :updated_at last-sync-time]]]})
               unsynced-documents (t2/select [:model/Document :id :name :created_at :updated_at :collection_id]
                                             {:where
                                              [:and
-                                              [:in :collection_id all-library-collection-ids]
+                                              [:in :collection_id all-remote-sync-collection-ids]
                                               [:or
                                                [:> :created_at last-sync-time]
                                                [:> :updated_at last-sync-time]]]})
@@ -200,10 +200,10 @@
         ;; No successful sync found - everything is unsynced
         {:has_unsynced_changes true
          :last_sync_at nil
-         :message "No successful sync found - all library content is unsynced"}))
+         :message "No successful sync found - all remote sync content is unsynced"}))
     ;; No library collection found
     {:has_unsynced_changes false
-     :message "Library collection not found"}))
+     :message "Remote Sync collection not found"}))
 
 (defn save-to-git!
   [branch message]
@@ -218,29 +218,29 @@
                                  :include-database-secrets :false
                                  :continue-on-error false})
             (source/store! source branch message)))
-      (lib.events/publish-library-sync! "export" nil api/*current-user-id*
-                                        {:branch branch
-                                         :status "success"
-                                         :message message})
+      (lib.events/publish-remote-sync-sync! "export" nil api/*current-user-id*
+                                            {:branch branch
+                                             :status "success"
+                                             :message message})
       {:status :success}
 
       (catch Exception e
-        (lib.events/publish-library-sync! "export" nil api/*current-user-id*
-                                          {:branch branch
-                                           :status "error"
-                                           :message (ex-message e)})
+        (lib.events/publish-remote-sync-sync! "export" nil api/*current-user-id*
+                                              {:branch branch
+                                               :status "error"
+                                               :message (ex-message e)})
         {:status :error
          :message (format "Failed to export to git repository: %s" (.getMessage e))}))
     {:status :error
-     :message "Library source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}))
+     :message "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}))
 
 (api.macros/defendpoint :post "/export"
-  "Export the current state of the Library collection to a Source
+  "Export the current state of the Remote Sync collection to a Source
   This endpoint will:
   1. Fetch the latest changes from the source
   2. Create a branch or subdirectory -- depending on source support
      If no branch is supplied use the configured export branch.
-  3. Export the Library collection via serialization to the branch or subdirectory
+  3. Export the Remote Sync collection via serialization to the branch or subdirectory
   4. If possible commit the changes
   5. If possible sync to the source.
 
@@ -300,5 +300,5 @@
             :message "Git source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}}))
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/api/ee/library` routes."
+  "`/api/ee/remote-sync` routes."
   (api.macros/ns-handler *ns* +auth))

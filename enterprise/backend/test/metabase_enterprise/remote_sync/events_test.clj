@@ -1,5 +1,5 @@
 (ns metabase-enterprise.remote-sync.events-test
-  "Tests for the library events system.
+  "Tests for the remote-sync events system.
 
    Tests event publishing, handling, and model change tracking functionality."
   (:require
@@ -15,55 +15,55 @@
 
 ;;; Helper Functions Tests
 
-(deftest ^:parallel model-in-library-collection?-test
-  (testing "model-in-library-collection? detects library collections correctly"
-    (mt/with-temp [:model/Collection library-collection {:type "library" :name "Library"}
+(deftest ^:parallel model-in-remote-synced-collection?-test
+  (testing "model-in-remote-synced-collection? detects remote-synced collections correctly"
+    (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
                    :model/Collection normal-collection {:name "Normal"}]
-      (testing "returns true for models in library collections"
-        (is (true? (#'lib.events/model-in-library-collection?
-                    {:collection_id (:id library-collection)}))))
+      (testing "returns true for models in remote-synced collections"
+        (is (true? (#'lib.events/model-in-remote-synced-collection?
+                    {:collection_id (:id remote-sync-collection)}))))
 
       (testing "returns false for models in normal collections"
-        (is (false? (#'lib.events/model-in-library-collection?
+        (is (false? (#'lib.events/model-in-remote-synced-collection?
                      {:collection_id (:id normal-collection)}))))
 
       (testing "returns false when collection_id is nil"
-        (is (false? (#'lib.events/model-in-library-collection? {:collection_id nil}))))
+        (is (false? (#'lib.events/model-in-remote-synced-collection? {:collection_id nil}))))
 
       (testing "returns false when model has no collection_id"
-        (is (false? (#'lib.events/model-in-library-collection? {})))))))
+        (is (false? (#'lib.events/model-in-remote-synced-collection? {})))))))
 
-;;; Library Sync Event Tests
+;;; Remote-Sync Sync Event Tests
 
-(deftest publish-library-sync!-test
-  (testing "publish-library-sync! publishes events correctly"
+(deftest publish-remote-sync!-test
+  (testing "publish-remote-sync! publishes events correctly"
     (let [published-events (atom [])]
       (with-redefs [events/publish-event! (fn [topic event]
                                             (swap! published-events conj {:topic topic :event event})
                                             event)]
         (testing "publishes event with minimal parameters"
           (reset! published-events [])
-          (lib.events/publish-library-sync! "import" nil 123)
+          (lib.events/publish-remote-sync! "import" nil 123)
           (is (= 1 (count @published-events)))
           (let [{:keys [topic event]} (first @published-events)]
-            (is (= :event/library-sync topic))
+            (is (= :event/remote-sync topic))
             (is (=? {:sync-type "import"
-                     :library-id nil
+                     :collection-id nil
                      :user-id 123}
                     event))
             (is (instance? java.time.Instant (:timestamp event)))))
 
         (testing "publishes event with all parameters including metadata"
           (reset! published-events [])
-          (lib.events/publish-library-sync! :full 456 789
-                                            {:branch "main"
-                                             :status "success"
-                                             :message "Test sync"})
+          (lib.events/publish-remote-sync! :full 456 789
+                                           {:branch "main"
+                                            :status "success"
+                                            :message "Test sync"})
           (is (= 1 (count @published-events)))
           (let [{:keys [topic event]} (first @published-events)]
-            (is (= :event/library-sync topic))
+            (is (= :event/remote-sync topic))
             (is (=? {:sync-type :full
-                     :library-id 456
+                     :collection-id 456
                      :user-id 789
                      :branch "main"
                      :status "success"
@@ -71,14 +71,14 @@
                     event))
             (is (instance? java.time.Instant (:timestamp event)))))))))
 
-(deftest library-sync-event-handler-test
-  (testing "library-sync event handler processes events correctly"
-    (mt/with-model-cleanup [:model/LibraryChangeLog]
-      (testing "handler processes library-sync events and creates database entries"
+(deftest remote-sync-event-handler-test
+  (testing "remote-sync event handler processes events correctly"
+    (mt/with-model-cleanup [:model/RemoteSyncChangeLog]
+      (testing "handler processes remote-sync events and creates database entries"
         ;; Publish an event which should trigger the handler to create a database entry
-        (events/publish-event! :event/library-sync
+        (events/publish-event! :event/remote-sync
                                {:sync-type "import"
-                                :library-id 123
+                                :collection-id 123
                                 :user-id 456
                                 :status "success"
                                 :source-branch "main"
@@ -87,7 +87,7 @@
                                 :timestamp (t/instant)})
 
         ;; Query the database to verify the entry was created
-        (let [entries (t2/select :model/LibraryChangeLog)]
+        (let [entries (t2/select :model/RemoteSyncChangeLog)]
           (is (= 1 (count entries)))
           (is (=? {:sync_type "import"
                    :status "success"
@@ -99,76 +99,76 @@
 ;;; Model Change Event Tests
 
 (deftest card-change-events-test
-  (testing "card change events create library change log entries"
-    (mt/with-temp [:model/Collection library-collection {:type "library" :name "Library"}
+  (testing "card change events create remote-sync change log entries"
+    (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
                    :model/Collection normal-collection {:name "Normal"}
-                   :model/Card library-card {:name "Test Card"
-                                             :collection_id (:id library-collection)}
+                   :model/Card remote-sync-card {:name "Test Card"
+                                                 :collection_id (:id remote-sync-collection)}
                    :model/Card normal-card {:name "Normal Card"
                                             :collection_id (:id normal-collection)}]
-      (mt/with-model-cleanup [:model/LibraryChangeLog]
-        (testing "card-create event creates change log entry for library cards"
+      (mt/with-model-cleanup [:model/RemoteSyncChangeLog]
+        (testing "card-create event creates change log entry for remote-sync cards"
           ;; Clear any existing entries
-          (t2/delete! :model/LibraryChangeLog)
+          (t2/delete! :model/RemoteSyncChangeLog)
 
-          ;; Publish card-create event for a library card
+          ;; Publish card-create event for a remote-sync card
           (events/publish-event! :event/card-create
-                                 {:object library-card :user-id (mt/user->id :rasta)})
+                                 {:object remote-sync-card :user-id (mt/user->id :rasta)})
 
           ;; Verify entry was created in the database
-          (let [entries (t2/select :model/LibraryChangeLog)]
+          (let [entries (t2/select :model/RemoteSyncChangeLog)]
             (is (= 1 (count entries)))
             (is (=? {:model_type "card"
-                     :model_entity_id (re-pattern (str (:id library-card) ".*"))
+                     :model_entity_id (re-pattern (str (:id remote-sync-card) ".*"))
                      :sync_type "create"}
                     (first entries)))))
 
-        (testing "card-update event creates change log entry for library cards"
-          (t2/delete! :model/LibraryChangeLog)
+        (testing "card-update event creates change log entry for remote-sync cards"
+          (t2/delete! :model/RemoteSyncChangeLog)
 
           (events/publish-event! :event/card-update
-                                 {:object library-card :user-id (mt/user->id :rasta)})
+                                 {:object remote-sync-card :user-id (mt/user->id :rasta)})
 
-          (let [entries (t2/select :model/LibraryChangeLog)]
+          (let [entries (t2/select :model/RemoteSyncChangeLog)]
             (is (= 1 (count entries)))
             (is (=? {:sync_type "update"}
                     (first entries)))))
 
-        (testing "card-delete event creates change log entry for library cards"
-          (t2/delete! :model/LibraryChangeLog)
+        (testing "card-delete event creates change log entry for remote-sync cards"
+          (t2/delete! :model/RemoteSyncChangeLog)
 
           (events/publish-event! :event/card-delete
-                                 {:object library-card :user-id (mt/user->id :rasta)})
+                                 {:object remote-sync-card :user-id (mt/user->id :rasta)})
 
-          (let [entries (t2/select :model/LibraryChangeLog)]
+          (let [entries (t2/select :model/RemoteSyncChangeLog)]
             (is (= 1 (count entries)))
             (is (=? {:sync_type "delete"}
                     (first entries)))))
 
-        (testing "card events in non-library collections don't create entries"
-          (t2/delete! :model/LibraryChangeLog)
+        (testing "card events in non-remote-sync collections don't create entries"
+          (t2/delete! :model/RemoteSyncChangeLog)
 
           ;; Publish event for a card in a normal collection
           (events/publish-event! :event/card-create
                                  {:object normal-card :user-id (mt/user->id :rasta)})
 
           ;; Verify no entry was created
-          (let [entries (t2/select :model/LibraryChangeLog)]
+          (let [entries (t2/select :model/RemoteSyncChangeLog)]
             (is (= 0 (count entries)))))))))
 
 (deftest dashboard-change-events-test
-  (testing "dashboard change events create library change log entries"
-    (mt/with-temp [:model/Collection library-collection {:type "library" :name "Library"}
+  (testing "dashboard change events create remote-sync change log entries"
+    (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
                    :model/Dashboard dashboard {:name "Test Dashboard"
-                                               :collection_id (:id library-collection)}]
-      (mt/with-model-cleanup [:model/LibraryChangeLog]
+                                               :collection_id (:id remote-sync-collection)}]
+      (mt/with-model-cleanup [:model/RemoteSyncChangeLog]
         (testing "dashboard-create event creates change log entry"
-          (t2/delete! :model/LibraryChangeLog)
+          (t2/delete! :model/RemoteSyncChangeLog)
 
           (events/publish-event! :event/dashboard-create
                                  {:object dashboard :user-id (mt/user->id :rasta)})
 
-          (let [entries (t2/select :model/LibraryChangeLog)]
+          (let [entries (t2/select :model/RemoteSyncChangeLog)]
             (is (= 1 (count entries)))
             (is (=? {:model_type "dashboard"
                      :model_entity_id (re-pattern (str (:id dashboard) ".*"))
@@ -176,41 +176,41 @@
                     (first entries)))))
 
         (testing "dashboard-update event creates change log entry"
-          (t2/delete! :model/LibraryChangeLog)
+          (t2/delete! :model/RemoteSyncChangeLog)
 
           (events/publish-event! :event/dashboard-update
                                  {:object dashboard :user-id (mt/user->id :rasta)})
 
-          (let [entries (t2/select :model/LibraryChangeLog)]
+          (let [entries (t2/select :model/RemoteSyncChangeLog)]
             (is (= 1 (count entries)))
             (is (=? {:sync_type "update"}
                     (first entries)))))
 
         (testing "dashboard-delete event creates change log entry"
-          (t2/delete! :model/LibraryChangeLog)
+          (t2/delete! :model/RemoteSyncChangeLog)
 
           (events/publish-event! :event/dashboard-delete
                                  {:object dashboard :user-id (mt/user->id :rasta)})
 
-          (let [entries (t2/select :model/LibraryChangeLog)]
+          (let [entries (t2/select :model/RemoteSyncChangeLog)]
             (is (= 1 (count entries)))
             (is (=? {:sync_type "delete"}
                     (first entries)))))))))
 
 (deftest document-change-events-test
-  (testing "document change events create library change log entries"
-    (mt/with-temp [:model/Collection library-collection {:type "library" :name "Library"}]
-      (mt/with-model-cleanup [:model/LibraryChangeLog]
+  (testing "document change events create remote-sync change log entries"
+    (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}]
+      (mt/with-model-cleanup [:model/RemoteSyncChangeLog]
         ;; Mock document since it might not exist in the model
-        (let [document {:id 999 :name "Test Document" :collection_id (:id library-collection)}]
+        (let [document {:id 999 :name "Test Document" :collection_id (:id remote-sync-collection)}]
 
           (testing "document-create event creates change log entry"
-            (t2/delete! :model/LibraryChangeLog)
+            (t2/delete! :model/RemoteSyncChangeLog)
 
             (events/publish-event! :event/document-create
                                    {:object document :user-id (mt/user->id :rasta)})
 
-            (let [entries (t2/select :model/LibraryChangeLog)]
+            (let [entries (t2/select :model/RemoteSyncChangeLog)]
               (is (= 1 (count entries)))
               (is (=? {:model_type "document"
                        :model_entity_id (re-pattern (str (:id document) ".*"))
@@ -218,64 +218,64 @@
                       (first entries)))))
 
           (testing "document-update event creates change log entry"
-            (t2/delete! :model/LibraryChangeLog)
+            (t2/delete! :model/RemoteSyncChangeLog)
 
             (events/publish-event! :event/document-update
                                    {:object document :user-id (mt/user->id :rasta)})
 
-            (let [entries (t2/select :model/LibraryChangeLog)]
+            (let [entries (t2/select :model/RemoteSyncChangeLog)]
               (is (= 1 (count entries)))
               (is (=? {:sync_type "update"}
                       (first entries)))))
 
           (testing "document-delete event creates change log entry"
-            (t2/delete! :model/LibraryChangeLog)
+            (t2/delete! :model/RemoteSyncChangeLog)
 
             (events/publish-event! :event/document-delete
                                    {:object document :user-id (mt/user->id :rasta)})
 
-            (let [entries (t2/select :model/LibraryChangeLog)]
+            (let [entries (t2/select :model/RemoteSyncChangeLog)]
               (is (= 1 (count entries)))
               (is (=? {:sync_type "delete"}
                       (first entries))))))))))
 
 (deftest collection-touch-events-test
-  (testing "collection touch events create library change log entries"
-    (mt/with-temp [:model/Collection library-collection {:type "library" :name "Library"}
+  (testing "collection touch events create remote-sync change log entries"
+    (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
                    :model/Collection normal-collection {:name "Normal"}]
-      (mt/with-model-cleanup [:model/LibraryChangeLog]
-        (testing "collection-touch event creates change log entry for library collections"
-          (t2/delete! :model/LibraryChangeLog)
+      (mt/with-model-cleanup [:model/RemoteSyncChangeLog]
+        (testing "collection-touch event creates change log entry for remote-sync collections"
+          (t2/delete! :model/RemoteSyncChangeLog)
 
           (events/publish-event! :event/collection-touch
-                                 {:object library-collection :user-id (mt/user->id :rasta)})
+                                 {:object remote-sync-collection :user-id (mt/user->id :rasta)})
 
-          (let [entries (t2/select :model/LibraryChangeLog)]
+          (let [entries (t2/select :model/RemoteSyncChangeLog)]
             (is (= 1 (count entries)))
             (is (=? {:model_type "collection"
-                     :model_entity_id (re-pattern (str (:id library-collection) ".*"))
+                     :model_entity_id (re-pattern (str (:id remote-sync-collection) ".*"))
                      :sync_type "touch"}
                     (first entries)))))
 
-        (testing "collection-touch event doesn't create entry for non-library collections"
-          (t2/delete! :model/LibraryChangeLog)
+        (testing "collection-touch event doesn't create entry for non-remote-sync collections"
+          (t2/delete! :model/RemoteSyncChangeLog)
 
           (events/publish-event! :event/collection-touch
                                  {:object normal-collection :user-id (mt/user->id :rasta)})
 
-          (let [entries (t2/select :model/LibraryChangeLog)]
+          (let [entries (t2/select :model/RemoteSyncChangeLog)]
             (is (= 0 (count entries)))))))))
 
-(deftest create-library-change-log-entry!-test
-  (testing "create-library-change-log-entry! creates correct entries"
-    (mt/with-model-cleanup [:model/LibraryChangeLog]
+(deftest create-remote-sync-change-log-entry!-test
+  (testing "create-remote-sync-change-log-entry! creates correct entries"
+    (mt/with-model-cleanup [:model/RemoteSyncChangeLog]
       (mt/with-current-user (mt/user->id :rasta)
         (testing "creates entry with explicit user-id"
-          (t2/delete! :model/LibraryChangeLog)
+          (t2/delete! :model/RemoteSyncChangeLog)
 
-          (#'lib.events/create-library-change-log-entry! "card" 123 "update" 456)
+          (#'lib.events/create-remote-sync-change-log-entry! "card" 123 "update" 456)
 
-          (let [entries (t2/select :model/LibraryChangeLog)]
+          (let [entries (t2/select :model/RemoteSyncChangeLog)]
             (is (= 1 (count entries)))
             (is (=? {:model_type "card"
                      :model_entity_id #"123.*"
@@ -287,11 +287,11 @@
             (is (re-find #"update card by user 456" (:message (first entries))))))
 
         (testing "creates entry with current user-id when not specified"
-          (t2/delete! :model/LibraryChangeLog)
+          (t2/delete! :model/RemoteSyncChangeLog)
 
-          (#'lib.events/create-library-change-log-entry! "dashboard" 789 "create")
+          (#'lib.events/create-remote-sync-change-log-entry! "dashboard" 789 "create")
 
-          (let [entries (t2/select :model/LibraryChangeLog)]
+          (let [entries (t2/select :model/RemoteSyncChangeLog)]
             (is (= 1 (count entries)))
             (is (=? {:model_type "dashboard"
                      :model_entity_id #"789.*"
@@ -301,9 +301,9 @@
 
 (deftest ^:parallel event-derivation-test
   (testing "events properly derive from :metabase/event"
-    (testing "library-sync events"
-      (is (isa? ::lib.events/library-sync-event :metabase/event))
-      (is (isa? :event/library-sync ::lib.events/library-sync-event)))
+    (testing "remote-sync events"
+      (is (isa? ::lib.events/remote-sync-event :metabase/event))
+      (is (isa? :event/remote-sync ::lib.events/remote-sync-event)))
 
     (testing "card events"
       (is (isa? ::lib.events/card-change-event :metabase/event))

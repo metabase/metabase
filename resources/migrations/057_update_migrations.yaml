@@ -1354,79 +1354,18 @@ databaseChangeLog:
       rollback: # will be removed along the table
 
   - changeSet:
-      id: v57.2025-08-26T10:51:08
-      author: jds
-      comment: Add synced_to_source_of_truth column to transform table
-      changes:
-        - addColumn:
-            tableName: transform
-            columns:
-              - column:
-                  name: synced_to_source_of_truth
-                  remarks: Whether this transform is synced to the git source of truth
-                  type: ${boolean.type}
-                  defaultValueBoolean: false
-                  constraints:
-                    nullable: false
-
-  - changeSet:
-      id: v57.2025-09-04T10:00:00
-      author: edpaget
-      comment: Add library_identifier column to transform table
-      changes:
-        - addColumn:
-            tableName: transform
-            columns:
-              - column:
-                  name: library_identifier
-                  remarks: Unique identifier for transforms within a library
-                  type: varchar(254)
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v57.2025-09-04T10:01:00
-      author: edpaget
-      comment: Add unique constraint and index on transform.library_identifier
-      changes:
-        - addUniqueConstraint:
-            tableName: transform
-            columnNames: library_identifier
-            constraintName: unique_transform_library_identifier
-        - createIndex:
-            tableName: transform
-            indexName: idx_transform_library_identifier
-            columns:
-              - column:
-                  name: library_identifier
-
-  - changeSet:
-      id: v57.2025-09-09T12:00:00
-      author: johnswanson
-      comment: Create the Library collection
-      changes:
-        - sql:
-            sql: >-
-              INSERT INTO collection (name, slug, entity_id, type) VALUES ('Library', 'library', 'librarylibrarylibrary', 'library');
-
-      rollback:
-        - sql:
-            sql: >-
-              DELETE FROM collection WHERE type = 'library';
-
-  - changeSet:
       id: v57.2025-09-11T16:00:00
       author: johnswanson
-      comment: Create library_change_log table to track when syncs occur
+      comment: Create remote_sync_change_log table to track when syncs occur
       preConditions:
         - onFail: MARK_RAN
         - not:
             - tableExists:
-                tableName: library_change_log
+                tableName: remote_sync_change_log
       changes:
         - createTable:
-            tableName: library_change_log
-            remarks: Track when library syncs occur for detecting unsynced changes
+            tableName: remote_sync_change_log
+            remarks: Track when remote_sync syncs occur for detecting unsynced changes
             columns:
               - column:
                   name: id
@@ -1489,11 +1428,11 @@ databaseChangeLog:
   - changeSet:
       id: v57.2025-09-11T16:01:00
       author: jds
-      comment: Add index on library_change_log.created_at for efficient sync time queries
+      comment: Add index on remote_sync_change_log.created_at for efficient sync time queries
       changes:
         - createIndex:
-            tableName: library_change_log
-            indexName: idx_library_change_log_created_at
+            tableName: remote_sync_change_log
+            indexName: idx_remote_sync_change_log_created_at
             columns:
               - column:
                   name: created_at

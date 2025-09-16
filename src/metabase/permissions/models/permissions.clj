@@ -170,7 +170,7 @@
    [metabase.permissions.user :as permissions.user]
    [metabase.permissions.util :as perms.u]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.remote-sync.core :as library]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
@@ -280,7 +280,7 @@
 (defmethod mi/perms-objects-set :perms/use-parent-collection-perms
   [instance read-or-write]
   (if (or (= read-or-write :read)
-          (library/library-editable? (or (:collection instance) (:collection_id instance))))
+          (remote-sync/editable? (or (:collection instance) (:collection_id instance))))
     (perms-objects-set-for-parent-collection instance read-or-write)
     #{"library-access"}))
 

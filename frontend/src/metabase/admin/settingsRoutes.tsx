@@ -65,15 +65,15 @@ export const getSettingsRoutes = () => (
       component={() => <PLUGIN_AUTH_PROVIDERS.SettingsJWTForm />}
     />
     <Route
-      path="library"
+      path="remote-sync"
       component={() => <PLUGIN_GIT_SYNC.GitSyncSettings />}
     />
     <Route
-      path="library/sync"
+      path="remote-sync/sync"
       component={() => <PLUGIN_GIT_SYNC.GitSyncSettings />}
     />
     <Route
-      path="library/changes"
+      path="remote-sync/changes"
       component={() => <PLUGIN_GIT_SYNC.GitChangeList />}
     />
     <Route path="maps" component={MapsSettingsPage} />

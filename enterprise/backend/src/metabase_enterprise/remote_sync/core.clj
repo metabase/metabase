@@ -15,9 +15,9 @@
 (p/import-vars
  [source])
 
-(defenterprise library-editable?
-  "Should the library be editable. Always true on OSS"
+(defenterprise editable?
+  "Should the remote-synced collection be editable. Always true on OSS"
   :feature :none
   [collection]
-  (or (not (collections/library-collection? collection))
+  (or (not (collections/remote-synced-collection? collection))
       (settings/git-sync-allow-edit)))

@@ -2,7 +2,7 @@
   (:require
    [metabase.premium-features.core :refer [defenterprise]]))
 
-(defenterprise library-editable?
+(defenterprise editable?
   "Should the library be editable. Always true on OSS"
   metabase-enterprise.remote-sync.core
   [_collection]
