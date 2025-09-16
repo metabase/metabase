@@ -1834,7 +1834,8 @@
   {:team "Querying"
    :api #{metabase-enterprise.representations.core
           metabase-enterprise.representations.init}
-   :uses #{}}
+   :uses #{lib
+           util}}
 
   enterprise/sandbox
   {:team "UX West"
