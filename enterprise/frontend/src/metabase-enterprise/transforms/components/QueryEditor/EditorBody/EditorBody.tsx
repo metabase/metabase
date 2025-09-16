@@ -4,7 +4,9 @@ import { ResizableBox, type ResizableBoxProps } from "react-resizable";
 import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
 import type { DataPickerItem } from "metabase/common/components/Pickers/DataPicker";
 import { useSetting } from "metabase/common/hooks";
-import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
+import NativeQueryEditor, {
+  type SelectionRange,
+} from "metabase/query_builder/components/NativeQueryEditor";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { Box } from "metabase/ui";
 import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/utils";
@@ -13,6 +15,7 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Database as ApiDatabase,
+  NativeQuerySnippet,
   PythonTransformSource,
   RecentItem,
 } from "metabase-types/api";
@@ -24,6 +27,15 @@ import { ResizableBoxHandle } from "./ResizableBoxHandle";
 
 const EDITOR_HEIGHT = 400;
 
+const NATIVE_EDITOR_SIDEBAR_FEATURES = {
+  dataReference: true,
+  variables: false,
+  snippets: true,
+  promptInput: true,
+  formatQuery: true,
+  aiGeneration: true,
+};
+
 type EditorBodyProps = {
   question: Question;
   isNative: boolean;
@@ -32,10 +44,20 @@ type EditorBodyProps = {
   isRunnable: boolean;
   isRunning: boolean;
   isResultDirty: boolean;
+  isShowingDataReference: boolean;
+  isShowingSnippetSidebar: boolean;
   onChange: (newQuestion: Question) => void;
   onPythonChange?: (script: string) => void;
   onRunQuery: () => Promise<void>;
+  onToggleDataReference: () => void;
+  onToggleSnippetSidebar: () => void;
   onCancelQuery: () => void;
+
+  modalSnippet?: NativeQuerySnippet | null;
+  onChangeModalSnippet: (snippet: NativeQuerySnippet | null) => void;
+  onChangeNativeEditorSelection: (range: SelectionRange[]) => void;
+  nativeEditorSelectedText?: string | null;
+
   databases: ApiDatabase[];
 };
 
@@ -47,11 +69,19 @@ export function EditorBody({
   isRunnable,
   isRunning,
   isResultDirty,
+  isShowingDataReference,
+  isShowingSnippetSidebar,
   onChange,
   onPythonChange,
   onRunQuery,
   onCancelQuery,
+  onToggleDataReference,
+  onToggleSnippetSidebar,
   databases,
+  modalSnippet,
+  onChangeModalSnippet,
+  onChangeNativeEditorSelection,
+  nativeEditorSelectedText,
 }: EditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
   const reportTimezone = useSetting("report-timezone-long");
@@ -110,20 +140,28 @@ export function EditorBody({
       isRunning={isRunning}
       isResultDirty={isResultDirty}
       isInitiallyOpen
+      isShowingDataReference={isShowingDataReference}
+      isShowingSnippetSidebar={isShowingSnippetSidebar}
       isNativeEditorOpen
       hasTopBar
       hasRunButton
       readOnly={false}
-      hasEditingSidebar={false}
       hasParametersList={false}
       handleResize={handleResize}
       runQuery={onRunQuery}
       cancelQuery={onCancelQuery}
       setDatasetQuery={handleNativeQueryChange}
+      sidebarFeatures={NATIVE_EDITOR_SIDEBAR_FEATURES}
+      toggleDataReference={onToggleDataReference}
+      toggleSnippetSidebar={onToggleSnippetSidebar}
+      modalSnippet={modalSnippet}
+      closeSnippetModal={() => onChangeModalSnippet(null)}
       databaseIsDisabled={(db: Database) => {
         const database = databases.find((database) => database.id === db.id);
         return !doesDatabaseSupportTransforms(database);
       }}
+      setNativeEditorSelectedRange={onChangeNativeEditorSelection}
+      nativeEditorSelectedText={nativeEditorSelectedText}
     />
   ) : (
     <ResizableBox

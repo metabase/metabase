@@ -197,7 +197,7 @@
     (let [{:keys [pending]} (sync-tracking-atoms!)]
       (or pending
           (let [table-name (gen-table-name)]
-            (log/infof "Creating pending index %s" table-name)
+            (log/infof "Creating pending index %s for lang %s" table-name (i18n/site-locale-string))
             ;; We may fail to insert a new metadata row if we lose a race with another instance.
             (when (search-index-metadata/create-pending! :appdb *index-version-id* table-name)
               (create-table! table-name))

@@ -1,5 +1,5 @@
-import { function as functionSchema } from "zod/mini";
+import type { FunctionSchema } from "embedding-sdk-bundle/types/schema";
 
-export const metabotQuestionSchema = functionSchema({
+export const metabotQuestionSchema: FunctionSchema = {
   input: [],
-});
+};

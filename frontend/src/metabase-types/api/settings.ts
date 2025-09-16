@@ -229,6 +229,7 @@ const tokenStatusFeatures = [
   "embedding-sdk",
   "embedding",
   "embedding-simple",
+  "embedding-hub",
   "hosting",
   "metabase-store-managed",
   "metabot-v3",
@@ -449,6 +450,8 @@ interface AdminSettings {
   "system-timezone"?: string;
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
+  "embedding-hub-test-embed-snippet-created": boolean;
+  "embedding-hub-production-embed-snippet-created": boolean;
   "store-url": string;
   gsheets: Partial<GdrivePayload>;
   "license-token-missing-banner-dismissal-timestamp"?: Array<string>;
@@ -677,6 +680,8 @@ export interface EnterpriseSettings extends Settings {
   "python-storage-s-3-secret-key"?: string | null;
   "python-storage-s-3-container-endpoint"?: string | null;
   "python-storage-s-3-path-style-access"?: boolean | null;
+  "embedding-hub-test-embed-snippet-created": boolean;
+  "embedding-hub-production-embed-snippet-created": boolean;
   /**
    * @deprecated
    */

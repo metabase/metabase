@@ -268,7 +268,7 @@
                        :semantic_type (base-type->semantic-type (:base_type col)))))]
       ;; use a MetadataProvider to build cards and populate metadata, but we have to use `with-temp` before
       ;; calling [[run-query-for-card]] since the Card QP code does not currently fully support metadata providers.
-      (let [mp (as-> (mt/application-database-metadata-provider (mt/id)) mp
+      (let [mp (as-> (mt/metadata-provider) mp
                  (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
                   mp
                   [{:database (mt/id)

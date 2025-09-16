@@ -320,6 +320,9 @@
    (prometheus/histogram :metabase-search/semantic-results-before-fallback
                          {:description "Distribution of result counts from semantic search when fallback is triggered"
                           :buckets [0 1 5 10 20 50 100]})
+   (prometheus/histogram :metabase-search/semantic-fallback-results-usage
+                         {:description "Distribution of count of fallback results used to supplement semantic search"
+                          :buckets [0 1 5 10 20 50 100]})
    (prometheus/histogram :metabase-search/semantic-gate-write-ms
                          {:description "Distribution of semantic search gate write latency"
                           :buckets [1 10 50 100 500 1000 2000 5000 10000 20000]})

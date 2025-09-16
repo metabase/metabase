@@ -19,13 +19,11 @@
 (t2/deftransforms :model/MetabotEntity
   {:model mi/transform-keyword})
 
-;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
+;;; ------------------------------------------------- Serialization -------------------------------------------------
 
 (defmethod serdes/hash-fields :model/MetabotEntity
   [_table]
   [:metabot_id :model :model_id])
-
-;;; ------------------------------------------------- Serialization -------------------------------------------------
 
 (defmethod serdes/dependencies "MetabotEntity"
   [{:keys [model model_id prompts]}]
