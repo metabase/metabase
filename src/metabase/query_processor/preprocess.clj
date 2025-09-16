@@ -135,7 +135,7 @@
    (ensure-mbql5 #'qp.remove-inactive-field-refs/remove-inactive-field-refs)
    ;; yes, this is called a second time, because we need to handle any joins that got added
    (ensure-mbql5 #'qp.middleware.enterprise/apply-sandboxing)
-   (ensure-legacy #'qp.cumulative-aggregations/rewrite-cumulative-aggregations)
+   (ensure-mbql5 #'qp.cumulative-aggregations/rewrite-cumulative-aggregations)
    (ensure-mbql5 #'qp.wrap-value-literals/wrap-value-literals)
    (ensure-mbql5 #'auto-parse-filter-values/auto-parse-filter-values)
    (ensure-mbql5 #'validate-temporal-bucketing/validate-temporal-bucketing)
