@@ -26,7 +26,10 @@ export function validateSessionToken(session: any) {
 
   // We should also receive `iat` and `status` in the response, but we don't actually need them
   // as we don't use them, so we don't throw an error if they are missing
-  if (typeof session.id !== "string" || typeof session.exp !== "number" && session.exp !== null) {
+  if (
+    typeof session.id !== "string" ||
+    (typeof session.exp !== "number" && session.exp !== null)
+  ) {
     throw MetabaseError.INVALID_SESSION_SCHEMA({
       expected: "{ id: string, exp: number, iat: number }",
       actual: JSON.stringify(session, null, 2),
