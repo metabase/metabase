@@ -55,7 +55,7 @@ Edits only affect the chart in the document. If you added the chart from a colle
 Documents support Markdown syntax for:
 
 - Headings: `#`
-- Images: Use Markdown image syntax: `![Image text](image link)`. The image must start its own line in the document, and you may need to type out the closing parenthesis to let Metabase know to render the image.
+- Images: Use Markdown image syntax: `![Image text](image link)`. The image must start its own line in the document, and you may need to type out the closing parenthesis to let Metabase know to render the image. The image link must be a valid URL that your Metabase can access.
 - Blockquotes: `> This is a blockquote`.
 - Code blocks: Wrap with triple backticks (\`\`\`). Syntax highlighting isn't supported yet.
 
