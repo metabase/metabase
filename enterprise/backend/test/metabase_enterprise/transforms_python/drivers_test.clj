@@ -454,145 +454,130 @@
   (testing "Test that running the same transform multiple times produces identical results"
     (mt/test-drivers supported-drivers
       (mt/with-empty-db
-        (let [table-name (mt/random-name)
-              table-id (create-test-table-with-data!
-                        table-name
-                        base-type-test-data
-                        (:data base-type-test-data))
+        (with-test-table [table-id table-name] [base-type-test-data (:data base-type-test-data)]
+          (let [transform-code (str "import pandas as pd\n"
+                                    "\n"
+                                    "def transform(" table-name "):\n"
+                                    "    df = " table-name ".copy()\n"
+                                    "    df['computed_field'] = df['price'] * 1.1  # 10% markup\n"
+                                    "    df['name_upper'] = df['name'].str.upper()\n"
+                                    "    return df")
+                ;; Run the transform twice
+                result1 (execute!
+                         {:code transform-code
+                          :tables {table-name table-id}})
 
-              transform-code (str "import pandas as pd\n"
-                                  "\n"
-                                  "def transform(" table-name "):\n"
-                                  "    df = " table-name ".copy()\n"
-                                  "    df['computed_field'] = df['price'] * 1.1  # 10% markup\n"
-                                  "    df['name_upper'] = df['name'].str.upper()\n"
-                                  "    return df")
+                result2 (execute!
+                         {:code transform-code
+                          :tables {table-name table-id}})]
+            (testing "Both transforms succeeded"
+              (is (some? result1))
+              (is (some? result2)))
 
-              ;; Run the transform twice
-              result1 (execute!
-                       {:code transform-code
-                        :tables {table-name table-id}})
+            (when (and result1 result2)
+              (testing "Results are identical"
+                (is (= (:output result1) (:output result2)))
+                (is (= (count (:fields (:output-manifest result1)))
+                       (count (:fields (:output-manifest result2))))))
 
-              result2 (execute!
-                       {:code transform-code
-                        :tables {table-name table-id}})]
+              (let [expected-columns ["id" "name" "price" "active" "created_date" "created_at"
+                                      "computed_field" "name_upper"]
+                    validation (validate-transform-output result1 expected-columns 3)]
 
-          (testing "Both transforms succeeded"
-            (is (some? result1))
-            (is (some? result2)))
-
-          (when (and result1 result2)
-            (testing "Results are identical"
-              (is (= (:output result1) (:output result2)))
-              (is (= (count (:fields (:output-manifest result1)))
-                     (count (:fields (:output-manifest result2))))))
-
-            (let [expected-columns ["id" "name" "price" "active" "created_date" "created_at"
-                                    "computed_field" "name_upper"]
-                  validation (validate-transform-output result1 expected-columns 3)]
-
-              (when validation
-                (testing "Computed columns are added correctly"
-                  (let [{:keys [metadata]} validation
-                        type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                                   [name (keyword "type" base_type)])]
-                    (is (= :type/Float (type-map "computed_field")))
-                    (is (= :type/Text (type-map "name_upper"))))))))
-
-          (cleanup-table! table-id))))))
+                (when validation
+                  (testing "Computed columns are added correctly"
+                    (let [{:keys [metadata]} validation
+                          type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
+                                     [name (keyword "type" base_type)])]
+                      (is (= :type/Float (type-map "computed_field")))
+                      (is (= :type/Text (type-map "name_upper"))))))))))))))
 
 (deftest comprehensive-e2e-python-transform-test
   (testing "End-to-end test using execute-python-transform! across all supported drivers with comprehensive type coverage"
     (mt/test-drivers supported-drivers
       (mt/with-empty-db
         (mt/with-premium-features #{:transforms-python}
-          (let [table-name (mt/random-name)
-                source-table-name (mt/random-name)
+          (with-test-table [source-table-id source-table-name] [base-type-test-data (:data base-type-test-data)]
+            (let [table-name (mt/random-name)
+                  exotic-config (get driver-exotic-types driver/*driver*)
+                  exotic-table-id (when exotic-config
+                                    (create-test-table-with-data!
+                                     (str source-table-name "_exotic")
+                                     exotic-config
+                                     (:data exotic-config)))]
 
-                source-table-id (create-test-table-with-data!
-                                 source-table-name
-                                 base-type-test-data
-                                 (:data base-type-test-data))
+              (try
+                (let [transform-code (str "import pandas as pd\n"
+                                          "\n"
+                                          "def transform(" source-table-name
+                                          (when exotic-config (str ", " source-table-name "_exotic"))
+                                          "):\n"
+                                          "    # Start with base types table\n"
+                                          "    df = " source-table-name ".copy()\n"
+                                          "    \n"
+                                          "    # Add computed columns to test type handling\n"
+                                          "    df['price_with_tax'] = df['price'] * 1.08  # Float computation\n"
+                                          "    df['name_length'] = df['name'].str.len()   # String operations\n"
+                                          "    df['is_expensive'] = df['price'] > 18.0    # Boolean computation\n"
+                                          "    \n"
+                                          "    # Date operations\n"
+                                          "    df['created_year'] = pd.to_datetime(df['created_date']).dt.year\n"
+                                          "    \n"
+                                          (when exotic-config
+                                            (str "    # Merge with exotic types if available\n"
+                                                 "    exotic_df = " source-table-name "_exotic.copy()\n"
+                                                 "    df = df.merge(exotic_df, on='id', how='left', suffixes=('', '_exotic'))\n"
+                                                 "    \n"))
+                                          "    # Return processed dataframe\n"
+                                          "    return df")
 
-                exotic-config (get driver-exotic-types driver/*driver*)
-                exotic-table-id (when exotic-config
-                                  (create-test-table-with-data!
-                                   (str source-table-name "_exotic")
-                                   exotic-config
-                                   (:data exotic-config)))
+                      source-tables (cond-> {source-table-name source-table-id}
+                                      exotic-table-id
+                                      (assoc (str source-table-name "_exotic") exotic-table-id))
 
-                transform-code (str "import pandas as pd\n"
-                                    "\n"
-                                    "def transform(" source-table-name
-                                    (when exotic-config (str ", " source-table-name "_exotic"))
-                                    "):\n"
-                                    "    # Start with base types table\n"
-                                    "    df = " source-table-name ".copy()\n"
-                                    "    \n"
-                                    "    # Add computed columns to test type handling\n"
-                                    "    df['price_with_tax'] = df['price'] * 1.08  # Float computation\n"
-                                    "    df['name_length'] = df['name'].str.len()   # String operations\n"
-                                    "    df['is_expensive'] = df['price'] > 18.0    # Boolean computation\n"
-                                    "    \n"
-                                    "    # Date operations\n"
-                                    "    df['created_year'] = pd.to_datetime(df['created_date']).dt.year\n"
-                                    "    \n"
-                                    (when exotic-config
-                                      (str "    # Merge with exotic types if available\n"
-                                           "    exotic_df = " source-table-name "_exotic.copy()\n"
-                                           "    df = df.merge(exotic_df, on='id', how='left', suffixes=('', '_exotic'))\n"
-                                           "    \n"))
-                                    "    # Return processed dataframe\n"
-                                    "    return df")
+                      result (execute-e2e-transform! table-name transform-code source-tables)
+                      {:keys [columns] result-rows :rows} result]
 
-                source-tables (cond-> {source-table-name source-table-id}
-                                exotic-table-id
-                                (assoc (str source-table-name "_exotic") exotic-table-id))
+                  (testing "E2E transform execution succeeded"
+                    (is (seq result-rows) "Transform should produce results"))
 
-                result (execute-e2e-transform! table-name transform-code source-tables)
-                {:keys [columns] result-rows :rows} result]
+                  (testing "Expected data transformations"
+                    (let [first-row (first result-rows)
+                          second-row (second result-rows)
+                          third-row (nth result-rows 2)
+                          get-column (fn [row col-name] (get (zipmap columns row) col-name))]
+                      (testing "Computed columns are present and have reasonable values"
+                        (is (> (count columns) 7) "Should have additional computed columns")
+                        (is (= 3 (count result-rows)) "Should have 3 rows from source data"))
 
-            (testing "E2E transform execution succeeded"
-              (is (seq result-rows) "Transform should produce results"))
+                      (testing "Computed column values are mathematically correct"
+                        (testing "Row 1 price_with_tax calculation"
+                          (let [price-with-tax (get-column first-row "price_with_tax")]
+                            (is (and (number? price-with-tax) (> price-with-tax 21.5) (< price-with-tax 21.7))
+                                "First row price_with_tax should be ~21.59")))
 
-            (testing "Expected data transformations"
-              (let [first-row (first result-rows)
-                    second-row (second result-rows)
-                    third-row (nth result-rows 2)
-                    get-column (fn [row col-name] (get (zipmap columns row) col-name))]
-                (testing "Computed columns are present and have reasonable values"
-                  (is (> (count columns) 7) "Should have additional computed columns")
-                  (is (= 3 (count result-rows)) "Should have 3 rows from source data"))
+                        (testing "Row 2 price_with_tax calculation"
+                          (let [price-with-tax (get-column second-row "price_with_tax")]
+                            (is (and (number? price-with-tax) (> price-with-tax 16.7) (< price-with-tax 16.8))
+                                "Second row price_with_tax should be ~16.74")))
 
-                (testing "Computed column values are mathematically correct"
-                  (testing "Row 1 price_with_tax calculation"
-                    (let [price-with-tax (get-column first-row "price_with_tax")]
-                      (is (and (number? price-with-tax) (> price-with-tax 21.5) (< price-with-tax 21.7))
-                          "First row price_with_tax should be ~21.59")))
+                        (testing "Name length calculations"
+                          (is (= 9 (get-column first-row "name_length")) "First row name_length should be 9")
+                          (is (= 9 (get-column second-row "name_length")) "Second row name_length should be 9"))
 
-                  (testing "Row 2 price_with_tax calculation"
-                    (let [price-with-tax (get-column second-row "price_with_tax")]
-                      (is (and (number? price-with-tax) (> price-with-tax 16.7) (< price-with-tax 16.8))
-                          "Second row price_with_tax should be ~16.74")))
+                        (testing "Boolean expense calculations"
+                          (is (true? (get-column first-row "is_expensive")) "First row is_expensive should be true")
+                          (is (false? (get-column second-row "is_expensive")) "Second row is_expensive should be false"))
 
-                  (testing "Name length calculations"
-                    (is (= 9 (get-column first-row "name_length")) "First row name_length should be 9")
-                    (is (= 9 (get-column second-row "name_length")) "Second row name_length should be 9"))
+                        (testing "Date year extraction"
+                          (is (== 2024 (get-column first-row "created_year")) "First row created_year should be 2024")
+                          (is (== 2024 (get-column second-row "created_year")) "Second row created_year should be 2024"))
 
-                  (testing "Boolean expense calculations"
-                    (is (true? (get-column first-row "is_expensive")) "First row is_expensive should be true")
-                    (is (false? (get-column second-row "is_expensive")) "Second row is_expensive should be false"))
-
-                  (testing "Date year extraction"
-                    (is (== 2024 (get-column first-row "created_year")) "First row created_year should be 2024")
-                    (is (== 2024 (get-column second-row "created_year")) "Second row created_year should be 2024"))
-
-                  (testing "Null value handling"
-                    (is (seq third-row) "Third row should contain values (nulls handled gracefully)")))))
-
-            (cleanup-table! source-table-id)
-            (when exotic-table-id
-              (cleanup-table! exotic-table-id))))))))
+                        (testing "Null value handling"
+                          (is (seq third-row) "Third row should contain values (nulls handled gracefully)"))))))
+                (finally
+                  (when exotic-table-id
+                    (cleanup-table! exotic-table-id)))))))))))
 
 (deftest exotic-edge-cases-python-transform-postgres-test
   (testing "PostgreSQL exotic edge cases"
