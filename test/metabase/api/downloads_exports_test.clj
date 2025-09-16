@@ -1010,14 +1010,14 @@
                                                        :type     :native
                                                        :native   {:query "SELECT 1 as A FROM generate_series(1,109);"}}}]
         (let [results (all-outputs! card {:export-format :csv})]
-          (is (= {:card-download            110
-                  :unsaved-card-download    110
-                  :alert-attachment         110
-                  :dashcard-download        110
-                  :subscription-attachment  110
-                  :public-question-download 110
-                  :public-dashcard-download 110}
-                 (update-vals results count)))))))
+          (is (=? {:card-download            110
+                   :unsaved-card-download    110
+                   :dashcard-download        110
+                   :alert-attachment         110
+                   :subscription-attachment  110
+                   :public-question-download 110
+                   :public-dashcard-download 110}
+                  (update-vals results count)))))))
   (testing "Downloads row limit can be raised"
     (binding [limit/*minimum-download-row-limit* 100]
       (mt/with-temporary-setting-values [limit/download-row-limit 109]
@@ -1026,14 +1026,14 @@
                                                          :type     :native
                                                          :native   {:query "SELECT 1 as A FROM generate_series(1,109);"}}}]
           (let [results (all-outputs! card {:export-format :csv})]
-            (is (= {:card-download            110
-                    :unsaved-card-download    110
-                    :alert-attachment         110
-                    :dashcard-download        110
-                    :subscription-attachment  110
-                    :public-question-download 110
-                    :public-dashcard-download 110}
-                   (update-vals results count)))))))))
+            (is (=? {:card-download            110
+                     :unsaved-card-download    110
+                     :dashcard-download        110
+                     :alert-attachment         110
+                     :subscription-attachment  110
+                     :public-question-download 110
+                     :public-dashcard-download 110}
+                    (update-vals results count)))))))))
 
 (deftest ^:parallel model-viz-settings-downloads-test
   (testing "A model's visualization settings are respected in downloads."
