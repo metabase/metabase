@@ -1,5 +1,8 @@
 (ns metabase-enterprise.library.source.git
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.library.source.protocol :as source.p]
    [metabase.util :as u]
@@ -31,29 +34,36 @@
     branch
     (str "refs/heads/" branch)))
 
-(defn clone-repository!
-  "Clone git repository to a temporary directory using jgit. Returns the path to the cloned jgit.Repository bare-repo object."
-  [{:keys [^String url ^String token]}]
-  (let [dir (Files/createTempDirectory "library-git-" (make-array FileAttribute 0))]
-    (try
-      (log/info "Cloning repository" {:url url :dir dir})
-      (u/prog1 (call-remote-command (-> (Git/cloneRepository)
-                                        (.setDirectory (.toFile dir))
-                                        (.setURI url)
-                                        (.setBare true)) {:token token})
-        (log/info "Successfully cloned repository" {:dir dir}))
-      (catch Exception e
-        (throw (ex-info (format "Failed to clone git repository: %s" (.getMessage e))
-                        {:url   url
-                         :dir   dir
-                         :error (.getMessage e)}))))))
-
 (defn fetch!
   "Call fetch on the repository."
   [{:keys [^Git git] :as git-source}]
   (log/info "Fetching repository" {:repo (str git)})
   (u/prog1 (call-remote-command (.fetch git) git-source))
   (log/info "Successfully fetched repository" {:repo (str git)}))
+
+(defn clone-repository!
+  "Clone git repository to a temporary directory using jgit. Returns the path to the cloned jgit.Repository bare-repo object."
+  [{:keys [^String url ^String token]}]
+  (let [dir (io/file (System/getProperty "java.io.tmpdir") "metabase-git" (-> (str/join ":" [url token]) buddy-hash/sha1 codecs/bytes->hex))]
+    (io/make-parents dir)
+    (try
+      (if (.exists dir)
+        (do
+          (log/info "Using existing cloned repository" {:url url :dir dir})
+          (u/prog1 (Git/open dir)
+            (fetch! {:git <>})))
+        (do
+          (log/info "Cloning repository" {:url url :dir dir})
+          (u/prog1 (call-remote-command (-> (Git/cloneRepository)
+                                            (.setDirectory dir)
+                                            (.setURI url)
+                                            (.setBare true)) {:token token})
+            (log/info "Successfully cloned repository" {:dir dir}))))
+      (catch Exception e
+        (throw (ex-info (format "Failed to clone git repository: %s" (.getMessage e))
+                        {:url   url
+                         :dir   dir
+                         :error (.getMessage e)}))))))
 
 (defn log
   "The log of commits on a branch."
@@ -172,9 +182,10 @@
   (write-files! [this branch message files]
     (write-files! this branch message files)))
 
-(defn new-git-source
+(def git-source
   "Create a new git source"
-  [url token]
-  (->GitSource (clone-repository! {:url   url
-                                   :token token})
-               url token))
+  (memoize
+   (fn [url token]
+     (->GitSource (clone-repository! {:url   url
+                                      :token token})
+                  url token))))

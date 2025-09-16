@@ -29,7 +29,7 @@
 (defn- reload-from-git!
   "Reloads the Metabase entities from the "
   [branch]
-  (if-let [source (source/get-source)]
+  (if-let [source (source/source-from-settings)]
     (let [library-collection (t2/select-one :model/Collection :entity_id collection/library-entity-id)]
       (try
         (git/fetch! source)
@@ -114,7 +114,7 @@
    _query
    {:keys [branch]} :- [:map [:branch {:optional true} ms/NonBlankString]]]
   (api/check-superuser)
-  (let [result (source/with-source [_source] (reload-from-git! branch))]
+  (let [result (reload-from-git! branch)]
     (case (:status result)
       :success
       "Success"
@@ -212,33 +212,32 @@
 
 (defn save-to-git!
   [branch message]
-  (source/with-source [source]
-    (if source
-      (try
-        (serdes/with-cache
-          (-> (v2.extract/extract {:targets [["Collection" collection/library-entity-id]]
-                                   :no-collections false
-                                   :no-data-model true
-                                   :no-settings true
-                                   :include-field-values :false
-                                   :include-database-secrets :false
-                                   :continue-on-error false})
-              (source/store! source branch message)))
+  (if-let [source (source/source-from-settings)]
+    (try
+      (serdes/with-cache
+        (-> (v2.extract/extract {:targets [["Collection" collection/library-entity-id]]
+                                 :no-collections false
+                                 :no-data-model true
+                                 :no-settings true
+                                 :include-field-values :false
+                                 :include-database-secrets :false
+                                 :continue-on-error false})
+            (source/store! source branch message)))
+      (lib.events/publish-library-sync! "export" nil api/*current-user-id*
+                                        {:branch branch
+                                         :status "success"
+                                         :message message})
+      {:status :success}
+
+      (catch Exception e
         (lib.events/publish-library-sync! "export" nil api/*current-user-id*
                                           {:branch branch
-                                           :status "success"
-                                           :message message})
-        {:status :success}
-
-        (catch Exception e
-          (lib.events/publish-library-sync! "export" nil api/*current-user-id*
-                                            {:branch branch
-                                             :status "error"
-                                             :message (ex-message e)})
-          {:status :error
-           :message (format "Failed to export to git repository: %s" (.getMessage e))}))
-      {:status :error
-       :message "Library source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."})))
+                                           :status "error"
+                                           :message (ex-message e)})
+        {:status :error
+         :message (format "Failed to export to git repository: %s" (.getMessage e))}))
+    {:status :error
+     :message "Library source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}))
 
 (api.macros/defendpoint :post "/export"
   "Export the current state of the Library collection to a Source
@@ -280,31 +279,30 @@
   Requires superuser permissions."
   []
   (api/check-superuser)
-  (source/with-source [source]
-    (if source
-      (try
-        (let [branch-list (source.p/branches source)]
-          {:items branch-list})
-        (catch Exception e
-          (log/errorf e "Failed to get branches from git source: %s" (.getMessage e))
-          (let [error-msg (cond
-                            (instance? java.net.UnknownHostException e)
-                            "Network error: Unable to reach git repository host"
+  (if-let [source (source/source-from-settings)]
+    (try
+      (let [branch-list (source.p/branches source)]
+        {:items branch-list})
+      (catch Exception e
+        (log/errorf e "Failed to get branches from git source: %s" (.getMessage e))
+        (let [error-msg (cond
+                          (instance? java.net.UnknownHostException e)
+                          "Network error: Unable to reach git repository host"
 
-                            (str/includes? (.getMessage e) "Authentication failed")
-                            "Authentication failed: Please check your git credentials"
+                          (str/includes? (.getMessage e) "Authentication failed")
+                          "Authentication failed: Please check your git credentials"
 
-                            (str/includes? (.getMessage e) "Repository not found")
-                            "Repository not found: Please check the repository URL"
+                          (str/includes? (.getMessage e) "Repository not found")
+                          "Repository not found: Please check the repository URL"
 
-                            :else
-                            (format "Failed to get branches from git source: %s" (.getMessage e)))]
-            {:status 400
-             :body {:status "error"
-                    :message error-msg}})))
-      {:status 400
-       :body {:status "error"
-              :message "Git source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}})))
+                          :else
+                          (format "Failed to get branches from git source: %s" (.getMessage e)))]
+          {:status 400
+           :body {:status "error"
+                  :message error-msg}})))
+    {:status 400
+     :body {:status "error"
+            :message "Git source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/library` routes."

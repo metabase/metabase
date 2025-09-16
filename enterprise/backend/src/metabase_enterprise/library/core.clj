@@ -13,24 +13,7 @@
   source/keep-me)
 
 (p/import-vars
- [source
-  get-source])
-
-(defn configure-source!
-  "Sets the library source based on the configuration settings"
-  []
-  (u/prog1 (source/set-source! (when (settings/git-sync-url)
-                                 (git/->GitSource (git/clone-repository! {:url   (settings/git-sync-url)
-                                                                          :token (settings/git-sync-token)})
-                                                  (settings/git-sync-url)
-                                                  (settings/git-sync-token))
-
-                                 ;(settings/git-sync-url)
-                                 ;(settings/git-sync-import-branch)
-                                 ;(settings/git-sync-token)
-                                 ;(settings/git-sync-export-branch)
-                                 ))
-    (log/infof "Library source configured as %s" <>)))
+ [source])
 
 (defenterprise library-editable?
   "Should the library be editable. Always true on OSS"

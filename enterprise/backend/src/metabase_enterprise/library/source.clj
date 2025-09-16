@@ -15,20 +15,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:dynamic *source*
-  "The library source"
-  nil)
-
-(defn get-source
-  "The library source"
-  []
-  *source*)
-
-(defn set-source!
-  "Sets the library source based on the configuration settings"
-  [source]
-  (reset! *source* source))
-
 (defn- ingest-content
   [file-content]
   (v2.ingest/read-timestamps (yaml/parse-string file-content {:key-fn v2.ingest/parse-key})))
@@ -94,21 +80,10 @@
     (source.p/write-files! source branch message (map #(->file-spec opts %) stream))))
 
 (defn source-from-settings
+  "Returns a source based on the current settings"
   []
-  (git/new-git-source (setting/get :git-sync-url)
-                      (setting/get :git-sync-token)))
-
-(defn do-with-source
-  "impl for with-source"
-  [thunk]
-  (let [source (source-from-settings)]
-    (binding [*source* source]
-      (thunk source))))
-
-(defmacro with-source
-  "Binds the `*source*` var to the source defined by the current git settings"
-  [binding & body]
-  `(do-with-source (fn ~binding ~@body)))
+  (git/git-source (setting/get :git-sync-url)
+                  (setting/get :git-sync-token)))
 
 (defn can-access-branch-in-source?
   "Return true if we can access the given branch in the remote git repository, false otherwise."
