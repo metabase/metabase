@@ -32,6 +32,7 @@ interface NativeQueryEditorActionButtonsProps {
   runQuery?: () => void;
   cancelQuery?: () => void;
   toggleDataReference?: () => void;
+  toggleSnippetSidebar?: () => void;
   onOpenModal?: (modalType: QueryModalType) => void;
   onFormatQuery?: () => void;
   onGenerateQuery: (queryText: string) => void;
