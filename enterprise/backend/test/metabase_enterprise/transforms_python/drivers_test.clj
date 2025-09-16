@@ -310,52 +310,39 @@
 
                   (case driver/*driver*
                     :postgres (do
-                                (when (contains? type-map "uuid_field")
-                                  (is (isa? (type-map "uuid_field") :type/UUID)))
-                                (when (contains? type-map "json_field")
-                                  (is (isa? (type-map "json_field") :type/JSON)))
-                                (when (contains? type-map "ip_field")
-                                  (is (isa? (type-map "ip_field") :type/IPAddress))))
+                                (is (isa? (type-map "uuid_field") :type/UUID))
+                                (is (isa? (type-map "json_field") :type/JSON))
+                                (is (isa? (type-map "ip_field") :type/IPAddress))
+                                (is (isa? (type-map "int_array") :type/Array))
+                                (is (isa? (type-map "text_array") :type/Array))
+                                (is (isa? (type-map "uuid_array") :type/Array)))
                     :mysql (if (mysql/mariadb? (mt/db))
                              (do
-                               (when (contains? type-map "uuid_field")
-                                 (is (isa? (type-map "uuid_field") :type/UUID)))
-                               (when (contains? type-map "inet4_field")
-                                 (is (isa? (type-map "inet4_field") :type/IPAddress))))
+                               (is (isa? (type-map "uuid_field") :type/UUID))
+                               (is (isa? (type-map "inet4_field") :type/IPAddress)))
                              (do
-                               (when (contains? type-map "json_field")
-                                 (is (isa? (type-map "json_field") :type/JSON)))
-                               (when (contains? type-map "timestamp_tz")
-                                 (is (isa? (type-map "timestamp_tz") :type/DateTimeWithTZ)))))
+                               (is (isa? (type-map "json_field") :type/JSON))
+                               (is (isa? (type-map "timestamp") :type/DateTimeWithLocalTZ))))
 
                     :bigquery-cloud-sdk (do
-                                          (when (contains? type-map "json_field")
-                                            (is (isa? (type-map "json_field") :type/JSON)))
+                                          (is (isa? (type-map "json_field") :type/JSON))
 
                                           ;; we're lossy, unless manually specified
 
-                                          (when (contains? type-map "array_field")
-                                            (is (isa? (type-map "array_field") :type/JSON)))
-                                          (when (contains? type-map "dict_field")
-                                            (is (isa? (type-map "dict_field") :type/JSON))))
+                                          (is (isa? (type-map "array_field") :type/JSON))
+                                          (is (isa? (type-map "dict_field") :type/JSON)))
 
                     :mongo (do
                              #_(when (contains? type-map "uuid_field")
                                  (is (isa? (type-map "uuid_field") :type/UUID)))
-                             (when (contains? type-map "json_field")
-                               (is (isa? (type-map "json_field") :type/JSON)))
-                             (when (contains? type-map "array_field")
-                               (is (isa? (type-map "array_field") :type/Array)))
-                             (when (contains? type-map "dict_field")
-                               (is (isa? (type-map "dict_field") :type/Dictionary)))
-                             (when (contains? type-map "bson_id")
-                               (is (isa? (type-map "bson_id") :type/MongoBSONID))))
+                             (is (isa? (type-map "json_field") :type/JSON))
+                             (is (isa? (type-map "array_field") :type/Array))
+                             (is (isa? (type-map "dict_field") :type/Dictionary))
+                             (is (isa? (type-map "bson_id") :type/MongoBSONID)))
 
                     :sqlserver (do
-                                 (when (contains? type-map "uuid_field")
-                                   (is (isa? (type-map "uuid_field") :type/UUID)))
-                                 (when (contains? type-map "datetimeoffset_field")
-                                   (is (isa? (type-map "datetimeoffset_field") :type/DateTimeWithTZ))))))))
+                                 (is (isa? (type-map "uuid_field") :type/UUID))
+                                 (is (isa? (type-map "datetimeoffset_field") :type/DateTimeWithTZ)))))))
 
             (cleanup-table! table-id)))))))
 
@@ -891,9 +878,9 @@
                                   "    # Struct operations\n"
                                   "    df['struct_has_name'] = df['struct_field'].apply (lambda x: pd.notna(x) and 'name' in x)\n"
                                   "    \n"
-                                  ;; "    # Array operations\n"
-                                  ;; "    df['array_ints_length'] = df['array_ints'].astype(str).str.len()\n"
-                                  ;; "    df['array_structs_complex'] = df['array_structs'].astype(str).str.contains('key', na=False)\n"
+                                  "    # Array operations\n"
+                                  "    df['array_ints_length'] = df['array_ints'].apply(lambda x: len(x) if isinstance(x, list) else 0)\n"
+                                  "    df['array_structs_complex'] = df['array_structs'].apply(lambda x: 'key' in x if isinstance(x, list) else False)\n"
                                   "    \n"
                                   "    # Geography operations\n"
                                   "    df['is_point'] = df['geography_field'].astype(str).str.contains('POINT', na=False)\n"
