@@ -32,12 +32,12 @@
    [:result_metadata {:optional true}  [:maybe analyze/ResultsMetadata]]])
 
 (defn- broken-cards-response
-  [{:keys [cards transforms]}]
-  (let [broken-card-ids (keys cards)
+  [{:keys [card transform]}]
+  (let [broken-card-ids (keys card)
         broken-cards (when (seq broken-card-ids)
                        (-> (t2/select :model/Card :id [:in broken-card-ids])
                            (t2/hydrate [:collection :effective_ancestors] :dashboard)))
-        broken-transform-ids (keys transforms)
+        broken-transform-ids (keys transform)
         broken-transforms (when (seq broken-transform-ids)
                             (t2/select :model/Transform :id [:in broken-transform-ids]))]
     {:success   (and (empty? broken-card-ids)
@@ -68,14 +68,8 @@
                            (dissoc :result-metadata)
                            (cond-> #_card
                             (:result_metadata body) (assoc :result-metadata (:result_metadata body))))
-        ;; TODO: This sucks - it's getting all cards for the same database_id, which is slow and over-reaching.
-        all-cards      (t2/select-fn-set :id :model/Card :database_id database-id :archived false)
-        all-transforms (t2/select-fn-set :id :model/Transform)
-        ;; TODO: Really, the dependents should be coming from the graph based on the edits.
-        provider       (dependencies/metadata-provider base-provider {:card [card]}
-                                                       {:card      all-cards
-                                                        :transform all-transforms})
-        breakages      (dependencies/check-cards-have-sound-refs provider)]
+        edits          {:card [card]}
+        breakages      (dependencies/errors-from-proposed-edits base-provider edits)]
     (broken-cards-response breakages)))
 
 (api.macros/defendpoint :post "/check_transform"
@@ -119,7 +113,9 @@
         provider       (doto (lib.metadata.cached-provider/cached-metadata-provider base-mp)
 
                          (lib.metadata.protocols/store-metadatas! updated-cards))]
-    (dependencies/check-cards-have-sound-refs provider all-cards all-transforms)))
+    ;; FIXME: Implement this properly.
+    {}
+    #_(dependencies/check-cards-have-sound-refs provider all-cards all-transforms)))
 
 (api.macros/defendpoint :post "/check_snippet"
   "Check a proposed edit to a native snippet, and return the cards, etc. which will be broken."

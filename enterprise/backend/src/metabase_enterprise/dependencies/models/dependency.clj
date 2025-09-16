@@ -6,6 +6,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
+   [metabase.util :as u]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.core :as t2])
@@ -95,6 +96,12 @@
   ([entity-type entity-id source-type source-id]
    (->> (dependents-of entity-type  entity-id source-type source-id)
         resolve-entities)))
+
+(defn id-dependents
+  "Given an `entity-type` and `entity-id`, returns a map of its dependents as `{entity-type #{123 456}}`."
+  [entity-type entity-id]
+  (let [deps (dependents-of entity-type entity-id nil nil)]
+    (u/group-by (comp keyword :type) :id conj #{} deps)))
 
 (defn upsert-generic-dependency
   "Upsert that the entity specified by `entity-type` and `entity-id` depends on entity specified
@@ -224,6 +231,7 @@
   "Replace the dependencies of the entity of type `entity-type` with id `entity-id` with
   the ones specified in `dependencies-by-type`. "
   [entity-type entity-id dependencies-by-type]
+  (tap> [`replace-dependencies entity-type entity-id dependencies-by-type])
   (let [current-dependencies (t2/select [:model/Dependency :id :to_entity_type :to_entity_id]
                                         :from_entity_type entity-type
                                         :from_entity_id entity-id)
@@ -239,6 +247,7 @@
                   :from_entity_id   entity-id
                   :to_entity_type   to-entity-type
                   :to_entity_id     to-entity-id})]
+    (tap> [`replace-dependencies current-dependencies 'to-remove to-remove 'to-add to-add])
     (t2/with-transaction [_conn]
       (when (seq to-remove)
         (t2/delete! :model/Dependency :id [:in to-remove]))
