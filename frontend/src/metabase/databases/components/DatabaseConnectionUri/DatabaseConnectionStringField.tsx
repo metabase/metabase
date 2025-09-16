@@ -2,6 +2,7 @@ import { usePrevious, useTimeout } from "@mantine/hooks";
 import type { FormikErrors } from "formik";
 import { useField } from "formik";
 import { type SetStateAction, useEffect, useState } from "react";
+import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
 import { Group, Icon, Text, Textarea, Transition } from "metabase/ui";
@@ -35,6 +36,9 @@ export function DatabaseConnectionStringField({
   location: FormLocation;
 }) {
   const [status, setStatus] = useState<"success" | "failure" | null>(null);
+  const [lastParsingStatus, setLastParsingStatus] = useState<
+    "success" | "failure" | null
+  >(null);
   const { start: delayedClearStatus, clear: clearTimeout } = useTimeout(
     () => setStatus(null),
     FEEDBACK_TIMEOUT,
@@ -46,6 +50,7 @@ export function DatabaseConnectionStringField({
   useEffect(() => {
     async function handleConnectionStringChange() {
       if (!connectionString || !isEngineKey(engineKey)) {
+        setLastParsingStatus(null);
         delayedClearStatus();
         return () => clearTimeout();
       }
@@ -55,10 +60,12 @@ export function DatabaseConnectionStringField({
       // it was not possible to parse the connection string
       if (!parsedValues) {
         setStatus("failure");
+        setLastParsingStatus("failure");
         delayedClearStatus();
-        connectionStringParsedFailed(location);
         return () => clearTimeout();
       }
+
+      setLastParsingStatus("success");
 
       const fieldsMap = mapDatabaseValues(parsedValues, engineKey);
       const fields = mapFieldsToNestedObject(fieldsMap) as DatabaseData;
@@ -71,7 +78,6 @@ export function DatabaseConnectionStringField({
       setStatus(hasValues ? "success" : "failure");
 
       delayedClearStatus();
-      connectionStringParsedSuccess(location);
 
       return () => {
         clearTimeout();
@@ -96,6 +102,20 @@ export function DatabaseConnectionStringField({
     location,
     setConnectionString,
   ]);
+
+  function handleBlur() {
+    match(lastParsingStatus)
+      .with("success", () => {
+        connectionStringParsedSuccess(location);
+      })
+      .with("failure", () => {
+        connectionStringParsedFailed(location);
+      })
+      .with(null, () => {
+        return;
+      })
+      .exhaustive();
+  }
 
   if (!isEngineKey(engineKey)) {
     return null;
@@ -129,6 +149,7 @@ export function DatabaseConnectionStringField({
       labelProps={{
         mb: "sm",
       }}
+      onBlur={handleBlur}
     />
   );
 }
