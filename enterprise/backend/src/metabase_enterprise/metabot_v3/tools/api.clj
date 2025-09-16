@@ -7,11 +7,9 @@
    [clojure.set :as set]
    [malli.core :as mc]
    [malli.transform :as mtx]
-   [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
-   [metabase-enterprise.metabot-v3.envelope :as envelope]
    [metabase-enterprise.metabot-v3.reactions]
    [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription
@@ -22,7 +20,6 @@
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
-   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.response :as api.response]
    [metabase.api.routes.common :as api.routes.common]
@@ -35,7 +32,8 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
-(defn- get-ai-service-token
+(defn get-ai-service-token
+  "Get ai-service token"
   [user-id metabot-id]
   (let [secret (buddy-hash/sha256 (metabot-v3.settings/site-uuid-for-metabot-tools))
         claims {:user user-id
@@ -51,26 +49,6 @@
     (catch Exception e
       (log/error e "Bad AI service token")
       nil)))
-
-(defn handle-envelope
-  "Executes the AI loop in the context of a new session. Returns the response of the AI service."
-  [{:keys [metabot-id] :as e}]
-  (let [session-id (get-ai-service-token api/*current-user-id* metabot-id)]
-    (try
-      (metabot-v3.client/request (assoc e :session-id session-id))
-      (catch Exception ex
-        (let [d (ex-data ex)]
-          (if-let [assistant-message (:assistant-message d)]
-            (envelope/add-message (or (:envelope d) e)
-                                  {:role :assistant
-                                   :content assistant-message})
-            (throw ex)))))))
-
-(defn streaming-handle-envelope
-  "Executes the AI loop in the context of a new session. Returns the response of the AI service."
-  [{:keys [metabot-id] :as e}]
-  (let [session-id (get-ai-service-token api/*current-user-id* metabot-id)]
-    (metabot-v3.client/streaming-request (assoc e :session-id session-id))))
 
 (mr/def ::bucket
   (into [:enum {:error/message "Valid bucket"
