@@ -119,8 +119,8 @@
     [:stages      [:ref :metabase.lib.schema/stages]]
     [:conditions  ::conditions]
     [:alias       ::alias]
-    [:fields   {:optional true} ::fields]
-    [:strategy {:optional true} ::strategy]]
+    [:strategy    ::strategy]
+    [:fields      {:optional true} ::fields]]
    (common/disallowed-keys
     {:lib/stage-metadata "joins should not have metadata attached directly to them; attach metadata to their last stage instead"
      :source-metadata    "joins should not have metadata attached directly to them; attach metadata to their last stage instead"

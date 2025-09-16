@@ -120,6 +120,7 @@
                        :lib/options {:lib/uuid (str (random-uuid))}
                        :alias       "Q1"
                        :fields      :all
+                       :strategy    :left-join
                        :conditions  [[:=
                                       {:lib/uuid (str (random-uuid))}
                                       [:field {:lib/uuid (str (random-uuid))} 1]
@@ -169,6 +170,7 @@
                      :lib/options {:lib/uuid (str (random-uuid))}
                      :alias       "Q1"
                      :fields      :all
+                     :strategy    :left-join
                      :conditions  [[:=
                                     {:lib/uuid (str (random-uuid))}
                                     [:field {:lib/uuid (str (random-uuid))} 1]
@@ -195,6 +197,7 @@
    {:lib/type    :mbql/join
     :lib/options {:lib/uuid (str (random-uuid))}
     :alias       join-alias
+    :strategy    :left-join
     :conditions  [condition]
     :stages      [{:lib/type     :mbql.stage/mbql
                    :source-table 2}]}))

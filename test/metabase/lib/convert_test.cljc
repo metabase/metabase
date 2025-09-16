@@ -361,6 +361,7 @@
     {:database 5
      :type     :query
      :query    {:joins        [{:source-table 3
+                                :strategy     :left-join
                                 :alias        "Cat"
                                 :condition    [:= [:field 2 nil] [:field 2 nil]]
                                 :fields       [[:field 1 {:join-alias "Cat"}]]}]
@@ -1515,17 +1516,19 @@
     (let [query {:lib/type :mbql/query
                  :stages   [{:lib/type     :mbql.stage/mbql
                              :source-table 1
-                             :joins        [{:lib/type :mbql/join
-                                             :alias    "J"
-                                             :stages   [{:lib/type     :mbql.stage/mbql
-                                                         :source-table 2
-                                                         :fields       [[:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]
-                                                                        [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 2]]}]
-                                             :fields   [[:field {:lib/uuid "00000000-0000-0000-0000-000000000003", :join-alias "J"} 1]]
+                             :joins        [{:lib/type   :mbql/join
+                                             :alias      "J"
+                                             :stages     [{:lib/type     :mbql.stage/mbql
+                                                           :source-table 2
+                                                           :fields       [[:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]
+                                                                          [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 2]]}]
+                                             :strategy   :left-join
+                                             :fields     [[:field {:lib/uuid "00000000-0000-0000-0000-000000000003", :join-alias "J"} 1]]
                                              :conditions [[:= {:lib/uuid "00000000-0000-0000-0000-000000000004"} 1 2]]}]}]}]
       (is (= {:type  :query
               :query {:source-table 1
                       :joins        [{:alias        "J"
+                                      :strategy     :left-join
                                       :source-query {:source-table 2
                                                      :fields       [[:field 1 nil]
                                                                     [:field 2 nil]]}
@@ -1545,6 +1548,7 @@
                              :source-table 1
                              :joins        [{:lib/type   :mbql/join
                                              :alias      "J"
+                                             :strategy   :left-join
                                              :stages     [{:lib/type     :mbql.stage/mbql
                                                            :source-table 2
                                                            :fields       [[:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]
@@ -1553,6 +1557,7 @@
       (is (= {:type  :query
               :query {:source-table 1
                       :joins        [{:alias        "J"
+                                      :strategy     :left-join
                                       :source-query {:source-table 2
                                                      :fields       [[:field 1 nil]
                                                                     [:field 2 nil]]}

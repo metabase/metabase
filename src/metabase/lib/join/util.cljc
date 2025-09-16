@@ -11,20 +11,15 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-(mr/def ::join-with-optional-alias
-  "A Join that may not yet have an `:alias`, which is normally required; [[join]] accepts this and will add a default
-  alias if one is not present."
+(mr/def ::partial-join
+  "A join that may not yet have all required keys, such as `:alias` or `:conditions`. [[join]] accepts this and will add
+  a default alias if one is not present."
   [:merge
    [:ref ::lib.schema.join/join]
    [:map
-    [:alias {:optional true} [:ref ::lib.schema.join/alias]]]])
-
-(mr/def ::partial-join
-  "A join that may not yet have an `:alias` or `:conditions`."
-  [:merge
-   [:ref ::join-with-optional-alias]
-   [:map
-    [:conditions {:optional true} [:ref ::lib.schema.join/conditions]]]])
+    [:alias      {:optional true} [:ref ::lib.schema.join/alias]]
+    [:conditions {:optional true} [:ref ::lib.schema.join/conditions]]
+    [:strategy   {:optional true} [:ref ::lib.schema.join/strategy]]]])
 
 (mr/def ::column-or-field-ref
   "A field in a join, either `:metabase.lib.schema.metadata/column` or a `:field` ref."

@@ -271,6 +271,7 @@
                            :stages      [{:lib/type    :mbql.stage/mbql
                                           :source-card 1}]
                            :alias       "checkins_by_user"
+                           :strategy    :left-join
                            :conditions  [[:=
                                           {:lib/uuid "1cb124b0-757f-4717-b8ee-9cf12a7c3f62"}
                                           [:field
@@ -382,6 +383,7 @@
                                     :joins        [{:lib/type    :mbql/join
                                                     :lib/options {:lib/uuid "10ee93eb-6749-41ed-a48b-93c66427eb49"}
                                                     :alias       join-alias
+                                                    :strategy    :left-join
                                                     :fields      [[:field
                                                                    {:join-alias join-alias
                                                                     :lib/uuid   "87ad4bf3-a00b-462a-b9cc-3dde44945d66"}
