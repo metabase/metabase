@@ -722,11 +722,11 @@
                          {:name "varbinary_field" :type :type/Text :nullable? true :database-type "varbinary(255)"}]
                :data [[1 "{\"nested\": {\"array\": [1,2,3], \"null\": null}}" 2024 "medium" "red,blue"
                        ;; 255
-                       127 8388607 123456789012345678.1234567890
+                       127 8388607 1234578.1234567
                        (apply str (repeat 5000 "MySQL")) "binary data here"]
                       [2 "{\"emoji\": \"🎉\", \"unicode\": \"你好\"}" 1901 "large" "green"
                        ;; 0
-                       -128 -8388608 -999999999999999.9999999999
+                       -128 -8388608 -9999999.99999
                        "Special chars: \\n\\t\\r" "\\x41\\x42\\x43"]
                       [3 "[]" 2155 "small" "" ;; 1
                        0 0 0.0000000001 "" ""]

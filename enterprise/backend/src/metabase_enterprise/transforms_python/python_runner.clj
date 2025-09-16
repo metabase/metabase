@@ -158,6 +158,16 @@
                   (assoc meta :base_type :type/Array)
                   meta)
 
+                (= driver :mysql)
+                (case (:database_type meta)
+                  ("ENUM" "VARCHAR" "SET")
+                  (dissoc meta :database_type)
+
+                  "VARBINARY"
+                  (assoc meta :database_type "BINARY")
+
+                  meta)
+
                 :else
                 meta)))))
 
