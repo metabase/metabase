@@ -118,8 +118,8 @@
    (ensure-mbql5 #'qp.middleware.enterprise/apply-impersonation)
    (ensure-mbql5 #'qp.middleware.enterprise/attach-destination-db-middleware)
    (ensure-mbql5 #'qp.middleware.enterprise/apply-sandboxing)
-   (ensure-legacy #'qp.persistence/substitute-persisted-query)
-   (ensure-mbql5 #'qp.add-implicit-clauses/add-implicit-clauses)
+   (ensure-mbql5 #'qp.persistence/substitute-persisted-query)
+   (ensure-mbql5 #'qp.add-implicit-clauses/add-implicit-clauses) ; #61398
    ;; this needs to be done twice, once before adding remaps (since we want to add remaps inside joins) and then again
    ;; after adding any implicit joins. Implicit joins do not need to get remaps since we only use them for fetching
    ;; specific columns.
@@ -141,10 +141,8 @@
    (ensure-mbql5 #'validate-temporal-bucketing/validate-temporal-bucketing)
    (ensure-mbql5 #'optimize-temporal-filters/optimize-temporal-filters)
    (ensure-mbql5 #'limit/add-default-limit)
-   (ensure-legacy #'qp.middleware.enterprise/apply-download-limit)
-   (ensure-legacy #'check-features/check-features)
-   ;; return MBQL 5 at the end
-   (ensure-mbql5 identity)])
+   (ensure-mbql5 #'qp.middleware.enterprise/apply-download-limit)
+   (ensure-mbql5 #'check-features/check-features)])
 
 (defn- middleware-fn-name [middleware-fn]
   (if-let [fn-name (:name (meta middleware-fn))]
