@@ -12,6 +12,7 @@ import { CodeMirrorEditor as Editor } from "metabase/query_builder/components/Na
 import { getQuestion } from "metabase/query_builder/selectors";
 import { Box, Button, Flex, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 
 import { createNativeQuestion } from "./utils";
 
@@ -33,10 +34,35 @@ const BUTTON_TITLE = {
   },
 };
 
-export const NotebookNativePreview = (): JSX.Element => {
+export const NotebookNativePreview = () => {
   const dispatch = useDispatch();
   const question = checkNotNull(useSelector(getQuestion));
 
+  const handleConvertClick = useCallback(
+    (newQuestion: Question) => {
+      dispatch(
+        updateQuestion(newQuestion, { shouldUpdateUrl: true, run: true }),
+      );
+      dispatch(setUIControls({ isNativeEditorOpen: true }));
+    },
+    [dispatch],
+  );
+
+  return (
+    <ControlledNotebookNativePreview
+      question={question}
+      onConvertClick={handleConvertClick}
+    />
+  );
+};
+
+export const ControlledNotebookNativePreview = ({
+  question,
+  onConvertClick,
+}: {
+  question: Question;
+  onConvertClick: (newQuestion: Question) => void;
+}) => {
   const database = question.database();
   const engine = database?.engine;
   const engineType = getEngineNativeType(engine);
@@ -54,19 +80,16 @@ export const NotebookNativePreview = (): JSX.Element => {
   const newQuestion = createNativeQuestion(question, data);
   const newQuery = newQuestion?.query();
 
-  const handleConvertClick = useCallback(() => {
-    if (newQuestion != null) {
-      dispatch(
-        updateQuestion(newQuestion, { shouldUpdateUrl: true, run: true }),
-      );
-      dispatch(setUIControls({ isNativeEditorOpen: true }));
-    }
-  }, [newQuestion, dispatch]);
-
   const getErrorMessage = (error: unknown) =>
     typeof error === "string" ? error : undefined;
 
   const borderStyle = "1px solid var(--mb-color-border)";
+
+  const handleConvertClick = useCallback(() => {
+    if (newQuestion) {
+      onConvertClick(newQuestion);
+    }
+  }, [newQuestion, onConvertClick]);
 
   return (
     <Box
