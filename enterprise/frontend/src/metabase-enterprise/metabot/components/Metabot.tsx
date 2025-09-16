@@ -5,6 +5,7 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 
+import { trackMetabotChatOpened } from "../analytics";
 import { useMetabotAgent } from "../hooks";
 
 import { MetabotChat } from "./MetabotChat";
@@ -20,6 +21,9 @@ export const MetabotAuthenticated = ({ hide }: MetabotProps) => {
     return tinykeys(window, {
       "$mod+b": (e) => {
         e.preventDefault(); // prevent FF from opening bookmark menu
+        if (!visible) {
+          trackMetabotChatOpened("keyboard_shortcut");
+        }
         setVisible(!visible);
       },
     });
