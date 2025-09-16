@@ -9,11 +9,8 @@ import {
 import cx from "classnames";
 import type React from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { t } from "ttag";
 
-import { ActionIcon, Box, Icon, Tooltip } from "metabase/ui";
-
-import { SupportingText } from "../SupportingText/SupportingText";
+import { Box } from "metabase/ui";
 
 import styles from "./FlexContainer.module.css";
 
@@ -86,8 +83,6 @@ const FlexContainerComponent: React.FC<NodeViewProps> = ({
   node,
   updateAttributes,
   selected,
-  editor,
-  getPos,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isResizing, setIsResizing] = useState(false);
@@ -228,17 +223,6 @@ const FlexContainerComponent: React.FC<NodeViewProps> = ({
     return handles;
   };
 
-  /* TODO: Replace `3`s with constant */
-  const shouldAllowAddingSupportingText = () => {
-    if (node.content.childCount >= 3) {
-      return false;
-    }
-    const hasSupportingText = node.content.content.some(
-      (n) => n.type.name === SupportingText.name,
-    );
-    return !hasSupportingText;
-  };
-
   return (
     <NodeViewWrapper
       className={cx(styles.flexContainer, {
@@ -247,32 +231,6 @@ const FlexContainerComponent: React.FC<NodeViewProps> = ({
       })}
       data-type="flexContainer"
     >
-      {shouldAllowAddingSupportingText() && (
-        <Box pos="absolute" right="100%" top="0" pr="xs" pt="xs">
-          <Tooltip label={t`Add supporting text`}>
-            <ActionIcon
-              className={styles.showOnHover}
-              onClick={() => {
-                const pos = getPos();
-                if (pos == null) {
-                  return;
-                }
-                updateAttributes({
-                  columnWidths: [(1 / 3) * 100, ...columnWidths],
-                });
-                editor.commands.focus(pos + 1); // .chain() sometimes causes the content to not insert correctly
-                editor.commands.insertContentAt(pos + 1, {
-                  // TODO: un-hard-code "supportingText" everywhere
-                  type: "supportingText",
-                  content: [{ type: "paragraph" }],
-                });
-              }}
-            >
-              <Icon name="add_list" />
-            </ActionIcon>
-          </Tooltip>
-        </Box>
-      )}
       <Box h="100%" ref={containerRef}>
         <NodeViewContent
           className={styles.flexContent}

@@ -1,4 +1,8 @@
-import { Node, mergeAttributes } from "@tiptap/core";
+import {
+  Node,
+  findParentNodeClosestToPos,
+  mergeAttributes,
+} from "@tiptap/core";
 import {
   type NodeViewProps,
   NodeViewWrapper,
@@ -255,6 +259,30 @@ export const CardEmbedComponent = memo(
     }>({ isDraggedOver: false, side: null });
     const draggedOverTimeoutRef = useRef<number | undefined>();
     const cardEmbedRef = useRef<HTMLDivElement>(null);
+
+    /* TODO: Replace `3`s with constant */
+    /* TODO: Memoize? This component is currently re-rendering a lot (maybe because of a mouseover event?) */
+    const shouldAllowAddingSupportingText = () => {
+      const pos = getPos();
+      if (!pos) {
+        return false;
+      }
+      const resolvedPos = editor.state.doc.resolve(pos);
+      const match = findParentNodeClosestToPos(
+        resolvedPos,
+        (n) => n.type.name === "flexContainer",
+      );
+      if (!match) {
+        return true;
+      }
+      if (match.node.content.childCount >= 3) {
+        return false;
+      }
+      const hasSupportingText = match?.node.content.content.some(
+        (n) => n.type.name === "supportingText",
+      );
+      return !hasSupportingText;
+    };
 
     const isBeingDragged = editor.view.draggingNode === node;
 
@@ -640,6 +668,15 @@ export const CardEmbedComponent = memo(
                           leftSection={<Icon name="add_comment" size={14} />}
                         >
                           {t`Comment`}
+                        </Menu.Item>
+                        <Menu.Item
+                          onClick={() => {
+                            // TODO
+                          }}
+                          disabled={!shouldAllowAddingSupportingText()}
+                          leftSection={<Icon name="add_list" size={14} />}
+                        >
+                          {t`Add supporting text`}
                         </Menu.Item>
                         <Menu.Item
                           onClick={handleEditVisualizationSettings}
