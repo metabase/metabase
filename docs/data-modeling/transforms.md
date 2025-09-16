@@ -11,7 +11,15 @@ _Admin settings > Transforms_
 
 Transforms can be used to, well, transform your data - do stuff like preprocessing, cleaning, joining tables, pre-computing metrics. Transforms give you the ability to do the "T" of "ETL" within Metabase.
 
-You'll write a query in Metabase, a transform will run this query, create a table in your target database containing the results, and sync that table to Metabase, so it can be used as a data source for questions or other transforms. You can schedule transforms to run periodically.
+You'll write a query in Metabase, a transform will run this query, create a table in your target database containing the results, and sync that table to Metabase, so it can be used as a data source for questions or other transforms.
+
+## Transforms overview
+
+- **Transforms** are queries that write back to your database as a new, persistent table. Use transforms to clean, join, or pre-aggregate data.
+- Transforms are scheduled and organized using **tags** and **jobs**.
+  - You assign tags (e.g., daily, hourly) to group your transforms.
+  - A job runs on a schedule (e.g., every day at midnight) and executes all transforms that have been assigned a specific tag.
+- Each execution of a transform is a **run**. A run replaces the target table with fresh results. You can review the history of runs to monitor their success or failure.
 
 ## Databases that support transforms
 
@@ -47,16 +55,14 @@ To create a transform:
 
    In SQL transforms, you can reference other saved questions and use snippets, but you can't use SQL parameters.
 
-   When editing the query, you can run the query to preview the results. Previewing query results will not write data into your database.
+   When editing the query, you can run the query to preview the results. Previewing query results won't write data into your database.
 
 5. Click **Save** in the top right corner.
 6. Select a target schema for your transform and enter a name for the target table. Metabase will write create the table the results of the transform query into this table.
 
    You can only transform data _within_ a database; you can't write from one database to another.
 
-7. Optionally, assign tags to your transforms. Tags are used by [jobs](#jobs-and-tags) to run transforms on schedule. By default, Metabase comes with hourly, daily, weekly, and monthly tags and jobs that are run on the corresponding schedules, but you can remove or rename those tags, or create new tags.
-
-   To create a new tag, just type the new tag's name in "Tags" field and select "Create a tag".
+7. Optionally, assign tags to your transforms. Tags are used by [jobs](#jobs-and-tags) to run transforms on schedule.
 
 ## Edit a transform
 
@@ -108,13 +114,21 @@ To create a new job, go to _Admin settings > Transforms_, switch to the **Jobs**
 
 To edit a job, click on the job in the list of jobs.
 
-Jobs have two components: schedule and tags. Metabase uses tags to locate transforms that should be run by the job, and then schedules those transforms according to the cron schedule. The times are given in the system's timezone.
+Jobs have two components: schedule and tags.
+
+Metabase uses tags to locate transforms that should be run by the job, and then schedules those transforms according to the cron schedule. The times are given in the system's timezone.
+
+### Tags
 
 Job can use multiple tags, in which case, the job will run all transforms that have _any_ of those tags. For example, you can have a job "Weekend job" that is scheduled run at noon on Saturdays and Sundays that picks up all transforms tagged either "Saturday", "Sunday", or "Weekend".
 
-Depended transforms will be scheduled and run intelligently: if Transform B depends on the output of Transform A, then a job will run Transform A before Transform B. A job will run all dependent transforms even if the dependencies aren't tagged. You will see the order of transform execution on the job's page.
+By default, Metabase comes with hourly, daily, weekly, and monthly tags and jobs that are run on the corresponding schedules, but you can remove or rename those tags, or create new tags.
 
-Metabase comes with default tags and jobs for hourly, daily, weekly, and monthly scheduling. You can rename or delete those default jobs and tags.
+To create a new tag, just type the new tag's name in "Tags" field (either when viewing a transform or when viewing a job) and select "Create a tag".
+
+### Jobs take dependencies into account
+
+Depended transforms will be scheduled and run intelligently: if Transform B depends on the output of Transform A, then a job will run Transform A before Transform B. A job will run all dependent transforms even if the dependencies aren't tagged. You will see the order of transform execution on the job's page.
 
 ## Transforms vs models
 
