@@ -140,3 +140,17 @@ export type ListTransformRunsRequest = {
 export type ListTransformRunsResponse = {
   data: TransformRun[];
 } & PaginationResponse;
+
+export type ExecutePythonTransformRequest = {
+  code: string;
+  tables: Record<string, number>;
+};
+
+export type ExecutePythonTransformResponse = {
+  output?: string;
+  stdout?: string;
+  stderr?: string;
+  error?: string;
+  exit_code?: number;
+  timeout?: boolean;
+};
