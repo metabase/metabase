@@ -181,7 +181,7 @@
   (require '[clojure.set :as set]
            '[metabase.search.spec :as search.spec])
   ;; #{"segment" "database" "action" "indexed-entity"}
-  (set/difference search.spec/search-models appdb-scorer-models))
+  (set/difference (set search.spec/search-models) appdb-scorer-models))
 
 (defn appdb-scorers
   "The appdb-based scorers for search ranking results. Like `base-scorers`, but for scorers that need to query the appdb."
