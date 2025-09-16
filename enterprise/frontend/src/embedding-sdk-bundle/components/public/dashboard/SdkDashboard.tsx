@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useAsyncFn } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -29,10 +30,7 @@ import {
   getFetchStaticTokenFn,
   getIsStaticEmbedding,
 } from "embedding-sdk-bundle/store/selectors";
-import type {
-  MetabaseQuestion,
-  SdkDashboardId,
-} from "embedding-sdk-bundle/types";
+import type { MetabaseQuestion } from "embedding-sdk-bundle/types";
 import type { DashboardEventHandlersProps } from "embedding-sdk-bundle/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import { useConfirmation } from "metabase/common/hooks";
@@ -158,31 +156,30 @@ const SdkDashboardInner = ({
   dataPickerProps,
   onVisualizationChange,
 }: SdkDashboardInnerProps) => {
-  const [dashboardId, setDashboardId] = useState<SdkDashboardId | null>(null);
-  const [dashboardIdLoading, setDashboardIdLoading] = useState(true);
-
   const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
   const customFetchStaticTokenFn = useSdkSelector(getFetchStaticTokenFn);
 
-  useEffect(() => {
-    const run = async () => {
-      const dashboardId = await getResolvedEntityIdForStaticLikeEntity({
+  const [
+    { loading: dashboardIdLoading, value: dashboardId = null },
+    resolveDashboardId,
+  ] = useAsyncFn(
+    () =>
+      getResolvedEntityIdForStaticLikeEntity({
         entityType: "dashboard",
         entityId: rawDashboardId,
         isStaticEmbedding,
         customFetchStaticTokenFn,
-      });
+      }),
+    [rawDashboardId, isStaticEmbedding, customFetchStaticTokenFn],
+  );
 
-      setDashboardId(dashboardId ?? null);
-      setDashboardIdLoading(false);
-
+  useEffect(() => {
+    resolveDashboardId().then((resolveDashboardId) => {
       if (isStaticEmbedding) {
-        setEmbedDashboardEndpoints(dashboardId);
+        setEmbedDashboardEndpoints(resolveDashboardId);
       }
-    };
-
-    run();
-  }, [customFetchStaticTokenFn, isStaticEmbedding, rawDashboardId]);
+    });
+  }, [isStaticEmbedding, resolveDashboardId]);
 
   const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
     onLoad,
