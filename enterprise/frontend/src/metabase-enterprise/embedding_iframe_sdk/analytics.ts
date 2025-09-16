@@ -41,11 +41,18 @@ const DEFAULT_VALUES: DefaultValues = {
 };
 
 const SECOND = 1000;
+
+/**
+ * Because the way it's designed to be consumed when each embed is being registered. There could be multiple embed in a page, so we want to debounce and only call this once.
+ */
 export const debouncedReportAnalytics = _.debounce(
   reportAnalyticsOnce,
   1 * SECOND,
 );
 
+/**
+ * This is just a safe-guard to ensure we only call this once for whatever reason.
+ */
 let isAnalyticsReported = false;
 function reportAnalyticsOnce(activeEmbeds: Set<MetabaseEmbedElement>) {
   if (!isAnalyticsReported) {
