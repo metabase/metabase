@@ -227,8 +227,8 @@
                  [:field (mt/id :products :price) {}]
                  [:field (mt/id :products :rating) {}]
                  [:field (mt/id :products :created_at) {}]
-                 [:field "ID_2" {:join-alias "Card", :base-type :type/BigInteger}]
-                 [:field "TOTAL" {:join-alias "Card", :base-type :type/Float}]]
+                 [:field (mt/id :products :id) {:join-alias "Card"}]
+                 [:field (mt/id :orders :total) {:join-alias "Card"}]]
                 (-> preprocessed :query :fields)))))))
 
 (deftest ^:parallel deleted-columns-test

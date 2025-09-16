@@ -237,9 +237,9 @@
             stages       (:stages preprocessed)]
         (testing "added metadata"
           (testing "first stage (from Card 1)"
-            (is (=? {:name                         "RATING"
-                     :display-name                 "Product → Rating"
-                     :metabase.lib.join/join-alias "Product"}
+            (is (=? {:name                     "RATING"
+                     :lib/original-join-alias  "Product"
+                     :lib/desired-column-alias "Product__RATING"}
                     (m/find-first #(= (:name %) "RATING")
                                   (get-in (nth stages 0) [:lib/stage-metadata :columns])))))
           (testing "second stage (from Card 2)"

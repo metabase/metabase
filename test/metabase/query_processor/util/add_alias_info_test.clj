@@ -1189,15 +1189,15 @@
                                    ::add/source-table  (meta/id :products)}
                            any?]
                           [:field {:join-alias         "Orders"
-                                   ::add/desired-alias "Orders__PRODUCTS__via_6256d0ed"
-                                   ::add/source-alias  "PRODUCTS__via__PRODUC_8b0b9fea"
-                                   ::add/source-table  "Orders"}
-                           any?]
-                          [:field {:join-alias         "Orders"
                                    ::add/desired-alias "Orders__sum"
                                    ::add/source-alias  "sum"
                                    ::add/source-table  "Orders"}
-                           "sum"]]}
+                           "sum"]
+                          [:field {:join-alias         "Orders"
+                                   ::add/desired-alias "Orders__PRODUCTS__via_6256d0ed"
+                                   ::add/source-alias  "PRODUCTS__via__PRODUC_8b0b9fea"
+                                   ::add/source-table  "Orders"}
+                           any?]]}
                 (dissoc stage :joins)))))))
 
 (deftest ^:parallel nested-fields-test

@@ -423,7 +423,7 @@
                                  ;; join alias that was ever used for the column); if that is present then we need to
                                  ;; generate field refs that use as a join alias because even tho that sounds
                                  ;; completely broken that is traditionally what we've done. Taking this out
-                                 ;; breakouts [[metabase.lib.drill-thru.column-filter-test/column-filter-join-alias-test]].
+                                 ;; breaks [[metabase.lib.drill-thru.column-filter-test/column-filter-join-alias-test]].
                                  ;;
                                  ;; TODO (Cam 6/26/25) -- figure out if we can actually take this out or not.
                                  (when-let [source-alias (and (not inherited-column?)

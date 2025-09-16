@@ -377,8 +377,12 @@
 (mr/def ::snake-cased-type-info
   "E.g. the version coming back from the app DB as opposed to MLv2 metadata. This should eventually be considered
   deprecated."
-  [:map
-   [:base_type :any]])
+  [:and
+   [:map
+    [:base_type :any]]
+   [:fn
+    {:error/message "Should be snake_cased type info"}
+    (complement :base-type)]])
 
 (mu/defn field-is-type?
   "True if a Metabase `Field` instance has a temporal base or semantic type, i.e. if this Field represents a value

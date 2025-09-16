@@ -697,7 +697,10 @@
                               [native-query])
                 query        (-> (lib/query mp (lib.metadata/card mp 1))
                                  (as-> q
-                                       (lib/expression q "TEXTCAST" (lib/text (->> q lib/visible-columns (m/find-first #(= "uncasted" (u/lower-case-en (:name %)))))))))
+                                     (lib/expression q "TEXTCAST" (lib/text (or (m/find-first
+                                                                                 #(= "uncasted" (u/lower-case-en (:name %)))
+                                                                                 (lib/visible-columns q))
+                                                                                (throw (ex-info "Failed to find 'uncasted'" {:query q})))))))
                 result       (-> query qp/process-query)
                 cols         (mt/cols result)
                 rows         (mt/rows result)]

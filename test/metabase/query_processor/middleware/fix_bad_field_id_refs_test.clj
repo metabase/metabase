@@ -169,6 +169,7 @@
                                   :breakout     [$name [:field %categories.name {:join-alias "c"}]]
                                   :joins        [{:source-table $$categories
                                                   :alias        "c"
+                                                  :strategy     :left-join
                                                   :condition    [:= $category-id [:field %categories.id {:join-alias "c"}]]}]}
                    :filter       [:> [:field "count" {:base-type :type/Number}] 0]
                    :limit        3})]

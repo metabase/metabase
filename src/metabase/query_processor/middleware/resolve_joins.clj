@@ -25,7 +25,8 @@
    (when (= (:fields join) :all)
      (let [join-alias           (lib/current-join-alias join)
            join-last-stage-path (concat path [:stages (dec (count (:stages join)))])
-           cols                 (lib.walk/apply-f-for-stage-at-path lib/returned-columns query join-last-stage-path)
+           cols                 (for [col (lib.walk/apply-f-for-stage-at-path lib/returned-columns query join-last-stage-path)]
+                                  (lib/update-keys-for-col-from-previous-stage col))
            fields               (into
                                  []
                                  (comp (map #(lib/with-join-alias % join-alias))
