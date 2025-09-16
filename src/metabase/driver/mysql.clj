@@ -27,7 +27,6 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
    (java.io File)

@@ -9,7 +9,6 @@
    [[metabase.driver.sql-jdbc]] for more details."
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
-   [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]

@@ -5,7 +5,6 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
-   [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.models.transform-run]
    [metabase-enterprise.transforms.models.transform-tag]
    [metabase-enterprise.transforms.models.transform-transform-tag]

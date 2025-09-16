@@ -6,7 +6,11 @@
    [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent CountDownLatch)))
+
+(set! *warn-on-reflection* true)
 
 (deftest atomic-python-transform-swap-test
   (testing "Python transform execution with atomic table swap"
@@ -40,7 +44,7 @@
                                                      "def transform():\n"
                                                      "    return pd.DataFrame({'name': ['Charlie', 'Diana', 'Eve'], 'age': [35, 40, 45]})")}}))
 
-                  (let [swap-latch (java.util.concurrent.CountDownLatch. 1)
+                  (let [swap-latch (CountDownLatch. 1)
                         original-rename-tables-atomic! transforms.util/rename-tables!]
                     (with-redefs [transforms.util/rename-tables! (fn [driver db-id rename-pairs]
                                                                    (.await swap-latch)
