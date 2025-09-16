@@ -14,7 +14,7 @@
    query
    (fn [query _path-type path clause]
      (when (and (lib.util/clause-of-type? clause :field)
-                (not (:temporal-unit (lib/options clause)))
+                (not (lib/raw-temporal-bucket clause))
                 (isa? (lib.walk/apply-f-for-stage-at-path lib/type-of query path clause) :type/Temporal))
        (lib/with-temporal-bucket clause :default)))))
 
