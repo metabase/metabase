@@ -123,14 +123,14 @@
    ;; this needs to be done twice, once before adding remaps (since we want to add remaps inside joins) and then again
    ;; after adding any implicit joins. Implicit joins do not need to get remaps since we only use them for fetching
    ;; specific columns.
-   (ensure-legacy #'resolve-joins/resolve-joins)
+   (ensure-mbql5 #'resolve-joins/resolve-joins)
    (ensure-mbql5 #'qp.add-remaps/add-remapped-columns)
    #'qp.resolve-fields/resolve-fields   ; this middleware actually works with either MBQL 5 or legacy
    (ensure-mbql5 #'binning/update-binning-strategy)
    (ensure-mbql5 #'desugar/desugar)
    (ensure-mbql5 #'qp.add-default-temporal-unit/add-default-temporal-unit)
    (ensure-mbql5 #'qp.add-implicit-joins/add-implicit-joins)
-   (ensure-legacy #'resolve-joins/resolve-joins) ; #61398
+   (ensure-mbql5 #'resolve-joins/resolve-joins)
    (ensure-mbql5 #'fix-bad-field-id-refs/fix-bad-field-id-refs)
    (ensure-mbql5 #'qp.remove-inactive-field-refs/remove-inactive-field-refs)
    ;; yes, this is called a second time, because we need to handle any joins that got added

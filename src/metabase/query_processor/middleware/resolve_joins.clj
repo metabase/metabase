@@ -3,37 +3,40 @@
   options, and adds information to the query about what joins should be done and how they should be performed."
   (:refer-clojure :exclude [alias])
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
-   ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
-   ;; Lib soon
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
-(def ^:private Joins
-  "Schema for a non-empty sequence of Joins. Unlike [[mbql.s/Joins]], this does not enforce the constraint that all join
-  aliases be unique."
-  [:sequential {:min 1} mbql.s/Join])
+(mr/def ::joins
+  "Schema for a non-empty sequence of ::joins. Unlike `:metabase.lib.schema.join/joins`, this does not enforce the
+  constraint that all join aliases be unique."
+  [:sequential {:min 1} ::lib.schema.join/join])
 
-(def ^:private UnresolvedMBQLQuery
+(mr/def ::unresolved-stage
   "Schema for the parts of the query we're modifying. For use in the various intermediate transformations in the
   middleware."
   [:map
-   [:joins [:sequential mbql.s/Join]]
-   [:fields {:optional true} mbql.s/Fields]])
+   [:joins [:sequential ::lib.schema.join/join]]
+   [:fields {:optional true} ::lib.schema/fields]])
 
-(def ^:private ResolvedMBQLQuery
+(mr/def ::resolved-stage
   "Schema for the final results of this middleware."
   [:and
-   UnresolvedMBQLQuery
+   ::unresolved-stage
    [:fn
     {:error/message "Valid MBQL query where `:joins` `:fields` is sequence of Fields or removed"}
     (fn [{:keys [joins]}]
@@ -44,37 +47,38 @@
           (sequential? fields)))
        joins))]])
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                 Resolving Tables & Fields / Saving in QP Store                                 |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
 (mu/defn- resolve-fields! :- :nil
-  [joins :- Joins]
-  (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider)
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   joins                 :- ::joins]
+  (lib.metadata/bulk-metadata-or-throw metadata-providerable
                                        :metadata/column
-                                       (lib.util.match/match joins [:field (id :guard integer?) _] id))
+                                       (lib.util.match/match joins [:field _opts (id :guard pos-int?)] id))
   nil)
 
 (mu/defn- resolve-tables! :- :nil
   "Add Tables referenced by `:joins` to the Query Processor Store. This is only really needed for implicit joins,
   because their Table references are added after `resolve-source-tables` runs."
-  [joins :- Joins]
-  (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider)
-                                       :metadata/table
-                                       (remove nil? (map :source-table joins)))
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   joins                 :- ::joins]
+  (when-let [source-table-ids (not-empty (into #{}
+                                               (comp (mapcat :stages)
+                                                     (keep :source-table))
+                                               joins))]
+    (lib.metadata/bulk-metadata-or-throw metadata-providerable :metadata/table source-table-ids))
   nil)
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                             :Joins Transformations                                             |
-;;; +----------------------------------------------------------------------------------------------------------------+
+(def ^:private ^:deprecated default-join-alias
+  "DEPRECATED: use version in lib"
+  "__join")
 
-(def ^:private default-join-alias "__join")
-
-(mu/defn- merge-defaults :- mbql.s/Join
+(mu/defn- merge-defaults :- ::lib.schema.join/join
   [join]
-  (merge {:alias default-join-alias, :strategy :left-join} join))
+  (merge {:strategy :left-join}
+         (when (str/starts-with? (:alias join) default-join-alias)
+           {:qp/keep-default-join-alias true})
+         join))
 
-(defn- source-metadata->fields [{:keys [alias], :as join} source-metadata]
+(defn- join-fields [{:keys [alias], :as join} source-metadata]
   (when-not (seq source-metadata)
     (throw (ex-info (tru "Cannot use :fields :all in join against source query unless it has :source-metadata.")
                     {:join join})))
@@ -84,67 +88,53 @@
                                       item)))
                             (frequencies (map :id source-metadata)))]
     (for [{field-name :name
-           base-type :base_type
-           field-id :id
-           field-ref :field_ref} source-metadata]
-      ;; If `field-ref` is an id-based reference, only use it if the source query uses it.
-      (or (when (and field-id (not (contains? duplicate-ids field-id)))
-            (lib.util.match/match-one field-ref
-              [:field (id :guard pos-int?) _opts]
-              [:field field-id {:join-alias alias}]))
-          [:field field-name {:base-type base-type, :join-alias alias}]))))
+           base-type :base-type
+           field-id :id} source-metadata]
+      (-> (or (when (and field-id (not (contains? duplicate-ids field-id)))
+                [:field {} field-id])
+              [:field {:base-type base-type} field-name])
+          lib/ensure-uuid
+          (lib/with-join-alias alias)))))
 
-(mu/defn- sorted-implicit-fields-for-table :- mbql.s/Fields
-  "For use when adding implicit Field IDs to a query. Return a sequence of field clauses, sorted by the rules listed
-  in [[metabase.query-processor.sort]], for all the Fields in a given Table."
-  [table-id :- ::lib.schema.id/table]
-  (let [fields (lib.metadata/active-fields (qp.store/metadata-provider) table-id)]
-    (when (empty? fields)
-      (throw (ex-info (tru "No fields found for table {0}." (pr-str (:name (lib.metadata/table (qp.store/metadata-provider) table-id))))
-                      {:table-id table-id
-                       :type     qp.error-type/invalid-query})))
-    (mapv
-     (fn [field]
-       [:field (u/the-id field) nil])
-     fields)))
-
-(mu/defn- handle-all-fields :- mbql.s/Join
+(mu/defn- handle-all-fields :- ::lib.schema.join/join
   "Replace `:fields :all` in a join with an appropriate list of Fields."
-  [{:keys [source-table source-query alias fields source-metadata], :as join} :- mbql.s/Join]
+  [query                                   :- ::lib.schema/query
+   {:keys [stages fields], :as join} :- ::lib.schema.join/join]
   (merge
    join
    (when (= fields :all)
-     {:fields (if source-query
-                (source-metadata->fields join source-metadata)
-                (for [[_ id-or-name opts] (sorted-implicit-fields-for-table source-table)]
-                  [:field id-or-name (assoc opts :join-alias alias)]))})))
+     {:fields (join-fields join (lib/returned-columns
+                                 (-> (assoc query :stages stages)
+                                     lib/append-stage)
+                                 -1
+                                 -1
+                                 {:include-remaps? (not (get-in query [:middleware :disable-remaps?]))}))})))
 
-(defn- deduplicate-aliases []
+(defn- ^:deprecated deduplicate-aliases
+  "DEPRECATED -- no longer needed"
+  []
   (let [unique-name-generator (lib.util/non-truncating-unique-name-generator)]
     (map (fn [join]
            (update join :alias unique-name-generator)))))
 
-(mu/defn- resolve-references :- Joins
-  [joins :- Joins]
-  (resolve-tables! joins)
+(mu/defn- resolve-references :- ::joins
+  [query :- ::lib.schema/query
+   joins :- ::joins]
+  (resolve-tables! query joins)
   (u/prog1 (into []
                  (comp (map merge-defaults)
-                       (map handle-all-fields)
+                       (map (partial handle-all-fields query))
                        (deduplicate-aliases))
                  joins)
-    (resolve-fields! <>)))
+    (resolve-fields! query <>)))
 
 (declare resolve-joins-in-mbql-query-all-levels)
 
-(mu/defn- resolve-join-source-queries :- Joins
-  [joins :- Joins]
+(mu/defn- resolve-join-source-queries :- ::joins
+  [joins :- ::joins]
   (for [{:keys [source-query], :as join} joins]
     (cond-> join
       source-query resolve-joins-in-mbql-query-all-levels)))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                           MBQL-Query Transformations                                           |
-;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- joins->fields
   "Return a flattened list of all `:fields` referenced in `joins`."
@@ -155,13 +145,13 @@
                     ;; make sure the field ref has `:join-alias`... it already SHOULD but if the query is NAUGHTY then
                     ;; we better just add it in to be safe. In #61398 which is pending I actually make this happen
                     ;; automatically in MBQL 5 normalization, so we can take this out eventually.
-                    (for [[tag id-or-name opts] fields]
-                      [tag id-or-name (assoc opts
-                                             :join-alias         (:alias join)
-                                             ;; Any coercion or temporal bucketing will already have been done in the
-                                             ;; subquery for the join itself. Mark the parent ref to make sure it is
-                                             ;; not double-coerced, which leads to SQL errors.
-                                             :qp/ignore-coercion true)]))))
+                    (for [field-ref fields]
+                      (-> field-ref
+                          (lib/with-join-alias (:alias join))
+                          ;; Any coercion or temporal bucketing will already have been done in the
+                          ;; subquery for the join itself. Mark the parent ref to make sure it is
+                          ;; not double-coerced, which leads to SQL errors.
+                          (lib/update-options assoc :qp/ignore-coercion true))))))
         joins))
 
 (defn- should-add-join-fields?
@@ -177,67 +167,52 @@
   ;; we shouldn't consider different type info to mean two Fields are different even if everything else is the same. So
   ;; give everything `:base-type` of `:type/*` (it will complain if we remove `:base-type` entirely from fields with a
   ;; string name)
-  (letfn [(opts-signature [opts]
-            (not-empty
-             (merge
-              (u/select-non-nil-keys opts [:join-alias :binning])
-              ;; for purposes of deduplicating stuff, temporal unit = default is the same as not specifying temporal
-              ;; unit at all. Should that be part of normalization? Maybe, but there is some logic around adding default
-              ;; temporal bucketing that we don't do if `:default` is explicitly specified.
-              (when-let [temporal-unit (:temporal-unit opts)]
-                (when-not (= temporal-unit :default)
-                  {:temporal-unit temporal-unit})))))
-          (ref-signature [[tag id-or-name opts, :as _ref]]
-            [tag id-or-name (opts-signature opts)])]
-    (into []
-          (comp cat
-                (m/distinct-by ref-signature))
-          [fields join-fields])))
+  (println "(metabase.util/cprint-to-str fields):" (metabase.util/cprint-to-str (map lib.schema.util/mbql-clause-distinct-key fields))) ; NOCOMMIT
+  (println "(metabase.util/cprint-to-str join-fields):" (metabase.util/cprint-to-str (map lib.schema.util/mbql-clause-distinct-key join-fields))) ; NOCOMMIT
+  (into []
+        (comp cat
+              (m/distinct-by lib.schema.util/mbql-clause-distinct-key))
+        [fields (lib/fresh-uuids join-fields)]))
 
 (defn append-join-fields-to-fields
   "Add the fields from join `:fields`, if any, to the parent-level `:fields`."
-  [inner-query join-fields]
-  (cond-> inner-query
+  [stage join-fields]
+  (cond-> stage
     (seq join-fields) (update :fields append-join-fields join-fields)))
 
-(mu/defn- merge-joins-fields :- UnresolvedMBQLQuery
+(mu/defn- merge-joins-fields :- ::unresolved-stage
   "Append the `:fields` from `:joins` into their parent level as appropriate so joined columns appear in the final
   query results, and remove the `:fields` entry for all joins.
 
   If the parent-level query has breakouts and/or aggregations, this function won't append the joins fields to the
   parent level, because we should only be returning the ones from the ags and breakouts in the final results."
-  [{:keys [joins], :as inner-query} :- UnresolvedMBQLQuery]
-  (let [join-fields (when (should-add-join-fields? inner-query)
+  [{:keys [joins], :as stage} :- ::unresolved-stage]
+  (let [join-fields (when (should-add-join-fields? stage)
                       (joins->fields joins))
         ;; remove remaining keyword `:fields` like `:none` from joins
-        inner-query (update inner-query :joins (fn [joins]
-                                                 (mapv (fn [{:keys [fields], :as join}]
-                                                         (cond-> join
-                                                           (keyword? fields) (dissoc :fields)))
-                                                       joins)))]
-    (append-join-fields-to-fields inner-query join-fields)))
+        stage       (update stage :joins (fn [joins]
+                                           (mapv (fn [{:keys [fields], :as join}]
+                                                   (cond-> join
+                                                     (keyword? fields) (dissoc :fields)))
+                                                 joins)))]
+    (append-join-fields-to-fields stage join-fields)))
 
-(mu/defn- resolve-joins-in-mbql-query :- ResolvedMBQLQuery
-  [query :- mbql.s/MBQLQuery]
-  (-> query
-      (update :joins (comp resolve-join-source-queries resolve-references))
+(mu/defn- resolve-joins-in-stage :- ::resolved-stage
+  [query :- ::lib.schema/query
+   stage :- ::lib.schema/stage]
+  (-> stage
+      (update :joins (comp resolve-join-source-queries
+                           (partial resolve-references query)))
       merge-joins-fields))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                Middleware & Boring Recursive Application Stuff                                 |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- resolve-joins-in-mbql-query-all-levels
-  [{:keys [joins source-query], :as query}]
-  (cond-> query
-    (seq joins)  resolve-joins-in-mbql-query
-    source-query (update :source-query resolve-joins-in-mbql-query-all-levels)))
 
 ;; TODO (Cam 9/10/25) -- once we convert this to Lib we can remove
 ;; the [[metabase.query-processor.middleware.ensure-joins-use-source-query/ensure-joins-use-source-query]] middleware
 ;; entirely
-(defn resolve-joins
+(mu/defn resolve-joins :- ::lib.schema/query
   "Add any Tables and Fields referenced by the `:joins` clause to the QP store."
-  [{inner-query :query, :as outer-query}]
-  (cond-> outer-query
-    inner-query (update :query resolve-joins-in-mbql-query-all-levels)))
+  [query :- ::lib.schema/query]
+  (lib.walk/walk-stages
+   query
+   (fn [query _path stage]
+     (when (seq (:joins stage))
+       (resolve-joins-in-stage query stage)))))
