@@ -1,8 +1,8 @@
 ---
 title: Application permissions
+summary: Grant groups access to Metabase's administrative features like settings, monitoring tools, and notifications.
 redirect_from:
   - /docs/latest/administration-guide/application-permissions
-summary: Grant groups access to Metabase's administrative features like settings, monitoring tools, and notifications.
 ---
 
 # Application permissions
