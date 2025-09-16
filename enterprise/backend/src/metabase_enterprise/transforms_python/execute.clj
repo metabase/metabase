@@ -121,7 +121,16 @@
   (let [table-schema {:name (if (keyword? table-name) table-name (keyword table-name))
                       :columns (mapv (fn [{:keys [name base_type database_type]}]
                                        {:name name
-                                        :type (some->> base_type (keyword "type"))
+                                        :type (cond
+                                                (nil? base_type)
+                                                :type/Text
+
+                                                (= "*" base_type)
+                                                :type/Text
+
+                                                :else
+
+                                                (keyword "type" base_type))
                                         :database-type database_type
                                         :nullable? true})
                                      (:fields metadata))}
