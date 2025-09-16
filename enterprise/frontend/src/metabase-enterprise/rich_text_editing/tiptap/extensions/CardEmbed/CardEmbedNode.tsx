@@ -1,4 +1,3 @@
-import { autoUpdate, useFloating } from "@floating-ui/react";
 import { Node, mergeAttributes } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import {
@@ -8,7 +7,7 @@ import {
 } from "@tiptap/react";
 import cx from "classnames";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router";
+import { push } from "react-router-redux";
 import { useMount, useUnmount } from "react-use";
 import { t } from "ttag";
 
@@ -17,7 +16,16 @@ import { QuestionPickerModal } from "metabase/common/components/Pickers/Question
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Flex, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Loader,
+  Menu,
+  Text,
+  TextInput,
+} from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
@@ -26,7 +34,10 @@ import { useListCommentsQuery } from "metabase-enterprise/api";
 import { getTargetChildCommentThreads } from "metabase-enterprise/comments/utils";
 import { navigateToCardFromDocument } from "metabase-enterprise/documents/actions";
 import { trackDocumentReplaceCard } from "metabase-enterprise/documents/analytics";
-import { CommentsMenu } from "metabase-enterprise/documents/components/Editor/CommentsMenu";
+import {
+  getUnresolvedComments,
+  useCommentsButton,
+} from "metabase-enterprise/documents/components/Editor/CommentsMenu";
 import { EDITOR_STYLE_BOUNDARY_CLASS } from "metabase-enterprise/documents/components/Editor/constants";
 import {
   loadMetadataForDocumentCard,
@@ -202,7 +213,6 @@ export const CardEmbedComponent = memo(
 
     const comments = commentsData?.comments;
     const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
-    const [hovered, setHovered] = useState(false);
     const { _id } = node.attrs;
     const isOpen = childTargetId === _id;
     const isHovered = hoveredChildTargetId === _id;
@@ -210,10 +220,19 @@ export const CardEmbedComponent = memo(
       () => getTargetChildCommentThreads(comments, _id),
       [comments, _id],
     );
-    const { refs, floatingStyles } = useFloating({
-      placement: "right-start",
-      whileElementsMounted: autoUpdate,
-      strategy: "fixed",
+    const unresolvedCommentsCount = useMemo(
+      () => getUnresolvedComments(threads).length,
+      [threads],
+    );
+    const {
+      component, // don't use Link component here since it messes with tiptap's link handling
+      to: commentsPath,
+      ...commentsButtonProps
+    } = useCommentsButton({
+      active: isOpen,
+      disabled: hasUnsavedChanges,
+      href: document ? `/document/${document.id}/comments/${_id}` : "",
+      unresolvedCommentsCount,
     });
 
     const { id, name } = node.attrs;
@@ -487,9 +506,6 @@ export const CardEmbedComponent = memo(
             [CS.open]: isOpen || isHovered,
           })}
           data-testid="document-card-embed"
-          ref={refs.setReference}
-          onMouseOver={() => setHovered(true)}
-          onMouseOut={() => setHovered(false)}
           data-drag-handle
           onDragOver={handleDragOver}
           onDrop={(_e) => {
@@ -722,6 +738,19 @@ export const CardEmbedComponent = memo(
                       )}
                     </Box>
                   )}
+                  {!isEditingTitle &&
+                    document &&
+                    unresolvedCommentsCount > 0 && (
+                      <Box data-hide-on-print my="-sm" ml="auto">
+                        <Button
+                          {...commentsButtonProps}
+                          onClick={() => {
+                            commentsPath && dispatch(push(commentsPath));
+                          }}
+                          style={{ border: "none" }}
+                        />
+                      </Box>
+                    )}
                   {!isEditingTitle && (
                     <Menu withinPortal position="bottom-end" data-hide-on-print>
                       <Menu.Target>
@@ -744,13 +773,10 @@ export const CardEmbedComponent = memo(
                       </Menu.Target>
                       <Menu.Dropdown>
                         <Menu.Item
-                          disabled={!document || hasUnsavedChanges}
-                          component={Link}
-                          to={
-                            document
-                              ? `/document/${document.id}/comments/${_id}`
-                              : ""
-                          }
+                          onClick={() => {
+                            commentsPath && dispatch(push(commentsPath));
+                          }}
+                          disabled={!commentsPath}
                           leftSection={<Icon name="add_message" size={14} />}
                         >
                           {t`Comment`}
@@ -849,18 +875,6 @@ export const CardEmbedComponent = memo(
             />
           )}
         </NodeViewWrapper>
-
-        {document && (
-          <CommentsMenu
-            active={isOpen}
-            disabled={hasUnsavedChanges}
-            href={`/document/${document.id}/comments/${_id}`}
-            ref={refs.setFloating}
-            show={isOpen || hovered}
-            threads={threads}
-            style={floatingStyles}
-          />
-        )}
       </>
     );
   },
