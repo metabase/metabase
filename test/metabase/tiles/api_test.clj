@@ -6,8 +6,8 @@
    [metabase.test :as mt]
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
-   [metabase.util.json :as json]
-   [ring.util.codec :as codec]))
+   [metabase.util.field-ref :as util.field-ref]
+   [metabase.util.json :as json]))
 
 ;; TODO: Assert on the contents of the response, not just the format
 (defn png? [s]
@@ -42,14 +42,14 @@
                                        :required     false}}}})
 
 (defn encoded-lat-field-ref
-  "URL-encoded latitude field ref for the People table"
+  "Base64-encoded latitude field ref for the People table"
   []
-  (codec/url-encode (json/encode (mt/$ids $people.latitude))))
+  (util.field-ref/encode-field-ref-for-url (mt/$ids $people.latitude)))
 
 (defn encoded-lon-field-ref
-  "URL-encoded longitude field ref for the People table"
+  "Base64-encoded longitude field ref for the People table"
   []
-  (codec/url-encode (json/encode (mt/$ids $people.longitude))))
+  (util.field-ref/encode-field-ref-for-url (mt/$ids $people.longitude)))
 
 (deftest ad-hoc-query-test
   (testing "GET /api/tiles/:zoom/:x/:y/:lat-field/:lon-field"

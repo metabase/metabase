@@ -2,7 +2,6 @@
   "`/api/tiles` endpoints."
   (:require
    [clojure.set :as set]
-   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -11,8 +10,8 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.util :as qp.util]
-   [metabase.tiles.util :as tiles.util]
    [metabase.util :as u]
+   [metabase.util.field-ref :as util.field-ref]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
@@ -21,7 +20,6 @@
    (java.awt Color)
    (java.awt.image BufferedImage)
    (java.io ByteArrayOutputStream)
-   (java.util Base64)
    (javax.imageio ImageIO)))
 
 (set! *warn-on-reflection* true)
@@ -210,8 +208,8 @@
    {:keys [query]} :- [:map
                        [:query ms/JSONString]]]
   (let [query         (json/decode+kw query)
-        lat-field     (mbql.normalize/normalize (tiles.util/decode-field-ref lat-field))
-        lon-field     (mbql.normalize/normalize (tiles.util/decode-field-ref lon-field))
+        lat-field     (mbql.normalize/normalize (util.field-ref/decode-field-ref-from-url lat-field))
+        lon-field     (mbql.normalize/normalize (util.field-ref/decode-field-ref-from-url lon-field))
         updated-query (tiles-query query zoom x y lat-field lon-field)
         result        (qp/process-query
                        (qp/userland-query updated-query {:executed-by api/*current-user-id*
@@ -274,8 +272,8 @@
    :- [:map
        [:parameters {:optional true} ms/JSONString]]]
   (let [parameters (json/decode+kw parameters)
-        lat-field  (tiles.util/decode-field-ref lat-field)
-        lon-field  (tiles.util/decode-field-ref lon-field)]
+        lat-field  (util.field-ref/decode-field-ref-from-url lat-field)
+        lon-field  (util.field-ref/decode-field-ref-from-url lon-field)]
     (process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field)))
 
 (api.macros/defendpoint :get "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
@@ -291,6 +289,6 @@
    :- [:map
        [:parameters {:optional true} ms/JSONString]]]
   (let [parameters (json/decode+kw parameters)
-        lat-field  (tiles.util/decode-field-ref lat-field)
-        lon-field  (tiles.util/decode-field-ref lon-field)]
+        lat-field  (util.field-ref/decode-field-ref-from-url lat-field)
+        lon-field  (util.field-ref/decode-field-ref-from-url lon-field)]
     (process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field)))

@@ -4,7 +4,6 @@ import {
   cardHasBecomeDirty,
   computeMaxDecimalsForValues,
   computeSplit,
-  encodeFieldRefForUrlBase64,
   findSensibleSankeyColumns,
   getCardAfterVisualizationClick,
   getColumnCardinality,
@@ -586,30 +585,6 @@ describe("metabase/visualization/lib/utils", () => {
       const data = { cols, rows };
 
       expect(findSensibleSankeyColumns(data)).toEqual(null);
-    });
-  });
-
-  describe("encodeFieldRefForUrlBase64", () => {
-    // Matches decode logic from src/metabase/tiles/util.clj
-    const decodeFieldRefForUrlBase64 = (encoded) => {
-      const base64Str = encoded
-        .replace(/-/g, "+")
-        .replace(/_/g, "/")
-        .padEnd(encoded.length + ((4 - (encoded.length % 4)) % 4), "=");
-      return JSON.parse(atob(base64Str));
-    };
-
-    it("should encode field refs as URL-safe base64", () => {
-      const fieldRef = ["field", 123, null];
-      const encoded = encodeFieldRefForUrlBase64(fieldRef);
-      expect(decodeFieldRefForUrlBase64(encoded)).toEqual(fieldRef);
-    });
-
-    it("should encode field refs with problematic characters", () => {
-      const fieldRef = ["field", 123, { "base-type": "type/Float" }];
-      const encoded = encodeFieldRefForUrlBase64(fieldRef);
-      expect(decodeFieldRefForUrlBase64(encoded)).toEqual(fieldRef);
-      expect(encoded).not.toContain("/"); // No problematic URL characters
     });
   });
 });
