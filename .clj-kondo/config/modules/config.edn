@@ -1721,7 +1721,6 @@
            settings
            util}}
 
-
   enterprise/embedding-hub
   {:team "Embedding"
    :api  #{metabase-enterprise.embedding-hub.api}
@@ -1830,6 +1829,12 @@
    :api  #{}
    :uses #{premium-features
            util}}
+
+  enterprise/representations
+  {:team "Querying"
+   :api #{metabase-enterprise.representations.core
+          metabase-enterprise.representations.init}
+   :uses #{}}
 
   enterprise/sandbox
   {:team "UX West"
