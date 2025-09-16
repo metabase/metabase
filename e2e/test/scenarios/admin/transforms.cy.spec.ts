@@ -2186,6 +2186,7 @@ function createMbqlTransform({
           },
         },
         target: {
+          database: WRITABLE_DB_ID,
           type: "table",
           name: targetTable,
           schema: targetSchema,
@@ -2224,6 +2225,7 @@ function createSqlTransform({
         },
       },
       target: {
+        database: WRITABLE_DB_ID,
         type: "table",
         name: targetTable,
         schema: targetSchema,
