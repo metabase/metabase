@@ -1,0 +1,53 @@
+.inputContainer {
+  display: flex;
+  align-items: flex-start;
+  padding: 0.75rem;
+  background: var(--mb-color-background);
+  border-radius: 0.5rem;
+  transition: opacity 0.2s;
+  width: 100%;
+}
+
+.inputContainer.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.iconContainer {
+  padding-top: 0.125rem;
+  margin-right: 0.5rem;
+  flex-shrink: 0;
+}
+
+.editorContent {
+  flex: 1;
+  min-height: 1.5rem;
+  max-height: 10rem;
+  overflow-y: auto;
+}
+
+/* TipTap editor styles */
+.editorContent :global(.ProseMirror) {
+  outline: none;
+  min-height: 1.5rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--mb-color-text-primary);
+}
+
+.editorContent :global(.ProseMirror p) {
+  margin: 0;
+}
+
+.editorContent :global(.ProseMirror p + p) {
+  margin-top: 0.25rem;
+}
+
+/* Placeholder text */
+.editorContent :global(.ProseMirror p.is-editor-empty:first-child::before) {
+  color: var(--mb-color-text-light);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
