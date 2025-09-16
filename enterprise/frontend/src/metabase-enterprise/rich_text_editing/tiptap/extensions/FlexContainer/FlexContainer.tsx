@@ -207,19 +207,15 @@ const FlexContainerComponent: React.FC<NodeViewProps> = ({
         .slice(0, i + 1)
         .reduce((sum: number, width: number) => sum + width, 0);
 
-      // Account for grid gaps - each gap adds to the left offset
-      // There are i gaps before this handle (gap after each of the first i columns)
-      const gapCount = i;
-      const gapOffset = gapCount * 0.5; // 1rem gap converted to percentage
-
       handles.push(
         <div
           key={i}
           className={styles.resizeHandle}
           style={{
-            left: `calc(${leftWidth}% + ${gapOffset}rem)`,
+            left: `${leftWidth}%`,
             pointerEvents: disabled ? "none" : "auto",
           }}
+          contentEditable={false}
           onMouseDown={(e) => handleMouseDown(i, e)}
         />,
       );
@@ -239,6 +235,7 @@ const FlexContainerComponent: React.FC<NodeViewProps> = ({
         <NodeViewContent
           className={styles.flexContent}
           style={{
+            // @ts-expect-error - custom CSS variable needed for this component
             "--mb-card-container-col-widths": columnWidths
               .map(
                 (width: number) => `minmax(${COLUMN_MIN_WIDTH}px, ${width}%)`,
