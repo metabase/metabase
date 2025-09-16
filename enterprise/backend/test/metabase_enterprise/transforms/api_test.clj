@@ -343,17 +343,6 @@
                        (transforms.tu/table-rows table-name)))))))))))
 
 (deftest python-transform-logging-test
-
-  ;; behaviour
-  ;; message contains expected log output post run
-  ;;   for failure, timeout, cancellation
-  ;;   - python error
-  ;;   - hang up during http
-  ;;   - crash during table write
-  ;;   - crash during sync
-  ;;   content: stdout/stderr + metabase
-  ;;      out/err interleaving
-
   (letfn [(program->source [program]
             (->> (concat ["import pandas as pd"
                           "def transform():"]
