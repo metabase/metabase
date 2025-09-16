@@ -521,12 +521,3 @@ export function findSensibleSankeyColumns(data) {
     metric: metricColumn.name,
   };
 }
-
-// Field refs must be properly encoded for URL transmission
-// Use base64 encoding to avoid issues with special characters in URL paths
-export function encodeFieldRefForUrlBase64(fieldRef) {
-  return btoa(JSON.stringify(fieldRef))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, ""); // Remove trailing padding
-}

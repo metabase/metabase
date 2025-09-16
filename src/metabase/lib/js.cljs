@@ -82,6 +82,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
+   [metabase.util.field-ref :as lib.util.field-ref]
    [metabase.util.log :as log]
    [metabase.util.memoize :as memoize]
    [metabase.util.performance :as perf]
@@ -2616,3 +2617,13 @@
   > **Code health:** Healthy"
   [a-query]
   (lib.core/ensure-filter-stage a-query))
+
+(defn ^:export encode-field-ref-for-url
+  "Encode a field ref as URL-safe base64 to avoid issues with special characters in URL paths."
+  [field-ref]
+  (lib.util.field-ref/encode-field-ref-for-url field-ref))
+
+(defn ^:export decode-field-ref-from-url
+  "Decode a base64-encoded field ref parameter."
+  [field-ref-str]
+  (lib.util.field-ref/decode-field-ref-from-url field-ref-str))
