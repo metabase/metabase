@@ -4,11 +4,17 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useState,
 } from "react";
+import { useDebounce } from "react-use";
 import { t } from "ttag";
 
-import { Box, Flex, Paper, Text } from "metabase/ui";
+import { useListRecentsQuery, useSearchQuery } from "metabase/api";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import { getIcon } from "metabase/lib/icon";
+import { Box, Flex, Icon, Paper, Text } from "metabase/ui";
+import type { RecentItem, SearchModel, SearchResult } from "metabase-types/api";
 
 import type { MetabotMentionCommandProps } from "./MetabotMentionExtension";
 
@@ -24,37 +30,80 @@ interface SuggestionRef {
   onKeyDown: (props: { event: KeyboardEvent }) => boolean;
 }
 
-// Mock items for testing @ trigger functionality
-const MOCK_ENTITIES = [
-  { id: 1, model: "table", label: "Orders" },
-  { id: 2, model: "table", label: "Products" },
-  { id: 3, model: "table", label: "Customers" },
-  { id: 4, model: "dashboard", label: "Sales Dashboard" },
-  { id: 5, model: "document", label: "Q4 Report" },
+// Search models to include in @ mentions
+const METABOT_SEARCH_MODELS: SearchModel[] = [
+  "card",
+  "dataset",
+  "metric",
+  "dashboard",
+  "database",
+  "table",
+  "collection",
+  "document",
 ];
+
+const SUGGESTION_LIMIT = 8;
 
 export const MetabotMentionSuggestion = forwardRef<
   SuggestionRef,
   MetabotMentionSuggestionProps
 >(function MetabotMentionSuggestion({ command, query }, ref) {
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [debouncedQuery, setDebouncedQuery] = useState("");
 
-  // Filter mock items based on query
-  const filteredItems = MOCK_ENTITIES.filter((item) =>
-    item.label.toLowerCase().includes(query.toLowerCase()),
-  ).slice(0, 5); // Limit to 5 items for now
+  // Debounce the search query to avoid excessive API calls
+  useDebounce(
+    () => {
+      setDebouncedQuery(query);
+    },
+    SEARCH_DEBOUNCE_DURATION,
+    [query],
+  );
 
-  // Reset selectedIndex when filtered items change
+  // Search for entities when user types after @
+  const { data: searchResponse, isLoading: isSearchLoading } = useSearchQuery(
+    {
+      q: debouncedQuery,
+      models: METABOT_SEARCH_MODELS,
+      limit: SUGGESTION_LIMIT,
+    },
+    {
+      skip: !debouncedQuery || debouncedQuery.length === 0,
+    },
+  );
+
+  // Show recent items when just @ is typed
+  const { data: recents = [], isLoading: isRecentsLoading } =
+    useListRecentsQuery(undefined, {
+      skip: query.length > 0,
+    });
+
+  // Filter and prepare items for display
+  const items = useMemo(() => {
+    if (query.length > 0) {
+      // Show search results if we have a query (even while debouncing)
+      return searchResponse?.data ?? [];
+    }
+
+    // Filter recents to only include searchable models and limit
+    return recents
+      .filter((recent: RecentItem) =>
+        METABOT_SEARCH_MODELS.includes(recent.model as SearchModel),
+      )
+      .slice(0, SUGGESTION_LIMIT);
+  }, [query, searchResponse, recents]);
+
+  // Reset selectedIndex when items change
   useEffect(() => {
     setSelectedIndex(0);
-  }, [filteredItems.length, query]);
+  }, [items.length, query]);
 
   const selectItem = useCallback(
-    (item: (typeof MOCK_ENTITIES)[0]) => {
+    (item: SearchResult | RecentItem) => {
       command({
-        id: item.id,
-        model: item.model,
-        label: item.label,
+        id: "id" in item ? item.id : item.item_id,
+        model: "model" in item ? item.model : item.model,
+        label: "name" in item ? item.name : item.item_name,
       });
     },
     [command],
@@ -64,19 +113,17 @@ export const MetabotMentionSuggestion = forwardRef<
   const onKeyDown = useCallback(
     ({ event }: { event: KeyboardEvent }) => {
       if (event.key === "ArrowUp") {
-        setSelectedIndex(
-          (index) => (index - 1 + filteredItems.length) % filteredItems.length,
-        );
+        setSelectedIndex((index) => (index - 1 + items.length) % items.length);
         return true;
       }
 
       if (event.key === "ArrowDown") {
-        setSelectedIndex((index) => (index + 1) % filteredItems.length);
+        setSelectedIndex((index) => (index + 1) % items.length);
         return true;
       }
 
       if (event.key === "Enter") {
-        const item = filteredItems[selectedIndex];
+        const item = items[selectedIndex];
         if (item) {
           selectItem(item);
         }
@@ -89,14 +136,37 @@ export const MetabotMentionSuggestion = forwardRef<
 
       return false;
     },
-    [filteredItems, selectedIndex, selectItem],
+    [items, selectedIndex, selectItem],
   );
 
   useImperativeHandle(ref, () => ({
     onKeyDown,
   }));
 
-  if (filteredItems.length === 0) {
+  const isLoading =
+    query.length > 0
+      ? isSearchLoading || query !== debouncedQuery
+      : isRecentsLoading;
+
+  if (isLoading) {
+    return (
+      <Paper
+        shadow="md"
+        radius="sm"
+        style={{
+          minWidth: 200,
+          maxWidth: 320,
+        }}
+      >
+        <Flex align="center" justify="center" p="md">
+          <Icon name="hourglass" size="1rem" />
+          <Text ml="xs">{t`Loading...`}</Text>
+        </Flex>
+      </Paper>
+    );
+  }
+
+  if (items.length === 0) {
     return (
       <Paper
         shadow="md"
@@ -108,7 +178,7 @@ export const MetabotMentionSuggestion = forwardRef<
       >
         <Box p="md">
           <Text c="text-light" size="sm">
-            {query ? t`No results found for "${query}"` : t`No items found`}
+            {query ? t`No results found for "${query}"` : t`No recent items`}
           </Text>
         </Box>
       </Paper>
@@ -125,31 +195,43 @@ export const MetabotMentionSuggestion = forwardRef<
       }}
     >
       <Box p="xs">
-        {filteredItems.map((item, index) => (
-          <Box
-            key={`${item.model}-${item.id}`}
-            p="xs"
-            style={{
-              cursor: "pointer",
-              borderRadius: "0.25rem",
-              backgroundColor:
-                index === selectedIndex
-                  ? "var(--mb-color-background-hover)"
-                  : "transparent",
-            }}
-            onClick={() => selectItem(item)}
-            onMouseEnter={() => setSelectedIndex(index)}
-          >
-            <Flex align="center" gap="xs">
-              <Text size="sm" fw={500}>
-                {item.label}
-              </Text>
-              <Text size="xs" c="text-light">
-                ({item.model})
-              </Text>
-            </Flex>
-          </Box>
-        ))}
+        {items.map((item, index) => {
+          const iconData = getIcon({
+            model: item.model,
+            display: (item as any).display,
+          });
+          const itemName = "name" in item ? item.name : item.item_name;
+          const itemId = "id" in item ? item.id : item.item_id;
+
+          return (
+            <Box
+              key={`${item.model}-${itemId}`}
+              p="xs"
+              style={{
+                cursor: "pointer",
+                borderRadius: "0.25rem",
+                backgroundColor:
+                  index === selectedIndex
+                    ? "var(--mb-color-background-hover)"
+                    : "transparent",
+              }}
+              onClick={() => selectItem(item)}
+              onMouseEnter={() => setSelectedIndex(index)}
+            >
+              <Flex align="center" gap="xs">
+                <Icon name={iconData.name} c={iconData.color} size="1rem" />
+                <Text size="sm" truncate fw={500}>
+                  {itemName}
+                </Text>
+              </Flex>
+              {item.collection && (
+                <Text size="xs" c="text-light" truncate ml="1.5rem">
+                  {item.collection.name}
+                </Text>
+              )}
+            </Box>
+          );
+        })}
       </Box>
     </Paper>
   );
