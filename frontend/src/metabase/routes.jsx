@@ -99,7 +99,7 @@ export const getRoutes = (store) => {
         disableCommandPalette
       />
 
-      {/* EMBEDDING SETUP REDIRECT */}
+      {/* For compatibility: use the standard setup for embedding */}
       <Redirect from="/setup/embedding" to="/setup" />
 
       {/* APP */}
