@@ -1,15 +1,19 @@
-(ns metabase-enterprise.transforms-python.transforms-api-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
-            [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
-            [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup! get-test-schema]]
-            [metabase.driver :as driver]
-            [metabase.test :as mt]
-            [toucan2.core :as t2])
-  (:import (clojure.lang IDeref)
-           (java.io Closeable)
-           (java.time Duration)))
+(ns ^:mb/driver-tests metabase-enterprise.transforms-python.transforms-api-test
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
+   [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
+   [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup! get-test-schema]]
+   [metabase.driver :as driver]
+   [metabase.test :as mt]
+   [toucan2.core :as t2])
+  (:import
+   (clojure.lang IDeref)
+   (java.io Closeable)
+   (java.time Duration)))
+
+(set! *warn-on-reflection* true)
 
 (deftest create-python-transform-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -50,8 +54,7 @@
                                                              "def transform():\n"
                                                              "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")}
                                         :target  (assoc target :database (mt/id))}
-                    {transform-id :id :as res} (mt/user-http-request :crowberto :post 200 "ee/transform"
-                                                                     original)]
+                    {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform" original)]
                 (transforms.tu/test-run transform-id)
                 (transforms.tu/wait-for-table table-name 5000)
                 (is (true? (driver/table-exists? driver/*driver* (mt/db) target)))
