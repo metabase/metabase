@@ -119,7 +119,7 @@ function UpdateTargetForm({
     if (shouldDeleteTarget) {
       await deleteTransformTarget(transform.id).unwrap();
     }
-    await fetchTransform(transform.id);
+    await fetchTransform(transform.id).unwrap();
     onUpdate();
   };
 
