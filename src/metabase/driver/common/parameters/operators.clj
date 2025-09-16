@@ -77,7 +77,7 @@
 (mu/defn to-clause :- ::mbql.s/Filter
   "Convert an operator style parameter into an mbql clause. Will also do arity checks and throws an ex-info with
   `:type qp.error-type/invalid-parameter` if arity is incorrect."
-  [param :- ::mbql.s/Parameter]
+  [param :- ::lib.schema.parameter/parameter]
   (let [{param-type :type, [a b :as param-value] :value, [_ field] :target, options :options} (normalize-param param)]
     (verify-type-and-arity field param-type param-value)
     (let [field'  (mbql.u/wrap-field-id-if-needed field)

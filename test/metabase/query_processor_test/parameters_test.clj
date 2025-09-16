@@ -254,7 +254,7 @@
 (deftest ^:parallel filter-nested-queries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries)
     (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                      (mt/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       {:cards [{:id            1
                                                 :dataset-query (mt/native-query (qp.compile/compile (mt/mbql-query checkins)))}]})
       (let [date  (lib.metadata/field (qp.store/metadata-provider) (mt/id :checkins :date))
@@ -735,7 +735,7 @@
 (deftest ^:parallel x-test
   (mt/test-drivers (mt/normal-drivers)
     (let [query (lib/query
-                 (mt/application-database-metadata-provider (mt/id))
+                 (mt/metadata-provider)
                  {:lib/type   :mbql/query
                   :database   (mt/id)
                   :stages     [{:lib/type     :mbql.stage/mbql
