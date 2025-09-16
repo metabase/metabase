@@ -1,8 +1,6 @@
 (ns metabase-enterprise.remote-sync.api
   (:require
-   [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase-enterprise.mbml.core :as mbml]
    [metabase-enterprise.remote-sync.events :as lib.events]
    [metabase-enterprise.remote-sync.models.library-change-log]
    [metabase-enterprise.remote-sync.settings :as settings]
@@ -19,10 +17,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
-  (:import (java.io File)
-           (java.nio.file Files)
-           (java.nio.file.attribute FileAttribute)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
