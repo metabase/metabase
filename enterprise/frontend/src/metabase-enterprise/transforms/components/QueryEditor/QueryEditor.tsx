@@ -1,5 +1,5 @@
 import { useDisclosure, useHotkeys } from "@mantine/hooks";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { useListDatabasesQuery } from "metabase/api";
 import type { SelectionRange } from "metabase/query_builder/components/NativeQueryEditor/types";
@@ -17,7 +17,7 @@ import { EditorHeader } from "./EditorHeader";
 import { EditorSidebar } from "./EditorSidebar";
 import { EditorVisualization } from "./EditorVisualization";
 import S from "./QueryEditor.module.css";
-import { locationToPosition } from "./util";
+import { useInsertSnippetHandler, useSelectedText } from "./util";
 
 type QueryEditorProps = {
   initialQuery: DatasetQuery;
@@ -85,47 +85,13 @@ export function QueryEditor({
     toggleSnippetSidebar();
   };
 
-  const [selectionRange, setSelectionRange] = useState<SelectionRange[]>([
-    { start: { row: 0, column: 0 }, end: { row: 0, column: 0 } },
-  ]);
-
-  const selectedText = useMemo(() => {
-    const range = selectionRange[0];
-    if (!range) {
-      return null;
-    }
-
-    const query = question.query();
-    const text = Lib.rawNativeQuery(query);
-    const { start, end } = range;
-
-    const selectionStart = locationToPosition(text, start);
-    const selectionEnd = locationToPosition(text, end);
-    return text.slice(selectionStart, selectionEnd);
-  }, [question, selectionRange]);
-
-  const handleInsertSnippet = (snippet: NativeQuerySnippet) => {
-    const query = question.query();
-    const text = Lib.rawNativeQuery(query);
-
-    const range = selectionRange[0];
-    if (!range) {
-      return;
-    }
-
-    const { start, end } = range;
-
-    const selectionStart = locationToPosition(text, start);
-    const selectionEnd = locationToPosition(text, end);
-
-    const newText =
-      text.slice(0, selectionStart) +
-      `{{snippet: ${snippet.name}}}` +
-      text.slice(selectionEnd);
-
-    const newQuery = Lib.withNativeQuery(query, newText);
-    handleChange(question.setQuery(newQuery));
-  };
+  const [selectionRange, setSelectionRange] = useState<SelectionRange[]>([]);
+  const selectedText = useSelectedText(question, selectionRange);
+  const handleInsertSnippet = useInsertSnippetHandler({
+    question,
+    selectionRange,
+    onChange: handleChange,
+  });
 
   const [modalSnippet, setModalSnippet] = useState<NativeQuerySnippet | null>(
     null,
