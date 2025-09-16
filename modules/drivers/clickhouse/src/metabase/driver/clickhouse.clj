@@ -268,12 +268,12 @@
 
 (defmethod driver/rename-tables!* :clickhouse
   [_driver db-id sorted-rename-map]
-  (let [rename-clauses (map (fn [[old-table-name new-table-name]]
-                              (format "%s TO %s" (quote-name old-table-name) (quote-name new-table-name)))
-                            sorted-rename-map)
-        sql (format "RENAME TABLE %s" (str/join ", " rename-clauses))]
-    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
-      (jdbc/execute! conn [sql]))))
+  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+    (with-open [stmt (.createStatement ^java.sql.Connection (:connection conn))]
+      (doseq [[old-table-name new-table-name] sorted-rename-map]
+        (let [sql (format "RENAME TABLE %s TO %s" (quote-name old-table-name) (quote-name new-table-name))]
+          (.addBatch ^java.sql.Statement stmt ^String sql)))
+      (.executeBatch ^java.sql.Statement stmt))))
 
 (defmethod driver/insert-into! :clickhouse
   [driver db-id table-name column-names values]
