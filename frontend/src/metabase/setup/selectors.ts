@@ -128,6 +128,7 @@ export const getSteps = createSelector(
       tokenFeatures &&
       tokenFeatures["hosting"] &&
       !hasAddedPaidPlanInPreviousStep;
+
     const shouldShowDataUsageStep = !isHosted;
 
     const maybeAddStep = (step: SetupStep, condition: boolean): SetupStep[] =>
@@ -135,9 +136,8 @@ export const getSteps = createSelector(
 
     const steps: SetupStep[] = [
       "welcome",
-      "language",
       "user_info",
-      "usage_question",
+      ...maybeAddStep("usage_question", !isEmbeddingUseCase),
       ...maybeAddStep(
         "db_connection",
         shouldShowDBConnectionStep && !isEmbeddingUseCase,
