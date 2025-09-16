@@ -54,7 +54,7 @@ export function GlossaryRowEditor({
             input: S.input,
           }}
           variant="unstyled"
-          placeholder={t`A thing with wings.`}
+          placeholder={t`A warm-blooded, egg-laying vertebrate of the class Aves.`}
           value={definition}
           onChange={(e) => setDefinition(e.currentTarget.value)}
           autosize
