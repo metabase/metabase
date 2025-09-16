@@ -116,9 +116,13 @@
                       (when-some [col (resolve* (:name field))]
                         ;; don't return a match that is definitely for a different column (has an ID, but it's for a
                         ;; different column)
-                        (when (or (not (:id col))
-                                  (= (:id col) id-or-name))
-                          col)))))))]
+                        (cond
+                          (= (:id col) id-or-name)
+                          col
+                          ;; if resolved col is missing ID, merge in metadata from the metadata provider
+                          (not (:id col))
+                          (merge-metadata (lib.metadata/field metadata-providerable id-or-name)
+                                          col))))))))]
     (u/prog1 (resolve* id-or-name)
       (if <>
         (log/debugf "Found match %s"
@@ -312,7 +316,10 @@
                     (lib.util.log/format-field query id-or-name)
                     (pr-str join-alias)
                     stage-number)
-        (let [join-cols (cond->> (lib.join/join-returned-columns-relative-to-parent-stage query stage-number join nil)
+        ;; TODO (Cam 9/4/25) -- we should almost certainly be passing `{:include-remaps? true}` everywhere we call
+        ;; some variant of `returned-columns` in this namespace, or better yet forwarding it somehow from calls in
+        ;; `returned-columns`. But just doing it here for now will have to do.
+        (let [join-cols (cond->> (lib.join/join-returned-columns-relative-to-parent-stage query stage-number join {:include-remaps? true})
                           source-field (remove (fn [col]
                                                  (when-some [col-source-field ((some-fn :fk-field-id :lib/original-fk-field-id) col)]
                                                    (not= col-source-field source-field)))))]
@@ -323,9 +330,7 @@
       ;; a join with this alias does not exist at this stage of the query... try looking recursively in previous
       ;; stage(s)
       (do
-        (log/debugf "Join %s does not exist in stage %d, looking in previous stages"
-                    (pr-str join-alias)
-                    stage-number)
+        (log/debugf "Join %s does not exist in stage %d, looking in previous stages" (pr-str join-alias) stage-number)
         (if-some [source-cols (or (when-some [previous-stage-number (lib.util/previous-stage-number query stage-number)]
                                     (lib.metadata.calculation/returned-columns query previous-stage-number))
                                   (when-some [source-card-id (:source-card (lib.util/query-stage query stage-number))]
@@ -428,13 +433,13 @@
     (when (and join-stage-number
                (not= join-stage-number stage-number))
       (log/errorf (str "Field ref %s in stage %d specifies :source-field-id %s, but we found the implicit join %s in"
-                       " earlier stage %s, which doesn't return this column. Query almost certainly won't work"
+                       " earlier stage %d, which doesn't return this column. Query almost certainly won't work"
                        " correctly.")
                   (lib.util.log/format-field query id-or-name)
                   stage-number
                   (lib.util.log/format-field query source-field-id)
                   (pr-str (:alias join))
-                  (pr-str join-stage-number))
+                  join-stage-number)
       (when-some [col (resolve-in-implicit-join-current-stage query source-field-id id-or-name)]
         (-> col
             lib.field.util/update-keys-for-col-from-previous-stage

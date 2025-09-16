@@ -103,9 +103,9 @@
   ([query context]
    (available-drill-thrus query -1 context))
 
-  ([query                                   :- ::lib.schema/query
-    stage-number                            :- :int
-    {:keys [column column-ref] :as context} :- ::lib.schema.drill-thru/context]
+  ([query                        :- ::lib.schema/query
+    stage-number                 :- :int
+    {:keys [column] :as context} :- ::lib.schema.drill-thru/context]
    (try
      (into []
            (when (and (lib.metadata/editable? query)
@@ -114,12 +114,12 @@
                    ;; underlying table id instead of "card__blah", and that can cause issues with drills in certain
                    ;; scenarios.  Changing the returned column metadata would be a large and scary change, so we just
                    ;; grab the equivalent column from returned-columns here instead
-                   new-column (and column-ref
-                                   (->> (lib.metadata.calculation/returned-columns query stage-number)
-                                        (lib.equality/find-matching-column query stage-number column-ref)))
-                   old-types (select-keys column [:base-type :effective-type :semantic-type])
-                   context (cond-> context
-                             (and column column-ref new-column) (assoc :column (merge new-column old-types)))
+                   new-column                   (and column
+                                                     (->> (lib.metadata.calculation/returned-columns query stage-number)
+                                                          (lib.equality/find-matching-column query stage-number column)))
+                   old-types                    (select-keys column [:base-type :effective-type :semantic-type])
+                   context                      (cond-> context
+                                                  (and column new-column) (assoc :column (merge new-column old-types)))
                    {:keys [query stage-number]} (lib.query/wrap-native-query-with-mbql
                                                  query stage-number (:card-id context))
                    context                      (context-with-dimensions-or-row-dimensions query context)
