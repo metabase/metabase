@@ -8,6 +8,7 @@ import {
 } from "@tiptap/react";
 import cx from "classnames";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router";
 import { useMount, useUnmount } from "react-use";
 import { t } from "ttag";
 
@@ -743,9 +744,13 @@ export const CardEmbedComponent = memo(
                       </Menu.Target>
                       <Menu.Dropdown>
                         <Menu.Item
-                          onClick={() => {
-                            // TODO
-                          }}
+                          disabled={!document || hasUnsavedChanges}
+                          component={Link}
+                          to={
+                            document
+                              ? `/document/${document.id}/comments/${_id}`
+                              : ""
+                          }
                           leftSection={<Icon name="add_message" size={14} />}
                         >
                           {t`Comment`}
