@@ -2,8 +2,10 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { isEEBuild } from "metabase/lib/utils";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getLandingPageIllustration } from "metabase/selectors/whitelabel";
 import { Tooltip } from "metabase/ui";
 
@@ -21,10 +23,24 @@ interface HomeLayoutProps {
   children?: ReactNode;
 }
 
-export const HomeLayout = ({ children }: HomeLayoutProps): JSX.Element => {
+export const HomeLayout = ({ children }: HomeLayoutProps): ReactNode => {
   const [showModal, setShowModal] = useState(false);
   const isAdmin = useSelector(getUserIsAdmin);
   const landingPageIllustration = useSelector(getLandingPageIllustration);
+
+  const user = useSelector(getUser);
+  const embeddingHomepage = useSetting("embedding-homepage");
+  const isEE = isEEBuild();
+  const isSimpleEmbeddingAvailable = useHasTokenFeature("embedding_simple");
+
+  if (
+    embeddingHomepage === "visible" &&
+    user?.is_superuser &&
+    isEE &&
+    isSimpleEmbeddingAvailable
+  ) {
+    return children;
+  }
 
   return (
     <LayoutRoot data-testid="home-page">
