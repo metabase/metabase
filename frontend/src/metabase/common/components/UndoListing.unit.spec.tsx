@@ -41,4 +41,26 @@ describe("UndoListing", () => {
 
     expect(await screen.findByRole("progressbar")).toBeInTheDocument();
   });
+
+  it("should enable tooltip for truncated messages", async () => {
+    const longMessage = "Auto-connect this filter to all questions containing \"Very Long Product Title That Will Definitely Be Truncated In The UI\", in the current tab?";
+    
+    renderWithProviders(<UndoListing />, {
+      storeInitialState: {
+        undo: [
+          {
+            ...AUTO_CONNECT_UNDO,
+            message: longMessage,
+          },
+        ],
+      },
+    });
+
+    const toastElement = await screen.findByTestId("toast-undo");
+    expect(toastElement).toBeInTheDocument();
+    
+    // The Ellipsified component should now allow tooltips (showTooltip not set to false)
+    const ellipsifiedElement = toastElement.querySelector('[data-testid="ellipsified-tooltip"]');
+    expect(ellipsifiedElement).toBeInTheDocument();
+  });
 });

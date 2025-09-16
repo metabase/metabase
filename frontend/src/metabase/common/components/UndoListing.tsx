@@ -131,7 +131,7 @@ function UndoToast({
           {undo.renderChildren ? (
             undo.renderChildren(undo)
           ) : (
-            <Ellipsified showTooltip={false}>{renderMessage(undo)}</Ellipsified>
+            <Ellipsified>{renderMessage(undo)}</Ellipsified>
           )}
         </CardContentSide>
         <ControlsCardContent>
