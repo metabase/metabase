@@ -1,7 +1,7 @@
 (ns metabase.lib.field-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [are deftest is testing use-fixtures]]
+   [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.core :as lib]
@@ -29,8 +29,32 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
-(use-fixtures :each (fn [thunk]
-                      (thunk)))
+(deftest ^:parallel ref-test
+  (is (=? [:field
+           {:base-type      :type/DateTime
+            :effective-type :type/Integer
+            :temporal-unit  :year
+            :lib/uuid       string?}
+           "CREATED_AT"]
+          (lib/ref {:base-type                                  :type/DateTime
+                    :database-type                              "TIMESTAMP"
+                    :display-name                               "CREATED_AT: Year"
+                    :effective-type                             :type/DateTime
+                    :inherited-temporal-unit                    :year
+                    :name                                       "CREATED_AT_2"
+                    :remapped-from-index                        nil
+                    :remapping                                  nil
+                    :semantic-type                              :type/CreationTimestamp
+                    :lib/breakout?                              true
+                    :lib/card-id                                1
+                    :lib/deduplicated-name                      "CREATED_AT_2"
+                    :lib/desired-column-alias                   "CREATED_AT_2"
+                    :lib/original-name                          "CREATED_AT"
+                    :lib/source-column-alias                    "CREATED_AT"
+                    :lib/type                                   :metadata/column
+                    :metabase.lib.field/original-effective-type :type/DateTime
+                    :metabase.lib.field/original-temporal-unit  :year
+                    :metabase.lib.field/temporal-unit           :year}))))
 
 (defn grandparent-parent-child-id [field]
   (+ (meta/id :venues :id)

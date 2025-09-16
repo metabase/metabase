@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.resolve-joined-fields
+(ns metabase.query-processor.middleware.fix-bad-field-id-refs
   "Middleware that adds `:join-alias` info to `:field` clauses where needed."
   (:require
    [metabase.lib.core :as lib]
@@ -9,7 +9,7 @@
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]))
 
-(mu/defn- resolve-joined-fields-in-stage :- [:maybe ::lib.schema/stage]
+(mu/defn- fix-bad-field-id-refs-in-stage :- [:maybe ::lib.schema/stage]
   [query :- ::lib.schema/query
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage]
@@ -34,7 +34,8 @@
       ;; normalizing the stage will remove any duplicate `:fields` or `:breakouts`
       (lib/normalize ::lib.schema/stage stage'))))
 
-(mu/defn resolve-joined-fields :- ::lib.schema/query
-  "Add `:join-alias` info to `:field` clauses where needed."
+(mu/defn fix-bad-field-id-refs :- ::lib.schema/query
+  "Fix any `:field` refs using an integer Field ID that in a stage where that Field's Table is not the
+  `:source-table`. Convert them to Field name refs and add info like `:join-alias` as needed."
   [query :- ::lib.schema/query]
-  (lib.walk/walk-stages query resolve-joined-fields-in-stage))
+  (lib.walk/walk-stages query fix-bad-field-id-refs-in-stage))
