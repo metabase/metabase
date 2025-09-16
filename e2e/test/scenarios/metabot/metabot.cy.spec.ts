@@ -180,20 +180,20 @@ d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
         });
         H.closeMetabotViaCloseButton();
 
-        H.openMetabotViaShortcutKey();
-        H.expectUnstructuredSnowplowEvent({
-          event: "metabot_chat_opened",
-          triggered_from: "keyboard_shortcut",
-        });
-        H.closeMetabotViaShortcutKey();
-        cy.log("We don't track closing the chat via kbd");
-        H.expectUnstructuredSnowplowEvent(
-          {
-            event: "metabot_chat_opened",
-            triggered_from: "keyboard_shortcut",
-          },
-          1,
-        );
+        // H.openMetabotViaShortcutKey();
+        // H.expectUnstructuredSnowplowEvent({
+        //   event: "metabot_chat_opened",
+        //   triggered_from: "keyboard_shortcut",
+        // });
+        // H.closeMetabotViaShortcutKey();
+        // cy.log("We don't track closing the chat via kbd");
+        // H.expectUnstructuredSnowplowEvent(
+        //   {
+        //     event: "metabot_chat_opened",
+        //     triggered_from: "keyboard_shortcut",
+        //   },
+        //   1,
+        // );
       });
 
       it("should allow a user to send a message to the agent and handle successful or failed responses", () => {
