@@ -196,23 +196,24 @@
 
 (defmethod resolve-field :all-columns
   [driver metadata-provider col-spec]
-  (->> (:table col-spec)
-       (find-table-or-transform driver (driver-api/tables metadata-provider) [])
-       :table
-       (driver-api/fields metadata-provider)))
+  (or (some->> (:table col-spec)
+               (find-table-or-transform driver (driver-api/tables metadata-provider) [])
+               :table
+               (driver-api/fields metadata-provider))
+      [(assoc col-spec ::bad-reference true)]))
 
 (defmethod resolve-field :single-column
   [driver metadata-provider col-spec]
-  (or (->> (:source-columns col-spec)
-           (mapcat (partial resolve-field driver metadata-provider))
-           (some #(when (= (:name %) (:column col-spec))
-                    %)))
-      (assoc col-spec ::bad-reference true)))
+  [(or (->> (:source-columns col-spec)
+            (mapcat (partial resolve-field driver metadata-provider))
+            (some #(when (= (:name %) (:column col-spec))
+                     %)))
+       (assoc col-spec ::bad-reference true))])
 
 (defmethod resolve-field :custom-field
   [_driver _metadata-provider col-spec]
-  {:type :type/*
-   :name (:alias col-spec)})
+  [{:type :type/*
+    :name (:alias col-spec)}])
 
 (defmethod driver/native-result-metadata :sql
   [driver metadata-provider native-query]
@@ -227,9 +228,8 @@
                                    macaw/->ast
                                    (sql.references/field-references driver))]
     (every? (fn [col-spec]
-              (-> (resolve-field driver metadata-provider col-spec)
-                  ::bad-reference
-                  not))
+              (->> (resolve-field driver metadata-provider col-spec)
+                   (every? (comp not ::bad-reference))))
             used-fields)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
