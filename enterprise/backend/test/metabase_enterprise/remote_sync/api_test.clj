@@ -1,8 +1,8 @@
-(ns metabase-enterprise.library.api-test
+(ns metabase-enterprise.remote-sync.api-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.library.source :as source]
-   [metabase-enterprise.library.source.protocol :as source.p]
+   [metabase-enterprise.remote-sync.source :as source]
+   [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase.test :as mt]))
 
 (defn mock-git-source

@@ -1,11 +1,11 @@
-(ns metabase-enterprise.library.events-test
+(ns metabase-enterprise.remote-sync.events-test
   "Tests for the library events system.
 
    Tests event publishing, handling, and model change tracking functionality."
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase-enterprise.library.events :as lib.events]
+   [metabase-enterprise.remote-sync.events :as lib.events]
    [metabase.events.core :as events]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]

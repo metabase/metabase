@@ -1,4 +1,4 @@
-(ns metabase-enterprise.library.events
+(ns metabase-enterprise.remote-sync.events
   "Event system for library synchronization operations and model change tracking.
 
    Provides event publishing and handling for library sync operations,

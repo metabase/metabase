@@ -15,11 +15,11 @@
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.config.core :as config :refer [*request-id*]]
    [metabase.events.core :as events]
-   [metabase.library.core :as library]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.remote-sync.core :as library]
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]

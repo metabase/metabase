@@ -1,9 +1,9 @@
-(ns metabase.library.core
+(ns metabase.remote-sync.core
   (:require
    [metabase.premium-features.core :refer [defenterprise]]))
 
 (defenterprise library-editable?
   "Should the library be editable. Always true on OSS"
-  metabase-enterprise.library.core
+  metabase-enterprise.remote-sync.core
   [_collection]
   true)

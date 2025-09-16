@@ -1,10 +1,10 @@
-(ns metabase-enterprise.library.source.git
+(ns metabase-enterprise.remote-sync.source.git
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase-enterprise.library.source.protocol :as source.p]
+   [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import

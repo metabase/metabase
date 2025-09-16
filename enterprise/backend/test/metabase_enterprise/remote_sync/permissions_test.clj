@@ -1,7 +1,7 @@
-(ns metabase-enterprise.library.permissions-test
+(ns metabase-enterprise.remote-sync.permissions-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.library.settings :as library.settings]
+   [metabase-enterprise.remote-sync.settings :as library.settings]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [toucan2.core :as t2]))

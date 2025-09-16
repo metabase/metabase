@@ -1,6 +1,6 @@
-(ns metabase-enterprise.library.settings
+(ns metabase-enterprise.remote-sync.settings
   (:require
-   [metabase-enterprise.library.source :as source]
+   [metabase-enterprise.remote-sync.source :as source]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 

@@ -1,8 +1,8 @@
-(ns metabase-enterprise.library.source
+(ns metabase-enterprise.remote-sync.source
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.library.source.git :as git]
-   [metabase-enterprise.library.source.protocol :as source.p]
+   [metabase-enterprise.remote-sync.source.git :as git]
+   [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
    [metabase.models.serialization :as serdes]

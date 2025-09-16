@@ -1,9 +1,9 @@
-(ns metabase-enterprise.library.source.git-test
+(ns metabase-enterprise.remote-sync.source.git-test
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
-   [metabase-enterprise.library.source.git :as git]
-   [metabase-enterprise.library.source.protocol :as source.p]
+   [metabase-enterprise.remote-sync.source.git :as git]
+   [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase.test :as mt])
   (:import (java.io File)
            (org.eclipse.jgit.api Git)

@@ -1,4 +1,4 @@
-(ns metabase-enterprise.library.models.library-change-log
+(ns metabase-enterprise.remote-sync.models.library-change-log
   (:require
    [methodical.core :as methodical]
    [toucan2.core :as t2]))

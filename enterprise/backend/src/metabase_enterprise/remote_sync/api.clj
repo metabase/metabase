@@ -1,14 +1,14 @@
-(ns metabase-enterprise.library.api
+(ns metabase-enterprise.remote-sync.api
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase-enterprise.library.events :as lib.events]
-   [metabase-enterprise.library.models.library-change-log]
-   [metabase-enterprise.library.settings :as settings]
-   [metabase-enterprise.library.source :as source]
-   [metabase-enterprise.library.source.git :as git]
-   [metabase-enterprise.library.source.protocol :as source.p]
    [metabase-enterprise.mbml.core :as mbml]
+   [metabase-enterprise.remote-sync.events :as lib.events]
+   [metabase-enterprise.remote-sync.models.library-change-log]
+   [metabase-enterprise.remote-sync.settings :as settings]
+   [metabase-enterprise.remote-sync.source :as source]
+   [metabase-enterprise.remote-sync.source.git :as git]
+   [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.v2.extract :as v2.extract]
    [metabase-enterprise.serialization.v2.load :as v2.load]
    [metabase.api.common :as api]

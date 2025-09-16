@@ -1,4 +1,4 @@
-(ns metabase-enterprise.library.source.protocol)
+(ns metabase-enterprise.remote-sync.source.protocol)
 
 (defprotocol LibrarySource
   (branches [source]

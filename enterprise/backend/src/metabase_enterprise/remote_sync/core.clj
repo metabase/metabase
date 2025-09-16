@@ -1,8 +1,8 @@
-(ns metabase-enterprise.library.core
+(ns metabase-enterprise.remote-sync.core
   (:require
-   [metabase-enterprise.library.settings :as settings]
-   [metabase-enterprise.library.source :as source]
-   [metabase-enterprise.library.source.git :as git]
+   [metabase-enterprise.remote-sync.settings :as settings]
+   [metabase-enterprise.remote-sync.source :as source]
+   [metabase-enterprise.remote-sync.source.git :as git]
    [metabase.collections.core :as collections]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
