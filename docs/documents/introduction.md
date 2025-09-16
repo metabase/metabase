@@ -55,7 +55,7 @@ Edits only affect the chart in the document. If you added the chart from a colle
 Documents support Markdown syntax for:
 
 - Headings: `#`
-- Images: Use `![Image text](image link)` or paste image links directly into the document. Currently, you can't page image files, only links to images.
+- Images: Use `![Image text](image link)` (the image must start its own line in the document). You can also paste image links directly into the document. Currently, you can't paste image files, only links to images.
 - Blockquotes: `> This is a blockquote`.
 - Code blocks: Wrap with triple backticks (\`\`\`). Syntax highlighting isn't supported yet.
 
