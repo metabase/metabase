@@ -8,7 +8,12 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { NativeQuerySnippet } from "metabase-types/api";
 
-export function locationToPosition(text: string, location: Location): number {
+const EMPTY_SELECTION_RANGE: SelectionRange = {
+  start: { row: 0, column: 0 },
+  end: { row: 0, column: 0 },
+};
+
+function locationToPosition(text: string, location: Location): number {
   const lines = text.split("\n");
   return lines.reduce((acc, line, index) => {
     if (index < location.row) {
@@ -18,23 +23,24 @@ export function locationToPosition(text: string, location: Location): number {
   }, location.column);
 }
 
+function getSelectionPositions(text: string, selectionRange: SelectionRange[]) {
+  const range = selectionRange[0] ?? EMPTY_SELECTION_RANGE;
+
+  return {
+    start: locationToPosition(text, range.start),
+    end: locationToPosition(text, range.end),
+  };
+}
+
 export function useSelectedText(
   question: Question,
   selectionRange: SelectionRange[],
 ) {
   return useMemo(() => {
-    const range = selectionRange[0];
-    if (!range) {
-      return null;
-    }
-
     const query = question.query();
-    const text = Lib.rawNativeQuery(query);
-    const { start, end } = range;
-
-    const selectionStart = locationToPosition(text, start);
-    const selectionEnd = locationToPosition(text, end);
-    return text.slice(selectionStart, selectionEnd);
+    const text = Lib.rawNativeQuery(query) ?? "";
+    const { start, end } = getSelectionPositions(text, selectionRange);
+    return text.slice(start, end);
   }, [question, selectionRange]);
 }
 
@@ -49,24 +55,16 @@ export function useInsertSnippetHandler({
 }) {
   return function handleInsertSnippet(snippet: NativeQuerySnippet) {
     const query = question.query();
-    const text = Lib.rawNativeQuery(query);
+    const text = Lib.rawNativeQuery(query) ?? "";
 
-    const range = selectionRange[0];
-    if (!range) {
-      return;
-    }
+    const { start, end } = getSelectionPositions(text, selectionRange);
 
-    const { start, end } = range;
+    const pre = text.slice(0, start);
+    const post = text.slice(end);
 
-    const selectionStart = locationToPosition(text, start);
-    const selectionEnd = locationToPosition(text, end);
-
-    const newText =
-      text.slice(0, selectionStart) +
-      `{{snippet: ${snippet.name}}}` +
-      text.slice(selectionEnd);
-
+    const newText = `${pre}{{snippet: ${snippet.name}}}${post}`;
     const newQuery = Lib.withNativeQuery(query, newText);
+
     onChange(question.setQuery(newQuery));
   };
 }
