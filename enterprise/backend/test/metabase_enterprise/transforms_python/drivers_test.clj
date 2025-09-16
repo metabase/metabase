@@ -6,7 +6,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.execute :as transforms.execute]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
-   [metabase-enterprise.transforms.settings :as transforms.settings]
+   [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
@@ -29,7 +29,7 @@
   "Execute a Python transform with the given code and tables"
   [{:keys [code tables]}]
   (with-open [shared-storage-ref (python-runner/open-s3-shared-storage! (or tables {}))]
-    (let [server-url (transforms.settings/python-execution-server-url)
+    (let [server-url (transforms-python.settings/python-execution-server-url)
           cancel-chan (a/promise-chan)
           table-name->id (or tables {})
           _ (python-runner/copy-tables-to-s3! {:run-id test-id

@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
+   [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase-enterprise.transforms.schedule :as transforms.schedule]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
@@ -59,7 +60,7 @@
 
 (defn- execute! [{:keys [code tables]}]
   (with-open [shared-storage-ref (python-runner/open-s3-shared-storage! (or tables {}))]
-    (let [server-url     (transforms.settings/python-execution-server-url)
+    (let [server-url     (transforms-python.settings/python-execution-server-url)
           cancel-chan    (a/promise-chan)
           table-name->id (or tables {})
           test-id        (next-job-run-id)

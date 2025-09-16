@@ -3,8 +3,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
+   [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
-   [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.util :as u]
@@ -161,7 +161,7 @@
   (with-open [log-future-ref     (open-python-message-update-future! run-id message-log)
               shared-storage-ref (python-runner/open-s3-shared-storage! (:source-tables source))]
     (let [driver     (:engine db)
-          server-url (transforms.settings/python-execution-server-url)
+          server-url (transforms-python.settings/python-execution-server-url)
           _          (python-runner/copy-tables-to-s3! {:run-id         run-id
                                                         :shared-storage @shared-storage-ref
                                                         :table-name->id (:source-tables source)

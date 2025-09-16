@@ -5,8 +5,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
-   [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.query-processor.compile :as qp.compile]
@@ -38,7 +38,7 @@
   "Returns HTTP headers with Authorization bearer token if configured.
   Throws configuration error in production if token is not set."
   []
-  (let [api-token (transforms.settings/python-runner-api-token)]
+  (let [api-token (transforms-python.settings/python-runner-api-token)]
     (if api-token
       {"Authorization" (str "Bearer " api-token)}
       (if config/is-prod?
@@ -181,7 +181,7 @@
     manifest))
 
 (defmacro ^:private maybe-with-endpoint* [builder endpoint]
-  `(do (when-let [region# (transforms.settings/python-storage-s-3-region)]
+  `(do (when-let [region# (transforms-python.settings/python-storage-s-3-region)]
          (.region ~builder (Region/of region#)))
        (when ~endpoint (.endpointOverride ~builder (URI/create ~endpoint)))
        ~builder))
@@ -196,7 +196,7 @@
   "Create S3Configuration with path-style access setting"
   ^S3Configuration []
   (-> (S3Configuration/builder)
-      (.pathStyleAccessEnabled (transforms.settings/python-storage-s-3-path-style-access))
+      (.pathStyleAccessEnabled (transforms-python.settings/python-storage-s-3-path-style-access))
       (.build)))
 
 (defn- put-object-request ^PutObjectRequest [^String bucket-name ^String key]
@@ -211,8 +211,8 @@
 (defmacro ^:private maybe-with-credentials*
   "Use macro to avoid reflection, as their is no shared interface between S3ClientBuilder and S3Presigner$Builder"
   [builder]
-  `(let [access-key# (transforms.settings/python-storage-s-3-access-key)
-         secret-key# (transforms.settings/python-storage-s-3-secret-key)]
+  `(let [access-key# (transforms-python.settings/python-storage-s-3-access-key)
+         secret-key# (transforms-python.settings/python-storage-s-3-secret-key)]
      (if (or access-key# secret-key#)
        (if-not (and access-key# secret-key#)
          (do (log/warnf "Ignoring %s because %s is not defined"
@@ -236,15 +236,15 @@
   ^S3Client []
   (.build
    (doto (S3Client/builder)
-     (maybe-with-endpoint-s3-client (transforms.settings/python-storage-s-3-endpoint))
+     (maybe-with-endpoint-s3-client (transforms-python.settings/python-storage-s-3-endpoint))
      maybe-with-credentials-s3-client
      (.serviceConfiguration (s3-configuration)))))
 
 (defn- create-s3-presigner-for-container
   "Create S3 presigner for container operations (presigned URLs). Uses distinct container-endpoint if relevant."
   ^S3Presigner []
-  (let [container-endpoint (transforms.settings/python-storage-s-3-container-endpoint)
-        endpoint           (or container-endpoint (transforms.settings/python-storage-s-3-endpoint))]
+  (let [container-endpoint (transforms-python.settings/python-storage-s-3-container-endpoint)
+        endpoint           (or container-endpoint (transforms-python.settings/python-storage-s-3-endpoint))]
     (.build
      (doto (S3Presigner/builder)
        (maybe-with-endpoint-s3-presigner endpoint)
@@ -302,7 +302,7 @@
 (defn get-logs
   "Return the logs of the current running python process"
   [run-id]
-  (let [server-url (transforms.settings/python-execution-server-url)]
+  (let [server-url (transforms-python.settings/python-execution-server-url)]
     (http/get (str server-url "/logs")
               {:content-type     :json
                :accept           :json
@@ -312,10 +312,10 @@
                :headers          (authorization-headers)})))
 
 (defn- s3-shared-storage [table-name->id]
-  (let [prefix              (some-> (transforms.settings/python-storage-s-3-prefix) (str "/"))
+  (let [prefix              (some-> (transforms-python.settings/python-storage-s-3-prefix) (str "/"))
         work-dir-name       (str prefix "run-" (System/nanoTime) "-" (rand-int 10000))
         container-presigner (create-s3-presigner-for-container)
-        bucket-name         (transforms.settings/python-storage-s-3-bucket)
+        bucket-name         (transforms-python.settings/python-storage-s-3-bucket)
         ref                 (fn [method relative-path]
                               (let [path (str work-dir-name "/" relative-path)]
                                 {:path   path
