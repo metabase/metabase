@@ -115,3 +115,50 @@
             (is (= (count new-rows) (count (driver/table-rows-seq driver/*driver* (mt/db) {:name table-name
                                                                                            :schema schema-name}))))))
         (driver/drop-table! driver db-id qualified-table-name)))))
+
+
+(deftest ^:parallel type->database-type-h2-test
+  (testing "type->database-type multimethod returns correct H2 types"
+    (are [base-type expected] (= expected (driver/type->database-type :h2 base-type))
+      :type/Boolean            [:boolean]
+      :type/Date               [:date]
+      :type/DateTime           [:timestamp]
+      :type/DateTimeWithTZ     [:timestamp-with-time-zone]
+      :type/Float              [(keyword "DOUBLE PRECISION")]
+      :type/Integer            [:int]
+      :type/Number             [:bigint]
+      :type/Text               [:varchar]
+      :type/Time               [:time]
+      :type/UUID               [:uuid])))
+
+(deftest ^:parallel type->database-type-mysql-test
+  (testing "type->database-type multimethod returns correct MySQL types"
+    (are [base-type expected] (= expected (driver/type->database-type :mysql base-type))
+      :type/Boolean            [:boolean]
+      :type/Date               [:date]
+      :type/DateTime           [:datetime]
+      :type/DateTimeWithTz     [:timetamp]
+      :type/Float              [:double]
+      :type/Decimal            [:decimal]
+      :type/Integer            [:int]
+      :type/Number             [:bigint]
+      :type/Text               [:text]
+      :type/Time               [:time])))
+
+(deftest ^:parallel type->database-type-postgres-test
+  (testing "type->database-type multimethod returns correct PostgreSQL types"
+    (are [base-type expected] (= expected (driver/type->database-type :postgres base-type))
+      :type/Boolean            [:boolean]
+      :type/Date               [:date]
+      :type/DateTime           [:timestamp]
+      :type/DateTimeWithTZ     [:timestamp-with-time-zone]
+      :type/Decimal            [:decimal]
+      :type/Float              [:float]
+      :type/Integer            [:int]
+      :type/JSON               [:jsonb]
+      :type/Number             [:bigint]
+      :type/SerializedJSON     [:jsonb]
+      :type/Text               [:text]
+      :type/Time               [:time]
+      :type/TimeWithTZ         [:time-with-time-zone]
+      :type/UUID               [:uuid])))

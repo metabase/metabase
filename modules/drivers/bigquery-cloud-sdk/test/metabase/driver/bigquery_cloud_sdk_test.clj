@@ -1327,3 +1327,22 @@
       (is (=? [["2024-12-11T16:23:55.123456Z" #"2024-12-11T16:23:55.123456.*"]]
               (-> (qp/process-query query)
                   mt/rows))))))
+
+(deftest ^:parallel type->database-type-test
+  (testing "type->database-type multimethod returns correct BigQuery types"
+    (are [base-type expected] (= expected (driver/type->database-type :bigquery-cloud-sdk base-type))
+      :type/Array              [[:raw "JSON"]]
+      :type/Dictionary         [[:raw "JSON"]]
+      :type/Boolean            [[:raw "BOOL"]]
+      :type/Float              [[:raw "FLOAT64"]]
+      :type/Integer            [[:raw "INT"]]
+      :type/Number             [[:raw "INT"]]
+      :type/Text               [[:raw "STRING"]]
+      :type/TextLike           [[:raw "STRING"]]
+      :type/Date               [[:raw "DATE"]]
+      :type/DateTime           [[:raw "DATETIME"]]
+      :type/DateTimeWithTZ     [[:raw "TIMESTAMP"]]
+      :type/Time               [[:raw "TIME"]]
+      :type/JSON               [[:raw "JSON"]]
+      :type/SerializedJSON     [[:raw "JSON"]]
+      :type/Decimal            [[:raw "BIGDECIMAL"]])))
