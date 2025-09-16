@@ -95,7 +95,7 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         );
         try {
           await queryFulfilled;
-        } catch {
+        } finally {
           patchResult.undo();
         }
       },

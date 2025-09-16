@@ -99,7 +99,7 @@ export const transformJobApi = EnterpriseApi.injectEndpoints({
         );
         try {
           await queryFulfilled;
-        } catch {
+        } finally {
           patchResult.undo();
         }
       },
