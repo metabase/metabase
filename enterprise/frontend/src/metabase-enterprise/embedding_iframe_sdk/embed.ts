@@ -9,6 +9,7 @@ import {
   MetabaseError,
 } from "embedding-sdk-bundle/errors";
 
+import { debouncedReportAnalytics } from "./analytics";
 import {
   ALLOWED_EMBED_SETTING_KEYS_MAP,
   DISABLE_UPDATE_FOR_KEYS,
@@ -77,6 +78,7 @@ export const updateAllEmbeds = (config: Partial<SdkIframeEmbedSettings>) => {
 
 const registerEmbed = (embed: MetabaseEmbedElement) => {
   _activeEmbeds.add(embed);
+  debouncedReportAnalytics(_activeEmbeds);
 };
 
 const unregisterEmbed = (embed: MetabaseEmbedElement) => {
@@ -234,7 +236,7 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
     this._validateEmbedSettings(newValues);
 
     // Iframe is ready – propagate the delta
-    this._sendMessage("metabase.embed.setSettings", newValues);
+    this.sendMessage("metabase.embed.setSettings", newValues);
   }
 
   destroy() {
@@ -394,7 +396,7 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
     }
   };
 
-  private _sendMessage<Message extends SdkIframeEmbedMessage>(
+  sendMessage<Message extends SdkIframeEmbedMessage>(
     type: Message["type"],
     data: Message["data"],
   ) {
@@ -414,7 +416,7 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
       validateSessionToken(sessionToken);
 
       if (sessionToken) {
-        this._sendMessage("metabase.embed.submitSessionToken", {
+        this.sendMessage("metabase.embed.submitSessionToken", {
           authMethod: method,
           sessionToken,
         });
@@ -422,7 +424,7 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
     } catch (error) {
       // if the error is an authentication error, show it to the iframe too
       if (error instanceof MetabaseError) {
-        this._sendMessage("metabase.embed.reportAuthenticationError", {
+        this.sendMessage("metabase.embed.reportAuthenticationError", {
           error,
         });
       }
