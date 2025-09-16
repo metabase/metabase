@@ -613,6 +613,7 @@
 
 (defmethod type->database-type :type/TextLike [_] [:varchar])
 (defmethod type->database-type :type/Text [_] [:varchar])
+(defmethod type->database-type :type/Integer [_] [:int])
 (defmethod type->database-type :type/Number [_] [:bigint])
 (defmethod type->database-type :type/Float [_] [(keyword "DOUBLE PRECISION")])
 (defmethod type->database-type :type/Decimal [_] [:decimal])
