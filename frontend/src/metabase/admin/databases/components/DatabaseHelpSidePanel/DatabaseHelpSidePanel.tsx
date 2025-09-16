@@ -3,14 +3,13 @@ import { Link } from "react-router";
 import { c, t } from "ttag";
 
 import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
-import { useSetting } from "metabase/common/hooks";
+import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import { getHelpUrl } from "metabase/common/utils/help-url";
 import CS from "metabase/css/core/index.css";
 import { getEngines } from "metabase/databases/selectors";
 import { useSelector } from "metabase/lib/redux";
-import { getDocsUrl, getIsPaidPlan } from "metabase/selectors/settings";
+import { getIsPaidPlan } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import {
   ActionIcon,
   Box,
@@ -34,16 +33,13 @@ interface Props {
 
 export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
   const engines = useSelector(getEngines);
-  const docsUrl = useSelector((state) =>
-    getDocsUrl(state, {
-      page: `databases/connections/${ENGINE_DOC_MAP[engineKey]}`,
-    }),
+  const { url: fullDocsUrl, showMetabaseLinks } = useDocsUrl(
+    `databases/connections/${ENGINE_DOC_MAP[engineKey]}`,
   );
   const [showUserModal, { toggle: toggleUserModal }] = useDisclosure(false);
   const isPaidPlan = useSelector(getIsPaidPlan);
   const version = useSetting("version");
   const talkToExpertUrl = getHelpUrl(isPaidPlan, version.tag);
-  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const isAdmin = useSelector(getUserIsAdmin);
 
   if (!engines[engineKey]) {
@@ -71,7 +67,7 @@ export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
               leftSection={<Icon name="reference" />}
               p={0}
               target="_blank"
-              to={docsUrl}
+              to={fullDocsUrl}
               variant="subtle"
             >
               {t`Read the full docs`}
