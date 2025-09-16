@@ -119,6 +119,11 @@ export type UpdateTransformTagRequest = {
   name?: string;
 };
 
+export type RunTransformResponse = {
+  run_id: TransformRunId;
+  message?: string;
+};
+
 export type ListTransformJobsRequest = {
   last_run_start_time?: string;
   next_run_start_time?: string;

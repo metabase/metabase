@@ -2,6 +2,7 @@ import type {
   CreateTransformRequest,
   ListTransformRunsRequest,
   ListTransformRunsResponse,
+  RunTransformResponse,
   Transform,
   TransformId,
   UpdateTransformRequest,
@@ -59,13 +60,46 @@ export const transformApi = EnterpriseApi.injectEndpoints({
           ...(transforms?.flatMap(provideTransformTags) ?? []),
         ]),
     }),
-    runTransform: builder.mutation<void, TransformId>({
+    runTransform: builder.mutation<RunTransformResponse, TransformId>({
       query: (id) => ({
         method: "POST",
         url: `/api/ee/transform/${id}/run`,
       }),
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [idTag("transform", id), tag("table")]),
+      onQueryStarted: async (id, { dispatch, queryFulfilled }) => {
+        const patchResult = dispatch(
+          transformApi.util.updateQueryData("getTransform", id, (draft) => {
+            draft.last_run = {
+              // HACK: this is a placeholder value and will be replaced
+              // when the endpoint returns the actual value.
+              //
+              // This id is not used anywhere, so it's fine for now.
+              id: -1,
+              start_time: new Date().toISOString(),
+              end_time: null,
+              run_method: "manual",
+              status: "started",
+              message: null,
+            };
+          }),
+        );
+
+        try {
+          const { data } = await queryFulfilled;
+
+          dispatch(
+            transformApi.util.updateQueryData("getTransform", id, (draft) => {
+              if (draft.last_run == null) {
+                return;
+              }
+              draft.last_run.id = data.run_id;
+            }),
+          );
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
     cancelCurrentTransformRun: builder.mutation<void, TransformId>({
       query: (id) => ({
