@@ -32,6 +32,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
@@ -1034,6 +1035,32 @@
                            :type   driver-api/qp.error-type.invalid-query}))
           (throw e))))))
 
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for Postgres that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+(defmethod type->database-type :type/TextLike [_] [:text])
+(defmethod type->database-type :type/Text [_] [:text])
+(defmethod type->database-type :type/Number [_] [:bigint])
+(defmethod type->database-type :type/Integer [_] [:int])
+(defmethod type->database-type :type/Float [_] [:float])
+(defmethod type->database-type :type/Decimal [_] [:float])
+(defmethod type->database-type :type/Boolean [_] [:boolean])
+(defmethod type->database-type :type/Date [_] [:date])
+(defmethod type->database-type :type/DateTime [_] [:timestamp])
+(defmethod type->database-type :type/DateTimeWithTZ [_] [:timestamp-with-time-zone])
+(defmethod type->database-type :type/Time [_] [:time])
+(defmethod type->database-type :type/TimeWithTZ [_] [:time-with-time-zone])
+(defmethod type->database-type :type/UUID [_] [:uuid])
+(defmethod type->database-type :type/JSON [_] [:jsonb])
+(defmethod type->database-type :type/SerializedJSON [_] [:jsonb])
+(defmethod type->database-type :type/IPAddress [_] [:inet])
+
+(defmethod driver/type->database-type :postgres
+  [_driver base-type]
+  (type->database-type base-type))
+
 (defmethod driver/upload-type->database-type :postgres
   [_driver upload-type]
   (case upload-type
@@ -1247,3 +1274,22 @@
                {:name "Scaleway" :pattern "\\.scw\\.cloud$"}
                {:name "Supabase" :pattern "(pooler\\.supabase\\.com|\\.supabase\\.co)$"}
                {:name "Timescale" :pattern "(\\.tsdb\\.cloud|\\.timescale\\.com)$"}]})
+
+(defn- coll-to-pg-array
+  [coll]
+  (str "{"
+       (str/join ","
+                 (map #(cond
+                         (nil? %) "NULL"
+                         (string? %) (str "\"" % "\"")
+                         (coll? %) (coll-to-pg-array %)
+                         :else (str %))
+                      coll))
+       "}"))
+
+(defmethod driver/string->val :postgres
+  [_driver column-def string-val]
+  (if (or (some-> (:database-type column-def) (str/starts-with? "_"))
+          (some-> (:database-type column-def) (str/ends-with? "[]")))
+    (coll-to-pg-array (json/decode string-val))
+    string-val))
