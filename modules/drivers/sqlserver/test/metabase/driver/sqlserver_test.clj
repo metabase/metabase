@@ -757,7 +757,6 @@
                                                     driver-api/qp.add.source-table  driver-api/qp.add.none
                                                     driver-api/qp.add.desired-alias nil}]})))))))
 
-
 (deftest ^:parallel type->database-type-test
   (testing "type->database-type multimethod returns correct SQL Server types"
     (are [base-type expected] (= expected (driver/type->database-type :sqlserver base-type))
