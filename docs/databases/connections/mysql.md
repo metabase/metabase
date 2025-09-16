@@ -172,6 +172,11 @@ mysql:
   The reason: typically, Metabase applies limits (e.g., 2000 or 10000 rows) to the final query results. But due to a known bug in Vitess, Vitess might apply these limits to subqueries, which can lead to unexpected results (for example, not all rows of results will be displayed within Metabase). The workaround is to add limits to each of your subqueries.
 
 - You may want to check in with the vendor that's hosting the platform, as Vitess can run into issues returning metadata from the information schema. Metabase needs this metadata to populate its application database; if Metabase can't get that metadata, fields may not appear (or appear empty).
+- 
+
+## Password with special characters
+
+If your password contains character that are non UTF-8, then you might want to add an additional variable to the connection string `passwordCharacterEncoding=<your_encoding_here>`. This will ensure that your MySQL/MariaDB database will understand the special characters of the password when it authenticates.
 
 ## Model features
 
