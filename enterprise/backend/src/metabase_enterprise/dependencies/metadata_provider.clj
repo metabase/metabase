@@ -14,7 +14,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [pretty.core :as pretty]))
 
@@ -57,7 +56,7 @@
 
       :else (throw (ex-info "Unknown :lib/metadata type for OverridingMetadataProvider" metadata-spec)))))
 
-(declare setup-transform! setup-transforms!)
+(declare all-overrides setup-transform! setup-transforms!)
 
 (deftype OverridingMetadataProvider [delegate *overrides]
   lib.metadata.protocols/MetadataProvider
@@ -82,8 +81,8 @@
     (lib.metadata.protocols/has-cache? delegate))
 
   pretty/PrettyPrintable
-  (pretty [_this]
-    (list `overriding-metadata-provider (update-vals @*overrides #(cond-> % (map? %) keys)))))
+  (pretty [this]
+    (list `overriding-metadata-provider (all-overrides this))))
 
 (defmulti add-override
   "Given an `OverridingMetadataProvider`, an `entity-type` and that entity, add this entity as an override."
@@ -208,12 +207,38 @@
                                                          (lib.metadata/native-query-snippet (inner-mp mp) id))
                                                        updates))}))
 
+(defn all-overrides
+  "Returns all the overrides by ID, in the same form as the map input to [[with-deps]]:
+  `{:card [1 2 3], :transform [45 99]}."
+  [^OverridingMetadataProvider override-metadata-provider]
+  (-> (.*overrides override-metadata-provider)
+      deref
+      (dissoc ::setup-complete)
+      (update-vals keys)
+      (update-keys {:metadata/card                 :card
+                    :metadata/transform            :transform
+                    :metadata/native-query-snippet :snippet})
+      (select-keys [:card :transform :snippet])))
+
 (defn override-metadata-provider
   "Given an underlying `MetadataProvider`, wraps it to support in-memory overrides of cards, fields, etc.
 
-  Important note: all overrides must be added first, before this is used as a `MetadataProvider`."
-  [metadata-provider]
-  (->OverridingMetadataProvider metadata-provider (atom {})))
+  Important note: all overrides must be added first, before this is used as a `MetadataProvider`.
+  The easiest way to do that is to call the 3-arity, which provides the overrides up front."
+  ([metadata-provider]
+   (->OverridingMetadataProvider metadata-provider (atom {})))
+
+  ([metadata-provider updated-entities dependent-ids]
+   (let [^OverridingMetadataProvider omp (override-metadata-provider metadata-provider)]
+     (doseq [[entity-type updates] updated-entities
+             updated-entity        updates]
+       (add-override omp entity-type (:id updated-entity) updated-entity))
+     (doseq [[entity-type dependents] dependent-ids
+             :let  [updated (into #{} (map :id) (get updated-entities entity-type))]
+             id    dependents
+             :when (not (updated id))]
+       (add-override omp entity-type id nil))
+     omp)))
 
 (comment
   (let [mp (metabase.lib-be.metadata.jvm/application-database-metadata-provider 1)]

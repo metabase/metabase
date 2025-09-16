@@ -71,7 +71,11 @@
         ;; TODO: This sucks - it's getting all cards for the same database_id, which is slow and over-reaching.
         all-cards      (t2/select-fn-set :id :model/Card :database_id database-id :archived false)
         all-transforms (t2/select-fn-set :id :model/Transform)
-        breakages      (dependencies/check-cards-have-sound-refs base-provider [card] all-cards all-transforms)]
+        ;; TODO: Really, the dependents should be coming from the graph based on the edits.
+        provider       (dependencies/metadata-provider base-provider {:card [card]}
+                                                       {:card      all-cards
+                                                        :transform all-transforms})
+        breakages      (dependencies/check-cards-have-sound-refs provider)]
     (broken-cards-response breakages)))
 
 (api.macros/defendpoint :post "/check_transform"

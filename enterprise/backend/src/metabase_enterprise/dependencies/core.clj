@@ -1,13 +1,12 @@
 (ns metabase-enterprise.dependencies.core
   "API namespace for the `metabase-enterprise.dependencies` module."
   (:require
+   [metabase-enterprise.dependencies.metadata-provider :as deps.provider]
    [metabase-enterprise.dependencies.models.dependency :as deps.graph]
    [metabase-enterprise.dependencies.native-validation :as deps.native]
    [metabase.lib-be.metadata.jvm :as lib-be.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
@@ -17,48 +16,59 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-(defn- provider-with-updated-cards [base-provider cards]
-  (-> base-provider
-      lib.metadata.cached-provider/cached-metadata-provider
-      (doto (lib.metadata.protocols/store-metadatas! cards))))
+(mr/def ::entity-type
+  [:enum :card :transform :snippet])
+
+(mr/def ::updates-map
+  ;; TODO: Make this more specific.
+  [:map-of ::entity-type [:sequential [:map [:id {:optional true} :int]]]])
+
+(mr/def ::dependents-map
+  [:map-of ::entity-type [:or [:sequential :int] [:set :int]]])
+
+(mu/defn metadata-provider :- ::lib.schema.metadata/metadata-provider
+  "Constructs a `MetadataProvider` with some pending edits applied.
+
+  The edits are *transitive*! Since a card's output columns can depend on its (possibly updated) inputs, all dependents
+  of editing things are considered edited too.
+
+  Note that if `:result-metadata` is present on an updated Card, it **will be used!** The only case where that is
+  actually useful is with a native query which has been executed, so the caller has driver metadata to give us. Any
+  old, pre-update `:result-metadata` should be dropped from any other cards in `updated-entities`."
+  [base-provider    :- ::lib.schema.metadata/metadata-provider
+   updated-entities :- ::updates-map
+   dependent-ids    :- ::dependents-map]
+  (deps.provider/override-metadata-provider base-provider updated-entities dependent-ids))
 
 (mu/defn check-cards-have-sound-refs ;; :- [:map-of ::lib.schema.id/card [:sequential ::lib.schema.mbql-clause/clause]]
-  "Given a list `updated-cards` of `:metadata/card`s which may have changes vs. AppDB, and a list `check-cards` of
-  cards to check, return any bad clauses found in the `check-cards`.
-
-  Note that if `:result-metadata` is present on the `updated-cards`, it **will be used!** The only case where that is
-  actually useful is with a native query which has been executed, so the caller has driver metadata to send us. Any
-  old, pre-update `:result-metadata` should be dropped before calling this function.
+  "Given a `MetadataProvider` as returned by [[metadata-provider]], scan all its updated entities and their dependents
+  to check that all cards are still valid. In particular, we're looking for bad clauses with refs to columns which no
+  longer exist, since those queries fail to compile.
 
   May return false positives: that is, if one of the `check-cards` has a bad ref in it, then it will be returned
   even if that bad ref has nothing to do with the `updated-cards`.
 
-  Returns a map `{card-id [bad refs...]}`, which will be empty if there are no bad refs detected."
-  ([base-provider  :- ::lib.schema.metadata/metadata-provider
-    updated-cards  :- [:sequential ::lib.schema.metadata/card]
-    check-card-ids :- [:maybe [:set ::lib.schema.id/card]]
-    check-transform-ids]
-   (check-cards-have-sound-refs (provider-with-updated-cards base-provider updated-cards) check-card-ids check-transform-ids))
-  ([provider       :- ::lib.schema.metadata/metadata-provider
-    check-card-ids :- [:maybe [:set ::lib.schema.id/card]]
-    check-transform-ids]
-   (reduce (fn [errors [error-type id query]]
-             (let [query    (lib/query provider query)
-                   query-type (:lib/type (lib/query-stage query 0))
-                   driver (:engine (lib.metadata/database provider))
-                   bad-refs (case query-type
-                              :mbql.stage/mbql (lib/find-bad-refs query)
-                              :mbql.stage/native (not (deps.native/validate-native-query driver provider query)))]
-               (cond-> errors
-                 bad-refs (assoc-in [error-type id] bad-refs))))
-           {}
-           (concat (map (fn [card-id]
-                          [:cards card-id (:dataset-query (lib.metadata/card provider card-id))])
-                        check-card-ids)
-                   (map (fn [transform-id]
-                          [:transforms transform-id (get-in (lib.metadata/transform provider transform-id)
-                                                            [:source :query])])
-                        check-transform-ids)))))
+  Returns a map `{:cards {card-id [bad-ref ...]}, :transforms {...}}`. It will be empty, if there are no bad refs
+  detected."
+  [provider  :- ::lib.schema.metadata/metadata-provider]
+  (let [{check-card-ids :card, check-transform-ids :transform} (deps.provider/all-overrides provider)]
+    (reduce (fn [errors [error-type id query]]
+              (let [query    (lib/query provider query)
+                    query-type (:lib/type (lib/query-stage query 0))
+                    driver (:engine (lib.metadata/database provider))
+                    bad-refs (case query-type
+                               :mbql.stage/mbql (lib/find-bad-refs query)
+                               :mbql.stage/native (not (deps.native/validate-native-query driver provider query)))]
+                (cond-> errors
+                  bad-refs (assoc-in [error-type id] bad-refs))))
+            {}
+            (concat (map (fn [card-id]
+                           [:cards card-id (:dataset-query (lib.metadata/card provider card-id))])
+                         check-card-ids)
+                    (map (fn [transform-id]
+                           [:transforms transform-id (get-in (lib.metadata/transform provider transform-id)
+                                                             [:source :query])])
+                         check-transform-ids)))))
 
 (defn- upstream-deps:mbql-card [legacy-query]
   (lib.util/source-tables-and-cards [legacy-query]))
@@ -113,10 +123,16 @@
         base-mp  #_{:clj-kondo/ignore [:unresolved-namespace]}
         (lib-be.metadata.jvm/application-database-metadata-provider 1)
         card     (lib.metadata/card base-mp 1)
-        card'    (update-in card [:dataset-query :query :expressions]
-                            ;; Replacing the expression Age with Duration - this breaks downstream uses!
-                            update-keys (constantly "Duration"))]
-    (check-cards-have-sound-refs base-mp [card'] card-ids))
+        card'    (-> card
+                     (update-in [:dataset-query :query :expressions]
+                                ;; Replacing the expression Age with Duration - this breaks downstream uses!
+                                update-keys (constantly "Duration"))
+                     (dissoc :result-metadata))
+        mp       (metadata-provider base-mp {:card [card']} {:card card-ids})]
+    #_(deps.provider/all-overrides mp)
+    #_(lib.metadata/card mp 1)
+    #_(lib.metadata/card mp 36)
+    (check-cards-have-sound-refs mp))
 
   (let [card (toucan2.core/select-one :model/Card :id 121)
         mp   (lib-be.metadata.jvm/application-database-metadata-provider (:database_id card))]
