@@ -2,6 +2,8 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase-enterprise.library.events :as lib.events]
+   [metabase-enterprise.library.models.library-change-log]
    [metabase-enterprise.library.settings :as settings]
    [metabase-enterprise.library.source :as source]
    [metabase-enterprise.library.source.git :as git]
@@ -23,16 +25,6 @@
            (java.nio.file.attribute FileAttribute)))
 
 (set! *warn-on-reflection* true)
-
-(defn- log-sync-event!
-  "Log a sync event to the library_sync_log table."
-  [sync-type status & {:keys [source-branch target-branch message]}]
-  (t2/insert! :model/LibrarySyncLog
-              {:sync_type sync-type
-               :source_branch source-branch
-               :target_branch target-branch
-               :status status
-               :message message}))
 
 (defn- reload-from-git!
   "Reloads the Metabase entities from the "
@@ -76,14 +68,15 @@
                           :entity_id (if (seq entity-ids)
                                        [:not-in entity-ids]
                                        :entity_id)))))
-        (log-sync-event! "import" "success"
-                         :source-branch (:source-branch source))
+        (lib.events/publish-library-sync! "import" nil api/*current-user-id*
+                                          {:branch (or branch (:source-branch source))
+                                           :status "success"})
         (log/info "Successfully reloaded entities from git repository")
         {:status :success
          :message "Successfully reloaded from git repository"}
 
         (catch Exception e
-          (log/errorf e "Failed to reload from git repository: %s" (.getMessage e))
+          (log/errorf e "Failed to reload from git repository: %s" (ex-message e))
           (let [error-msg (cond
                             (instance? java.net.UnknownHostException e)
                             "Network error: Unable to reach git repository host"
@@ -99,9 +92,10 @@
 
                             :else
                             (format "Failed to reload from git repository: %s" (.getMessage e)))]
-            (log-sync-event! "import" "error"
-                             :source-branch (:source-branch source)
-                             :message (.getMessage e))
+            (lib.events/publish-library-sync! "import" nil api/*current-user-id*
+                                              {:branch (or branch (:source-branch source))
+                                               :status "error"
+                                               :message (.getMessage e)})
             {:status :error
              :message error-msg
              :details {:error-type (type e)}}))))
@@ -140,7 +134,7 @@
   []
   (api/check-superuser)
   (if-let [library-collection (t2/select-one :model/Collection :entity_id collection/library-entity-id)]
-    (let [most-recent-sync (t2/select-one [:model/LibrarySyncLog :created_at]
+    (let [most-recent-sync (t2/select-one [:model/LibraryChangeLog :created_at]
                                           :sync_type "import"
                                           :status "success"
                                           {:order-by [[:created_at :desc]]})
@@ -220,7 +214,7 @@
   [branch message]
   (source/with-source [source]
     (if source
-      (do
+      (try
         (serdes/with-cache
           (-> (v2.extract/extract {:targets [["Collection" collection/library-entity-id]]
                                    :no-collections false
@@ -230,7 +224,19 @@
                                    :include-database-secrets :false
                                    :continue-on-error false})
               (source/store! source branch message)))
-        {:status :success})
+        (lib.events/publish-library-sync! "export" nil api/*current-user-id*
+                                          {:branch branch
+                                           :status "success"
+                                           :message message})
+        {:status :success}
+
+        (catch Exception e
+          (lib.events/publish-library-sync! "export" nil api/*current-user-id*
+                                            {:branch branch
+                                             :status "error"
+                                             :message (ex-message e)})
+          {:status :error
+           :message (format "Failed to export to git repository: %s" (.getMessage e))}))
       {:status :error
        :message "Library source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."})))
 
