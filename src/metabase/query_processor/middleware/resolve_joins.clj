@@ -167,8 +167,6 @@
   ;; we shouldn't consider different type info to mean two Fields are different even if everything else is the same. So
   ;; give everything `:base-type` of `:type/*` (it will complain if we remove `:base-type` entirely from fields with a
   ;; string name)
-  (println "(metabase.util/cprint-to-str fields):" (metabase.util/cprint-to-str (map lib.schema.util/mbql-clause-distinct-key fields))) ; NOCOMMIT
-  (println "(metabase.util/cprint-to-str join-fields):" (metabase.util/cprint-to-str (map lib.schema.util/mbql-clause-distinct-key join-fields))) ; NOCOMMIT
   (into []
         (comp cat
               (m/distinct-by lib.schema.util/mbql-clause-distinct-key))
