@@ -12,13 +12,15 @@ describe("Metabot UI", () => {
     cy.intercept("POST", "/api/ee/metabot-v3/v2/agent-streaming").as(
       "agentReq",
     );
-    cy.intercept("GET", "/api/session/properties").as("sessionProperties");
+    cy.intercept("GET", "/api/automagic-dashboards/database/*/candidates").as(
+      "xrayCandidates",
+    );
   });
 
   describe("OSS", { tags: "@OSS" }, () => {
     beforeEach(() => {
       cy.visit("/");
-      cy.wait("@sessionProperties");
+      cy.wait("@xrayCandidates");
     });
 
     it("should not be available in OSS", () => {
@@ -36,7 +38,7 @@ describe("Metabot UI", () => {
     beforeEach(() => {
       H.activateToken("bleeding-edge");
       cy.visit("/");
-      cy.wait("@sessionProperties");
+      cy.wait("@xrayCandidates");
     });
 
     describe("scroll management", () => {
@@ -162,7 +164,7 @@ d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
     describe("Metabot chat", () => {
       beforeEach(() => {
         cy.visit("/");
-        cy.wait("@sessionProperties");
+        cy.wait("@xrayCandidates");
       });
 
       it("should be able to be opened and closed", () => {
@@ -179,21 +181,23 @@ d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
           triggered_from: "command_palette",
         });
         H.closeMetabotViaCloseButton();
+      });
 
-        // H.openMetabotViaShortcutKey();
-        // H.expectUnstructuredSnowplowEvent({
-        //   event: "metabot_chat_opened",
-        //   triggered_from: "keyboard_shortcut",
-        // });
-        // H.closeMetabotViaShortcutKey();
-        // cy.log("We don't track closing the chat via kbd");
-        // H.expectUnstructuredSnowplowEvent(
-        //   {
-        //     event: "metabot_chat_opened",
-        //     triggered_from: "keyboard_shortcut",
-        //   },
-        //   1,
-        // );
+      it("should be controlled via keyboard shortcut", () => {
+        H.openMetabotViaShortcutKey();
+        H.expectUnstructuredSnowplowEvent({
+          event: "metabot_chat_opened",
+          triggered_from: "keyboard_shortcut",
+        });
+        H.closeMetabotViaShortcutKey();
+        cy.log("We don't track closing the chat via kbd");
+        H.expectUnstructuredSnowplowEvent(
+          {
+            event: "metabot_chat_opened",
+            triggered_from: "keyboard_shortcut",
+          },
+          1,
+        );
       });
 
       it("should allow a user to send a message to the agent and handle successful or failed responses", () => {
