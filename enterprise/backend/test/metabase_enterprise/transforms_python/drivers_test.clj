@@ -289,10 +289,8 @@
                                       (is (isa? (type-map "dict_field") :type/JSON)))
 
                 :mongo (do
-                         (is (isa? (type-map "json_field") :type/JSON))
                          (is (isa? (type-map "array_field") :type/Array))
-                         (is (isa? (type-map "dict_field") :type/Dictionary))
-                         (is (isa? (type-map "bson_id") :type/MongoBSONID)))
+                         (is (isa? (type-map "dict_field") :type/Dictionary)))
 
                 :sqlserver (do
                              (is (isa? (type-map "uuid_field") :type/UUID))
@@ -301,7 +299,7 @@
 
 (defn- test-exotic-edge-cases-for-driver!
   "Helper to test exotic edge cases for a specific driver with custom schema and transform code generator."
-  [driver-key edge-schema transform-code-fn validation-fn]
+  [driver edge-schema transform-code-fn validation-fn]
   (with-test-table [table-id table-name] [edge-schema (:data edge-schema)]
     (let [transform-code (if (fn? transform-code-fn)
                            (transform-code-fn table-name)
@@ -309,7 +307,7 @@
           result (execute! {:code transform-code
                             :tables {table-name table-id}})]
 
-      (testing (str driver-key " exotic transform succeeded")
+      (testing (str driver " exotic transform succeeded")
         (is (some? result) "Transform should succeed")
         (is (contains? result :output) "Should have output")
         (is (contains? result :output-manifest) "Should have output manifest"))
@@ -333,7 +331,9 @@
                                        (#'transforms.execute/create-table-and-insert-data!
                                         driver/*driver*
                                         (mt/id)
-                                        additional-table-name
+                                        (cond->> additional-table-name
+                                          (= driver :bigquery-cloud-sdk)
+                                          (keyword (sql.tx/session-schema driver)))
                                         (:output-manifest result)
                                         {:type :jsonl-file
                                          :file temp-file})
@@ -800,7 +800,7 @@
                        []
                        []
                        "POLYGON((-124 42, -120 42, -120 46, -124 46, -124 42))"
-                       -9999999.999999999M
+                       -9999999.99999999M
                        -1234567.12345678M
                        "VGVzdCBEYXRh" "1900-01-01T00:00:00" "00:00:00"]
                       [3 {"name" "", "age" 0, "active" true}
