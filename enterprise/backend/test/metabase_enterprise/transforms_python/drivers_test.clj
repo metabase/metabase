@@ -102,9 +102,9 @@
                         {:name "uuid_field" :type :type/UUID :nullable? true}
                         {:name "json_field" :type :type/JSON :nullable? true}
                         {:name "ip_field" :type :type/IPAddress :nullable? true}
-                        {:name "int_array" :type :type/Array :nullable? true :database-type "integer[]"}
-                        {:name "text_array" :type :type/Array :nullable? true :database-type "text[]"}
-                        {:name "uuid_array" :type :type/Array :nullable? true :database-type "uuid[]"}]
+                        {:name "int_array" :type :type/* :nullable? true :database-type "integer[]"}
+                        {:name "text_array" :type :type/* :nullable? true :database-type "text[]"}
+                        {:name "uuid_array" :type :type/* :nullable? true :database-type "uuid[]"}]
               :data [[1 "2024-01-01T12:00:00Z" "550e8400-e29b-41d4-a716-446655440000" "{\"key\": \"value\"}" "192.168.1.1"
                       "{1,2,3,4,5}" "{\"hello\",\"world\",\"test\"}" "{550e8400-e29b-41d4-a716-446655440000,123e4567-e89b-12d3-a456-426614174000}"]
                      [2 nil nil nil nil nil nil nil]
@@ -312,10 +312,7 @@
                     :postgres (do
                                 (is (isa? (type-map "uuid_field") :type/UUID))
                                 (is (isa? (type-map "json_field") :type/JSON))
-                                (is (isa? (type-map "ip_field") :type/IPAddress))
-                                (is (isa? (type-map "int_array") :type/Array))
-                                (is (isa? (type-map "text_array") :type/Array))
-                                (is (isa? (type-map "uuid_array") :type/Array)))
+                                (is (isa? (type-map "ip_field") :type/IPAddress)))
                     :mysql (if (mysql/mariadb? (mt/db))
                              (do
                                (is (isa? (type-map "uuid_field") :type/UUID))
@@ -584,8 +581,8 @@
                          {:name "bytea_field" :type :type/Text :nullable? true :database-type "bytea"}
                          {:name "time_field" :type :type/Time :nullable? true}
                          {:name "interval_field" :type :type/Text :nullable? true :database-type "interval"}
-                         {:name "int_array" :type :type/Array :nullable? true :database-type "integer[]"}
-                         {:name "text_array" :type :type/Array :nullable? true :database-type "text[]"}
+                         {:name "int_array" :type :type/* :nullable? true :database-type "integer[]"}
+                         {:name "text_array" :type :type/* :nullable? true :database-type "text[]"}
                          {:name "point_field" :type :type/Text :nullable? true :database-type "point"}
                          {:name "big_decimal" :type :type/Decimal :nullable? true :database-type "decimal(20,10)"}]
                :data [[1 "192.168.1.100" "192.168.0.0/16" "aa:bb:cc:dd:ee:ff"
@@ -661,7 +658,7 @@
                 (is (isa? (type-map "inet_field") :type/IPAddress))
                 (is (isa? (type-map "money_field") :type/Float))
 
-                ;; (is (isa? (type-map "int_array") :type/Array))
+                (is (isa? (type-map "int_array") :type/Array))
 
                 (is (= :type/Boolean (type-map "has_ipv6")))
                 (is (isa? (type-map "money_doubled") :type/Float))))

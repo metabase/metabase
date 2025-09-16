@@ -143,13 +143,22 @@
        (filter #(and (nil? (:parent_id %)) (nil? (:nfc_path %))))
        (map (fn [meta]
               ;; TODO move this into driver method
-              (if (= driver :bigquery-cloud-sdk)
+              (cond
+
+                (= driver :bigquery-cloud-sdk)
                 (case (:database_type meta)
                   ;; the bigquery driver returns a lossy database-type
                   ;; so we must translate to a valid one, even if it may be lossy
                   ("ARRAY" "RECORD") (assoc meta :database_type "JSON" :base_type :type/JSON)
                   "FLOAT" (assoc meta :database_type "FLOAT64")
                   meta)
+
+                (= driver :postgres)
+                (if (str/starts-with? (:database_type meta) "_")
+                  (assoc meta :base_type :type/Array)
+                  meta)
+
+                :else
                 meta)))))
 
 (defn- write-table-data-to-file! [id temp-file cancel-chan]
