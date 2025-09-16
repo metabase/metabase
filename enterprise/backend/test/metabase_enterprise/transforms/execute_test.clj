@@ -32,17 +32,6 @@
      :filter-fn     constraint-fn
      :filter-values constraint-params})))
 
-(defn- wait-for-table
-  [table-name timeout-ms]
-  (let [mp    (mt/metadata-provider)
-        limit (+ (System/currentTimeMillis) timeout-ms)]
-    (loop []
-      (Thread/sleep 200)
-      (when (> (System/currentTimeMillis) limit)
-        (throw (ex-info "table has not been created" {:table-name table-name, :timeout-ms timeout-ms})))
-      (or (m/find-first (comp #{table-name} :name) (lib.metadata/tables mp))
-          (recur)))))
-
 (deftest execute-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/dataset transforms-dataset/transforms-test
@@ -61,14 +50,14 @@
                                                          :query t1-query}
                                                 :target target1}]
               (transforms.execute/run-mbql-transform! t1 {:run-method :manual})
-              (let [table1   (wait-for-table table1-name 10000)
+              (let [table1   (transforms.tu/wait-for-table table1-name 10000)
                     t2-query (make-query table1 "category" lib/= "Gizmo")]
                 (mt/with-temp [:model/Transform t2 {:name   "transform2"
                                                     :source {:type  :query
                                                              :query t2-query}
                                                     :target target2}]
                   (transforms.execute/run-mbql-transform! t2 {:run-method :cron})
-                  (let [table2      (wait-for-table table2-name 10000)
+                  (let [table2      (transforms.tu/wait-for-table table2-name 10000)
                         check-query (lib/aggregate (make-query table2) (lib/count))
                         query-result (qp/process-query check-query)]
                     ;; The transforms-test dataset has exactly 4 Gizmo products (IDs 6, 8, 12, 14)
@@ -119,7 +108,7 @@
               (doseq [transform [transform-no-limit transform-limit]]
                 (transforms.execute/run-mbql-transform! transform {:run-method :manual})
                 (let [table-name (-> transform :target :name)
-                      table-result (wait-for-table table-name 10000)
+                      table-result (transforms.tu/wait-for-table table-name 10000)
                       query-result (->> (lib/query mp table-result)
                                         (qp/process-query)
                                         (mt/formatted-rows [str 2.0])
@@ -168,7 +157,7 @@
                                                               :query query}
                                                      :target target-table}]
             (transforms.execute/run-mbql-transform! transform {:run-method :manual})
-            (let [table-result      (wait-for-table (:name target-table) 10000)
+            (let [table-result      (transforms.tu/wait-for-table (:name target-table) 10000)
                   query-result (->> (lib/query mp table-result)
                                     (qp/process-query)
                                     (mt/formatted-rows [int str str 2.0 str])
@@ -216,7 +205,7 @@
                                                                         :query query}
                                                                :target target-table}]
                       (transforms.execute/run-mbql-transform! transform {:run-method :manual})
-                      (let [table-result      (wait-for-table (:name target-table) 10000)
+                      (let [table-result      (transforms.tu/wait-for-table (:name target-table) 10000)
                             query-result (->> (lib/query mp table-result)
                                               (qp/process-query)
                                               (mt/formatted-rows [int str str 2.0 str])
@@ -245,90 +234,6 @@
                                          [[(format "DROP OWNED BY %s;" no-schema-user)]
                                           [(format "DROP ROLE IF EXISTS %s;" no-schema-user)]])))))))
 
-(deftest atomic-python-transform-swap-test
-  (testing "Python transform execution with atomic table swap"
-    (mt/test-drivers #{:h2 :postgres}
-      (mt/with-premium-features #{:transforms}
-        (mt/dataset transforms-dataset/transforms-test
-          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
-            (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
-                                                                     :schema schema
-                                                                     :name   "atomic_python_swap"}]
-              (let [initial-transform {:name   "Python Transform Initial"
-                                       :source {:type  "python"
-                                                :source-tables {}
-                                                :body  (str "import pandas as pd\n"
-                                                            "\n"
-                                                            "def transform():\n"
-                                                            "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")}
-                                       :target (assoc target :database (mt/id))}]
-                (mt/with-temp [:model/Transform transform initial-transform]
-                  (transforms.execute/execute-python-transform! transform {:run-method :manual})
-                  (wait-for-table table-name 10000)
-
-                  (let [initial-rows (transforms.tu/table-rows table-name)]
-                    (is (= [["Alice" 25] ["Bob" 30]] initial-rows) "Initial data should be Alice and Bob")
-
-                    (t2/update! :model/Transform (:id transform)
-                                {:source {:type "python"
-                                          :source-tables {}
-                                          :body (str "import pandas as pd\n"
-                                                     "\n"
-                                                     "def transform():\n"
-                                                     "    return pd.DataFrame({'name': ['Charlie', 'Diana', 'Eve'], 'age': [35, 40, 45]})")}}))
-
-                  (let [swap-latch (java.util.concurrent.CountDownLatch. 1)
-                        original-rename-tables-atomic! transforms.util/rename-tables!]
-                    (with-redefs [transforms.util/rename-tables! (fn [driver db-id rename-pairs]
-                                                                   (.await swap-latch)
-                                                                   (original-rename-tables-atomic! driver db-id rename-pairs))]
-                      (let [transform-future (future
-                                               (transforms.execute/execute-python-transform!
-                                                (t2/select-one :model/Transform (:id transform))
-                                                {:run-method :manual}))]
-                        (is (= [["Alice" 25] ["Bob" 30]]
-                               (transforms.tu/table-rows table-name))
-                            "Original data should still be accessible during transform")
-                        (.countDown swap-latch)
-                        @transform-future
-                        (is (= [["Charlie" 35] ["Diana" 40] ["Eve" 45]]
-                               (transforms.tu/table-rows table-name))
-                            "Table should now contain Charlie, Diana, and Eve")))))))))))))
-
-(deftest python-transform-temp-table-cleanup-test
-  (testing "Python transform cleans up temp tables on success"
-    (mt/test-drivers #{:h2 :postgres}
-      (mt/with-premium-features #{:transforms}
-        (mt/dataset transforms-dataset/transforms-test
-          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
-            (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
-                                                                     :schema schema
-                                                                     :name   "python_cleanup_test"}]
-              (let [transform-def {:name   "Python Transform Cleanup"
-                                   :source {:type  "python"
-                                            :source-tables {}
-                                            :body  (str "import pandas as pd\n"
-                                                        "\n"
-                                                        "def transform():\n"
-                                                        "    return pd.DataFrame({'col1': [1, 2, 3], 'col2': ['a', 'b', 'c']})")}
-                                   :target (assoc target :database (mt/id))}]
-                (mt/with-temp [:model/Transform transform transform-def]
-                  (transforms.execute/execute-python-transform! transform {:run-method :manual})
-                  (wait-for-table table-name 10000)
-
-                  (transforms.execute/execute-python-transform! transform {:run-method :manual})
-
-                  (let [db-id (mt/id)
-                        tables (t2/select :model/Table :db_id db-id :active true)
-                        new-table-pattern (re-pattern (str ".*" table-name "_" transforms.execute/temp-table-suffix-new "_.*"))
-                        old-table-pattern (re-pattern (str ".*" table-name "_" transforms.execute/temp-table-suffix-old "_.*"))]
-                    (is (not-any? #(or (re-matches new-table-pattern (:name %))
-                                       (re-matches old-table-pattern (:name %))) tables)
-                        (str "No temp tables (_" transforms.execute/temp-table-suffix-new "_ or _" transforms.execute/temp-table-suffix-old "_) should remain after successful Python transform"))
-
-                    (is (= [[1 "a"] [2 "b"] [3 "c"]] (transforms.tu/table-rows table-name))
-                        "Table should contain the expected data after swap")))))))))))
-
 (deftest run-mbql-transform-fails-with-routing-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table]})
     (mt/with-premium-features #{:database-routing}
@@ -352,4 +257,3 @@
                  #"Transforms are not supported on databases with DB routing enabled."
                  (mt/with-current-user (mt/user->id :crowberto)
                    (transforms.execute/run-mbql-transform! transform {:run-method :manual}))))))))))
->>>>>>> origin/master
