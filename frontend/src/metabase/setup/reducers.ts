@@ -39,7 +39,8 @@ const getIsEmbeddingUseCaseFromQueryParams = () => {
 };
 
 const isEmbeddingUseCase = getIsEmbeddingUseCaseFromQueryParams();
-const getInitialStep = (): SetupStep => "welcome";
+const getInitialStep = (): SetupStep =>
+  isEmbeddingUseCase ? "user_info" : "welcome";
 
 const initialState: SetupState = {
   step: getInitialStep(),

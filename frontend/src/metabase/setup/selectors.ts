@@ -136,7 +136,7 @@ export const getSteps = createSelector(
 
     const steps: SetupStep[] = [
       "welcome",
-      "language",
+      ...maybeAddStep("language", !isEmbeddingUseCase),
       "user_info",
       ...maybeAddStep("usage_question", !isEmbeddingUseCase),
       ...maybeAddStep(
