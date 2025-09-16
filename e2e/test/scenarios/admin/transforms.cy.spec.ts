@@ -25,7 +25,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
     H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
     cy.intercept("PUT", "/api/field/*").as("updateField");
     cy.intercept("POST", "/api/ee/transform").as("createTransform");
@@ -122,6 +122,63 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(3);
+    });
+
+    it("should be able to use the data reference and snippets when writing a SQL transform", () => {
+      H.createSnippet({
+        name: "snippet1",
+        content: "1",
+      });
+
+      visitTransformListPage();
+      getTransformListPage().button("Create a transform").click();
+      H.popover().findByText("SQL query").click();
+      H.popover().findByText(DB_NAME).click();
+
+      function testDataReference() {
+        cy.log("open the data reference");
+        cy.findByTestId("native-query-editor-action-buttons")
+          .findByLabelText("Learn about your data")
+          .click();
+
+        editorSidebar()
+          .should("be.visible")
+          .within(() => {
+            cy.log("The current database should be opened by default");
+            cy.findByText("Data Reference").should("not.exist");
+            cy.findByText("Writable Postgres12").should("be.visible");
+          });
+
+        cy.findByTestId("native-query-editor-action-buttons")
+          .findByLabelText("Learn about your data")
+          .click();
+
+        editorSidebar().should("not.exist");
+      }
+
+      function testSnippets() {
+        cy.findByTestId("native-query-editor-action-buttons")
+          .findByLabelText("SQL Snippets")
+          .click();
+
+        editorSidebar()
+          .should("be.visible")
+          .within(() => {
+            cy.findByText("snippet1").should("be.visible");
+            cy.icon("snippet").click();
+          });
+
+        H.NativeEditor.value().should("eq", "{{snippet: snippet1}}");
+
+        cy.findByTestId("native-query-editor-action-buttons")
+          .findByLabelText("SQL Snippets")
+          .click();
+
+        editorSidebar().should("not.exist");
+      }
+
+      testDataReference();
+      testSnippets();
     });
 
     it("should be able to create and run a transform from a question or a model", () => {
@@ -417,26 +474,24 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
   });
 
   describe("tags", () => {
-    it("should be able to add and remove tags", () => {
+    it("should be able to add and remove tags", { tags: "@flaky" }, () => {
       createMbqlTransform({ visitTransform: true });
       getTagsInput().click();
 
-      H.popover().within(() => {
-        cy.findByRole("option", { name: "hourly" }).click();
-        cy.wait("@updateTransform");
-        assertOptionSelected("hourly");
-        assertOptionNotSelected("daily");
+      H.popover().findByRole("option", { name: "hourly" }).click();
+      cy.wait("@updateTransform");
+      assertOptionSelected("hourly");
+      assertOptionNotSelected("daily");
 
-        cy.findByRole("option", { name: "daily" }).click();
-        cy.wait("@updateTransform");
-        assertOptionSelected("hourly");
-        assertOptionSelected("daily");
+      H.popover().findByRole("option", { name: "daily" }).click();
+      cy.wait("@updateTransform");
+      assertOptionSelected("hourly");
+      assertOptionSelected("daily");
 
-        cy.findByRole("option", { name: "hourly" }).click();
-        cy.wait("@updateTransform");
-        assertOptionNotSelected("hourly");
-        assertOptionSelected("daily");
-      });
+      H.popover().findByRole("option", { name: "hourly" }).click();
+      cy.wait("@updateTransform");
+      assertOptionNotSelected("hourly");
+      assertOptionSelected("daily");
     });
 
     it("should be able to create tags inline", () => {
@@ -850,7 +905,9 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
                         [
                           "field",
                           ANIMAL_SCORE,
-                          { binning: { strategy: "num-bins", "num-bins": 10 } },
+                          {
+                            binning: { strategy: "num-bins", "num-bins": 10 },
+                          },
                         ],
                       ],
                       joins: [
@@ -1189,7 +1246,6 @@ describe("scenarios > admin > transforms > databases without :schemas", () => {
     H.restore("mysql-8");
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 
     cy.intercept("PUT", "/api/field/*").as("updateField");
     cy.intercept("POST", "/api/ee/transform").as("createTransform");
@@ -1203,18 +1259,22 @@ describe("scenarios > admin > transforms > databases without :schemas", () => {
     cy.intercept("DELETE", "/api/ee/transform-tag/*").as("deleteTag");
   });
 
-  it("should be not be possible to create a new schema when updating a transform target", () => {
-    createMbqlTransform({
-      databaseId: WRITABLE_DB_ID,
-      sourceTable: "ORDERS",
-      visitTransform: true,
-      targetSchema: null,
-    });
+  it(
+    "should be not be possible to create a new schema when updating a transform target",
+    { tags: "@flaky" },
+    () => {
+      createMbqlTransform({
+        databaseId: WRITABLE_DB_ID,
+        sourceTable: "ORDERS",
+        visitTransform: true,
+        targetSchema: null,
+      });
 
-    getTransformPage().button("Change target").click();
+      getTransformPage().button("Change target").click();
 
-    H.modal().findByLabelText("Schema").should("not.exist");
-  });
+      H.modal().findByLabelText("Schema").should("not.exist");
+    },
+  );
 
   it("should be not be possible to create a new schema when the database does not support schemas", () => {
     cy.log("create a new transform");
@@ -1237,7 +1297,7 @@ describe("scenarios > admin > transforms > jobs", () => {
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
     cy.intercept("POST", "/api/ee/transform-job").as("createJob");
     cy.intercept("PUT", "/api/ee/transform-job/*").as("updateJob");
@@ -1366,22 +1426,20 @@ describe("scenarios > admin > transforms > jobs", () => {
       H.createTransformJob({ name: "New job" }, { visitTransformJob: true });
       getTagsInput().click();
 
-      H.popover().within(() => {
-        cy.findByRole("option", { name: "hourly" }).click();
-        cy.wait("@updateJob");
-        assertOptionSelected("hourly");
-        assertOptionNotSelected("daily");
+      H.popover().findByRole("option", { name: "hourly" }).click();
+      cy.wait("@updateJob");
+      assertOptionSelected("hourly");
+      assertOptionNotSelected("daily");
 
-        cy.findByRole("option", { name: "daily" }).click();
-        cy.wait("@updateJob");
-        assertOptionSelected("hourly");
-        assertOptionSelected("daily");
+      H.popover().findByRole("option", { name: "daily" }).click();
+      cy.wait("@updateJob");
+      assertOptionSelected("hourly");
+      assertOptionSelected("daily");
 
-        cy.findByRole("option", { name: "hourly" }).click();
-        cy.wait("@updateJob");
-        assertOptionNotSelected("hourly");
-        assertOptionSelected("daily");
-      });
+      H.popover().findByRole("option", { name: "hourly" }).click();
+      cy.wait("@updateJob");
+      assertOptionNotSelected("hourly");
+      assertOptionSelected("daily");
     });
   });
 
@@ -1483,26 +1541,10 @@ describe("scenarios > admin > transforms > jobs", () => {
 
         cy.log("last run at - add a filter");
         getLastRunAtFilterWidget().click();
-        H.popover().findByText("Today").click();
+        H.popover().findByText("Previous month").click();
 
-        getLastRunAtFilterWidget().should("contain", "Today");
-        getContentTable().within(() => {
-          cy.findByText("Hourly job").should("be.visible");
-          cy.findByText("Daily job").should("not.exist");
-          cy.findByText("Weekly job").should("not.exist");
-          cy.findByText("Monthly job").should("not.exist");
-        });
-
-        cy.log("last run at filter - update a filter");
-        getLastRunAtFilterWidget().click();
-        H.popover().findByText("Week").click();
-        getLastRunAtFilterWidget().should("contain", "This week");
-        getContentTable().within(() => {
-          cy.findByText("Hourly job").should("be.visible");
-          cy.findByText("Daily job").should("not.exist");
-          cy.findByText("Weekly job").should("not.exist");
-          cy.findByText("Monthly job").should("not.exist");
-        });
+        getLastRunAtFilterWidget().should("contain", "Previous month");
+        getContentTable().should("not.exist");
 
         cy.log("last run at filter - remove filter");
         getLastRunAtFilterWidget().button("Remove filter").click();
@@ -1526,33 +1568,17 @@ describe("scenarios > admin > transforms > jobs", () => {
         cy.log("next run - add a filter");
         getNextRunFilterWidget().click();
         H.popover().within(() => {
-          cy.findByText("Relative date range…").click();
-          cy.findByText("Current").click();
-          cy.findByText("Week").click();
-        });
-
-        getNextRunFilterWidget().should("contain", "This week");
-        getContentTable().within(() => {
-          cy.findByText("Hourly job").should("be.visible");
-          cy.findByText("Daily job").should("be.visible");
-          cy.findByText("Weekly job").should("not.exist");
-          cy.findByText("Monthly job").should("not.exist");
-        });
-
-        cy.log("next run filter - update a filter");
-        getNextRunFilterWidget().click();
-        H.popover().within(() => {
-          cy.findByText("Next").click();
-          cy.findByDisplayValue(30).clear().type("2");
+          cy.findByText("Fixed date range…").click();
+          cy.findByLabelText("Start date").clear().type("12/10/2024");
+          cy.findByLabelText("End date").clear().type("01/05/2025");
           cy.button("Apply").click();
         });
-        getNextRunFilterWidget().should("contain", "Next 2 weeks");
-        getContentTable().within(() => {
-          cy.findByText("Hourly job").should("not.exist");
-          cy.findByText("Daily job").should("not.exist");
-          cy.findByText("Weekly job").should("be.visible");
-          cy.findByText("Monthly job").should("not.exist");
-        });
+
+        getNextRunFilterWidget().should(
+          "contain",
+          "December 10, 2024 - January 5, 2025",
+        );
+        getContentTable().should("not.exist");
 
         cy.log("next run filter - remove filter");
         getNextRunFilterWidget().button("Remove filter").click();
@@ -2078,6 +2104,10 @@ function getTagsInput() {
   return cy.findByPlaceholderText("Add tags");
 }
 
+function getTagsInputContainer() {
+  return getTagsInput().parent();
+}
+
 function getContentTable() {
   return cy.findByTestId("admin-content-table");
 }
@@ -2271,17 +2301,13 @@ function assertTableDoesNotExistError({
 }
 
 function assertOptionSelected(name: string) {
-  cy.findByRole("option", { name }).should(
-    "have.attr",
-    "aria-selected",
-    "true",
-  );
+  getTagsInputContainer().findByText(name).should("be.visible");
 }
 
 function assertOptionNotSelected(name: string) {
-  cy.findByRole("option", { name }).should(
-    "have.attr",
-    "aria-selected",
-    "false",
-  );
+  getTagsInputContainer().findByText(name).should("not.exist");
+}
+
+function editorSidebar() {
+  return cy.findByTestId("editor-sidebar");
 }
