@@ -360,20 +360,24 @@ describe("Database connection strings", () => {
 });
 
 describe("Database connection strings events", () => {
-  it("should track correctly", () => {
+  beforeEach(() => {
     H.resetSnowplow();
     H.restore();
     H.enableTracking();
     cy.visit("/admin/databases/create");
-
     chooseDatabase("MySQL");
+  });
 
+  it("should track success events correctly", () => {
     cy.findByLabelText("Connection string (optional)")
       .focus()
       .paste("jdbc:mysql://testuser:testpass@host:3306/dbname?ssl=true")
       .paste("jdbc:mysql://a:b@c:3/dbname?ssl=false");
 
-    // go to the next field
+    cy.findByTextEnsureVisible("Connection details pre-filled below.").should(
+      "exist",
+    );
+
     cy.findByLabelText("Display name").click();
 
     H.expectUnstructuredSnowplowEvent(
@@ -383,13 +387,18 @@ describe("Database connection strings events", () => {
       },
       1,
     );
+  });
 
+  it("should track failure events correctly", () => {
     cy.findByLabelText("Connection string (optional)")
       .focus()
       .paste("broken string")
       .type("also not a valid string");
 
-    // go to the next field
+    cy.findByTextEnsureVisible("Couldn’t use this connection string.").should(
+      "exist",
+    );
+
     cy.findByLabelText("Display name").click();
 
     H.expectUnstructuredSnowplowEvent(
