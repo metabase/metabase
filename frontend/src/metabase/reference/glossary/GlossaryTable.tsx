@@ -126,7 +126,6 @@ export function GlossaryTable({
             return (
               <tr className={cx(S.row, S.rowEditor)}>
                 <GlossaryRowEditor
-                  mode="create"
                   item={{ term: "", definition: "" }}
                   onCancel={() => setCreating(false)}
                   onSave={async (term, definition) => {
@@ -145,7 +144,6 @@ export function GlossaryTable({
             <tr className={cx(S.row, { [S.rowEditor]: isEditing })}>
               {isEditing ? (
                 <GlossaryRowEditor
-                  mode="edit"
                   item={item}
                   autoFocusField={editingField ?? "term"}
                   onCancel={() => setEditingId(null)}

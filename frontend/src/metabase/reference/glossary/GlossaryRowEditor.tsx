@@ -18,7 +18,6 @@ type GlossaryRowEditorProps = {
   item: Pick<GlossaryItem, "term" | "definition">;
   onSave: (term: string, definition: string) => void | Promise<void>;
   onCancel: () => void;
-  mode: "create" | "edit";
   autoFocusField?: "term" | "definition";
 };
 
@@ -26,7 +25,6 @@ export function GlossaryRowEditor({
   item,
   onSave,
   onCancel,
-  mode,
   autoFocusField = "term",
 }: GlossaryRowEditorProps) {
   const [term, setTerm] = useState(item.term);
@@ -41,6 +39,7 @@ export function GlossaryRowEditor({
           classNames={{
             input: S.input,
           }}
+          fw="bold"
           variant="unstyled"
           autoFocus={autoFocusField === "term"}
           placeholder={t`Bird`}
@@ -80,9 +79,9 @@ export function GlossaryRowEditor({
               <Icon name="close" />
             </ActionIcon>
           </Tooltip>
-          <Tooltip label={mode === "create" ? t`Add` : t`Save`}>
+          <Tooltip label={t`Save`}>
             <ActionIcon
-              aria-label={mode === "create" ? t`Add` : t`Save`}
+              aria-label={t`Save`}
               variant={canSave ? "filled" : "subtle"}
               disabled={!canSave}
               onClick={() => void onSave(term.trim(), definition.trim())}
