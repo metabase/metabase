@@ -9,6 +9,8 @@ type EditorHeaderProps = {
   isSaving: boolean;
   onSave: () => void;
   onCancel: () => void;
+  onToggleNativeQueryPreview?: () => void;
+  isShowingNativeQueryPreview?: boolean;
 };
 
 export function EditorHeader({
@@ -17,12 +19,24 @@ export function EditorHeader({
   isSaving,
   onSave,
   onCancel,
+  isShowingNativeQueryPreview,
+  onToggleNativeQueryPreview,
 }: EditorHeaderProps) {
   return (
     <EditBar
       title={getTitle(isNew)}
       admin
       buttons={[
+        onToggleNativeQueryPreview ? (
+          <Button
+            key="view-sql"
+            small
+            onClick={onToggleNativeQueryPreview}
+            icon="sql"
+          >
+            {isShowingNativeQueryPreview ? t`Hide SQL` : t`View SQL`}
+          </Button>
+        ) : null,
         <Button key="cancel" small onClick={onCancel}>{t`Cancel`}</Button>,
         <Button
           key="save"
