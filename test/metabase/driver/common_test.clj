@@ -107,11 +107,11 @@
           (let [new-rows     [[2 "New Luke"] [3 "New Leia"]]
                 data-source  {:type :rows :data new-rows}
                 rows-inserted (driver/insert-from-source! driver db-id
-                                                          {:table-name qualified-table-name
+                                                          {:name    qualified-table-name
                                                            :columns (mapv (fn [name]
-                                                                            {:name name})
+                                                                            {:name (keyword name)})
                                                                           (keys column-definitions))}
                                                           data-source)]
-            (is (= (count new-rows) rows-inserted))))
-
+            (is (= (count new-rows) (count (driver/table-rows-seq driver/*driver* (mt/db) {:name table-name
+                                                                                           :schema schema-name}))))))
         (driver/drop-table! driver db-id qualified-table-name)))))

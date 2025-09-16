@@ -66,6 +66,7 @@
     :model/PermissionsGroupMembership
     :model/PermissionsRevision
     :model/PersistedInfo
+    :model/PythonLibrary
     :model/Pulse
     :model/PulseCard
     :model/PulseChannel
