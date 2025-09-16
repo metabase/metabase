@@ -5,7 +5,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.card :as lib.card]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -13,7 +12,6 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
    [metabase.system.core :as system]
    [metabase.util :as u]
@@ -165,9 +163,9 @@
 
   TODO -- we should remove remove the `:dataset` key and make sure nothing breaks, and make sure everything is looking
   at `:model` instead."
-  [{:qp/keys [source-card-id], :as _preprocessed-query} rff]
+  [{:qp/keys [source-card-id], :as preprocessed-query} rff]
   (if-not source-card-id
     rff
-    (let [model? (= (:type (lib.metadata.protocols/card (qp.store/metadata-provider) source-card-id)) :model)]
+    (let [model? (= (:type (lib.metadata/card preprocessed-query source-card-id)) :model)]
       (fn rff' [metadata]
         (rff (cond-> metadata model? (assoc :dataset model?, :model model?)))))))
