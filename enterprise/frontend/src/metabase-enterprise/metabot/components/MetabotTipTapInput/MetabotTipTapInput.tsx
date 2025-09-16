@@ -10,6 +10,9 @@ import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Icon } from "metabase/ui";
 
+import { MetabotMentionExtension } from "../../extensions/MetabotMentionExtension";
+import { MetabotMentionSuggestion } from "../../extensions/MetabotMentionSuggestion";
+import { createMetabotSuggestionRenderer } from "../../extensions/metabotSuggestionRenderer";
 import {
   parseMetabotFormat,
   serializeToMetabotFormat,
@@ -53,12 +56,17 @@ export const MetabotTipTapInput = ({
         strike: false,
       }),
       Placeholder.configure({
-        placeholder: t`Tell me to do something, or ask a question`,
+        placeholder: t`Tell me to do something, or ask a question. Type @ to mention entities...`,
       }),
       MetabotSmartLink.configure({
         siteUrl,
         HTMLAttributes: {
           class: styles.smartLink,
+        },
+      }),
+      MetabotMentionExtension.configure({
+        suggestion: {
+          render: createMetabotSuggestionRenderer(MetabotMentionSuggestion),
         },
       }),
     ],
