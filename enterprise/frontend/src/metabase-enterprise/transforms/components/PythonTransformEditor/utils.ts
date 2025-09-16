@@ -4,7 +4,7 @@ import { t } from "ttag";
 import {
   type ExecutePythonResponse,
   useExecutePythonMutation,
-} from "metabase-enterprise/transforms/api/python-runner";
+} from "metabase-enterprise/api/transform-python";
 import type { PythonTransformSource } from "metabase-types/api";
 
 export function updateTransformSignature(
