@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.gate :as semantic.gate]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
@@ -33,7 +34,7 @@
   (Timestamp/from (Instant/parse s)))
 
 (deftest indexing-step-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         model          semantic.tu/mock-embedding-model
         index          (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
@@ -214,7 +215,7 @@
            (log/fatal "Indexing loop thread not exiting during test!")))))))
 
 (deftest indexing-loop-thread-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         index          semantic.tu/mock-index
         metadata-row   {:indexer_last_poll Instant/EPOCH
@@ -283,7 +284,7 @@
             (is (.join thread (Duration/ofSeconds 1)))))))))
 
 (deftest indexing-loop-exit-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         model          semantic.tu/mock-embedding-model
         index          (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
@@ -371,7 +372,7 @@
    (fn [_] (semantic.dlq/drop-dlq-table-if-exists! pgvector index-metadata index-id))))
 
 (deftest quartz-job-run!-test
-  (let [pgvector        semantic.tu/db
+  (let [pgvector        (semantic.env/get-pgvector-datasource!)
         index-metadata  (semantic.tu/unique-index-metadata)
         open-job-thread (fn [& args]
                           (let [caught-ex (volatile! nil)]
@@ -458,7 +459,7 @@
 
 (deftest dlq-step-test
   (mt/with-prometheus-system! [_ system]
-    (let [pgvector       semantic.tu/db
+    (let [pgvector       (semantic.env/get-pgvector-datasource!)
           index-metadata (semantic.tu/unique-index-metadata)
           model          semantic.tu/mock-embedding-model
           index          (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
@@ -541,7 +542,7 @@
 
 (deftest indexer-stall-and-recovery-test
   (mt/with-prometheus-system! [_ system]
-    (let [pgvector             semantic.tu/db
+    (let [pgvector             (semantic.env/get-pgvector-datasource!)
           index-metadata       (semantic.tu/unique-index-metadata)
           model                semantic.tu/mock-embedding-model
           index                (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
@@ -660,7 +661,7 @@
                         (mt/metric-value system :metabase-search/semantic-indexer-poll-to-poll-interval-ms)))))))))))
 
 (deftest dlq-integration-with-indexer-loop-test
-  (let [pgvector         semantic.tu/db
+  (let [pgvector         (semantic.env/get-pgvector-datasource!)
         index-metadata   (semantic.tu/unique-index-metadata)
         model            semantic.tu/mock-embedding-model
         index            (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
@@ -776,7 +777,7 @@
 
 (deftest indexer-loop-metric-test
   (mt/with-prometheus-system! [_ system]
-    (let [pgvector semantic.tu/db
+    (let [pgvector (semantic.env/get-pgvector-datasource!)
           index-metadata (semantic.tu/unique-index-metadata)
           metadata-row {:id                42
                         :indexer_last_poll (ts "2025-01-01T12:00:00Z")

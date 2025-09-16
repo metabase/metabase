@@ -85,3 +85,22 @@
 
     [:or opts & args]
     (simplify-and-or-filter :or opts args)))
+
+(defn simplify-filters
+  "Simplify multiple filters, combining them into fewer if possible and deduplicating them."
+  [clauses]
+  ;; combine into one `:and` clause, simplify with [[simplify-compound-filter]], then pull out the simplified
+  ;; subclauses
+  (case (count clauses)
+    0
+    clauses
+
+    1
+    [(simplify-compound-filter (first clauses))]
+
+    #_else
+    (let [[tag _opts & args, :as simplified] (simplify-compound-filter (apply lib.filter/and clauses))]
+      (if (= tag :and)
+        (vec args)
+        ;; simplified to a single clause
+        [simplified]))))

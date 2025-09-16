@@ -33,14 +33,19 @@
     (assert ag-uuid "Metadata for an aggregation reference should include :lib/source-uuid")
     [:aggregation options ag-uuid]))
 
-(mu/defn aggregations :- [:maybe [:sequential {:min 1} ::lib.schema.aggregation/aggregation]]
-  "Get non-empty aggregations in a given stage of a query."
-  ([query]
-   (aggregations query -1))
+(declare aggregations)
 
-  ([query        :- ::lib.schema/query
-    stage-number :- :int]
-   (not-empty (:aggregation (lib.util/query-stage query stage-number)))))
+(mu/defn resolve-aggregation-by-name :- ::lib.schema.aggregation/aggregation
+  "Attempt to find an aggregation with `ag-name`. This is mostly for dealing with super broken `:field` refs in
+  parameters that do stuff like `[:field \"count\" nil]` inside [[metabase.lib.field.resolution]]."
+  ([query stage-number ag-name]
+   (resolve-aggregation-by-name query stage-number (aggregations query stage-number) ag-name))
+
+  ([query stage-number ags ag-name :- :string]
+   (m/find-first
+    (fn [aggregation]
+      (= (lib.metadata.calculation/column-name query stage-number aggregation) ag-name))
+    ags)))
 
 (mu/defn resolve-aggregation :- ::lib.schema.aggregation/aggregation
   "Resolve an aggregation with a specific `ag-uuid`."
@@ -53,10 +58,7 @@
                       {:query query, :stage-number stage-number, :ref ag-ref})))
     (or (m/find-first #(= (lib.options/uuid %) ag-uuid) ags)
         (when source-name
-          (m/find-first
-           (fn [aggregation]
-             (= (lib.metadata.calculation/column-name query stage-number aggregation) source-name))
-           ags))
+          (resolve-aggregation-by-name query stage-number ags source-name))
         (throw (ex-info (if source-name
                           (i18n/tru "No aggregation with uuid {0} or source name {1}" (pr-str ag-uuid) (pr-str source-name))
                           (i18n/tru "No aggregation with uuid {0}" (pr-str ag-uuid)))
@@ -67,7 +69,7 @@
 
 (defmethod lib.metadata.calculation/describe-top-level-key-method :aggregation
   [query stage-number _k]
-  (when-let [ags (aggregations query stage-number)]
+  (when-let [ags (not-empty (:aggregation (lib.util/query-stage query stage-number)))]
     (lib.util/join-strings-with-conjunction
      (i18n/tru "and")
      (for [aggregation ags]
@@ -76,7 +78,7 @@
 (defmethod lib.metadata.calculation/metadata-method :aggregation
   [query
    stage-number
-   [_ag {:keys [base-type effective-type display-name], agg-name :name, :as _opts} _ag-uuid, :as ag-ref]]
+   [_ag {:keys [base-type effective-type display-name], agg-name :name, :as _opts} _uuid, :as ag-ref]]
   (let [aggregation (resolve-aggregation query stage-number ag-ref)]
     (merge
      (lib.metadata.calculation/metadata query stage-number aggregation)

@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.analytics.core :as analytics]
@@ -18,14 +19,14 @@
   (mt/with-premium-features #{:semantic-search}
     (with-open [index-ref (semantic.tu/open-temp-index!)]
       ;; open-temp-index-table! creates the temp table, so drop it in order to test create!.
-      (semantic.index/drop-index-table! semantic.tu/db semantic.tu/mock-index)
+      (semantic.index/drop-index-table! (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index)
       (testing "index table is not present before create!"
         (is (not (semantic.tu/table-exists-in-db? (:table-name @index-ref))))
         (is (not (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/hnsw-index-name @index-ref))))
         (is (not (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/fts-index-name @index-ref))))
         (is (not (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/fts-native-index-name @index-ref)))))
       (testing "index table is present after create!"
-        (semantic.index/create-index-table-if-not-exists! semantic.tu/db semantic.tu/mock-index {:force-reset? false})
+        (semantic.index/create-index-table-if-not-exists! (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index {:force-reset? false})
         (is (semantic.tu/table-exists-in-db? (:table-name @index-ref)))
         (is (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/hnsw-index-name @index-ref)))
         (is (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/fts-index-name @index-ref)))
@@ -37,7 +38,7 @@
       (testing "index table is present before drop!"
         (is (semantic.tu/table-exists-in-db? (:table-name @index-ref))))
       (testing "index table is not present after drop!"
-        (semantic.index/drop-index-table! semantic.tu/db semantic.tu/mock-index)
+        (semantic.index/drop-index-table! (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index)
         (is (not (semantic.tu/table-exists-in-db? (:table-name @index-ref))))))))
 
 (deftest upsert-index!-test
@@ -343,7 +344,7 @@
             (testing "Permission filtering metrics"
               (reset! analytics-calls [])
               (mt/with-test-user :crowberto
-                (semantic.index/query-index semantic.tu/db semantic.tu/mock-index
+                (semantic.index/query-index (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index
                                             {:search-string "dog training"}))
 
               (let [permission-calls (filter #(= :metabase-search/semantic-permission-filter-ms (first %)) @analytics-calls)]
@@ -355,7 +356,7 @@
             (testing "Semantic search timing metrics"
               (reset! analytics-calls [])
               (mt/with-test-user :crowberto
-                (semantic.index/query-index semantic.tu/db semantic.tu/mock-index
+                (semantic.index/query-index (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index
                                             {:search-string "elephant migration"
                                              :filter-items-in-personal-collection "only"}))
 

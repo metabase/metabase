@@ -430,7 +430,9 @@
    ;;
    ;; CONSTRAINTS
    [:ref ::lib.schema.util/unique-uuids]
-   [:fn
-    {:error/message ":expressions is not allowed in the top level of a query -- it is only allowed in MBQL stages"}
-    #(not (when (map? %)
-            (contains? % :expressions)))]])
+   (common/disallowed-keys
+    {:filter       ":filter is not allowed in MBQL 5, and it's not allowed in the top-level of a stage in any MBQL version"
+     :source-query ":source-query is not allowed in MBQL 5, and it's not allowed in the top-level of a stage in any MBQL version"
+     :expressions  ":expressions is not allowed in the top level of a query, only in MBQL stages"
+     :filters      ":filters is not allowed in the top level of a query, only in MBQL stages"
+     :source-table ":source-table is not allowed in the top level of a query, only in MBQL stages"})])

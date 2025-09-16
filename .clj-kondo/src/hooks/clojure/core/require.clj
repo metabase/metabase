@@ -52,7 +52,13 @@
 
 (defn- lint-require* [node current-ns config]
   (let [[_require & args]   (:children node)
-        required-namespaces (keep unwrap-require args)]
+        required-namespaces (->> (keep unwrap-require args)
+                                 ;; `require` runs through `cc/load-libs` which allows
+                                 ;; #{:as :reload :reload-all :require :use :verbose :refer :as-alias}
+                                 ;; as args. If you use a REPL tool that applies clj-kondo linting (e.g., Clojure MCP)
+                                 ;; you may wish to `:reload` or `:reload-all` a namespace. So we shouldn't assume all
+                                 ;; args are keywords:
+                                 (remove keyword?))]
     (lint* node current-ns config required-namespaces)))
 
 (defn- lint-requiring-resolve* [node current-ns config]
