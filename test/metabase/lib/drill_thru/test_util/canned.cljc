@@ -141,6 +141,13 @@
     {:query          (-> (lib/query metadata-provider (meta/table-metadata :orders))
                          (lib/aggregate (lib/count))
                          (lib/breakout (meta/field-metadata :orders :created-at))
+                         ;; HEY! HOW ARE WE SUPPOSED TO BREAKOUT ON A COLUMN FROM ANOTHER TABLE! WE NEED THE VERSION
+                         ;; OF THE COLUMN WITH IMPLICIT JOIN INFO!
+                         ;;
+                         ;; TODO (Cam 9/15/25) -- because the tests are so busted here I had to write extra field
+                         ;; resolution code just to work around these tests.
+                         ;; See [[fallback-metadata-for-demonic-field-id-from-different-source-table]] for example.
+                         ;; Maybe we should fix the tests.
                          (lib/breakout (meta/field-metadata :products :category)))
      :row            {"CREATED_AT" "2022-12-01T00:00:00+02:00"
                       "CATEGORY"   "Doohickey"

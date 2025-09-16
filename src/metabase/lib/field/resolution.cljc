@@ -21,6 +21,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.util.log :as lib.util.log]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -67,7 +68,7 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    table-id              :- [:maybe ::lib.schema.id/table]
    id-or-name            :- ::id-or-name]
-  (log/debugf "Resolving Field %s from metadata provider" (pr-str id-or-name))
+  (log/debugf "Resolving %s from metadata provider" (lib.util.log/format-field metadata-providerable id-or-name))
   (when-some [col (cond
                     (pos-int? id-or-name)
                     (lib.metadata/field metadata-providerable id-or-name)
@@ -109,9 +110,9 @@
               ;; `id-or-name` is an ID
               (or (m/find-first #(= (:id %) id-or-name) cols)
                   (do
-                    (log/debugf "Failed to find column in metadata with ID %s" (pr-str id-or-name))
+                    (log/debugf "Failed to find %s in metadata" (lib.util.log/format-field metadata-providerable id-or-name))
                     (when-some [field (lib.metadata/field metadata-providerable id-or-name)]
-                      (log/debugf "Looking for match in metadata with name %s" (pr-str (:name field)))
+                      (log/debugf "Looking for match in metadata for %s" (lib.util.log/format-field metadata-providerable field))
                       (when-some [col (resolve* (:name field))]
                         ;; don't return a match that is definitely for a different column (has an ID, but it's for a
                         ;; different column)
@@ -123,7 +124,7 @@
         (log/debugf "Found match %s"
                     (pr-str (select-keys <> [:id :lib/desired-column-alias :lib/deduplicated-name])))
         (log/debugf "Failed to find match for %s. Found:\n%s"
-                    (pr-str id-or-name)
+                    (lib.util.log/format-field metadata-providerable id-or-name)
                     (u/pprint-to-str (map #(select-keys % [:id :lib/desired-column-alias :lib/deduplicated-name])
                                           cols)))))))
 
@@ -297,17 +298,20 @@
    join-alias   :- ::lib.schema.join/alias
    source-field :- [:maybe ::lib.schema.id/field]
    id-or-name   :- ::id-or-name]
-  (log/debugf "Resolving %s (join alias = %s) in joins in stage %s" (pr-str id-or-name) (pr-str join-alias) (pr-str stage-number))
+  (log/debugf "Resolving %s (join alias = %s) in joins in stage %d"
+              (lib.util.log/format-field query id-or-name)
+              (pr-str join-alias)
+              stage-number)
   ;; find the matching join.
   (let [stage (lib.util/query-stage query stage-number)]
     (if-some [join (m/find-first #(= (:alias %) join-alias)
                                  (:joins stage))]
       ;; found matching join at this stage
       (do
-        (log/debugf "Resolving %s in join %s in stage %s"
-                    (pr-str id-or-name)
+        (log/debugf "Resolving %s in join %s in stage %d"
+                    (lib.util.log/format-field query id-or-name)
                     (pr-str join-alias)
-                    (pr-str stage-number))
+                    stage-number)
         (let [join-cols (cond->> (lib.join/join-returned-columns-relative-to-parent-stage query stage-number join nil)
                           source-field (remove (fn [col]
                                                  (when-some [col-source-field ((some-fn :fk-field-id :lib/original-fk-field-id) col)]
@@ -319,9 +323,9 @@
       ;; a join with this alias does not exist at this stage of the query... try looking recursively in previous
       ;; stage(s)
       (do
-        (log/debugf "Join %s does not exist in stage %s, looking in previous stages"
+        (log/debugf "Join %s does not exist in stage %d, looking in previous stages"
                     (pr-str join-alias)
-                    (pr-str stage-number))
+                    stage-number)
         (if-some [source-cols (or (when-some [previous-stage-number (lib.util/previous-stage-number query stage-number)]
                                     (lib.metadata.calculation/returned-columns query previous-stage-number))
                                   (when-some [source-card-id (:source-card (lib.util/query-stage query stage-number))]
@@ -423,12 +427,12 @@
   (let [[join join-stage-number] (find-reified-implicit-join-with-fk-field-id query stage-number source-field-id)]
     (when (and join-stage-number
                (not= join-stage-number stage-number))
-      (log/errorf (str "Field ref %s in stage %s specifies :source-field-id %s, but we found the implicit join %s in"
+      (log/errorf (str "Field ref %s in stage %d specifies :source-field-id %s, but we found the implicit join %s in"
                        " earlier stage %s, which doesn't return this column. Query almost certainly won't work"
                        " correctly.")
-                  (pr-str id-or-name)
-                  (pr-str stage-number)
-                  (pr-str source-field-id)
+                  (lib.util.log/format-field query id-or-name)
+                  stage-number
+                  (lib.util.log/format-field query source-field-id)
                   (pr-str (:alias join))
                   (pr-str join-stage-number))
       (when-some [col (resolve-in-implicit-join-current-stage query source-field-id id-or-name)]
@@ -445,8 +449,8 @@
    stage-number    :- :int
    source-field-id :- ::lib.schema.id/field
    id-or-name      :- ::id-or-name]
-  (log/debugf "Resolving implicitly joined %s (source Field ID = %s) in stage %s"
-              (pr-str id-or-name) (pr-str source-field-id) (pr-str stage-number))
+  (log/debugf "Resolving implicitly joined %s (source Field ID = %s) in stage %d"
+              (lib.util.log/format-field query id-or-name) (pr-str source-field-id) stage-number)
   (or (resolve-in-implicit-join-previous-stage query stage-number source-field-id id-or-name)
       (resolve-unreturned-column-in-reified-implicit-join-in-previous-stage query stage-number source-field-id id-or-name)
       ;; if there is no previous stage or we were unable to find the column in a previous stage then that means the
@@ -457,7 +461,7 @@
   [query                 :- ::lib.schema/query
    previous-stage-number :- :int
    id-or-name            :- ::id-or-name]
-  (log/debugf "Resolving %s in previous stage returned columns" (pr-str id-or-name))
+  (log/debugf "Resolving %s in previous stage returned columns" (lib.util.log/format-field query id-or-name))
   (when-some [previous-stage-columns (lib.metadata.calculation/returned-columns query previous-stage-number)]
     (resolve-in-previous-stage-metadata-and-update-keys query previous-stage-columns id-or-name)))
 
@@ -465,7 +469,7 @@
   [query          :- ::lib.schema/query
    source-card-id :- ::lib.schema.id/card
    id-or-name     :- ::id-or-name]
-  (log/debugf "Resolving %s in source Card %s metadata" (pr-str id-or-name) (pr-str source-card-id))
+  (log/debugf "Resolving %s in source Card %s metadata" (lib.util.log/format-field query id-or-name) (pr-str source-card-id))
   (when-some [card (lib.metadata/card query source-card-id)]
     (let [card-metadata-columns (lib.metadata.calculation/returned-columns query card)]
       (when-some [col (resolve-in-previous-stage-metadata-and-update-keys query card-metadata-columns id-or-name)]
@@ -476,7 +480,7 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    id-or-name   :- ::id-or-name]
-  (log/debugf "Resolving %s in current stage metadata" (pr-str id-or-name))
+  (log/debugf "Resolving %s in current stage metadata" (lib.util.log/format-field query id-or-name))
   (let [stage (lib.util/query-stage query stage-number)]
     (if-some [current-stage-metadata-columns (not-empty (get-in stage [:lib/stage-metadata :columns]))]
       ;; TODO (Cam 8/7/25) -- sort of a hacc to add deduplicated names here just so we can properly
@@ -495,11 +499,11 @@
   (when-some [source-card-id (:source-card (lib.util/query-stage query stage-number))]
     (resolve-in-card-returned-columns query source-card-id id-or-name)))
 
-(defn- fallback-metadata [id-or-name]
+(defn- fallback-metadata [metadata-providerable id-or-name]
   (log/warn (u/format-color :red
                             (str "We tried every trick we could think of and still failed to resolve a field"
                                  " ref. If the query doesn't work, this is why. Returning fallback metadata for %s")
-                            (pr-str id-or-name)))
+                            (lib.util.log/format-field metadata-providerable id-or-name)))
   (merge
    {:lib/type            :metadata/column
     ;; guess that the column came from the previous stage
@@ -552,7 +556,7 @@
 (mu/defn- resolve-ref-missing-join-alias :- [:maybe ::lib.metadata.calculation/visible-column]
   "Try finding a match in joins (field ref is missing `:join-alias`)."
   [query stage-number id-or-name]
-  (log/debugf "Assuming %s is from a join, and missing :join-alias" (pr-str id-or-name))
+  (log/debugf "Assuming %s is from a join, and missing :join-alias" (lib.util.log/format-field query id-or-name))
   (or (when (string? id-or-name)
         (let [parts (str/split id-or-name #"__" 2)]
           (when (= (count parts) 2)
@@ -564,17 +568,55 @@
               (resolve-in-join query stage-number (:alias join) nil id-or-name))
             (:joins (lib.util/query-stage query stage-number)))
       (do
-        (log/debugf "Failed to find a match in one of the query's joins in stage %s" (pr-str stage-number))
+        (log/debugf "Failed to find a match in one of the query's joins in stage %d" stage-number)
         nil)))
 
+;;; This is mostly needed because of really messed up test cases in [[metabase.lib.drill-thru.test-util.canned]], see
+;;; for example `:test.query/orders-count-by-created-at-and-product-category`
+(defn- fallback-metadata-for-demonic-field-id-from-different-source-table
+  [query stage-number col]
+  (when-let [source-table-id (lib.util/source-table-id query)]
+    (log/warn (u/format-color :red (str "Field ref for %s in stage %d is from a different source table (%s) than"
+                                        " the query :source-table (%s), but it is missing :join-alias and"
+                                        " :source-field. This is not and has never been supported, but we will do"
+                                        " our best to make the query work anyway. If it doesn't work, this is"
+                                        " probably why. Refs like these might not work in the future.")
+                              (lib.util.log/format-field query col)
+                              stage-number
+                              (lib.util.log/format-table query (:table-id col))
+                              (lib.util.log/format-table query source-table-id)))
+    (if-let [col (m/find-first (fn [implicit-col]
+                                 (and (= (:id implicit-col) (:id col))
+                                      (:fk-field-id implicit-col)))
+                               (lib.metadata.calculation/implicitly-joinable-columns
+                                query
+                                (lib.metadata.calculation/returned-columns query (lib.metadata/table query source-table-id))))]
+      {:lib/source  :source/implicitly-joinable
+       :fk-field-id (:fk-field-id col)}
+      (do
+        (log/errorf "Failed to find a way to implicitly join %s" (lib.util.log/format-field query col))
+        nil))))
+
 (defn- fallback-metadata-for-field [query stage-number id-or-name]
-  (let [source-table-id (:source-table (lib.util/query-stage query stage-number))]
-    (when-some [col (field-metadata query source-table-id id-or-name)]
-      (assoc col
-             ::fallback-metadata? true
-             :lib/source          (if (zero? (lib.util/canonical-stage-index query stage-number))
-                                    :source/table-defaults
-                                    :source/previous-stage)))))
+  (when-some [col (field-metadata query (:source-table (lib.util/query-stage query stage-number)) id-or-name)]
+    (merge-metadata
+     col
+     {::fallback-metadata? true}
+     (b/cond
+       (not (lib.util/first-stage? query stage-number))
+       {:lib/source :source/previous-stage}
+
+       :let [source-card-id (lib.util/source-card-id query)]
+       source-card-id
+       {:lib/source :source/card, :lib/card-id source-card-id}
+
+       :when-let [source-table-id (lib.util/source-table-id query)]
+
+       (= (:table-id col) source-table-id)
+       {:lib/source :source/table-defaults}
+
+       :else
+       (fallback-metadata-for-demonic-field-id-from-different-source-table query stage-number col)))))
 
 (defn- maybe-resolve-expression-in-current-stage [query stage-number id-or-name]
   (when (string? id-or-name)
@@ -583,7 +625,7 @@
                                 (str "Resolved field %s to an expression. Please remember to use :expression references"
                                      " for expressions in the current stage -- using a :field ref is unsupported and may"
                                      " not be allowed in the future.")
-                                (pr-str id-or-name)))
+                                (lib.util.log/format-field query id-or-name)))
       (-> (lib.expression/expression-metadata query stage-number expr)
           (assoc :lib/source-column-alias id-or-name)))))
 
@@ -591,10 +633,12 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    id-or-name   :- ::id-or-name]
-  (log/debugf "Resolving %s from previous stage, source table, or source card" (pr-str id-or-name))
+  (log/debugf "Resolving %s from previous stage, source table, or source card" (lib.util.log/format-field query id-or-name))
   (let [col (or (resolve-from-previous-stage-or-source* query stage-number id-or-name)
                 (do
-                  (log/debugf "Failed to resolve Field %s in stage %s. Trying other methods..." (pr-str id-or-name) (pr-str stage-number))
+                  (log/debugf "Failed to resolve Field %s in stage %d. Trying other methods..."
+                              (lib.util.log/format-field query id-or-name)
+                              stage-number)
                   (resolve-ref-missing-join-alias query stage-number id-or-name))
                 ;; if we haven't found a match yet try getting metadata from the metadata provider if this is a
                 ;; Field ID ref. It's likely a ref that makes little or no sense (e.g. wrong table) but we can
@@ -604,7 +648,7 @@
                 ;; expression.
                 (maybe-resolve-expression-in-current-stage query stage-number id-or-name)
                 ;; if we STILL can't find a match, return made-up fallback metadata.
-                (fallback-metadata id-or-name))]
+                (fallback-metadata query id-or-name))]
     (merge-metadata
      col
      (when col
@@ -619,7 +663,7 @@
    [_tag {:keys [source-field join-alias], :as opts} id-or-name, :as #?(:clj field-ref :cljs _field-ref)] :- :mbql.clause/field]
   ;; this is just for easier debugging
   (let [stage-number (lib.util/canonical-stage-index query stage-number)]
-    (log/debugf "Resolving %s in stage %s" (pr-str id-or-name) (pr-str stage-number))
+    (log/debugf "Resolving %s in stage %d" (lib.util.log/format-field query id-or-name) stage-number)
     (-> (merge-metadata
          {:lib/type :metadata/column}
          (or (when join-alias
@@ -629,7 +673,7 @@
              (resolve-from-previous-stage-or-source query stage-number id-or-name)
              (merge
               (or (fallback-metadata-for-field query stage-number id-or-name)
-                  (fallback-metadata id-or-name))
+                  (fallback-metadata query id-or-name))
               (when (and join-alias
                          (contains? (into #{}
                                           (map :alias)
