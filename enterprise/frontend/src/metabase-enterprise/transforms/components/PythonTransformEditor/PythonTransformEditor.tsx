@@ -68,7 +68,13 @@ export function PythonTransformEditor({
     onSave(source);
   };
 
+  const showDebugger =
+    new URLSearchParams(window.location.search).get("debugger") === "1";
+
   const handleCmdEnter = () => {
+    if (!showDebugger) {
+      return;
+    }
     if (isRunning) {
       cancel();
     } else if (isRunnable) {
@@ -84,9 +90,6 @@ export function PythonTransformEditor({
       source["source-tables"] &&
       Object.keys(source["source-tables"]).length > 0,
   );
-
-  const showDebugger =
-    new URLSearchParams(window.location.search).get("debugger") === "1";
 
   return (
     <Stack
