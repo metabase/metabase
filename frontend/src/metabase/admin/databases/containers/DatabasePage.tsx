@@ -108,16 +108,10 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
       {showSidePanel && (
         <>
           <Divider orientation="vertical" h="100%" />
-          <Flex
-            component={ScrollArea}
-            flex={{ sm: "1 0 20rem", md: "1 0 26.5rem", base: "1 0 100%" }}
-            h="100%"
-          >
-            <DatabaseHelpSidePanel
-              engineKey={selectedEngineKey}
-              onClose={toggleSidePanel}
-            />
-          </Flex>
+          <DatabaseHelpSidePanel
+            engineKey={selectedEngineKey}
+            onClose={toggleSidePanel}
+          />
         </>
       )}
     </Flex>
