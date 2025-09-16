@@ -474,15 +474,15 @@ describe("database page > side panel", () => {
           .should("have.attr", "href")
           .and("contain", engineSpec.file);
 
-        // Check we don't have error loading the doc contents
+        // Check we don't have an error when loading the doc contents
         cy.findByRole("alert").should("not.exist");
         cy.contains("Failed to load detailed documentation").should(
           "not.exist",
         );
       });
 
-      // Close panel
       cy.findByRole("button", { name: /Close panel/ }).click();
+      cy.findByTestId("database-help-side-panel").should("not.exist");
     }
   });
 });
