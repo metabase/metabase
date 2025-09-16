@@ -30,7 +30,7 @@ export type CollectionContentModel = "card" | "dataset";
 
 export type CollectionAuthorityLevel = "official" | null;
 
-export type CollectionType = "instance-analytics" | "trash" | "library" | null;
+export type CollectionType = "instance-analytics" | "trash" | null;
 
 export type LastEditInfo = {
   email: string;

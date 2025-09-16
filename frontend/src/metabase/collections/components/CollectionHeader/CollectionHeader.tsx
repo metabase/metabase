@@ -2,7 +2,6 @@ import { withRouter } from "react-router";
 
 import {
   isInstanceAnalyticsCollection,
-  isLibraryCollection,
   isTrashedCollection,
 } from "metabase/collections/utils";
 import { PLUGIN_GIT_SYNC } from "metabase/plugins";
@@ -83,9 +82,7 @@ const CollectionHeader = ({
             collection={collection}
             onUpdateCollection={onUpdateCollection}
           />
-          {isLibraryCollection(collection) && (
-            <PLUGIN_GIT_SYNC.LibrarySyncControl />
-          )}
+          {collection.git_sync && <PLUGIN_GIT_SYNC.LibrarySyncControl />}
           {!isInstanceAnalytics && (
             <CollectionMenu
               collection={collection}

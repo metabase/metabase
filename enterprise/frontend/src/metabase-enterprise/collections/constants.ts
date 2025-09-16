@@ -35,14 +35,6 @@ export const INSTANCE_ANALYTICS_COLLECTION: CollectionInstanceAnaltyicsConfig =
     icon: "audit",
   };
 
-export const LIBRARY_COLLECTION: CollectionInstanceAnaltyicsConfig = {
-  type: "library",
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  name: t`Library`,
-  icon: "reference",
-  color: "brand",
-};
-
 export const AUTHORITY_LEVELS: Record<string, CollectionAuthorityLevelConfig> =
   {
     [String(OFFICIAL_COLLECTION.type)]: OFFICIAL_COLLECTION,
@@ -56,7 +48,6 @@ export const COLLECTION_TYPES: Record<
   [String(OFFICIAL_COLLECTION.type)]: OFFICIAL_COLLECTION,
   [String(REGULAR_COLLECTION.type)]: REGULAR_COLLECTION,
   [String(INSTANCE_ANALYTICS_COLLECTION.type)]: INSTANCE_ANALYTICS_COLLECTION,
-  [String(LIBRARY_COLLECTION.type)]: LIBRARY_COLLECTION,
 };
 
 export const CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID =

@@ -21,7 +21,6 @@ import type {
   UploadFile,
 } from "metabase/collections/types";
 import {
-  isLibraryCollection,
   isRootTrashCollection,
   isTrashedCollection,
 } from "metabase/collections/utils";
@@ -192,9 +191,8 @@ const CollectionContentViewInner = ({
   const pinnedItems = list && !isRootTrashCollection(collection) ? list : [];
   const hasPinnedItems = pinnedItems.length > 0;
   const actionId = { id: collectionId };
-  const isLibraryDevMode = useSetting("git-sync-allow-edit");
-  const isLibrary = isLibraryCollection(collection);
-  const showLibraryDevBanner = isLibrary && isLibraryDevMode;
+  const isDevMode = useSetting("git-sync-allow-edit");
+  const showDevBanner = collection.git_sync && isDevMode;
 
   return (
     <CollectionRoot {...dropzoneProps}>
@@ -231,7 +229,7 @@ const CollectionContentViewInner = ({
         />
       )}
 
-      {showLibraryDevBanner && <PLUGIN_GIT_SYNC.LibraryDevModeBanner />}
+      {showDevBanner && <PLUGIN_GIT_SYNC.LibraryDevModeBanner />}
 
       <CollectionMain>
         <ErrorBoundary>

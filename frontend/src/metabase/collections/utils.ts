@@ -50,8 +50,7 @@ export function isEditableCollection(collection: Collection) {
     collection.can_write &&
     !isRootCollection(collection) &&
     !isRootPersonalCollection(collection) &&
-    !isTrashedCollection(collection) &&
-    !isLibraryCollection(collection)
+    !isTrashedCollection(collection)
   );
 }
 
@@ -62,15 +61,6 @@ export function isInstanceAnalyticsCollection(
     !!collection &&
     PLUGIN_COLLECTIONS.getCollectionType(collection).type ===
       "instance-analytics"
-  );
-}
-
-export function isLibraryCollection(
-  collection?: Pick<Collection, "type">,
-): boolean {
-  return (
-    !!collection &&
-    PLUGIN_COLLECTIONS.getCollectionType(collection).type === "library"
   );
 }
 

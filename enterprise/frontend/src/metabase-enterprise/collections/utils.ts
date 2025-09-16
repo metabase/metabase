@@ -46,21 +46,9 @@ export function isInstanceAnalyticsCollection(
   );
 }
 
-export function isLibraryCollection(
-  collection?: Pick<Collection, "type">,
-): boolean {
-  return !!collection && getCollectionType(collection).type === "library";
-}
-
 export const getIcon = (item: ObjectWithModel): IconData => {
   const collectionType = getCollectionType({ type: item.type }).type;
   if (collectionType === "instance-analytics") {
-    return {
-      name: INSTANCE_ANALYTICS_COLLECTION.icon,
-    };
-  }
-
-  if (collectionType === "library") {
     return {
       name: INSTANCE_ANALYTICS_COLLECTION.icon,
     };

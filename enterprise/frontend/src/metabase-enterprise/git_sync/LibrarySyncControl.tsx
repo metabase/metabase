@@ -3,7 +3,6 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
-import { isLibraryCollection } from "metabase/collections/utils";
 import ActionButton from "metabase/common/components/ActionButton";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
@@ -67,7 +66,6 @@ export function LibrarySyncControl() {
   const gitSyncConfigured = useSetting("git-sync-configured");
 
   const { data: collections } = useListCollectionsTreeQuery();
-  const libraryCollections = collections?.filter((c) => isLibraryCollection(c));
 
   const {
     data: unsyncedChanges,
@@ -95,7 +93,7 @@ export function LibrarySyncControl() {
     } else {
       return importGit({
         branch: pullBranch,
-        collectionIds: libraryCollections?.map((c) => c.id) || [],
+        collectionIds: collections?.map((c) => c.git_sync) || [], // FIXME: use whatever the backend provides
       }).unwrap();
     }
   };
@@ -127,7 +125,10 @@ export function LibrarySyncControl() {
 
   return (
     <>
-      <Popover closeOnClickOutside={false} onOpenChange={handlePopoverOpenChange}>
+      <Popover
+        closeOnClickOutside={false}
+        onOpenChange={handlePopoverOpenChange}
+      >
         {hasUnsyncedChanges && (
           <Alert
             variant="error"
