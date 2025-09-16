@@ -747,7 +747,6 @@ export const CardEmbedComponent = memo(
                           onClick={() => {
                             commentsPath && dispatch(push(commentsPath));
                           }}
-                          style={{ border: "none" }}
                         />
                       </Box>
                     )}

@@ -49,21 +49,25 @@ export const useCommentsButton = ({
   component?: ElementType;
   to?: string;
 } => {
+  const hasUnresolvedComments = unresolvedCommentsCount > 0;
   return {
     ...(!disabled
       ? {
           component: Link,
           // If no existing unresolved comments comments, add query param to auto-open new comment form
-          to: unresolvedCommentsCount > 0 ? href : `${href}?new=true`,
+          to: hasUnresolvedComments ? href : `${href}?new=true`,
         }
       : {}),
     disabled,
-    leftSection: <Icon name="message" />,
+    leftSection: (
+      <Icon name={hasUnresolvedComments ? "message" : "add_message"} />
+    ),
     px: "sm",
     size: "xs",
+    bd: 0,
     "aria-label": t`Comments`,
     variant: active ? "filled" : "default",
-    children: unresolvedCommentsCount > 0 ? unresolvedCommentsCount : null,
+    children: hasUnresolvedComments ? unresolvedCommentsCount : null,
   };
 };
 
@@ -98,7 +102,7 @@ export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
         ref={ref}
         style={style}
       >
-        <Button {...commentsButtonProps} />
+        <Button {...(commentsButtonProps as ButtonProps)} />
       </Box>,
       document.body,
     );
