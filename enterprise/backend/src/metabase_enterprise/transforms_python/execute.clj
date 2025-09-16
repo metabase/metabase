@@ -68,7 +68,7 @@
               :id run-id
               {:message (message-log->transform-run-message message-log)}))
 
-(def ^:private ^Duration python-message-loop-poll-sleep-duration
+(def ^:private ^Duration python-message-loop-sleep-duration
   (Duration/ofMillis 1000))
 
 (defn- python-message-update-loop!
@@ -81,7 +81,7 @@
     (loop []
       (if (.isInterrupted (Thread/currentThread))
         (log/debug "Message update loop interrupted")
-        (do (let [sleep-ms (.toMillis python-message-loop-poll-sleep-duration)]
+        (do (let [sleep-ms (.toMillis python-message-loop-sleep-duration)]
               (when (pos? sleep-ms) (Thread/sleep sleep-ms)))
             (let [{:keys [status body]} (python-runner/get-logs run-id)]
               (cond
