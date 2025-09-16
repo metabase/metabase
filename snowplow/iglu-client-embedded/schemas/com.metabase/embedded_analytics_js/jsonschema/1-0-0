@@ -1,0 +1,199 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Embedded Analytics JS configuration",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "embedded_analytics_js",
+    "format": "jsonschema",
+    "version": "1-0-0"
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "description": "The type of event being recorded. For example, then the Embedded Analytics JS is initialized, or when the Metabase configuration is updated.",
+      "type": "string",
+      "enum": [
+        "setup"
+      ],
+      "maxLength": 1024
+    },
+    "global": {
+      "type": "object",
+      "properties": {
+        "auth_method": {
+          "description": "Authentication method used for the Embedded Analytics JS.",
+          "type": "string",
+          "enum": [
+            "session",
+            "api_key",
+            "sso"
+          ],
+          "maxLength": 1024
+        }
+      }
+    },
+    "dashboard": {
+      "description": "Counts of <metabase-dashboard> component properties.",
+      "type": "object",
+      "properties": {
+        "drills": {
+          "type": "object",
+          "properties": {
+            "true": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "false": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            }
+          }
+        },
+        "with_downloads": {
+          "type": "object",
+          "properties": {
+            "true": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "false": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            }
+          }
+        },
+        "with_title": {
+          "type": "object",
+          "properties": {
+            "true": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "false": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            }
+          }
+        }
+      }
+    },
+    "question": {
+      "description": "Counts of <metabase-question> component properties.",
+      "type": "object",
+      "properties": {
+        "drills": {
+          "type": "object",
+          "properties": {
+            "true": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "false": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            }
+          }
+        },
+        "with_downloads": {
+          "type": "object",
+          "properties": {
+            "true": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "false": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            }
+          }
+        },
+        "with_title": {
+          "type": "object",
+          "properties": {
+            "true": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "false": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            }
+          }
+        },
+        "is_save_enabled": {
+          "type": "object",
+          "properties": {
+            "true": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "false": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            }
+          }
+        }
+      }
+    },
+    "exploration": {
+      "description": "Counts of <metabase-question> component with question-id=\"new\" properties.",
+      "type": "object",
+      "properties": {
+        "is_save_enabled": {
+          "type": "object",
+          "properties": {
+            "true": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "false": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            }
+          }
+        }
+      }
+    },
+    "browser": {
+      "description": "Counts of <metabase-browser> component properties.",
+      "type": "object",
+      "properties": {
+        "read_only": {
+          "type": "object",
+          "properties": {
+            "true": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "false": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            }
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "event",
+    "global"
+  ]
+}
