@@ -115,10 +115,12 @@ function UpdateTargetForm({
   }
 
   const handleSubmit = async (values: EditTransformValues) => {
+    // `updateTransform` throws when the target exists, so it needs to be called first
     await updateTransform(getUpdateRequest(transform, values)).unwrap();
     if (shouldDeleteTarget) {
       await deleteTransformTarget(transform.id).unwrap();
     }
+    // postpone closing the modal until we fetch the up-to-date transform
     await fetchTransform(transform.id).unwrap();
     onUpdate();
   };
