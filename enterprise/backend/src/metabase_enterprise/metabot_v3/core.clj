@@ -6,6 +6,7 @@
    [metabase-enterprise.metabot-v3.client]
    [metabase-enterprise.metabot-v3.table-utils]
    [metabase-enterprise.metabot-v3.util]
+   [metabase.premium-features.core :refer [defenterprise]]
    [potemkin :as p]
    [toucan2.core :as t2]))
 
@@ -22,12 +23,13 @@
   used-tables
   schema-sample])
 
-(defn metabot-stats
+(defenterprise metabot-stats
   "Calculate total Metabot token usage over a window of the the previous UTC day 00:00-23:59"
+  :feature :metabot-v3
   []
   (let [yesterday-utc (t/minus (t/offset-date-time (t/zone-offset "+00")) (t/days 1))]
     {:metabot-tokens  (t2/select-one-fn :sum
-                                        [:model/MetabotMessage [:%sum.total :sum]]
+                                        [:model/MetabotMessage [:%sum.total_tokens :sum]]
                                         {:where [:= [:cast :created_at :date] [:cast yesterday-utc :date]]})
      :metabot-queries (t2/select-one-fn :cnt
                                         [:model/MetabotMessage [:%count.id :cnt]]

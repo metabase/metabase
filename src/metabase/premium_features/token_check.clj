@@ -101,7 +101,9 @@
   "Stats for Metabot"
   metabase-enterprise.metabot-v3.core
   []
-  {:metabot-tokens 0})
+  {:metabot-tokens  0
+   :metabot-queries 0
+   :metabot-users   0})
 
 (defn- stats-for-token-request
   []
