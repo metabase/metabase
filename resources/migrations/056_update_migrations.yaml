@@ -504,6 +504,43 @@ databaseChangeLog:
                   name: conversation_id
       rollback: # will be dropped with table
 
+  - changeSet:
+      id: v56.2025-09-16T18:20:00
+      author: lbrdnk
+      comment: Semantic search token usage tracking
+      changes:
+        - createTable:
+            tableName: semantic_search_token_tracking
+            remarks: Token usage tracking info for semantic search
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID of a request
+              - column:
+                  name: model_name
+                  remarks: Name of model used for embeddings generation
+                  type: varchar(256)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: request_type
+                  remarks: Type of request, possibly index or query
+                  type: varchar(32)
+              - column:
+                  name: created_at
+                  remarks: Datetime of insertion
+              - column:
+                  name: total_tokens
+                  remarks: Total tokens value as per OpenAI compatible API
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: prompt_tokens
+                  remarks: Prompt tokens value as per OpenAI compatible API
+                  type: int
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
