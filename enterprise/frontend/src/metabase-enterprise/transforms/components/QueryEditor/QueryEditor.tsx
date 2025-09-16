@@ -6,7 +6,7 @@ import { useWindowSize } from "react-use";
 import { useListDatabasesQuery } from "metabase/api";
 import type { SelectionRange } from "metabase/query_builder/components/NativeQueryEditor/types";
 import { ControlledNotebookNativePreview } from "metabase/querying/notebook/components/NotebookNativePreview/NotebookNativePreview";
-import { Box, Center, Flex, Loader, Stack, rem } from "metabase/ui";
+import { Center, Flex, Loader, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetQuery, NativeQuerySnippet } from "metabase-types/api";
@@ -20,6 +20,7 @@ import { EditorHeader } from "./EditorHeader";
 import { EditorSidebar } from "./EditorSidebar";
 import { EditorVisualization } from "./EditorVisualization";
 import S from "./QueryEditor.module.css";
+import { ResizeHandle } from "./ResizeHandle";
 import { useInsertSnippetHandler, useSelectedText } from "./util";
 
 type QueryEditorProps = {
@@ -179,7 +180,7 @@ export function QueryEditor({
             maxConstraints={[maxSidebarWidth, 0]}
             axis="x"
             resizeHandles={["w"]}
-            handle={resizeHandle}
+            handle={<ResizeHandle />}
             style={{
               borderLeft: "1px solid var(--mb-color-border)",
               marginInlineStart: "0.25rem",
@@ -208,21 +209,3 @@ export function QueryEditor({
     </Stack>
   );
 }
-
-const resizeHandle = (
-  <Flex
-    data-testid="notebook-native-preview-resize-handle"
-    align="center"
-    justify="center"
-    w="sm"
-    h="100%"
-    top={0}
-    pos="absolute"
-    left={rem(-4)}
-    style={{
-      cursor: "col-resize",
-    }}
-  >
-    <Box h="6.25rem" w="xs" bg="border" />
-  </Flex>
-);
