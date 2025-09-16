@@ -69,7 +69,7 @@
 
 (deftest ^:parallel fetch-token-status-test-2
   (testing "With the backend unavailable"
-    (let [result (#'token-status-response (random-token) {:status 500})]
+    (let [result (token-status-response (random-token) {:status 500})]
       (is (false? (:valid result))))))
 
 (deftest ^:parallel fetch-token-status-test-3
@@ -138,8 +138,8 @@
 
 (deftest ^:parallel fetch-token-status-test-4
   (testing "With a valid token"
-    (let [result (#'token-status-response (random-token) {:status 200
-                                                          :body   token-response-fixture})]
+    (let [result (token-status-response (random-token) {:status 200
+                                                        :body   token-response-fixture})]
       (is (:valid result))
       (is (contains? (set (:features result)) "test")))))
 

@@ -520,7 +520,7 @@
                        :type     :query
                        :query    {:source-table "card__123"}})]
           (is (= ["SELECT"
-                  "  \"json_alias_test\" AS \"json_alias_test\","
+                  "  \"source\".\"json_alias_test\" AS \"json_alias_test\","
                   "  \"source\".\"count\" AS \"count\""
                   "FROM"
                   "  ("

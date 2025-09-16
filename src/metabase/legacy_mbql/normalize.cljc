@@ -395,7 +395,8 @@
 
 (mu/defn- normalize-fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]
   [fingerprint :- [:maybe :map]]
-  (lib.normalize/normalize ::lib.schema.metadata.fingerprint/fingerprint fingerprint))
+  (when fingerprint
+    (lib.normalize/normalize ::lib.schema.metadata.fingerprint/fingerprint fingerprint)))
 
 (mu/defn normalize-source-metadata
   "Normalize source/results metadata for a single column."
@@ -1051,16 +1052,16 @@
 (defn- replace-legacy-filters
   "Replaces legacy filter clauses with modern alternatives."
   [query]
-  (try
-    (lib.util.match/replace query
-      (filter-clause :guard mbql.preds/Filter?)
+  (lib.util.match/replace query
+    (filter-clause :guard mbql.preds/Filter?)
+    (try
       (-> filter-clause
           replace-relative-date-filters
-          replace-exclude-date-filters))
-    (catch #?(:clj Throwable :cljs :default) e
-      (throw (ex-info (i18n/tru "Error replacing legacy filters")
-                      {:query query}
-                      e)))))
+          replace-exclude-date-filters)
+      (catch #?(:clj Throwable :cljs :default) e
+        (throw (ex-info (i18n/tru "Error replacing legacy filters")
+                        {:filter-clause filter-clause, :query query}
+                        e))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             REMOVING EMPTY CLAUSES                                             |

@@ -5,6 +5,7 @@
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase.analytics.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.search.appdb.core :as appdb]
    [metabase.search.engine :as search.engine]
@@ -124,16 +125,42 @@
                                 (make-card-result 2 "fallback-card-2")
                                 (make-card-result 3 "fallback-card-3")
                                 (make-card-result 4 "fallback-dashboard" :model "dashboard")]
-              search-ctx       search-context]
-          (with-search-engine-mocks! [semantic-result] fallback-results
-            (fn []
-              (let [results (semantic.core/results search-ctx)]
-                (testing "semantic result comes first"
-                  (is (= semantic-result (first results))))
+              search-ctx       search-context
+              metrics (atom {:metabase-search/semantic-fallback-results-usage 0
+                             :metabase-search/semantic-fallback-triggered 0
+                             :metabase-search/semantic-results-before-fallback 0})]
+          (with-redefs [analytics/inc! (fn [metric & _args]
+                                         (case metric
+                                           :metabase-search/semantic-fallback-triggered
+                                           (swap! metrics update
+                                                  :metabase-search/semantic-fallback-triggered
+                                                  inc))
+                                         nil)
+                        analytics/observe! (fn [metric cnt]
+                                             (case metric
+                                               :metabase-search/semantic-fallback-results-usage
+                                               (swap! metrics update
+                                                      :metabase-search/semantic-fallback-results-usage
+                                                      + cnt)
+                                               :metabase-search/semantic-results-before-fallback
+                                               (swap! metrics update
+                                                      :metabase-search/semantic-results-before-fallback
+                                                      + cnt))
+                                             nil)]
+            (with-search-engine-mocks! [semantic-result] fallback-results
+              (fn []
+                (let [results (semantic.core/results search-ctx)]
+                  (testing "semantic result comes first"
+                    (is (= semantic-result (first results))))
 
-                (testing "fallback results are appended, and duplicate model/id pairs are removed"
-                  (is (= (rest fallback-results)
-                         (rest results))))))))))))
+                  (testing "fallback results are appended, and duplicate model/id pairs are removed"
+                    (is (= (rest fallback-results)
+                           (rest results))))
+
+                  (testing "Results metrics are collected"
+                    (is (= 4 (:metabase-search/semantic-fallback-results-usage @metrics)))
+                    (is (= 1 (:metabase-search/semantic-fallback-triggered @metrics)))
+                    (is (= 1 (:metabase-search/semantic-results-before-fallback @metrics)))))))))))))
 
 (deftest test-semantic-search-fallback-failure-resilient
   (testing "semantic search is resilient to fallback engine failure"
