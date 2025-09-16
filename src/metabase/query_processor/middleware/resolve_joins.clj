@@ -67,14 +67,10 @@
     (lib.metadata/bulk-metadata-or-throw metadata-providerable :metadata/table source-table-ids))
   nil)
 
-(def ^:private ^:deprecated default-join-alias
-  "DEPRECATED: use version in lib"
-  "__join")
-
 (mu/defn- merge-defaults :- ::lib.schema.join/join
   [join]
   (merge {:strategy :left-join}
-         (when (str/starts-with? (:alias join) default-join-alias)
+         (when (str/starts-with? (:alias join) lib/legacy-default-join-alias)
            {:qp/keep-default-join-alias true})
          join))
 
