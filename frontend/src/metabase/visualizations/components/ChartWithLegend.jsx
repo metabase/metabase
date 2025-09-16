@@ -104,6 +104,7 @@ class ChartWithLegend extends Component {
         titles={legendTitles}
         hiddenIndices={legendHiddenIndices}
         colors={legendColors}
+        dotSize={isDashboard ? "8px" : "12px"}
         hovered={hovered}
         onHoverChange={onHoverChange}
         onToggleSeriesVisibility={onToggleSeriesVisibility}

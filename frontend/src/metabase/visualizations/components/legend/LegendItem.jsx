@@ -15,6 +15,7 @@ import { LegendItemDot } from "./LegendItemDot";
 
 const propTypes = {
   item: PropTypes.object,
+  dotSize: PropTypes.string,
   index: PropTypes.number,
   isMuted: PropTypes.bool,
   isVertical: PropTypes.bool,
@@ -27,6 +28,7 @@ const propTypes = {
 
 const LegendItem = ({
   item,
+  dotSize = "8px",
   index,
   isMuted,
   isVertical,
@@ -61,6 +63,7 @@ const LegendItem = ({
       >
         <LegendItemDot
           color={item.color}
+          size={dotSize}
           isVisible={item.visible}
           onClick={onToggleSeriesVisibility && handleDotClick}
         />
@@ -68,8 +71,10 @@ const LegendItem = ({
           className={cx(
             DashboardS.fullscreenNormalText,
             DashboardS.fullscreenNightText,
+            DashboardS.DashboardChartLegend,
             EmbedFrameS.fullscreenNightText,
           )}
+          dotSize={dotSize}
           isInsidePopover={isInsidePopover}
           onClick={onSelectSeries && handleItemClick}
         >

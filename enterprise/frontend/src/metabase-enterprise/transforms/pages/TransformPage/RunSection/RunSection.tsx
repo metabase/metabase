@@ -9,7 +9,6 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Anchor, Box, Divider, Group, Icon, Stack } from "metabase/ui";
 import {
   useCancelCurrentTransformRunMutation,
-  useLazyGetTransformQuery,
   useRunTransformMutation,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
@@ -165,8 +164,7 @@ type RunButtonSectionProps = {
 };
 
 function RunButtonSection({ transform }: RunButtonSectionProps) {
-  const [fetchTransform] = useLazyGetTransformQuery();
-  const [runTransform, { isLoading: isStarting }] = useRunTransformMutation();
+  const [runTransform] = useRunTransformMutation();
   const [cancelTransform] = useCancelCurrentTransformRunMutation();
   const { sendErrorToast } = useMetadataToasts();
   const [
@@ -182,9 +180,6 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
     const { error } = await runTransform(transform.id);
     if (error) {
       sendErrorToast(t`Failed to run transform`);
-    } else {
-      // fetch the transform to get the correct `last_run` info
-      await fetchTransform(transform.id, false);
     }
   };
 
@@ -192,9 +187,6 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
     const { error } = await cancelTransform(transform.id);
     if (error && !isResourceNotFoundError(error)) {
       sendErrorToast(t`Failed to cancel transform`);
-    } else {
-      // fetch the transform to get the correct `last_run` info
-      await fetchTransform(transform.id, false);
     }
   };
 
@@ -203,7 +195,6 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
       <RunButton
         allowCancellation
         run={transform.last_run}
-        isStarting={isStarting}
         onRun={handleRun}
         onCancel={openConfirmModal}
       />

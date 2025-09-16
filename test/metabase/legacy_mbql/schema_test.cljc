@@ -4,6 +4,7 @@
    [clojure.test :refer [are deftest is testing]]
    [malli.error :as me]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]))
 
@@ -129,7 +130,7 @@
                         :type         :dimension
                         :widget-type  :date/all-options
                         :dimension    template-tag-dimension}]
-      (is (nil? (me/humanize (mr/explain mbql.s/Parameter parameter))))
+      (is (nil? (me/humanize (mr/explain ::lib.schema.parameter/parameter parameter))))
       (is (nil? (me/humanize (mr/explain mbql.s/TemplateTag template-tag))))
       (let [query {:database 1
                    :type     :native

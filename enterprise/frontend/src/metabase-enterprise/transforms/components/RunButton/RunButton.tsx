@@ -10,8 +10,6 @@ const RECENT_TIMEOUT = 5000;
 type RunButtonProps = {
   run: TransformRun | null | undefined;
   isDisabled?: boolean;
-  isStarting?: boolean;
-  isCanceling?: boolean;
   allowCancellation?: boolean;
   onRun: () => void;
   onCancel?: () => void;
@@ -20,8 +18,6 @@ type RunButtonProps = {
 export const RunButton = forwardRef(function RunButton(
   {
     run,
-    isStarting = false,
-    isCanceling = false,
     isDisabled: isExternallyDisabled = false,
     onRun,
     onCancel,
@@ -32,8 +28,6 @@ export const RunButton = forwardRef(function RunButton(
   const [isRecent, setIsRecent] = useState(false);
   const { label, color, leftSection, isDisabled } = getRunButtonInfo({
     run,
-    isStarting,
-    isCanceling,
     isRecent,
     isDisabled: isExternallyDisabled,
   });
@@ -43,8 +37,6 @@ export const RunButton = forwardRef(function RunButton(
     const timeoutId = setTimeout(() => setIsRecent(false), RECENT_TIMEOUT);
     return () => clearTimeout(timeoutId);
   }, [run]);
-
-  const isStartingOrStarted = run?.status === "started" || isStarting;
 
   return (
     <Button.Group>
@@ -59,7 +51,7 @@ export const RunButton = forwardRef(function RunButton(
       >
         {label}
       </Button>
-      {allowCancellation && isStartingOrStarted && (
+      {allowCancellation && run?.status === "started" && (
         <Tooltip label={t`Cancel`}>
           <Button
             onClick={onCancel}
@@ -74,8 +66,6 @@ export const RunButton = forwardRef(function RunButton(
 
 type RunButtonOpts = {
   run: TransformRun | null | undefined;
-  isStarting: boolean;
-  isCanceling: boolean;
   isRecent: boolean;
   isDisabled: boolean;
 };
@@ -89,12 +79,10 @@ type RunButtonInfo = {
 
 function getRunButtonInfo({
   run,
-  isStarting,
-  isCanceling,
   isRecent,
   isDisabled,
 }: RunButtonOpts): RunButtonInfo {
-  if (run?.status === "started" || isStarting) {
+  if (run?.status === "started") {
     return {
       label: t`Running now…`,
       leftSection: <Loader size="sm" />,
@@ -102,7 +90,7 @@ function getRunButtonInfo({
     };
   }
 
-  if (run?.status === "canceling" || isCanceling) {
+  if (run?.status === "canceling") {
     return {
       label: t`Canceling…`,
       leftSection: <Loader size="sm" />,

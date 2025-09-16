@@ -71,16 +71,12 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         const patchResult = dispatch(
           transformApi.util.updateQueryData("getTransform", id, (draft) => {
             draft.last_run = {
-              // HACK: this is a placeholder value and will be replaced
-              // when the endpoint returns the actual value.
-              //
-              // This id is not used anywhere, so it's fine for now.
               id: -1,
+              status: "started",
               start_time: new Date().toISOString(),
               end_time: null,
-              run_method: "manual",
-              status: "started",
               message: null,
+              run_method: "manual",
             };
           }),
         );

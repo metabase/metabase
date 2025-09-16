@@ -4,11 +4,15 @@
   (:refer-clojure :exclude [alias])
   (:require
    [medley.core :as m]
+   ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
+   ;; Lib soon
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -90,6 +94,20 @@
               [:field field-id {:join-alias alias}]))
           [:field field-name {:base-type base-type, :join-alias alias}]))))
 
+(mu/defn- sorted-implicit-fields-for-table :- mbql.s/Fields
+  "For use when adding implicit Field IDs to a query. Return a sequence of field clauses, sorted by the rules listed
+  in [[metabase.query-processor.sort]], for all the Fields in a given Table."
+  [table-id :- ::lib.schema.id/table]
+  (let [fields (lib.metadata/active-fields (qp.store/metadata-provider) table-id)]
+    (when (empty? fields)
+      (throw (ex-info (tru "No fields found for table {0}." (pr-str (:name (lib.metadata/table (qp.store/metadata-provider) table-id))))
+                      {:table-id table-id
+                       :type     qp.error-type/invalid-query})))
+    (mapv
+     (fn [field]
+       [:field (u/the-id field) nil])
+     fields)))
+
 (mu/defn- handle-all-fields :- mbql.s/Join
   "Replace `:fields :all` in a join with an appropriate list of Fields."
   [{:keys [source-table source-query alias fields source-metadata], :as join} :- mbql.s/Join]
@@ -98,7 +116,7 @@
    (when (= fields :all)
      {:fields (if source-query
                 (source-metadata->fields join source-metadata)
-                (for [[_ id-or-name opts] (qp.add-implicit-clauses/sorted-implicit-fields-for-table source-table)]
+                (for [[_ id-or-name opts] (sorted-implicit-fields-for-table source-table)]
                   [:field id-or-name (assoc opts :join-alias alias)]))})))
 
 (defn- deduplicate-aliases []
@@ -215,6 +233,9 @@
     (seq joins)  resolve-joins-in-mbql-query
     source-query (update :source-query resolve-joins-in-mbql-query-all-levels)))
 
+;; TODO (Cam 9/10/25) -- once we convert this to Lib we can remove
+;; the [[metabase.query-processor.middleware.ensure-joins-use-source-query/ensure-joins-use-source-query]] middleware
+;; entirely
 (defn resolve-joins
   "Add any Tables and Fields referenced by the `:joins` clause to the QP store."
   [{inner-query :query, :as outer-query}]
