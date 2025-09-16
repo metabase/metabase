@@ -1,6 +1,7 @@
 .card {
   box-shadow: 0 0.5rem 1.25rem var(--mb-color-shadow);
 }
+
 .table {
   background-color: var(--mb-color-bg-white);
   border: none;
@@ -17,14 +18,17 @@
     border-bottom: none;
   }
 }
+
 .row {
   cursor: pointer;
+
   &:hover {
     .action {
       visibility: visible;
     }
   }
 }
+
 .rowEditor {
   td {
     padding-block: 1px;
@@ -37,10 +41,6 @@
 
 .action {
   visibility: hidden;
-}
-
-.visible {
-  visibility: visible;
 }
 
 .input {
