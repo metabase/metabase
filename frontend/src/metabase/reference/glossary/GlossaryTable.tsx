@@ -7,6 +7,7 @@ import type { GlossaryItem } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Table as CommonTable } from "metabase/common/components/Table/Table";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import {
   ActionIcon,
   Box,
@@ -52,6 +53,8 @@ export function GlossaryTable({
     SortDirection.Asc,
   );
 
+  const hasMetabot = useHasTokenFeature("metabot_v3");
+
   const sortedRows = useMemo(() => {
     if (!sortColumnName) {
       return [
@@ -73,7 +76,12 @@ export function GlossaryTable({
 
   return (
     <>
-      <Group justify="flex-end" mb="xs">
+      <Group justify="space-between" mb="xs">
+        <Text>
+          {hasMetabot
+            ? t`Define terms to help your team and Metabot understand your data.`
+            : t`Define terms to help your team understand your data.`}
+        </Text>
         <Button
           variant="default"
           size="sm"
