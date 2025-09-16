@@ -1,11 +1,15 @@
 import { useClipboard, useDisclosure } from "@mantine/hooks";
-import cx from "classnames";
-import { useCallback, useState } from "react";
 import { match } from "ts-pattern";
+import { EditorContent, useEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import cx from "classnames";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import { downloadObjectAsJson } from "metabase/lib/download";
+import { useSelector } from "metabase/lib/redux";
+import { getSetting } from "metabase/selectors/settings";
 import {
   ActionIcon,
   Collapse,
@@ -28,11 +32,67 @@ import type {
 } from "metabase-enterprise/metabot/state";
 import type { MetabotFeedback, MetabotTodoItem } from "metabase-types/api";
 
+import { parseMetabotFormat } from "../../utils/metabotMessageSerializer";
 import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
+import { MetabotSmartLink } from "../MetabotSmartLink";
 
 import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
 import Styles from "./MetabotChat.module.css";
 import { MetabotFeedbackModal } from "./MetabotFeedbackModal";
+
+// Create a read-only TipTap viewer for user messages with SmartLinks
+const UserMessageContent = ({ message }: { message: string }) => {
+  const siteUrl = useSelector((state) => getSetting(state, "site-url"));
+
+  const extensions = useMemo(
+    () => [
+      StarterKit.configure({
+        // Disable unwanted extensions from StarterKit
+        blockquote: false,
+        bulletList: false,
+        orderedList: false,
+        listItem: false,
+        heading: false,
+        codeBlock: false,
+        code: false,
+        horizontalRule: false,
+        bold: false,
+        italic: false,
+        strike: false,
+      }),
+      MetabotSmartLink.configure({
+        siteUrl,
+        HTMLAttributes: {
+          class: "metabot-user-smart-link",
+        },
+      }),
+    ],
+    [siteUrl],
+  );
+
+  const editor = useEditor({
+    extensions,
+    content: message.includes("metabase://")
+      ? parseMetabotFormat(message)
+      : message,
+    editable: false,
+    immediatelyRender: false,
+  });
+
+  if (!editor) {
+    // Fallback to plain text
+    return (
+      <Text className={cx(Styles.message, Styles.messageUser)}>{message}</Text>
+    );
+  }
+
+  return (
+    <EditorContent
+      editor={editor}
+      className={cx(Styles.message, Styles.messageUser)}
+    />
+  );
+};
 
 interface BaseMessageProps extends Omit<FlexProps, "onCopy"> {
   message: MetabotChatMessage;
@@ -74,9 +134,7 @@ export const UserMessage = ({
 }: UserMessageProps) => (
   <MessageContainer chatRole={message.role} {...props}>
     {message.type === "text" && (
-      <Text className={cx(Styles.message, Styles.messageUser)}>
-        {message.message}
-      </Text>
+      <UserMessageContent message={message.message} />
     )}
 
     {message.type === "action" && (

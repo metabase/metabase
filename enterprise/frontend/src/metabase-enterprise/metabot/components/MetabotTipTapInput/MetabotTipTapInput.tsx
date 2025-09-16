@@ -6,7 +6,15 @@ import cx from "classnames";
 import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
+import { useSelector } from "metabase/lib/redux";
+import { getSetting } from "metabase/selectors/settings";
 import { Box, Icon } from "metabase/ui";
+
+import {
+  parseMetabotFormat,
+  serializeToMetabotFormat,
+} from "../../utils/metabotMessageSerializer";
+import { MetabotSmartLink } from "../MetabotSmartLink";
 
 import styles from "./MetabotTipTapInput.module.css";
 
@@ -25,6 +33,8 @@ export const MetabotTipTapInput = ({
   isLoading = false,
   inputRef,
 }: MetabotTipTapInputProps) => {
+  const siteUrl = useSelector((state) => getSetting(state, "site-url"));
+
   // Configure minimal extensions for chat input
   const extensions = useMemo(
     () => [
@@ -45,8 +55,14 @@ export const MetabotTipTapInput = ({
       Placeholder.configure({
         placeholder: t`Tell me to do something, or ask a question`,
       }),
+      MetabotSmartLink.configure({
+        siteUrl,
+        HTMLAttributes: {
+          class: styles.smartLink,
+        },
+      }),
     ],
-    [],
+    [siteUrl],
   );
 
   const editor = useEditor({
@@ -56,21 +72,25 @@ export const MetabotTipTapInput = ({
     immediatelyRender: false,
     autofocus: true,
     onUpdate: ({ editor }) => {
-      // For now, just get plain text
-      const text = editor.getText();
-      onChange(text);
+      // Serialize to string format for state management
+      const jsonContent = editor.getJSON();
+      const serialized = serializeToMetabotFormat(jsonContent);
+      onChange(serialized);
     },
     editorProps: {
       handleKeyDown: (view, event) => {
         // Handle Enter key for submit (without Shift)
         if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
-          const text = view.state.doc.textContent;
-          if (text.trim()) {
-            event.preventDefault();
-            onSubmit(text);
-            // Clear the editor after submit
-            editor?.commands.clearContent();
-            return true;
+          const jsonContent = editor?.getJSON();
+          if (jsonContent) {
+            const serialized = serializeToMetabotFormat(jsonContent);
+            if (serialized.trim()) {
+              event.preventDefault();
+              onSubmit(serialized);
+              // Clear the editor after submit
+              editor?.commands.clearContent();
+              return true;
+            }
           }
         }
         return false;
@@ -85,10 +105,34 @@ export const MetabotTipTapInput = ({
     }
   }, [editor, inputRef]);
 
+  // Temporary: Expose editor for testing SmartLink functionality
+  useEffect(() => {
+    if (editor && typeof window !== "undefined") {
+      (window as any).__metabotTipTapEditor = editor;
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        delete (window as any).__metabotTipTapEditor;
+      }
+    };
+  }, [editor]);
+
   // Sync external value changes to editor
   useEffect(() => {
-    if (editor && value !== editor.getText()) {
-      editor.commands.setContent(value);
+    if (editor && value) {
+      // Check if we need to update - compare serialized content
+      const currentSerialized = serializeToMetabotFormat(editor.getJSON());
+      if (value !== currentSerialized) {
+        // If value looks like it contains metabase:// links, parse it
+        if (value.includes("metabase://")) {
+          editor.commands.setContent(parseMetabotFormat(value));
+        } else {
+          // Plain text
+          editor.commands.setContent(value);
+        }
+      }
+    } else if (editor && !value) {
+      editor.commands.clearContent();
     }
   }, [editor, value]);
 

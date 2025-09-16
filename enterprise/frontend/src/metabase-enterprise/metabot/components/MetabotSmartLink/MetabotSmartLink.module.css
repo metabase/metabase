@@ -1,0 +1,38 @@
+.smartLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 0.25rem;
+  background: var(--mb-color-background-hover);
+  border-radius: 0.25rem;
+  color: var(--mb-color-brand);
+  text-decoration: none;
+  font-weight: 500;
+  vertical-align: baseline;
+  border: none;
+  cursor: pointer;
+  font-size: inherit;
+  font-family: inherit;
+  line-height: inherit;
+}
+
+.smartLink:focus {
+  outline: 2px solid var(--mb-color-brand);
+  outline-offset: 1px;
+}
+
+.smartLinkInner {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.icon {
+  flex-shrink: 0;
+}
+
+.userMention {
+  display: inline;
+  color: var(--mb-color-brand);
+  font-weight: 500;
+}
