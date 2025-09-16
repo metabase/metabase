@@ -20,7 +20,6 @@ import {
 import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 import { MetabotResetLongChatButton } from "metabase-enterprise/metabot/components/MetabotChat/MetabotResetLongChatButton";
 
-import { trackMetabotRequestSent } from "../../analytics";
 import { useMetabotAgent, useMetabotChatHandlers } from "../../hooks";
 
 import Styles from "./MetabotChat.module.css";
@@ -203,7 +202,6 @@ export const MetabotChat = () => {
                   // prevent event from inserting new line + interacting with other content
                   e.preventDefault();
                   e.stopPropagation();
-                  trackMetabotRequestSent();
                   handleSubmitInput(metabot.prompt);
                 }
               }}
