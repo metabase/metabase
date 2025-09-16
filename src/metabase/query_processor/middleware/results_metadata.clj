@@ -8,6 +8,9 @@
    [metabase.analyze.core :as analyze]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
+   ;; Lib soon
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -72,7 +75,11 @@
                  ;; don't want to update metadata when we use a Card as a source Card.
                  (not (:qp/source-card-id query))
                  ;; Only update changed metadata
-                 (not= (comparable-metadata actual-metadata) (comparable-metadata (qp.store/miscellaneous-value [::card-stored-metadata]))))
+                 (not= (comparable-metadata actual-metadata)
+                       (comparable-metadata
+                        ;; existing usage -- don't use going forward
+                        #_{:clj-kondo/ignore [:deprecated-var]}
+                        (qp.store/miscellaneous-value [::card-stored-metadata]))))
         (when-let [error (me/humanize (mr/explain [:sequential ::lib.schema.metadata/lib-or-legacy-column] actual-metadata))]
           (throw (ex-info "Invalid result metadata!" {:error error, :metadata actual-metadata})))
         (t2/update! :model/Card card-id {:result_metadata actual-metadata
@@ -149,4 +156,6 @@
   (when-let [result-metadata (:result_metadata card)]
     (if-let [error (me/humanize (mr/explain [:sequential ::lib.schema.metadata/lib-or-legacy-column] result-metadata))]
       (log/errorf "Invalid card result metadata, ignoring  it: %s" (pr-str error))
+      ;; existing usage -- don't use going forward
+      #_{:clj-kondo/ignore [:deprecated-var]}
       (qp.store/store-miscellaneous-value! [::card-stored-metadata] result-metadata))))

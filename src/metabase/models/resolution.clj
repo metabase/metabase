@@ -44,12 +44,14 @@
     :model/Field                             metabase.warehouse-schema.models.field
     :model/FieldUserSettings                 metabase.warehouse-schema.models.field-user-settings
     :model/FieldValues                       metabase.warehouse-schema.models.field-values
-    :model/GroupTableAccessPolicy            metabase-enterprise.sandbox.models.group-table-access-policy
+    :model/Sandbox                           metabase-enterprise.sandbox.models.sandbox
     :model/HTTPAction                        metabase.actions.models
     :model/ImplicitAction                    metabase.actions.models
     :model/LoginHistory                      metabase.login-history.models.login-history
     :model/Metabot                           metabase-enterprise.metabot-v3.models.metabot
+    :model/MetabotConversation               metabase-enterprise.metabot-v3.models.metabot-conversation
     :model/MetabotEntity                     metabase-enterprise.metabot-v3.models.metabot-entity
+    :model/MetabotMessage                    metabase-enterprise.metabot-v3.models.metabot-message
     :model/MetabotPrompt                     metabase-enterprise.metabot-v3.models.metabot-prompt
     :model/ModelIndex                        metabase.indexed-entities.models.model-index
     :model/ModelIndexValue                   metabase.indexed-entities.models.model-index
@@ -90,11 +92,11 @@
     :model/Transform                         metabase-enterprise.transforms.models.transform
     :model/TransformJob                      metabase-enterprise.transforms.models.transform-job
     :model/TransformJobRun                   metabase-enterprise.transforms.models.job-run
-    :model/TransformJobTransformTag metabase-enterprise.transforms.models.transform-job-transform-tag
+    :model/TransformJobTransformTag          metabase-enterprise.transforms.models.transform-job-transform-tag
     :model/TransformRun                      metabase-enterprise.transforms.models.transform-run
     :model/TransformRunCancelation           metabase-enterprise.transforms.models.transform-run-cancelation
     :model/TransformTag                      metabase-enterprise.transforms.models.transform-tag
-    :model/TransformTransformTag metabase-enterprise.transforms.models.transform-transform-tag
+    :model/TransformTransformTag             metabase-enterprise.transforms.models.transform-transform-tag
     :model/Undo                              metabase-enterprise.action-v2.models.undo
     :model/User                              metabase.users.models.user
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value

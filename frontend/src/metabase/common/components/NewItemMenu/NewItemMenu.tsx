@@ -9,7 +9,6 @@ import {
   getHasDatabaseWithJsonEngine,
   getHasNativeWrite,
 } from "metabase/selectors/data";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { State } from "metabase-types/store";
 
@@ -26,7 +25,6 @@ const mapStateToProps = (
   hasDataAccess: getHasDataAccess(databases),
   hasNativeWrite: getHasNativeWrite(databases),
   hasDatabaseWithJsonEngine: getHasDatabaseWithJsonEngine(databases),
-  isAdmin: getUserIsAdmin(state),
 });
 
 const mapDispatchToProps = {

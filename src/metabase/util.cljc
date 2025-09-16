@@ -1,7 +1,7 @@
 #_{:clj-kondo/ignore [:metabase/namespace-name]}
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
-  (:refer-clojure :exclude [group-by])
+  (:refer-clojure :exclude [group-by last])
   (:require
    #?@(:clj ([clojure.core.protocols]
              [clojure.math.numeric-tower :as math]
@@ -121,6 +121,14 @@
                                    not-empty)]
                  (str " " (pr-str data)))))
         (str/join "\n"))))
+
+(defn last
+  "Like `clojure.core/last`, but tries to be O(1)."
+  [v]
+  (cond
+    (or (list? v) (map? v)) (clojure.core/last v)
+    (zero? (count v))       nil
+    :else                   (nth v (dec (count v)))))
 
 (defmacro prog1
   "Execute `first-form`, then any other expressions in `body`, presumably for side-effects; return the result of
@@ -1183,8 +1191,7 @@
 (defn index-by
   "(index-by first second [[1 3] [1 4] [2 5]]) => {1 4, 2 5}"
   ([kf]
-   (map (fn [x]
-          [(kf x) x])))
+   (map (juxt kf identity)))
   ([kf coll]
    (into {} (index-by kf) coll))
   ([kf vf coll]
