@@ -1,6 +1,7 @@
 .content {
   & > [data-node-view-content-react] {
     height: 100%;
+    transform: translateZ(0);
 
     & > :global(.node-cardEmbed) {
       height: 100%;
