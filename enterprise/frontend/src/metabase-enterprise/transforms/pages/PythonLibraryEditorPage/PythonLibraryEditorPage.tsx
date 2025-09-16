@@ -92,6 +92,7 @@ export function PythonLibraryEditorPage({
         onChange={setSource}
         withPandasCompletions
         className={S.editor}
+        data-testid="python-editor"
       />
     </Flex>
   );
@@ -112,6 +113,7 @@ export function LibraryEditorHeader({
     <EditBar
       title={t`You are editing the shared Python library`}
       admin
+      data-testid="library-editor-header"
       buttons={[
         <Button
           key="save"

@@ -1,5 +1,7 @@
 const { H } = cy;
 
+import dedent from "ts-dedent";
+
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type {
@@ -1230,6 +1232,93 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       createMbqlTransform({ name: "Transform A", visitTransform: true });
       H.main().findByText("Dependencies").should("not.exist");
     });
+  });
+
+  describe("python > common library", () => {
+    it("should be possible to edit and save the common library", () => {
+      visitCommonLibrary();
+
+      cy.log("updating the library should be possible");
+      H.PythonEditor.clear().type(
+        dedent`
+          def useful_calculation(a, b):
+          return a + b
+        `,
+      );
+      getLibraryEditorHeader().findByText("Save").click();
+
+      cy.log("the contents should be saved properly");
+      visitCommonLibrary();
+      H.PythonEditor.value().should(
+        "eq",
+        dedent`
+          def useful_calculation(a, b):
+              return a + b
+          `,
+      );
+
+      cy.log("reverting the changes should be possible");
+      H.PythonEditor.clear().type("# oops");
+      getLibraryEditorHeader().findByText("Revert").click();
+      H.PythonEditor.value().should(
+        "eq",
+        dedent`
+          def useful_calculation(a, b):
+              return a + b
+          `,
+      );
+    });
+
+    it("should be possible to use the common library", () => {
+      visitCommonLibrary();
+
+      cy.log("updating the library should be possible");
+      H.PythonEditor.clear().type(
+        dedent`
+          def useful_calculation(a, b):
+          return a + b
+      `,
+      );
+      getLibraryEditorHeader().findByText("Save").click();
+
+      visitTransformListPage();
+      getTransformListPage().button("Create a transform").click();
+      H.popover().findByText("Python script").click();
+
+      H.PythonEditor.clear().type(
+        dedent`
+          import pandas as pd
+
+          def transform():
+          return pd.DataFrame({"foo": common.useful_calculation(1, 2)})
+        `,
+      );
+
+      getQueryEditor().findByText("Import common library").click();
+      H.PythonEditor.value().should("contain", "import common");
+
+      cy.findByTestId("python-data-picker")
+        .findByPlaceholderText("Select a table")
+        .click();
+
+      H.popover().findByText("Orders").click();
+
+      getQueryEditor().button("Save").click();
+
+      H.modal().within(() => {
+        cy.findByLabelText("Name").clear().type("Python transform");
+        cy.findByLabelText("Table name").clear().type("python_transform");
+        cy.button("Save").click();
+      });
+    });
+
+    function visitCommonLibrary(path = "common.py") {
+      cy.visit(`/admin/transforms/library/${path}`);
+    }
+
+    function getLibraryEditorHeader() {
+      return cy.findByTestId("library-editor-header");
+    }
   });
 });
 
