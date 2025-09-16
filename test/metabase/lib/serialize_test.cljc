@@ -76,11 +76,11 @@
      (is (= {:lib/type :mbql/query
              :stages   [{:lib/type :mbql.stage/native
                          :native   "SELECT *"
-                         :args     ["2022-10-03T00:00"]}]
+                         :params   ["2022-10-03T00:00"]}]
              :database 1}
             (lib.serialize/prepare-for-serialization
              {:lib/type :mbql/query
               :stages   [{:lib/type :mbql.stage/native
                           :native   "SELECT *"
-                          :args     [#t "2022-10-03T00:00"]}]
+                          :params   [#t "2022-10-03T00:00"]}]
               :database 1})))))
