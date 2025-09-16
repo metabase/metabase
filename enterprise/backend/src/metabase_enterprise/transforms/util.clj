@@ -1,7 +1,6 @@
 (ns metabase-enterprise.transforms.util
   (:require
    [clojure.core.async :as a]
-   [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.transforms.canceling :as canceling]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
@@ -88,20 +87,6 @@
    ;; sync the new table (note that even a failed sync status means that the execution succeeded)
    (log/info "Syncing target" (pr-str target) "for transform")
    (activate-table-and-mark-computed! database target)))
-
-(defn save-log-as-message!
-  "Save a message log as transform run message."
-  [run-id message-log]
-  (when message-log
-    (let [{:keys [pre-python python post-python]} @message-log]
-      (t2/update! :model/TransformRun
-                  :id run-id
-                  {:message (str/join "\n" (concat pre-python
-                                                   (for [{:keys [stream message]} python]
-                                                     (if (= "stdout" stream)
-                                                       (str "\033[32m" message "\033[0m")
-                                                       (str "\033[31m" message "\033[0m")))
-                                                   post-python))}))))
 
 (defn target-table-exists?
   "Test if the target table of a transform already exists."
