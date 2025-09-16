@@ -41,7 +41,7 @@
    [::legacy #'pivot-export/add-data-for-pivot-export]
    [::legacy #'large-int/convert-large-int-to-string]
    [::legacy #'viz-settings/update-viz-settings]
-   [::legacy #'qp.cumulative-aggregations/sum-cumulative-aggregation-columns]
+   [::mbql5 #'qp.cumulative-aggregations/sum-cumulative-aggregation-columns]
    [::mbql5  #'annotate/add-column-info]
    [::legacy #'fetch-source-query/add-dataset-info]])
 ;; ↑↑↑ POST-PROCESSING ↑↑↑ happens from BOTTOM TO TOP
