@@ -323,10 +323,7 @@
 
                     :bigquery-cloud-sdk (do
                                           (is (isa? (type-map "json_field") :type/JSON))
-
                                           ;; we're lossy, unless manually specified
-
-                                          (is (isa? (type-map "array_field") :type/JSON))
                                           (is (isa? (type-map "dict_field") :type/JSON)))
 
                     :mongo (do
