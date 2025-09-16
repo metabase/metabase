@@ -129,8 +129,14 @@ export const PLUGIN_WHITELABEL = {
   WhiteLabelConcealSettingsPage: PluginPlaceholder,
 };
 
-export const PLUGIN_ADMIN_SETTINGS = {
-  InteractiveEmbeddingSettings: NotFoundPlaceholder,
+export const PLUGIN_ADMIN_SETTINGS: {
+  InteractiveEmbeddingSettings: ComponentType | null;
+  LicenseAndBillingSettings: ComponentType;
+  useUpsellFlow: (props: { campaign: string; location: string }) => {
+    triggerUpsellFlow: (() => void) | undefined;
+  };
+} = {
+  InteractiveEmbeddingSettings: null,
   LicenseAndBillingSettings: PluginPlaceholder,
   useUpsellFlow: (_props: {
     campaign: string;

@@ -19,8 +19,15 @@ export const getSelectedQuestionId = createSelector(
   },
 );
 
-export const getSidebarOpen = (state: DocumentsStoreState) =>
-  state.plugins?.documents?.selectedEmbedIndex !== null;
+export const getSidebarOpen = createSelector(
+  getDocumentsState,
+  (state) => state.selectedEmbedIndex !== null,
+);
+
+export const getCommentSidebarOpen = createSelector(
+  getDocumentsState,
+  (state) => state.isCommentSidebarOpen,
+);
 
 export const getCardEmbeds = createSelector(
   getDocumentsState,
@@ -67,4 +74,19 @@ export const getCardWithDraft = createSelector(
 export const getMentionsCache = createSelector(
   getDocumentsState,
   (documents) => documents.mentionsCache,
+);
+
+export const getChildTargetId = createSelector(
+  getDocumentsState,
+  (documents) => documents.childTargetId,
+);
+
+export const getHoveredChildTargetId = createSelector(
+  getDocumentsState,
+  (documents) => documents.hoveredChildTargetId,
+);
+
+export const getHasUnsavedChanges = createSelector(
+  getDocumentsState,
+  (documents) => documents.hasUnsavedChanges,
 );

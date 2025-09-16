@@ -118,6 +118,8 @@
   [card value-field]
   (boolean
    (and (not (:archived card))
+        ;; existing usage -- do not use this in new code
+        #_{:clj-kondo/ignore [:deprecated-var]}
         (some? (qp.util/field->field-info value-field (:result_metadata card))))))
 
 ;;; --------------------------------------------- Putting it together ----------------------------------------------

@@ -47,67 +47,17 @@
           (assoc :lib/type :metadata/database)
           (dissoc :tables)))
 
-(defn- mock-metadatas [metadata metadata-type ids]
-  (let [k   (case metadata-type
-              :metadata/table                :tables
-              :metadata/column               :fields
-              :metadata/card                 :cards
-              :metadata/segment              :segments
-              :metadata/native-query-snippet :native-query-snippets)
-        ids (set ids)]
+(defn- mock-metadatas [metadata {metadata-type :lib/type, :as metadata-spec}]
+  (when-let [k     (case metadata-type
+                     :metadata/table                :tables
+                     :metadata/column               :fields
+                     :metadata/card                 :cards
+                     :metadata/segment              :segments
+                     :metadata/native-query-snippet :native-query-snippets
+                     :metadata/metric               :cards)]
     (into []
-          (keep (fn [object]
-                  (when (contains? ids (:id object))
-                    (cond-> (assoc object :lib/type metadata-type)
-                      (= metadata-type :metadata/table) (dissoc :fields)))))
-          (get metadata k))))
-
-(defn- mock-metadatas-by-name [metadata metadata-type names]
-  (let [k   (case metadata-type
-              :metadata/table                :tables
-              :metadata/column               :fields
-              :metadata/card                 :cards
-              :metadata/segment              :segments
-              :metadata/native-query-snippet :native-query-snippets)
-        names (set names)]
-    (into []
-          (keep (fn [object]
-                  (when (contains? names (:name object))
-                    (cond-> (assoc object :lib/type metadata-type)
-                      (= metadata-type :metadata/table) (dissoc :fields)))))
-          (get metadata k))))
-
-(defn- mock-tables [metadata]
-  (for [table (:tables metadata)]
-    (-> (assoc table :lib/type :metadata/table)
-        (dissoc :fields))))
-
-(defn- mock-metadatas-for-table [metadata metadata-type table-id]
-  (let [k (case metadata-type
-            :metadata/column  :fields
-            :metadata/metric  :cards
-            :metadata/segment :segments)]
-    (into []
-          (keep (fn [object]
-                  (when (and (= (:table-id object) table-id)
-                             (if (= metadata-type :metadata/metric)
-                               (and (= (:type object) :metric)
-                                    (not (:archived object)))
-                               true))
-                    (assoc object :lib/type metadata-type))))
-          (get metadata k))))
-
-(defn- mock-metadatas-for-card [metadata metadata-type card-id]
-  (let [k (case metadata-type
-            :metadata/metric :cards)]
-    (into []
-          (keep (fn [object]
-                  (when (and (= (:source-card-id object) card-id)
-                             (if (= metadata-type :metadata/metric)
-                               (and (= (:type object) :metric)
-                                    (not (:archived object)))
-                               true))
-                    (assoc object :lib/type metadata-type))))
+          (comp (metadata.protocols/default-spec-filter-xform metadata-spec)
+                (map #(assoc % :lib/type metadata-type)))
           (get metadata k))))
 
 (defn- mock-setting [metadata setting-key]
@@ -117,16 +67,8 @@
   metadata.protocols/MetadataProvider
   (database [_this]
     (mock-database metadata))
-  (metadatas [_this metadata-type ids]
-    (mock-metadatas metadata metadata-type ids))
-  (metadatas-by-name [_this metadata-type ids]
-    (mock-metadatas-by-name metadata metadata-type ids))
-  (tables [_this]
-    (mock-tables metadata))
-  (metadatas-for-table [_this metadata-type table-id]
-    (mock-metadatas-for-table metadata metadata-type table-id))
-  (metadatas-for-card [_this metadata-type card-id]
-    (mock-metadatas-for-card metadata metadata-type card-id))
+  (metadatas [_this metadata-spec]
+    (mock-metadatas metadata metadata-spec))
   (setting [_this setting-key]
     (mock-setting metadata setting-key))
 

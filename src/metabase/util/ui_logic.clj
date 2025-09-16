@@ -119,14 +119,57 @@
   "For a given resultset, return the index of the column that should be used for the goal comparison. This can come
   from the visualization settings if the column is specified, or from our default column logic"
   [card result]
-  (if-let [user-specified-rowfn (y-axis-rowfn card result)]
-    user-specified-rowfn
-    (when-let [default-col-index (default-goal-column-index card result)]
+  (let [user-specified-rowfn (y-axis-rowfn card result)
+        default-col-index (default-goal-column-index card result)
+        progress-value-col (when (= :progress (:display card))
+                             (get-in card [:visualization_settings :progress.value]))
+        progress-col-index (when progress-value-col
+                             (column-name->index progress-value-col result))
+        first-numeric-col-index (when (and (= :progress (:display card))
+                                           (not progress-col-index))
+                                  (first (keep-indexed (fn [idx col]
+                                                         (when (isa? (:base_type col) :type/Number)
+                                                           idx))
+                                                       (:cols result))))]
+    (cond
+      user-specified-rowfn
+      user-specified-rowfn
+
+      progress-col-index
       (fn [row]
-        (nth row default-col-index)))))
+        (nth row progress-col-index))
+
+      first-numeric-col-index
+      (fn [row]
+        (nth row first-numeric-col-index))
+
+      default-col-index
+      (fn [row]
+        (nth row default-col-index))
+
+      :else nil)))
+
+(defn- extract-goal-value-from-column
+  "Extracts goal value from a column reference, similar to frontend getGoalValue"
+  [goal-setting columns rows]
+  (when (string? goal-setting)
+    (let [column-index (->> columns
+                            (map-indexed vector)
+                            (filter #(= goal-setting (:name (second %))))
+                            first
+                            first)]
+      (when (and column-index (seq rows))
+        (let [raw-value (nth (first rows) column-index nil)]
+          (cond
+            (nil? raw-value) 0
+            (= "Infinity" raw-value) ##Inf
+            (number? raw-value) raw-value
+            :else 0))))))
 
 (defn find-goal-value
-  "The goal value can come from a progress goal or a graph goal_value depending on it's type"
+  "The goal value can come from a progress goal or a graph goal_value depending on it's type.
+  For progress charts, the goal can be either a number or a column reference.
+  Matches the frontend behavior: invalid goals fallback to default value (0)."
   [result]
   (case (get-in result [:card :display])
 
@@ -134,6 +177,20 @@
     (get-in result [:card :visualization_settings :graph.goal_value])
 
     :progress
-    (get-in result [:card :visualization_settings :progress.goal])
+    (let [goal-setting (get-in result [:card :visualization_settings :progress.goal])
+          columns (get-in result [:result :data :cols])
+          rows (get-in result [:result :data :rows])]
+      (cond
+        (number? goal-setting)
+        goal-setting
+
+        (string? goal-setting)
+        (if-let [column (->> columns (filter #(= goal-setting (:name %))) first)]
+          (if (isa? (:base_type column) :type/Number)
+            (extract-goal-value-from-column goal-setting columns rows)
+            0)
+          0)
+
+        :else 0))
 
     nil))

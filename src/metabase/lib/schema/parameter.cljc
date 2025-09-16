@@ -245,6 +245,8 @@
            :error/fn (fn [{:keys [value]} _]
                        (str "Invalid parameter :target, must be either :field, :dimension, or :variable; got: "
                             (pr-str value)))}
+   ;; TODO (Cam 9/12/25) -- the old legacy MBQL schema also said `:expression` refs where allowed here, but I don't
+   ;; know if we actually did allow that in practice.
    [:field     [:ref ::legacy-field-ref]]
    [:dimension [:ref ::dimension]]
    [:variable  [:ref ::variable]]])
@@ -262,6 +264,8 @@
         param))))
 
 (mr/def ::parameter
+  "Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as
+  part of the `:parameters` list in a query."
   [:and
    [:map
     {:decode/normalize normalize-parameter}
@@ -285,4 +289,5 @@
     {:dimension ":dimension is not allowed in a parameter, you probably meant to use :target [:dimension ...] instead."})])
 
 (mr/def ::parameters
+  "Schema for a list of `:parameters` as passed in to a query."
   [:sequential [:ref ::parameter]])

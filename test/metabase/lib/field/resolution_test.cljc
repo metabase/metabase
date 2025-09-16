@@ -386,7 +386,7 @@
                               :strategy     :left-join
                               :fk-field-id  %category-id}]}))
           col   (lib.field.resolution/resolve-field-ref query -1 (first (lib/fields query -1)))]
-      (is (=? {:lib/original-ref-for-result-metadata-purposes-only [:field {:join-alias "Category"} pos-int?]}
+      (is (=? {:lib/original-ref-style-for-result-metadata-purposes :original-ref-style/id}
               col))
       (is (=? [:field
                {:lib/uuid       string?
@@ -1325,7 +1325,7 @@
                    query
                    -1
                    [:field {:base-type :type/BigInteger, :lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :products :id)])
-                  (dissoc :lib/original-ref-for-result-metadata-purposes-only :lib/original-display-name))
+                  (dissoc :lib/original-ref-style-for-result-metadata-purposes :lib/original-display-name))
               (lib.field.resolution/resolve-field-ref
                query
                -1
@@ -1409,6 +1409,22 @@
                           {:fields (for [field-id [(meta/id :orders :tax) (meta/id :products :vendor)]]
                                      {:id field-id, :active false})}))
           query      (lib/query mp (lib.metadata/card mp 1))]
+      (is (=? {:active false
+               :id     (meta/id :orders :tax)
+               :name   "TAX"}
+              (lib.field.resolution/resolve-field-ref
+               query -1
+               [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Float} "TAX"]))))))
+
+(deftest ^:parallel resolve-inactive-field-ref-by-name-test
+  (testing "Should be able to resolve an INACTIVE field ref by name correctly."
+    (let [mp    (-> meta/metadata-provider
+                    (lib.tu/merged-mock-metadata-provider
+                     {:fields (for [field-id [(meta/id :orders :tax) (meta/id :products :vendor)]]
+                                {:id field-id, :active false})}))
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query orders))]
       (is (=? {:active false
                :id     (meta/id :orders :tax)
                :name   "TAX"}

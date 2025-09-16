@@ -1,50 +1,60 @@
 (ns metabase-enterprise.metabot-v3.api-test
   (:require
+   [clj-http.client :as http]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
-   [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
-   [metabase-enterprise.metabot-v3.tools.api :as metabot-v3.tools.api]
-   [metabase.test :as mt]))
+   [metabase-enterprise.metabot-v3.client-test :as client-test]
+   [metabase-enterprise.metabot-v3.util :as metabot.u]
+   [metabase.test :as mt]
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
-(deftest agent-test
-  (let [ai-requests (atom [])
-        conversation-id (str (random-uuid))
-        question "what can you do?"
-        navigation-target "url"
-        historical-message {:role "user", :content "hello?"}
-        agent-message {:role :assistant, :navigate-to navigation-target}
-        agent-state {:key "value"}]
-    (mt/with-premium-features #{:metabot-v3}
-      (with-redefs [metabot-v3.client/request (fn [e]
-                                                (swap! ai-requests conj e)
-                                                {:messages [agent-message]
-                                                 :state agent-state})]
-        (testing "Trivial request"
+(set! *warn-on-reflection* true)
+
+(deftest agent-streaming-test
+  (mt/with-premium-features #{:metabot-v3}
+    (let [mock-response      (client-test/make-mock-stream-response
+                              ["Hello", " from", " streaming!"]
+                              {"some-model" {:prompt 12 :completion 3}})
+          conversation-id    (str (random-uuid))
+          question           {:role "user" :content "Test streaming question"}
+          historical-message {:role "user" :content "previous message"}
+          ai-requests        (atom [])]
+      (mt/with-dynamic-fn-redefs [http/post (fn [url opts]
+                                              (swap! ai-requests conj (-> (String. ^bytes (:body opts) "UTF-8")
+                                                                          json/decode+kw))
+                                              ((client-test/mock-post! mock-response) url opts))]
+        (testing "Streaming request"
           (doseq [metabot-id [nil (str (random-uuid))]]
-            (reset! ai-requests [])
-            (let [response (mt/user-http-request :rasta :post 200 "ee/metabot-v3/v2/agent"
-                                                 (-> {:message question
-                                                      :context {}
-                                                      :conversation_id conversation-id
-                                                      :history [historical-message]
-                                                      :state {}}
-                                                     (m/assoc-some :metabot_id metabot-id)))]
-              (is (=? [{:context {:current_user_time (every-pred string? java.time.Instant/parse)}
-                        :messages [(update historical-message :role keyword) {:role :user, :content question}]
-                        :state {}
-                        :conversation-id conversation-id
-                        :profile-id (metabot-v3.config/resolve-dynamic-profile-id nil (metabot-v3.config/resolve-dynamic-metabot-id metabot-id))
-                        :session-id (fn [session-id]
-                                      (when-let [token (#'metabot-v3.tools.api/decode-ai-service-token session-id)]
-                                        (and (= (:metabot-id token) (or metabot-id
-                                                                        metabot-v3.config/internal-metabot-id))
-                                             (= (:user token) (mt/user->id :rasta)))))}]
-                      @ai-requests))
-              (is (=? {:reactions [{:type "metabot.reaction/redirect", :url navigation-target}]
-                       :history [historical-message
-                                 {:role "user", :content question}
-                                 (update agent-message :role name)]
-                       :state agent-state
-                       :conversation_id conversation-id}
-                      response)))))))))
+            (mt/with-model-cleanup [:model/MetabotMessage
+                                    [:model/MetabotConversation :created_at]]
+              (reset! ai-requests [])
+              (let [response (mt/user-http-request :rasta :post 202 "ee/metabot-v3/v2/agent-streaming"
+                                                   (-> {:message         (:content question)
+                                                        :context         {}
+                                                        :conversation_id conversation-id
+                                                        :history         [historical-message]
+                                                        :state           {}}
+                                                       (m/assoc-some :metabot_id metabot-id)))
+                    conv     (t2/select-one :model/MetabotConversation :id conversation-id)
+                    messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
+                (is (=? [{:messages        [historical-message question]
+                          :conversation_id conversation-id}]
+                        @ai-requests))
+                (is (=? [{:_type   :TEXT
+                          :role    "assistant"
+                          :content "Hello from streaming!"}
+                         {:_type         :FINISH_MESSAGE
+                          :finish_reason "stop"
+                          :usage         {:some-model {:prompt 12 :completion 3}}}]
+                        (metabot.u/aisdk->messages "assistant" (str/split-lines response))))
+                (is (=? {:user_id (mt/user->id :rasta)}
+                        conv))
+                (is (=? [{:total_tokens 0
+                          :role         :user
+                          :data         [{:role "user" :content (:content question)}]}
+                         {:total_tokens 15
+                          :role         :assistant
+                          :data         [{:role "assistant" :content "Hello from streaming!"}]}]
+                        messages))))))))))

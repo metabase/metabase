@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.gate :as semantic.gate]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
@@ -46,7 +47,7 @@
 
 (deftest dlq-table-creation-test
   (testing "DLQ table creation and existence checks"
-    (let [pgvector       semantic.tu/db
+    (let [pgvector       (semantic.env/get-pgvector-datasource!)
           index-metadata (semantic.tu/unique-index-metadata)
           index-id       42]
       (with-open [_ (semantic.tu/open-metadata! pgvector index-metadata)]
@@ -58,7 +59,7 @@
 
 (deftest dlq-entry-management-test
   (testing "DLQ entry add, query, and delete operations"
-    (let [pgvector       semantic.tu/db
+    (let [pgvector       (semantic.env/get-pgvector-datasource!)
           index-metadata (semantic.tu/unique-index-metadata)
           index-id       42]
       (with-open [_ (semantic.tu/open-metadata! pgvector index-metadata)
@@ -97,7 +98,7 @@
 
 (deftest dlq-entry-upsert-test
   (testing "DLQ entry upsert behavior on conflict"
-    (let [pgvector       semantic.tu/db
+    (let [pgvector       (semantic.env/get-pgvector-datasource!)
           index-metadata (semantic.tu/unique-index-metadata)
           index-id       42]
       (with-open [_ (semantic.tu/open-metadata! pgvector index-metadata)
@@ -129,7 +130,7 @@
             (is (= t2 (:error_gated_at (first results))))))))))
 
 (deftest dlq-poll-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         model          semantic.tu/mock-embedding-model
         index          (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
@@ -194,7 +195,7 @@
           (is (= 3 (count (semantic.dlq/poll pgvector index-metadata @index-id-ref 10)))))))))
 
 (deftest dlq-retry-loop-test
-  (let [pgvector         semantic.tu/db
+  (let [pgvector         (semantic.env/get-pgvector-datasource!)
         index-metadata   (semantic.tu/unique-index-metadata)
         model            semantic.tu/mock-embedding-model
         index            (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
@@ -296,7 +297,7 @@
                 (is (pos? (:failure-count result)))))))))))
 
 (deftest try-batch-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         model          semantic.tu/mock-embedding-model
         index          (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)

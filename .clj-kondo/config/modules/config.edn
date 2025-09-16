@@ -574,7 +574,6 @@
    :api  #{metabase.legacy-mbql.normalize
            metabase.legacy-mbql.predicates
            metabase.legacy-mbql.schema
-           metabase.legacy-mbql.schema.helpers
            metabase.legacy-mbql.util}
    :uses #{lib
            models
@@ -591,8 +590,7 @@
            metabase.lib.field
            metabase.lib.field.resolution
            metabase.lib.filter
-           metabase.lib.filter.desugar
-           metabase.lib.filter.desugar.jvm
+           metabase.lib.filter.desugar.jvm ; only so [[metabase.legacy-mbql.jvm-util]] can use defined regexes
            metabase.lib.init
            metabase.lib.join.util
            metabase.lib.metadata
@@ -1614,6 +1612,17 @@
            util
            enterprise/harbormaster}}
 
+  enterprise/comments
+  {:team "Workflows"
+   :api  #{metabase-enterprise.comments.api
+           metabase-enterprise.comments.init}
+   :uses #{api
+           events
+           models
+           request
+           users
+           util}}
+
   enterprise/content-translation
   {:team "UX West"
    :api  #{metabase-enterprise.content-translation.dictionary
@@ -1711,6 +1720,18 @@
            premium-features
            settings
            util}}
+
+
+  enterprise/embedding-hub
+  {:team "Embedding"
+   :api  #{metabase-enterprise.embedding-hub.api}
+   :uses #{api
+           appearance
+           audit-app
+           embedding
+           premium-features
+           util
+           enterprise/sso}}
 
   enterprise/gsheets
   {:team "Cloud"

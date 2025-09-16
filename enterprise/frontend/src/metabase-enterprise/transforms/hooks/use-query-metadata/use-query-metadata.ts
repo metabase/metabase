@@ -1,18 +1,16 @@
-import { useRef, useState } from "react";
-import { useAsync } from "react-use";
+import { useEffect, useRef, useState } from "react";
 import _ from "underscore";
 
-import Questions from "metabase/entities/questions";
-import { useDispatch } from "metabase/lib/redux";
+import { useLazyGetAdhocQueryMetadataQuery } from "metabase/api";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 export function useQueryMetadata(question: Question) {
-  const dispatch = useDispatch();
+  const [loadMetadata, { isLoading }] = useLazyGetAdhocQueryMetadataQuery();
   const dependenciesRef = useRef<Lib.DependentItem[]>([]);
   const [isInitiallyLoaded, setIsInitiallyLoaded] = useState(false);
 
-  const { loading } = useAsync(async () => {
+  useEffect(() => {
     const dependencies = Lib.dependentMetadata(
       question.query(),
       undefined,
@@ -20,17 +18,18 @@ export function useQueryMetadata(question: Question) {
     );
     if (!_.isEqual(dependencies, dependenciesRef.current)) {
       dependenciesRef.current = dependencies;
-      await dispatch(
-        Questions.actions.fetchAdhocMetadata(question.datasetQuery()),
-      );
+      loadMetadata(question.datasetQuery());
     }
-  }, [question]);
+  }, [question, loadMetadata]);
 
   if (!isInitiallyLoaded) {
     const query = question.query();
     const sourceTableId = Lib.sourceTableOrCardId(query);
-    const sourceTable = question.metadata().table(sourceTableId);
-    if (!loading && (sourceTableId == null || sourceTable != null)) {
+    const sourceTable =
+      sourceTableId != null
+        ? Lib.tableOrCardMetadata(query, sourceTableId)
+        : null;
+    if (!isLoading && (sourceTableId == null || sourceTable != null)) {
       setIsInitiallyLoaded(true);
     }
   }

@@ -29,7 +29,7 @@ import {
   InteractiveDashboard,
   StaticDashboard,
 } from "./components/public/dashboard";
-import { SdkDebugInfo } from "./components/public/debug/SdkDebugInfo";
+import { SdkDebugInfo } from "./components/public/SdkDebugInfo";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { getSdkStore } from "./store/index";
 import {
@@ -41,6 +41,7 @@ import { useInitData } from "./hooks/private/use-init-data";
 import { useLogVersionInfo } from "embedding-sdk-bundle/hooks/private/use-log-version-info";
 import { createDashboard } from "embedding-sdk-bundle/lib/create-dashboard";
 import { defineBuildInfo } from "metabase/embedding-sdk/lib/define-build-info";
+import { validateFunctionSchema } from "embedding-sdk-bundle/lib/validate-function-schema";
 
 defineBuildInfo("METABASE_EMBEDDING_SDK_BUNDLE_BUILD_INFO");
 
@@ -69,6 +70,7 @@ const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   getUser,
   useInitData,
   useLogVersionInfo,
+  validateFunctionSchema,
 };
 
 window.METABASE_EMBEDDING_SDK_BUNDLE = sdkBundleExports;

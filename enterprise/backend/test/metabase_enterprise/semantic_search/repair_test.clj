@@ -5,6 +5,7 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [metabase-enterprise.semantic-search.core :as semantic.core]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.repair :as semantic.repair]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase-enterprise.semantic-search.util :as semantic.util]
@@ -57,9 +58,9 @@
 (deftest repair-index-integration-test
   (testing "repair-index! properly handles document additions and deletions via gate table"
     (mt/with-premium-features #{:semantic-search}
-      (semantic.tu/with-index!
-        (let [pgvector       semantic.tu/db
-              index-metadata semantic.tu/mock-index-metadata
+      (semantic.tu/with-test-db! {:mode :mock-indexed}
+        (let [pgvector       (semantic.env/get-pgvector-datasource!)
+              index-metadata (semantic.env/get-index-metadata)
               gate-table     (:gate-table-name index-metadata)
               _              (clear-gate-table! pgvector gate-table)
               initial-docs   [(create-test-document "card" 1 "Dog Training Guide")
@@ -91,8 +92,8 @@
 (deftest repair-table-cleanup-test
   (testing "The repair table gets cleaned up properly at the end of a repair-index! job"
     (mt/with-premium-features #{:semantic-search}
-      (semantic.tu/with-index!
-        (let [pgvector       semantic.tu/db
+      (semantic.tu/with-test-db! {:mode :mock-indexed}
+        (let [pgvector       (semantic.env/get-pgvector-datasource!)
               index-metadata semantic.tu/mock-index-metadata
               gate-table     (:gate-table-name index-metadata)
               initial-docs   [(create-test-document "card" 6 "Dog Training Guide")]]

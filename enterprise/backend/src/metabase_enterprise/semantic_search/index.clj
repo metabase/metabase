@@ -127,7 +127,7 @@
    :creator_id          creator_id
    :database_id         database_id
    :last_editor_id      last_editor_id
-   :name                (:name doc)
+   :name                (or (:name doc) "")
    :content             searchable_text
    :display_type        display_type
    :archived            (some-> archived to-boolean)
@@ -145,18 +145,18 @@
    :text_search_vector  (if (:name doc)
                           [:||
                            (search/weighted-tsvector "A" (:name doc))
-                           (search/weighted-tsvector "B" (:searchable_text doc ""))]
-                          (search/weighted-tsvector "A" (:searchable_text doc "")))
+                           (search/weighted-tsvector "B" (or (:searchable_text doc) ""))]
+                          (search/weighted-tsvector "A" (or (:searchable_text doc) "")))
    :text_search_with_native_query_vector
    (if (:name doc)
      [:||
       (search/weighted-tsvector "A" (:name doc))
       (search/weighted-tsvector "B"
-                                (str/join " " (remove str/blank? [(:searchable_text doc "")
-                                                                  (:native_query doc "")])))]
+                                (str/join " " (remove str/blank? [(or (:searchable_text doc) "")
+                                                                  (or (:native_query doc) "")])))]
      (search/weighted-tsvector "A"
-                               (str/join " " (remove str/blank? [(:searchable_text doc "")
-                                                                 (:native_query doc "")]))))})
+                               (str/join " " (remove str/blank? [(or (:searchable_text doc) "")
+                                                                 (or (:native_query doc) "")]))))})
 
 (defn index-size
   "Fetches the number of documents in the index table."

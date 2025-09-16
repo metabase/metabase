@@ -144,16 +144,23 @@ H.describeWithSnowplowEE("documents", () => {
                     text: "Lorem Ipsum and some more words",
                   },
                 ],
+                attrs: {
+                  _id: "1",
+                },
               },
               {
                 type: "cardEmbed",
                 attrs: {
                   id: ORDERS_QUESTION_ID,
                   name: null,
+                  _id: "2",
                 },
               },
               {
                 type: "paragraph",
+                attrs: {
+                  _id: "3",
+                },
               },
             ],
             type: "doc",
@@ -254,6 +261,30 @@ H.describeWithSnowplowEE("documents", () => {
         H.documentContent().should("have.text", "");
         cy.realPress([metaKey, "z"]);
         H.documentContent().should("have.text", "");
+      });
+
+      it("should not clear undo history on save", () => {
+        const isMac = Cypress.platform === "darwin";
+        const metaKey = isMac ? "Meta" : "Control";
+
+        const originalText = "Lorem Ipsum and some more words";
+        const originalExact = new RegExp(`^${originalText}$`);
+        cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+        H.documentContent().contains(originalExact).click();
+
+        const modification = " etc.";
+        const modifiedExact = new RegExp(`^${originalText}${modification}$`);
+        H.addToDocument(modification, false);
+        H.documentContent().contains(modifiedExact);
+
+        cy.realPress([metaKey, "s"]);
+        cy.findByTestId("toast-undo")
+          .findByText("Document saved")
+          .should("be.visible");
+
+        cy.realPress([metaKey, "z"]);
+        cy.realPress([metaKey, "z"]);
+        H.documentContent().contains(originalExact);
       });
     });
   });

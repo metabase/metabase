@@ -208,9 +208,9 @@
                                                                [:field %price #::add{:source-table ::add/source
                                                                                      :source-alias "PRICE"}]
                                                                4]}
-                                            :fields [[:field %id #::add{:source-table  ::add/source
-                                                                        :source-alias  "ID"
-                                                                        :desired-alias "ID"}]
+                                            :fields [[:field "ID" #::add{:source-table ::add/source
+                                                                         :source-alias  "ID"
+                                                                         :desired-alias "ID"}]
                                                      [:field "x" {:base-type          :type/Integer
                                                                   ::add/source-table  ::add/source
                                                                   ::add/source-alias  "x"
@@ -774,10 +774,8 @@
                                                              [:field %rating {}]
                                                              [:field %created-at {}]]}
                                      :expressions {"pivot-grouping" [:abs 0]}
-                                   ;; TODO -- these should PROBABLY be nominal field literal refs (string name, not
-                                   ;; integer ID), but we can fix that later.
-                                     :fields [[:field %category {}]
-                                              [:field %created-at {}]
+                                     :fields [[:field "CATEGORY" {}]
+                                              [:field "CREATED_AT" {}]
                                               [:expression "pivot-grouping" {}]]}
                       :breakout    [[:field "CATEGORY" {}]
                                     [:field "CREATED_AT" {}]
@@ -828,7 +826,7 @@
                 (-> (lib.tu.macros/mbql-query orders
                       {:expressions {"double_total" [:* $total 2]}
                        ;; this is a broken field ref! It should use the join alias `p`. Luckily
-                       ;; the [[metabase.query-processor.middleware.resolve-joined-fields]] middleware should fix it
+                       ;; the [[metabase.query-processor.middleware.fix-bad-field-id-refs]] middleware should fix it
                        ;; for us.
                        :breakout    [!hour-of-day.people.created-at
                                      [:expression "double_total"]]
@@ -845,3 +843,86 @@
                                                          (concat
                                                           (take 3 fields)
                                                           (sort-by second (drop 3 fields))))))))))))
+
+(deftest ^:parallel wonky-breakout-test
+  (let [mp    (lib.tu/mock-metadata-provider
+               meta/metadata-provider
+               {:cards [{:id            1
+                         :type          :model
+                         :name          "Model A"
+                         :dataset-query (lib.tu.macros/mbql-query products
+                                          {:source-table $$products
+                                           :expressions  {"Rating Bucket" [:floor $products.rating]}})}
+                        {:id            2
+                         :type          :model
+                         :dataset-query (lib.tu.macros/mbql-query orders
+                                          {:source-table $$orders
+                                           :joins        [{:source-table "card__1"
+                                                           :alias        "model A - Product"
+                                                           :fields       :all
+                                                           :condition    [:=
+                                                                          $orders.product-id
+                                                                          [:field %products.id
+                                                                           {:join-alias "model A - Product"}]]}]})}]})
+        query (lib/query
+               mp
+               {:database (meta/id)
+                :stages   [{:lib/type    :mbql.stage/mbql
+                            :source-card 2
+                            :expressions [[:abs {:lib/expression-name "pivot-grouping"} 0]]
+                            :aggregation [[:sum {} [:field {:base-type :type/Number} "SUBTOTAL"]]]
+                            :breakout    [[:field {:base-type :type/Number, :join-alias "model A - Product"}
+                                           "Rating Bucket"]
+                                          [:expression {:base-type :type/Integer, :effective-type :type/Integer}
+                                           "pivot-grouping"]]}]
+                :lib/type :mbql/query})]
+    (qp.store/with-metadata-provider mp
+      (driver/with-driver :h2
+        (let [stages (-> query
+                         qp.preprocess/preprocess
+                         add/add-alias-info
+                         lib/->legacy-MBQL
+                         :query
+                         nest-query/nest-expressions
+                         (->> (lib/query-from-legacy-inner-query mp (meta/id)))
+                         :stages
+                         (->> (map (fn [stage]
+                                     (into []
+                                           (comp (mapcat stage)
+                                                 (map lib/options)
+                                                 (map ::add/desired-alias))
+                                           [:breakout :aggregation :fields])))))]
+          (is (= 3
+                 (count stages)))
+          (testing "first stage (Card 1)"
+            (is (= ["ID"
+                    "USER_ID"
+                    "PRODUCT_ID"
+                    "SUBTOTAL"
+                    "TAX"
+                    "TOTAL"
+                    "DISCOUNT"
+                    "CREATED_AT"
+                    "QUANTITY"
+                    "model A - Product__ID"
+                    "model A - Product__EAN"
+                    "model A - Product__TITLE"
+                    "model A - Product__CATEGORY"
+                    "model A - Product__VENDOR"
+                    "model A - Product__PRICE"
+                    "model A - Product__RATING"
+                    "model A - Product__CREATED_AT"
+                    "model A - Product__Rating Bucket"]
+                   (nth stages 0))))
+          (testing "second stage (Card 2)"
+            (is (= ["ID"
+                    "SUBTOTAL"
+                    "CREATED_AT"
+                    "model A - Product__Rating Bucket"
+                    "pivot-grouping"]
+                   (nth stages 1))))
+          (testing "third stage (original query)"
+            (is (= ["model A - Product__Rating Bucket"
+                    "pivot-grouping"
+                    "sum"]
+                   (nth stages 2)))))))))

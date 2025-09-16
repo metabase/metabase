@@ -254,7 +254,7 @@
 (deftest ^:parallel filter-nested-queries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries)
     (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                      (mt/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       {:cards [{:id            1
                                                 :dataset-query (mt/native-query (qp.compile/compile (mt/mbql-query checkins)))}]})
       (let [date  (lib.metadata/field (qp.store/metadata-provider) (mt/id :checkins :date))
@@ -719,10 +719,12 @@
                             [int str]
                             (qp/process-query query))))))))))))))
 
+;;; TODO (Cam 9/9/25) -- I added this in #61114 but I don't remember exactly what I was testing... I think this is a
+;;; port of one of the Cypress e2e tests but I don't remember which one. Give this a better name.
 (deftest ^:parallel x-test
   (mt/test-drivers (mt/normal-drivers)
     (let [query (lib/query
-                 (mt/application-database-metadata-provider (mt/id))
+                 (mt/metadata-provider)
                  {:lib/type   :mbql/query
                   :database   (mt/id)
                   :stages     [{:lib/type     :mbql.stage/mbql

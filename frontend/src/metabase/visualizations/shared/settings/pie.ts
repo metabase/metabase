@@ -18,6 +18,7 @@ import type {
 } from "metabase/visualizations/types";
 import type {
   DatasetColumn,
+  MaybeTranslatedSeries,
   RawSeries,
   RowValue,
   RowValues,
@@ -179,15 +180,40 @@ export function getColors(
 }
 
 export function getPieRows(
-  rawSeries: RawSeries,
+  rawSeries: MaybeTranslatedSeries,
   settings: ComputedVisualizationSettings,
   formatter: Formatter,
 ) {
   const [
     {
-      data: { rows: dataRows },
+      data: { rows: dataRows, untranslatedRows },
     },
   ] = rawSeries;
+
+  const untranslatedKeysToTranslatedKeys = new Map<string, string>();
+  if (untranslatedRows) {
+    untranslatedRows.forEach((row, i) => {
+      const untranslatedValue = row[0];
+      const translatedValue = dataRows[i][0];
+
+      if (
+        typeof untranslatedValue === "string" &&
+        typeof translatedValue === "string"
+      ) {
+        untranslatedKeysToTranslatedKeys.set(
+          untranslatedValue,
+          translatedValue,
+        );
+      }
+    });
+  } else {
+    dataRows.forEach((row) => {
+      if (typeof row[0] !== "string") {
+        return;
+      }
+      untranslatedKeysToTranslatedKeys.set(row[0], row[0]);
+    });
+  }
 
   if (!settings["pie.metric"] || !settings["pie.dimension"]) {
     return [];
@@ -239,6 +265,13 @@ export function getPieRows(
   const savedPieRows = hasSortDimensionChanged
     ? []
     : (settings["pie.rows"] ?? []);
+  const savedColors = new Map<string, string>();
+  savedPieRows.forEach((pieRow) => {
+    savedColors.set(
+      untranslatedKeysToTranslatedKeys.get(pieRow.key) ?? pieRow.key,
+      pieRow.color,
+    );
+  });
 
   const savedPieKeys = savedPieRows.map((pieRow) => pieRow.key);
 
@@ -280,7 +313,7 @@ export function getPieRows(
         key,
         name,
         originalName: name,
-        color,
+        color: savedColors.get(key) ?? color,
         defaultColor: true,
         enabled: true,
         hidden: false,
@@ -326,7 +359,7 @@ export function getPieRows(
           key,
           name,
           originalName: name,
-          color,
+          color: savedColors.get(key) ?? color,
           defaultColor: true,
           enabled: true,
           hidden: false,

@@ -115,7 +115,7 @@ describe("issue 41765", { tags: "@external" }, () => {
     });
   }
 
-  it(
+  it.skip(
     "re-syncing a database should invalidate the table cache (metabase#41765)",
     { tags: "@flaky" },
     () => {

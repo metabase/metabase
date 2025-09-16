@@ -1046,7 +1046,7 @@
 (deftest ^:parallel filter-on-implicitly-joined-column-test
   (testing "Should be able to filter on an column that was implicitly joined from a column in an explicit join (#59695)"
     (let [mp    (lib.tu/mock-metadata-provider
-                 (mt/application-database-metadata-provider (mt/id))
+                 (mt/metadata-provider)
                  {:cards [{:id            1
                            :dataset-query (mt/mbql-query orders)}]})
           query (lib/query

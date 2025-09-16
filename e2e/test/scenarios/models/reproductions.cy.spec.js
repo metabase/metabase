@@ -1442,7 +1442,7 @@ describe("issue 53604 - nested native question with multiple breakouts on same c
     );
 
     cy.findByTestId("qb-filters-panel").findByText(
-      "CREATED_AT is Jan 1 – Dec 31, 2024",
+      "CREATED_AT: Year is Jan 1 – Dec 31, 2024",
     );
 
     H.assertQueryBuilderRowCount(520);

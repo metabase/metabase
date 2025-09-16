@@ -50,6 +50,8 @@
     :model/DashboardCardSeries
     :model/LoginHistory
     :model/FieldValues
+    :model/MetabotConversation
+    :model/MetabotMessage
     :model/ModelIndex
     :model/ModelIndexValue
     :model/ModerationReview
@@ -94,9 +96,11 @@
     :model/UserParameterValue
     :model/UserKeyValue
     :model/ViewLog
-    :model/GroupTableAccessPolicy
+    :model/Sandbox
     :model/ConnectionImpersonation
-    :model/CloudMigration})
+    :model/CloudMigration
+    :model/Comment
+    :model/CommentReaction})
 
 (deftest ^:parallel comprehensive-entity-id-test
   (let [entity-id-models (->> (v2.entity-ids/toucan-models)

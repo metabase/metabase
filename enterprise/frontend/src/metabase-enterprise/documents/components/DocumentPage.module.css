@@ -3,6 +3,10 @@
   flex-direction: column;
   height: 100%;
   background-color: var(--mb-color-bg-white);
+
+  &.commentsOpened {
+    width: calc(100% - 25rem);
+  }
 }
 
 .header {
@@ -29,6 +33,7 @@
   flex-direction: column;
   overflow-y: auto;
   padding: 0 2rem;
+  scroll-padding-top: 32px;
 }
 
 .documentContainer {

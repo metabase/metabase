@@ -624,9 +624,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
         const expectedUrl = `http://localhost:4000/table/${PEOPLE_ID}/detail/1`;
 
         cy.findByLabelText("Copy link to this record").click();
-        cy.window()
-          .then((window) => window.navigator.clipboard.readText())
-          .should("equal", expectedUrl);
+        H.readClipboard().should("equal", expectedUrl);
 
         cy.findByLabelText("Open in full page").click();
         cy.location("href").should("eq", expectedUrl);
@@ -724,9 +722,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
           const expectedUrl = `http://localhost:4000/model/${slug}/detail/1`;
 
           cy.findByLabelText("Copy link to this record").click();
-          cy.window()
-            .then((window) => window.navigator.clipboard.readText())
-            .should("equal", expectedUrl);
+          H.readClipboard().should("equal", expectedUrl);
 
           cy.findByLabelText("Open in full page").click();
           cy.location("href").should("eq", expectedUrl);

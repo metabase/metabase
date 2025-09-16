@@ -19,7 +19,7 @@
 
 (mr/def ::clause
   [:and
-   [:ref ::lib.schema.mbql-clause/clause]
+   [:ref ::lib.schema.mbql-clause/clause] ; TODO -- should we use `:metabase.lib.schema.expression/boolean` here?
    [:ref ::lib.schema.util/unique-uuids]])
 
 (defn- merge-options [clause opts]
