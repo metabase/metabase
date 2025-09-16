@@ -685,13 +685,22 @@
           (cleanup-table! table-id)
 
           (let [additional-table-name (mt/random-name)
-                additional-table-id (create-test-table-with-data!
-                                     additional-table-name
-                                     exotic-edge-schema
-                                     (:data exotic-edge-schema))]
+                additional-table (when (and result (:output-manifest result))
+                                   (let [temp-file (java.io.File/createTempFile "test-output" ".jsonl")]
+                                     (spit temp-file (:output result))
+                                     (#'transforms.execute/create-table-and-insert-data!
+                                      driver/*driver*
+                                      (mt/id)
+                                      additional-table-name
+                                      (:output-manifest result)
+                                      {:type :jsonl-file
+                                       :file temp-file})
+                                     (sync/sync-database! (mt/db) {:scan :schema})
+                                     (wait-for-table additional-table-name)))]
             (testing "Additional table creation and cleanup works"
-              (is (some? additional-table-id) "Additional table should be created successfully"))
-            (cleanup-table! additional-table-id)))))))
+              (is (some? additional-table) "Additional table should be created successfully"))
+            (when additional-table
+              (cleanup-table! (:id additional-table)))))))))
 
 (deftest exotic-edge-cases-python-transform-mysql-test
   (testing "MySQL/MariaDB exotic edge cases"
@@ -816,13 +825,22 @@
           (cleanup-table! table-id)
 
           (let [additional-table-name (mt/random-name)
-                additional-table-id (create-test-table-with-data!
-                                     additional-table-name
-                                     mysql-edge-schema
-                                     (:data mysql-edge-schema))]
+                additional-table (when (and result (:output-manifest result))
+                                   (let [temp-file (java.io.File/createTempFile "test-output" ".jsonl")]
+                                     (spit temp-file (:output result))
+                                     (#'transforms.execute/create-table-and-insert-data!
+                                      driver/*driver*
+                                      (mt/id)
+                                      additional-table-name
+                                      (:output-manifest result)
+                                      {:type :jsonl-file
+                                       :file temp-file})
+                                     (sync/sync-database! (mt/db) {:scan :schema})
+                                     (wait-for-table additional-table-name)))]
             (testing "Additional table creation and cleanup works"
-              (is (some? additional-table-id) "Additional table should be created successfully"))
-            (cleanup-table! additional-table-id)))))))
+              (is (some? additional-table) "Additional table should be created successfully"))
+            (when additional-table
+              (cleanup-table! (:id additional-table)))))))))
 
 (deftest exotic-edge-cases-python-transform-bigquery-test
   (testing "BigQuery exotic edge cases"
@@ -954,13 +972,22 @@
           (cleanup-table! table-id)
 
           (let [additional-table-name (mt/random-name)
-                additional-table-id (create-test-table-with-data!
-                                     additional-table-name
-                                     bq-edge-schema
-                                     (:data bq-edge-schema))]
+                additional-table (when (and result (:output-manifest result))
+                                   (let [temp-file (java.io.File/createTempFile "test-output" ".jsonl")]
+                                     (spit temp-file (:output result))
+                                     (#'transforms.execute/create-table-and-insert-data!
+                                      driver/*driver*
+                                      (mt/id)
+                                      additional-table-name
+                                      (:output-manifest result)
+                                      {:type :jsonl-file
+                                       :file temp-file})
+                                     (sync/sync-database! (mt/db) {:scan :schema})
+                                     (wait-for-table additional-table-name)))]
             (testing "Additional table creation and cleanup works"
-              (is (some? additional-table-id) "Additional table should be created successfully"))
-            (cleanup-table! additional-table-id)))))))
+              (is (some? additional-table) "Additional table should be created successfully"))
+            (when additional-table
+              (cleanup-table! (:id additional-table)))))))))
 
 #_(deftest large-values-python-transform-test
     (testing "Test Python transforms with large-ish values that should work within 63-bit limits."
