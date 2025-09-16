@@ -97,9 +97,9 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 JSON schema inference doesn't work with MariaDB, due to implementation differences between MySQL and MariaDB.
 
-## Password with special characters
+## Passwords with special characters
 
-If your password contains character that are non UTF-8, then you might want to add an additional variable to the connection string `passwordCharacterEncoding=<your_encoding_here>`. This will ensure that your MySQL/MariaDB database will understand the special characters of the password when it authenticates.
+If your password contains characters that aren't UTF-8, then you might need to add an additional variable to the connection string `passwordCharacterEncoding=<your_encoding_here>`. This ensures that MariaDB understands the special characters in the password during authentication.
 
 ## Database routing
 

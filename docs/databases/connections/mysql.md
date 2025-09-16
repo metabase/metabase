@@ -176,7 +176,7 @@ mysql:
 
 ## Password with special characters
 
-If your password contains character that are non UTF-8, then you might want to add an additional variable to the connection string `passwordCharacterEncoding=<your_encoding_here>`. This will ensure that your MySQL/MariaDB database will understand the special characters of the password when it authenticates.
+If your password contains non-UTF-8 characters, you might need to add `passwordCharacterEncoding=<your_encoding_here>` to the connection string. This ensures your MySQL/MariaDB database correctly interprets the password during authentication.
 
 ## Model features
 
