@@ -90,8 +90,20 @@
                  (mt/formatted-rows [int double double double]
                                     (mt/run-mbql-query json-decimals-table)))))))))
 
+(def ^:private base-type-test-data
+  "Base types that all drivers should support with test data."
+  {:columns [{:name "id" :type :type/Integer :nullable? false}
+             {:name "name" :type :type/Text :nullable? true}
+             {:name "price" :type :type/Float :nullable? true}
+             {:name "active" :type :type/Boolean :nullable? true}
+             {:name "created_date" :type :type/Date :nullable? true}
+             {:name "created_at" :type :type/DateTime :nullable? true}]
+   :data [[1 "Product A" 19.99 true "2024-01-01" "2024-01-01T12:00:00"]
+          [2 "Product B" 15.50 false "2024-02-01" "2024-02-01T09:15:30"]
+          [3 nil nil nil nil nil]]})
+
 (deftest insert-from-source!-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+  (mt/test-drivers  #{:postgres :h2 :mysql :bigquery-cloud-sdk :redshift :snowflake :sqlserver :mongodb :maria :clickhouse}
     (let [driver       driver/*driver*
           db-id        (mt/id)
           table-name   (mt/random-name)
@@ -99,23 +111,24 @@
           qualified-table-name (if schema-name
                                  (keyword schema-name table-name)
                                  (keyword table-name))
-          column-definitions {"id" [:int], "name" [:text]}]
+          {:keys [columns data]} base-type-test-data
+          column-definitions (into {} (map (fn [{:keys [name type]}]
+                                             [name (driver/type->database-type driver type)]))
+                                   columns)]
       (mt/as-admin
         (driver/create-table! driver db-id qualified-table-name column-definitions {})
 
-        (testing "insert-from-source! should insert new rows correctly"
-          (let [new-rows     [[2 "New Luke"] [3 "New Leia"]]
-                data-source  {:type :rows :data new-rows}
+        (testing "insert-from-source! should insert rows with all basic types correctly"
+          (let [data-source {:type :rows :data data}
                 _ (driver/insert-from-source! driver db-id
-                                              {:name    qualified-table-name
-                                               :columns (mapv (fn [name]
-                                                                {:name (keyword name)})
-                                                              (keys column-definitions))}
-                                              data-source)]
-            (is (= (count new-rows) (count (driver/table-rows-seq driver/*driver* (mt/db) {:name table-name
-                                                                                           :schema schema-name}))))))
+                                              {:name qualified-table-name
+                                               :columns columns}
+                                              data-source)
+                inserted-rows (driver/table-rows-seq driver/*driver* (mt/db) {:name table-name
+                                                                              :schema schema-name})]
+            (is (= (count data) (count inserted-rows))
+                "Should insert all test rows including nulls")))
         (driver/drop-table! driver db-id qualified-table-name)))))
-
 
 (deftest ^:parallel type->database-type-h2-test
   (testing "type->database-type multimethod returns correct H2 types"
