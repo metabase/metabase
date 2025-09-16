@@ -621,6 +621,10 @@
         ["People - User__SOURCE" :source/card]
         ["People - User__ZIP" :source/card]
         ["People - User__LATITUDE" :source/card]
+        ;; TODO (Cam 9/11/25) -- this should be getting filtered out because the column has `:sensitive`
+        ;; `:visibility-type`... my guess is that we fetch it by ID and need to add additional filtering in
+        ;; a [[metabase.lib.metadata.calculation/visible-columns-method]] somewhere. I've only noticed this recently,
+        ;; this has been a bug since day one. (QUE-2438)
         ["People - User__PASSWORD" :source/card]
         ["People - User__BIRTH_DATE" :source/card]
         ["People - User__LONGITUDE" :source/card]
@@ -679,7 +683,8 @@
         ["Mock users card - User__ID" :source/card]
         ["Mock users card - User__NAME" :source/card]
         ["Mock users card - User__LAST_LOGIN" :source/card]
-        ["Mock users card - User__PASSWORD" :source/card]
+        ;; should not come back because this column has `:sensitive` `:visibility-type`
+        #_["Mock users card - User__PASSWORD" :source/card]
         ["Mock venues card - Venue__ID" :source/joins]
         ["Mock venues card - Venue__NAME" :source/joins]
         ["Mock venues card - Venue__CATEGORY_ID" :source/joins]

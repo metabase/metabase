@@ -1,30 +1,20 @@
-import {
-  any,
-  function as functionSchema,
-  optional,
-  strictObject,
-} from "zod/mini";
-import type { infer as zInfer } from "zod/v4/core/core";
+import * as Yup from "yup";
 
-import type { ValidateInferredSchema } from "embedding-sdk-bundle/types/schema";
+import type { FunctionSchema } from "embedding-sdk-bundle/types/schema";
 
 import type { CollectionBrowserProps } from "./CollectionBrowser";
 
-const rawPropsSchema = strictObject({
-  EmptyContentComponent: optional(any()),
-  className: optional(any()),
-  collectionId: optional(any()),
-  onClick: optional(any()),
-  pageSize: optional(any()),
-  style: optional(any()),
-  visibleColumns: optional(any()),
-  visibleEntityTypes: optional(any()),
-});
-const propsSchema: ValidateInferredSchema<
-  CollectionBrowserProps,
-  zInfer<typeof rawPropsSchema>
-> = rawPropsSchema;
+const propsSchema: Yup.SchemaOf<CollectionBrowserProps> = Yup.object({
+  EmptyContentComponent: Yup.mixed().optional(),
+  className: Yup.mixed().optional(),
+  collectionId: Yup.mixed().optional(),
+  onClick: Yup.mixed().optional(),
+  pageSize: Yup.mixed().optional(),
+  style: Yup.mixed().optional(),
+  visibleColumns: Yup.mixed().optional(),
+  visibleEntityTypes: Yup.mixed().optional(),
+}).noUnknown();
 
-export const collectionBrowserPropsSchema = functionSchema({
+export const collectionBrowserPropsSchema: FunctionSchema = {
   input: [propsSchema],
-});
+};

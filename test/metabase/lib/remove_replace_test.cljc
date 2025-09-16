@@ -570,13 +570,15 @@
               (lib/replace-clause
                query
                (second (lib/aggregations query))
-               (first (lib/available-metrics query)))))
+               (or (first (lib/available-metrics query))
+                   (throw (ex-info "lib/available-metrics is unexpectedly empty" {:query query}))))))
       (is (=? {:stages [{:aggregation [[:count {:lib/uuid string?}]
                                        [:metric {:lib/uuid string?} 100]]}]}
               (-> query
                   (lib/replace-clause
                    (second (lib/aggregations query))
-                   (first (lib/available-metrics query)))
+                   (or (first (lib/available-metrics query))
+                       (throw (ex-info "lib/available-metrics is unexpectedly empty" {:query query}))))
                   (as-> $q (lib/replace-clause $q (first (lib/aggregations $q)) (lib/count)))))))))
 
 (deftest ^:parallel replace-segment-test
@@ -1039,6 +1041,8 @@
         expected-original {:stages [{:joins [{:lib/type :mbql/join, :alias "Cat", :fields :all}]}]}
         [original-join]   (lib/joins query)
         new-join          (lib/with-join-fields original-join :none)]
+    (assert (some? original-join))
+    (assert (some? new-join))
     (is (=? expected-original
             query))
     (testing "dangling join-spec leads to no change"

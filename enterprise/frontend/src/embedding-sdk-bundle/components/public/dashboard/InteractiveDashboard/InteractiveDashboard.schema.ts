@@ -1,68 +1,57 @@
-import {
-  any,
-  function as functionSchema,
-  nonoptional,
-  optional,
-  strictObject,
-} from "zod/mini";
-import type { infer as zInfer } from "zod/v4/core/core";
+import * as Yup from "yup";
 
-import type { ValidateInferredSchema } from "embedding-sdk-bundle/types/schema";
+import type { FunctionSchema } from "embedding-sdk-bundle/types/schema";
 
 import type { InteractiveDashboardProps } from "./InteractiveDashboard";
 
-const rawPropsSchema = strictObject({
-  children: optional(any()),
-  className: optional(any()),
-  dashboardId: nonoptional(any()),
-  dataPickerProps: optional(
-    strictObject({
-      entityTypes: optional(any()),
-    }),
-  ),
-  drillThroughQuestionHeight: optional(any()),
-  drillThroughQuestionProps: optional(
-    strictObject({
-      children: optional(any()),
-      className: optional(any()),
-      entityTypes: optional(any()),
-      height: optional(any()),
-      initialSqlParameters: optional(any()),
-      isSaveEnabled: optional(any()),
-      onBeforeSave: optional(any()),
-      onRun: optional(any()),
-      onSave: optional(any()),
-      plugins: optional(any()),
-      style: optional(any()),
-      targetCollection: optional(any()),
-      title: optional(any()),
-      width: optional(any()),
-      withChartTypeSelector: optional(any()),
-      withDownloads: optional(any()),
-      withResetButton: optional(any()),
-    }),
-  ),
-  hiddenParameters: optional(any()),
-  initialParameters: optional(any()),
-  onLoad: optional(any()),
-  onLoadWithoutCards: optional(any()),
-  plugins: optional(
-    strictObject({
-      mapQuestionClickActions: optional(any()),
-      dashboard: optional(any()),
-    }),
-  ),
-  renderDrillThroughQuestion: optional(any()),
-  style: optional(any()),
-  withCardTitle: optional(any()),
-  withDownloads: optional(any()),
-  withTitle: optional(any()),
-});
-const propsSchema: ValidateInferredSchema<
-  InteractiveDashboardProps,
-  zInfer<typeof rawPropsSchema>
-> = rawPropsSchema;
+const propsSchema: Yup.SchemaOf<InteractiveDashboardProps> = Yup.object({
+  children: Yup.mixed().optional(),
+  className: Yup.mixed().optional(),
+  dashboardId: Yup.mixed().required(),
+  dataPickerProps: Yup.object({
+    entityTypes: Yup.mixed().optional(),
+  })
+    .optional()
+    .noUnknown(),
+  drillThroughQuestionHeight: Yup.mixed().optional(),
+  drillThroughQuestionProps: Yup.object({
+    children: Yup.mixed().optional(),
+    className: Yup.mixed().optional(),
+    entityTypes: Yup.mixed().optional(),
+    height: Yup.mixed().optional(),
+    initialSqlParameters: Yup.mixed().optional(),
+    isSaveEnabled: Yup.mixed().optional(),
+    onBeforeSave: Yup.mixed().optional(),
+    onRun: Yup.mixed().optional(),
+    onSave: Yup.mixed().optional(),
+    plugins: Yup.mixed().optional(),
+    style: Yup.mixed().optional(),
+    targetCollection: Yup.mixed().optional(),
+    title: Yup.mixed().optional(),
+    width: Yup.mixed().optional(),
+    withChartTypeSelector: Yup.mixed().optional(),
+    withDownloads: Yup.mixed().optional(),
+    withResetButton: Yup.mixed().optional(),
+  })
+    .optional()
+    .noUnknown(),
+  hiddenParameters: Yup.mixed().optional(),
+  initialParameters: Yup.mixed().optional(),
+  onLoad: Yup.mixed().optional(),
+  onLoadWithoutCards: Yup.mixed().optional(),
+  plugins: Yup.object({
+    mapQuestionClickActions: Yup.mixed().optional(),
+    dashboard: Yup.mixed().optional(),
+  })
+    .optional()
+    .noUnknown(),
+  renderDrillThroughQuestion: Yup.mixed().optional(),
+  style: Yup.mixed().optional(),
+  withCardTitle: Yup.mixed().optional(),
+  withDownloads: Yup.mixed().optional(),
+  withTitle: Yup.mixed().optional(),
+}).noUnknown();
 
-export const interactiveDashboardSchema = functionSchema({
+export const interactiveDashboardSchema: FunctionSchema = {
   input: [propsSchema],
-});
+};

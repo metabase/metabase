@@ -8,6 +8,7 @@ import type {
 export type AdminPathKey =
   | "data-model"
   | "settings"
+  | "embedding"
   | "metabot"
   | "people"
   | "databases"

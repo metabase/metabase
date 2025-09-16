@@ -6,6 +6,7 @@ import { Ellipsified } from "metabase/common/components/Ellipsified";
 import Markdown from "metabase/common/components/Markdown";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import type { IconProps } from "metabase/ui";
 import { Icon, Menu, Tooltip } from "metabase/ui";
@@ -68,6 +69,8 @@ export const LegendCaption = ({
    */
   const [href, setHref] = useState(getHref ? HREF_PLACEHOLDER : undefined);
 
+  const tc = useTranslateContent();
+
   const handleFocus = useCallback(() => {
     if (getHref) {
       setHref(getHref());
@@ -102,7 +105,7 @@ export const LegendCaption = ({
         data-testid="legend-caption-title"
         className={SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS}
       >
-        {title}
+        {tc(title)}
       </Ellipsified>
       {title && hasTitleMenuItems && (
         <Icon
@@ -133,7 +136,7 @@ export const LegendCaption = ({
         <Tooltip
           label={
             <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
-              {description}
+              {tc(description)}
             </Markdown>
           }
           maw="22em"

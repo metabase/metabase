@@ -153,14 +153,16 @@
 (defmethod driver/create-table! :sql-jdbc
   [driver database-id table-name column-definitions & {:keys [primary-key]}]
   (let [sql (create-table!-sql driver table-name column-definitions :primary-key primary-key)]
-    (driver-api/execute-write-sql! database-id sql)))
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)]
+      (jdbc/execute! conn sql))))
 
 (defmethod driver/drop-table! :sql-jdbc
   [driver db-id table-name]
   (let [sql (first (sql/format {:drop-table [:if-exists (keyword table-name)]}
                                :quoted true
                                :dialect (sql.qp/quote-style driver)))]
-    (driver-api/execute-write-sql! db-id sql)))
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+      (jdbc/execute! conn sql))))
 
 (defmethod driver/truncate! :sql-jdbc
   [driver db-id table-name]
@@ -209,7 +211,8 @@
                                                                    column-definitions)}
                                                 :quoted true
                                                 :dialect (sql.qp/quote-style driver)))]
-      (driver-api/execute-write-sql! db-id sql))))
+      (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+        (jdbc/execute! conn sql)))))
 
 ;; kept for get-method driver compatibility
 #_{:clj-kondo/ignore [:deprecated-var]}

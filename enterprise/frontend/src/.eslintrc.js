@@ -59,10 +59,6 @@ module.exports = {
             paths: [
               ...baseRestrictredConfig.paths,
               {
-                name: "zod",
-                message: "Please import from `zod/mini` instead.",
-              },
-              {
                 name: "metabase/lib/redux",
                 importNames: ["useStore", "useDispatch"],
                 message: 'Please use "useSdkStore", "useSdkDispatch"',

@@ -1,19 +1,19 @@
 import { msgid, ngettext, t } from "ttag";
-import _ from "underscore";
 
+import { useGetTableQuery } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Description,
   EmptyDescription,
 } from "metabase/common/components/MetadataInfo/MetadataInfo";
 import CS from "metabase/css/core/index.css";
-import Tables from "metabase/entities/tables";
-import { connect } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import ConnectedTableList from "metabase/query_builder/components/dataref/ConnectedTableList";
-import type Table from "metabase-lib/v1/metadata/Table";
-import type { State } from "metabase-types/store";
+import { getMetadata } from "metabase/selectors/metadata";
+import type { ConcreteTableId } from "metabase-types/api";
 
-import FieldList from "./FieldList";
+import { FieldList } from "./FieldList";
 import {
   NodeListIcon,
   NodeListItemIcon,
@@ -25,18 +25,35 @@ import {
 } from "./NodeList";
 import TableInfoLoader from "./TableInfoLoader";
 
-interface TablePaneProps {
+type TableItem = {
+  id: ConcreteTableId;
+};
+
+type TablePaneProps = {
+  table: TableItem;
   onBack: () => void;
   onClose: () => void;
   onItemClick: (type: string, item: unknown) => void;
-  table: Table;
-}
+};
 
-const mapStateToProps = (state: State, props: TablePaneProps) => ({
-  table: Tables.selectors.getObject(state, { entityId: props.table.id }),
-});
+export function TablePane({
+  table: { id },
+  onItemClick,
+  onBack,
+  onClose,
+}: TablePaneProps) {
+  const { isLoading, error } = useGetTableQuery({ id });
+  const metadata = useSelector(getMetadata);
 
-function TablePane({ table, onItemClick, onBack, onClose }: TablePaneProps) {
+  if (isLoading || error != null) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  const table = metadata.table(id);
+  if (table == null) {
+    return <LoadingAndErrorWrapper loading />;
+  }
+
   return (
     <SidebarContent
       title={table.name}
@@ -104,11 +121,3 @@ function TablePane({ table, onItemClick, onBack, onClose }: TablePaneProps) {
     </SidebarContent>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Tables.load({
-    id: (_state: State, props: TablePaneProps) => props.table.id,
-  }),
-  connect(mapStateToProps),
-)(TablePane);

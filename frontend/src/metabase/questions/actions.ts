@@ -1,5 +1,6 @@
-import Questions from "metabase/entities/questions";
+import { cardApi, datasetApi } from "metabase/api";
 import Tables from "metabase/entities/tables";
+import { entityCompatibleQuery } from "metabase/lib/entities";
 import type { Card, TableId, UnsavedCard } from "metabase-types/api";
 import { isSavedCard } from "metabase-types/guards";
 import type { Dispatch } from "metabase-types/store";
@@ -16,8 +17,18 @@ export const loadMetadataForTable =
 export const loadMetadataForCard =
   (card: Card | UnsavedCard) => async (dispatch: Dispatch) => {
     if (isSavedCard(card)) {
-      return dispatch(Questions.actions.fetchMetadata({ id: card.id }));
+      return entityCompatibleQuery(
+        card.id,
+        dispatch,
+        cardApi.endpoints.getCardQueryMetadata,
+        { forceRefetch: false },
+      );
     } else if (card.dataset_query.database != null) {
-      return dispatch(Questions.actions.fetchAdhocMetadata(card.dataset_query));
+      return entityCompatibleQuery(
+        card.dataset_query,
+        dispatch,
+        datasetApi.endpoints.getAdhocQueryMetadata,
+        { forceRefetch: false },
+      );
     }
   };

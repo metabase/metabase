@@ -168,13 +168,13 @@
   (let [index-created (search.index/when-index-created)]
     (if (and index-created (< 3 (t/time-between (t/instant index-created) (t/instant) :days)))
       (do
-        (log/debug "Forcing early reindex because existing index is old")
+        (log/info "Forcing early reindex because existing index is old")
         (search.engine/reindex! :search.engine/appdb {}))
 
       (let [created? (search.index/ensure-ready! opts)]
         (when (or created? re-populate?)
-          (log/debug "Populating index")
-          (populate-index! :search/updating))))))
+          (log/info "Populating index")
+          (populate-index! (if created? :search/reindexing :search/updating)))))))
 
 (defmethod search.engine/reindex! :search.engine/appdb
   [_ {:keys [in-place?]}]
@@ -193,4 +193,6 @@
   [_topic event]
   (when (and (= :site-locale (-> event :details :key)) (= :postgres (mdb/db-type)))
     (log/info "Reindexing appdb index because the site locale changed.")
-    (search.engine/reindex! :search.engine/appdb {})))
+    (if search.ingestion/*force-sync*
+      (search.engine/reindex! :search.engine/appdb {})
+      (future (search.engine/reindex! :search.engine/appdb {})))))

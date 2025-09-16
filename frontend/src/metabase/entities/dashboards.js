@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { automagicDashboardsApi } from "metabase/api/automagic-dashboards";
 import {
   dashboardApi,
   useGetDashboardQuery,
@@ -20,18 +19,11 @@ import {
   entityCompatibleQuery,
   undo,
 } from "metabase/lib/entities";
-import {
-  compose,
-  withAction,
-  withNormalize,
-  withRequestState,
-} from "metabase/lib/redux";
+import { compose, withAction, withRequestState } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls/dashboards";
 import { addUndo } from "metabase/redux/undo";
-import { QueryMetadataSchema } from "metabase/schema";
 
 const COPY_ACTION = `metabase/entities/dashboards/COPY`;
-const FETCH_METADATA = "metabase/entities/dashboards/FETCH_METADATA";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -172,33 +164,6 @@ const Dashboards = createEntity({
         payload: savedDashboard,
       };
     },
-
-    fetchMetadata: compose(
-      withAction(FETCH_METADATA),
-      withNormalize(QueryMetadataSchema),
-    )(
-      ({ id, ...params }) =>
-        (dispatch) =>
-          entityCompatibleQuery(
-            { id, ...params },
-            dispatch,
-            dashboardApi.endpoints.getDashboardQueryMetadata,
-            { forceRefetch: false },
-          ),
-    ),
-
-    fetchXrayMetadata: compose(
-      withAction(FETCH_METADATA),
-      withNormalize(QueryMetadataSchema),
-    )(
-      ({ entity, entityId, dashboard_load_id }) =>
-        (dispatch) =>
-          entityCompatibleQuery(
-            { entity, entityId, dashboard_load_id },
-            dispatch,
-            automagicDashboardsApi.endpoints.getXrayDashboardQueryMetadata,
-          ),
-    ),
   },
 
   reducer: (state = {}, { type, payload, error }) => {

@@ -149,8 +149,7 @@
     "ttag": "1.7.21",
     "typescript": "^5.4.5",
     "underscore": "~1.13.3",
-    "yup": "^0.32.11",
-    "zod": "^4.1.5"
+    "yup": "^0.32.11"
   },
   "devDependencies": {
     "@babel/cli": "^7.23.0",

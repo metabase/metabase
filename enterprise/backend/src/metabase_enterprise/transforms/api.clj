@@ -69,7 +69,9 @@
     (api/check-400 (not (:is_audit database))
                    (deferred-tru "Cannot run transforms on audit databases."))
     (api/check-400 (driver.u/supports? (:engine database) feature database)
-                   (deferred-tru "The database does not support the requested transform target type."))))
+                   (deferred-tru "The database does not support the requested transform target type."))
+    (api/check-400 (not (transforms.util/db-routing-enabled? database))
+                   (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
 
 (api.macros/defendpoint :get "/"
   "Get a list of transforms."

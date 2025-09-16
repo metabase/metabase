@@ -161,24 +161,24 @@ H.describeWithSnowplow(suiteTitle, () => {
     );
   });
 
-  // TODO: fix this flaky test
-  it(
-    "localizes the iframe preview when ?locale is passed",
-    { tags: "@skip" },
-    () => {
-      visitNewEmbedPage({ locale: "fr" });
+  it("localizes the iframe preview when ?locale is passed", () => {
+    visitNewEmbedPage({ locale: "fr" });
 
-      // TODO: update this test once "Exploration" is localized in french.
-      getEmbedSidebar().findByText("Exploration").click();
+    // TODO: update this test once "Exploration" is localized in french.
+    getEmbedSidebar().findByText("Exploration").click();
 
-      H.waitForSimpleEmbedIframesToLoad();
+    H.waitForSimpleEmbedIframesToLoad();
 
-      H.getSimpleEmbedIframeContent().within(() => {
-        cy.log("data picker is localized");
-        cy.findByText("Choisissez vos données de départ").should("be.visible");
-      });
-    },
-  );
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.log("data picker is localized");
+
+      cy.findByText("Données", { timeout: 10_000 }).should("be.visible");
+
+      cy.findByText("Choisissez vos données de départ", {
+        timeout: 10_000,
+      }).should("be.visible");
+    });
+  });
 
   it("should show a fake loading indicator in embed preview", () => {
     cy.visit("/embed-js");

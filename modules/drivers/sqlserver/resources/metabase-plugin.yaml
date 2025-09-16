@@ -11,7 +11,7 @@ driver:
     - host
     - merge:
         - port
-        - description: Leave empty to use Dynamic Ports, or input specific port. Standard port is 1433.
+        - helper-text: Leave empty to use Dynamic Ports, or input specific port. Standard port is 1433.
     - merge:
         - dbname
         - name: db

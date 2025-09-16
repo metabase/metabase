@@ -431,10 +431,10 @@
                   ;; that use them as keys
                   (is (= [[:field (mt/id :people :id) nil]
                           [:field (mt/id :people :id) {:join-alias "peeps"}]
-                          [:field "USER_ID"   {:base-type :type/Integer, :join-alias "peeps"}]
-                          [:field "count"     {:base-type :type/Integer, :join-alias "peeps"}]
-                          [:field "USER_ID_2" {:base-type :type/Integer, :join-alias "peeps"}]
-                          [:field "count_2"   {:base-type :type/Integer, :join-alias "peeps"}]]
+                          [:field "USER_ID"     {:base-type :type/Integer, :join-alias "peeps"}]
+                          [:field "ord1__count" {:base-type :type/Integer, :join-alias "peeps"}]
+                          [:field "USER_ID_2"   {:base-type :type/Integer, :join-alias "peeps"}]
+                          [:field "ord2__count" {:base-type :type/Integer, :join-alias "peeps"}]]
                          (map :field_ref (qp.preprocess/query->expected-cols query))))))
               (testing "the query runs and returns correct data"
                 (is (= {:columns [cid cid2 cuser-id ccount cuser-id2 ccount2]
@@ -1525,7 +1525,7 @@
 
 (deftest ^:parallel self-join-in-source-card-test
   (testing "When query uses a source card with a self-join, query should work (#27521)"
-    (let [mp (mt/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           q1 (-> (lib/query
                   mp
                   (lib.metadata/table mp (mt/id :orders)))

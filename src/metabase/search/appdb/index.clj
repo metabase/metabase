@@ -11,6 +11,7 @@
    [metabase.search.appdb.specialization.postgres :as postgres]
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.search.models.search-index-metadata :as search-index-metadata]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -34,10 +35,11 @@
 
 (def ^:private sync-tracking-period (long (* 5 #_minutes 60e9)))
 
-(defonce ^:dynamic ^:private *index-version-id*
-  (if config/is-prod?
-    (:hash config/mb-version-info)
-    (u/lower-case-en (u/generate-nano-id))))
+; The version ID MUST be updated whenever there is an incompatible change to the schema OR content the index table
+; The id can be any string, but a simple incrementing number is normally easiest to manage while giving some semantic meaning.
+; When this version changes, on startup metabase will not use the existing index table and instead reindex everything to a new table marked with the new version.
+; It is dynamic to allow tests to override it
+(defonce ^:dynamic ^:private *index-version-id* "2")
 
 (defonce ^:private next-sync-at (atom nil))
 
@@ -195,7 +197,7 @@
     (let [{:keys [pending]} (sync-tracking-atoms!)]
       (or pending
           (let [table-name (gen-table-name)]
-            (log/infof "Creating pending index %s" table-name)
+            (log/infof "Creating pending index %s for lang %s" table-name (i18n/site-locale-string))
             ;; We may fail to insert a new metadata row if we lose a race with another instance.
             (when (search-index-metadata/create-pending! :appdb *index-version-id* table-name)
               (create-table! table-name))
@@ -258,7 +260,7 @@
           (throw e))))))
 
 (defn- batch-update!
-  "Create the given search index entries in bulk"
+  "Create the given search index entries in bulk. Commits after each batch"
   [context documents]
   ;; Protect against tests that nuke the appdb
   (when config/is-test?
@@ -274,10 +276,12 @@
   (let [active-table (active-table)
         entries (map document->entry documents)
         ;; No need to update the active index if we are doing a full index and it will be swapped out soon. Most updates are no-ops anyway.
-        active-updated? (when-not (and active-table (= context :search/reindexing)) (safe-batch-upsert! active-table entries))
+        active-updated? (when-not (and active-table (pending-table) (= context :search/reindexing)) (safe-batch-upsert! active-table entries))
         pending-updated? (safe-batch-upsert! (pending-table) entries)]
     (when (or active-updated? pending-updated?)
       (u/prog1 (->> entries (map :model) frequencies)
+        (when (and (= :search/reindexing context) (not search.ingestion/*force-sync*))
+          (t2/query ["commit"]))
         (log/trace "indexed documents for " <>)
         (when active-updated?
           (analytics/set! :metabase-search/appdb-index-size (t2/count (name active-table))))))))
@@ -286,10 +290,15 @@
   "Indexes the documents. The context should be :search/updating or :search/reindexing.
    Context should be :search/updating or :search/reindexing to help control how to manage the updates"
   [context document-reducible]
-  (transduce (comp (partition-all insert-batch-size)
-                   (map (partial batch-update! context)))
-             (partial merge-with +)
-             document-reducible))
+  ;; New connection used for performing the updates which commit periodically without impacting any outer transactions.
+  (letfn [(do-index []
+            (transduce (comp (partition-all insert-batch-size)
+                             (map (partial batch-update! context)))
+                       (partial merge-with +)
+                       document-reducible))]
+    (if (and (= :search/reindexing context) (not search.ingestion/*force-sync*))
+      (t2/with-connection [_conn (mdb/data-source)] (do-index))
+      (do-index))))
 
 (defmethod search.engine/update! :search.engine/appdb [_engine document-reducible]
   (index-docs! :search/updating document-reducible))
@@ -344,15 +353,22 @@
   []
   (log/infof "Resetting appdb index for version %s, active table: %s" *index-version-id*
              (pr-str (active-table)))
-  ;; stop tracking any pending table
-  (when-let [table-name (pending-table)]
-    (when-not *mocking-tables*
-      (let [deleted (search-index-metadata/delete-index! :appdb *index-version-id* table-name)]
-        (when (pos? deleted)
-          (log/infof "Deleted %d pending indices" deleted))))
-    (swap! *indexes* assoc :pending nil))
-  (maybe-create-pending!)
-  (activate-table!))
+  (letfn [(reset-logic []
+              ;; stop tracking any pending table
+            (when-let [table-name (pending-table)]
+              (when-not *mocking-tables*
+                (let [deleted (search-index-metadata/delete-index! :appdb *index-version-id* table-name)]
+                  (when (pos? deleted)
+                    (log/infof "Deleted %d pending indices" deleted))))
+              (swap! *indexes* assoc :pending nil))
+            (maybe-create-pending!)
+            (activate-table!))]
+    (if search.ingestion/*force-sync*
+      (reset-logic)
+      ;; Creates and tracks tables with a unique transaction so the empty tables are available to other threads
+      ;; even while the initial startup and data load may be happening
+      (t2/with-connection [_ (mdb/data-source)]
+        (reset-logic)))))
 
 (defn ensure-ready!
   "Ensure the index is ready to be populated. Return false if it was already ready."

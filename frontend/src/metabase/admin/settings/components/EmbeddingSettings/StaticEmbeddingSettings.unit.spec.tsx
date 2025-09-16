@@ -98,4 +98,16 @@ describe("StaticEmbeddingSettings", () => {
     expect(url).toContain("/setting/embedding-secret-key");
     expect(body).toEqual({ value: "fake-token" }); // we got this from the mock api
   });
+
+  it("should show cards with related settings", async () => {
+    await setup({ enabled: true });
+
+    const relatedSettingCards = await screen.findAllByTestId(
+      "related-setting-card",
+    );
+    expect(relatedSettingCards).toHaveLength(2);
+
+    expect(await screen.findByText("Databases")).toBeInTheDocument();
+    expect(await screen.findByText("Appearance")).toBeInTheDocument();
+  });
 });

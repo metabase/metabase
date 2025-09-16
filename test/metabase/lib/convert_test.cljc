@@ -54,12 +54,29 @@
              :query    {:source-query {:source-table 1}
                         :fields       [[:field 2 nil]
                                        [:field 3 {:temporal-unit :month}]]
-                        :aggregation  [[:count]]}}))))
+                        :aggregation  [[:count]]}})))))
+
+(deftest ^:parallel ->pMBQL-idempotency-test-2
   (testing ":field clause"
     (are [clause expected] (=? expected
                                (lib.convert/->pMBQL (lib.convert/->pMBQL clause)))
       [:field 2 nil]                     [:field {:lib/uuid string?} 2]
       [:field 3 {:temporal-unit :month}] [:field {:lib/uuid string?, :temporal-unit :month} 3])))
+
+(deftest ^:parallel ->pMBQL-idempotency-test-3
+  (testing "Calling ->pMBQL on something already MBQL 5 should no-op instead of adding duplicate options maps"
+    (let [clause [[:=
+                   {:lib/uuid "1cb124b0-757f-4717-b8ee-9cf12a7c3f62"}
+                   [:field
+                    {:lib/uuid "a2eb96a0-420b-4465-817d-f3c9f789eff4"}
+                    (meta/id :users :id)]
+                   [:field
+                    {:base-type  :type/Integer
+                     :join-alias "checkins_by_user"
+                     :lib/uuid   "b23a769d-774a-4eb5-8fb8-1f6a33c9a8d5"}
+                    "USER_ID"]]]]
+      (is (= clause
+             (lib.convert/->pMBQL clause))))))
 
 (deftest ^:parallel ->pMBQL-joins-test
   (is (=? {:lib/type :mbql/query
@@ -806,7 +823,7 @@
                               :display_name    "ID"
                               :base_type       :type/Integer}]}
 
-                 :metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/original-metadata
+                 :metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata
                  [{:base-type       :type/Text
                    :semantic-type   :type/Category
                    :table-id        32600
@@ -1130,7 +1147,7 @@
     (testing "native queries"
       (let [query {:type :native}]
         (testing "pass the legacy schema"
-          (is (mbql.s/valid-query? query)))
+          (is (mr/validate ::mbql.s/Query query)))
         (testing "pass the pMBQL schema after conversion"
           (is (nil? (->> query
                          lib.convert/->pMBQL
@@ -1141,7 +1158,7 @@
     (testing "MBQL queries"
       (let [query {:type :query}]
         (testing "pass the legacy schema"
-          (is (mbql.s/valid-query? query)))
+          (is (mr/validate ::mbql.s/Query query)))
         (testing "pass the pMBQL schema after conversion"
           (is (nil? (->> query
                          lib.convert/->pMBQL
@@ -1619,3 +1636,18 @@
               {:case-sensitive false, :lib/uuid "92c8ee03-6bc6-45c9-865c-57d0c5d53e23"}
               [:field {:base-type :type/Text, :lib/uuid "044811f6-9e30-4c42-b5b6-6afde5031675", :effective-type :type/Text} 243]
               "C"]])))))
+
+(deftest ^:parallel field-name-ref-to-legacy-never-remove-base-type-test
+  (testing "never remove :base-type from a :field name ref regardless of :metabase.lib.query/transformation-added-base-type"
+    (is (= [:field "USER_ID" {:base-type :type/Integer, :join-alias "ord1"}]
+           (lib.convert/->legacy-MBQL [:field {:lib/uuid                                          "47afe974-396c-4213-8736-859399ba5e7e"
+                                               :base-type                                         :type/Integer
+                                               :join-alias                                        "ord1"
+                                               :metabase.lib.query/transformation-added-base-type true}
+                                       "USER_ID"])))))
+
+(deftest ^:parallel dimension->mbql5-test
+  (is (=? [:dimension
+           {:stage-number 0, :lib/uuid string?}
+           [:field {:base-type :type/BigInteger, :lib/uuid string?} 49]]
+          (lib.convert/->pMBQL [:dimension [:field 49 {:base-type :type/BigInteger}] {:stage-number 0}]))))

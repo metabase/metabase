@@ -1,27 +1,16 @@
-import {
-  any,
-  function as functionSchema,
-  nonoptional,
-  optional,
-  strictObject,
-} from "zod/mini";
-import type { infer as zInfer } from "zod/v4/core/core";
+import * as Yup from "yup";
 
-import type { ValidateInferredSchema } from "embedding-sdk-bundle/types/schema";
+import type { FunctionSchema } from "embedding-sdk-bundle/types/schema";
 
 import type { CreateDashboardModalProps } from "./CreateDashboardModal";
 
-const rawPropsSchema = strictObject({
-  initialCollectionId: optional(any()),
-  isOpen: optional(any()),
-  onClose: optional(any()),
-  onCreate: nonoptional(any()),
-});
-const propsSchema: ValidateInferredSchema<
-  CreateDashboardModalProps,
-  zInfer<typeof rawPropsSchema>
-> = rawPropsSchema;
+const propsSchema: Yup.SchemaOf<CreateDashboardModalProps> = Yup.object({
+  initialCollectionId: Yup.mixed().optional(),
+  isOpen: Yup.mixed().optional(),
+  onClose: Yup.mixed().optional(),
+  onCreate: Yup.object().required(),
+}).noUnknown();
 
-export const createDashboardModalSchema = functionSchema({
+export const createDashboardModalSchema: FunctionSchema = {
   input: [propsSchema],
-});
+};

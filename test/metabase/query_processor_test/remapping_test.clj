@@ -428,7 +428,7 @@
 
 (deftest ^:parallel multiple-fk-remaps-test-in-joins-e2e-test
   (testing "Should be able to do multiple FK remaps via different FKs from Table A to Table B in a join"
-    (let [mp    (-> (mt/application-database-metadata-provider (mt/id))
+    (let [mp    (-> (mt/metadata-provider)
                     (lib.tu/remap-metadata-provider (mt/id :venues :category_id)
                                                     (mt/id :categories :name))
                     (lib.tu/remap-metadata-provider (mt/id :venues :id)

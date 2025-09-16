@@ -346,13 +346,13 @@
                                           [{:database (meta/id)
                                             :type     "native"
                                             :native   {:query test-query}}])
-          (is (= {:card-id 1, :query test-query, :params nil}
-                 (value-for-tag
-                  {:name         "card-template-tag-test"
-                   :display-name "Card template tag test"
-                   :type         :card
-                   :card-id      1}
-                  []))))))))
+          (is (=? {:card-id 1, :query test-query, :params nil}
+                  (value-for-tag
+                   {:name         "card-template-tag-test"
+                    :display-name "Card template tag test"
+                    :type         :card
+                    :card-id      1}
+                   []))))))))
 
 (deftest ^:parallel card-query-test-2
   (mt/with-test-user :rasta

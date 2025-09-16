@@ -105,7 +105,6 @@ export const DocumentPage = ({
   const [sendToast] = useToast();
 
   const documentId = entityId === "new" ? "new" : extractEntityId(entityId);
-  const previousDocumentId = usePrevious(documentId);
   const [isNavigationScheduled, scheduleNavigation] = useCallbackEffect();
   const isNewDocument = documentId === "new";
 
@@ -165,25 +164,6 @@ export const DocumentPage = ({
     // warn if you try to navigate away with unsaved changes
     return hasUnsavedChanges();
   });
-
-  // Reset state when document changes
-  useEffect(() => {
-    if (documentId !== previousDocumentId) {
-      dispatch(setHasUnsavedChanges(false));
-      if (isNewDocument && previousDocumentId !== "new") {
-        setDocumentTitle("");
-        setDocumentContent(null);
-        dispatch(resetDocuments());
-      }
-    }
-  }, [
-    documentId,
-    previousDocumentId,
-    isNewDocument,
-    setDocumentTitle,
-    setDocumentContent,
-    dispatch,
-  ]);
 
   // Reset state when we navigate back to /new
   const resetDocument = useCallback(() => {
