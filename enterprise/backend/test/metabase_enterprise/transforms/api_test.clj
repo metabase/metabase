@@ -384,11 +384,11 @@
                                    (.isInterrupted (Thread/currentThread))
                                    nil
 
-                                  ;; same message as last time
+                                   ;; same message as last time
                                    (= message (peek @states))
                                    (recur)
 
-                                  ;; new message value
+                                   ;; new message value
                                    :else (do (swap! states conj message)
                                              (recur)))))
                              (catch InterruptedException _ nil)))]
