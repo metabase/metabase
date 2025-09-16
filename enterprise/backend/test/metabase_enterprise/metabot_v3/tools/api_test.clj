@@ -1134,7 +1134,7 @@
                                           :target {:type "table" :name "t2_table" :schema nil}}]
         (testing "With insufficient permissions"
           (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 "ee/metabot-tools/get-transforms"
+                 (mt/user-http-request :rasta :post 403 "ee/metabot-tools/get-transforms"
                                        {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
                                        {:conversation_id conversation-id}))))
         (testing "With superuser permissions"
@@ -1142,7 +1142,7 @@
                                        ;; note: t2 not included because it's a (non-native) MBQL query
                                        (select-keys t3 [:id :entity_id :name :description :source])]
                    :conversation_id conversation-id}
-                  (-> (mt/user-http-request :rasta :get 200 "ee/metabot-tools/get-transforms"
+                  (-> (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-transforms"
                                             {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
                                             {:conversation_id conversation-id})
                       (update :structured_output (fn [output]
