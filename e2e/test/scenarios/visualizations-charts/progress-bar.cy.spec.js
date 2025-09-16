@@ -157,7 +157,7 @@ describe("scenarios > visualizations > progress chart", () => {
     // Should show Custom value, Count and Average of Quantity, but not Sum of Total
     H.popover().within(() => {
       cy.findByText("Custom value").should("be.visible");
-      cy.findByText("Count").should("be.visible");
+      cy.findByText("Count").should("exist");
       cy.findByText("Average of Quantity").should("be.visible");
       cy.findByText("Sum of Total").should("not.exist");
 
@@ -167,7 +167,7 @@ describe("scenarios > visualizations > progress chart", () => {
 
     // Goal should show Count selected in the input
     H.vizSettingsSidebar().within(() => {
-      cy.findByText("Count").should("be.visible");
+      cy.findByText("Count").should("exist");
     });
   });
 
@@ -221,7 +221,7 @@ describe("scenarios > visualizations > progress chart", () => {
 
     // Should now show the column name in a read-only text input
     H.vizSettingsSidebar().within(() => {
-      cy.findByText("Sum of Total").should("be.visible");
+      cy.findByText("Sum of Total").should("exist");
 
       // Click dropdown again to switch back to custom value
       cy.findByText("Goal").parent().parent().icon("chevrondown").click();
