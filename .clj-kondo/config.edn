@@ -521,6 +521,7 @@
    metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
    metabase-enterprise.semantic-search.db.connection/with-migrate-tx                                                         hooks.common/let-one-with-optional-value
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
+   metabase-enterprise.transforms-python.drivers-test/with-test-table                                                        hooks.common/with-two-bindings
    metabase.api.common.internal-test/with-jetty-server                                                                       hooks.common/with-one-binding
    metabase.api.macros/defendpoint                                                                                           hooks.metabase.api.macros/defendpoint
    metabase.app-db.schema-migrations-test.impl/test-migrations                                                               hooks.metabase.app-db.schema-migrations-test.impl/test-migrations
@@ -626,7 +627,7 @@
    metabase.test/with-temp                                                                                                   hooks.toucan2.tools.with-temp/with-temp
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
    metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
-   metabase.users.api-test/with-temp-user-email!                                                                              hooks.common/with-one-binding
+   metabase.users.api-test/with-temp-user-email!                                                                             hooks.common/with-one-binding
    metabase.util.i18n/deferred-trs                                                                                           hooks.metabase.util.i18n/deferred-trs
    metabase.util.i18n/deferred-tru                                                                                           hooks.metabase.util.i18n/deferred-tru
    metabase.util.i18n/trs                                                                                                    hooks.metabase.util.i18n/trs
@@ -768,8 +769,8 @@
   source-namespaces
   {:linters
    {:metabase/validate-escaped-single-quotes-in-i18n {:level :warning}
-    :metabase/validate-string-or-str-args-to-i18n {:level :warning}
-    :metabase/discourage-millis-duration {:level :warning}
+    :metabase/validate-string-or-str-args-to-i18n    {:level :warning}
+    :metabase/discourage-millis-duration             {:level :warning}
 
     :discouraged-var
     {clojure.core/with-redefs {:message "Don't use with-redefs outside of tests"}

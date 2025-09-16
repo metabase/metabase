@@ -223,129 +223,171 @@
        :rows rows
        :metadata metadata})))
 
+#_:clj-kondo/ignore
+(defmacro with-test-table
+  [[table-id table-name] [schema data] & body]
+  `(let [table-name# (mt/random-name)
+         table-id# (create-test-table-with-data! table-name# ~schema ~data)]
+     (try
+       (let [~table-id table-id#
+             ~table-name table-name#]
+         ~@body)
+       (finally
+         (cleanup-table! table-id#)))))
+
+(defn- simple-identity-transform-code
+  "Generate Python code for a simple identity transform."
+  [table-name]
+  (str "import pandas as pd\n"
+       "\n"
+       "def transform(" table-name "):\n"
+       "    df = " table-name ".copy()\n"
+       "    return df"))
+
+(defn- execute-and-validate-transform!
+  "Execute a Python transform and validate the output, returning validation results."
+  [transform-code table-name table-id expected-columns expected-row-count]
+  (let [result (execute! {:code transform-code
+                          :tables {table-name table-id}})]
+    (validate-transform-output result expected-columns expected-row-count)))
+
+(defn- test-exotic-types-for-driver!
+  "Helper to test exotic types for the current driver."
+  [driver-key]
+  (when-let [exotic-config (get driver-exotic-types driver-key)]
+    (with-test-table [table-id table-name] [exotic-config (:data exotic-config)]
+      (let [transform-code (simple-identity-transform-code table-name)
+            expected-columns (map :name (:columns exotic-config))
+            expected-row-count (count (:data exotic-config))
+            validation (execute-and-validate-transform!
+                        transform-code table-name table-id
+                        expected-columns expected-row-count)]
+
+        (when validation
+          (testing (str "Exotic types for " driver-key)
+            (let [{:keys [metadata]} validation
+                  type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
+                             [name (keyword "type" base_type)])]
+
+              (is (isa? :type/Integer (type-map "id")))
+
+              (case driver-key
+                :postgres (do
+                            (is (isa? (type-map "uuid_field") :type/UUID))
+                            (is (isa? (type-map "json_field") :type/JSON))
+                            (is (isa? (type-map "ip_field") :type/IPAddress)))
+                :mysql (if (mysql/mariadb? (mt/db))
+                         (do
+                           (is (isa? (type-map "uuid_field") :type/UUID))
+                           (is (isa? (type-map "inet4_field") :type/IPAddress)))
+                         (do
+                           (is (isa? (type-map "json_field") :type/JSON))
+                           (is (isa? (type-map "timestamp") :type/DateTimeWithLocalTZ))))
+
+                :bigquery-cloud-sdk (do
+                                      (is (isa? (type-map "json_field") :type/JSON))
+                                      (is (isa? (type-map "dict_field") :type/JSON)))
+
+                :mongo (do
+                         (is (isa? (type-map "json_field") :type/JSON))
+                         (is (isa? (type-map "array_field") :type/Array))
+                         (is (isa? (type-map "dict_field") :type/Dictionary))
+                         (is (isa? (type-map "bson_id") :type/MongoBSONID)))
+
+                :sqlserver (do
+                             (is (isa? (type-map "uuid_field") :type/UUID))
+                             (is (isa? (type-map "datetimeoffset_field") :type/DateTimeWithTZ)))))))
+        validation))))
+
+(defn- test-exotic-edge-cases-for-driver!
+  "Helper to test exotic edge cases for a specific driver with custom schema and transform code generator."
+  [driver-key edge-schema transform-code-fn validation-fn]
+  (with-test-table [table-id table-name] [edge-schema (:data edge-schema)]
+    (let [transform-code (if (fn? transform-code-fn)
+                           (transform-code-fn table-name)
+                           transform-code-fn)
+          result (execute! {:code transform-code
+                            :tables {table-name table-id}})]
+
+      (testing (str driver-key " exotic transform succeeded")
+        (is (some? result) "Transform should succeed")
+        (is (contains? result :output) "Should have output")
+        (is (contains? result :output-manifest) "Should have output manifest"))
+
+      (when result
+        (let [lines (str/split-lines (:output result))
+              rows (map json/decode lines)
+              metadata (:output-manifest result)
+              headers (map :name (:fields metadata))]
+
+          ;; Call the custom validation function
+          (when validation-fn
+            (validation-fn rows metadata headers))
+
+          ;; Test the additional table creation and cleanup pattern
+          (let [additional-table-name (mt/random-name)
+                additional-table (when (:output-manifest result)
+                                   (let [temp-file (java.io.File/createTempFile "test-output" ".jsonl")]
+                                     (try
+                                       (spit temp-file (:output result))
+                                       (#'transforms.execute/create-table-and-insert-data!
+                                        driver/*driver*
+                                        (mt/id)
+                                        additional-table-name
+                                        (:output-manifest result)
+                                        {:type :jsonl-file
+                                         :file temp-file})
+                                       (sync/sync-database! (mt/db) {:scan :schema})
+                                       (wait-for-table additional-table-name)
+                                       (finally
+                                         (.delete temp-file)))))]
+            (testing "Additional table creation and cleanup works"
+              (is (some? additional-table) "Additional table should be created successfully"))
+            (when additional-table
+              (cleanup-table! (:id additional-table))))))
+
+      result)))
+
 (deftest create-table-test
   (testing "Test we can create base table"
     (mt/test-drivers supported-drivers
       (mt/with-empty-db
-        (let [table-name (mt/random-name)
-
-              table-id (create-test-table-with-data!
-                        table-name
-                        base-type-test-data
-                        (:data base-type-test-data))]
-
-          (is table-id "Table should be created and have an ID")
-          (cleanup-table! table-id))))))
+        (with-test-table [table-id _table-name] [base-type-test-data (:data base-type-test-data)]
+          (is table-id "Table should be created and have an ID"))))))
 
 (deftest base-types-python-transform-test
   (testing "Test Python transforms with base types across all supported drivers"
     (mt/test-drivers supported-drivers
       (mt/with-empty-db
-        (let [table-name (mt/random-name)
-              table-id (create-test-table-with-data!
-                        table-name
-                        base-type-test-data
-                        (:data base-type-test-data))
+        (with-test-table [table-id table-name] [base-type-test-data (:data base-type-test-data)]
+          (let [transform-code (simple-identity-transform-code table-name)
+                expected-columns ["id" "name" "price" "active" "created_date" "created_at"]
+                validation (execute-and-validate-transform!
+                            transform-code table-name table-id expected-columns 3)]
 
-              ;; Simple identity transform that should preserve all types
-              transform-code (str "import pandas as pd\n"
-                                  "\n"
-                                  "def transform(" table-name "):\n"
-                                  "    df = " table-name ".copy()\n"
-                                  "    return df")
-
-              result (execute! {:code transform-code
-                                :tables {table-name table-id}})
-
-              expected-columns ["id" "name" "price" "active" "created_date" "created_at"]
-
-              validation (validate-transform-output result expected-columns 3)]
-
-          (when validation
-            (let [{:keys [metadata]} validation]
-              (testing "Base type preservation"
-                (let [type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                                 [name (keyword "type" base_type)])]
-                  (is (isa? (type-map "id") :type/Integer))
-                  (is (isa? (type-map "name") :type/Text))
-                  (is (isa? (type-map "price") :type/Float))
-                  (is (isa? (type-map "active") :type/Boolean))
-                  (is (isa? (type-map "created_date") (if (= driver/*driver* :mongo) :type/Instant :type/Date)))
-                  (is (isa? (type-map "created_at") :type/DateTime))))))
-
-          (cleanup-table! table-id))))))
+            (when validation
+              (let [{:keys [metadata]} validation]
+                (testing "Base type preservation"
+                  (let [type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
+                                   [name (keyword "type" base_type)])]
+                    (is (isa? (type-map "id") :type/Integer))
+                    (is (isa? (type-map "name") :type/Text))
+                    (is (isa? (type-map "price") :type/Float))
+                    (is (isa? (type-map "active") :type/Boolean))
+                    (is (isa? (type-map "created_date") (if (= driver/*driver* :mongo) :type/Instant :type/Date)))
+                    (is (isa? (type-map "created_at") :type/DateTime))))))))))))
 
 (deftest exotic-types-python-transform-test
   (testing "Test Python transforms with driver-specific exotic types"
     (mt/test-drivers supported-drivers
       (mt/with-empty-db
-        (when-let [exotic-config (get driver-exotic-types driver/*driver*)]
-          (let [table-name (mt/random-name)
-                table-id (create-test-table-with-data!
-                          table-name
-                          exotic-config
-                          (:data exotic-config))
-
-                transform-code (str "import pandas as pd\n"
-                                    "\n"
-                                    "def transform(" table-name "):\n"
-                                    "    df = " table-name ".copy()\n"
-                                    "    return df")
-
-                result (execute! {:code transform-code
-                                  :tables {table-name table-id}})
-
-                expected-columns (map :name (:columns exotic-config))
-                expected-row-count (count (:data exotic-config))
-
-                validation (validate-transform-output result expected-columns expected-row-count)]
-
-            (when validation
-              (testing (str "Exotic types for " driver/*driver*)
-                (let [{:keys [metadata]} validation
-                      type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                                 [name (keyword "type" base_type)])]
-
-                  (is (isa? :type/Integer (type-map "id")))
-
-                  (case driver/*driver*
-                    :postgres (do
-                                (is (isa? (type-map "uuid_field") :type/UUID))
-                                (is (isa? (type-map "json_field") :type/JSON))
-                                (is (isa? (type-map "ip_field") :type/IPAddress)))
-                    :mysql (if (mysql/mariadb? (mt/db))
-                             (do
-                               (is (isa? (type-map "uuid_field") :type/UUID))
-                               (is (isa? (type-map "inet4_field") :type/IPAddress)))
-                             (do
-                               (is (isa? (type-map "json_field") :type/JSON))
-                               (is (isa? (type-map "timestamp") :type/DateTimeWithLocalTZ))))
-
-                    :bigquery-cloud-sdk (do
-                                          (is (isa? (type-map "json_field") :type/JSON))
-                                          ;; we're lossy, unless manually specified
-                                          (is (isa? (type-map "dict_field") :type/JSON)))
-
-                    :mongo (do
-                             #_(when (contains? type-map "uuid_field")
-                                 (is (isa? (type-map "uuid_field") :type/UUID)))
-                             (is (isa? (type-map "json_field") :type/JSON))
-                             (is (isa? (type-map "array_field") :type/Array))
-                             (is (isa? (type-map "dict_field") :type/Dictionary))
-                             (is (isa? (type-map "bson_id") :type/MongoBSONID)))
-
-                    :sqlserver (do
-                                 (is (isa? (type-map "uuid_field") :type/UUID))
-                                 (is (isa? (type-map "datetimeoffset_field") :type/DateTimeWithTZ)))))))
-
-            (cleanup-table! table-id)))))))
+        (test-exotic-types-for-driver! driver/*driver*)))))
 
 (deftest edge-cases-python-transform-test
   (testing "Test Python transforms with edge cases: null values, empty strings, extreme values"
     (mt/test-drivers supported-drivers
       (mt/with-empty-db
-        (let [table-name (mt/random-name)
-              edge-case-schema {:columns [{:name "id" :type :type/Integer :nullable? false}
+        (let [edge-case-schema {:columns [{:name "id" :type :type/Integer :nullable? false}
                                           {:name "text_field" :type :type/Text :nullable? true}
                                           {:name "int_field" :type :type/Integer :nullable? true}
                                           {:name "float_field" :type :type/Float :nullable? true}
@@ -354,70 +396,59 @@
                                 :data [[1 "" 0 0.0 false "2024-01-01"]
                                        [2 "Very long text with special chars: !@#$%^&*(){}[]|\\:;\"'<>,.?/~`"
                                         2147483647 1.7976931348623157E308 true "2222-12-31"]
-                                       [3 nil nil nil nil nil]]}
+                                       [3 nil nil nil nil nil]]}]
+          (with-test-table [table-id table-name] [edge-case-schema (:data edge-case-schema)]
+            (let [transform-code (str "import pandas as pd\n"
+                                      "import numpy as np\n"
+                                      "\n"
+                                      "def transform(" table-name "):\n"
+                                      "    df = " table-name ".copy()\n"
+                                      "    \n"
+                                      "    # Handle text operations safely\n"
+                                      "    df['text_length'] = df['text_field'].fillna(\"\").astype(str).str.len()"
+                                      "    \n"
+                                      "    # Handle numeric operations with null safety\n"
+                                      "    df['int_doubled'] = df['int_field'] * 2\n"
+                                      "    df['float_squared'] = df['float_field'] ** 2\n"
+                                      "    \n"
+                                      "    # Boolean operations\n"
+                                      "    df['bool_inverted'] = ~df['bool_field'].fillna(False)\n"
+                                      "    \n"
+                                      "    return df")
+                  expected-columns ["id" "text_field" "int_field" "float_field" "bool_field" "date_field"
+                                    "text_length" "int_doubled" "float_squared" "bool_inverted"]
+                  validation (execute-and-validate-transform!
+                              transform-code table-name table-id expected-columns 3)]
 
-              table-id (create-test-table-with-data!
-                        table-name
-                        edge-case-schema
-                        (:data edge-case-schema))
+              (when validation
+                (let [{:keys [rows metadata]} validation
+                      type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
+                                 [name (keyword "type" base_type)])]
 
-              transform-code (str "import pandas as pd\n"
-                                  "import numpy as np\n"
-                                  "\n"
-                                  "def transform(" table-name "):\n"
-                                  "    df = " table-name ".copy()\n"
-                                  "    \n"
-                                  "    # Handle text operations safely\n"
-                                  "    df['text_length'] = df['text_field'].fillna(\"\").astype(str).str.len()"
-                                  "    \n"
-                                  "    # Handle numeric operations with null safety\n"
-                                  "    df['int_doubled'] = df['int_field'] * 2\n"
-                                  "    df['float_squared'] = df['float_field'] ** 2\n"
-                                  "    \n"
-                                  "    # Boolean operations\n"
-                                  "    df['bool_inverted'] = ~df['bool_field'].fillna(False)\n"
-                                  "    \n"
-                                  "    return df")
+                  (testing "Original columns preserved"
+                    (is (isa? (type-map "id") :type/Integer))
+                    (is (isa? (type-map "text_field") :type/Text))
+                    (is (isa? (type-map "int_field") :type/Integer))
+                    (is (isa? (type-map "float_field") :type/Float))
+                    (is (isa? (type-map "bool_field") :type/Boolean))
+                    (is (isa? (type-map "date_field") (if (= driver/*driver* :mongo) :type/Instant :type/Date))))
 
-              result (execute! {:code transform-code
-                                :tables {table-name table-id}})
+                  (testing "Computed columns have correct types"
+                    (is (isa? (type-map "text_length") :type/Integer))
+                    (is (isa? (type-map "int_doubled") :type/Integer))
+                    (is (isa? (type-map "float_squared") :type/Float))
+                    (is (isa? (type-map "bool_inverted") :type/Boolean)))
 
-              expected-columns ["id" "text_field" "int_field" "float_field" "bool_field" "date_field"
-                                "text_length" "int_doubled" "float_squared" "bool_inverted"]
+                  (testing "Edge case data handling"
+                    (let [[row1 row2 row3] rows]
+                      (is (= 1 (get row1 "id")))
+                      (is (= 0 (get row1 "text_length"))) ; empty string length
+                      (is (= 0 (get row1 "int_doubled"))) ; 0 * 2
 
-              validation (validate-transform-output result expected-columns 3)]
+                      (is (= 2 (get row2 "id")))
+                      (is (not= "" (get row2 "text_length"))) ; long string has length
 
-          (when validation
-            (let [{:keys [rows metadata]} validation
-                  type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                             [name (keyword "type" base_type)])]
-
-              (testing "Original columns preserved"
-                (is (isa? (type-map "id") :type/Integer))
-                (is (isa? (type-map "text_field") :type/Text))
-                (is (isa? (type-map "int_field") :type/Integer))
-                (is (isa? (type-map "float_field") :type/Float))
-                (is (isa? (type-map "bool_field") :type/Boolean))
-                (is (isa? (type-map "date_field") (if (= driver/*driver* :mongo) :type/Instant :type/Date))))
-
-              (testing "Computed columns have correct types"
-                (is (isa? (type-map "text_length") :type/Integer))
-                (is (isa? (type-map "int_doubled") :type/Integer))
-                (is (isa? (type-map "float_squared") :type/Float))
-                (is (isa? (type-map "bool_inverted") :type/Boolean)))
-
-              (testing "Edge case data handling"
-                (let [[row1 row2 row3] rows]
-                  (is (= 1 (get row1 "id")))
-                  (is (= 0 (get row1 "text_length"))) ; empty string length
-                  (is (= 0 (get row1 "int_doubled"))) ; 0 * 2
-
-                  (is (= 2 (get row2 "id")))
-                  (is (not= "" (get row2 "text_length"))) ; long string has length
-
-                  (is (= 3 (get row3 "id")))))))
-
-          (cleanup-table! table-id))))))
+                      (is (= 3 (get row3 "id"))))))))))))))
 
 (deftest idempotent-transform-test
   (testing "Test that running the same transform multiple times produces identical results"
@@ -567,8 +598,7 @@
   (testing "PostgreSQL exotic edge cases"
     (mt/test-driver :postgres
       (mt/with-empty-db
-        (let [table-name (mt/random-name)
-              exotic-edge-schema
+        (let [postgres-edge-schema
               {:columns [{:name "id" :type :type/Integer :nullable? false}
                          {:name "inet_field" :type :type/IPAddress :nullable? true}
                          {:name "cidr_field" :type :type/IPAddress :nullable? true :database-type "cidr"}
@@ -593,258 +623,178 @@
                        "{}" "{}" "(0.000001,0.000001)" 0.0000000001]
                       [4 nil nil nil nil nil nil nil nil nil nil nil nil]]}
 
-              table-id (create-test-table-with-data!
-                        table-name
-                        exotic-edge-schema
-                        (:data exotic-edge-schema))
+              postgres-transform (fn [table-name]
+                                   (str "import pandas as pd\n"
+                                        "import numpy as np\n"
+                                        "\n"
+                                        "def transform(" table-name "):\n"
+                                        "    df = " table-name ".copy()\n"
+                                        "    \n"
+                                        "    # Test IP address operations\n"
+                                        "    df['has_ipv6'] = df['inet_field'].astype(str).str.contains(':', na=False)\n"
+                                        "    df['is_private'] = df['inet_field'].astype(str).str.startswith('192.168', na=False)\n"
+                                        "    \n"
+                                        "    # Test MAC address operations\n"
+                                        "    df['mac_normalized'] = df['macaddr_field'].astype(str).str.replace(':', '', regex=False)\n"
+                                        "    \n"
+                                        "    # Test money operations\n"
+                                        "    df['money_doubled'] = df['money_field'] * 2\n"
+                                        "    df['is_expensive'] = df['money_field'] > 1000\n"
+                                        "    \n"
+                                        "    # Test array operations\n"
+                                        "    df['array_length'] = df['text_array'].astype(str).str.len()\n"
+                                        "    df['has_numbers'] = df['int_array'].astype(str).str.contains('[0-9]', na=False)\n"
+                                        "    \n"
+                                        "    # Test geometric operations\n"
+                                        "    df['has_coords'] = df['point_field'].astype(str).str.contains(',', na=False)\n"
+                                        "    \n"
+                                        "    # Test large decimal operations\n"
+                                        "    df['big_decimal_rounded'] = df['big_decimal'].round(2)\n"
+                                        "    \n"
+                                        "    return df"))
 
-              transform-code (str "import pandas as pd\n"
-                                  "import numpy as np\n"
-                                  "\n"
-                                  "def transform(" table-name "):\n"
-                                  "    df = " table-name ".copy()\n"
-                                  "    \n"
-                                  "    # Test IP address operations\n"
-                                  "    df['has_ipv6'] = df['inet_field'].astype(str).str.contains(':', na=False)\n"
-                                  "    df['is_private'] = df['inet_field'].astype(str).str.startswith('192.168', na=False)\n"
-                                  "    \n"
-                                  "    # Test MAC address operations\n"
-                                  "    df['mac_normalized'] = df['macaddr_field'].astype(str).str.replace(':', '', regex=False)\n"
-                                  "    \n"
-                                  "    # Test money operations\n"
-                                  "    df['money_doubled'] = df['money_field'] * 2\n"
-                                  "    df['is_expensive'] = df['money_field'] > 1000\n"
-                                  "    \n"
-                                  "    # Test array operations\n"
-                                  "    df['array_length'] = df['text_array'].astype(str).str.len()\n"
-                                  "    df['has_numbers'] = df['int_array'].astype(str).str.contains('[0-9]', na=False)\n"
-                                  "    \n"
-                                  "    # Test geometric operations\n"
-                                  "    df['has_coords'] = df['point_field'].astype(str).str.contains(',', na=False)\n"
-                                  "    \n"
-                                  "    # Test large decimal operations\n"
-                                  "    df['big_decimal_rounded'] = df['big_decimal'].round(2)\n"
-                                  "    \n"
-                                  "    return df")
+              postgres-validation (fn [rows metadata headers]
+                                    (testing "Exotic data processed correctly"
+                                      (is (= 4 (count rows)) "Should have 4 rows")
+                                      (is (> (count headers) 13) "Should have computed columns")
+                                      (is (contains? (set headers) "has_ipv6") "Should have IPv6 detection")
+                                      (is (contains? (set headers) "money_doubled") "Should have money calculations")
+                                      (is (contains? (set headers) "has_coords") "Should have geometric operations"))
 
-              result (execute! {:code transform-code
-                                :tables {table-name table-id}})]
+                                    (testing "Type preservation for exotic types"
+                                      (let [type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
+                                                       [name (keyword "type" base_type)])]
+                                        (is (isa? (type-map "inet_field") :type/IPAddress))
+                                        (is (isa? (type-map "money_field") :type/Float))
+                                        (is (isa? (type-map "int_array") :type/Array))
+                                        (is (= :type/Boolean (type-map "has_ipv6")))
+                                        (is (isa? (type-map "money_doubled") :type/Float))))
 
-          (testing "PostgreSQL exotic transform succeeded"
-            (is (some? result) "Transform should succeed")
-            (is (contains? result :output) "Should have output")
-            (is (contains? result :output-manifest) "Should have output manifest"))
+                                    (testing "Actual data transformations are correct"
+                                      (let [[row1 row2 row3 row4] rows]
+                                        (is (= 1 (get row1 "id")))
+                                        (is (= false (get row1 "has_ipv6")) "IPv4 address should not be detected as IPv6")
+                                        (is (true? (get row1 "is_private")) "192.168.x.x should be detected as private")
+                                        (is (> (get row1 "money_doubled") 2000) "Money field should be doubled")
 
-          (let [lines (str/split-lines (:output result))
-                rows (map json/decode lines)
-                metadata (:output-manifest result)
-                headers (map :name (:fields metadata))]
+                                        (is (= 2 (get row2 "id")))
+                                        (is (true? (get row2 "has_ipv6")) "IPv6 address should be detected")
+                                        (is (= false (get row2 "is_private")) "IPv6 address should not be detected as private IPv4")
+                                        (is (< (get row2 "money_doubled") -1000000) "Negative money should be doubled to larger negative")
 
-            (testing "Exotic data processed correctly"
-              (is (= 4 (count rows)) "Should have 4 rows")
-              (is (> (count headers) 13) "Should have computed columns")
+                                        (is (= 3 (get row3 "id")))
+                                        (is (= false (get row3 "has_ipv6")) "IPv4 10.x.x.x should not be IPv6")
 
-              (is (contains? (set headers) "has_ipv6") "Should have IPv6 detection")
-              (is (contains? (set headers) "money_doubled") "Should have money calculations")
-              (is (contains? (set headers) "has_coords") "Should have geometric operations"))
+                                        (is (= 4 (get row4 "id")))
+                                        (is (= false (get row4 "has_ipv6")) "Null should default to false")
+                                        (is (= false (get row4 "is_private")) "Null should default to false"))))]
 
-            (testing "Type preservation for exotic types"
-              (let [type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                               [name (keyword "type" base_type)])]
-
-                (is (isa? (type-map "inet_field") :type/IPAddress))
-                (is (isa? (type-map "money_field") :type/Float))
-
-                (is (isa? (type-map "int_array") :type/Array))
-
-                (is (= :type/Boolean (type-map "has_ipv6")))
-                (is (isa? (type-map "money_doubled") :type/Float))))
-
-            (testing "Actual data transformations are correct"
-              (let [[row1 row2 row3 row4] rows]
-                (is (= 1 (get row1 "id")))
-                (is (= false (get row1 "has_ipv6")) "IPv4 address should not be detected as IPv6")
-                (is (true? (get row1 "is_private")) "192.168.x.x should be detected as private")
-                (is (> (get row1 "money_doubled") 2000) "Money field should be doubled")
-
-                (is (= 2 (get row2 "id")))
-                (is (true? (get row2 "has_ipv6")) "IPv6 address should be detected")
-                (is (= false (get row2 "is_private")) "IPv6 address should not be detected as private IPv4")
-                (is (< (get row2 "money_doubled") -1000000) "Negative money should be doubled to larger negative")
-
-                (is (= 3 (get row3 "id")))
-                (is (= false (get row3 "has_ipv6")) "IPv4 10.x.x.x should not be IPv6")
-
-                (is (= 4 (get row4 "id")))
-                (is (= false (get row4 "has_ipv6")) "Null should default to false")
-                (is (= false (get row4 "is_private")) "Null should default to false"))))
-
-          (cleanup-table! table-id)
-
-          (let [additional-table-name (mt/random-name)
-                additional-table (when (and result (:output-manifest result))
-                                   (let [temp-file (java.io.File/createTempFile "test-output" ".jsonl")]
-                                     (spit temp-file (:output result))
-                                     (#'transforms.execute/create-table-and-insert-data!
-                                      driver/*driver*
-                                      (mt/id)
-                                      additional-table-name
-                                      (:output-manifest result)
-                                      {:type :jsonl-file
-                                       :file temp-file})
-                                     (sync/sync-database! (mt/db) {:scan :schema})
-                                     (wait-for-table additional-table-name)))]
-            (testing "Additional table creation and cleanup works"
-              (is (some? additional-table) "Additional table should be created successfully"))
-            (when additional-table
-              (cleanup-table! (:id additional-table)))))))))
+          (test-exotic-edge-cases-for-driver!
+           :postgres
+           postgres-edge-schema
+           postgres-transform
+           postgres-validation))))))
 
 (deftest exotic-edge-cases-python-transform-mysql-test
   (testing "MySQL/MariaDB exotic edge cases"
     (mt/test-driver :mysql
       (mt/with-empty-db
-        (let [table-name (mt/random-name)
-              mysql-edge-schema
+        (let [mysql-edge-schema
               {:columns [{:name "id" :type :type/Integer :nullable? false}
                          {:name "json_field" :type :type/JSON :nullable? true}
                          {:name "year_field" :type :type/Integer :nullable? true :database-type "year"}
                          {:name "enum_field" :type :type/Text :nullable? true :database-type "enum('small','medium','large')"}
                          {:name "set_field" :type :type/Text :nullable? true :database-type "set('red','green','blue')"}
-                         ;; looks like metabase converts all bits to boolean during sync
-                         ;; {:name "bit_field" :type :type/Integer :nullable? true :database-type "bit(8)"}
                          {:name "tinyint_field" :type :type/Integer :nullable? true :database-type "tinyint"}
                          {:name "mediumint_field" :type :type/Integer :nullable? true :database-type "mediumint"}
                          {:name "decimal_precise" :type :type/Decimal :nullable? true :database-type "decimal(30,10)"}
                          {:name "longtext_field" :type :type/Text :nullable? true :database-type "longtext"}
                          {:name "varbinary_field" :type :type/Text :nullable? true :database-type "varbinary(255)"}]
                :data [[1 "{\"nested\": {\"array\": [1,2,3], \"null\": null}}" 2024 "medium" "red,blue"
-                       ;; 255
                        127 8388607 1234578.1234567
                        (apply str (repeat 5000 "MySQL")) "binary data here"]
                       [2 "{\"emoji\": \"🎉\", \"unicode\": \"你好\"}" 1901 "large" "green"
-                       ;; 0
                        -128 -8388608 -9999999.99999
                        "Special chars: \\n\\t\\r" "\\x41\\x42\\x43"]
-                      [3 "[]" 2155 "small" "" ;; 1
+                      [3 "[]" 2155 "small" ""
                        0 0 0.0000000001 "" ""]
-                      [4 nil nil nil nil nil ;; nil
+                      [4 nil nil nil nil nil
                        nil nil nil nil]]}
 
-              table-id (create-test-table-with-data!
-                        table-name
-                        mysql-edge-schema
-                        (:data mysql-edge-schema))
+              mysql-transform (fn [table-name]
+                                (str "import pandas as pd\n"
+                                     "import json\n"
+                                     "\n"
+                                     "def transform(" table-name "):\n"
+                                     "    df = " table-name ".copy()\n"
+                                     "    \n"
+                                     "    # JSON operations\n"
+                                     "    df['json_has_nested'] = df['json_field'].astype(str).str.contains('nested', na=False)\n"
+                                     "    df['json_length'] = df['json_field'].astype(str).str.len()\n"
+                                     "    \n"
+                                     "    # Year operations\n"
+                                     "    df['is_future_year'] = df['year_field'] > 2024\n"
+                                     "    df['year_century'] = df['year_field'] // 100\n"
+                                     "    \n"
+                                     "    # Enum/Set operations\n"
+                                     "    df['enum_size_category'] = df['enum_field'].map({'small': 1, 'medium': 2, 'large': 3}).astype(\"Int32\")\n"
+                                     "    df['set_color_count'] = df['set_field'].astype(str).str.count(',')\n"
+                                     "    \n"
+                                     "    # Bit operations\n"
+                                     "    df['tinyint_doubled'] = df['tinyint_field'] * 2\n"
+                                     "    \n"
+                                     "    return df"))
 
-              transform-code (str "import pandas as pd\n"
-                                  "import json\n"
-                                  "\n"
-                                  "def transform(" table-name "):\n"
-                                  "    df = " table-name ".copy()\n"
-                                  "    \n"
-                                  "    # JSON operations\n"
-                                  "    df['json_has_nested'] = df['json_field'].astype(str).str.contains('nested', na=False)\n"
-                                  "    df['json_length'] = df['json_field'].astype(str).str.len()\n"
-                                  "    \n"
-                                  "    # Year operations\n"
-                                  "    df['is_future_year'] = df['year_field'] > 2024\n"
-                                  "    df['year_century'] = df['year_field'] // 100\n"
-                                  "    \n"
-                                  "    # Enum/Set operations\n"
-                                  "    df['enum_size_category'] = df['enum_field'].map({'small': 1, 'medium': 2, 'large': 3}).astype(\"Int32\")\n"
-                                  "    df['set_color_count'] = df['set_field'].astype(str).str.count(',')\n"
-                                  "    \n"
-                                  "    # Bit operations\n"
-                                  ;; "    df['bit_is_max'] = df['bit_field'] == 255\n"
-                                  "    df['tinyint_doubled'] = df['tinyint_field'] * 2\n"
-                                  "    \n"
-                                  "    return df")
+              mysql-validation (fn [rows metadata headers]
+                                 (testing "MySQL exotic data processed correctly"
+                                   (is (= 4 (count rows)) "Should have 4 rows")
+                                   (is (> (count headers) 11) "Should have computed columns")
+                                   (is (contains? (set headers) "json_has_nested") "Should have JSON detection")
+                                   (is (contains? (set headers) "enum_size_category") "Should have enum mapping"))
 
-              result (execute! {:code transform-code
-                                :tables {table-name table-id}})]
+                                 (testing "Type preservation for MySQL exotic types"
+                                   (let [type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
+                                                    [name (keyword "type" base_type)])]
+                                     (is (isa? (type-map "json_field") (if (mysql/mariadb? (mt/db)) :type/Text :type/JSON)))
+                                     (is (isa? (type-map "year_field") :type/Integer))
+                                     (is (isa? (type-map "enum_field") :type/Text))
+                                     (is (isa? (type-map "decimal_precise") :type/Decimal))
+                                     (is (= :type/Boolean (type-map "json_has_nested")))
+                                     (is (isa? (type-map "enum_size_category") :type/Integer))))
 
-          (testing "MySQL exotic transform succeeded"
-            (is (some? result) "MySQL transform should succeed")
-            (is (contains? result :output) "Should have output")
-            (is (contains? result :output-manifest) "Should have output manifest"))
+                                 (testing "Actual MySQL data transformations are correct"
+                                   (let [[row1 row2 row3 row4] rows]
+                                     (is (= 1 (get row1 "id")))
+                                     (is (true? (get row1 "json_has_nested")) "Row 1 should detect nested JSON")
+                                     (is (= false (get row1 "is_future_year")) "Year 2024 should not be future year")
+                                     (is (= 2 (get row1 "enum_size_category")) "Medium should map to category 2")
+                                     (is (= 254 (get row1 "tinyint_doubled")) "Tinyint 127 * 2 should be 254")
 
-          (let [lines (str/split-lines (:output result))
-                rows (map json/decode lines)
-                metadata (:output-manifest result)
-                headers (map :name (:fields metadata))]
+                                     (is (= 2 (get row2 "id")))
+                                     (is (= false (get row2 "json_has_nested")) "Row 2 should not detect nested JSON")
+                                     (is (= false (get row2 "is_future_year")) "Year 1901 should not be future year")
+                                     (is (= 3 (get row2 "enum_size_category")) "Large should map to category 3")
+                                     (is (= -256 (get row2 "tinyint_doubled")) "Tinyint -128 * 2 should be -256")
 
-            (testing "MySQL exotic data processed correctly"
-              (is (= 4 (count rows)) "Should have 4 rows")
-              (is (> (count headers) 11) "Should have computed columns")
+                                     (is (= 3 (get row3 "id")))
+                                     (is (= false (get row3 "json_has_nested")) "Row 3 empty array should not be nested")
+                                     (is (true? (get row3 "is_future_year")) "Year 2155 should be future year")
+                                     (is (= 1 (get row3 "enum_size_category")) "Small should map to category 1")
 
-              (is (contains? (set headers) "json_has_nested") "Should have JSON detection")
-              (is (contains? (set headers) "enum_size_category") "Should have enum mapping")
-              #_(is (contains? (set headers) "bit_is_max") "Should have bit operations"))
+                                     (is (= 4 (get row4 "id")))
+                                     (is (= false (get row4 "json_has_nested")) "Null should default to false"))))]
 
-            (testing "Type preservation for MySQL exotic types"
-              (let [type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                               [name (keyword "type" base_type)])]
-
-                (is (isa? (type-map "json_field") (if (mysql/mariadb? (mt/db)) :type/Text :type/JSON)))
-                (is (isa? (type-map "year_field") :type/Integer))
-                (is (isa? (type-map "enum_field") :type/Text))
-                ;; (is (isa? (type-map "bit_field") :type/Integer))
-                (is (isa? (type-map "decimal_precise") :type/Decimal))
-
-                (is (= :type/Boolean (type-map "json_has_nested")))
-                (is (isa? (type-map "enum_size_category") :type/Integer))
-                #_(is (= :type/Boolean (type-map "bit_is_max")))))
-
-            (testing "Actual MySQL data transformations are correct"
-              (let [[row1 row2 row3 row4] rows]
-
-                (is (= 1 (get row1 "id")))
-                (is (true? (get row1 "json_has_nested")) "Row 1 should detect nested JSON")
-                (is (= false (get row1 "is_future_year")) "Year 2024 should not be future year")
-                (is (= 2 (get row1 "enum_size_category")) "Medium should map to category 2")
-                ;; (is (true? (get row1 "bit_is_max")) "Bit field 255 should be detected as max")
-                (is (= 254 (get row1 "tinyint_doubled")) "Tinyint 127 * 2 should be 254")
-
-                (is (= 2 (get row2 "id")))
-                (is (= false (get row2 "json_has_nested")) "Row 2 should not detect nested JSON")
-                (is (= false (get row2 "is_future_year")) "Year 1901 should not be future year")
-                (is (= 3 (get row2 "enum_size_category")) "Large should map to category 3")
-                ;; (is (= false (get row2 "bit_is_max")) "Bit field 0 should not be max")
-                (is (= -256 (get row2 "tinyint_doubled")) "Tinyint -128 * 2 should be -256")
-
-                (is (= 3 (get row3 "id")))
-                (is (= false (get row3 "json_has_nested")) "Row 3 empty array should not be nested")
-                (is (true? (get row3 "is_future_year")) "Year 2155 should be future year")
-                (is (= 1 (get row3 "enum_size_category")) "Small should map to category 1")
-
-                (is (= 4 (get row4 "id")))
-                (is (= false (get row4 "json_has_nested")) "Null should default to false"))))
-
-          (cleanup-table! table-id)
-
-          (let [additional-table-name (mt/random-name)
-                additional-table (when (and result (:output-manifest result))
-                                   (let [temp-file (java.io.File/createTempFile "test-output" ".jsonl")]
-                                     (spit temp-file (:output result))
-                                     (#'transforms.execute/create-table-and-insert-data!
-                                      driver/*driver*
-                                      (mt/id)
-                                      additional-table-name
-                                      (:output-manifest result)
-                                      {:type :jsonl-file
-                                       :file temp-file})
-                                     (sync/sync-database! (mt/db) {:scan :schema})
-                                     (wait-for-table additional-table-name)))]
-            (testing "Additional table creation and cleanup works"
-              (is (some? additional-table) "Additional table should be created successfully"))
-            (when additional-table
-              (cleanup-table! (:id additional-table)))))))))
+          (test-exotic-edge-cases-for-driver!
+           :mysql
+           mysql-edge-schema
+           mysql-transform
+           mysql-validation))))))
 
 (deftest exotic-edge-cases-python-transform-bigquery-test
   (testing "BigQuery exotic edge cases"
     (mt/test-driver :bigquery-cloud-sdk
       (mt/with-empty-db
-        (let [table-name (mt/random-name)
-              bq-edge-schema
+        (let [bq-edge-schema
               {:columns [{:name "id" :type :type/Integer :nullable? false}
                          {:name "struct_field" :type :type/Dictionary :nullable? true :database-type "STRUCT<name STRING, age INT64, active BOOL>"}
                          {:name "array_ints" :type :type/Array :nullable? true :database-type "ARRAY<INT64>"}
@@ -876,115 +826,81 @@
                       [4 nil nil nil
                        nil nil nil nil nil nil]]}
 
-              table-id (create-test-table-with-data!
-                        table-name
-                        bq-edge-schema
-                        (:data bq-edge-schema))
+              bigquery-transform (fn [table-name]
+                                   (str "import pandas as pd\n"
+                                        "import json\n"
+                                        "\n"
+                                        "def transform(" table-name "):\n"
+                                        "    df = " table-name ".copy()\n"
+                                        "    \n"
+                                        "    # Struct operations\n"
+                                        "    df['struct_has_name'] = df['struct_field'].apply (lambda x: pd.notna(x) and 'name' in x)\n"
+                                        "    \n"
+                                        "    # Array operations\n"
+                                        "    df['array_ints_length'] = df['array_ints'].apply(lambda x: len(x) if isinstance(x, list) else 0)\n"
+                                        "    df['array_structs_complex'] = df['array_structs'].apply(lambda x: 'key' in x if isinstance(x, list) else False)\n"
+                                        "    \n"
+                                        "    # Geography operations\n"
+                                        "    df['is_point'] = df['geography_field'].astype(str).str.contains('POINT', na=False)\n"
+                                        "    df['is_polygon'] = df['geography_field'].astype(str).str.contains('POLYGON', na=False)\n"
+                                        "    \n"
+                                        "    # High precision numeric\n"
+                                        "    df['numeric_rounded'] = df['numeric_precise'].round(2)\n"
+                                        "    df['has_large_number'] = df['bignumeric_field'].abs() > 1e30\n"
+                                        "    \n"
+                                        "    return df"))
 
-              transform-code (str "import pandas as pd\n"
-                                  "import json\n"
-                                  "\n"
-                                  "def transform(" table-name "):\n"
-                                  "    df = " table-name ".copy()\n"
-                                  "    \n"
-                                  "    # Struct operations\n"
-                                  "    df['struct_has_name'] = df['struct_field'].apply (lambda x: pd.notna(x) and 'name' in x)\n"
-                                  "    \n"
-                                  "    # Array operations\n"
-                                  "    df['array_ints_length'] = df['array_ints'].apply(lambda x: len(x) if isinstance(x, list) else 0)\n"
-                                  "    df['array_structs_complex'] = df['array_structs'].apply(lambda x: 'key' in x if isinstance(x, list) else False)\n"
-                                  "    \n"
-                                  "    # Geography operations\n"
-                                  "    df['is_point'] = df['geography_field'].astype(str).str.contains('POINT', na=False)\n"
-                                  "    df['is_polygon'] = df['geography_field'].astype(str).str.contains('POLYGON', na=False)\n"
-                                  "    \n"
-                                  "    # High precision numeric\n"
-                                  "    df['numeric_rounded'] = df['numeric_precise'].round(2)\n"
-                                  "    df['has_large_number'] = df['bignumeric_field'].abs() > 1e30\n"
-                                  "    \n"
-                                  "    return df")
+              bigquery-validation (fn [rows metadata headers]
+                                    (testing "BigQuery exotic data processed correctly"
+                                      (is (= 4 (count rows)) "Should have 4 rows")
+                                      (is (> (count headers) 8) "Should have computed columns")
+                                      (is (contains? (set headers) "struct_has_name") "Should have struct operations")
+                                      (is (contains? (set headers) "is_point") "Should have geography operations")
+                                      (is (contains? (set headers) "has_large_number") "Should have numeric operations"))
 
-              result (execute! {:code transform-code
-                                :tables {table-name table-id}})]
+                                    (testing "Type preservation for BigQuery exotic types"
+                                      (let [type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
+                                                       [name (keyword "type" base_type)])]
+                                         ;; we're lossy
+                                        (is (isa? (type-map "struct_field") :type/JSON))
+                                        (is (isa? (type-map "numeric_precise") :type/Decimal))
+                                        (is (isa? (type-map "bignumeric_field") :type/Decimal))
+                                        (is (isa? (type-map "datetime_field") :type/DateTime))
+                                        (is (isa? (type-map "time_field") :type/Time))
+                                        (is (= :type/Boolean (type-map "struct_has_name")))
+                                        (is (= :type/Boolean (type-map "is_point")))
+                                        (is (isa? (type-map "numeric_rounded") :type/Float))
+                                        (is (= :type/Boolean (type-map "has_large_number")))))
 
-          (testing "BigQuery exotic transform succeeded"
-            (is (some? result) "BigQuery transform should succeed")
-            (is (contains? result :output) "Should have output")
-            (is (contains? result :output-manifest) "Should have output manifest"))
+                                    (testing "Actual BigQuery data transformations are correct"
+                                      (let [[row1 row2 row3 row4] rows]
+                                        (is (= 1 (get row1 "id")))
+                                        (is (true? (get row1 "struct_has_name")) "Row 1 should detect 'name' in struct")
+                                        (is (true? (get row1 "is_point")) "Should detect POINT geography")
+                                        (is (= false (get row1 "is_polygon")) "Should not detect POLYGON")
+                                        (is (= 12347.12 (get row1 "numeric_rounded")) "Should round to 2 decimal places")
+                                        (is (= false (get row1 "has_large_number")) "9.9M should not be > 1e30")
 
-          (let [lines (str/split-lines (:output result))
-                rows (map json/decode lines)
-                metadata (:output-manifest result)
-                headers (map :name (:fields metadata))]
+                                        (is (= 2 (get row2 "id")))
+                                        (is (true? (get row2 "struct_has_name")) "Row 2 should detect 'name' in struct")
+                                        (is (= false (get row2 "is_point")) "Should not detect POINT")
+                                        (is (true? (get row2 "is_polygon")) "Should detect POLYGON geography")
+                                        (is (= -10000000.0 (get row2 "numeric_rounded")) "Should round negative number")
 
-            (testing "BigQuery exotic data processed correctly"
-              (is (= 4 (count rows)) "Should have 4 rows")
-              (is (> (count headers) 8) "Should have computed columns")
+                                        (is (= 3 (get row3 "id")))
+                                        (is (true? (get row3 "struct_has_name")) "Empty name still contains 'name' key")
+                                        (is (true? (get row3 "is_point")) "Should detect POINT(0 0)")
+                                        (is (= 0.0 (get row3 "numeric_rounded")) "Very small number should round to 0")
 
-              (is (contains? (set headers) "struct_has_name") "Should have struct operations")
-              (is (contains? (set headers) "is_point") "Should have geography operations")
-              (is (contains? (set headers) "has_large_number") "Should have numeric operations"))
+                                        (is (= 4 (get row4 "id")))
+                                        (is (= false (get row4 "struct_has_name")) "Null should default to false")
+                                        (is (= false (get row4 "is_point")) "Null should default to false"))))]
 
-            (testing "Type preservation for BigQuery exotic types"
-              (let [type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                               [name (keyword "type" base_type)])]
-
-                ;; we're lossy
-                (is (isa? (type-map "struct_field") :type/JSON))
-                #_(is (isa? (type-map "geography_field") :type/Text))
-                (is (isa? (type-map "numeric_precise") :type/Decimal))
-                (is (isa? (type-map "bignumeric_field") :type/Decimal))
-                (is (isa? (type-map "datetime_field") :type/DateTime))
-                (is (isa? (type-map "time_field") :type/Time))
-
-                (is (= :type/Boolean (type-map "struct_has_name")))
-                (is (= :type/Boolean (type-map "is_point")))
-                (is (isa? (type-map "numeric_rounded") :type/Float))
-                (is (= :type/Boolean (type-map "has_large_number")))))
-
-            (testing "Actual BigQuery data transformations are correct"
-              (let [[row1 row2 row3 row4] rows]
-                (is (= 1 (get row1 "id")))
-                (is (true? (get row1 "struct_has_name")) "Row 1 should detect 'name' in struct")
-                (is (true? (get row1 "is_point")) "Should detect POINT geography")
-                (is (= false (get row1 "is_polygon")) "Should not detect POLYGON")
-                (is (= 12347.12 (get row1 "numeric_rounded")) "Should round to 2 decimal places")
-                (is (= false (get row1 "has_large_number")) "9.9M should not be > 1e30")
-
-                (is (= 2 (get row2 "id")))
-                (is (true? (get row2 "struct_has_name")) "Row 2 should detect 'name' in struct")
-                (is (= false (get row2 "is_point")) "Should not detect POINT")
-                (is (true? (get row2 "is_polygon")) "Should detect POLYGON geography")
-                (is (= -10000000.0 (get row2 "numeric_rounded")) "Should round negative number")
-
-                (is (= 3 (get row3 "id")))
-                (is (true? (get row3 "struct_has_name")) "Empty name still contains 'name' key")
-                (is (true? (get row3 "is_point")) "Should detect POINT(0 0)")
-                (is (= 0.0 (get row3 "numeric_rounded")) "Very small number should round to 0")
-
-                (is (= 4 (get row4 "id")))
-                (is (= false (get row4 "struct_has_name")) "Null should default to false")
-                (is (= false (get row4 "is_point")) "Null should default to false"))))
-
-          (cleanup-table! table-id)
-
-          (let [additional-table-name (mt/random-name)
-                additional-table (when (and result (:output-manifest result))
-                                   (let [temp-file (java.io.File/createTempFile "test-output" ".jsonl")]
-                                     (spit temp-file (:output result))
-                                     (#'transforms.execute/create-table-and-insert-data!
-                                      driver/*driver*
-                                      (mt/id)
-                                      additional-table-name
-                                      (:output-manifest result)
-                                      {:type :jsonl-file
-                                       :file temp-file})
-                                     (sync/sync-database! (mt/db) {:scan :schema})
-                                     (wait-for-table additional-table-name)))]
-            (testing "Additional table creation and cleanup works"
-              (is (some? additional-table) "Additional table should be created successfully"))
-            (when additional-table
-              (cleanup-table! (:id additional-table)))))))))
+          (test-exotic-edge-cases-for-driver!
+           :bigquery-cloud-sdk
+           bq-edge-schema
+           bigquery-transform
+           bigquery-validation))))))
 
 #_(deftest large-values-python-transform-test
     (testing "Test Python transforms with large-ish values that should work within 63-bit limits."
