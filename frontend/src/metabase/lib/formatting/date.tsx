@@ -1082,11 +1082,9 @@ export function formatDateTimeWithUnit(
     return String(value);
   }
 
-  // handle day of year as DDD format adds leading zeroes
-  if (unit === "day-of-year") {
-    throw new Error("double check if it is used");
-    return m.dayOfYear();
-  }
+  // if (unit === "day-of-year") {
+  //   return m.dayOfYear();
+  // }
 
   if (unit === "week-of-year") {
     return dayjs().localeData().ordinal(m.isoWeek()).slice(1, -1);
