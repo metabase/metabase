@@ -15,9 +15,9 @@ jest.mock("docs/databases/connections/athena.md", () => {
 describe("EmbeddedEngineDocContent", () => {
   it("renders markdown content", async () => {
     render(<EmbeddedEngineDocContent engineKey="postgres" />);
-    await waitFor(() => {
-      expect(screen.getByText("Postgres Markdown content")).toBeInTheDocument();
-    });
+    expect(
+      await screen.findByText("Postgres Markdown content"),
+    ).toBeInTheDocument();
   });
 
   it("renders a loading state", async () => {
@@ -34,9 +34,7 @@ describe("EmbeddedEngineDocContent", () => {
     jest.spyOn(console, "error").mockImplementationOnce(() => {});
     render(<EmbeddedEngineDocContent engineKey={errorEngineKey} />);
 
-    await waitFor(() => {
-      expect(screen.getByRole("alert")).toBeInTheDocument();
-    });
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
     expect(
       screen.getByText("Failed to load detailed documentation"),
     ).toBeInTheDocument();

@@ -15,11 +15,7 @@ const hideJekyllTemplateIncludes = (element: HTMLElement) => {
   // Hide elements matching template includes (we can't parse them from the app)
   element.querySelectorAll("p").forEach((element) => {
     // Check if the element's text content contains "{%" and it has no child elements
-    if (
-      element.textContent &&
-      element.textContent.includes("{%") &&
-      element.children.length === 0
-    ) {
+    if (element.textContent?.includes("{%") && element.children.length === 0) {
       (element as HTMLElement).style.display = "none";
     }
   });

@@ -1,4 +1,4 @@
-import { act, waitFor } from "@testing-library/react";
+import { act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
@@ -83,9 +83,7 @@ describe("DatabaseHelpSidePanel", () => {
     expect(
       screen.getByRole("link", { name: /Talk to an expert/ }),
     ).toBeInTheDocument();
-    await waitFor(() => {
-      expect(screen.getByText(/Postgres MD Content/)).toBeInTheDocument();
-    });
+    expect(await screen.findByText(/Postgres MD Content/)).toBeInTheDocument();
   });
 
   it("should not render invite user button if not an admin", async () => {
