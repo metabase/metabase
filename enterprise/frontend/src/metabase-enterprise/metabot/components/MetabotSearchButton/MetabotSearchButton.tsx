@@ -24,6 +24,8 @@ export const MetabotSearchButton = () => {
 
   const label = c("'Search' here is a verb").t`Ask Metabot or search`;
 
+  const tooltipMessage = metabot.visible ? t`Close Metabot` : t`Open Metabot`;
+
   if (isSmallScreen) {
     return (
       <Button
@@ -61,7 +63,7 @@ export const MetabotSearchButton = () => {
       >
         <Tooltip
           offset={{ mainAxis: 20 }}
-          label={`${t`Open Metabot`} (${METAKEY}+b)`}
+          label={`${tooltipMessage} (${METAKEY}+b)`}
         >
           <Icon name="metabot" h="1rem" />
         </Tooltip>
