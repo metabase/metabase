@@ -97,6 +97,10 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 JSON schema inference doesn't work with MariaDB, due to implementation differences between MySQL and MariaDB.
 
+## Password with special characters
+
+If your password contains character that are non UTF-8, then you might want to add an additional variable to the connection string `passwordCharacterEncoding=<your_encoding_here>`. This will ensure that your MySQL/MariaDB database will understand the special characters of the password when it authenticates.
+
 ## Database routing
 
 With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.
