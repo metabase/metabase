@@ -8,6 +8,8 @@ redirect_from:
 
 Once you connect your database to Metabase, you'll want to configure an email account to send system notifications to your organization's users. Metabase uses email to reset passwords, onboard new users, and notify you when something happens.
 
+Both admins and people with [settings access](../permissions/application.md#settings-access) can set up email.
+
 To edit email settings:
 
 1. Click on the **gear** icon in the upper right.
