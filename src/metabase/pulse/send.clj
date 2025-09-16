@@ -126,7 +126,5 @@
                       ;; to fetch the Pulse.
                       models.pulse/hydrate-notification
                       (merge (when channel-ids {:channel-ids channel-ids})))]
-    (when (and (not (:archived dashboard))
-               ;; alerts now should be sent by notifications
-               (nil? (:alert_condition pulse)))
+    (when (not (:archived dashboard))
       (send-pulse!* pulse dashboard async?))))

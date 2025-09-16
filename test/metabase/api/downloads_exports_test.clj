@@ -983,6 +983,7 @@
           (is (=? {:card-download            110
                    :unsaved-card-download    110
                    :dashcard-download        110
+                   :alert-attachment         110
                    :subscription-attachment  110
                    :public-question-download 110
                    :public-dashcard-download 110}
@@ -998,6 +999,7 @@
             (is (=? {:card-download            110
                      :unsaved-card-download    110
                      :dashcard-download        110
+                     :alert-attachment         110
                      :subscription-attachment  110
                      :public-question-download 110
                      :public-dashcard-download 110}
