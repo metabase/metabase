@@ -34,8 +34,6 @@ describe("scenarios > setup", () => {
         skipWelcomePage();
 
         cy.findByTestId("setup-forms").within(() => {
-          selectPreferredLanguageAndContinue();
-
           // ====
           // User
           // ====
@@ -153,8 +151,6 @@ describe("scenarios > setup", () => {
     skipWelcomePage();
 
     cy.findByTestId("setup-forms").within(() => {
-      selectPreferredLanguageAndContinue();
-
       // User
       fillUserAndContinue({
         ...admin,
@@ -212,8 +208,6 @@ describe("scenarios > setup", () => {
 
     skipWelcomePage();
 
-    selectPreferredLanguageAndContinue();
-
     cy.findByTestId("setup-forms").within(() => {
       cy.findByLabelText("First name").should("have.value", "Testy");
       cy.findByLabelText("Last name").should("have.value", "McTestface");
@@ -233,7 +227,6 @@ describe("scenarios > setup", () => {
     );
 
     skipWelcomePage();
-    selectPreferredLanguageAndContinue();
 
     cy.findByTestId("setup-forms").within(() => {
       cy.findByDisplayValue("John").should("exist");
@@ -321,9 +314,9 @@ describe("scenarios > setup", () => {
       .should("be.visible");
   });
 
-  it("should allow localization in the 'embedding' setup flow", () => {
+  it("should allow localization in the setup flow", () => {
     cy.visit(
-      "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited&use_case=embedding",
+      "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited",
     );
 
     cy.log("English is the initial language");
@@ -373,8 +366,6 @@ describe("scenarios > setup", () => {
     cy.visit("/setup#123456");
 
     skipWelcomePage();
-
-    selectPreferredLanguageAndContinue();
 
     cy.findByLabelText(/What should we call you/);
 
@@ -455,8 +446,6 @@ describe("scenarios > setup", () => {
 
     skipWelcomePage();
 
-    selectPreferredLanguageAndContinue();
-
     cy.findByTestId("setup-forms").within(() => {
       // User
       fillUserAndContinue({
@@ -532,8 +521,6 @@ describe("scenarios > setup (EE)", () => {
 
     skipWelcomePage();
 
-    selectPreferredLanguageAndContinue();
-
     cy.findByTestId("setup-forms").within(() => {
       fillUserAndContinue({
         ...admin,
@@ -591,7 +578,6 @@ H.describeWithSnowplow("scenarios > setup", () => {
       step_number: 1,
       step: "language",
     });
-    selectPreferredLanguageAndContinue();
 
     H.expectUnstructuredSnowplowEvent({
       event: "step_seen",
@@ -684,7 +670,6 @@ H.describeWithSnowplow("scenarios > setup", () => {
     H.blockSnowplow();
     cy.visit("/setup");
     skipWelcomePage();
-    selectPreferredLanguageAndContinue();
     H.assertNoUnstructuredSnowplowEvent({
       event: "step_seen",
     });
@@ -696,13 +681,6 @@ const skipWelcomePage = () => {
     cy.findByText("Welcome to Metabase");
     cy.findByText("Let's get started").click();
   });
-};
-
-const selectPreferredLanguageAndContinue = () => {
-  cy.findByTestId("step-number").should("have.text", "1");
-  cy.findByText("What's your preferred language?");
-  cy.findByLabelText("English");
-  cy.findByText("Next").click();
 };
 
 const fillUserAndContinue = ({
@@ -764,7 +742,6 @@ const navigateToDatabaseStep = () => {
   );
 
   skipWelcomePage();
-  selectPreferredLanguageAndContinue();
 
   cy.findByTestId("setup-forms").within(() => {
     const password = "12341234";
