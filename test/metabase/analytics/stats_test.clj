@@ -558,6 +558,7 @@
     :embedding
     :embedding-sdk
     :embedding-simple
+    :embedding-hub
     :enhancements
     :etl-connections
     :etl-connections-pg

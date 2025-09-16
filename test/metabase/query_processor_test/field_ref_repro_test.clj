@@ -153,7 +153,7 @@
   (testing "Should handle self joins with external remapping (#60444)"
     ;; see https://metaboat.slack.com/archives/C0645JP1W81/p1753208898063419 for further discussion
     (let [mp (lib.tu/remap-metadata-provider
-              (mt/application-database-metadata-provider (mt/id))
+              (mt/metadata-provider)
               (mt/id :orders :user_id) (mt/id :people :email))]
       (doseq [join-base [{:source-table (mt/id :orders)}
                          {:source-query {:source-table (mt/id :orders)
@@ -247,7 +247,7 @@
 
 (deftest ^:parallel multi-stage-with-external-remapping-test
   (testing "Should handle multiple stages with external remapping (#60587)"
-    (let [mp    (lib.tu/remap-metadata-provider (mt/application-database-metadata-provider (mt/id))
+    (let [mp    (lib.tu/remap-metadata-provider (mt/metadata-provider)
                                                 (mt/id :orders :user_id)
                                                 (mt/id :people :email))
           query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $

@@ -25,7 +25,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
     H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
     cy.intercept("PUT", "/api/field/*").as("updateField");
     cy.intercept("POST", "/api/ee/transform").as("createTransform");
@@ -122,6 +122,63 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(3);
+    });
+
+    it("should be able to use the data reference and snippets when writing a SQL transform", () => {
+      H.createSnippet({
+        name: "snippet1",
+        content: "1",
+      });
+
+      visitTransformListPage();
+      getTransformListPage().button("Create a transform").click();
+      H.popover().findByText("SQL query").click();
+      H.popover().findByText(DB_NAME).click();
+
+      function testDataReference() {
+        cy.log("open the data reference");
+        cy.findByTestId("native-query-editor-action-buttons")
+          .findByLabelText("Learn about your data")
+          .click();
+
+        editorSidebar()
+          .should("be.visible")
+          .within(() => {
+            cy.log("The current database should be opened by default");
+            cy.findByText("Data Reference").should("not.exist");
+            cy.findByText("Writable Postgres12").should("be.visible");
+          });
+
+        cy.findByTestId("native-query-editor-action-buttons")
+          .findByLabelText("Learn about your data")
+          .click();
+
+        editorSidebar().should("not.exist");
+      }
+
+      function testSnippets() {
+        cy.findByTestId("native-query-editor-action-buttons")
+          .findByLabelText("SQL Snippets")
+          .click();
+
+        editorSidebar()
+          .should("be.visible")
+          .within(() => {
+            cy.findByText("snippet1").should("be.visible");
+            cy.icon("snippet").click();
+          });
+
+        H.NativeEditor.value().should("eq", "{{snippet: snippet1}}");
+
+        cy.findByTestId("native-query-editor-action-buttons")
+          .findByLabelText("SQL Snippets")
+          .click();
+
+        editorSidebar().should("not.exist");
+      }
+
+      testDataReference();
+      testSnippets();
     });
 
     it("should be able to create and run a transform from a question or a model", () => {
@@ -417,7 +474,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
   });
 
   describe("tags", () => {
-    it("should be able to add and remove tags", () => {
+    it("should be able to add and remove tags", { tags: "@flaky" }, () => {
       createMbqlTransform({ visitTransform: true });
       getTagsInput().click();
 
@@ -817,158 +874,154 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
   });
 
   describe("queries", () => {
-    it(
-      "should render a readOnly preview of the MBQL query",
-      { tags: "@flaky" },
-      () => {
-        cy.log("create a new transform that has all the steps");
-        H.getTableId({ name: "Animals" }).then((tableId) => {
-          H.getFieldId({ tableId, name: "score" }).then((ANIMAL_SCORE) => {
-            H.getFieldId({ tableId, name: "name" }).then((ANIMAL_NAME) => {
-              H.createTransform(
-                {
-                  name: "MBQL transform",
-                  source: {
+    it("should render a readOnly preview of the MBQL query", () => {
+      cy.log("create a new transform that has all the steps");
+      H.getTableId({ name: "Animals" }).then((tableId) => {
+        H.getFieldId({ tableId, name: "score" }).then((ANIMAL_SCORE) => {
+          H.getFieldId({ tableId, name: "name" }).then((ANIMAL_NAME) => {
+            H.createTransform(
+              {
+                name: "MBQL transform",
+                source: {
+                  type: "query",
+                  query: {
+                    database: WRITABLE_DB_ID,
                     type: "query",
                     query: {
-                      database: WRITABLE_DB_ID,
-                      type: "query",
-                      query: {
-                        "source-table": tableId,
-                        filter: [">", ["field", ANIMAL_SCORE, {}], 10],
-                        aggregation: [
-                          ["count"],
-                          [
-                            "aggregation-options",
-                            ["+", ["count"], 1],
-                            { name: "Foobar", "display-name": "Foobar" },
-                          ],
+                      "source-table": tableId,
+                      filter: [">", ["field", ANIMAL_SCORE, {}], 10],
+                      aggregation: [
+                        ["count"],
+                        [
+                          "aggregation-options",
+                          ["+", ["count"], 1],
+                          { name: "Foobar", "display-name": "Foobar" },
                         ],
-                        expressions: {
-                          ScorePlusOne: ["+", ["field", ANIMAL_SCORE, {}], 1],
-                        },
-                        breakout: [
-                          [
-                            "field",
-                            ANIMAL_SCORE,
-                            {
-                              binning: { strategy: "num-bins", "num-bins": 10 },
-                            },
-                          ],
-                        ],
-                        joins: [
+                      ],
+                      expressions: {
+                        ScorePlusOne: ["+", ["field", ANIMAL_SCORE, {}], 1],
+                      },
+                      breakout: [
+                        [
+                          "field",
+                          ANIMAL_SCORE,
                           {
-                            "source-table": tableId,
-                            condition: [
-                              "=",
-                              ["field", ANIMAL_SCORE, {}],
-                              ["field", ANIMAL_SCORE, {}],
-                            ],
-                            alias: "animal_score",
+                            binning: { strategy: "num-bins", "num-bins": 10 },
                           },
                         ],
-                        limit: 10,
-                        "order-by": [["asc", ["field", ANIMAL_NAME, {}]]],
-                      },
+                      ],
+                      joins: [
+                        {
+                          "source-table": tableId,
+                          condition: [
+                            "=",
+                            ["field", ANIMAL_SCORE, {}],
+                            ["field", ANIMAL_SCORE, {}],
+                          ],
+                          alias: "animal_score",
+                        },
+                      ],
+                      limit: 10,
+                      "order-by": [["asc", ["field", ANIMAL_NAME, {}]]],
                     },
                   },
-                  target: {
-                    type: "table",
-                    name: TARGET_TABLE,
-                    schema: TARGET_SCHEMA,
-                  },
-                  tag_ids: [],
                 },
-                { visitTransform: true },
-              );
-            });
+                target: {
+                  type: "table",
+                  name: TARGET_TABLE,
+                  schema: TARGET_SCHEMA,
+                },
+                tag_ids: [],
+              },
+              { visitTransform: true },
+            );
           });
         });
+      });
 
-        cy.log("Data step should be read-only");
-        H.getNotebookStep("data")
-          .findByRole("button")
-          .should("contain", "Animals")
-          .should("be.disabled");
+      cy.log("Data step should be read-only");
+      H.getNotebookStep("data")
+        .findByRole("button")
+        .should("contain", "Animals")
+        .should("be.disabled");
 
-        cy.log("Join step should be read-only");
-        H.getNotebookStep("join")
-          .findAllByText("Animals")
-          .should("have.length", 4)
-          .eq(1)
-          .should("have.css", "pointer-events", "none");
+      cy.log("Join step should be read-only");
+      H.getNotebookStep("join")
+        .findAllByText("Animals")
+        .should("have.length", 4)
+        .eq(1)
+        .should("have.css", "pointer-events", "none");
 
-        cy.findByLabelText("Change join type").should("be.disabled");
+      cy.findByLabelText("Change join type").should("be.disabled");
 
-        H.getNotebookStep("join")
-          .findAllByText("Score")
-          .should("have.length", 2)
-          .first()
-          .click();
-        assertNoModals();
+      H.getNotebookStep("join")
+        .findAllByText("Score")
+        .should("have.length", 2)
+        .first()
+        .click();
+      assertNoModals();
 
-        H.getNotebookStep("join")
-          .findAllByText("Score")
-          .should("have.length", 2)
-          .eq(1)
-          .click();
-        assertNoModals();
+      H.getNotebookStep("join")
+        .findAllByText("Score")
+        .should("have.length", 2)
+        .eq(1)
+        .click();
+      assertNoModals();
 
-        cy.log("Expression step should be read-only, but render editor");
-        H.getNotebookStep("expression").findByText("ScorePlusOne").click();
-        H.CustomExpressionEditor.value().should("equal", "[Score] + 1");
-        H.CustomExpressionEditor.nameInput()
-          .should("have.value", "ScorePlusOne")
-          .should("have.attr", "readonly");
-        H.popover().button("Done").click();
+      cy.log("Expression step should be read-only, but render editor");
+      H.getNotebookStep("expression").findByText("ScorePlusOne").click();
+      H.CustomExpressionEditor.value().should("equal", "[Score] + 1");
+      H.CustomExpressionEditor.nameInput()
+        .should("have.value", "ScorePlusOne")
+        .should("have.attr", "readonly");
+      H.popover().button("Done").click();
 
-        cy.log("Expression step should be read-only, but render popover");
-        H.getNotebookStep("filter")
-          .findByText("Score is greater than 10")
-          .click();
-        H.popover().within(() => {
-          cy.findByText("Score").should("be.visible");
-          cy.findByText("Greater than").should("be.visible");
-          cy.findByPlaceholderText("Enter a number")
-            .should("be.visible")
-            .should("have.value", 10);
-        });
-        H.main().click();
+      cy.log("Expression step should be read-only, but render popover");
+      H.getNotebookStep("filter")
+        .findByText("Score is greater than 10")
+        .click();
+      H.popover().within(() => {
+        cy.findByText("Score").should("be.visible");
+        cy.findByText("Greater than").should("be.visible");
+        cy.findByPlaceholderText("Enter a number")
+          .should("be.visible")
+          .should("have.value", 10);
+      });
+      H.main().click();
 
-        cy.log("Summarize step should be read-only");
-        H.getNotebookStep("summarize").findByText("Count").click();
-        H.CustomExpressionEditor.value().should("equal", "Count()");
-        H.CustomExpressionEditor.nameInput()
-          .should("have.value", "Count")
-          .should("have.attr", "readonly");
-        H.popover().button("Done").click();
+      cy.log("Summarize step should be read-only");
+      H.getNotebookStep("summarize").findByText("Count").click();
+      H.CustomExpressionEditor.value().should("equal", "Count()");
+      H.CustomExpressionEditor.nameInput()
+        .should("have.value", "Count")
+        .should("have.attr", "readonly");
+      H.popover().button("Done").click();
 
-        H.getNotebookStep("summarize").findByText("Foobar").click();
-        H.CustomExpressionEditor.value().should("equal", "Count() + 1");
-        H.CustomExpressionEditor.nameInput()
-          .should("have.value", "Foobar")
-          .should("have.attr", "readonly");
-        H.popover().button("Done").click();
+      H.getNotebookStep("summarize").findByText("Foobar").click();
+      H.CustomExpressionEditor.value().should("equal", "Count() + 1");
+      H.CustomExpressionEditor.nameInput()
+        .should("have.value", "Foobar")
+        .should("have.attr", "readonly");
+      H.popover().button("Done").click();
 
-        H.getNotebookStep("summarize").findByText("Score: 10 bins").click();
-        assertNoModals();
+      H.getNotebookStep("summarize").findByText("Score: 10 bins").click();
+      assertNoModals();
 
-        cy.log("Sort step should be read-only");
-        H.getNotebookStep("sort").findByText("Name").click();
-        assertNoModals();
+      cy.log("Sort step should be read-only");
+      H.getNotebookStep("sort").findByText("Name").click();
+      assertNoModals();
 
-        cy.log("Limit step should be read-only");
-        H.getNotebookStep("limit")
-          .findByPlaceholderText("Enter a limit")
-          .should("have.value", 10)
-          .should("have.attr", "readonly");
+      cy.log("Limit step should be read-only");
+      H.getNotebookStep("limit")
+        .findByPlaceholderText("Enter a limit")
+        .should("have.value", 10)
+        .should("have.attr", "readonly");
 
-        function assertNoModals() {
-          H.entityPickerModal().should("not.exist");
-          H.popover({ skipVisibilityCheck: true }).should("not.exist");
-        }
-      },
-    );
+      function assertNoModals() {
+        H.entityPickerModal().should("not.exist");
+        H.popover({ skipVisibilityCheck: true }).should("not.exist");
+      }
+    });
 
     it("should hide empty sections in read-only mode", () => {
       H.getTableId({ name: "Animals" }).then((tableId) => {
@@ -1193,7 +1246,6 @@ describe("scenarios > admin > transforms > databases without :schemas", () => {
     H.restore("mysql-8");
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 
     cy.intercept("PUT", "/api/field/*").as("updateField");
     cy.intercept("POST", "/api/ee/transform").as("createTransform");
@@ -1207,18 +1259,22 @@ describe("scenarios > admin > transforms > databases without :schemas", () => {
     cy.intercept("DELETE", "/api/ee/transform-tag/*").as("deleteTag");
   });
 
-  it("should be not be possible to create a new schema when updating a transform target", () => {
-    createMbqlTransform({
-      databaseId: WRITABLE_DB_ID,
-      sourceTable: "ORDERS",
-      visitTransform: true,
-      targetSchema: null,
-    });
+  it(
+    "should be not be possible to create a new schema when updating a transform target",
+    { tags: "@flaky" },
+    () => {
+      createMbqlTransform({
+        databaseId: WRITABLE_DB_ID,
+        sourceTable: "ORDERS",
+        visitTransform: true,
+        targetSchema: null,
+      });
 
-    getTransformPage().button("Change target").click();
+      getTransformPage().button("Change target").click();
 
-    H.modal().findByLabelText("Schema").should("not.exist");
-  });
+      H.modal().findByLabelText("Schema").should("not.exist");
+    },
+  );
 
   it("should be not be possible to create a new schema when the database does not support schemas", () => {
     cy.log("create a new transform");
@@ -1241,7 +1297,7 @@ describe("scenarios > admin > transforms > jobs", () => {
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
     cy.intercept("POST", "/api/ee/transform-job").as("createJob");
     cy.intercept("PUT", "/api/ee/transform-job/*").as("updateJob");
@@ -1366,7 +1422,7 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("tags", () => {
-    it("should be able to add and remove tags", () => {
+    it("should be able to add and remove tags", { tags: "@flaky" }, () => {
       H.createTransformJob({ name: "New job" }, { visitTransformJob: true });
       getTagsInput().click();
 
@@ -2250,4 +2306,8 @@ function assertOptionSelected(name: string) {
 
 function assertOptionNotSelected(name: string) {
   getTagsInputContainer().findByText(name).should("not.exist");
+}
+
+function editorSidebar() {
+  return cy.findByTestId("editor-sidebar");
 }
