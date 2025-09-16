@@ -144,7 +144,14 @@ export const getSteps = createSelector(
       "completed",
     ];
 
-    const embeddingSteps: SetupStep[] = ["user_info", "completed"];
+    const embeddingSteps: SetupStep[] = [
+      "welcome",
+      "user_info",
+      "usage_question",
+      ...maybeAddStep("license_token", shouldShowLicenseStep),
+      ...maybeAddStep("data_usage", shouldShowDataUsageStep),
+      "completed",
+    ];
 
     const steps = isEmbeddingUseCase ? embeddingSteps : regularSteps;
 

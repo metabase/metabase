@@ -63,7 +63,6 @@ import SegmentListContainer from "metabase/reference/segments/SegmentListContain
 import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
 import SearchApp from "metabase/search/containers/SearchApp";
-import { EmbeddingSetup } from "metabase/setup/components/EmbeddingSetup/EmbeddingSetup";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
@@ -92,13 +91,6 @@ export const getRoutes = (store) => {
           if (hasUserSetup) {
             replace("/");
           }
-          const searchParams = new URLSearchParams(window.location.search);
-          if (
-            searchParams.get("use_case") === "embedding" &&
-            searchParams.get("new_embedding_flow") === "true"
-          ) {
-            replace("/setup/embedding" + window.location.search);
-          }
           trackPageView(location.pathname);
         }}
         onChange={(prevState, nextState) => {
@@ -107,19 +99,8 @@ export const getRoutes = (store) => {
         disableCommandPalette
       />
 
-      {/* EMBEDDING SETUP */}
-      <Route
-        path="/setup/embedding"
-        component={EmbeddingSetup}
-        onEnter={async (nextState, replace, done) => {
-          if (hasUserSetup) {
-            replace("/");
-          }
-          trackPageView(location.pathname);
-          done();
-        }}
-        disableCommandPalette
-      />
+      {/* EMBEDDING SETUP REDIRECT */}
+      <Redirect from="/setup/embedding" to="/setup" />
 
       {/* APP */}
       <Route
