@@ -106,12 +106,12 @@
         (testing "insert-from-source! should insert new rows correctly"
           (let [new-rows     [[2 "New Luke"] [3 "New Leia"]]
                 data-source  {:type :rows :data new-rows}
-                rows-inserted (driver/insert-from-source! driver db-id
-                                                          {:name    qualified-table-name
-                                                           :columns (mapv (fn [name]
-                                                                            {:name (keyword name)})
-                                                                          (keys column-definitions))}
-                                                          data-source)]
+                _ (driver/insert-from-source! driver db-id
+                                              {:name    qualified-table-name
+                                               :columns (mapv (fn [name]
+                                                                {:name (keyword name)})
+                                                              (keys column-definitions))}
+                                              data-source)]
             (is (= (count new-rows) (count (driver/table-rows-seq driver/*driver* (mt/db) {:name table-name
                                                                                            :schema schema-name}))))))
         (driver/drop-table! driver db-id qualified-table-name)))))
