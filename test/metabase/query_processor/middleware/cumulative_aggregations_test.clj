@@ -71,7 +71,7 @@
       (is (= [[1 1 1] [2 3 2] [3 6 3]]
              (sum-rows #{1} '((1 1 1) (2 2 2) (3 3 3))))))))
 
-(driver/register! ::no-window-function-driver, #_:abstract? #_true) ; NOCOMMIT
+(driver/register! ::no-window-function-driver, :abstract? true)
 
 (defmethod driver/database-supports? [::no-window-function-driver :window-functions/cumulative]
   [_driver _feature _database]
