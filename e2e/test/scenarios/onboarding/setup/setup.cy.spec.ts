@@ -255,7 +255,7 @@ describe("scenarios > setup", () => {
     H.mockSessionProperty("email-configured?", true);
 
     navigateToDatabaseStep();
-    cy.findByTestId("step-number").should("have.text", "4");
+    cy.findByTestId("step-number").should("have.text", "3");
 
     cy.findByLabelText("Setup section").click();
     cy.findByLabelText("First name").type("TeammateFirstName");
@@ -280,7 +280,7 @@ describe("scenarios > setup", () => {
     });
 
     // Checks we are now in the next step
-    cy.findByTestId("step-number").should("have.text", "5");
+    cy.findByTestId("step-number").should("have.text", "4");
   });
 
   it("should allow a quick setup for the 'embedding' use case", () => {
@@ -314,9 +314,9 @@ describe("scenarios > setup", () => {
       .should("be.visible");
   });
 
-  it("should allow localization in the setup flow", () => {
+  it("should allow localization in the 'embedding' setup flow", () => {
     cy.visit(
-      "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited",
+      "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited&use_case=embedding",
     );
 
     cy.log("English is the initial language");
@@ -576,12 +576,6 @@ H.describeWithSnowplow("scenarios > setup", () => {
     H.expectUnstructuredSnowplowEvent({
       event: "step_seen",
       step_number: 1,
-      step: "language",
-    });
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "step_seen",
-      step_number: 2,
       step: "user_info",
     });
 
@@ -594,7 +588,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
       cy.findByText("What will you use Metabase for?").should("exist");
       H.expectUnstructuredSnowplowEvent({
         event: "step_seen",
-        step_number: 3,
+        step_number: 2,
         step: "usage_question",
       });
       cy.button("Next").click();
@@ -606,7 +600,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "step_seen",
-        step_number: 4,
+        step_number: 3,
         step: "db_connection",
       });
       cy.findByText("Continue with sample data").click();
@@ -619,7 +613,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
       if (IS_ENTERPRISE) {
         H.expectUnstructuredSnowplowEvent({
           event: "step_seen",
-          step_number: 5,
+          step_number: 4,
           step: "license_token",
         });
 
@@ -632,7 +626,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "step_seen",
-        step_number: IS_ENTERPRISE ? 6 : 5,
+        step_number: IS_ENTERPRISE ? 5 : 4,
         step: "data_usage",
       });
 
@@ -640,7 +634,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "step_seen",
-        step_number: IS_ENTERPRISE ? 7 : 6,
+        step_number: IS_ENTERPRISE ? 6 : 5,
         step: "completed",
       });
 
