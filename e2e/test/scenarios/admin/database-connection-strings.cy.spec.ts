@@ -199,8 +199,6 @@ const databaseTestCases = [
 ];
 
 describe("Database connection strings", () => {
-  beforeEach(() => {});
-
   it("should parse connection strings for all supported databases", () => {
     cy.visit("/admin/databases/create");
 
@@ -244,47 +242,6 @@ describe("Database connection strings", () => {
     cy.findByLabelText("Connection string (optional)").paste("invalid");
 
     cy.findByTextEnsureVisible("Couldn’t use this connection string.");
-  });
-
-  it("should track correctly", () => {
-    H.resetSnowplow();
-    H.restore();
-    H.enableTracking();
-    cy.visit("/admin/databases/create");
-
-    chooseDatabase("MySQL");
-
-    cy.findByLabelText("Connection string (optional)")
-      .focus()
-      .paste("jdbc:mysql://testuser:testpass@host:3306/dbname?ssl=true")
-      .paste("jdbc:mysql://a:b@c:3/dbname?ssl=false");
-
-    // go to the next field
-    cy.findByLabelText("Display name").click();
-
-    H.expectUnstructuredSnowplowEvent(
-      {
-        event: "connection_string_parsed_success",
-        triggered_from: "full-page",
-      },
-      1,
-    );
-
-    cy.findByLabelText("Connection string (optional)")
-      .focus()
-      .paste("broken string")
-      .type("also not a valid string");
-
-    // go to the next field
-    cy.findByLabelText("Display name").click();
-
-    H.expectUnstructuredSnowplowEvent(
-      {
-        event: "connection_string_parsed_failed",
-        triggered_from: "full-page",
-      },
-      1,
-    );
   });
 
   it("should not clear the existing values", () => {
@@ -399,5 +356,48 @@ describe("Database connection strings", () => {
 
       cy.button("Failed").should("exist");
     });
+  });
+});
+
+describe("Database connection strings events", () => {
+  it("should track correctly", () => {
+    H.resetSnowplow();
+    H.restore();
+    H.enableTracking();
+    cy.visit("/admin/databases/create");
+
+    chooseDatabase("MySQL");
+
+    cy.findByLabelText("Connection string (optional)")
+      .focus()
+      .paste("jdbc:mysql://testuser:testpass@host:3306/dbname?ssl=true")
+      .paste("jdbc:mysql://a:b@c:3/dbname?ssl=false");
+
+    // go to the next field
+    cy.findByLabelText("Display name").click();
+
+    H.expectUnstructuredSnowplowEvent(
+      {
+        event: "connection_string_parsed_success",
+        triggered_from: "full-page",
+      },
+      1,
+    );
+
+    cy.findByLabelText("Connection string (optional)")
+      .focus()
+      .paste("broken string")
+      .type("also not a valid string");
+
+    // go to the next field
+    cy.findByLabelText("Display name").click();
+
+    H.expectUnstructuredSnowplowEvent(
+      {
+        event: "connection_string_parsed_failed",
+        triggered_from: "full-page",
+      },
+      1,
+    );
   });
 });

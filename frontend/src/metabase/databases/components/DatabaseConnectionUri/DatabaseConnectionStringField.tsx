@@ -1,7 +1,7 @@
 import { usePrevious, useTimeout } from "@mantine/hooks";
 import type { FormikErrors } from "formik";
 import { useField } from "formik";
-import { type SetStateAction, useEffect, useState } from "react";
+import { type SetStateAction, useEffect, useRef, useState } from "react";
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
@@ -36,9 +36,7 @@ export function DatabaseConnectionStringField({
   location: FormLocation;
 }) {
   const [status, setStatus] = useState<"success" | "failure" | null>(null);
-  const [lastParsingStatus, setLastParsingStatus] = useState<
-    "success" | "failure" | null
-  >(null);
+  const lastClearedStatusRef = useRef<"success" | "failure" | null>(null);
   const { start: delayedClearStatus, clear: clearTimeout } = useTimeout(
     () => setStatus(null),
     FEEDBACK_TIMEOUT,
@@ -50,7 +48,7 @@ export function DatabaseConnectionStringField({
   useEffect(() => {
     async function handleConnectionStringChange() {
       if (!connectionString || !isEngineKey(engineKey)) {
-        setLastParsingStatus(null);
+        lastClearedStatusRef.current = null;
         delayedClearStatus();
         return () => clearTimeout();
       }
@@ -60,12 +58,12 @@ export function DatabaseConnectionStringField({
       // it was not possible to parse the connection string
       if (!parsedValues) {
         setStatus("failure");
-        setLastParsingStatus("failure");
+        lastClearedStatusRef.current = "failure";
         delayedClearStatus();
         return () => clearTimeout();
       }
 
-      setLastParsingStatus("success");
+      lastClearedStatusRef.current = "success";
 
       const fieldsMap = mapDatabaseValues(parsedValues, engineKey);
       const fields = mapFieldsToNestedObject(fieldsMap) as DatabaseData;
@@ -104,7 +102,7 @@ export function DatabaseConnectionStringField({
   ]);
 
   function handleBlur() {
-    match(lastParsingStatus)
+    match(lastClearedStatusRef.current)
       .with("success", () => {
         connectionStringParsedSuccess(location);
       })
