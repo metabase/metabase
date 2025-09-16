@@ -1,4 +1,4 @@
-import { Api } from "metabase/api";
+import { EnterpriseApi } from "./api";
 
 export interface ExecutePythonRequest {
   code: string;
@@ -14,7 +14,7 @@ export interface ExecutePythonResponse {
   timeout?: boolean;
 }
 
-export const pythonRunnerApi = Api.injectEndpoints({
+export const pythonRunnerApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     executePython: builder.mutation<
       ExecutePythonResponse,
