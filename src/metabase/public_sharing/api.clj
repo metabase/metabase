@@ -28,6 +28,7 @@
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.tiles.api :as api.tiles]
+   [metabase.tiles.util :as tiles.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -587,8 +588,8 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card-id    (api/check-404 (t2/select-one-pk :model/Card :public_uuid uuid, :archived false))
         parameters (json/decode+kw parameters)
-        lat-field  (json/decode+kw lat-field)
-        lon-field  (json/decode+kw lon-field)]
+        lat-field  (tiles.util/decode-field-ref lat-field)
+        lon-field  (tiles.util/decode-field-ref lon-field)]
     (request/as-admin
       (api.tiles/process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field))))
 

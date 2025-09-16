@@ -27,6 +27,7 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
    [metabase.tiles.api :as api.tiles]
+   [metabase.tiles.util :as tiles.util]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -330,8 +331,8 @@
   (let [unsigned   (unsign-and-translate-ids token)
         card-id    (api.embed.common/unsigned-token->card-id unsigned)
         parameters (json/decode+kw parameters)
-        lat-field    (json/decode+kw lat-field)
-        lon-field    (json/decode+kw lon-field)]
+        lat-field    (tiles.util/decode-field-ref lat-field)
+        lon-field    (tiles.util/decode-field-ref lon-field)]
     (api.embed.common/check-embedding-enabled-for-card card-id)
     (request/as-admin
       (api.tiles/process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field))))
@@ -351,8 +352,8 @@
   (let [unsigned     (unsign-and-translate-ids token)
         dashboard-id    (api.embed.common/unsigned-token->dashboard-id unsigned)
         parameters   (json/decode+kw parameters)
-        lat-field    (json/decode+kw lat-field)
-        lon-field    (json/decode+kw lon-field)]
+        lat-field    (tiles.util/decode-field-ref lat-field)
+        lon-field    (tiles.util/decode-field-ref lon-field)]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
     (request/as-admin
       (api.tiles/process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field))))
