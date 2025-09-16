@@ -2,13 +2,24 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import type { GlossaryItem } from "metabase/api";
-import { Box, Button, Group, TextInput, Textarea } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Group,
+  Icon,
+  TextInput,
+  Textarea,
+  Tooltip,
+} from "metabase/ui";
+
+import S from "./Glossary.module.css";
 
 type GlossaryRowEditorProps = {
   item: Pick<GlossaryItem, "term" | "definition">;
   onSave: (term: string, definition: string) => void | Promise<void>;
   onCancel: () => void;
   mode: "create" | "edit";
+  autoFocusField?: "term" | "definition";
 };
 
 export function GlossaryRowEditor({
@@ -16,16 +27,23 @@ export function GlossaryRowEditor({
   onSave,
   onCancel,
   mode,
+  autoFocusField = "term",
 }: GlossaryRowEditorProps) {
   const [term, setTerm] = useState(item.term);
   const [definition, setDefinition] = useState(item.definition);
+
+  const canSave = term.trim() !== "" && definition.trim() !== "";
 
   return (
     <>
       <Box component="td" valign="top">
         <TextInput
-          autoFocus
-          placeholder={t`Data science`}
+          classNames={{
+            input: S.input,
+          }}
+          variant="unstyled"
+          autoFocus={autoFocusField === "term"}
+          placeholder={t`Bird`}
           value={term}
           onChange={(e) => setTerm(e.currentTarget.value)}
           miw="8rem"
@@ -33,32 +51,45 @@ export function GlossaryRowEditor({
       </Box>
       <Box component="td" valign="top" pr="0">
         <Textarea
-          placeholder={t`A field that uses statistics, computing, and domain knowledge to extract insights from data.`}
+          classNames={{
+            input: S.input,
+          }}
+          variant="unstyled"
+          placeholder={t`A thing with wings.`}
           value={definition}
           onChange={(e) => setDefinition(e.currentTarget.value)}
           autosize
-          minRows={3}
+          minRows={1}
           maxRows={6}
-          resize="vertical"
+          autoFocus={autoFocusField === "definition"}
+          styles={{
+            input: {
+              paddingTop: "0.75rem",
+            },
+          }}
         />
       </Box>
       <Box component="td" valign="top" align="center" px="md" pt="sm" pb={0}>
         <Group justify="flex-end" gap="xs" wrap="nowrap">
-          <Button variant="subtle" onClick={onCancel}>{t`Cancel`}</Button>
-          <Button
-            variant="filled"
-            disabled={
-              mode === "create" &&
-              (term.trim() === "" || definition.trim() === "")
-            }
-            onClick={() => {
-              if (term.trim()) {
-                void onSave(term.trim(), definition);
-              }
-            }}
-          >
-            {mode === "create" ? t`Add` : t`Save`}
-          </Button>
+          <Tooltip label={t`Cancel`}>
+            <ActionIcon
+              aria-label={t`Cancel`}
+              variant="subtle"
+              onClick={onCancel}
+            >
+              <Icon name="close" />
+            </ActionIcon>
+          </Tooltip>
+          <Tooltip label={mode === "create" ? t`Add` : t`Save`}>
+            <ActionIcon
+              aria-label={mode === "create" ? t`Add` : t`Save`}
+              variant={canSave ? "filled" : "subtle"}
+              disabled={!canSave}
+              onClick={() => void onSave(term.trim(), definition.trim())}
+            >
+              <Icon name="check" />
+            </ActionIcon>
+          </Tooltip>
         </Group>
       </Box>
     </>

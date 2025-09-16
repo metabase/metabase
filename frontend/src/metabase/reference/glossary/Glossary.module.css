@@ -5,19 +5,33 @@
   background-color: var(--mb-color-bg-white);
   border: none;
 
-  thead th {
+  th {
     padding-block: var(--mantine-spacing-sm);
   }
 
-  tbody td {
+  td {
     padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  }
+
+  tr:last-child td {
+    border-bottom: none;
   }
 }
 .row {
+  cursor: pointer;
   &:hover {
     .action {
       visibility: visible;
     }
+  }
+}
+.rowEditor {
+  td {
+    padding-block: 1px;
+  }
+
+  &:hover {
+    background-color: transparent !important;
   }
 }
 
@@ -27,4 +41,9 @@
 
 .visible {
   visibility: visible;
+}
+
+.input {
+  border: none;
+  padding-inline: 0 !important;
 }
