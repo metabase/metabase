@@ -66,6 +66,25 @@ export const transformApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [idTag("transform", id), tag("table")]),
+      onQueryStarted: async (id, { dispatch, queryFulfilled }) => {
+        const patchResult = dispatch(
+          transformApi.util.updateQueryData("getTransform", id, (draft) => {
+            draft.last_run = {
+              id: -1,
+              status: "started",
+              start_time: new Date().toISOString(),
+              end_time: null,
+              message: null,
+              run_method: "manual",
+            };
+          }),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
     createTransform: builder.mutation<Transform, CreateTransformRequest>({
       query: (body) => ({
@@ -95,7 +114,7 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         );
         try {
           await queryFulfilled;
-        } finally {
+        } catch {
           patchResult.undo();
         }
       },
