@@ -73,8 +73,13 @@
 }
 
 .menuButton {
+  cursor: pointer;
   border: none;
   border-radius: var(--mantine-radius-xs);
+
+  &:hover {
+    background-color: var(--mb-color-bg-light);
+  }
 }
 
 .dragHandle {

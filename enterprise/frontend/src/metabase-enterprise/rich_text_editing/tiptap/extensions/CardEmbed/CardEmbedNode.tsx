@@ -755,8 +755,6 @@ export const CardEmbedComponent = memo(
                       <Menu.Target>
                         <Flex
                           component="button"
-                          bg="transparent"
-                          c="pointer"
                           p="0.25rem"
                           align="center"
                           justify="center"
