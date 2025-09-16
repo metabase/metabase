@@ -1,6 +1,5 @@
 (ns metabase-enterprise.transforms-python.execute
   (:require
-   [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
@@ -11,7 +10,6 @@
    [metabase.util :as u]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
   (:import
    (java.io Closeable File)
@@ -158,28 +156,6 @@
       (do
         (log/info "New table")
         (create-table-and-insert-data! driver (:id db) table-name metadata data-source)))))
-
-(defn test-python-transform!
-  "Execute a transform in test mode (does not write result into a table)."
-  [code tables->id run-id cancel-chan]
-  (with-open [shared-storage-ref (python-runner/open-s3-shared-storage! tables->id)]
-    (let [server-url (transforms.settings/python-execution-server-url)
-          _          (python-runner/copy-tables-to-s3! {:run-id         run-id
-                                                        :shared-storage @shared-storage-ref
-                                                        :table-name->id tables->id
-                                                        :cancel-chan    cancel-chan})
-          _          (python-runner/open-cancellation-process! server-url run-id cancel-chan) ; inherits lifetime of cancel-chan
-          response
-          (python-runner/execute-python-code-http-call!
-           {:server-url     server-url
-            :code           code
-            :run-id         run-id
-            :table-name->id tables->id
-            :shared-storage @shared-storage-ref})
-          {:keys [output events]} (python-runner/read-output-objects @shared-storage-ref)]
-      {:response response
-       :events   events
-       :output   output})))
 
 (defn- run-python-transform! [{:keys [source] :as transform} db run-id cancel-chan message-log]
   (with-open [log-future-ref     (open-python-message-update-future! run-id message-log)

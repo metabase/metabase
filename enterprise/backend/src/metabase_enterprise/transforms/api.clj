@@ -1,7 +1,5 @@
 (ns metabase-enterprise.transforms.api
   (:require
-   [clojure.core.async :as a]
-   [clojure.string :as str]
    [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
    [metabase-enterprise.transforms.api.transform-job]
    [metabase-enterprise.transforms.api.transform-tag]
@@ -69,12 +67,6 @@
              :name "gadget_products"}}])
 
 ;; TODO this and target-database-id can be transforms multimethods?
-(defn- target-database-id
-  [transform]
-  (if (transforms.util/python-transform? transform)
-    (-> transform :source :source-database)
-    (-> transform :source :query :database)))
-
 (defn- target-database-id
   [transform]
   (if (transforms.util/python-transform? transform)
@@ -264,55 +256,6 @@
       (-> (response/response {:message (deferred-tru "Transform run started")
                               :run_id run-id})
           (assoc :status 202)))))
-
-;; hack
-(def ^:private python-test-run-id Integer/MAX_VALUE)
-
-;; TODO this should move to the transforms-python module
-(api.macros/defendpoint :post "/test-python"
-  "Test Python code execution without creating a transform."
-  [_route-params
-   _query-params
-   body :- [:map
-            [:code :string]
-            [:tables [:map-of :string :int]]]]
-  (log/info "test python code execution")
-  (api/check-superuser)
-  (let [run-id python-test-run-id
-        cancel-chan (a/promise-chan)]
-    (transforms.canceling/chan-start-run! run-id cancel-chan)
-    (try
-      (let [{:keys [response output events]} (transforms-python.execute/test-python-transform! (:code body) (:tables body) run-id cancel-chan)
-            {:keys [body status]} response]
-        (if (= status 200)
-          (do
-            (log/info "Python test execution succeeded")
-            (-> (response/response {:message (deferred-tru "Python code executed successfully")
-                                    :result  {:body (assoc body :output output)}})
-                (assoc :status 200)))
-          (do
-            (log/error "Error executing Python test code")
-            (-> (response/response {:message   (deferred-tru "Python code execution failed")
-                                    :error     body
-                                    :stdout    (->> events (filter #(= "stdout" (:stream %))) (map :message) (str/join "\n"))
-                                    :stderr    (->> events (filter #(= "stderr" (:stream %))) (map :message) (str/join "\n"))
-                                    :exit_code (:exit_code (:exit_code body))})
-                (assoc :status status)))))
-      (finally
-        (transforms.canceling/chan-end-run! run-id)))))
-
-;; TODO this should move to the transforms-python module
-(api.macros/defendpoint :post "/test-python/cancel"
-  "Cancel the current test-python execution."
-  [_route-params
-   _query-params]
-  (log/info "canceling test python execution")
-  (api/check-superuser)
-  (if (transforms.canceling/chan-signal-cancel! python-test-run-id)
-    (-> (response/response {:message (deferred-tru "Python test canceled")})
-        (assoc :status 200))
-    (-> (response/response {:message (deferred-tru "No running Python test to cancel")})
-        (assoc :status 404))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform` routes."
