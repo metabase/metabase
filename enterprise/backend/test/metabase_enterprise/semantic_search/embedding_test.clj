@@ -2,7 +2,12 @@
   (:require
    [clj-http.client :as http]
    [clojure.test :refer :all]
+   [environ.core :as env]
    [metabase-enterprise.semantic-search.embedding :as embedding]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
+   [metabase-enterprise.semantic-search.index :as semantic.index]
+   [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
+   [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.analytics.core :as analytics]
    [metabase.test :as mt]
    [metabase.util.json :as json])
@@ -230,3 +235,39 @@
                        (-> tokens-calls first second first)))
                 (is (= (get-in mock-response [:usage :total_tokens])
                        (-> tokens-calls first second second)))))))))))
+
+;; TODO: Consider testing not only ai-service but also other providers
+(deftest get-embedding-opts-test
+  (mt/with-premium-features #{:semantic-search}
+    (when (string? (not-empty (:mb-pgvector-db-url env/env)))
+      (let [cache (atom {})
+            pgvector (semantic.env/get-pgvector-datasource!)
+            index-metadata (semantic.env/get-index-metadata)
+            {:keys [index metadata-row]} (semantic.index-metadata/get-active-index-state pgvector index-metadata)
+            cacher (fn [& args]
+                     (swap! cache update :called-with
+                            (fnil conj []) (vec args))
+                     nil)]
+        (testing "Index code-paths -- ai-service"
+          (with-redefs [embedding/get-embeddings-batch cacher
+                        embedding/get-embedding cacher
+                        semantic.index/upsert-embedding!-fn (fn [& args] (constantly nil))]
+            (semantic.index/upsert-index! pgvector index (semantic.tu/mock-documents))
+            (run! (fn [[_embedding-model _texts opts]]
+                    (is (= :index (:type opts))))
+                  (:called-with @cache))))
+
+        (reset! cache {})
+
+        (testing "Query code-paths -- ai-service"
+          (with-redefs [embedding/get-embeddings-batch (fn [& args]
+                                                         (swap! cache update :called-with
+                                                                (fnil conj []) (vec args))
+                                                         nil)
+                        embedding/get-embedding cacher
+                        semantic.index/reducible-search-query (constantly (eduction []))]
+            (semantic.index/query-index pgvector index {:search-string "xixix"})
+            (run! (fn [[_embedding-model _texts opts]]
+                    (is (= :query (:type opts))))
+                  (:called-with @cache))
+            (def cccc @cache)))))))
