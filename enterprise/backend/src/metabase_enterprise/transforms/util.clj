@@ -218,7 +218,11 @@
         column-definitions (into {} (map (fn [{:keys [name type database-type]}]
                                            (let [db-type (if database-type
                                                            [[:raw database-type]]
-                                                           (driver/type->database-type driver type))]
+                                                           (try
+                                                             (driver/type->database-type driver type)
+                                                             (catch IllegalArgumentException _
+                                                               (log/warnf "Couldn't determine database type for type %s, fallback to Text" type)
+                                                               (driver/type->database-type driver :type/Text))))]
                                              [name db-type])))
                                  columns)
         primary-key-opts (select-keys table-schema [:primary-key])]
