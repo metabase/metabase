@@ -27,7 +27,7 @@ function getValidationResult(query: Lib.Query): QueryValidationResult {
   const { isNative } = Lib.queryDisplayInfo(query);
   if (isNative) {
     const tags = Object.values(Lib.templateTags(query));
-    if (tags.some((t) => t.type !== "card" || t.type !== "snippet")) {
+    if (tags.some((t) => t.type !== "card" && t.type !== "snippet")) {
       return {
         isValid: false,
         message: t`Variables in transforms aren't supported.`,
