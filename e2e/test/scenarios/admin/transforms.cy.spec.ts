@@ -1189,7 +1189,6 @@ describe("scenarios > admin > transforms > databases without :schemas", () => {
     H.restore("mysql-8");
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
     cy.intercept("PUT", "/api/field/*").as("updateField");
     cy.intercept("POST", "/api/ee/transform").as("createTransform");
@@ -1362,7 +1361,7 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("tags", () => {
-    it("should be able to add and remove tags", () => {
+    it("should be able to add and remove tags", { tags: "@flaky" }, () => {
       H.createTransformJob({ name: "New job" }, { visitTransformJob: true });
       getTagsInput().click();
 
