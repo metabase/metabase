@@ -1,9 +1,12 @@
-import { useDisclosure, useHotkeys } from "@mantine/hooks";
+import { useDisclosure, useHotkeys, useToggle } from "@mantine/hooks";
 import { useState } from "react";
+import { ResizableBox } from "react-resizable";
+import { useWindowSize } from "react-use";
 
 import { useListDatabasesQuery } from "metabase/api";
 import type { SelectionRange } from "metabase/query_builder/components/NativeQueryEditor/types";
-import { Center, Flex, Loader, Stack } from "metabase/ui";
+import { ControlledNotebookNativePreview } from "metabase/querying/notebook/components/NotebookNativePreview/NotebookNativePreview";
+import { Box, Center, Flex, Loader, Stack, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetQuery, NativeQuerySnippet } from "metabase-types/api";
@@ -47,6 +50,7 @@ export function QueryEditor({
   } = useQueryResults(question);
   const canSave = Lib.canSave(question.query(), question.type());
   const { isNative } = Lib.queryDisplayInfo(question.query());
+  const [isShowingNativeQueryPreview, toggleNativeQueryPreview] = useToggle();
 
   const handleChange = async (newQuestion: Question) => {
     setQuestion(newQuestion);
@@ -101,6 +105,8 @@ export function QueryEditor({
     include_analytics: true,
   });
 
+  const { width: windowWidth } = useWindowSize();
+
   if (!isInitiallyLoaded || isLoading) {
     return (
       <Center>
@@ -108,6 +114,10 @@ export function QueryEditor({
       </Center>
     );
   }
+
+  const minSidebarWidth = 428;
+  const minNotebookWidth = 640;
+  const maxSidebarWidth = windowWidth - minNotebookWidth;
 
   return (
     <Stack
@@ -124,6 +134,10 @@ export function QueryEditor({
         canSave={canSave && (isNew || isQueryDirty)}
         onSave={handleSave}
         onCancel={onCancel}
+        isShowingNativeQueryPreview={isShowingNativeQueryPreview}
+        onToggleNativeQueryPreview={
+          isNative ? undefined : toggleNativeQueryPreview
+        }
       />
       <Flex h="100%" w="100%">
         <Stack flex="2 1 100%">
@@ -158,6 +172,28 @@ export function QueryEditor({
             onCancelQuery={() => undefined}
           />
         </Stack>
+        {isShowingNativeQueryPreview && !isNative && (
+          <ResizableBox
+            width={minSidebarWidth}
+            minConstraints={[minSidebarWidth, 0]}
+            maxConstraints={[maxSidebarWidth, 0]}
+            axis="x"
+            resizeHandles={["w"]}
+            handle={resizeHandle}
+            style={{
+              borderLeft: "1px solid var(--mb-color-border)",
+              marginInlineStart: "0.25rem",
+            }}
+          >
+            <ControlledNotebookNativePreview
+              question={question}
+              onConvertClick={(newQuestion) => {
+                toggleNativeQueryPreview();
+                setQuestion(newQuestion);
+              }}
+            />
+          </ResizableBox>
+        )}
         <EditorSidebar
           question={question}
           isNative={isNative}
@@ -172,3 +208,21 @@ export function QueryEditor({
     </Stack>
   );
 }
+
+const resizeHandle = (
+  <Flex
+    data-testid="notebook-native-preview-resize-handle"
+    align="center"
+    justify="center"
+    w="sm"
+    h="100%"
+    top={0}
+    pos="absolute"
+    left={rem(-4)}
+    style={{
+      cursor: "col-resize",
+    }}
+  >
+    <Box h="6.25rem" w="xs" bg="border" />
+  </Flex>
+);
