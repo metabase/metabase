@@ -32,4 +32,11 @@
   code {
     text-wrap: auto;
   }
+
+  blockquote {
+    background-color: var(--mb-color-bg-medium);
+    border-radius: 0.25rem;
+    margin: 0.25rem 0 1.25rem;
+    padding: 1rem 1.5rem;
+  }
 }
