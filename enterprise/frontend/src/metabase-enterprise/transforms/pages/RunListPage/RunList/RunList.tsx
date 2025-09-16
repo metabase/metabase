@@ -86,13 +86,13 @@ function RunTable({ runs }: RunTableProps) {
             onClick={() => handleRowClick(run)}
           >
             <td className={S.wrap}>{run.transform?.name}</td>
-            <td className={S.nowrap}>
+            <td className={S.wrap}>
               {parseTimestampWithTimezone(
                 run.start_time,
                 systemTimezone,
               ).format("lll")}
             </td>
-            <td className={S.nowrap}>
+            <td className={S.wrap}>
               {run.end_time
                 ? parseTimestampWithTimezone(
                     run.end_time,
@@ -100,7 +100,7 @@ function RunTable({ runs }: RunTableProps) {
                   ).format("lll")
                 : null}
             </td>
-            <td className={S.nowrap}>
+            <td>
               <RunStatusInfo
                 status={run.status}
                 message={run.message}

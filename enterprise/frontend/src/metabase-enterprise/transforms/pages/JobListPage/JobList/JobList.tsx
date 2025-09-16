@@ -76,7 +76,7 @@ export function JobList({ params }: { params: JobListParams }) {
             onClick={() => handleRowClick(job)}
           >
             <td className={S.wrap}>{job.name}</td>
-            <td className={S.nowrap}>
+            <td className={S.wrap}>
               {job.last_run?.start_time
                 ? parseTimestampWithTimezone(
                     job.last_run?.start_time,
@@ -84,7 +84,7 @@ export function JobList({ params }: { params: JobListParams }) {
                   ).format("lll")
                 : null}
             </td>
-            <td className={S.nowrap}>
+            <td>
               {job.next_run?.start_time
                 ? parseTimestampWithTimezone(
                     job.next_run?.start_time,
@@ -92,7 +92,7 @@ export function JobList({ params }: { params: JobListParams }) {
                   ).format("lll")
                 : null}
             </td>
-            <td className={S.wrap}>
+            <td>
               <TagList tags={tags} tagIds={job.tag_ids ?? []} />
             </td>
           </tr>

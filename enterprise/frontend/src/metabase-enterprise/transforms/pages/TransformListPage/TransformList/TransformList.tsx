@@ -73,7 +73,7 @@ export function TransformList() {
           >
             <td className={S.wrap}>{transform.name}</td>
             <td className={S.wrap}>{transform.target.name}</td>
-            <td className={S.nowrap}>
+            <td className={S.wrap}>
               {transform.last_run?.end_time
                 ? parseTimestampWithTimezone(
                     transform.last_run.end_time,
@@ -81,7 +81,7 @@ export function TransformList() {
                   ).format("lll")
                 : null}
             </td>
-            <td className={S.nowrap}>
+            <td>
               {transform.last_run != null ? (
                 <RunStatusInfo
                   status={transform.last_run.status}
@@ -97,7 +97,7 @@ export function TransformList() {
                 />
               ) : null}
             </td>
-            <td className={S.wrap}>
+            <td>
               <TagList tags={tags} tagIds={transform.tag_ids ?? []} />
             </td>
           </tr>
