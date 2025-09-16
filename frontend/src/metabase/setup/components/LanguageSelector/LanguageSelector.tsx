@@ -35,6 +35,7 @@ export const LanguageSelector = () => {
       data={languages}
       value={locale?.name || "English"}
       onChange={handleLocaleChange}
+      comboboxProps={{ width: "12.5rem", position: "bottom-end" }}
     />
   );
 };
