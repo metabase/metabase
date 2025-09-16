@@ -115,7 +115,7 @@ function UpdateTargetForm({
   }
 
   const handleSubmit = async (values: EditTransformValues) => {
-    // `updateTransform` throws when the target exists, so it needs to be called first
+    // check that the new target is valid before deleting the old target
     await updateTransform(getUpdateRequest(transform, values)).unwrap();
     if (shouldDeleteTarget) {
       await deleteTransformTarget(transform.id).unwrap();
