@@ -10,7 +10,7 @@
   "type": "object",
   "properties": {
     "event": {
-      "description": "The type of event being recorded. For example, then the Embedded Analytics JS is initialized, or when the Metabase configuration is updated.",
+      "description": "The type of event being recorded. For example, when the Embedded Analytics JS is initialized, or when the Metabase configuration is updated.",
       "type": "string",
       "enum": [
         "setup"
