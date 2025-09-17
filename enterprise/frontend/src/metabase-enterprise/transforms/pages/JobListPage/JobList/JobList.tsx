@@ -66,6 +66,7 @@ export function JobList({ params }: { params: JobListParams }) {
           <Flex align="center" gap="xs" key="next-run">
             {t`Next run`} <TimezoneIndicator />
           </Flex>,
+          t`Transforms`,
           t`Tags`,
         ]}
       >
