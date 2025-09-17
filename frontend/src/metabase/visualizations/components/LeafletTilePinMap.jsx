@@ -1,5 +1,6 @@
 import L from "leaflet";
 
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import api from "metabase/lib/api";
 
 import { getTileUrl } from "../lib/map";
@@ -23,9 +24,9 @@ export default class LeafletTilePinMap extends LeafletMap {
 
     this.pinTileLayer = L.tileLayer("", {}).addTo(this.map);
 
-    // if (isEmbeddingSdk()) {
-    this._patchCreateTileToUseFetch(this.pinTileLayer);
-    //}
+    if (isEmbeddingSdk()) {
+      this._overrideCreateTileToUseFetch(this.pinTileLayer);
+    }
 
     this.componentDidUpdate({}, {});
   }
@@ -80,9 +81,11 @@ export default class LeafletTilePinMap extends LeafletMap {
     });
   };
 
-  _patchCreateTileToUseFetch = (tileLayerInstance = {}) => {
-    const originalGetTileUrl = tileLayerInstance.getTileUrl;
-
+  /**
+   * Overrides TileLayer.createTile to use fetch instead of setting img.src directly.
+   * It's needed to be able to set custom headers (e.g. Authorization header for embedding).
+   */
+  _overrideCreateTileToUseFetch = (tileLayerInstance = {}) => {
     const onTileUnload = (event) => {
       const tile = event.tile;
 
@@ -133,10 +136,13 @@ export default class LeafletTilePinMap extends LeafletMap {
           return response.blob();
         })
         .then(async (blob) => {
-          const dataUrl = await blobToDataURL(blob);
+          const reader = new FileReader();
 
-          tile.src = dataUrl;
+          reader.onload = () => {
+            tile.src = reader.result;
+          };
 
+          reader.readAsDataURL(blob);
           done?.(null, tile);
         })
         .catch((error) => {
@@ -153,14 +159,5 @@ export default class LeafletTilePinMap extends LeafletMap {
 
       return tile;
     };
-
-    function blobToDataURL(blob) {
-      return new Promise((resolve, reject) => {
-        const r = new FileReader();
-        r.onload = () => resolve(String(r.result));
-        r.onerror = reject;
-        r.readAsDataURL(blob);
-      });
-    }
   };
 }
