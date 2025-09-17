@@ -1091,7 +1091,7 @@ jobs:
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        role-to-assume: ${{ secrets.PR_ENV_IAM_ROLE }}
+        role-to-assume: ${{ secrets.CI_IAM_ROLE }}
         role-session-name: GitHub_to_AWS_via_FederatedOIDC
         aws-region: us-east-1
     - name: Get ECR password
@@ -1110,7 +1110,8 @@ jobs:
       docker_password: ${{ steps.login-ecr.outputs.docker_password }}
 
   be-tests-vertica-ee:
-    needs: [login-to-ecr, determine-driver-skips]
+    needs: [determine-driver-skips, login-to-ecr]
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
