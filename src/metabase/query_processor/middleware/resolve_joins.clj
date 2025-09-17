@@ -10,7 +10,6 @@
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.walk :as lib.walk]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (mu/defn- merge-defaults :- ::lib.schema.join/join

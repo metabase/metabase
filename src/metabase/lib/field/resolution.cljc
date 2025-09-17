@@ -684,6 +684,5 @@
                (when-some [source-field (:source-field opts)]
                  (when-some [resolved-source-field ((some-fn :fk-field-id :lib/original-fk-field-id) <>)]
                    (when-not (= resolved-source-field source-field)
-                     (println "resolved-source-field source-field:" resolved-source-field source-field) ; NOCOMMIT
                      (throw (ex-info "Resolved column has different :source-field"
                                      {:query query, :stage-number stage-number, :field-ref field-ref, :col <>})))))))))))
