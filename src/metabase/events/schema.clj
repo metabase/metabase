@@ -162,9 +162,9 @@
    [:user-id [:maybe pos-int?]]
    [:model [:or :keyword :string]]])
 
- ;; Enterprise library sync events
+ ;; Enterprise remote sync events
 
-(mr/def :event/library-sync
+(mr/def :event/remote-sync
   [:map
    [:sync-type [:enum :initial :incremental :full "import" "export"]]
    [:library-id [:maybe pos-int?]]

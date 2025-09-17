@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.remote-sync.events :as lib.events]
-   [metabase-enterprise.remote-sync.models.library-change-log]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.git :as git]
@@ -63,9 +62,9 @@
                           :entity_id (if (seq entity-ids)
                                        [:not-in entity-ids]
                                        :entity_id)))))
-        (lib.events/publish-remote-sync-sync! "import" nil api/*current-user-id*
-                                              {:branch (or branch (:source-branch source))
-                                               :status "success"})
+        (lib.events/publish-remote-sync! "import" nil api/*current-user-id*
+                                         {:branch (or branch (:source-branch source))
+                                          :status "success"})
         (log/info "Successfully reloaded entities from git repository")
         {:status :success
          :message "Successfully reloaded from git repository"}
@@ -87,10 +86,10 @@
 
                             :else
                             (format "Failed to reload from git repository: %s" (.getMessage e)))]
-            (lib.events/publish-remote-sync-sync! "import" nil api/*current-user-id*
-                                                  {:branch (or branch (:source-branch source))
-                                                   :status "error"
-                                                   :message (.getMessage e)})
+            (lib.events/publish-remote-sync! "import" nil api/*current-user-id*
+                                             {:branch (or branch (:source-branch source))
+                                              :status "error"
+                                              :message (.getMessage e)})
             {:status :error
              :message error-msg
              :details {:error-type (type e)}}))))
@@ -218,17 +217,17 @@
                                  :include-database-secrets :false
                                  :continue-on-error false})
             (source/store! source branch message)))
-      (lib.events/publish-remote-sync-sync! "export" nil api/*current-user-id*
-                                            {:branch branch
-                                             :status "success"
-                                             :message message})
+      (lib.events/publish-remote-sync! "export" nil api/*current-user-id*
+                                       {:branch branch
+                                        :status "success"
+                                        :message message})
       {:status :success}
 
       (catch Exception e
-        (lib.events/publish-remote-sync-sync! "export" nil api/*current-user-id*
-                                              {:branch branch
-                                               :status "error"
-                                               :message (ex-message e)})
+        (lib.events/publish-remote-sync! "export" nil api/*current-user-id*
+                                         {:branch branch
+                                          :status "error"
+                                          :message (ex-message e)})
         {:status :error
          :message (format "Failed to export to git repository: %s" (.getMessage e))}))
     {:status :error
