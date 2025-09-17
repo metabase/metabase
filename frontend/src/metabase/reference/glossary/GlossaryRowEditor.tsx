@@ -81,6 +81,7 @@ export function GlossaryRowEditor({
           styles={{
             input: {
               paddingTop: "0.75rem",
+              paddingBottom: "0.25rem",
               lineHeight: 1.2,
             },
           }}
