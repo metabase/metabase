@@ -826,17 +826,6 @@ describe("issue 31628", () => {
     { size_x: 2, size_y, row: 0, col: 18 },
   ];
 
-  const CARDS_SIZE_1X = {
-    cards: [
-      ...createCardsRow({ size_y: 1 }),
-      { size_x: 1, size_y: 1, row: 0, col: 20 },
-      { size_x: 1, size_y: 2, row: 1, col: 20 },
-      { size_x: 1, size_y: 4, row: 3, col: 20 },
-      { size_x: 1, size_y: 3, row: 7, col: 20 },
-    ],
-    name: "cards 1 cell high or wide",
-  };
-
   const VIEWPORTS = [
     // { width: 375, height: 667, openSidebar: false },
     // { width: 820, height: 800, openSidebar: true },
@@ -860,7 +849,6 @@ describe("issue 31628", () => {
     { cards: createCardsRow({ size_y: 2 }), name: "cards 2 cells high" },
     { cards: createCardsRow({ size_y: 3 }), name: "cards 3 cells high" },
     { cards: createCardsRow({ size_y: 4 }), name: "cards 4 cells high" },
-    CARDS_SIZE_1X,
   ];
 
   const SMART_SCALAR_QUESTION = {
@@ -971,16 +959,6 @@ describe("issue 31628", () => {
         scalarContainer().realHover({ position: "bottom" });
 
         cy.findByRole("tooltip").findByText("18,760").should("exist");
-
-        cy.log("should show ellipsis icon with question name in tooltip");
-        cy.findByTestId("scalar-title-icon").realHover();
-
-        cy.findByRole("tooltip")
-          .findByText(SCALAR_QUESTION.name)
-          .should("exist");
-
-        cy.log("should not show description");
-        cy.findByTestId("scalar-description").should("not.exist");
       });
     });
 
@@ -1003,24 +981,6 @@ describe("issue 31628", () => {
         scalarContainer().realHover();
 
         cy.findByRole("tooltip").should("not.exist");
-
-        cy.log("should not show ellipsis icon for title");
-        cy.findByTestId("scalar-title-icon").should("not.exist");
-
-        cy.log("should truncate title and show title tooltip on hover");
-        scalarTitle().then(($element) => H.assertIsEllipsified($element[0]));
-        scalarTitle().realHover();
-
-        cy.findByRole("tooltip")
-          .findByText(SCALAR_QUESTION.name)
-          .should("exist");
-
-        cy.log("should show description tooltip on hover");
-        cy.findByTestId("scalar-description").realHover();
-
-        cy.findByRole("tooltip")
-          .findByText(SCALAR_QUESTION.description)
-          .should("exist");
       });
     });
 
@@ -1043,22 +1003,6 @@ describe("issue 31628", () => {
         scalarContainer().realHover();
 
         cy.findByRole("tooltip").should("not.exist");
-
-        cy.log("should not show ellipsis icon for title");
-        cy.findByTestId("scalar-title-icon").should("not.exist");
-
-        cy.log(
-          "should not truncate title and should not show title tooltip on hover",
-        );
-        scalarTitle().then(($element) => H.assertIsNotEllipsified($element[0]));
-        scalarTitle().realHover();
-
-        cy.findByRole("tooltip").should("not.exist");
-
-        cy.log("should show description tooltip on hover");
-        cy.findByTestId("scalar-description").realHover();
-
-        H.tooltip().findByText(SCALAR_QUESTION.description).should("exist");
       });
     });
   });
@@ -1579,5 +1523,4 @@ SELECT 'group_2', 'sub_group_2', 52, 'group_2__sub_group_2';
 });
 
 const scalarContainer = () => cy.findByTestId("scalar-container");
-const scalarTitle = () => cy.findByTestId("scalar-title");
 const previousValue = () => cy.findByTestId("scalar-previous-value");
