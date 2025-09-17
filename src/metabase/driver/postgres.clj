@@ -1045,7 +1045,7 @@
 (defmethod type->database-type :type/Number [_] [:bigint])
 (defmethod type->database-type :type/Integer [_] [:int])
 (defmethod type->database-type :type/Float [_] [:float])
-(defmethod type->database-type :type/Decimal [_] [:float])
+(defmethod type->database-type :type/Decimal [_] [:decimal])
 (defmethod type->database-type :type/Boolean [_] [:boolean])
 (defmethod type->database-type :type/Date [_] [:date])
 (defmethod type->database-type :type/DateTime [_] [:timestamp])
