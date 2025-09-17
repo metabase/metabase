@@ -1,3 +1,9 @@
 .root {
   overflow: auto;
 }
+
+.nativeSidebarToggle {
+  position: absolute;
+  top: var(--mantine-spacing-lg);
+  right: var(--mantine-spacing-md);
+}

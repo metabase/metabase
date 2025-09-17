@@ -2,11 +2,20 @@ import { useDisclosure, useHotkeys, useToggle } from "@mantine/hooks";
 import { useState } from "react";
 import { ResizableBox } from "react-resizable";
 import { useWindowSize } from "react-use";
+import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import type { SelectionRange } from "metabase/query_builder/components/NativeQueryEditor/types";
 import { ControlledNotebookNativePreview } from "metabase/querying/notebook/components/NotebookNativePreview/NotebookNativePreview";
-import { Center, Flex, Loader, Stack } from "metabase/ui";
+import {
+  ActionIcon,
+  Center,
+  Flex,
+  Icon,
+  Loader,
+  Stack,
+  Tooltip,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetQuery, NativeQuerySnippet } from "metabase-types/api";
@@ -135,13 +144,9 @@ export function QueryEditor({
         canSave={canSave && (isNew || isQueryDirty)}
         onSave={handleSave}
         onCancel={onCancel}
-        isShowingNativeQueryPreview={isShowingNativeQueryPreview}
-        onToggleNativeQueryPreview={
-          isNative ? undefined : toggleNativeQueryPreview
-        }
       />
       <Flex h="100%" w="100%">
-        <Stack flex="2 1 100%">
+        <Stack flex="2 1 100%" pos="relative">
           <EditorBody
             question={question}
             isNative={isNative}
@@ -172,7 +177,25 @@ export function QueryEditor({
             onRunQuery={runQuery}
             onCancelQuery={() => undefined}
           />
+
+          {!isNative && (
+            <Tooltip
+              label={isShowingNativeQueryPreview ? t`Hide SQL` : t`View SQL`}
+            >
+              <ActionIcon
+                key="view-sql"
+                onClick={() => toggleNativeQueryPreview()}
+                size="lg"
+                className={S.nativeSidebarToggle}
+                color="text"
+                variant="subtle"
+              >
+                <Icon name="sql" color="text" />
+              </ActionIcon>
+            </Tooltip>
+          )}
         </Stack>
+
         {isShowingNativeQueryPreview && !isNative && (
           <ResizableBox
             width={minSidebarWidth}

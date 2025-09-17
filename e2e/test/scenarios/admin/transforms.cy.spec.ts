@@ -258,7 +258,7 @@ LIMIT
       createMbqlTransform({ visitTransform: true });
       getTransformPage().findByText("Edit query").click();
 
-      getQueryEditor().findByText("View SQL").click();
+      getQueryEditor().icon("sql").click();
       H.sidebar().should("be.visible");
       H.NativeEditor.value().should("eq", EXPECTED_QUERY);
 
