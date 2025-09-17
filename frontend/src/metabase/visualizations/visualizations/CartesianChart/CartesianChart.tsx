@@ -30,6 +30,9 @@ import { useChartDebug } from "./use-chart-debug";
 import { useModelsAndOption } from "./use-models-and-option";
 import { getGridSizeAdjustedSettings, validateChartModel } from "./utils";
 
+const HIDE_X_AXIS_LABEL_WIDTH_THRESHOLD = 360;
+const HIDE_Y_AXIS_LABEL_WIDTH_THRESHOLD = 200;
+
 function _CartesianChart(props: VisualizationProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   // The width and height from props reflect the dimensions of the entire container which includes legend,
@@ -62,10 +65,18 @@ function _CartesianChart(props: VisualizationProps) {
     titleMenuItems,
   } = props;
 
-  const settings = useMemo(
-    () => getGridSizeAdjustedSettings(originalSettings, gridSize),
-    [originalSettings, gridSize],
-  );
+  const settings = useMemo(() => {
+    const settings = getGridSizeAdjustedSettings(originalSettings, gridSize);
+    if (isDashboard) {
+      if (outerWidth <= HIDE_X_AXIS_LABEL_WIDTH_THRESHOLD) {
+        settings["graph.y_axis.labels_enabled"] = false;
+      }
+      if (outerHeight <= HIDE_Y_AXIS_LABEL_WIDTH_THRESHOLD) {
+        settings["graph.x_axis.labels_enabled"] = false;
+      }
+    }
+    return settings;
+  }, [originalSettings, gridSize, isDashboard, outerWidth, outerHeight]);
 
   const { chartModel, timelineEventsModel, option } = useModelsAndOption(
     {
