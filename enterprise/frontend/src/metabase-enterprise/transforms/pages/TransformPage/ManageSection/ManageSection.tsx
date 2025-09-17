@@ -16,16 +16,26 @@ import { DeleteTransformModal } from "./DeleteTransformModal";
 
 type ManageSectionProps = {
   transform: Transform;
+  isRunningOrSyncing: boolean;
 };
 
-export function ManageSection({ transform }: ManageSectionProps) {
+export function ManageSection({
+  transform,
+  isRunningOrSyncing,
+}: ManageSectionProps) {
   return (
     <TitleSection
       label={t`Query`}
       rightSection={
         <Group>
-          <EditQueryButton transform={transform} />
-          <DeleteTransformButton transform={transform} />
+          <EditQueryButton
+            transform={transform}
+            isRunningOrSyncing={isRunningOrSyncing}
+          />
+          <DeleteTransformButton
+            transform={transform}
+            isRunningOrSyncing={isRunningOrSyncing}
+          />
         </Group>
       }
     >
@@ -38,14 +48,19 @@ export function ManageSection({ transform }: ManageSectionProps) {
 
 type EditQueryButtonProps = {
   transform: Transform;
+  isRunningOrSyncing: boolean;
 };
 
-function EditQueryButton({ transform }: EditQueryButtonProps) {
+function EditQueryButton({
+  transform,
+  isRunningOrSyncing,
+}: EditQueryButtonProps) {
   return (
     <Button
-      component={Link}
+      component={isRunningOrSyncing ? undefined : Link}
       to={getTransformQueryUrl(transform.id)}
       leftSection={<Icon name="pencil_lines" aria-hidden />}
+      disabled={isRunningOrSyncing}
     >
       {t`Edit query`}
     </Button>
@@ -54,9 +69,13 @@ function EditQueryButton({ transform }: EditQueryButtonProps) {
 
 type DeleteTransformButtonProps = {
   transform: Transform;
+  isRunningOrSyncing: boolean;
 };
 
-function DeleteTransformButton({ transform }: DeleteTransformButtonProps) {
+function DeleteTransformButton({
+  transform,
+  isRunningOrSyncing,
+}: DeleteTransformButtonProps) {
   const dispatch = useDispatch();
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
@@ -71,6 +90,7 @@ function DeleteTransformButton({ transform }: DeleteTransformButtonProps) {
     <>
       <Button
         leftSection={<Icon name="trash" aria-hidden />}
+        disabled={isRunningOrSyncing}
         onClick={openModal}
       >
         {t`Delete`}

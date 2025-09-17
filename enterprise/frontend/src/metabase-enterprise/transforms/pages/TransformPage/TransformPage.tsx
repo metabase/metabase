@@ -32,17 +32,17 @@ type TransformPageProps = {
 
 export function TransformPage({ params }: TransformPageProps) {
   const { transformId } = getParsedParams(params);
-  const [isPolling, setIsPolling] = useState(false);
+  const [isRunningOrSyncing, setIsRunningOrSyncing] = useState(false);
   const {
     data: transform,
     isLoading,
     error,
   } = useGetTransformQuery(transformId ?? skipToken, {
-    pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
+    pollingInterval: isRunningOrSyncing ? POLLING_INTERVAL : undefined,
   });
 
-  if (isPolling !== isPollingNeeded(transform)) {
-    setIsPolling(!isPolling);
+  if (isRunningOrSyncing !== getIsRunningOrSyncing(transform)) {
+    setIsRunningOrSyncing(!isRunningOrSyncing);
   }
 
   if (isLoading || error != null) {
@@ -60,8 +60,14 @@ export function TransformPage({ params }: TransformPageProps) {
         <NameSection transform={transform} />
       </Stack>
       <RunSection transform={transform} />
-      <TargetSection transform={transform} />
-      <ManageSection transform={transform} />
+      <TargetSection
+        transform={transform}
+        isRunningOrSyncing={isRunningOrSyncing}
+      />
+      <ManageSection
+        transform={transform}
+        isRunningOrSyncing={isRunningOrSyncing}
+      />
       <DependenciesSection transform={transform} />
     </Stack>
   );
@@ -75,7 +81,7 @@ function getParsedParams({
   };
 }
 
-function isPollingNeeded(transform?: Transform) {
+function getIsRunningOrSyncing(transform?: Transform) {
   const lastRun = transform?.last_run;
 
   if (transform == null || lastRun == null) {

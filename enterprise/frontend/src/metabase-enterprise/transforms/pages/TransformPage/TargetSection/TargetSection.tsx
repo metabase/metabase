@@ -32,9 +32,13 @@ import { UpdateTargetModal } from "./UpdateTargetModal";
 
 type TargetSectionProps = {
   transform: Transform;
+  isRunningOrSyncing: boolean;
 };
 
-export function TargetSection({ transform }: TargetSectionProps) {
+export function TargetSection({
+  transform,
+  isRunningOrSyncing,
+}: TargetSectionProps) {
   return (
     <SplitSection
       label={t`Transform target`}
@@ -45,7 +49,10 @@ export function TargetSection({ transform }: TargetSectionProps) {
       </Group>
       <Divider />
       <Group p="lg">
-        <EditTargetButton transform={transform} />
+        <EditTargetButton
+          transform={transform}
+          isRunningOrSyncing={isRunningOrSyncing}
+        />
         <EditMetadataButton transform={transform} />
       </Group>
     </SplitSection>
@@ -76,7 +83,6 @@ function TargetInfo({ transform }: TargetInfoProps) {
     );
 
   const database = table?.db ?? databaseFromApi;
-
   const isLoading = isDatabaseLoading || isSchemasLoading;
 
   if (isLoading) {
@@ -169,9 +175,13 @@ function TargetItemDivider() {
 
 type EditTargetButtonProps = {
   transform: Transform;
+  isRunningOrSyncing: boolean;
 };
 
-function EditTargetButton({ transform }: EditTargetButtonProps) {
+function EditTargetButton({
+  transform,
+  isRunningOrSyncing,
+}: EditTargetButtonProps) {
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const { sendSuccessToast } = useMetadataToasts();
@@ -185,6 +195,7 @@ function EditTargetButton({ transform }: EditTargetButtonProps) {
     <>
       <Button
         leftSection={<Icon name="pencil_lines" aria-hidden />}
+        disabled={isRunningOrSyncing}
         onClick={openModal}
       >
         {t`Change target`}
