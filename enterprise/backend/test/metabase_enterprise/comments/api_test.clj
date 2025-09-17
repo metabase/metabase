@@ -81,12 +81,14 @@
                                          :target_type "document"
                                          :target_id doc-id))))
           (testing "creates and returns comments for entity"
-            (let [created   (mt/user-http-request :rasta :post 200 "ee/comment/"
+            (let [content   (tiptap [:p "New comment"])
+                  created   (mt/user-http-request :rasta :post 200 "ee/comment/"
                                                   {:target_type "document"
                                                    :target_id   doc-id
-                                                   :content     {:text "New comment"}})
+                                                   :content     content
+                                                   :html        "<p>New comment</p>"})
                   expected1 {:id          int?
-                             :content     {:text "New comment"}
+                             :content     content
                              :target_type "document"
                              :target_id   doc-id
                              :creator     {:id (mt/user->id :rasta)}
@@ -107,13 +109,15 @@
                         (first (swap-vals! mt/inbox empty)))))
 
               (testing "creates a reply to an existing comment"
-                (let [child     (mt/user-http-request :crowberto :post 200 "ee/comment/"
+                (let [content2  (tiptap [:p "Other comment"])
+                      child     (mt/user-http-request :crowberto :post 200 "ee/comment/"
                                                       {:target_type       "document"
                                                        :target_id         doc-id
                                                        :parent_comment_id (:id created)
-                                                       :content           {:text "Other comment"}})
+                                                       :content           content2
+                                                       :html              "<p>Other comment</p>"})
                       expected2 {:id                int?
-                                 :content           {:text "Other comment"}
+                                 :content           content2
                                  :target_type       "document"
                                  :target_id         doc-id
                                  :creator           {:id (mt/user->id :crowberto)}
