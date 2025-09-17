@@ -144,7 +144,7 @@
 (doto :model/Collection
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/git-sync-protected)
+  (derive :hook/remote-sync-protected)
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
 

@@ -29,7 +29,7 @@
         (git/fetch! source)
         ;; Load all entities from Git first - this handles creates/updates via entity_id matching
         (let [load-result (serdes/with-cache
-                            (v2.load/load-metabase! (source/ingestable-source source (or branch (settings/git-sync-import-branch)))
+                            (v2.load/load-metabase! (source/ingestable-source source (or branch (settings/remote-sync-branch)))
                                                     :root-dependency-path [{:id collection/library-entity-id
                                                                             :model "Collection"}]))
               ;; Extract entity_ids by model from the :seen paths
@@ -251,7 +251,7 @@
                                             [:branch {:optional true} ms/NonBlankString]
                                             [:force-sync {:optional true} :boolean]]
   (api/check-superuser)
-  (let [result (save-to-git! (or branch (settings/git-sync-export-branch))
+  (let [result (save-to-git! (or branch (settings/remote-sync-branch))
                              (or message "test-commit"))]
     (case (:status result)
       :success "Success"
@@ -269,21 +269,23 @@
   "Update Git Sync related settings. You must be a superuser to do this."
   [_route-params
    _query-params
-   {:keys [git-sync-url git-sync-token git-sync-type
-           git-sync-import-branch git-sync-export-branch]}
+   {:keys [remote-sync-configured remote-sync-url remote-sync-token remote-sync-type
+           remote-sync-branch]}
    :- [:map
-       [:git-sync-url          {:optional true} [:maybe :string]]
-       [:git-sync-token        {:optional true} [:maybe :string]]
-       [:git-sync-type         {:optional true} [:maybe [:enum "import" "export"]]]
-       [:git-sync-import-branch {:optional true} [:maybe :string]]
-       [:git-sync-export-branch {:optional true} [:maybe :string]]]]
+       [:remote-sync-configured {:optional true} [:maybe :boolean]]
+       [:remote-sync-url {:optional true} [:maybe :string]]
+       [:remote-sync-token {:optional true} [:maybe :string]]
+       [:remote-sync-type {:optional true} [:maybe [:enum "import" "export"]]]
+       [:remote-sync-branch {:optional true} [:maybe :string]]]]
   (api/check-superuser)
-  (t2/with-transaction [_conn]
-    (settings/git-sync-url! git-sync-url)
-    (settings/git-sync-token! git-sync-token)
-    (settings/git-sync-type! git-sync-type)
-    (settings/git-sync-import-branch! git-sync-import-branch)
-    (settings/git-sync-export-branch! git-sync-export-branch))
+  ;; Set remote-sync-configured in a separate step because it requires other settings to be set first
+  (try
+    (settings/check-and-update-settings! remote-sync-url remote-sync-token remote-sync-branch remote-sync-type)
+    (catch Exception e
+      (throw (ex-info "Invalid git settings"
+                      {:error (.getMessage e)
+                       :status-code  400}))))
+  (settings/remote-sync-configured! remote-sync-configured)
   {:success true})
 
 (api.macros/defendpoint :get "/branches"

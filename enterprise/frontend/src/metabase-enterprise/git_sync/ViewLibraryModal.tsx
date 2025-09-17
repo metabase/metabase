@@ -15,7 +15,7 @@ export const ViewLibraryModal = ({
   isOpen,
   onClose,
 }: ViewLibraryModalProps) => {
-  const syncConfigured = useSetting("git-sync-configured");
+  const syncConfigured = useSetting("remote-sync-configured");
 
   return (
     <Modal.Root opened={isOpen} onClose={onClose} size="calc(100vw - 60px)">

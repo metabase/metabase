@@ -53,9 +53,9 @@ export function LibrarySyncControl() {
     reject: (reason?: any) => void;
   } | null>(null);
 
-  const defaultPullBranch = useSetting("git-sync-import-branch");
-  const defaultPushBranch = useSetting("git-sync-export-branch");
-  const allowEdit = useSetting("git-sync-allow-edit");
+  const defaultPullBranch = useSetting("remote-sync-branch");
+  const defaultPushBranch = useSetting("remote-sync-branch");
+  const allowEdit = useSetting("remote-sync-allow-edit");
 
   const [pullBranch, setPullBranch] = useState<string>(
     defaultPullBranch ?? "main",
@@ -63,7 +63,7 @@ export function LibrarySyncControl() {
   const [pushBranch, setPushBranch] = useState<string>(
     defaultPushBranch ?? "main",
   );
-  const gitSyncConfigured = useSetting("git-sync-configured");
+  const gitSyncConfigured = useSetting("remote-sync-configured");
 
   const { data: collections } = useListCollectionsTreeQuery();
 
@@ -165,7 +165,7 @@ export function LibrarySyncControl() {
           <Stack gap="md" align="stretch" p="lg" miw="20rem">
             <Flex gap="md" align="end">
               <Autocomplete
-                name="git-sync-import-branch"
+                name="remote-sync-import-branch"
                 // eslint-disable-next-line
                 description={t`Metabase will pull in library content from this branch`}
                 title={t`Import branch`}
@@ -195,7 +195,7 @@ export function LibrarySyncControl() {
             {allowEdit && (
               <Flex gap="md" align="end">
                 <Autocomplete
-                  name="git-sync-export-branch"
+                  name="remote-sync-export-branch"
                   // eslint-disable-next-line
                   description={t`Metabase will save library content to this branch`}
                   title={t`Export branch`}

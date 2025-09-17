@@ -42,7 +42,7 @@
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/git-sync-protected))
+  (derive :hook/remote-sync-protected))
 
 (defmethod mi/can-write? :model/Dashboard
   ([instance]

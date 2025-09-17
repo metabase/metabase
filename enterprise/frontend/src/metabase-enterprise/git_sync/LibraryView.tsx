@@ -69,7 +69,7 @@ export const LibraryView = () => {
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
   const [filterValue, setFilterValue] = useState("");
   const debouncedFilter = useDebouncedValue(filterValue, 300);
-  const importBranch = useSetting("git-sync-import-branch");
+  const importBranch = useSetting("remote-sync-import-branch");
   const [importGit, { isLoading: isImporting }] = useImportGitMutation();
   const dispatch = useDispatch();
 

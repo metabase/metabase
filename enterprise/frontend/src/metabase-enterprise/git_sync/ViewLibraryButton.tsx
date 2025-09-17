@@ -11,7 +11,7 @@ import { ViewLibraryModal } from "./ViewLibraryModal";
 export const ViewLibraryButton = () => {
   const [isOpen, setIsOpen] = useState(false);
   const isAdmin = useSelector(getUserIsAdmin);
-  const syncConfigured = useSetting("git-sync-configured");
+  const syncConfigured = useSetting("remote-sync-configured");
 
   if (!isAdmin) {
     return null;

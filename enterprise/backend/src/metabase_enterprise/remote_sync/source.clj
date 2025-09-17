@@ -82,8 +82,8 @@
 (defn source-from-settings
   "Returns a source based on the current settings"
   []
-  (git/git-source (setting/get :git-sync-url)
-                  (setting/get :git-sync-token)))
+  (git/git-source (setting/get :remote-sync-url)
+                  (setting/get :remote-sync-token)))
 
 (defn can-access-branch-in-source?
   "Return true if we can access the given branch in the remote git repository, false otherwise."

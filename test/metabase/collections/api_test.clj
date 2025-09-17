@@ -2610,7 +2610,7 @@
           (is (= "remote-synced" (t2/select-one-fn :type :model/Collection :id (:id collection)))))))
 
     (testing "Can update a collection from 'remote-synced' to nil"
-      (mt/with-temporary-setting-values [git-sync-allow-edit true]
+      (mt/with-temporary-setting-values [remote-sync-allow-edit true]
         (mt/with-temp [:model/Collection collection {:name "Remote Collection" :type "remote-synced"}]
           ;; Verify it starts with remote-synced type
           (is (= "remote-synced" (t2/select-one-fn :type :model/Collection :id (:id collection))))
@@ -2622,7 +2622,7 @@
             (is (nil? (t2/select-one-fn :type :model/Collection :id (:id collection))))))))
 
     (testing "Can update other properties without changing type"
-      (mt/with-temporary-setting-values [git-sync-allow-edit true]
+      (mt/with-temporary-setting-values [remote-sync-allow-edit true]
         (mt/with-temp [:model/Collection collection {:name "Test Collection" :type "remote-synced"}]
           ;; Update name without specifying type
           (let [response (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection))

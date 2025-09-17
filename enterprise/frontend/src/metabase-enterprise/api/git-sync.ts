@@ -206,7 +206,7 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
     updateGitSyncSettings: builder.mutation<void, GitSyncSettings>({
       query: (settings) => ({
         method: "PUT",
-        url: `/api/ee/library/settings`,
+        url: `/api/ee/remote-sync/settings`,
         body: settings,
       }),
       invalidatesTags: (_, error) =>

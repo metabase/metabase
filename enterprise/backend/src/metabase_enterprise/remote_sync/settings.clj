@@ -1,10 +1,12 @@
 (ns metabase-enterprise.remote-sync.settings
   (:require
    [metabase-enterprise.remote-sync.source :as source]
+   [metabase-enterprise.remote-sync.source.git :as git]
+   [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
-(defsetting git-sync-configured
+(defsetting remote-sync-configured
   (deferred-tru "Whether git sync is configured.")
   :type       :boolean
   :visibility :authenticated
@@ -12,68 +14,31 @@
   :encryption :no
   :default    false)
 
-(defn- verify-git-sync-configuration
-  "Verifies that git sync is properly configured by checking repository access"
-  []
-  (try
-    (when-let [source (source/source-from-settings)]
-      (and (source/can-access-branch-in-source? source (setting/get :git-sync-import-branch))
-           (some? (setting/get :git-sync-url))
-           (some? (setting/get :git-sync-token))))
-    (catch Exception _
-      false)))
-
-(defn- set-repo-with-verification!-fn [original-key]
-  (fn [new-value]
-    (setting/set-value-of-type! :string original-key new-value)
-    (git-sync-configured! (verify-git-sync-configuration))))
-
-(defsetting git-sync-import-branch
-  (deferred-tru "The git branch to pull from, e.g. `main`")
-  :type :string
-  :visibility :admin
-  :encryption :no
-  :export? false
-  :default "main"
-  :setter (set-repo-with-verification!-fn :git-sync-import-branch))
-
-(defsetting git-sync-token
-  (deferred-tru "A GH token")
-  :type :string
-  :visibility :admin
-  :doc true
-  :export? false
-  :encryption :when-encryption-key-set
-  :audit :getter
-  :setter (set-repo-with-verification!-fn :git-sync-token))
-
-(defsetting git-sync-url
-  (deferred-tru "The location of your git repository, e.g. https://github.com/acme-inco/metabase.git")
-  :type       :string
-  :visibility :admin
-  :encryption :no
-  :export?    false
-  :setter (set-repo-with-verification!-fn :git-sync-url))
-
-;; TODO actually use this
-(defsetting git-sync-key
-  (deferred-tru "An RSA key with write permissions to the git repository.")
-  :type       :string
-  :visibility :admin
-  :doc        true
-  :export?    false
-  :encryption :when-encryption-key-set
-  :audit      :getter)
-
-(defsetting git-sync-export-branch
-  (deferred-tru "The git branch to push to, e.g. `new-changes`")
+(defsetting remote-sync-branch
+  (deferred-tru "The remote branch to sync with, e.g. `main`")
   :type :string
   :visibility :admin
   :encryption :no
   :export? false
   :default "main")
 
-(defsetting git-sync-type
+(defsetting remote-sync-token
+  (deferred-tru "A GH token")
+  :type :string
+  :visibility :admin
+  :doc true
+  :export? false
+  :encryption :when-encryption-key-set
+  :audit :getter)
+
+(defsetting remote-sync-url
+  (deferred-tru "The location of your git repository, e.g. https://github.com/acme-inco/metabase.git")
+  :type       :string
+  :visibility :admin
+  :encryption :no
+  :export?    false)
+
+(defsetting remote-sync-type
   (deferred-tru "Git synchronization type - import or export")
   :type :string
   :visibility :authenticated
@@ -81,9 +46,27 @@
   :encryption :no
   :default "import")
 
-(defsetting git-sync-allow-edit
+(defsetting remote-sync-allow-edit
   (deferred-tru "Whether library content can be edited on this instance")
   :type :boolean
   :visibility :authenticated
   :export? false
   :default false)
+
+(defn check-settings
+  "Check that the given settings are valid and update if they are. Throws exception if they are not."
+  [remote-sync-url remote-sync-token remote-sync-branch]
+  (let [source (git/git-source remote-sync-url #p remote-sync-token)
+        branch-exists (boolean (get (set (source.p/branches source)) remote-sync-branch))]
+    (when-not branch-exists
+      (throw (ex-info (deferred-tru "Branch not found") {:branch remote-sync-branch}
+                      {:status-code 400})))))
+
+(defn check-and-update-settings!
+  "Check that the given settings are valid and update if they are. Throws exception if they are not."
+  [remote-sync-url remote-sync-token remote-sync-branch remote-sync-type]
+  (check-settings remote-sync-url remote-sync-token remote-sync-branch)
+  (setting/set-many! {:remote-sync-url    remote-sync-url
+                      :remote-sync-token  remote-sync-token
+                      :remote-sync-branch remote-sync-branch
+                      :remote-sync-type   remote-sync-type}))
