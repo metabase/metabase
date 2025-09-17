@@ -33,6 +33,7 @@
 }
 
 .flexContent :global(.node-cardEmbed) {
+  height: 100%;
   padding-left: 0.5rem;
   padding-right: 0.5rem;
   caret-color: auto;

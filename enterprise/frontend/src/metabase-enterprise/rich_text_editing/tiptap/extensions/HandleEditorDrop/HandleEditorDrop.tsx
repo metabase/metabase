@@ -1,6 +1,11 @@
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 
+import {
+  RESIZE_NODE_DEFAULT_HEIGHT,
+  RESIZE_NODE_MIN_HEIGHT,
+} from "metabase-enterprise/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode";
+
 export const HandleEditorDrop = Extension.create({
   name: "handleEditorDrop",
   addProseMirrorPlugins() {
@@ -208,7 +213,10 @@ export const HandleEditorDrop = Extension.create({
                           if (remainingCardEmbed) {
                             const wrappedRemainingCard =
                               view.state.schema.nodes.resizeNode.create(
-                                { height: 442, minHeight: 250 },
+                                {
+                                  height: RESIZE_NODE_DEFAULT_HEIGHT,
+                                  minHeight: RESIZE_NODE_MIN_HEIGHT,
+                                },
                                 [remainingCardEmbed],
                               );
 
@@ -271,7 +279,10 @@ export const HandleEditorDrop = Extension.create({
                         // Now insert the wrapped node at drop position (after FlexContainer operations)
                         const wrappedNode =
                           view.state.schema.nodes.resizeNode.create(
-                            { height: 442, minHeight: 250 },
+                            {
+                              height: RESIZE_NODE_DEFAULT_HEIGHT,
+                              minHeight: RESIZE_NODE_MIN_HEIGHT,
+                            },
                             [cardEmbedNode],
                           );
 
@@ -302,7 +313,10 @@ export const HandleEditorDrop = Extension.create({
                       // Wrap the cardEmbed in a resizeNode
                       const wrappedNode =
                         view.state.schema.nodes.resizeNode.create(
-                          { height: 442, minHeight: 250 },
+                          {
+                            height: RESIZE_NODE_DEFAULT_HEIGHT,
+                            minHeight: RESIZE_NODE_MIN_HEIGHT,
+                          },
                           [cardEmbedNode],
                         );
 

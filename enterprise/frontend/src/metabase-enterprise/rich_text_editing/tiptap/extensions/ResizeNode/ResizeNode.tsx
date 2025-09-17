@@ -11,6 +11,9 @@ import { Box, Flex } from "metabase/ui";
 
 import S from "./ResizeNode.module.css";
 
+export const RESIZE_NODE_MIN_HEIGHT = 280;
+export const RESIZE_NODE_DEFAULT_HEIGHT = 442;
+
 export const ResizeNode: Node<{
   HTMLAttributes: {
     height: number;
@@ -28,11 +31,11 @@ export const ResizeNode: Node<{
   addAttributes() {
     return {
       height: {
-        default: 442,
+        default: RESIZE_NODE_DEFAULT_HEIGHT,
         parseHTML: (element) => element.getAttribute("data-height"),
       },
       minHeight: {
-        default: 250,
+        default: RESIZE_NODE_MIN_HEIGHT,
         parseHTML: (element) => element.getAttribute("data-min-height"),
       },
     };

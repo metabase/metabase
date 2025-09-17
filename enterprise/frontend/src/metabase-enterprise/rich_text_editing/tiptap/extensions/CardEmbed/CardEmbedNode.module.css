@@ -43,6 +43,7 @@
 .questionResults {
   position: relative;
   flex-grow: 1;
+  overflow: hidden; /* needed to constraint funnel chart */
 }
 
 .loadingContainer {

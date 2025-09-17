@@ -51,6 +51,10 @@ import {
   getHoveredChildTargetId,
 } from "metabase-enterprise/documents/selectors";
 import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
+import {
+  RESIZE_NODE_DEFAULT_HEIGHT,
+  RESIZE_NODE_MIN_HEIGHT,
+} from "metabase-enterprise/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode";
 import Question from "metabase-lib/v1/Question";
 import { getUrl } from "metabase-lib/v1/urls";
 import type { Card, CardDisplayType, Dataset } from "metabase-types/api";
@@ -607,7 +611,10 @@ export const CardEmbedComponent = memo(
 
               // Wrap the flexContainer in a resizeNode
               const wrapper = editor.state.schema.nodes.resizeNode.create(
-                { height: 442, minHeight: 250 },
+                {
+                  height: RESIZE_NODE_DEFAULT_HEIGHT,
+                  minHeight: RESIZE_NODE_MIN_HEIGHT,
+                },
                 [flexContainer],
               );
 
