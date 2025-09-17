@@ -254,10 +254,7 @@
 (defmethod driver/database-supports? [:clickhouse :connection-impersonation]
   [_driver _feature db]
   (if db
-    (try (clickhouse-version/is-at-least? 24 4 db)
-         (catch Throwable e
-           (log/warn e "Error checking connection impersonation")
-           false))
+    (clickhouse-version/is-at-least? 24 4 db)
     false))
 
 (defmethod driver.sql/set-role-statement :clickhouse
