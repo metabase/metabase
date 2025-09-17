@@ -350,7 +350,7 @@ describe("scenarios > setup", () => {
       );
 
       if (IS_ENTERPRISE) {
-        cy.button("I'll activate later").click();
+        cy.button("Ik activeer later").click();
       }
 
       cy.findByText("Voltooi").click();
