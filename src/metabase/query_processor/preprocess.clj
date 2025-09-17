@@ -58,19 +58,6 @@
 ;;; individual middleware function is wrapped in either [[ensure-legacy]] or [[ensure-mbql5]], and will then see the
 ;;; flavor of MBQL it is written for.
 
-(mu/defn- ->legacy :- mbql.s/Query
-  [query :- [:map
-             [:database ::lib.schema.id/database]]]
-  (lib/->legacy-MBQL query))
-
-(defn- ^:deprecated ensure-legacy [middleware-fn]
-  (-> (fn [query]
-        (let [query (cond-> query
-                      (:lib/type query) ->legacy)]
-          (vary-meta (middleware-fn query)
-                     assoc :converted-form query)))
-      (with-meta (meta middleware-fn))))
-
 (mu/defn- ->mbql5 :- ::lib.schema/query
   [query :- [:map
              [:database ::lib.schema.id/database]
