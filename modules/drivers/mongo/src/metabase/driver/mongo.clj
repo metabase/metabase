@@ -679,9 +679,11 @@
 
     value))
 
-(defmethod driver/string->val :mongo
-  [_driver column-def string-val]
-  (convert-value-for-insertion (:type column-def) string-val))
+(defmethod driver/insert-col->val [:mongo :jsonl-file]
+  [_driver _ column-def v]
+  (if (string? v)
+    (convert-value-for-insertion (:type column-def) v)
+    v))
 
 (defmethod driver/insert-from-source! [:mongo :rows]
   [_driver db-id {table-name :name :keys [columns]} {:keys [data]}]

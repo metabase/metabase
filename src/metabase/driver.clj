@@ -1328,25 +1328,21 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti string->val
-  "Parse a string value for insertion based on driver and column definition.
+(defmulti insert-col->val
+  "Parse a value for insertion based on driver, data source type and column definition.
 
   Takes:
   - driver: The database driver
+  - data-source-type: The data source type, see [[insert-from-source!]]
   - column-def: Column definition map with `:type` and optionally `:database-type`/`:nullable?`
-  - string-val: The string value to parse
+  - val: The value to parse. Format is data-source-type specific.
 
-  Drivers should implement this when their insertion mechanism cannot handle string values directly
-  and needs them converted to proper types.
+  Drivers should implement this when their insertion mechanism needs values converted to proper types.
 
-  Default implementation returns the value unchanged, assuming the driver's insertion mechanism
-  can handle string values directly."
-  {:added "0.57.0", :arglists '([driver column-def string-val])}
-  (fn [driver _ _] (dispatch-on-initialized-driver driver))
+  Default implementation returns the value unchanged"
+  {:added "0.57.0", :arglists '([driver data-source-type column-def string-val])}
+  (fn [driver type _ _] [(dispatch-on-initialized-driver driver) type])
   :hierarchy #'hierarchy)
-
-(defmethod string->val ::driver [_driver _column-def val]
-  val)
 
 (defmulti insert-from-source!
   "Inserts data from a data source into an existing table. Table must exist. Blocks until completion.
@@ -1367,6 +1363,9 @@
     [(dispatch-on-initialized-driver driver) (:type data-source)])
   :hierarchy #'hierarchy)
 
+(defmethod insert-col->val [::driver :jsonl-file] [_driver _ _column-def val]
+  val)
+
 (defmethod insert-from-source! [::driver :jsonl-file]
   [driver db-id {:keys [columns] :as table-definition} {:keys [file]}]
   (with-open [rdr (io/reader file)]
@@ -1375,9 +1374,7 @@
                            (let [m (json/decode line)]
                              (mapv (fn [column]
                                      (let [raw-val (get m (:name column))]
-                                       (if (string? raw-val)
-                                         (string->val driver column raw-val)
-                                         raw-val)))
+                                       (insert-col->val driver :jsonl-file column raw-val)))
                                    columns)))
                          lines)]
       (insert-from-source! driver db-id table-definition {:type :rows :data data-rows}))))

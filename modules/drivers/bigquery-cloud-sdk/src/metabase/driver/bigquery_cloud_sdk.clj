@@ -937,9 +937,11 @@
 
     value))
 
-(defmethod driver/string->val :bigquery-cloud-sdk
-  [_driver column-def string-val]
-  (convert-value-for-insertion (:type column-def) string-val))
+(defmethod driver/insert-col->val [:bigquery-cloud-sdk :jsonl-file]
+  [_driver _ column-def v]
+  (if (string? v)
+    (convert-value-for-insertion (:type column-def) v)
+    v))
 
 (defmethod driver/insert-from-source! [:bigquery-cloud-sdk :rows]
   [_driver db-id {table-name :name :keys [columns]} {:keys [data]}]
