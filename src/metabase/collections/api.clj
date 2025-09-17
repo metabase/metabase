@@ -256,9 +256,14 @@
 (def ^:private valid-sort-directions #{"asc" "desc"})
 (defn- normalize-sort-choice [w] (when w (keyword (str/replace w #"_" "-"))))
 
+(def ^:private CollectionType
+  "Collection types that the root/items endpoint can filter on"
+  [:enum "remote-synced"])
+
 (def ^:private CollectionChildrenOptions
   [:map
    [:show-dashboard-questions? :boolean]
+   [:collection-type {:optional true} [:maybe CollectionType]]
    [:archived? :boolean]
    [:pinned-state {:optional true} [:maybe (into [:enum] (map keyword) valid-pinned-state-values)]]
    ;; when specified, only return results of this type.
@@ -667,7 +672,7 @@
    [:not= :namespace (u/qualified-name "snippets")]])
 
 (defn- collection-query
-  [collection {:keys [archived? collection-namespace pinned-state]}]
+  [collection {:keys [archived? collection-namespace pinned-state collection-type]}]
   (-> (assoc
        (collection/effective-children-query
         collection
@@ -677,6 +682,8 @@
            [:= :archived true]
            [:= :id (collection/trash-collection-id)]]
           [:and [:= :archived false] [:not= :id (collection/trash-collection-id)]])
+        (when collection-type
+          [:= :type collection-type])
         (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
         (snippets-collection-filter-clause))
        ;; We get from the effective-children-query a normal set of columns selected:
@@ -1179,9 +1186,10 @@
   changed, that should too."
   [_route-params
    {:keys [models archived namespace pinned_state sort_column sort_direction official_collections_first
-           include_can_run_adhoc_query
+           include_can_run_adhoc_query collection_type
            show_dashboard_questions]} :- [:map
                                           [:models {:optional true} [:maybe Models]]
+                                          [:collection_type {:optional true} CollectionType]
                                           [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
                                           [:archived {:default false} [:maybe ms/BooleanValue]]
                                           [:namespace {:optional true} [:maybe ms/NonBlankString]]
@@ -1200,6 +1208,7 @@
      {:archived? (boolean archived)
       :include-can-run-adhoc-query include_can_run_adhoc_query
       :show-dashboard-questions? (boolean show_dashboard_questions)
+      :collection-type collection_type
       :models model-kwds
       :pinned-state (keyword pinned_state)
       :sort-info {:sort-column (or (some-> sort_column normalize-sort-choice) :name)
@@ -1224,7 +1233,7 @@
 
 (defn create-collection!
   "Create a new collection."
-  [{:keys [name description parent_id namespace authority_level] :as params}]
+  [{:keys [name description parent_id namespace authority_level type] :as params}]
   ;; To create a new collection, you need write perms for the location you are going to be putting it in...
   (write-check-collection-or-root-collection parent_id namespace)
   (when (some? authority_level)
@@ -1244,6 +1253,7 @@
               (merge
                {:name name
                 :description description
+                :type type
                 :authority_level authority_level
                 :namespace effective-namespace}
                (when parent-collection
@@ -1259,6 +1269,7 @@
             [:description {:optional true} [:maybe ms/NonBlankString]]
             [:parent_id {:optional true} [:maybe ms/PositiveInt]]
             [:namespace {:optional true} [:maybe ms/NonBlankString]]
+            [:type {:optional true} [:maybe CollectionType]]
             [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
   (create-collection! body))
 
@@ -1419,6 +1430,7 @@
                                                                   [:description {:optional true} [:maybe ms/NonBlankString]]
                                                                   [:archived {:default false} [:maybe ms/BooleanValue]]
                                                                   [:parent_id {:optional true} [:maybe ms/PositiveInt]]
+                                                                  [:type {:optional true} [:maybe CollectionType]]
                                                                   [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
@@ -1429,7 +1441,7 @@
       (api/check-403 api/*is-superuser?*))
     ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
-    (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level])]
+    (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level :type])]
       (when (seq updates)
         (t2/update! :model/Collection id updates)))
     ;; if we're trying to move or archive the Collection, go ahead and do that

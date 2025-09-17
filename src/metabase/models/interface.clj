@@ -889,9 +889,10 @@
   [:= [:inline 1] [:inline 1]])
 
 (methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_write]
-  [_model k cards]
+  [_model k models]
   (instances-with-hydrated-data
-   cards k
-   #(map (juxt :id can-write?) (t2/hydrate cards :collection))
+   models k
+   #(->> (map (juxt :id can-write?) #p (t2/hydrate models :collection))
+         (into {}))
    :id
    {:default false}))
