@@ -337,6 +337,11 @@ export type DocumentPrintEvent = ValidateEvent<{
   target_id: number | null;
 }>;
 
+export type DatabaseHelpClickedEvent = ValidateEvent<{
+  event: "database_help_clicked";
+  triggered_from: "admin" | "setup";
+}>;
+
 export type EmbedWizardEvent =
   | EmbedWizardExperienceSelectedEvent
   | EmbedWizardResourceSelectedEvent
@@ -392,4 +397,5 @@ export type SimpleEvent =
   | DocumentCreatedEvent
   | DocumentReplaceCardEvent
   | DocumentUpdatedEvent
-  | DocumentPrintEvent;
+  | DocumentPrintEvent
+  | DatabaseHelpClickedEvent;

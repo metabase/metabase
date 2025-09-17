@@ -30,7 +30,13 @@
      :filter-fn     constraint-fn
      :filter-values constraint-params})))
 
+(defn- table-name->qp-table
+  [mp table-name]
+  (->> table-name mt/id (lib.metadata/table mp)))
+
 (defn- wait-for-table
+  "Wait for a table to appear in metadata, with timeout.
+   Copied from execute_test.clj - will consolidate later."
   [table-name timeout-ms]
   (let [mp    (mt/metadata-provider)
         limit (+ (System/currentTimeMillis) timeout-ms)]
@@ -59,15 +65,15 @@
                                                          :query t1-query}
                                                 :target target1}]
               (transforms.execute/run-mbql-transform! t1 {:run-method :manual})
-              (let [table1   (wait-for-table table1-name 10000)
-                    t2-query (make-query table1 "category" lib/= "Gizmo")]
+              (let [table1       (wait-for-table table1-name 10000)
+                    t2-query     (make-query (->> table1 :name (table-name->qp-table (mt/metadata-provider))) "category" lib/= "Gizmo")]
                 (mt/with-temp [:model/Transform t2 {:name   "transform2"
                                                     :source {:type  :query
                                                              :query t2-query}
                                                     :target target2}]
                   (transforms.execute/run-mbql-transform! t2 {:run-method :cron})
                   (let [table2      (wait-for-table table2-name 10000)
-                        check-query (lib/aggregate (make-query table2) (lib/count))
+                        check-query (lib/aggregate (make-query (->> table2 :name (table-name->qp-table (mt/metadata-provider)))) (lib/count))
                         query-result (qp/process-query check-query)]
                     ;; The transforms-test dataset has exactly 4 Gizmo products (IDs 6, 8, 12, 14)
                     ;; First transform filters for categories starting with "G" (Gadget and Gizmo)
@@ -117,7 +123,8 @@
               (doseq [transform [transform-no-limit transform-limit]]
                 (transforms.execute/run-mbql-transform! transform {:run-method :manual})
                 (let [table-name (-> transform :target :name)
-                      table-result (wait-for-table table-name 10000)
+                      _            (wait-for-table table-name 10000)
+                      table-result (lib.metadata/table mp (mt/id (keyword table-name)))
                       query-result (->> (lib/query mp table-result)
                                         (qp/process-query)
                                         (mt/formatted-rows [str 2.0])
@@ -196,7 +203,8 @@
                                                                         :query query}
                                                                :target target-table}]
                       (transforms.execute/run-mbql-transform! transform {:run-method :manual})
-                      (let [table-result      (wait-for-table (:name target-table) 10000)
+                      (let [_            (wait-for-table (:name target-table) 10000)
+                            table-result (lib.metadata/table mp (mt/id (keyword (:name target-table))))
                             query-result (->> (lib/query mp table-result)
                                               (qp/process-query)
                                               (mt/formatted-rows [int str str 2.0 str])

@@ -23,12 +23,35 @@
          join))
 
 (defn- join-field-refs [cols]
-  (for [col  cols
-        :let [[_tag opts id-or-name, :as field-ref] (lib/ref col)
-              force-field-name-ref? (pos-int? id-or-name)]]
-    (if force-field-name-ref?
-      [:field opts (:lib/source-column-alias col)]
-      field-ref)))
+  (let [duplicate-ids (into #{}
+                            (keep (fn [[item freq]]
+                                    (when (> freq 1)
+                                      item)))
+                            (frequencies (map :id cols)))]
+    ;; TODO (Cam 9/16/25) -- forcing refs of certain types like this is wonky, but when I try to change this tons of
+    ;; stuff breaks. Forcing ID refs doesn't work because a join can return multiple versions of the same column
+    ;; bucketed in different ways in previous stages; joins thus ought to be using field name refs; but this ends up
+    ;; breaking a ton of stuff, especially `lib.equality`... #63109 was my attempt to make this stuff work when using
+    ;; field name refs for joins but it's a long way off from landing.
+    ;;
+    ;; NOCOMMIT
+    (for [{field-id :id, :as col} cols
+          :let                    [[_tag opts id-or-name, :as field-ref] (lib/ref col)
+                                   force-id-ref?         (and (string? id-or-name)
+                                                              field-id
+                                                              (not (contains? duplicate-ids field-id)))
+                                   force-field-name-ref? (and (pos-int? id-or-name)
+                                                              (contains? duplicate-ids field-id))]]
+
+      (cond
+        force-id-ref?
+        [:field opts field-id]
+
+        force-field-name-ref?
+        [:field opts (:lib/source-column-alias col)]
+
+        :else
+        field-ref))))
 
 (mu/defn- handle-all-fields :- ::lib.schema.join/join
   "Replace `:fields :all` in a join with an appropriate list of Fields."
