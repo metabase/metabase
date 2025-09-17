@@ -700,7 +700,7 @@ jobs:
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        role-to-assume: ${{ secrets.PR_ENV_IAM_ROLE }}
+        role-to-assume: ${{ secrets.CI_IAM_ROLE }}
         role-session-name: GitHub_to_AWS_via_FederatedOIDC
         aws-region: us-east-1
     - name: Get ECR password
