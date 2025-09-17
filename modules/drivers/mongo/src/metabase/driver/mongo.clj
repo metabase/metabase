@@ -576,6 +576,7 @@
 
 (defmethod driver/rename-tables!* :mongo
   [_driver db-id sorted-rename-map]
+  ;; TODO: QUE-2474
   (mongo.connection/with-mongo-database [^MongoDatabase db db-id]
     (doseq [[old-table-name new-table-name] sorted-rename-map]
       (let [old-collection (mongo.util/collection db (name old-table-name))]

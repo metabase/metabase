@@ -269,6 +269,7 @@
 
 (defmethod driver/rename-tables!* :clickhouse
   [_driver db-id sorted-rename-map]
+  ;; TODO: QUE-2474
   (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
     (with-open [stmt (.createStatement ^java.sql.Connection (:connection conn))]
       (doseq [[old-table-name new-table-name] sorted-rename-map]
