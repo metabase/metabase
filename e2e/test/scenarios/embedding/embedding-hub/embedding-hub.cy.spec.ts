@@ -147,20 +147,16 @@ describe("scenarios - embedding hub", () => {
     });
 
     it("embedding checklist should show up on the embedding homepage", () => {
-      cy.log("Enable embedding homepage setting");
       cy.request("PUT", "/api/setting/embedding-homepage", {
         value: "visible",
       });
 
-      cy.log("Visit homepage");
       cy.visit("/");
 
-      cy.log("Verify embedding hub heading appears");
       cy.findAllByText("Get started with Embedded Analytics JS")
         .first()
         .should("be.visible");
 
-      cy.log("Verify checklist steps are visible on homepage");
       cy.get("main").within(() => {
         cy.findByText("Create models").should("be.visible");
         cy.findByText("Generate a dashboard").should("be.visible");
@@ -176,6 +172,51 @@ describe("scenarios - embedding hub", () => {
     it("embedding checklist should not show up on the embedding homepage if not enabled", () => {
       cy.visit("/");
 
+      cy.get("main")
+        .findByText("Get started with Embedded Analytics JS")
+        .should("not.exist");
+    });
+
+    it("overflow menu > customize homepage opens modal with correct title", () => {
+      cy.request("PUT", "/api/setting/embedding-homepage", {
+        value: "visible",
+      });
+
+      cy.visit("/");
+
+      cy.log("Click overflow menu button on the embedding homepage");
+      cy.get("main").within(() => {
+        cy.findByLabelText("More options").click();
+      });
+
+      H.menu().findByText("Customize homepage").click();
+
+      cy.findByRole("dialog").within(() => {
+        cy.findByText("Pick a dashboard to appear on the homepage").should(
+          "be.visible",
+        );
+      });
+    });
+
+    it("overflow menu > dismiss guide hides the embedding homepage", () => {
+      cy.request("PUT", "/api/setting/embedding-homepage", {
+        value: "visible",
+      });
+
+      cy.visit("/");
+
+      cy.get("main")
+        .findByText("Get started with Embedded Analytics JS")
+        .should("be.visible");
+
+      cy.log("Click overflow menu button on the embedding homepage");
+      cy.get("main").within(() => {
+        cy.findByLabelText("More options").click();
+      });
+
+      H.menu().findByText("Dismiss guide").click();
+
+      cy.log("Verify guide is dismissed and no longer visible");
       cy.get("main")
         .findByText("Get started with Embedded Analytics JS")
         .should("not.exist");
