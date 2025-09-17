@@ -13,8 +13,13 @@ import { t } from "ttag";
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { getIcon } from "metabase/lib/icon";
-import { Box, Flex, Icon, Paper, Text } from "metabase/ui";
-import type { RecentItem, SearchModel, SearchResult } from "metabase-types/api";
+import type { MenuItem } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
+import { MenuItemComponent } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
+import {
+  LoadingSuggestionPaper,
+  SuggestionPaper,
+} from "metabase-enterprise/documents/components/Editor/shared/SuggestionPaper";
+import type { RecentItem, SearchModel } from "metabase-types/api";
 
 import type { MetabotMentionCommandProps } from "./MetabotMentionExtension";
 
@@ -98,35 +103,64 @@ export const MetabotMentionSuggestion = forwardRef<
     setSelectedIndex(0);
   }, [items.length, query]);
 
-  const selectItem = useCallback(
-    (item: SearchResult | RecentItem) => {
-      command({
-        id: "id" in item ? item.id : item.item_id,
-        model: "model" in item ? item.model : item.model,
-        label: "name" in item ? item.name : item.item_name,
+  // Convert items to MenuItem format
+  const menuItems = useMemo(() => {
+    return items.map((item): MenuItem => {
+      const iconData = getIcon({
+        model: item.model,
+        display: (item as any).display,
       });
+      const itemName = "name" in item ? item.name : item.item_name;
+      const itemId = "id" in item ? item.id : item.item_id;
+      const collectionName = item.collection?.name;
+
+      return {
+        icon: iconData.name,
+        iconColor: iconData.color,
+        label: itemName,
+        description: collectionName,
+        model: item.model as any,
+        id: itemId,
+        action: () => {
+          command({
+            id: itemId,
+            model: item.model,
+            label: itemName,
+          });
+        },
+      };
+    });
+  }, [items, command]);
+
+  const selectItem = useCallback(
+    (index: number) => {
+      const menuItem = menuItems[index];
+      if (menuItem) {
+        menuItem.action();
+      }
     },
-    [command],
+    [menuItems],
   );
 
   // Handle keyboard navigation
   const onKeyDown = useCallback(
     ({ event }: { event: KeyboardEvent }) => {
       if (event.key === "ArrowUp") {
-        setSelectedIndex((index) => (index - 1 + items.length) % items.length);
+        setSelectedIndex((index) =>
+          index > 0 ? index - 1 : menuItems.length - 1,
+        );
         return true;
       }
 
       if (event.key === "ArrowDown") {
-        setSelectedIndex((index) => (index + 1) % items.length);
+        setSelectedIndex((index) =>
+          index < menuItems.length - 1 ? index + 1 : 0,
+        );
         return true;
       }
 
       if (event.key === "Enter") {
-        const item = items[selectedIndex];
-        if (item) {
-          selectItem(item);
-        }
+        selectItem(selectedIndex);
         return true;
       }
 
@@ -136,7 +170,7 @@ export const MetabotMentionSuggestion = forwardRef<
 
       return false;
     },
-    [items, selectedIndex, selectItem],
+    [menuItems.length, selectedIndex, selectItem],
   );
 
   useImperativeHandle(ref, () => ({
@@ -149,90 +183,37 @@ export const MetabotMentionSuggestion = forwardRef<
       : isRecentsLoading;
 
   if (isLoading) {
-    return (
-      <Paper
-        shadow="md"
-        radius="sm"
-        style={{
-          minWidth: 200,
-          maxWidth: 320,
-        }}
-      >
-        <Flex align="center" justify="center" p="md">
-          <Icon name="hourglass" size="1rem" />
-          <Text ml="xs">{t`Loading...`}</Text>
-        </Flex>
-      </Paper>
-    );
+    return <LoadingSuggestionPaper aria-label={t`Metabot Mention Dialog`} />;
   }
 
-  if (items.length === 0) {
+  if (menuItems.length === 0) {
     return (
-      <Paper
-        shadow="md"
-        radius="sm"
-        style={{
-          minWidth: 200,
-          maxWidth: 320,
-        }}
-      >
-        <Box p="md">
-          <Text c="text-light" size="sm">
-            {query ? t`No results found for "${query}"` : t`No recent items`}
-          </Text>
-        </Box>
-      </Paper>
+      <SuggestionPaper aria-label={t`Metabot Mention Dialog`}>
+        <MenuItemComponent
+          item={{
+            icon: "info",
+            label: query
+              ? t`No results found for "${query}"`
+              : t`No recent items`,
+            action: () => {},
+          }}
+          isSelected={false}
+        />
+      </SuggestionPaper>
     );
   }
 
   return (
-    <Paper
-      shadow="md"
-      radius="sm"
-      style={{
-        minWidth: 200,
-        maxWidth: 320,
-      }}
-    >
-      <Box p="xs">
-        {items.map((item, index) => {
-          const iconData = getIcon({
-            model: item.model,
-            display: (item as any).display,
-          });
-          const itemName = "name" in item ? item.name : item.item_name;
-          const itemId = "id" in item ? item.id : item.item_id;
-
-          return (
-            <Box
-              key={`${item.model}-${itemId}`}
-              p="xs"
-              style={{
-                cursor: "pointer",
-                borderRadius: "0.25rem",
-                backgroundColor:
-                  index === selectedIndex
-                    ? "var(--mb-color-background-hover)"
-                    : "transparent",
-              }}
-              onClick={() => selectItem(item)}
-              onMouseEnter={() => setSelectedIndex(index)}
-            >
-              <Flex align="center" gap="xs">
-                <Icon name={iconData.name} c={iconData.color} size="1rem" />
-                <Text size="sm" truncate fw={500}>
-                  {itemName}
-                </Text>
-              </Flex>
-              {item.collection && (
-                <Text size="xs" c="text-light" truncate ml="1.5rem">
-                  {item.collection.name}
-                </Text>
-              )}
-            </Box>
-          );
-        })}
-      </Box>
-    </Paper>
+    <SuggestionPaper aria-label={t`Metabot Mention Dialog`}>
+      {menuItems.map((item, index) => (
+        <MenuItemComponent
+          key={`${item.model}-${item.id}`}
+          item={item}
+          isSelected={selectedIndex === index}
+          onClick={() => selectItem(index)}
+          onMouseEnter={() => setSelectedIndex(index)}
+        />
+      ))}
+    </SuggestionPaper>
   );
 });
