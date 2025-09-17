@@ -107,7 +107,7 @@ export const GitSyncSettings = (): JSX.Element => {
   }, [updateSettings]);
 
   return (
-    <SettingsPageWrapper title={t`Library configuration`}>
+    <SettingsPageWrapper title={t`Remote sync configuration`}>
       <SettingsSection>
         {isGitSyncConfigured && (
           <Flex justify="space-between" align="center" mb="md">

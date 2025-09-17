@@ -91,7 +91,6 @@ export const CollectionSyncManager = () => {
   const selectData = availableCollections.map((collection) => ({
     value: String(collection.id),
     label: collection.name,
-    collection, // Pass the collection object for custom rendering
   }));
 
   if (isLoading || isSyncedLoading) {
@@ -112,28 +111,33 @@ export const CollectionSyncManager = () => {
         searchable
         clearable
         w={320}
-        styles={{
-          input: { height: 40 },
-        }}
+        h={40}
         leftSection={<Icon name="folder" />}
-        renderOption={({ option }) => (
-          <Group justify="space-between" wrap="nowrap" w="100%" p="sm">
-            <Group gap="xs" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
-              <Icon name="folder" c="brand" />
-              <Text truncate>{option.label}</Text>
+        renderOption={({ option }) => {
+          const collection = availableCollections.find(
+            (c) => String(c.id) === option.value,
+          );
+          return (
+            <Group justify="space-between" wrap="nowrap" w="100%" p="sm">
+              <Group gap="xs" wrap="nowrap" flex={1} miw={0}>
+                <Icon name="folder" c="brand" />
+                <Text truncate>{option.label}</Text>
+              </Group>
+              {collection && (
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(Urls.collection(collection), "_blank");
+                  }}
+                >
+                  <Icon name="external" />
+                </ActionIcon>
+              )}
             </Group>
-            <ActionIcon
-              size="sm"
-              variant="subtle"
-              onClick={(e) => {
-                e.stopPropagation();
-                window.open(Urls.collection(option.collection), "_blank");
-              }}
-            >
-              <Icon name="external" />
-            </ActionIcon>
-          </Group>
-        )}
+          );
+        }}
       />
 
       {syncedCollections.length > 0 && (
