@@ -22,6 +22,12 @@ export function setupListTransformJobTransformsEndpoint(
   fetchMock.get(`path:/api/ee/transform-job/${jobId}/transforms`, transforms);
 }
 
+export function setupListTransformJobTransformsEndpointWithError(
+  jobId: TransformJobId,
+) {
+  fetchMock.get(`path:/api/ee/transform-job/${jobId}/transforms`, 500);
+}
+
 export function setupGetTransformJobEndpoint(job: TransformJob) {
   fetchMock.get(`path:/api/ee/transform-job/${job.id}`, job);
 }

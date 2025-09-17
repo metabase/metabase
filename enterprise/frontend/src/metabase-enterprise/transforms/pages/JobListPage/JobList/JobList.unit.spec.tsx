@@ -1,7 +1,9 @@
+import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
 import {
   setupListTransformJobTransformsEndpoint,
+  setupListTransformJobTransformsEndpointWithError,
   setupListTransformJobsEndpoint,
   setupListTransformTagsEndpoint,
 } from "__support__/server-mocks";
@@ -23,7 +25,7 @@ import { JobList } from "./JobList";
 
 type SetupOpts = {
   jobs?: TransformJob[];
-  jobTransforms?: Map<TransformJobId, Transform[]>;
+  jobTransforms?: Map<TransformJobId, Transform[] | null>;
   tags?: TransformTag[];
   params?: JobListParams;
 };
@@ -38,7 +40,11 @@ function setup({
   setupListTransformTagsEndpoint(tags);
 
   jobTransforms.forEach((transforms, jobId) => {
-    setupListTransformJobTransformsEndpoint(jobId, transforms);
+    if (transforms != null) {
+      setupListTransformJobTransformsEndpoint(jobId, transforms);
+    } else {
+      setupListTransformJobTransformsEndpointWithError(jobId);
+    }
   });
 
   renderWithProviders(
@@ -69,5 +75,19 @@ describe("JobList", () => {
     const job2Row = await screen.findByRole("row", { name: /Job2/ });
     expect(await within(job1Row).findByText("2")).toBeInTheDocument();
     expect(await within(job2Row).findByText("1")).toBeInTheDocument();
+  });
+
+  it("should show errors when loading transforms", async () => {
+    const job1Id = 1;
+    setup({
+      jobs: [createMockTransformJob({ id: job1Id, name: "Job1" })],
+      jobTransforms: new Map([[job1Id, null]]),
+    });
+
+    const jobRow = await screen.findByRole("row", { name: /Job1/ });
+    const warningIcon = await within(jobRow).findByLabelText("warning icon");
+    await userEvent.hover(warningIcon);
+
+    expect(await screen.findByText("Something went wrong")).toBeInTheDocument();
   });
 });
