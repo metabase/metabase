@@ -64,7 +64,12 @@ function serializeSmartLink(node: JSONContent): string {
   }
 
   // Map internal types back to URL types for serialization
-  const urlModel = model === "dataset" ? "model" : model;
+  let urlModel = model;
+  if (model === "dataset") {
+    urlModel = "model";
+  } else if (model === "card") {
+    urlModel = "question";
+  }
 
   // Format: [entity name](metabase://model/id)
   const displayName = label || `${model} ${entityId}`;
@@ -110,7 +115,12 @@ export function parseMetabotFormat(text: string): JSONContent {
 
       // Add MetabotSmartLink node
       // Map URL types back to internal types for SmartLink component
-      const internalModel = match[2] === "model" ? "dataset" : match[2];
+      let internalModel = match[2];
+      if (match[2] === "model") {
+        internalModel = "dataset";
+      } else if (match[2] === "question") {
+        internalModel = "card";
+      }
 
       paragraph.content!.push({
         type: "metabotSmartLink",
