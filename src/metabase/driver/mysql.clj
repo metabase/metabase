@@ -89,6 +89,7 @@
                               :expression-literals                    true
                               :database-routing                       true
                               :metadata/table-existence-check         true
+                              :transforms/python                      true
                               :transforms/table                       true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
@@ -792,6 +793,29 @@
     :metabase.upload/datetime                 [:datetime]
     :metabase.upload/offset-datetime          [:timestamp]))
 
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for MySQL that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+(defmethod type->database-type :type/TextLike [_] [:text])
+(defmethod type->database-type :type/Text [_] [:text])
+(defmethod type->database-type :type/Number [_] [:bigint])
+(defmethod type->database-type :type/Integer [_] [:int])
+(defmethod type->database-type :type/Float [_] [:double])
+(defmethod type->database-type :type/Decimal [_] [:decimal])
+(defmethod type->database-type :type/Boolean [_] [:boolean])
+(defmethod type->database-type :type/Date [_] [:date])
+(defmethod type->database-type :type/DateTime [_] [:datetime])
+(defmethod type->database-type :type/DateTimeWithTZ [_] [:timestamp])
+(defmethod type->database-type :type/Time [_] [:time])
+(defmethod type->database-type :type/JSON [_] [:json])
+(defmethod type->database-type :type/SerializedJSON [_] [:json])
+
+(defmethod driver/type->database-type :mysql
+  [_driver base-type]
+  (type->database-type base-type))
+
 (defmethod driver/allowed-promotions :mysql
   [_driver]
   {:metabase.upload/int     #{:metabase.upload/float}
@@ -893,7 +917,7 @@
   (if (not= (get-global-variable db-id "local_infile") "ON")
     ;; If it isn't turned on, fall back to the generic "INSERT INTO ..." way
     ((get-method driver/insert-into! :sql-jdbc) driver db-id table-name column-names values)
-    (let [temp-file (File/createTempFile table-name ".tsv")
+    (let [temp-file (File/createTempFile (name table-name) ".tsv")
           file-path (.getAbsolutePath temp-file)]
       (try
         (let [tsvs    (map (partial row->tsv driver (count column-names)) values)
@@ -913,6 +937,12 @@
              (jdbc/execute! {:connection conn} sql))))
         (finally
           (.delete temp-file))))))
+
+(defmethod driver/insert-col->val [:mysql :jsonl-file]
+  [_driver _ column-def v]
+  (if (and (string? v) (isa? (:type column-def) :type/DateTimeWithTZ))
+    (t/offset-date-time v)
+    v))
 
 (defn- parse-grant
   "Parses the contents of a row from the output of a `SHOW GRANTS` statement, to extract the data needed
