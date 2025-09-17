@@ -42,7 +42,6 @@ import type {
 import { isObject } from "metabase-types/guards";
 
 import styles from "./SmartLinkNode.module.css";
-import { reactNodeToHtmlString } from "metabase/lib/react-to-html";
 
 type SmartLinkEntity =
   | Card
@@ -154,14 +153,7 @@ export const SmartLink = Node.create<{
       },
       label: {
         default: null,
-        parseHTML: (element) => {
-          const label = element.getAttribute("data-label");
-          return label;
-        },
-      },
-      href: {
-        default: null,
-        parseHTML: (element) => element.getAttribute("data-href"),
+        parseHTML: (element) => element.getAttribute("data-label"),
       },
     };
   },
@@ -178,36 +170,17 @@ export const SmartLink = Node.create<{
     ];
   },
 
-  renderHTML({ node, HTMLAttributes }) {
+  renderHTML({ node }) {
     const { entityId, model, label, href } = node.attrs;
 
-    // return [
-    //   "span",
-    //   mergeAttributes(
-    //     HTMLAttributes,
-    //     {
-    //       "data-type": "smart-link",
-    //       "data-entity-id": entityId,
-    //       "data-model": model,
-    //       "data-label": node.attrs.label ?? undefined,
-    //     },
-    //     this.options.HTMLAttributes,
-    //   ),
-    //   `{% entity id="${entityId}" model="${model}" %}`,
-
-    // ];
-
-    // console.log({ href, HTMLAttributes, options: this.options });
     return [
       "a",
       mergeAttributes(
-        // HTMLAttributes,
         {
           "data-type": "smart-link",
           "data-entity-id": entityId,
           "data-model": model,
           "data-label": label ?? undefined,
-          "data-href": href ?? undefined, // for parseHTML fallback
           "data-site-url": this.options.siteUrl,
           href: this.options.siteUrl + href ?? undefined,
         },

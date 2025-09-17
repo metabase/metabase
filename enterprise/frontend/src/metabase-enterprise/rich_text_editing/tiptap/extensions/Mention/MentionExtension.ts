@@ -61,6 +61,7 @@ export const MentionExtension = Extension.create<MentionOptions>({
                   label: props.label,
                 },
               })
+              .insertContent(" ")
               .run();
             if (props.document) {
               trackDocumentAddSmartLink(props.document);

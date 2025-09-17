@@ -8,7 +8,7 @@
               <img width="35.55" height="45" src="{{context.application_logo_url}}" alt="Metabase logo"/>
             </div>
 
-            <h1 style="text-align: center; font-size: 27px; line-height: 36px; font-weight: 400; margin: 0 0 12px 0; color: {{payload.style.color_text_dark}};">
+            <h1 style="text-align: center; font-size: 27px; line-height: 36px; font-weight: 400; margin: 0 0 12px 0; color: #2F3C45;">
               {{#if payload.event_info.parent_comment}}
                 {{payload.event_info.author}} replied to a thread
               {{else}}
@@ -27,9 +27,11 @@
               </a>
             </div>
 
-            <div>
+            <blockquote
+              style="margin: 0 0 24px 0; padding: 16px 16px; background-color: #F3F6F8; border-left: 3px solid rgba(7, 23, 34, 0.12); border-radius: 4px; font-size: 15px; line-height: 165%;"
+            >
               {{{payload.event_info.comment_html}}}
-            </div>
+            </blockquote>
 
             {{!-- CTA button --}}
             <div style="text-align: center; margin: 12px 0 32px 0;">
@@ -39,7 +41,7 @@
               </a>
             </div>
             <hr style="margin-top: 32px; margin-bottom: 32px;">
-            <div style="font-size: 12px; line-height: 16px; width: max-content; margin: 0 auto; color: {{payload.style.color_text_medium}};">
+            <div style="font-size: 12px; line-height: 16px; width: max-content; margin: 0 auto; color: #656F76; text-align: center;">
               Sent from <a href="{{context.site_url}}" style="color: {{context.application_color}}">{{context.site_url}}</a>.
             </div>
           </div>

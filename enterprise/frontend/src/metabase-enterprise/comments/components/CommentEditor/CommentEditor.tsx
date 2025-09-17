@@ -147,7 +147,6 @@ export const CommentEditor = ({
     const isEmpty = editor.isEmpty;
 
     const html = stripInternalIds(editor.getHTML());
-    console.log({ html });
 
     if (!isEmpty && onSubmit) {
       onSubmit(content, html);
