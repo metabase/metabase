@@ -36,7 +36,7 @@ export const EmbeddingHubHomePage = (): ReactNode => {
           >{t`Get started with Embedded Analytics JS`}</Text>
         </Group>
 
-        <Menu>
+        <Menu position="bottom-end">
           <Menu.Target>
             <ActionIcon variant="subtle" aria-label={t`More options`}>
               <Icon name="ellipsis" />
