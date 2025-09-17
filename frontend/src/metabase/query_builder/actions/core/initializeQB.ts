@@ -330,6 +330,13 @@ async function handleQBInit(
   const query = question.query();
   const { isNative, isEditable } = Lib.queryDisplayInfo(query);
 
+  // For native queries from URLs, ensure template tags are parsed from query text
+  if (isNative && deserializedCard) {
+    const nativeQuery = question.legacyNativeQuery() as NativeQuery;
+    const updatedQuery = nativeQuery.setQueryText(nativeQuery.queryText());
+    question = question.setLegacyQuery(updatedQuery);
+  }
+
   if (question.isSaved()) {
     const type = question.type();
 
