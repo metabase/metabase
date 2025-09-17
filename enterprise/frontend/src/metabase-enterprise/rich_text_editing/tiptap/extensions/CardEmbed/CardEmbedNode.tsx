@@ -596,7 +596,109 @@ export const CardEmbedComponent = memo(
               return;
             }
 
-            if (
+            if (parent.type.name === "flexContainer") {
+              // Handle dropping on a cardEmbed that is already in a flexContainer
+              const flexContainer = parent;
+              const targetIndexInFlex = resolvedPos.index();
+
+              // Get all current children as cardEmbeds
+              const currentChildren: any[] = [];
+              for (let i = 0; i < flexContainer.content.childCount; i++) {
+                const child = flexContainer.content.child(i);
+                const cardEmbed = extractCardEmbed(child);
+                if (cardEmbed) {
+                  currentChildren.push(cardEmbed);
+                }
+              }
+
+              // Create new children array with the dropped card inserted
+              const newChildren = [...currentChildren];
+              const insertIndex =
+                dragState.side === "left"
+                  ? targetIndexInFlex
+                  : targetIndexInFlex + 1;
+
+              newChildren.splice(insertIndex, 0, droppedCardEmbed.copy());
+
+              // Limit to maximum 3 children as per flexContainer content spec
+              if (newChildren.length > 3) {
+                return; // Don't allow more than 3 cards in flexContainer
+              }
+
+              // Find the position of the flexContainer (it should be wrapped in resizeNode)
+              let flexContainerPos: number | null = null;
+              let flexContainerWrapper: any = null;
+
+              editor.state.doc.descendants((node, nodePos) => {
+                if (node === flexContainer) {
+                  flexContainerPos = nodePos;
+                  return false;
+                }
+                // Check if this resizeNode wraps our flexContainer
+                if (
+                  node.type.name === "resizeNode" &&
+                  node.content.childCount === 1
+                ) {
+                  const child = node.content.child(0);
+                  if (child === flexContainer) {
+                    flexContainerPos = nodePos;
+                    flexContainerWrapper = node;
+                    return false;
+                  }
+                }
+              });
+
+              if (flexContainerPos === null) {
+                return;
+              }
+
+              // Create transaction
+              const tr = editor.state.tr;
+
+              // First, replace the flexContainer with the new one containing the inserted card
+              const newFlexContainer =
+                editor.state.schema.nodes.flexContainer.create(
+                  flexContainer.attrs,
+                  newChildren,
+                );
+
+              if (flexContainerWrapper) {
+                // Replace the entire resizeNode wrapper
+                const newWrapper = editor.state.schema.nodes.resizeNode.create(
+                  flexContainerWrapper.attrs,
+                  [newFlexContainer],
+                );
+                tr.replaceWith(
+                  flexContainerPos,
+                  flexContainerPos + flexContainerWrapper.nodeSize,
+                  newWrapper,
+                );
+              } else {
+                // Replace just the flexContainer
+                tr.replaceWith(
+                  flexContainerPos,
+                  flexContainerPos + flexContainer.nodeSize,
+                  newFlexContainer,
+                );
+              }
+
+              // Now remove the dropped node from its original position
+              // We need to find it again in the updated document
+              const nodeToRemove = droppedWrapper || dropped;
+              const updatedDoc = tr.doc;
+              let nodeFound = false;
+
+              updatedDoc.descendants((node, nodePos) => {
+                if (node === nodeToRemove && !nodeFound) {
+                  tr.delete(nodePos, nodePos + node.nodeSize);
+                  nodeFound = true;
+                  return false;
+                }
+              });
+
+              editor.view.dispatch(tr);
+              return true;
+            } else if (
               parent.type.name === "doc" ||
               parent.type.name === "resizeNode"
             ) {
