@@ -1,8 +1,10 @@
+import dayjs from "dayjs";
 import { useState } from "react";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { parseTimestamp } from "metabase/lib/time-dayjs";
 import * as Urls from "metabase/lib/urls";
 import { Stack } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
@@ -75,8 +77,16 @@ export function getParsedParams({
 }
 
 export function isPollingNeeded(transform?: Transform) {
-  return (
-    transform?.last_run?.status === "started" ||
-    (transform?.last_run?.status === "succeeded" && transform.table == null)
-  );
+  if (transform == null || transform.last_run == null) {
+    return false;
+  }
+  if (transform.last_run.status === "started") {
+    return true;
+  }
+  if (transform.last_run.status === "succeeded" && transform.table == null) {
+    const now = dayjs();
+    const updatedAt = parseTimestamp(transform.updated_at);
+    return updatedAt.isBefore(now);
+  }
+  return false;
 }

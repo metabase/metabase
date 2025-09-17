@@ -28,7 +28,6 @@ import {
 } from "metabase/ui";
 import {
   useDeleteTransformTargetMutation,
-  useLazyGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
 import { SchemaFormSelect } from "metabase-enterprise/transforms/components/SchemaFormSelect";
@@ -85,7 +84,6 @@ function UpdateTargetForm({
 }: UpdateTargetFormProps) {
   const { source, target, table } = transform;
   const { database: databaseId } = source.query;
-  const [fetchTransform] = useLazyGetTransformQuery();
   const [updateTransform] = useUpdateTransformMutation();
   const [deleteTransformTarget] = useDeleteTransformTargetMutation();
   const initialValues = useMemo(() => getInitialValues(transform), [transform]);
@@ -107,7 +105,6 @@ function UpdateTargetForm({
 
   const isLoading = isDatabaseLoading || isSchemasLoading;
   const error = databaseError ?? schemasError;
-
   const supportsSchemas = database && hasFeature(database, "schemas");
 
   if (isLoading || error != null) {
@@ -115,13 +112,10 @@ function UpdateTargetForm({
   }
 
   const handleSubmit = async (values: EditTransformValues) => {
-    // check that the new target is valid before deleting the old target
     await updateTransform(getUpdateRequest(transform, values)).unwrap();
     if (shouldDeleteTarget) {
       await deleteTransformTarget(transform.id).unwrap();
     }
-    // postpone closing the modal until we fetch the up-to-date transform
-    await fetchTransform(transform.id).unwrap();
     onUpdate();
   };
 
