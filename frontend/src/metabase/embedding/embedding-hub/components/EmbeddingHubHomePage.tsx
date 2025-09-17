@@ -1,5 +1,5 @@
+import { useDisclosure } from "@mantine/hooks";
 import type { ReactNode } from "react";
-import { useState } from "react";
 import { t } from "ttag";
 
 import { CustomHomePageModal } from "metabase/home/components/CustomHomePageModal";
@@ -14,7 +14,11 @@ import { EmbeddingHub } from "./EmbeddingHub";
  * Embedding Hub shown in the embedding home page for admins in EE instances.
  */
 export const EmbeddingHubHomePage = (): ReactNode => {
-  const [showCustomHomePageModal, setShowCustomHomePageModal] = useState(false);
+  const [
+    isCustomHomePageModalOpened,
+    { open: openCustomHomePageModal, close: closeCustomHomePageModal },
+  ] = useDisclosure(false);
+
   const dispatch = useDispatch();
 
   const handleDismissGuide = () =>
@@ -42,7 +46,7 @@ export const EmbeddingHubHomePage = (): ReactNode => {
           <Menu.Dropdown>
             <Menu.Item
               leftSection={<Icon name="pencil" />}
-              onClick={() => setShowCustomHomePageModal(true)}
+              onClick={openCustomHomePageModal}
             >
               {t`Customize homepage`}
             </Menu.Item>
@@ -60,8 +64,8 @@ export const EmbeddingHubHomePage = (): ReactNode => {
       <EmbeddingHub />
 
       <CustomHomePageModal
-        isOpen={showCustomHomePageModal}
-        onClose={() => setShowCustomHomePageModal(false)}
+        isOpen={isCustomHomePageModalOpened}
+        onClose={closeCustomHomePageModal}
       />
     </Stack>
   );
