@@ -898,7 +898,7 @@
 
 (defmethod driver/rename-tables!* :snowflake
   [driver db-id sorted-rename-map]
-  ;; TODO: QUE-2474
+  ;; TODO: QUE-2474. not atomic
   (let [sqls (mapv (fn [[from-table to-table]]
                      (first (sql/format {:alter-table (keyword from-table)
                                          :rename-table (keyword (name to-table))}
