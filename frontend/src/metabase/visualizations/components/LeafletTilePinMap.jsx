@@ -1,5 +1,7 @@
 import L from "leaflet";
 
+import api from "metabase/lib/api";
+
 import { getTileUrl } from "../lib/map";
 
 import LeafletMap from "./LeafletMap";
@@ -20,6 +22,11 @@ export default class LeafletTilePinMap extends LeafletMap {
     super.componentDidMount();
 
     this.pinTileLayer = L.tileLayer("", {}).addTo(this.map);
+
+    // if (isEmbeddingSdk()) {
+    this._patchCreateTileToUseFetch(this.pinTileLayer);
+    //}
+
     this.componentDidUpdate({}, {});
   }
 
@@ -71,5 +78,89 @@ export default class LeafletTilePinMap extends LeafletMap {
       token,
       datasetResult: this.props.series[0],
     });
+  };
+
+  _patchCreateTileToUseFetch = (tileLayerInstance = {}) => {
+    const originalGetTileUrl = tileLayerInstance.getTileUrl;
+
+    const onTileUnload = (event) => {
+      const tile = event.tile;
+
+      if (!tile) {
+        return;
+      }
+
+      try {
+        tile._fetchCtrl?.abort();
+      } catch {}
+    };
+
+    tileLayerInstance.on("abortloading", onTileUnload);
+    tileLayerInstance.on("tileunload", onTileUnload);
+
+    tileLayerInstance.createTile = function (coords, done) {
+      const tileUrl = this.getTileUrl(coords);
+
+      const tile = document.createElement("img");
+      tile.alt = "";
+
+      if (!tileUrl) {
+        return tile;
+      }
+
+      const controller = new AbortController();
+      tile._fetchCtrl = controller;
+
+      const init = {
+        method: "GET",
+        mode: "cors",
+        signal: controller.signal,
+        headers: api.getClientHeaders(),
+        referrerPolicy: this?.options?.referrerPolicy,
+      };
+
+      fetch(tileUrl, init)
+        .then((response) => {
+          if (!response.ok) {
+            const err = new Error(
+              `Tile fetch failed: ${response.status} ${response.statusText}`,
+            );
+
+            err.status = response.status;
+
+            throw err;
+          }
+          return response.blob();
+        })
+        .then(async (blob) => {
+          const dataUrl = await blobToDataURL(blob);
+
+          tile.src = dataUrl;
+
+          done?.(null, tile);
+        })
+        .catch((error) => {
+          if (controller.signal.aborted) {
+            return;
+          }
+
+          try {
+            this._tileOnError(done, tile, error);
+          } catch {
+            done?.(error, tile);
+          }
+        });
+
+      return tile;
+    };
+
+    function blobToDataURL(blob) {
+      return new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result));
+        r.onerror = reject;
+        r.readAsDataURL(blob);
+      });
+    }
   };
 }
