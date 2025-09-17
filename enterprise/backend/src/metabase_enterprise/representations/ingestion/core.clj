@@ -29,11 +29,7 @@
    Uses the schema.core validation which throws on error.
    Returns the representation if valid, nil if invalid."
   [representation]
-  (try
-    (schema/validate representation)
-    (catch Exception e
-      (log/error e "Validation failed for representation")
-      nil)))
+  (schema/validate representation))
 
 (defn ingest-representation
   "Ingest a single representation file and convert to Metabase entity.

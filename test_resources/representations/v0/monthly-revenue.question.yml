@@ -1,0 +1,9 @@
+type: question
+ref: monthly-revenue
+name: Monthly Revenue Report dfsdfsd
+description: Tracks total revenue by month for the current year
+query: |
+  SELECT
+    *
+  FROM orders
+database: Sample Database
