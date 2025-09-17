@@ -233,21 +233,7 @@
                    {:source-table "card__2"
                     :aggregation  [[:sum [:field "TOTAL" {:base-type :type/Float}]]]
                     :breakout     [[:field "RATING" {:base-type :type/Float}]]}))]
-      (let [preprocessed (qp.preprocess/preprocess query)
-            stages       (:stages preprocessed)]
-        (testing "added metadata"
-          (testing "first stage (from Card 1)"
-            (is (=? {:name                         "RATING"
-                     :display-name                 "Product → Rating"
-                     :metabase.lib.join/join-alias "Product"}
-                    (m/find-first #(= (:name %) "RATING")
-                                  (get-in (nth stages 0) [:lib/stage-metadata :columns])))))
-          (testing "second stage (from Card 2)"
-            (is (=? {:name                    "RATING"
-                     :display-name            "Product → Rating"
-                     :lib/original-join-alias "Product"}
-                    (m/find-first #(= (:name %) "RATING")
-                                  (get-in (nth stages 1) [:lib/stage-metadata :columns])))))))
+      (let [preprocessed (qp.preprocess/preprocess query)])
       (is (=? [{:display_name "Product → Rating"}
                {:display_name "Sum of Total"}]
               (qp.preprocess/query->expected-cols query))))))

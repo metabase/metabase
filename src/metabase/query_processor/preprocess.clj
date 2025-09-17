@@ -15,7 +15,6 @@
    [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
    [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
-   [metabase.query-processor.middleware.add-source-metadata :as qp.add-source-metadata]
    [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.middleware.auto-bucket-datetimes :as qp.auto-bucket-datetimes]
    [metabase.query-processor.middleware.auto-parse-filter-values :as auto-parse-filter-values]
@@ -114,7 +113,6 @@
    ;; middleware to Lib we can remove this middleware entirely
    (ensure-mbql5 #'ensure-joins-use-source-query/ensure-joins-use-source-query)
    (ensure-mbql5 #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing)
-   (ensure-legacy #'qp.add-source-metadata/add-source-metadata-for-source-queries)
    (ensure-mbql5 #'qp.middleware.enterprise/apply-impersonation)
    (ensure-mbql5 #'qp.middleware.enterprise/attach-destination-db-middleware)
    (ensure-mbql5 #'qp.middleware.enterprise/apply-sandboxing)
