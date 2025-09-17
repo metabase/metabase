@@ -125,7 +125,7 @@
 
 (defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
   ;; only cloud dbs support uploads
-  (boolean (-> db :dbms_version :cloud)))
+  (boolean (-> db :dbms-version :cloud)))
 
 (defmethod driver/can-connect? :clickhouse
   [driver details]
