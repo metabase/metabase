@@ -37,6 +37,7 @@
   padding-left: 0.5rem;
   padding-right: 0.5rem;
   caret-color: auto;
+  transform: translateZ(0);
 }
 
 .flexContent :global(.node-cardEmbed):first-child {

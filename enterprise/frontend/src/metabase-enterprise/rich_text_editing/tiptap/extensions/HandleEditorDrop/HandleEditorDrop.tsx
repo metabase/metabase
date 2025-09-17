@@ -98,8 +98,18 @@ export const HandleEditorDrop = Extension.create({
                         }
                         const rect = targetCardEmbedDOM.getBoundingClientRect();
                         const xPct = (e.clientX - rect.left) / rect.width;
-                        if (xPct >= 0.5) {
+                        const isDroppedOnItself =
+                          cardEmbedNode === targetCardEmbed;
+
+                        if (xPct >= 0.5 && !isDroppedOnItself) {
                           targetIndex++;
+                        }
+                        if (
+                          xPct < 0.5 &&
+                          !isDroppedOnItself &&
+                          targetIndex > 0
+                        ) {
+                          targetIndex--;
                         }
                       }
 
