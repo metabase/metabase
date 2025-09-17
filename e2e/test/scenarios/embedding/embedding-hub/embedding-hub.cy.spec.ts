@@ -145,5 +145,40 @@ describe("scenarios - embedding hub", () => {
         .icon("lock")
         .should("not.exist");
     });
+
+    it("embedding checklist should show up on the embedding homepage", () => {
+      cy.log("Enable embedding homepage setting");
+      cy.request("PUT", "/api/setting/embedding-homepage", {
+        value: "visible",
+      });
+
+      cy.log("Visit homepage");
+      cy.visit("/");
+
+      cy.log("Verify embedding hub heading appears");
+      cy.findAllByText("Get started with Embedded Analytics JS")
+        .first()
+        .should("be.visible");
+
+      cy.log("Verify checklist steps are visible on homepage");
+      cy.get("main").within(() => {
+        cy.findByText("Create models").should("be.visible");
+        cy.findByText("Generate a dashboard").should("be.visible");
+        cy.findByText("Add data").should("be.visible").click();
+      });
+
+      cy.log("Sanity check: add data modal should open");
+      cy.findByRole("dialog").within(() => {
+        cy.findByRole("heading", { name: "Add data" }).should("be.visible");
+      });
+    });
+
+    it("embedding checklist should not show up on the embedding homepage if not enabled", () => {
+      cy.visit("/");
+
+      cy.get("main")
+        .findByText("Get started with Embedded Analytics JS")
+        .should("not.exist");
+    });
   });
 });
