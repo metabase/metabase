@@ -10,7 +10,6 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
    [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
-   [metabase.query-processor.middleware.add-source-metadata :as qp.add-source-metadata]
    [metabase.query-processor.middleware.fetch-source-query]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.test :as mt]
@@ -352,7 +351,6 @@
                                   [:field %products.category {:source-field            %product-id
                                                               :source-field-name       "Orders__PRODUCT_ID"
                                                               :source-field-join-alias "Card"}]]})
-                qp.add-source-metadata/add-source-metadata-for-source-queries
                 add-implicit-clauses
                 add-implicit-joins)))))
 
