@@ -163,8 +163,7 @@ export function createEmbeddedAnalyticsJsUsage(
           properties.readOnly,
           usage,
         );
-      })
-      .otherwise(() => {});
+      });
   });
 
   return usage;
