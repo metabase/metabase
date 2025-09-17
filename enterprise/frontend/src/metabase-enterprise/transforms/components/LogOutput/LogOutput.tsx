@@ -1,52 +1,26 @@
 import * as React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import reactAnsiStyle from "react-ansi-style";
+import { t } from "ttag";
 
-import { LogOutputContainer } from "./LogOutput.styled";
+import { Box } from "metabase/ui";
 
 interface LogOutputProps {
   content?: string;
-  showLineNumbers?: boolean;
-  maxLines?: number;
 }
 
-export function LogOutput({
-  content,
-  showLineNumbers = true,
-  maxLines = 20,
-}: LogOutputProps) {
+export function LogOutput({ content }: LogOutputProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isUserScrolled, setIsUserScrolled] = useState(false);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
 
-  const { displayContent, actualLines } = useMemo(() => {
+  const displayContent = useMemo(() => {
     if (!content || content.trim().length === 0) {
-      return { displayContent: "No output", actualLines: 1 };
+      return t`No output`;
     }
 
-    const lines = content.split("\n");
-    let processedContent = content;
-
-    if (showLineNumbers) {
-      const maxLineLength = lines.length.toString().length;
-      processedContent = lines
-        .map(
-          (line, index) =>
-            `${(index + 1).toString().padStart(maxLineLength, " ")} | ${line}`,
-        )
-        .join("\n");
-    }
-
-    return {
-      displayContent: reactAnsiStyle(React, processedContent),
-      actualLines: lines.length,
-    };
-  }, [content, showLineNumbers]);
-
-  // Calculate the height based on actual lines (up to maxLines)
-  const linesToShow = Math.min(actualLines, maxLines);
-  const containerHeight = `${linesToShow * 1.4 + 2}em`; // 1.4 is line-height + padding
-  const maxContainerHeight = `${maxLines * 1.4 + 2}em`;
+    return reactAnsiStyle(React, content);
+  }, [content]);
 
   // Auto-scroll to bottom when content changes
   useEffect(() => {
@@ -74,12 +48,8 @@ export function LogOutput({
   };
 
   return (
-    <LogOutputContainer
-      ref={containerRef}
-      style={{ height: containerHeight, maxHeight: maxContainerHeight }}
-      onScroll={handleScroll}
-    >
+    <Box ref={containerRef} onScroll={handleScroll} mah="30rem">
       {displayContent}
-    </LogOutputContainer>
+    </Box>
   );
 }
