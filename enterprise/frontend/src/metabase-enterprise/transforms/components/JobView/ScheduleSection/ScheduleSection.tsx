@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { CronExpressionInput } from "metabase/common/components/CronExpressioInput";
 import { useSetting } from "metabase/common/hooks";
 import { formatCronExpressionForUI } from "metabase/lib/cron";
+import { timezoneToUTCOffset } from "metabase/lib/time-dayjs";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Divider, Group, Icon, Stack, Tooltip } from "metabase/ui";
 import { useRunTransformJobMutation } from "metabase-enterprise/api";
@@ -12,8 +13,6 @@ import { trackTranformJobTriggerManualRun } from "metabase-enterprise/transforms
 import { RunButton } from "../../../components/RunButton";
 import { SplitSection } from "../../../components/SplitSection";
 import type { TransformJobInfo } from "../types";
-
-import { getScheduleExplanationWithTimezone } from "./utils";
 
 type ScheduleSectionProps = {
   job: TransformJobInfo;
@@ -58,10 +57,9 @@ function CronSection({
   onChangeSubmit,
 }: CronSectionProps) {
   const systemTimezone = useSetting("system-timezone") ?? "UTC";
-  const scheduleExplanation = getScheduleExplanationWithTimezone(
-    schedule,
-    systemTimezone,
-  );
+  const timezoneOffset = timezoneToUTCOffset(systemTimezone);
+  const timezoneExplanation =
+    timezoneOffset === "+00:00" ? "UTC" : `UTC${timezoneOffset}`;
 
   return (
     <Stack px="xl" py="lg">
@@ -69,13 +67,13 @@ function CronSection({
         value={schedule}
         onChange={onChangeSchedule}
         onBlurChange={onChangeSubmit}
+        getExplainMessage={(explanation) => (
+          <Group gap="sm" c="text-secondary" pt="sm">
+            <Icon name="calendar" />
+            {t`This job will run ${explanation}, ${timezoneExplanation}`}
+          </Group>
+        )}
       />
-      {scheduleExplanation != null && (
-        <Group gap="sm" c="text-secondary">
-          <Icon name="calendar" />
-          {t`This job will run ${scheduleExplanation}`}
-        </Group>
-      )}
     </Stack>
   );
 }
