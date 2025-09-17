@@ -56,15 +56,21 @@
   (try (.delete file) (catch Exception _)))
 
 (defn- write-to-stream! [^OutputStream os col-names reducible-rows]
-  (let [writer (-> os
+  (let [none? (volatile! true)
+        writer (-> os
                    (OutputStreamWriter. StandardCharsets/UTF_8)
                    (BufferedWriter.))]
 
     (run! (fn [row]
+            (when @none? (vreset! none? false))
             (let [row-map (zipmap col-names row)]
               (json/encode-to row-map writer {})
               (.newLine writer)))
           reducible-rows)
+
+    ;; Workaround for LocalStack, which doesn't support zero byte files.
+    (when @none?
+      (.write writer " "))
 
     (doto writer
       (.flush)

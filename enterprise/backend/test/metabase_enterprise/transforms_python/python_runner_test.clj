@@ -230,6 +230,42 @@
                                          "Parsed score as Integer")}
                   result)))))))
 
+(deftest transform-function-with-empty-table-test
+  (testing "transform function successfully connects to PostgreSQL database and reads data"
+    (mt/test-drivers #{:postgres}
+      (mt/with-empty-db
+        (let [db-spec        (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+              _              (jdbc/execute! db-spec ["DROP TABLE IF EXISTS students"])
+              _              (jdbc/execute! db-spec ["CREATE TABLE students (id INTEGER PRIMARY KEY, name VARCHAR(100), score INTEGER)"])
+
+              _              (sync/sync-database! (mt/db))
+
+              transform-code (str "import pandas as pd\n"
+                                  "\n"
+                                  "def transform(students):\n"
+                                  "    # Calculate average score\n"
+                                  "    avg_score = students['score'].mean()\n"
+                                  "    result = pd.DataFrame({\n"
+                                  "        'student_count': [len(students)],\n"
+                                  "        'average_score': [round(avg_score, 2)]\n"
+                                  "    })\n"
+                                  "    return result")
+              result         (execute! {:code  transform-code
+                                        :tables {"students" (mt/id :students)}})]
+
+          (is (=? {:output          "{\"student_count\":0,\"average_score\":null}\n"
+                   :output-manifest {:schema_version 1
+                                     :data_format    "jsonl"
+                                     :data_version   1
+                                     :fields         [{:name "student_count", :base_type "Integer"}
+                                                      {:name "average_score", :base_type "Float"}]}
+                   :stdout          (str "Successfully saved 1 rows to S3\n"
+                                         "Successfully saved output manifest with 2 fields to S3")
+                   :stderr          (str "Parsed id as Integer\n"
+                                         "Parsed name as Text\n"
+                                         "Parsed score as Integer")}
+                  result)))))))
+
 (deftest transform-function-with-working-database-test
   (testing "transform function successfully connects to PostgreSQL database and reads data"
     (mt/test-drivers #{:postgres}
@@ -255,11 +291,13 @@
                                         :tables {"students" (mt/id :students)}})]
 
           (is (=? {:output          "{\"student_count\":4,\"average_score\":88.75}\n"
-                   :output-manifest {:version "0.1.0",
-                                     :fields  [{:name "student_count", :base_type "Integer"}
-                                               {:name "average_score", :base_type "Float"}]}
+                   :output-manifest {:schema_version 1
+                                     :data_format    "jsonl"
+                                     :data_version   1
+                                     :fields         [{:name "student_count", :base_type "Integer"}
+                                                      {:name "average_score", :base_type "Float"}]}
                    :stdout          (str "Successfully saved 1 rows to S3\n"
-                                         "Successfully saved output manifest with 2 fields")
+                                         "Successfully saved output manifest with 2 fields to S3")
                    :stderr          (str "Parsed id as Integer\n"
                                          "Parsed name as Text\n"
                                          "Parsed score as Integer")}
