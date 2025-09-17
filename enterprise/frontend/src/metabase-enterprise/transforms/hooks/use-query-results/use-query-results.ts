@@ -19,7 +19,11 @@ export function useQueryResults(question: Question) {
 
   const { result, rawSeries, isRunnable, isResultDirty } = useMemo(() => {
     const lastRunQuestion = lastRunQuery
-      ? Question.create({ dataset_query: lastRunQuery, metadata })
+      ? Question.create({
+          dataset_query: lastRunQuery,
+          metadata,
+          visualization_settings: question.settings(),
+        })
       : null;
     const result = results ? results[0] : null;
     const rawSeries =
