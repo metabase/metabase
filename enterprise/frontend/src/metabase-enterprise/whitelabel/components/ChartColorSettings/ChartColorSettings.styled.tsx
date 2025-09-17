@@ -2,29 +2,14 @@ import styled from "@emotion/styled";
 
 import { breakpointMinLarge } from "metabase/styled-components/theme";
 
-export const TableHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 1.5rem;
+export const TableBody = styled.div`
   border: 1px solid var(--mb-color-border);
+  border-bottom: 0;
   border-radius: 0.5rem 0.5rem 0 0;
 
   ${breakpointMinLarge} {
     border-top-right-radius: 0;
   }
-`;
-
-export const TableTitle = styled.div`
-  color: var(--mb-color-text-dark);
-  font-size: 1rem;
-  font-weight: bold;
-`;
-
-export const TableBody = styled.div`
-  border: 1px solid var(--mb-color-border);
-  border-top: none;
-  border-bottom: 0;
 `;
 
 export const TableBodyRow = styled.div`
