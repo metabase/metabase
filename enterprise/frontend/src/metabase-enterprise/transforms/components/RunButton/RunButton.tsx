@@ -23,7 +23,6 @@ export const RunButton = forwardRef(function RunButton(
     isDisabled: isExternallyDisabled = false,
     onRun,
     onCancel,
-    isCanceling = false,
   }: RunButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
@@ -56,15 +55,6 @@ export const RunButton = forwardRef(function RunButton(
           onClick={onRun}
         >
           {label}
-        </Button>
-        <Button
-          variant="outline"
-          color="error"
-          disabled={isCanceling}
-          data-testid="cancel-button"
-          onClick={onCancel}
-        >
-          {isCanceling ? t`Canceling…` : t`Cancel`}
         </Button>
       </Group>
     );

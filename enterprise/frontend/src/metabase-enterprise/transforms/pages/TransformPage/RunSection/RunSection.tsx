@@ -5,7 +5,6 @@ import { useSetting } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Anchor, Box, Divider, Group, Icon, Stack } from "metabase/ui";
 import {
-  useCancelTransformMutation,
   useLazyGetTransformQuery,
   useRunTransformMutation,
   useUpdateTransformMutation,
@@ -151,9 +150,7 @@ type RunButtonSectionProps = {
 function RunButtonSection({ transform }: RunButtonSectionProps) {
   const [fetchTransform, { isFetching }] = useLazyGetTransformQuery();
   const [runTransform, { isLoading: isRunning }] = useRunTransformMutation();
-  const [cancelTransform, { isLoading: isCanceling }] =
-    useCancelTransformMutation();
-  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
+  const { sendErrorToast } = useMetadataToasts();
 
   const handleRun = async () => {
     trackTranformTriggerManualRun({
@@ -171,24 +168,11 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
     return { error };
   };
 
-  const handleCancel = async () => {
-    const { error } = await cancelTransform(transform.id);
-    if (error) {
-      sendErrorToast(t`Failed to cancel transform`);
-    } else {
-      sendSuccessToast(t`Transform cancellation requested`);
-      // fetch the transform to get the updated status
-      fetchTransform(transform.id);
-    }
-  };
-
   return (
     <RunButton
       run={transform.last_run}
       isLoading={isFetching || isRunning}
       onRun={handleRun}
-      onCancel={handleCancel}
-      isCanceling={isCanceling}
     />
   );
 }
