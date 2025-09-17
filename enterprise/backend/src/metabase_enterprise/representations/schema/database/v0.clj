@@ -11,7 +11,7 @@
 (mr/def ::type
   [:enum {:decode/json keyword
           :description "Entity type, must be 'database' for this schema"}
-   :database])
+   :v0/database])
 
 (mr/def ::ref
   [:and
@@ -91,7 +91,7 @@
 
 ;;; ------------------------------------ Main Database Schema ------------------------------------
 
-(mr/def ::database-v0
+(mr/def ::database
   [:map
    {:description "v0 schema for human-writable database representation"}
    [:type ::type]

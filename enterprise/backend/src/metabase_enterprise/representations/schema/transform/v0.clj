@@ -11,7 +11,7 @@
 (mr/def ::type
   [:enum {:decode/json keyword
           :description "Entity type, must be 'transform' for this schema"}
-   :transform])
+   :v0/transform])
 
 (mr/def ::ref
   [:and
@@ -29,7 +29,7 @@
    {:description "Documentation explaining the transform's purpose"}
    ::lib.schema.common/non-blank-string])
 
-(mr/def ::sql-query
+(mr/def ::query
   [:and
    {:description "SQL query that performs the transformation"}
    ::lib.schema.common/non-blank-string])
@@ -61,7 +61,7 @@
 
 ;;; ------------------------------------ Main Schema ------------------------------------
 
-(mr/def ::transform-v0
+(mr/def ::transform
   [:and
    [:map
     {:description "v0 schema for human-writable transform representation"}
@@ -72,9 +72,9 @@
     [:database ::database]
     [:target_table ::target-table]
     [:target_schema ::target-schema]
-    [:sql_query {:optional true} ::sql-query]
+    [:query {:optional true} ::query]
     [:mbql_query {:optional true} ::mbql-query]
     [:run_trigger {:optional true} ::run-trigger]]
-   [:fn {:error/message "Must have exactly one of :sql_query or :mbql_query"}
-    (fn [{:keys [sql_query mbql_query]}]
-      (= 1 (count (filter some? [sql_query mbql_query]))))]])
+   [:fn {:error/message "Must have exactly one of :query or :mbql_query"}
+    (fn [{:keys [query mbql_query]}]
+      (= 1 (count (filter some? [query mbql_query]))))]])

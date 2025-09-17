@@ -11,7 +11,7 @@
 (mr/def ::type
   [:enum {:decode/json keyword
           :description "Entity type, must be 'collection' for this schema"}
-   :collection])
+   :v0/collection])
 
 (mr/def ::ref
   [:and
@@ -31,7 +31,7 @@
 
 ;;; ------------------------------------ Main Schema ------------------------------------
 
-(mr/def ::collection-v0
+(mr/def ::collection
   [:map
    {:description "v0 schema for human-writable collection representation
                   Collections organize cards, dashboards, and other resources.

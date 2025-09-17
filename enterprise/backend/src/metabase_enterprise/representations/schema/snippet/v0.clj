@@ -11,7 +11,7 @@
 (mr/def ::type
   [:enum {:decode/json keyword
           :description "Entity type, must be 'snippet' for this schema"}
-   :snippet])
+   :v0/snippet])
 
 (mr/def ::ref
   [:and
@@ -41,7 +41,7 @@
 
 ;;; ------------------------------------ Main Schema ------------------------------------
 
-(mr/def ::snippet-v0
+(mr/def ::snippet
   [:map
    {:description "v0 schema for human-writable SQL snippet representation"}
    [:type ::type]
