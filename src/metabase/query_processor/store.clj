@@ -12,6 +12,8 @@
   Of course, it would be entirely possible to call `(t2/select-one Field :id 10)` every time you needed information
   about that Field, but fetching all Fields in a single pass and storing them for reuse is dramatically more efficient
   than fetching those Fields potentially dozens of times in a single query execution."
+  ;; This whole namespace is in the process of deprecation so ignore deprecated vars in this namespace.
+  {:clj-kondo/config '{:linters {:deprecated-var {:level :off}}}}
   (:require
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
@@ -58,16 +60,19 @@
 
 (mu/defn store-miscellaneous-value!
   "Store a miscellaneous value in a the cache. Persists for the life of this QP invocation, including for recursive
-  calls."
+  calls.
+
+  DEPRECATED -- use [[metabase.lib.metadata/general-cached-value]] going forward."
+  {:deprecated "0.57.0"}
   [ks :- [:sequential :any]
    v]
   (swap! *store* assoc-in ks v))
 
-;;; TODO (Cam 7/7/25) -- now that we use cached metadata providers consistently and cached metadata providers support
-;;; general value caching we should use those facilities instead. We can remove the bespoke logic here and
-;;; use the stuff in [[metabase.lib.metadata.cache]] instead going forward
 (mu/defn miscellaneous-value
-  "Fetch a miscellaneous value from the cache. Unlike other Store functions, does not throw if value is not found."
+  "Fetch a miscellaneous value from the cache. Unlike other Store functions, does not throw if value is not found.
+
+  DEPRECATED -- use [[metabase.lib.metadata/general-cached-value]] going forward."
+  {:deprecated "0.57.0"}
   ([ks]
    (miscellaneous-value ks nil))
 
@@ -80,7 +85,10 @@
   value, stores it in the cache, and returns the value. You can use this to ensure a given function is only ran once
   during the duration of a QP execution.
 
-  See also `cached` macro."
+  See also `cached` macro.
+
+  DEPRECATED -- use [[metabase.lib.metadata/general-cached-value]] going forward."
+  {:deprecated "0.57.0"}
   [ks thunk]
   (let [cached-value (miscellaneous-value ks ::not-found)]
     (if-not (= cached-value ::not-found)
@@ -99,8 +107,10 @@
 
     ;; cache lookups of Card.dataset_query
     (qp.store/cached card-id
-      (t2/select-one-fn :dataset_query Card :id card-id))"
-  {:style/indent 1}
+      (t2/select-one-fn :dataset_query Card :id card-id))
+
+  DEPRECATED -- use [[metabase.lib.core/general-cached-value]] going forward."
+  {:style/indent 1, :deprecated "0.57.0"}
   [k-or-ks & body]
   ;; for the unique key use a gensym prefixed by the namespace to make for easier store debugging if needed
   (let [ks (into [(list 'quote (gensym (str (name (ns-name *ns*)) "/misc-cache-")))] (u/one-or-many k-or-ks))]

@@ -1693,7 +1693,7 @@
                       {:name "NAME"}]   ; remap of VENUES.CATEGORY_ID => CATEGORIES.NAME
           exp-join2  [{:name "CATEGORY"}]
           cols       (fn [query]
-                       (lib/returned-columns query -1 (lib.util/query-stage query -1) {:include-remaps? true}))]
+                       (lib/returned-columns query -1 -1 {:include-remaps? true}))]
       (is (=? (concat exp-main exp-join1 exp-join2)
               (-> base
                   (lib/join join1)

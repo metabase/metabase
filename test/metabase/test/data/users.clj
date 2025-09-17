@@ -69,14 +69,14 @@
   (or (t2/select-one :model/User :email email)
       (locking create-user-lock
         (or (t2/select-one :model/User :email email)
-            (first (t2/insert-returning-instances! :model/User
-                                                   {:email        email
-                                                    :first_name   first-name
-                                                    :last_name    last-name
-                                                    :password     password
-                                                    :is_superuser superuser
-                                                    :is_qbnewb    true
-                                                    :is_active    active}))))))
+            (t2/insert-returning-instance! :model/User
+                                           {:email        email
+                                            :first_name   first-name
+                                            :last_name    last-name
+                                            :password     password
+                                            :is_superuser superuser
+                                            :is_qbnewb    true
+                                            :is_active    active})))))
 
 (mu/defn fetch-user :- (ms/InstanceOf :model/User)
   "Fetch the User object associated with `username`. Creates user if needed.

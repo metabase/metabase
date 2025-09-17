@@ -1,22 +1,27 @@
+import type { JSXElementConstructor } from "react";
+
 import type { CollectionBrowser } from "embedding-sdk-bundle/components/public/CollectionBrowser";
 import type { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import type { CreateDashboardModal } from "embedding-sdk-bundle/components/public/CreateDashboardModal";
 import type { CreateQuestion } from "embedding-sdk-bundle/components/public/CreateQuestion";
 import type { InteractiveQuestion } from "embedding-sdk-bundle/components/public/InteractiveQuestion/InteractiveQuestion";
 import type { MetabotQuestion } from "embedding-sdk-bundle/components/public/MetabotQuestion";
+import type { SdkDebugInfo } from "embedding-sdk-bundle/components/public/SdkDebugInfo/SdkDebugInfo";
 import type { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion/StaticQuestion";
 import type { EditableDashboard } from "embedding-sdk-bundle/components/public/dashboard/EditableDashboard";
 import type { InteractiveDashboard } from "embedding-sdk-bundle/components/public/dashboard/InteractiveDashboard";
 import type { StaticDashboard } from "embedding-sdk-bundle/components/public/dashboard/StaticDashboard";
-import type { SdkDebugInfo } from "embedding-sdk-bundle/components/public/debug/SdkDebugInfo";
 import type { SdkStore, SdkStoreState } from "embedding-sdk-bundle/store/types";
-import type { LoginStatus } from "embedding-sdk-bundle/types/user";
 import type {
   CreateDashboardValues,
   MetabaseDashboard,
-} from "embedding-sdk-package";
+} from "embedding-sdk-bundle/types";
+import type { LoginStatus } from "embedding-sdk-bundle/types/user";
+import type { FunctionSchemaValidationResult } from "embedding-sdk-shared/types/validation";
 import type { User } from "metabase-types/api";
 
+export type InternalComponent<TComponent extends JSXElementConstructor<any>> =
+  TComponent & { schema?: any };
 type InternalHook = () => void;
 type ReduxStoreFactory = () => SdkStore;
 type ReduxStoreSelector<T> = (state: SdkStoreState) => T;
@@ -33,33 +38,34 @@ export type MetabaseEmbeddingSdkBundleExports = PublicExports &
   ReduxStoreExports &
   ReduxStoreUtilityFunctionExports &
   ReduxStoreSelectorsExports &
-  InternalHooksExports;
+  InternalHooksExports &
+  SchemaValidationUtils;
 
-type PublicExports = {
-  CollectionBrowser: typeof CollectionBrowser;
-  CreateDashboardModal: typeof CreateDashboardModal;
-  CreateQuestion: typeof CreateQuestion;
-  EditableDashboard: typeof EditableDashboard;
-  InteractiveDashboard: typeof InteractiveDashboard;
-  InteractiveQuestion: typeof InteractiveQuestion;
-  ComponentProvider: typeof ComponentProvider;
-  MetabotQuestion: typeof MetabotQuestion;
-  SdkDebugInfo: typeof SdkDebugInfo;
-  StaticDashboard: typeof StaticDashboard;
-  StaticQuestion: typeof StaticQuestion;
+export type PublicExports = {
+  CollectionBrowser: InternalComponent<typeof CollectionBrowser>;
+  CreateDashboardModal: InternalComponent<typeof CreateDashboardModal>;
+  CreateQuestion: InternalComponent<typeof CreateQuestion>;
+  EditableDashboard: InternalComponent<typeof EditableDashboard>;
+  InteractiveDashboard: InternalComponent<typeof InteractiveDashboard>;
+  InteractiveQuestion: InternalComponent<typeof InteractiveQuestion>;
+  ComponentProvider: InternalComponent<typeof ComponentProvider>;
+  MetabotQuestion: InternalComponent<typeof MetabotQuestion>;
+  SdkDebugInfo: InternalComponent<typeof SdkDebugInfo>;
+  StaticDashboard: InternalComponent<typeof StaticDashboard>;
+  StaticQuestion: InternalComponent<typeof StaticQuestion>;
 };
 
-type ReduxStoreExports = {
+export type ReduxStoreExports = {
   getSdkStore: ReduxStoreFactory;
 };
 
-type ReduxStoreUtilityFunctionExports = {
+export type ReduxStoreUtilityFunctionExports = {
   createDashboard: ReduxStoreUtilityFunction<
     (params: CreateDashboardValues) => Promise<MetabaseDashboard>
   >;
 };
 
-type ReduxStoreSelectorsExports = {
+export type ReduxStoreSelectorsExports = {
   getApplicationName: ReduxStoreSelector<string>;
   getAvailableFonts: ReduxStoreSelector<string[]>;
   getLoginStatus: ReduxStoreSelector<LoginStatus>;
@@ -69,4 +75,10 @@ type ReduxStoreSelectorsExports = {
 export type InternalHooksExports = {
   useInitData: InternalHook;
   useLogVersionInfo: InternalHook;
+};
+
+export type SchemaValidationUtils = {
+  validateFunctionSchema: (
+    schema: any,
+  ) => FunctionSchemaValidationResult<unknown[], unknown>;
 };

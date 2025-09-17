@@ -421,13 +421,22 @@
   [^DatabaseMetaData metadata database driver {^String schema :schema, ^String table-name :name} catalog dbname]
   (let [schema (or schema dbname)]
     (try
-      (let [columns (get-columns metadata catalog schema table-name)]
+      (let [columns (get-columns metadata catalog schema table-name)
+            duplicates? (and (seq columns)
+                             (not (apply distinct? (map :column_name columns))))]
         (when (empty? columns)
           (log/trace "Falling back to DESCRIBE due to #43980"))
+        (when duplicates?
+          (log/trace "Falling back to DESCRIBE due to duplicate column names (#58441)"
+                     (into {} (keep (fn [[col-name cols]]
+                                      (when (next cols)
+                                        [col-name (mapv :type_name cols)])))
+                           (group-by :column_name columns))))
         (if (or (table-has-nested-fields? columns)
                   ; If `.getColumns` returns an empty result, try to use DESCRIBE, which is slower
                   ; but doesn't suffer from the bug in the JDBC driver as metabase#43980
-                (empty? columns))
+                (empty? columns)
+                duplicates?)
           (describe-table-fields-with-nested-fields database schema table-name)
           (describe-table-fields-without-nested-fields driver schema table-name columns)))
       (catch Throwable e
@@ -449,6 +458,7 @@
                         (describe-table-fields metadata database driver table catalog dbname)
                         (catch Throwable _
                           (set nil))))))))
+
 (defn- get-tables
   [^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
   ;; tablePattern "%" = match all tables

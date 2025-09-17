@@ -17,6 +17,9 @@ title: Driver interface changelog
   metabase.driver/connection-spec, metabase.driver/table-exists?, metabase.driver.sql/normalize-name,
   and metabase.driver.sql/default-schema to implement sql transforms.
 
+- Added `metabase.driver/rename-tables!*` multimethod for atomic table renaming operations. Takes a map of {from-table to-table}
+  pairs that has been topologically sorted.
+
 - Added the driver multi-methods `metabase.driver/schema-exists?` and `metabase.driver/create-schema-if-needed!` which should be implemented by drivers that support `:schemas` and `:transforms/table`.
 
 - `metabase.driver/humanize-connection-error-message` now takes a list of all messages in the exception chain,

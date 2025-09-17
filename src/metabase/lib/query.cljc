@@ -442,15 +442,6 @@
   (let [{q :query, n :stage-number} (wrap-native-query-with-mbql a-query stage-number card-id)]
     (apply f q n args)))
 
-;;; TODO (Cam 7/10/25) -- not sure this is really needed since the `:encode/serialize` keys for schemas already say
-;;; how to do this
-(defn serializable
-  "Given a query, ensure it doesn't have any keys or structures that aren't safe for serialization.
-
-  For example, any Atoms or Delays or should be removed."
-  [a-query]
-  (dissoc a-query :lib/metadata))
-
 (defn- template-tag-stages
   [template-tags]
   (for [{:keys [card-id snippet-id] tag-type :type} (vals template-tags)

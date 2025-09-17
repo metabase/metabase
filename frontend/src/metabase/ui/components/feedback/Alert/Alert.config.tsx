@@ -10,6 +10,7 @@ export const alertOverrides: MantineThemeOverride["components"] = {
     classNames: {
       root: AlertStyles.root,
       wrapper: AlertStyles.wrapper,
+      title: AlertStyles.title,
     },
   }),
 };

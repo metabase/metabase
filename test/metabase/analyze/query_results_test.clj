@@ -94,7 +94,7 @@
                 "as it's just an integer flowing through, similarly Price isn't found to be a category as we're inferring by name "
                 "only")
     (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                      (mt/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       {:cards [{:id            1
                                                 :dataset-query {:database (mt/id)
                                                                 :type     :native

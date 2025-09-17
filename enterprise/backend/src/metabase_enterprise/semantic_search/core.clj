@@ -12,7 +12,8 @@
    [metabase.analytics.core :as analytics]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.engine :as search.engine]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [toucan2.realize :as t2.realize]))
 
 (defn- fallback-engine
   "Find the highest priority search engine available for fallback."
@@ -58,10 +59,17 @@
           (analytics/inc! :metabase-search/semantic-fallback-triggered {:fallback-engine fallback})
           (analytics/observe! :metabase-search/semantic-results-before-fallback final-count)
           (let [fallback-results (try
-                                   (search.engine/results (assoc search-ctx :search-engine fallback))
+                                   (cond->> (search.engine/results (assoc search-ctx :search-engine fallback))
+                                     ;; The in-place engine returns a reducible (but not seqable) result that needs to
+                                     ;; be realized before we concat and dedup with the semantic engine results.
+                                     (= :search.engine/in-place fallback)
+                                     (into [] (comp (map t2.realize/realize)
+                                                    (take (- (semantic.settings/semantic-search-results-limit) final-count)))))
                                    (catch Throwable t
                                      (log/warn t "Semantic search fallback errored, ignoring")
                                      []))
+                _ (analytics/observe! :metabase-search/semantic-fallback-results-usage
+                                      (count fallback-results))
                 combined-results (concat results fallback-results)
                 deduped-results  (m/distinct-by (juxt :model :id) combined-results)]
             (take (semantic.settings/semantic-search-results-limit) deduped-results)))))

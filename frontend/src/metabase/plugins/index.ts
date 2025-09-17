@@ -49,7 +49,6 @@ import type { SearchFilterComponent } from "metabase/search/types";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
 import type { HoveredObject } from "metabase/visualizations/types";
-import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -129,8 +128,14 @@ export const PLUGIN_WHITELABEL = {
   WhiteLabelConcealSettingsPage: PluginPlaceholder,
 };
 
-export const PLUGIN_ADMIN_SETTINGS = {
-  InteractiveEmbeddingSettings: NotFoundPlaceholder,
+export const PLUGIN_ADMIN_SETTINGS: {
+  InteractiveEmbeddingSettings: ComponentType | null;
+  LicenseAndBillingSettings: ComponentType;
+  useUpsellFlow: (props: { campaign: string; location: string }) => {
+    triggerUpsellFlow: (() => void) | undefined;
+  };
+} = {
+  InteractiveEmbeddingSettings: null,
   LicenseAndBillingSettings: PluginPlaceholder,
   useUpsellFlow: (_props: {
     campaign: string;
@@ -662,25 +667,6 @@ export const PLUGIN_AI_SQL_FIXER: PluginAiSqlFixer = {
   FixSqlQueryButton: PluginPlaceholder,
 };
 
-export type GenerateSqlQueryButtonProps = {
-  className?: string;
-  query: Lib.Query;
-  selectedQueryText?: string;
-  onGenerateQuery: (queryText: string) => void;
-};
-
-export type PluginAiSqlGeneration = {
-  GenerateSqlQueryButton: ComponentType<GenerateSqlQueryButtonProps>;
-  isEnabled: () => boolean;
-  getPlaceholderText: () => string;
-};
-
-export const PLUGIN_AI_SQL_GENERATION: PluginAiSqlGeneration = {
-  GenerateSqlQueryButton: PluginPlaceholder,
-  isEnabled: () => false,
-  getPlaceholderText: () => "",
-};
-
 export interface AIDashboardAnalysisSidebarProps {
   onClose?: () => void;
   dashcardId?: DashCardId;
@@ -733,6 +719,7 @@ export const PLUGIN_METABOT = {
   MetabotAdminPage: () => `placeholder`,
   getMetabotVisible: (_state: State) => false,
   SearchButton: SearchButton,
+  MetabotToggleButton: PluginPlaceholder,
 };
 
 type DashCardMenuItemGetter = (

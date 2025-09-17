@@ -108,6 +108,9 @@ const getFieldProps = (field: EngineField, override?: EngineFieldOverride) => {
     placeholder: placeholder != null ? String(placeholder) : undefined,
     encoding: field["treat-before-posting"],
     mb: "md",
+    labelProps: {
+      mb: "sm",
+    },
   };
 };
 

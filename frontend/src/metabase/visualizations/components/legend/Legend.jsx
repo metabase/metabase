@@ -24,6 +24,7 @@ const propTypes = {
   visibleLength: PropTypes.number,
   isVertical: PropTypes.bool,
   isInsidePopover: PropTypes.bool,
+  isQueryBuilder: PropTypes.bool,
   onHoverChange: PropTypes.func,
   onSelectSeries: PropTypes.func,
   onToggleSeriesVisibility: PropTypes.func,
@@ -42,6 +43,7 @@ const Legend = ({
   onSelectSeries,
   onToggleSeriesVisibility,
   isReversed,
+  isQueryBuilder,
 }) => {
   const items = isReversed ? _.clone(originalItems).reverse() : originalItems;
 
@@ -67,6 +69,7 @@ const Legend = ({
             item={item}
             index={itemIndex}
             isMuted={hovered && itemIndex !== hovered.index}
+            dotSize={isQueryBuilder ? "12px" : "8px"}
             isVertical={isVertical}
             isInsidePopover={isInsidePopover}
             isReversed={isReversed}
@@ -88,6 +91,7 @@ const Legend = ({
               <Legend
                 items={originalItems}
                 hovered={hovered}
+                dotSize={isQueryBuilder ? "12px" : "8px"}
                 visibleIndex={overflowIndex}
                 visibleLength={overflowLength}
                 isVertical={isVertical}

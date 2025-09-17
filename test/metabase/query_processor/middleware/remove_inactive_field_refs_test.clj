@@ -33,7 +33,7 @@
                                    :aggregation  [[:count]]}
                     :filter       [:= *count/Integer 3976]}))]
       (is (=? {:stages [{}
-                        {:fields [[:field {} (meta/id :products :category)]
+                        {:fields [[:field {} "T__CATEGORY"]
                                   [:field {} "count"]]}]}
               (qp.preprocess/preprocess query))))))
 
@@ -162,7 +162,8 @@
           "PRODUCT_ID" true
           "QUANTITY"   true
           "SUBTOTAL"   true
-          "TAX"        false
+          ;; TAX shouldn't come back from [[metabase.lib.metadata/fields]] because it's inactive
+          ;; "TAX"        false
           "TOTAL"      true
           "USER_ID"    true}
          (into (sorted-map)
@@ -209,23 +210,23 @@
                            qp.preprocess/preprocess
                            lib/->legacy-MBQL)]
       (testing ":query => :joins => first => :source-query => :fields"
-        (is (=? [[:field (mt/id :orders :id) nil]
-                 [:field (mt/id :orders :subtotal) nil]
-                 [:field (mt/id :orders :total) nil]
-                 [:field (mt/id :orders :created_at) nil]
-                 [:field (mt/id :orders :quantity) nil]
-                 [:field (mt/id :products :id) {:join-alias "Product"}]
-                 [:field (mt/id :products :title) {:join-alias "Product"}]
-                 [:field (mt/id :products :price) {:join-alias "Product"}]
-                 [:field (mt/id :products :rating) {:join-alias "Product"}]]
+        (is (=? [[:field "ID" {:base-type :type/BigInteger}]
+                 [:field "SUBTOTAL" {:base-type :type/Float}]
+                 [:field "TOTAL" {:base-type :type/Float}]
+                 [:field "CREATED_AT" {:base-type :type/DateTimeWithLocalTZ}]
+                 [:field "QUANTITY" {:base-type :type/Integer}]
+                 [:field "Product__ID" {:base-type :type/BigInteger}]
+                 [:field "Product__TITLE" {:base-type :type/Text}]
+                 [:field "Product__PRICE" {:base-type :type/Float}]
+                 [:field "Product__RATING" {:base-type :type/Float}]]
                 (-> preprocessed :query :joins first :source-query :fields))))
       (testing ":query => :fields"
-        (is (=? [[:field (mt/id :products :id) nil]
-                 [:field (mt/id :products :title) nil]
-                 [:field (mt/id :products :category) nil]
-                 [:field (mt/id :products :price) nil]
-                 [:field (mt/id :products :rating) nil]
-                 [:field (mt/id :products :created_at) nil]
+        (is (=? [[:field (mt/id :products :id) {}]
+                 [:field (mt/id :products :title) {}]
+                 [:field (mt/id :products :category) {}]
+                 [:field (mt/id :products :price) {}]
+                 [:field (mt/id :products :rating) {}]
+                 [:field (mt/id :products :created_at) {}]
                  [:field "ID_2" {:join-alias "Card", :base-type :type/BigInteger}]
                  [:field "TOTAL" {:join-alias "Card", :base-type :type/Float}]]
                 (-> preprocessed :query :fields)))))))

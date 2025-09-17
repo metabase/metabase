@@ -48,7 +48,7 @@
 
 (defenterprise upsert-sandboxes!
   "OSS implementation of `upsert-sandboxes!`. Errors since this is an enterprise feature."
-  metabase-enterprise.sandbox.models.group-table-access-policy
+  metabase-enterprise.sandbox.models.sandbox
   [_sandboxes]
   (throw (premium-features/ee-feature-error (tru "Sandboxes"))))
 

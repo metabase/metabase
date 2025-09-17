@@ -544,9 +544,9 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
 
     cy.findByTestId("site-name-setting").should("exist");
     cy.location("pathname").should("contain", "/admin/settings");
-    cy.realPress("3");
+    cy.realPress("4");
     cy.location("pathname").should("contain", "/admin/datamodel");
-    cy.realPress("7");
+    cy.realPress("8");
     cy.location("pathname").should("contain", "/admin/tools");
   });
 

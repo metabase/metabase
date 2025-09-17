@@ -648,12 +648,14 @@ export function provideTimelineTags(
 }
 
 export function provideUserListTags(
-  users: UserInfo[],
+  users: Pick<UserInfo, "id">[],
 ): TagDescription<TagType>[] {
   return [listTag("user"), ...users.flatMap((user) => provideUserTags(user))];
 }
 
-export function provideUserTags(user: UserInfo): TagDescription<TagType>[] {
+export function provideUserTags(
+  user: Pick<UserInfo, "id">,
+): TagDescription<TagType>[] {
   return [idTag("user", user.id)];
 }
 

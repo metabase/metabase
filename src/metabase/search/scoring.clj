@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
+   [metabase.app-db.core :as mdb]
    [metabase.search.config :as search.config]))
 
 (def ^:private seconds-in-a-day 86400)
@@ -37,18 +38,29 @@
 
 (defn inverse-duration
   "Score an item based on the duration between two dates, where less is better."
-  [from-column to-column ceiling-in-days]
-  (let [ceiling [:inline ceiling-in-days]]
-    [:/
-     [:greatest
-      [:- ceiling
-       [:/
-        ;; Use seconds for granularity in the fraction.
-        ;; TODO will probably need to specialize this based on (mdb/db-type)
-        [[:raw "EXTRACT(epoch FROM (" [:- to-column from-column] [:raw "))"]]]
-        [:inline (double seconds-in-a-day)]]]
-      [:inline 0]]
-     ceiling]))
+  ([from-column to-column ceiling-in-days]
+   (inverse-duration (mdb/db-type) from-column to-column ceiling-in-days))
+  ([db-type from-column to-column ceiling-in-days]
+   (let [ceiling [:inline ceiling-in-days]]
+     [:/
+      [:greatest
+       [:- ceiling
+        [:/
+         ;; Use seconds for granularity in the fraction.
+         (if (= :mysql db-type)
+           [:coalesce
+            [[:timestampdiff [:raw "SECOND"] from-column to-column]]
+            [:* ceiling (double seconds-in-a-day)]]
+           [[:raw "EXTRACT(epoch FROM (" [:- to-column from-column] [:raw "))"]]])
+         [:inline (double seconds-in-a-day)]]]
+       [:inline 0]]
+      ceiling])))
+
+(defn- cast-to-text
+  [column]
+  [:cast column (if (= :mysql (mdb/db-type))
+                  :char
+                  :text)])
 
 (defn user-recency-expr
   "Expression to select the `:user-recency` timestamp for the `current-user-id`."
@@ -57,7 +69,7 @@
    :from   [:recent_views]
    :where  [:and
             [:= :recent_views.user_id current-user-id]
-            [:= [:cast :recent_views.model_id :text] :search_index.model_id]
+            [:= (cast-to-text :recent_views.model_id) :search_index.model_id]
             [:= :recent_views.model
              [:case
               [:= :search_index.model [:inline "dataset"]] [:inline "card"]
@@ -106,7 +118,7 @@
         [:in :search_index.model (mapv (fn [m] [:inline (name m)]) sms)]
         [:= :search_index.model [:inline model-name]])
       [:= (keyword (str table-name ".user_id")) user-id]
-      [:= :search_index.model_id [:cast (keyword (str table-name "." model-name "_id")) :text]]]]))
+      [:= :search_index.model_id (cast-to-text (keyword (str table-name "." model-name "_id")))]]]))
 
 (defn join-bookmarks
   "Add join clause to bookmark tables for :bookmarked scorer."

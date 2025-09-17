@@ -73,9 +73,6 @@ export const getAdminSettingsSections = (
   "public-sharing": {
     name: t`Public Sharing`,
   },
-  "embedding-in-other-applications": {
-    name: t`Embedding`,
-  },
   license: {
     name: t`License`,
   },

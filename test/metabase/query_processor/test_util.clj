@@ -393,7 +393,13 @@
 (defn nest-query
   "Nest an MBQL/native query by `n-levels`. Useful for testing how nested queries behave.
 
-  DEPRECATED: prefer MBQL 5 queries and [[metabase.lib.core/append-stage]] going forward."
+  DEPRECATED: prefer MBQL 5 queries and [[metabase.lib.core/append-stage]] going forward.
+
+  You can do
+
+    (nth (iterate lib/append-stage query) n-levels)
+
+  to nest it multiple times."
   {:deprecated "0.57.0"}
   [outer-query n-levels]
   (if-not (pos? n-levels)

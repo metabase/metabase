@@ -140,7 +140,10 @@ jobs:
         run: node e2e/runner/run_cypress_ci.js snapshot --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
       - name: Run component tests for Embedding SDK
-        run: node e2e/runner/run_cypress_ci.js component --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+        run: |
+          node e2e/runner/run_cypress_ci.js component \
+            --browser ${{ steps.cypress-prep.outputs.chrome-path }} \
+            --env grepTags="-@skip-backward-compatibility",grepOmitFiltered=true
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results

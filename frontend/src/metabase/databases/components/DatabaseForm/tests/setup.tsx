@@ -102,6 +102,7 @@ export interface SetupOpts {
   hasEnterprisePlugins?: boolean;
   engines?: Record<string, Engine>;
   initialValues?: Partial<DatabaseData> & { engine?: EngineKey };
+  isAdvanced?: boolean;
 }
 
 export const setup = ({
@@ -109,6 +110,7 @@ export const setup = ({
   hasEnterprisePlugins,
   engines = TEST_ENGINES,
   initialValues = {},
+  isAdvanced = true,
 }: SetupOpts = {}) => {
   const state = createMockState({
     settings: mockSettings({ ...settings, engines }),
@@ -119,13 +121,14 @@ export const setup = ({
   }
 
   const onSubmit = jest.fn();
+
   renderWithProviders(
     <DatabaseForm
       initialValues={{
         engine: "h2",
         ...initialValues,
       }}
-      config={{ isAdvanced: true }}
+      config={{ isAdvanced }}
       onSubmit={onSubmit}
       location="admin"
     />,

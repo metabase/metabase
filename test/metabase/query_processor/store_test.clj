@@ -1,4 +1,6 @@
 (ns metabase.query-processor.store-test
+  ;; The parent namespace is in the process of deprecation so ignore deprecated vars in this namespace.
+  {:clj-kondo/config '{:linters {:deprecated-var {:level :off}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]

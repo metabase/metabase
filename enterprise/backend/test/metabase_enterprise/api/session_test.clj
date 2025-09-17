@@ -25,6 +25,7 @@
                               :embedding
                               :embedding-sdk
                               :embedding-simple
+                              :embedding-hub
                               :hosting
                               :llm-autodescription
                               :metabot-v3

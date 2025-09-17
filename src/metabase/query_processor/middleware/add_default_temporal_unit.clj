@@ -2,30 +2,28 @@
   (:require
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.util.match :as lib.util.match]
-   [metabase.query-processor.store :as qp.store]))
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.util :as lib.util]
+   [metabase.lib.walk :as lib.walk]
+   [metabase.util.malli :as mu]))
 
 (defn- add-default-temporal-unit* [query]
-  (lib.util.match/replace-in query [:query]
-    [:field (_ :guard string?) (_ :guard (every-pred
-                                          :base-type
-                                          #(isa? (:base-type %) :type/Temporal)
-                                          (complement :temporal-unit)))]
-    (mbql.u/with-temporal-unit &match :default)
+  (lib.walk/walk-clauses
+   query
+   (fn [query _path-type path clause]
+     (when (and (lib.util/clause-of-type? clause :field)
+                (not (lib/raw-temporal-bucket clause))
+                (isa? (lib.walk/apply-f-for-stage-at-path lib/type-of query path clause) :type/Temporal))
+       (lib/with-temporal-bucket clause :default)))))
 
-    [:field (id :guard integer?) (_ :guard (complement :temporal-unit))]
-    (let [{:keys [base-type effective-type]} (lib.metadata/field (qp.store/metadata-provider) id)]
-      (cond-> &match
-        (isa? (or effective-type base-type) :type/Temporal) (mbql.u/with-temporal-unit :default)))))
-
-(defn add-default-temporal-unit
+(mu/defn add-default-temporal-unit :- ::lib.schema/query
   "Add `:temporal-unit` `:default` to any temporal `:field` clauses that don't already have a `:temporal-unit`. This
   makes things more consistent because code downstream can rely on the key being present.
 
   Only activates for drivers with the `:temporal/requires-default-unit` feature."
-  [query]
-  (let [database (lib.metadata/database (qp.store/metadata-provider))]
+  [query :- ::lib.schema/query]
+  (let [database (lib.metadata/database query)]
     (cond-> query
       (driver.u/supports? driver/*driver* :temporal/requires-default-unit database) add-default-temporal-unit*)))

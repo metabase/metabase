@@ -183,28 +183,6 @@
              [:= [:field 4 nil] 300]]))
         "Should be able to combine multiple compound clauses"))
 
-(t/deftest ^:parallel map-stages-test
-  (let [test-fn (fn [inner-query stage-number]
-                  (assoc inner-query ::stage-number stage-number))]
-    (t/is (=? {:source-table  1
-               :filter        [:= [:field 1 nil] 100]
-               :aggregation   [[:count]]
-               ::stage-number 0}
-              (mbql.u/map-stages test-fn {:source-table 1
-                                          :filter       [:= [:field 1 nil] 100]
-                                          :aggregation  [[:count]]})))
-    (t/is (=? {:source-query  {:source-table  1
-                               :filter        [:= [:field 1 nil] 100]
-                               :aggregation   [[:count]]
-                               ::stage-number 0}
-               :expressions   {"negated" [:* [:field 1 nil] -1]}
-
-               ::stage-number 1}
-              (mbql.u/map-stages test-fn {:source-query  {:source-table  1
-                                                          :filter        [:= [:field 1 nil] 100]
-                                                          :aggregation   [[:count]]}
-                                          :expressions   {"negated" [:* [:field 1 nil] -1]}})))))
-
 (t/deftest ^:parallel desugar-time-interval-test
   (t/is (= [:between
             [:field 1 {:temporal-unit :month}]
@@ -653,19 +631,6 @@
              (mbql.u/negate-filter-clause
               [:inside [:field 1 nil] [:field 2 nil] 10.0 -20.0 -10.0 20.0])))))
 
-(t/deftest ^:parallel join->source-table-id-test
-  (let [join {:strategy  :left-join
-              :condition [:=
-                          [:field 48 nil]
-                          [:field 44 {:join-alias "products"}]]
-              :alias     "products"}]
-    (t/is (= 5
-             (mbql.u/join->source-table-id (assoc join :source-table 5))))
-    (t/is (= 5
-             (mbql.u/join->source-table-id (assoc join :source-query {:source-table 5}))))))
-
-;;; ---------------------------------------------- aggregation-at-index ----------------------------------------------
-
 (def ^:private query-with-some-nesting
   {:database 1
    :type     :query
@@ -684,8 +649,6 @@
     (t/testing (pr-str (cons 'aggregation-at-index input))
       (t/is (= expected
                (apply mbql.u/aggregation-at-index query-with-some-nesting input))))))
-
-;;; --------------------------------- Unique names & transforming ags to have names ----------------------------------
 
 (t/deftest ^:parallel uniquify-names
   (t/testing "can we generate unique names?"

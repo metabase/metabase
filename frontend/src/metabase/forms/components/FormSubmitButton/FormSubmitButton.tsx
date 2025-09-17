@@ -46,6 +46,7 @@ export const FormSubmitButton = forwardRef(function FormSubmitButton(
       type="submit"
       color={submitColor}
       disabled={isDisabled}
+      loading={status === "pending"}
     >
       {submitLabel}
     </Button>

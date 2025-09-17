@@ -839,7 +839,7 @@
       (mt/dataset times-mixed
         (testing "nested custom expression should works"
           (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
-                                            (mt/application-database-metadata-provider (mt/id))
+                                            (mt/metadata-provider)
                                             [(mt/mbql-query
                                                times
                                                {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Bangkok" "UTC"]

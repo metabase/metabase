@@ -12,7 +12,7 @@ There are two basic ways to secure stuff on the internet:
 1. **Authentication** looks at _who_ someone is (using standards such as [JWT](../people-and-groups/authenticating-with-jwt.md) or [SAML](../people-and-groups/authenticating-with-saml.md)).
 2. **Authorization** looks at _what_ someone has access to (using standards such as OAuth 2.0).
 
-In this guide, we'll talk primarily about authentication.
+In this guide, we'll talk primarily about authentication. 
 
 ## Public embedding
 
@@ -73,13 +73,13 @@ Static embeds don't authenticate people's identities on the Metabase side, so pe
 - Any filter selections in a static embed will reset once the signed JWT expires.
 - All Static embed usage will show up in [usage analytics](../usage-and-performance-tools/usage-analytics.md) under "External user".
 
-## Static embedding security vs. interactive embedding security
+## Security in static embedding vs. modular and interactive embedding
 
 Static embedding only guarantees authorized access to your Metabase data (you decide _what_ is accessible).
 
 If you want to secure your static embeds based on someone's identity (you decide _who_ gets access to _what_), you'll need to set up your own authentication flow and manually wire that up to [locked parameters](#example-sending-user-attributes-to-a-locked-parameter) on each of your static embeds. Note that locked parameters are essentially filters, so you can only set up **row-level** restrictions in a static embed.
 
-If you want an easier way to embed different views of data for different customers (without allowing the customers to see each other’s data), learn how [Interactive embedding authenticates and authorizes people in one flow](#interactive-embedding-authenticates-and-authorizes-people-in-one-flow).
+If you want an easier way to embed different views of data for different customers (without allowing the customers to see each other’s data), learn how [Modular and interactive embedding authenticates and authorizes people in one flow](#modular-and-interactive-embedding-auth-with-jwt-or-saml).
 
 ### Static embedding with JWT authorization
 
@@ -160,20 +160,18 @@ The flow might look something like this:
 
 For code samples, see the [static embedding reference app](https://github.com/metabase/embedding-reference-apps).
 
-## Interactive embedding authenticates and authorizes people in one flow
+## Modular and interactive embedding auth with JWT or SAML
 
-Interactive embedding integrates with SSO ([JWT](../people-and-groups/authenticating-with-jwt.md) or [SAML](../people-and-groups/authenticating-with-saml.md) to authenticate and authorize people in one flow. The auth integration makes it easy to map user attributes (such as a person's role or department) to granular levels of data access, including:
+Modular embedding (using Embedded Analytics [SDK](./sdk/introduction.md) or [JS](./embedded-analytics-js.md) components), and [interactive full-app embedding](./interactive-embedding.md) integrate  with SSO (either [JWT](../people-and-groups/authenticating-with-jwt.md) or [SAML](../people-and-groups/authenticating-with-saml.md)) to authenticate and authorize people in one flow. The auth integration makes it easy to map user attributes (such as a person's role or department) to granular levels of data access, including:
 
 - [Tables](../permissions/data.md)
 - [Rows](../permissions/row-and-column-security.md#row-level-security-filter-by-a-column-in-the-table)
 - [Columns](../permissions/row-and-column-security.md#custom-row-and-column-security-use-a-sql-question-to-create-a-custom-view-of-a-table)
 - [Other data permissions](../permissions/data.md), such as data download permissions or SQL access.
 
-### Interactive embedding with SSO
-
 ![Interactive embedding with SSO.](./images/full-app-embedding-sso.png)
 
-This diagram shows you how a interactive embed gets secured with [SSO](../people-and-groups/start.md#sso-for-metabase-pro-and-enterprise-plans):
+This diagram shows you how an interactive embed gets secured with [SSO](../people-and-groups/start.md#sso-for-metabase-pro-and-enterprise-plans):
 
 1. **Visitor arrives**: your frontend gets a request to display all content, including a Metabase component (such as a React component).
 2. **Load embed**: your frontend component loads the Metabase frontend using your [embedding URL](./interactive-embedding.md#pointing-an-iframe-to-a-metabase-url).
@@ -192,7 +190,7 @@ The mechanics of step 4 will vary a bit depending on whether you use [JWT](../pe
 
 In our static embedding example, we used [locked parameters](#example-securing-data-with-locked-parameters-on-a-static-embed) to display secure filtered views of the Accounts table.
 
-The nice thing about interactive embedding and [SSO](../people-and-groups/start.md#sso-for-metabase-pro-and-enterprise-plans) integration is that we don't have to manually manage locked parameters for each embed. Instead, we can map user attributes from our identity provider (IdP) to [permissions](../permissions/introduction.md) and [row and column security](../permissions/row-and-column-security.md) in Metabase. People can get authenticated and authorized to self-serve specific subsets of data from their very first login.
+The nice thing about modular/interactive embedding and [SSO](../people-and-groups/start.md#sso-for-metabase-pro-and-enterprise-plans) integration is that we don't have to manually manage locked parameters for each embed. Instead, we can map user attributes from our identity provider (IdP) to [permissions](../permissions/introduction.md) and [row and column security](../permissions/row-and-column-security.md) in Metabase. People can get authenticated and authorized to self-serve specific subsets of data from their very first login.
 
 Let's expand on our Accounts example to include a Tenant ID. The Tenant ID represents the parent org for a group of customers:
 
@@ -243,6 +241,8 @@ When Customer 1 logs in, they'll see a different filtered version of the Account
 
 ## Sample apps
 
+- [Modular embedding demo](https://embedded-analytics-sdk-demo.metabase.com)
+- [Modular embedding with SDK reference app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample)
 - [Interactive embedding demo](https://embedding-demo.metabase.com/)
 - [Interactive embedding reference app](https://github.com/metabase/sso-examples/tree/master/app-embed-example)
 - [Static embedding reference app](https://github.com/metabase/embedding-reference-apps)
@@ -250,5 +250,3 @@ When Customer 1 logs in, they'll see a different filtered version of the Account
 ## Further reading
 
 - [Configuring permissions for different customer schemas](../permissions/embedding.md)
-- [Why interactive embedding?](https://www.metabase.com/blog/why-full-app-embedding)
-- [The five stages of embedding grief](https://www.metabase.com/learn/grow-your-data-skills/analytics/embedding-mistakes)

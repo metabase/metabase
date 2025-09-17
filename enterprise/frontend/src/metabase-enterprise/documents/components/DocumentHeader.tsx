@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import DateTime, {
@@ -42,6 +43,7 @@ interface DocumentHeaderProps {
   onMove: () => void;
   onToggleBookmark: () => void;
   onArchive: () => void;
+  hasComments?: boolean;
 }
 
 export const DocumentHeader = ({
@@ -56,6 +58,7 @@ export const DocumentHeader = ({
   onMove,
   onToggleBookmark,
   onArchive,
+  hasComments = false,
 }: DocumentHeaderProps) => {
   const handlePrint = useCallback(() => {
     window.print();
@@ -128,6 +131,38 @@ export const DocumentHeader = ({
             </Box>
           )}
         </Transition>
+        {!isNewDocument && hasComments && (
+          <Tooltip label={t`Show all comments`}>
+            <Box>
+              {showSaveButton && (
+                <ActionIcon
+                  className={S.commentsIcon}
+                  disabled
+                  variant="subtle"
+                  size="md"
+                  aria-label={t`Show all comments`}
+                  data-hide-on-print
+                >
+                  <Icon name="message" />
+                </ActionIcon>
+              )}
+
+              {!showSaveButton && document && (
+                <ActionIcon
+                  className={S.commentsIcon}
+                  component={Link}
+                  to={`/document/${document.id}/comments/all`}
+                  variant="subtle"
+                  size="md"
+                  aria-label={t`Show all comments`}
+                  data-hide-on-print
+                >
+                  <Icon name="message" />
+                </ActionIcon>
+              )}
+            </Box>
+          </Tooltip>
+        )}
         {!document?.archived && (
           <Menu position="bottom-end">
             <Menu.Target>

@@ -137,6 +137,8 @@ config:
     embedding-app-origins-interactive: null
     embedding-app-origins-sdk: ''
     embedding-homepage: hidden
+    embedding-hub-production-embed-snippet-created: false
+    embedding-hub-test-embed-snippet-created: false
     embedding-secret-key: null
     enable-embedding-interactive: false
     enable-embedding-sdk: false

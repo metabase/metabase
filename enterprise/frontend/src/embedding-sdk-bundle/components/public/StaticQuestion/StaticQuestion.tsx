@@ -29,6 +29,8 @@ import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/mode
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 
+import { staticQuestionSchema } from "./StaticQuestion.schema";
+
 /**
  * @interface
  * @expand
@@ -152,4 +154,6 @@ const subComponents: StaticQuestionComponents = {
   DownloadWidgetDropdown: DownloadWidgetDropdown,
 };
 
-export const StaticQuestion = Object.assign(_StaticQuestion, subComponents);
+export const StaticQuestion = Object.assign(_StaticQuestion, subComponents, {
+  schema: staticQuestionSchema,
+});

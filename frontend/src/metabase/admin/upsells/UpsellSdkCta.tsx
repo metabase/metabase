@@ -32,7 +32,7 @@ export function useUpsellSdkCta() {
 
   if (isInteractiveEmbeddingEnabled) {
     return {
-      internalLink: "/admin/settings/embedding-in-other-applications/full-app",
+      internalLink: "/admin/embedding/interactive",
     };
   }
 

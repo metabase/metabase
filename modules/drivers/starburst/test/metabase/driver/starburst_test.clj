@@ -8,6 +8,7 @@
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.starburst :as starburst]
    [metabase.query-processor :as qp]
@@ -22,7 +23,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
-   (java.sql Connection)))
+   (java.sql Connection PreparedStatement ResultSet SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -32,6 +33,51 @@
 (defmethod tx/before-run :starburst
   [_]
   (alter-var-root #'timezones-test/broken-drivers conj :starburst))
+
+(deftest have-select-privilege-mixed-tables-test
+  (testing "have-select-privilege? correctly handles mixed Hive/Iceberg tables (Issue #63127)"
+    (testing "Returns true when DESCRIBE succeeds (compatible table type)"
+      (let [mock-conn (reify Connection
+                        (getCatalog [_] "hive")
+                        (prepareStatement [_ sql]
+                          (is (= "DESCRIBE \"hive\".\"sales_data\".\"hive_table\"" sql))
+                          (reify PreparedStatement
+                            (executeQuery [_]
+                              (reify ResultSet
+                                (next [_] true)
+                                (close [_] nil)))
+                            (close [_] nil))))]
+        (is (true? (sql-jdbc.sync.interface/have-select-privilege?
+                    :starburst mock-conn "sales_data" "hive_table")))))
+
+    (testing "Returns false when DESCRIBE fails with UNSUPPORTED_TABLE_TYPE error (incompatible table type like Iceberg in Hive catalog)"
+      (let [mock-conn (reify Connection
+                        (getCatalog [_] "hive")
+                        (prepareStatement [_ sql]
+                          (is (= "DESCRIBE \"hive\".\"sales_data\".\"iceberg_table\"" sql))
+                          (reify PreparedStatement
+                            (executeQuery [_]
+                              ;; This simulates the actual Trino error when Hive catalog tries to describe an Iceberg table
+                              ;; The error code 133001 corresponds to UNSUPPORTED_TABLE_TYPE in Trino's StandardErrorCode
+                              (throw (SQLException. "Cannot query Iceberg table 'sales_data.iceberg_table'" nil 133001)))
+                            (close [_] nil))))]
+        (is (false? (sql-jdbc.sync.interface/have-select-privilege?
+                     :starburst mock-conn "sales_data" "iceberg_table")))))
+
+    (testing "Rethrows SQLException for non-mixed-catalog errors"
+      (let [mock-conn (reify Connection
+                        (getCatalog [_] "hive")
+                        (prepareStatement [_ sql]
+                          (is (= "DESCRIBE \"hive\".\"sales_data\".\"restricted_table\"" sql))
+                          (reify PreparedStatement
+                            (executeQuery [_]
+                              ;; This is a regular permission error, not a mixed catalog issue (different error code)
+                              (throw (SQLException. "Access Denied: Cannot access table restricted_table" nil 42000)))
+                            (close [_] nil))))]
+        ;; This should throw the exception rather than returning false
+        (is (thrown? SQLException
+                     (sql-jdbc.sync.interface/have-select-privilege?
+                      :starburst mock-conn "sales_data" "restricted_table")))))))
 
 (deftest describe-database-test
   (mt/test-driver :starburst

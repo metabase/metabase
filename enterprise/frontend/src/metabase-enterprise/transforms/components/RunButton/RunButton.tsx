@@ -9,24 +9,17 @@ const RECENT_TIMEOUT = 5000;
 
 type RunButtonProps = {
   run: TransformRun | null | undefined;
-  isLoading: boolean;
   isDisabled?: boolean;
   onRun: () => void;
 };
 
 export const RunButton = forwardRef(function RunButton(
-  {
-    run,
-    isLoading,
-    isDisabled: isExternallyDisabled = false,
-    onRun,
-  }: RunButtonProps,
+  { run, isDisabled: isExternallyDisabled = false, onRun }: RunButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
   const [isRecent, setIsRecent] = useState(false);
   const { label, color, leftSection, isDisabled } = getRunButtonInfo({
     run,
-    isLoading,
     isRecent,
     isDisabled: isExternallyDisabled,
   });
@@ -54,7 +47,6 @@ export const RunButton = forwardRef(function RunButton(
 
 type RunButtonOpts = {
   run: TransformRun | null | undefined;
-  isLoading: boolean;
   isRecent: boolean;
   isDisabled: boolean;
 };
@@ -68,11 +60,10 @@ type RunButtonInfo = {
 
 function getRunButtonInfo({
   run,
-  isLoading,
   isRecent,
   isDisabled,
 }: RunButtonOpts): RunButtonInfo {
-  if (run?.status === "started" || isLoading) {
+  if (run?.status === "started") {
     return {
       label: t`Running now…`,
       leftSection: <Loader size="sm" />,

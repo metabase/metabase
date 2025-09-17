@@ -44,7 +44,7 @@
   (when user-id
     (let [user-group-ids           (user/group-ids user-id)
           sandboxes-with-group-ids (t2/hydrate
-                                    (t2/select :model/GroupTableAccessPolicy
+                                    (t2/select :model/Sandbox
                                                {:select [[:pgm.group_id :group_id]
                                                          [:s.*]]
                                                 :from [[:permissions_group_membership :pgm]]

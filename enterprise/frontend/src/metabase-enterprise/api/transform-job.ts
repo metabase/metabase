@@ -57,6 +57,29 @@ export const transformJobApi = EnterpriseApi.injectEndpoints({
           tag("transform"),
           tag("table"),
         ]),
+      onQueryStarted: async (id, { dispatch, queryFulfilled }) => {
+        const patchResult = dispatch(
+          transformJobApi.util.updateQueryData(
+            "getTransformJob",
+            id,
+            (draft) => {
+              draft.last_run = {
+                id: -1,
+                status: "started",
+                start_time: new Date().toISOString(),
+                end_time: null,
+                message: null,
+                run_method: "manual",
+              };
+            },
+          ),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
     createTransformJob: builder.mutation<
       TransformJob,

@@ -108,11 +108,11 @@
     (mt/with-premium-features #{:sandboxes :advanced-permissions}
       (mt/with-model-cleanup [:model/Permissions]
         (mt/with-temp [:model/PermissionsGroup       {group-id :id} {}
-                       :model/GroupTableAccessPolicy _ {:table_id (mt/id :venues)
-                                                        :group_id group-id}]
+                       :model/Sandbox _ {:table_id (mt/id :venues)
+                                         :group_id group-id}]
           (grant-block-perms! group-id)
           (is (nil? (test-db-perms group-id)))
-          (is (not (t2/exists? :model/GroupTableAccessPolicy :group_id group-id))))))))
+          (is (not (t2/exists? :model/Sandbox :group_id group-id))))))))
 
 (deftest update-graph-data-perms-should-delete-block-perms-test
   (testing "granting data permissions for a table should not delete existing block permissions"
@@ -387,7 +387,6 @@
         ;; rasta has access to the database:
         (is (= [[1]]
                (mt/rows (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id)))))
-
         ;; block a single table on the db:
         (let [tables-in-db (map :id (:tables (t2/hydrate (t2/select-one :model/Database db-id) :tables)))
               table-id (rand-nth tables-in-db)]
@@ -401,10 +400,10 @@
   (mt/with-premium-features #{:advanced-permissions :sandboxes}
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/native-query {:query "SELECT ID FROM CHECKINS"})}
-                     :model/GroupTableAccessPolicy _ {:group_id             (u/the-id (perms/all-users-group))
-                                                      :table_id             (mt/id :checkins)
-                                                      :card_id              card-id
-                                                      :attribute_remappings {}}
+                     :model/Sandbox _ {:group_id             (u/the-id (perms/all-users-group))
+                                       :table_id             (mt/id :checkins)
+                                       :card_id              card-id
+                                       :attribute_remappings {}}
                      :model/Card {query-card-id :id} {:dataset_query (mt/mbql-query checkins
                                                                        {:aggregation [[:count]]
                                                                         :joins       [{:source-table $$venues

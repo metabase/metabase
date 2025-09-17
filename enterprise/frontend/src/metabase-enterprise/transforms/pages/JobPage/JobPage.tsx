@@ -152,12 +152,12 @@ function JobPageBody({ job }: JobPageBodyProps) {
   );
 }
 
-export function getParsedParams({ jobId }: JobPageParams): JobPageParsedParams {
+function getParsedParams({ jobId }: JobPageParams): JobPageParsedParams {
   return {
     jobId: Urls.extractEntityId(jobId),
   };
 }
 
-export function isPollingNeeded(job?: TransformJob) {
+function isPollingNeeded(job?: TransformJob) {
   return job?.last_run?.status === "started";
 }

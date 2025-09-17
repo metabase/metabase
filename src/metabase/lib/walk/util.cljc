@@ -5,7 +5,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]))
@@ -30,10 +29,12 @@
                                                (completing persistent!)))))
 
 (mu/defn all-source-table-ids :- [:maybe [:set {:min 1} ::lib.schema.id/table]]
+  "Return a set of all `:source-table` Table IDs referenced anywhere in the query."
   [query :- ::lib.schema/query]
   (stage-values-set query (keep :source-table)))
 
-(mu/defn all-source-card-ids :- [:maybe [:set {:min 1} ::lib.schema.id/table]]
+(mu/defn all-source-card-ids :- [:maybe [:set {:min 1} ::lib.schema.id/card]]
+  "Return a set of all `:source-card` Card IDs referenced anywhere in the query."
   [query :- ::lib.schema/query]
   (stage-values-set query (keep :source-card)))
 
@@ -49,19 +50,22 @@
                                 (map (fn [[template-tag-name template-tag]]
                                        (assoc template-tag :lib.walk/template-tag-name template-tag-name))))))
 
-(mu/defn- collect-field-ids :- [:maybe [:set {:min 1} ::lib.schema.id/field]]
-  "Walk `clause` and collect all Field IDS in `:field` clauses."
-  [clause]
-  (let [acc (volatile! (transient #{}))]
-    (lib.walk/walk-clause
-     clause
-     (fn [clause]
-       (when (lib.util/clause-of-type? clause :field)
-         (when-let [field-id (lib.util.match/match-one clause
-                               [:field _opts (id :guard pos-int?)]
-                               id)]
-           (vswap! acc conj! field-id)))))
-    (not-empty (persistent! @acc))))
+(mu/defn all-field-ids :- [:set ::lib.schema.id/field]
+  "Set of all Field IDs referenced in `:field` refs in a query or MBQL clause."
+  [query-or-clause :- [:or
+                       ::lib.schema/query
+                       vector?]]
+  (let [field-ids   (volatile! (transient #{}))
+        walk-clause (fn [clause]
+                      (lib.util.match/match-lite clause
+                        [:field _opts (id :guard pos-int?)]
+                        (vswap! field-ids conj! id))
+                      nil)]
+    (if (map? query-or-clause)
+      (lib.walk/walk-clauses query-or-clause (fn [_query _path-type _stage-or-join-path clause]
+                                               (walk-clause clause)))
+      (lib.walk/walk-clause query-or-clause walk-clause))
+    (persistent! @field-ids)))
 
 (mu/defn all-template-tags-id->field-ids :- [:maybe
                                              [:map-of
@@ -72,5 +76,18 @@
    (into {}
          (comp (filter :dimension)
                (map (fn [template-tag]
-                      [(:id template-tag) (collect-field-ids (:dimension template-tag))])))
+                      [(:id template-tag) (all-field-ids (:dimension template-tag))])))
          (all-template-tags query))))
+
+(mu/defn any-native-stage?
+  "Returns true if any stage of this query is native."
+  [query :- ::lib.schema/query]
+  (let [has-native-stage? (volatile! false)]
+    (lib.walk/walk-stages
+     query
+     (fn [_query _path stage]
+       (when (and (not @has-native-stage?)
+                  (= (:lib/type stage) :mbql.stage/native))
+         (vreset! has-native-stage? true))
+       nil))
+    @has-native-stage?))

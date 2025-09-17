@@ -5,6 +5,9 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
+   ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
+   ;; Lib soon
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.card :as qp.card]

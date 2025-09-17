@@ -57,7 +57,7 @@
     Segmented permissions allow a User to run ad-hoc MBQL queries against the Table in question; regardless of whether
     they have relevant Collection permissions, queries against the sandboxed Table are rewritten to replace the Table
     itself with a special type of nested query called a
-    [[metabase-enterprise.sandbox.models.group-table-access-policy]], or _GTAP_. Note that segmented permissions are
+    [[metabase-enterprise.sandbox.models.sandbox]], or _GTAP_. Note that segmented permissions are
     both additive and subtractive -- they are additive because they grant (sandboxed) ad-hoc query access for a Table,
     but subtractive in that any access thru a Saved Question will now be sandboxed as well.
 
@@ -68,7 +68,7 @@
     * Only one GTAP may defined per-Group per-Table (this is an application-DB-level constraint). A User may have
       multiple applicable GTAPs if they are members of multiple groups that have sandboxed anti-perms for that Table; in
       that case, the QP signals an error if multiple GTAPs apply to a given Table for the current User (see
-      [[metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/assert-one-gtap-per-table]]).
+      [[metabase-enterprise.sandbox.query-processor.middleware.sandboxing/assert-one-gtap-per-table]]).
 
     * Segmented (sandboxing) permissions and GTAPs are tied together, and a Group should be given both (or both
       should be deleted) at the same time. This is *not* currently enforced as a hard application DB constraint, but is
@@ -82,7 +82,7 @@
     * GTAPs are not allowed to add columns not present in the original Table, or change their effective type to
       something incompatible (this constraint is in place so we other things continue to work transparently regardless
       of whether the Table is swapped out.) See
-      [[metabase-enterprise.sandbox.models.group-table-access-policy/check-columns-match-table]]
+      [[metabase-enterprise.sandbox.models.sandbox/check-columns-match-table]]
 
   * *block \"anti-permissions\"* are per-Group, per-Table grants that tell Metabase to disallow running Saved
     Questions unless the User has data permissions (in other words, disregard Collection permissions). These are
@@ -114,7 +114,7 @@
   Users would still be prevented from poking around things on their own, however.
 
   The Query Processor middleware in [[metabase.query-processor.middleware.permissions]],
-  [[metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions]], and
+  [[metabase-enterprise.sandbox.query-processor.middleware.sandboxing]], and
   [[metabase-enterprise.advanced-permissions.models.permissions.block-permissions]] determines whether the current
   User has permissions to run the current query. Permissions are as follows:
 

@@ -13,11 +13,17 @@ import { DatabasesPanel } from "./Panels/DatabasesPanel";
 import { PanelsHeader } from "./Panels/PanelsHeader";
 import { trackAddDataEvent } from "./analytics";
 import { useAddDataPermissions } from "./use-add-data-permission";
-import { hasMeaningfulUploadableDatabases, isValidTab } from "./utils";
+import {
+  type AddDataTab,
+  hasMeaningfulUploadableDatabases,
+  isValidTab,
+} from "./utils";
 
 interface AddDataModalProps {
   opened: boolean;
   onClose: () => void;
+
+  initialTab?: AddDataTab;
 }
 
 interface Tabs {
@@ -27,7 +33,11 @@ interface Tabs {
   iconName: IconName;
 }
 
-export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
+export const AddDataModal = ({
+  opened,
+  onClose,
+  initialTab,
+}: AddDataModalProps) => {
   const { areUploadsEnabled, canUploadToDatabase, canManageUploads, isAdmin } =
     useAddDataPermissions();
 
@@ -56,7 +66,7 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
       db: "database_tab_clicked",
       csv: "csv_tab_clicked",
       gsheets: "sheets_tab_clicked",
-    } as const;
+    } as const satisfies Record<AddDataTab, string>;
 
     trackAddDataEvent(eventMapping[tabValue]);
     setActiveTab(tabValue);
@@ -64,13 +74,13 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
 
   const tabs = useMemo(() => {
     return [
+      { name: t`Database`, value: "db", isVisible: true, iconName: "database" },
       {
         name: t`CSV`,
         value: "csv",
         isVisible: shouldShowUploadsPanel,
         iconName: "table2",
       },
-      { name: t`Database`, value: "db", isVisible: true, iconName: "database" },
       {
         name: t`Google Sheets`,
         value: "gsheets",
@@ -81,11 +91,16 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
   }, [shouldShowUploadsPanel, isHosted]);
 
   useEffect(() => {
-    const firstVisibleTab = tabs.find((tab) => tab.isVisible);
-    if (firstVisibleTab) {
-      setActiveTab(firstVisibleTab.value);
+    if (initialTab) {
+      setActiveTab(initialTab);
+    } else {
+      const firstVisibleTab = tabs.find((tab) => tab.isVisible);
+
+      if (firstVisibleTab) {
+        setActiveTab(firstVisibleTab.value);
+      }
     }
-  }, [tabs]);
+  }, [tabs, initialTab]);
 
   return (
     <Modal.Root opened={opened} onClose={onClose} size="auto">

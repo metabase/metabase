@@ -45,11 +45,11 @@
                              :source-query {:source-table 1
                                             :order-by     [[:asc [:field 2 nil]]]
                                             :limit        10}}]}]
-      (is (query= expected
-                  (#'sqlserver/fix-order-bys original)))
+      (is (= expected
+             (#'sqlserver/fix-order-bys original)))
       (testing "Inside `:source-query`"
-        (is (query= {:source-query expected}
-                    (#'sqlserver/fix-order-bys {:source-query original})))))))
+        (is (= {:source-query expected}
+               (#'sqlserver/fix-order-bys {:source-query original})))))))
 
 (deftest ^:parallel fix-order-bys-test-2
   (testing "Add limit for :source-query order bys"
@@ -57,21 +57,21 @@
       (let [original {:source-table 1
                       :order-by     [[:asc 2]]}]
         (testing "Not in a source query -- don't do anything"
-          (is (query= original
-                      (#'sqlserver/fix-order-bys original))))
+          (is (= original
+                 (#'sqlserver/fix-order-bys original))))
         (testing "In source query -- add `:limit`"
-          (is (query= {:source-query (assoc original :limit limit/absolute-max-results)}
-                      (#'sqlserver/fix-order-bys {:source-query original}))))
+          (is (= {:source-query (assoc original :limit limit/absolute-max-results)}
+                 (#'sqlserver/fix-order-bys {:source-query original}))))
         (testing "In source query in source query-- add `:limit` at both levels"
-          (is (query= {:source-query {:source-query (assoc original :limit limit/absolute-max-results)
-                                      :order-by     [[:asc [:field 1]]]
-                                      :limit        limit/absolute-max-results}}
-                      (#'sqlserver/fix-order-bys {:source-query {:source-query original
-                                                                 :order-by     [[:asc [:field 1]]]}}))))
+          (is (= {:source-query {:source-query (assoc original :limit limit/absolute-max-results)
+                                 :order-by     [[:asc [:field 1]]]
+                                 :limit        limit/absolute-max-results}}
+                 (#'sqlserver/fix-order-bys {:source-query {:source-query original
+                                                            :order-by     [[:asc [:field 1]]]}}))))
         (testing "In source query inside source query for join -- add `:limit`"
-          (is (query= {:joins [{:source-query {:source-query (assoc original :limit limit/absolute-max-results)}}]}
-                      (#'sqlserver/fix-order-bys
-                       {:joins [{:source-query {:source-query original}}]}))))))))
+          (is (= {:joins [{:source-query {:source-query (assoc original :limit limit/absolute-max-results)}}]}
+                 (#'sqlserver/fix-order-bys
+                  {:joins [{:source-query {:source-query original}}]}))))))))
 
 ;;; -------------------------------------------------- VARCHAR(MAX) --------------------------------------------------
 

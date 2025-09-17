@@ -285,10 +285,6 @@ jobs:
         run: |
           ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ needs.determine-sdk-version.outputs.sdk_version }}
 
-      - name: Update changelog
-        run: |
-          yarn embedding-sdk:generate-changelog -o changelog-diff
-
       - name: Build SDK package
         run: yarn run build-embedding-sdk-package
 
@@ -300,12 +296,6 @@ jobs:
         with:
           name: metabase-sdk
           path: ./resources/embedding-sdk
-
-      - name: Upload changelog diff
-        uses: actions/upload-artifact@v4
-        with:
-          name: sdk-changelog-diff
-          path: ./changelog-diff
 
   publish-npm:
     needs: [build-sdk, determine-sdk-version]
@@ -335,19 +325,7 @@ jobs:
         run: |
           bash ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ env.sdk_version }}
 
-      - name: Retrieve SDK changelog diff
-        if: inputs.branch != 'master'
-        uses: actions/download-artifact@v4
-        with:
-          name: sdk-changelog-diff
-
-      - name: Update changelog
-        if: inputs.branch != 'master'
-        run: |
-          cat changelog-diff enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md > new-changelog
-          mv new-changelog enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md
-
-      - name: Create a PR updating readme + published version, and changelog (using GitHub Metabase Automation account)
+      - name: Create a PR updating readme + published version (using GitHub Metabase Automation account)
         run: |
           git checkout -b update-sdk-version-${{ env.sdk_version }}
 

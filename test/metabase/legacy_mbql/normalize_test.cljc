@@ -3,7 +3,8 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.set :as set]
    [clojure.test :as t]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]))
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.util.malli :as mu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -1516,7 +1517,7 @@
       (t/is (= fingerprint
                (mbql.normalize/normalize fingerprint)))
       (doseq [path [[:query :source-metadata]
-                    [:metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/original-metadata]
+                    [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata]
                     [:info :metadata/model-metadata]
                     [:info :pivot/result-metadata]
                     [:query :joins 0 :source-metadata]]]
@@ -1664,3 +1665,18 @@
            (mbql.normalize/normalize-tokens [:datetime "" {:mode "iso"}])))
   (t/is (= [:datetime "" {:mode :iso}]
            (mbql.normalize/normalize-tokens ["datetime" "" {"mode" "iso"}]))))
+
+(t/deftest ^:parallel normalize-evil-source-metadata-test
+  (t/testing "Fix really messed up fingerprints with lower-cased type names (only in prod) (#63397)"
+    (mu/disable-enforcement
+      (t/is (= {:fingerprint
+                {:global {:distinct-count 418, :nil% 0.0},
+                 :type
+                 {:type/Text
+                  {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :percent-state 0.0, :average-length 13.26388888888889}}}}
+               (#'mbql.normalize/normalize-source-metadata
+                {:fingerprint
+                 {:global {:distinct-count 418, :nil% 0.0},
+                  :type
+                  {:type/text
+                   {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :percent-state 0.0, :average-length 13.26388888888889}}}}))))))

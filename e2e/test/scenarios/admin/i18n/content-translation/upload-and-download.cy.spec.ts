@@ -26,7 +26,7 @@ describe("scenarios > admin > embedding > static embedding> content translation"
     });
 
     it("admin settings configuration form is not present", () => {
-      cy.visit("/admin/settings/embedding-in-other-applications/standalone");
+      cy.visit("/admin/embedding/static");
       cy.findByTestId("content-translation-configuration").should("not.exist");
     });
   });
@@ -52,7 +52,7 @@ describe("scenarios > admin > embedding > static embedding> content translation"
     describe("The translation download button", () => {
       it("downloads the stored translations", () => {
         uploadTranslationDictionaryViaAPI(germanFieldNames);
-        cy.visit("/admin/settings/embedding-in-other-applications/standalone");
+        cy.visit("/admin/embedding/static");
         cy.findByTestId("content-translation-configuration")
           .button(/Download translation dictionary/i)
           .click();
@@ -180,7 +180,7 @@ describe("scenarios > admin > embedding > static embedding> content translation"
       });
 
       it("rejects, in the frontend, a CSV upload that is too big", () => {
-        cy.visit("/admin/settings/embedding-in-other-applications/standalone");
+        cy.visit("/admin/embedding/static");
         cy.get("#content-translation-dictionary-upload-input").selectFile(
           {
             contents: Cypress.Buffer.from(
@@ -206,7 +206,7 @@ describe("scenarios > admin > embedding > static embedding> content translation"
       });
 
       it("rejects invalid CSV", () => {
-        cy.visit("/admin/settings/embedding-in-other-applications/standalone");
+        cy.visit("/admin/embedding/static");
         const validCSV = getCSVWithHeaderRow(germanFieldNames);
         const invalidCSV = validCSV + '\nde,Price,"Preis"X';
 

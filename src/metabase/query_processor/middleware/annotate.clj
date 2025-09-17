@@ -3,6 +3,8 @@
   (:require
    [metabase.analyze.core :as analyze]
    [metabase.driver.common :as driver.common]
+   ;; allowed because `:field_ref` is supposed to be a legacy field ref for backward compatibility purposes
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]

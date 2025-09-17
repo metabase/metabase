@@ -60,18 +60,6 @@ export const ossRoutes: RouteMap = {
     path: "/public-sharing",
     testPattern: /Enable Public Sharing/i,
   },
-  embedding: {
-    path: "/embedding-in-other-applications",
-    testPattern: /Embed dashboards, questions, or the entire Metabase app/i,
-  },
-  staticEmbedding: {
-    path: "/embedding-in-other-applications/standalone",
-    testPattern: /Embedding secret key/i,
-  },
-  embeddingSdk: {
-    path: "/embedding-in-other-applications/sdk",
-    testPattern: /SDK for React/i,
-  },
   license: { path: "/license", testPattern: /Looking for more/i },
   appearance: {
     path: "/appearance",
@@ -87,10 +75,6 @@ export const enterpriseRoutes: RouteMap = {
 export const premiumRoutes: RouteMap = {
   saml: { path: "/authentication/saml", testPattern: /Set up SAML-based SSO/i },
   jwt: { path: "/authentication/jwt", testPattern: /Server Settings/i },
-  interactiveEmbedding: {
-    path: "/embedding-in-other-applications/full-app",
-    testPattern: /Enable Interactive embedding/i,
-  },
 };
 
 export const upsellRoutes: RouteMap = {

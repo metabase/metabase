@@ -3,7 +3,6 @@
   general caching facilities. Has helpers for constructing a cache key that includes the query and stage, making it
   easy to cache things like `visible-columns`."
   (:require
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.metadata :as lib.metadata]
@@ -14,10 +13,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   #?(:cljs (:require-macros [metabase.lib.metadata.cache])))
-
-(def ^:private ^:dynamic *cache-depth*
-  "For debug logging purposes. Keep track of recursive call depth so we can print stuff in a tree."
-  -1)
 
 (mr/def ::cache-key
   [:cat
@@ -115,30 +110,29 @@
   "Function called whenever we have a cache hit. Normally just does boring logging but dynamic so we can test this
   stuff."
   [k]
-  (log/debug (str (str/join (repeat *cache-depth* "|   ")) (u/colorize :green "HIT: ") (name (first k)) " " (hash (rest k)))))
+  (log/debug (str (u/colorize :green "HIT: ") (name (first k)) " " (hash (rest k)))))
 
 (defn ^:dynamic *cache-miss-hook*
   "Function called whenever we have a cache miss. Normally just does boring logging but dynamic so we can test this
   stuff."
   [k]
-  (log/debug (str (str/join (repeat *cache-depth* "|   ")) (u/colorize :red "MISS: ") (name (first k)) " " (hash (rest k)))))
+  (log/debug (str (u/colorize :red "MISS: ") (name (first k)) " " (hash (rest k)))))
 
 (mu/defn do-with-cached-value
   "Impl for [[with-cached-value]]."
   [metadata-providerable :- ::lib.metadata.protocols/metadata-providerable
    k                     :- ::cache-key
    thunk                 :- [:=> [:cat] :any]]
-  (binding [*cache-depth* (inc *cache-depth*)]
-    (log/debug (str (str/join (repeat *cache-depth* "|   ")) (u/colorize :cyan "GET: ") (name (first k)) " " (hash (rest k))))
-    (let [cached-v (cached-value metadata-providerable k ::not-found)]
-      (if-not (= cached-v ::not-found)
-        (do
-          (*cache-hit-hook* k)
-          cached-v)
-        (let [v (thunk)]
-          (*cache-miss-hook* k)
-          (cache-value! metadata-providerable k v)
-          v)))))
+  (log/debug (str (u/colorize :cyan "GET: ") (name (first k)) " " (hash (rest k))))
+  (let [cached-v (cached-value metadata-providerable k ::not-found)]
+    (if-not (= cached-v ::not-found)
+      (do
+        (*cache-hit-hook* k)
+        cached-v)
+      (let [v (thunk)]
+        (*cache-miss-hook* k)
+        (cache-value! metadata-providerable k v)
+        v))))
 
 (defmacro with-cached-value
   "Return the cached value for [[cache-key]] `k` if one already exists in the CachedMetadataProvider's general cache;

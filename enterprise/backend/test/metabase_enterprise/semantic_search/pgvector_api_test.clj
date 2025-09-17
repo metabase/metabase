@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.indexer :as semantic.indexer]
@@ -21,12 +22,11 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once #'semantic.tu/once-fixture)
-(use-fixtures :each #'semantic.tu/ensure-no-migration-table-fixture)
 
 ;; NOTE: isolation tests are absent, in prod there is only one index-metadata
 
 (deftest init-semantic-search!-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         model1         semantic.tu/mock-embedding-model
         model2         (assoc semantic.tu/mock-embedding-model :model-name "embed-harder")
@@ -69,7 +69,7 @@
                       (semantic.index-metadata/find-compatible-index! pgvector index-metadata model2))))))))))
 
 (deftest init-recreates-missing-index-table-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         model1         semantic.tu/mock-embedding-model
         sut*           semantic.pgvector-api/init-semantic-search!
@@ -98,7 +98,7 @@
     (is (thrown? Exception (apply sut args)))))
 
 (deftest index-documents!-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         model1         semantic.tu/mock-embedding-model
         model2         (assoc semantic.tu/mock-embedding-model :model-name "embedagain")
@@ -125,7 +125,7 @@
                        @calls))))))))))
 
 (deftest delete-documents!-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         dash           "dashboard"
         card           "card"
@@ -166,7 +166,7 @@
 (deftest query-test
   (semantic.tu/with-indexable-documents!
     (mt/with-dynamic-fn-redefs [semantic.index/model-table-suffix semantic.tu/mock-table-suffix]
-      (let [pgvector       semantic.tu/db
+      (let [pgvector       (semantic.env/get-pgvector-datasource!)
             index-metadata (semantic.tu/unique-index-metadata)
             model1         semantic.tu/mock-embedding-model
             model2         (assoc semantic.tu/mock-embedding-model :model-name "judge-embedd")
@@ -218,7 +218,7 @@
 
 (deftest e2e-index-a-sample-db-with-gate-test
   (let [docs            (mt/dataset test-data (vec (search.ingestion/searchable-documents)))
-        pgvector        semantic.tu/db
+        pgvector        (semantic.env/get-pgvector-datasource!)
         index-metadata  (semantic.tu/unique-index-metadata)
         embedding-model semantic.tu/mock-embedding-model
         open-job-thread (fn [& args]

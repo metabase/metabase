@@ -93,7 +93,14 @@ const CardImageWrapper = ({ database }: { database: string }) => {
           "0px 0px 0px 1px rgba(0, 0, 0, 0.05), 0px 1px 4px 0px rgba(0, 0, 0, 0.10)",
       }}
     >
-      <img src={getEngineLogo(database)} alt={t`${database} database logo`} />
+      <Box
+        component="img"
+        src={getEngineLogo(database)}
+        alt={t`${database} database logo`}
+        h="xl"
+        w="xl"
+        p="xs"
+      />
     </Box>
   );
 };

@@ -8,7 +8,7 @@ describe("version-info", () => {
         version: "v0.2.3",
         released: "2021-01-01",
         patch: true,
-        highlights: ["see https://www.metabase.com/changelog/2#metabase-23}"],
+        highlights: ["see https://www.metabase.com/changelog/2#metabase-23"],
       },
       older: [],
     } as VersionInfoFile;
@@ -23,7 +23,7 @@ describe("version-info", () => {
         version: "v0.3.0",
         released: expect.any(String),
         patch: false,
-        highlights: ["see https://www.metabase.com/changelog/3#metabase-30}"],
+        highlights: ["see https://www.metabase.com/changelog/3#metabase-30"],
       }]);
     });
 
@@ -64,7 +64,7 @@ describe("version-info", () => {
         version: "v0.1.9",
         released: expect.any(String),
         patch: true,
-        highlights: ["see https://www.metabase.com/changelog/1#metabase-19}"],
+        highlights: ["see https://www.metabase.com/changelog/1#metabase-19"],
       });
     });
 

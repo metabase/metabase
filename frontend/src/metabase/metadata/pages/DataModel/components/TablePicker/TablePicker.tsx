@@ -164,7 +164,7 @@ function Search({
 
   useKeyPressEvent("Enter", (event) => {
     const item = items[selectedIndex];
-    if (item.value) {
+    if (item?.value) {
       onChange?.(item.value);
       event.preventDefault();
     }

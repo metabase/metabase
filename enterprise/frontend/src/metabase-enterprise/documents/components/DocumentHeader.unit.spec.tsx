@@ -24,6 +24,7 @@ const setup = ({
   onMove = jest.fn(),
   onToggleBookmark = jest.fn(),
   onArchive = jest.fn(),
+  onToggleComments = jest.fn(),
 } = {}) => {
   const props = {
     document,
@@ -37,6 +38,7 @@ const setup = ({
     onMove,
     onToggleBookmark,
     onArchive,
+    onToggleComments,
   };
 
   render(<DocumentHeader {...props} />);

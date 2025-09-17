@@ -1,6 +1,10 @@
 import { t } from "ttag";
 
 import {
+  RelatedSettingsSection,
+  getStaticEmbeddingRelatedSettingItems,
+} from "metabase/admin/components/RelatedSettingsSection";
+import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
@@ -36,6 +40,8 @@ export function StaticEmbeddingSettings() {
         )}
       </SettingsSection>
       <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
+
+      <RelatedSettingsSection items={getStaticEmbeddingRelatedSettingItems()} />
     </SettingsPageWrapper>
   );
 }

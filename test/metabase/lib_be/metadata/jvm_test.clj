@@ -237,3 +237,25 @@
                             (when (= "Orders" display-name)
                               metadata))
                           (lib.metadata/tables mp)))))))))
+
+(deftest ^:parallel metadatas-sanity-check-test
+  (testing "Make sure various supported metadata specs compile to valid SQL and we are able to run a query against the app DB with them"
+    (let [mp (mt/metadata-provider)]
+      (are [metadata-spec] (sequential? (lib.metadata.protocols/metadatas mp metadata-spec))
+        {:lib/type :metadata/table}
+        {:lib/type :metadata/table, :id #{1}}
+        {:lib/type :metadata/table, :name #{"Table"}}
+        {:lib/type :metadata/column, :id #{1}}
+        {:lib/type :metadata/column, :name #{"Field"}}
+        {:lib/type :metadata/column, :table-id 1}
+        {:lib/type :metadata/card, :id #{1}}
+        {:lib/type :metadata/card, :name #{"Card"}}
+        {:lib/type :metadata/metric, :id #{1}}
+        {:lib/type :metadata/metric, :name #{"Metric"}}
+        {:lib/type :metadata/metric, :table-id 1}
+        {:lib/type :metadata/metric, :card-id 1}
+        {:lib/type :metadata/segment, :id #{1}}
+        {:lib/type :metadata/segment, :name #{"Segment"}}
+        {:lib/type :metadata/segment, :table-id 1}
+        {:lib/type :metadata/native-query-snippet, :id #{1}}
+        {:lib/type :metadata/native-query-snippet, :name #{"Snippet"}}))))

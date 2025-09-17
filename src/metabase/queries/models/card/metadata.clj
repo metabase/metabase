@@ -56,6 +56,8 @@ saved later when it is ready."
         result    (deref futur metadata-sync-wait-ms ::timed-out)
         combiner  (fn [result]
                     (-> result
+                        ;; existing usage, don't use this going forward
+                        #_{:clj-kondo/ignore [:deprecated-var]}
                         (qp.util/combine-metadata metadata')))]
     (if (= result ::timed-out)
       {:metadata-future (future

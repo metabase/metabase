@@ -19,11 +19,6 @@
   [x]
   ((mr/validator ::mbql.s/Emptyable) x))
 
-(defn DatetimeExpression?
-  "Is this a valid DatetimeExpression clause?"
-  [x]
-  ((mr/validator ::mbql.s/DatetimeExpression) x))
-
 (defn FieldOrExpressionDef?
   "Is this a something that is valid as a top-level expression definition?"
   [x]

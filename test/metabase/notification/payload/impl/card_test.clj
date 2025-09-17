@@ -257,40 +257,53 @@
                 (is (= 1 (count messages)))
                 (is (= 0 (count messages)))))}))))))
 
-(deftest ^:parallel goal-met-test
-  (let [alert-above-pulse {:send_condition "goal_above"}
-        alert-below-pulse {:send_condition "goal_below"}
-        progress-result   (fn [val] {:card   {:display                :progress
-                                              :visualization_settings {:progress.goal    5}}
-                                     :result {:data {:rows [[val]]}}})
-        timeseries-result (fn [val] {:card   {:display                :bar
-                                              :visualization_settings {:graph.goal_value 5}}
-                                     :result {:data {:cols [{:source :breakout}
-                                                            {:name           "avg"
-                                                             :source         :aggregation
-                                                             :base_type      :type/Integer
-                                                             :effective-type :type/Integer
-                                                             :semantic_type  :type/Quantity}]
-                                                     :rows [["2021-01-01T00:00:00Z" val]]}}})
-        goal-met?           (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
-    (testing "Progress bar"
-      (testing "alert above"
-        (testing "value below goal"  (is (= false  (goal-met? alert-above-pulse (progress-result 4)))))
-        (testing "value equals goal" (is (true?    (goal-met? alert-above-pulse (progress-result 5)))))
-        (testing "value above goal"  (is (true?    (goal-met? alert-above-pulse (progress-result 6))))))
-      (testing "alert below"
-        (testing "value below goal"  (is (true?    (goal-met? alert-below-pulse (progress-result 4)))))
-        (testing "value equals goal (#10899)" (is (= false  (goal-met? alert-below-pulse (progress-result 5)))))
-        (testing "value above goal"  (is (= false  (goal-met? alert-below-pulse (progress-result 6)))))))
-    (testing "Timeseries"
-      (testing "alert above"
-        (testing "value below goal"  (is (= false  (goal-met? alert-above-pulse (timeseries-result 4)))))
-        (testing "value equals goal" (is (true?    (goal-met? alert-above-pulse (timeseries-result 5)))))
-        (testing "value above goal"  (is (true?    (goal-met? alert-above-pulse (timeseries-result 6))))))
-      (testing "alert below"
-        (testing "value below goal"  (is (true?    (goal-met? alert-below-pulse (timeseries-result 4)))))
-        (testing "value equals goal" (is (= false  (goal-met? alert-below-pulse (timeseries-result 5)))))
-        (testing "value above goal"  (is (= false  (goal-met? alert-below-pulse (timeseries-result 6)))))))))
+(defn- progress-result [val]
+  {:card   {:display                :progress
+            :visualization_settings {:progress.goal    5}}
+   :result {:data {:rows [[val]]}}})
+
+(defn- timeseries-result [val]
+  {:card   {:display                :bar
+            :visualization_settings {:graph.goal_value 5}}
+   :result {:data {:cols [{:source :breakout}
+                          {:name           "avg"
+                           :source         :aggregation
+                           :base_type      :type/Integer
+                           :effective-type :type/Integer
+                           :semantic_type  :type/Quantity}]
+                   :rows [["2021-01-01T00:00:00Z" val]]}}})
+
+(deftest ^:parallel goal-met-progress-bar-alert-above-test
+  (testing "Progress bar with alert above"
+    (let [alert-above-pulse {:send_condition "goal_above"}
+          goal-met? (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
+      (testing "value below goal"  (is (= false  (goal-met? alert-above-pulse (progress-result 4)))))
+      (testing "value equals goal" (is (true?    (goal-met? alert-above-pulse (progress-result 5)))))
+      (testing "value above goal"  (is (true?    (goal-met? alert-above-pulse (progress-result 6))))))))
+
+(deftest ^:parallel goal-met-progress-bar-alert-below-test
+  (testing "Progress bar with alert below"
+    (let [alert-below-pulse {:send_condition "goal_below"}
+          goal-met? (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
+      (testing "value below goal"  (is (true?    (goal-met? alert-below-pulse (progress-result 4)))))
+      (testing "value equals goal (#10899)" (is (= false  (goal-met? alert-below-pulse (progress-result 5)))))
+      (testing "value above goal"  (is (= false  (goal-met? alert-below-pulse (progress-result 6))))))))
+
+(deftest ^:parallel goal-met-timeseries-alert-above-test
+  (testing "Timeseries with alert above"
+    (let [alert-above-pulse {:send_condition "goal_above"}
+          goal-met? (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
+      (testing "value below goal"  (is (= false  (goal-met? alert-above-pulse (timeseries-result 4)))))
+      (testing "value equals goal" (is (true?    (goal-met? alert-above-pulse (timeseries-result 5)))))
+      (testing "value above goal"  (is (true?    (goal-met? alert-above-pulse (timeseries-result 6))))))))
+
+(deftest ^:parallel goal-met-timeseries-alert-below-test
+  (testing "Timeseries with alert below"
+    (let [alert-below-pulse {:send_condition "goal_below"}
+          goal-met? (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
+      (testing "value below goal"  (is (true?    (goal-met? alert-below-pulse (timeseries-result 4)))))
+      (testing "value equals goal" (is (= false  (goal-met? alert-below-pulse (timeseries-result 5)))))
+      (testing "value above goal"  (is (= false  (goal-met? alert-below-pulse (timeseries-result 6))))))))
 
 (deftest send-condition-above-goal-test
   (testing "skip is the goal is not met"
@@ -612,3 +625,30 @@
                                           "ngoc@metabase.com"]
                              :filters    nil}}
                  (mt/latest-audit-log-entry :alert-send (:id notification)))))))))
+
+(deftest ^:parallel progress-value-column-test
+  (testing "Progress charts should use progress.value column instead of first column"
+    (let [goal-met? (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)
+          notification-card {:send_condition "goal_above"}
+          card-part {:card {:display :progress
+                            :visualization_settings {:progress.value "actual_value"
+                                                     :progress.goal "Target"}}
+                     :result {:data {:cols [{:name "ignore_me" :base_type :type/Integer}
+                                            {:name "actual_value" :base_type :type/Integer}
+                                            {:name "Target" :base_type :type/Integer}]
+                                     :rows [[999 120 100]]}}}]
+      (is (true? (goal-met? notification-card card-part))
+          "Should return true when actual_value (120) >= Target (100)"))))
+
+(deftest ^:parallel progress-value-fallback-test
+  (testing "Progress charts should fall back to first numeric column when no progress.value is set"
+    (let [goal-met? (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)
+          notification-card {:send_condition "goal_above"}
+          card-part {:card {:display :progress
+                            :visualization_settings {:progress.goal "Target"}}
+                     :result {:data {:cols [{:name "text_col" :base_type :type/Text}
+                                            {:name "numeric_col" :base_type :type/Integer}
+                                            {:name "Target" :base_type :type/Integer}]
+                                     :rows [["text" 120 100]]}}}]
+      (is (true? (goal-met? notification-card card-part))
+          "Should return true when first numeric column (120) >= Target (100)"))))

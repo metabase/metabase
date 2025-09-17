@@ -27,13 +27,12 @@
               (t2/select :model/MetabotEntity {:where [:in :metabot_id (map :id metabots)]}))
    :id
    {:default []}))
-;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
+
+;;; ------------------------------------------------- Serialization -------------------------------------------------
 
 (defmethod serdes/hash-fields :model/Metabot
   [_table]
   [:name])
-
-;;; ------------------------------------------------- Serialization -------------------------------------------------
 
 (defmethod serdes/dependencies "Metabot"
   [{:keys [entities]}]
