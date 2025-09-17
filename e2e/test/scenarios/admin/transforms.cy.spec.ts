@@ -694,7 +694,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         .should("be.visible");
       H.assertQueryBuilderRowCount(3);
 
-      cy.log("verify that the original question still works");
+      cy.log("verify that the original question does not work");
       visitTableQuestion();
       assertTableDoesNotExistError();
     });

@@ -112,10 +112,10 @@ function UpdateTargetForm({
   }
 
   const handleSubmit = async (values: EditTransformValues) => {
-    await updateTransform(getUpdateRequest(transform, values)).unwrap();
     if (shouldDeleteTarget) {
       await deleteTransformTarget(transform.id).unwrap();
     }
+    await updateTransform(getUpdateRequest(transform, values)).unwrap();
     onUpdate();
   };
 
