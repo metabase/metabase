@@ -310,7 +310,7 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
   });
 });
 
-H.describeWithSnowplowEE.only(
+H.describeWithSnowplowEE(
   "scenarios > embedding > embedded analytics JS",
   () => {
     beforeEach(() => {
