@@ -192,7 +192,7 @@
 (defn- ai-service-get-embedding [model-name text & {:as opts}]
   (try
     (log/debug "Generating AI Service embedding for text of length:" (count text))
-    (first (ai-service-get-embeddings-batch model-name [text]))
+    (first (ai-service-get-embeddings-batch model-name [text] opts))
     (catch Exception e
       (log/error e "Failed to generate AI Service embedding for text of length:" (count text))
       (throw e))))
