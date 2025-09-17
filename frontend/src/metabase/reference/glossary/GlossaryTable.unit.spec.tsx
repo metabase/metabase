@@ -25,7 +25,7 @@ describe("GlossaryTable", () => {
       />,
     );
 
-    expect(screen.getByText(/No terms found\./i)).toBeInTheDocument();
+    expect(screen.getByText(/No terms yet/i)).toBeInTheDocument();
   });
 
   it("creates a new record", async () => {
@@ -44,7 +44,7 @@ describe("GlossaryTable", () => {
     await user.click(screen.getByRole("button", { name: /new term/i }));
 
     const termInput = screen.getByPlaceholderText(/bird/i);
-    const defInput = screen.getByPlaceholderText(/a thing with wings\./i);
+    const defInput = screen.getByPlaceholderText(/a warm-blooded.*/i);
     await user.clear(termInput);
     await user.type(termInput, "  Bird  ");
     await user.type(defInput, "  Flies sometimes  ");
@@ -55,12 +55,12 @@ describe("GlossaryTable", () => {
       within(r).queryByPlaceholderText(/bird/i),
     );
     expect(createRow0).toBeTruthy();
-    const addInCreate = within(createRow0 as HTMLElement).getByRole("button", {
-      name: /add/i,
+    const saveInCreate = within(createRow0 as HTMLElement).getByRole("button", {
+      name: /save/i,
     });
 
-    expect(addInCreate).toBeEnabled();
-    await user.click(addInCreate);
+    expect(saveInCreate).toBeEnabled();
+    await user.click(saveInCreate);
 
     expect(onCreate).toHaveBeenCalledTimes(1);
     expect(onCreate).toHaveBeenCalledWith("Bird", "Flies sometimes");
@@ -83,7 +83,7 @@ describe("GlossaryTable", () => {
     await user.click(screen.getByText("Cat"));
 
     const termInput = screen.getByPlaceholderText(/bird/i);
-    const defInput = screen.getByPlaceholderText(/a thing with wings\./i);
+    const defInput = screen.getByPlaceholderText(/a warm-blooded.*/i);
 
     await user.clear(termInput);
     await user.type(termInput, "Kitten");
@@ -127,7 +127,7 @@ describe("GlossaryTable", () => {
     );
 
     await user.click(screen.getByText("Barks"));
-    const defInput = screen.getByPlaceholderText(/a thing with wings\./i);
+    const defInput = screen.getByPlaceholderText(/a warm-blooded.*/i);
     expect(defInput).toHaveFocus();
   });
 
@@ -230,20 +230,20 @@ describe("GlossaryTable", () => {
       within(r).queryByPlaceholderText(/bird/i),
     );
     expect(createRow).toBeTruthy();
-    const addBtn = within(createRow as HTMLElement).getByRole("button", {
-      name: /add/i,
+    const saveBtn = within(createRow as HTMLElement).getByRole("button", {
+      name: /save/i,
     });
-    expect(addBtn).toBeDisabled();
+    expect(saveBtn).toBeDisabled();
 
     // Fill only one field and still disabled
     await user.type(screen.getByPlaceholderText(/bird/i), "Sparrow");
-    expect(addBtn).toBeDisabled();
+    expect(saveBtn).toBeDisabled();
 
     // Fill both fields and enabled
     await user.type(
-      screen.getByPlaceholderText(/a thing with wings\./i),
+      screen.getByPlaceholderText(/a warm-blooded.*/i),
       "Flies sometimes",
     );
-    expect(addBtn).toBeEnabled();
+    expect(saveBtn).toBeEnabled();
   });
 });
