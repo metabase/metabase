@@ -298,6 +298,18 @@
     (let [msg (tru "Personal Collections must be in the default namespace")]
       (throw (ex-info msg {:status-code 400, :errors {:personal_owner_id msg}})))))
 
+(defn- assert-valid-remote-synced-parent
+  "Check that if this Collection is remote-synced, its parent is either remote-synced or the root collection."
+  [{:keys [location type] :as collection}]
+  (when (and location (= type remote-synced-collection-type))
+    (when-let [parent-id #p (location-path->parent-id location)]
+      (let [parent-type #p (t2/select-one-fn :type :model/Collection :id parent-id)]
+        (when-not (= parent-type remote-synced-collection-type)
+          (let [msg (tru "A remote-synced Collection can only be placed in another remote-synced Collection or the root Collection.")]
+            (throw (ex-info msg {:status-code 400, :errors {:location msg}}))))))))
+
+;; This function is defined later after children-location is available
+
 (def ^:private CollectionWithLocationOrRoot
   [:or
    RootCollection
@@ -1219,6 +1231,7 @@
   (assert-valid-location collection)
   (assert-not-personal-collection-for-api-key collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
+  (assert-valid-remote-synced-parent collection)
   (assoc collection :slug (slugify collection-name)))
 
 (defn- copy-collection-permissions!
@@ -1388,6 +1401,9 @@
         (let [msg (tru "You cannot move a Collection to a different namespace once it has been created.")]
           (throw (ex-info msg {:status-code 400, :errors {:namespace msg}})))))
     (assert-valid-namespace (merge (select-keys collection-before-updates [:namespace]) collection-updates))
+    ;; (3.5) Check remote-synced validation rules
+    (let [merged-collection (merge collection-before-updates collection-updates)]
+      (assert-valid-remote-synced-parent merged-collection))
     ;; (4) If we're moving a Collection from a location on a Personal Collection hierarchy to a location not on one,
     ;; or vice versa, we need to grant/revoke permissions as appropriate (see above for more details)
     (when (api/column-will-change? :location collection-before-updates collection-updates)

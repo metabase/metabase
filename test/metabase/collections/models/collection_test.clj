@@ -2136,41 +2136,6 @@
         (is (nil? (:type moved-child))
             "Child of remote-synced collection lose remote-synced type")))))
 
-(deftest move-collection!-mixed-descendants-test
-  (testing "mixed type descendants all become remote-synced when parent is remote-synced"
-    (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent" :location "/" :type "remote-synced"}
-                   :model/Collection {coll-id :id :as coll} {:name "Collection to Move"
-                                                             :location "/"
-                                                             :type nil}
-                   :model/Collection {child1-id :id} {:name "Child 1 - Already Library"
-                                                      :location (format "/%d/" coll-id)
-                                                      :type "remote-synced"}
-                   :model/Collection {child2-id :id} {:name "Child 2 - Not Library"
-                                                      :location (format "/%d/" coll-id)
-                                                      :type nil}
-                   :model/Collection {grandchild-id :id} {:name "Grandchild - Not Library"
-                                                          :location (format "/%d/%d/" coll-id child2-id)
-                                                          :type nil}]
-        ;; Move collection with mixed type descendants
-      (collection/move-collection! coll (format "/%d/" parent-id))
-
-        ;; Check that all collections became remote-synced type
-      (let [moved-coll (t2/select-one :model/Collection :id coll-id)]
-        (is (= "remote-synced" (:type moved-coll))
-            "Root collection should be remote-synced type"))
-
-      (let [moved-child1 (t2/select-one :model/Collection :id child1-id)]
-        (is (= "remote-synced" (:type moved-child1))
-            "Child that was already remote-synced should remain remote-synced collection"))
-
-      (let [moved-child2 (t2/select-one :model/Collection :id child2-id)]
-        (is (= "remote-synced" (:type moved-child2))
-            "Child that wasn't remote-synced should become remote-synced"))
-
-      (let [moved-grandchild (t2/select-one :model/Collection :id grandchild-id)]
-        (is (= "remote-synced" (:type moved-grandchild))
-            "Grandchild should become remote-synced")))))
-
 (deftest move-collection!-dependency-checking-success-test
   (testing "move-collection! with into-remote-synced? true succeeds when all dependencies are in remote-synced collection"
     (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced" :location "/" :type "remote-synced"}

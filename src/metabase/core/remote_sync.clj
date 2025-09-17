@@ -1,4 +1,4 @@
-(ns metabase.core.library
+(ns metabase.core.remote-sync
   (:require
    [metabase.classloader.core :as classloader]
    [metabase.util.log :as log]))

@@ -8,8 +8,6 @@
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
-   (java.nio.file Files)
-   (java.nio.file.attribute FileAttribute)
    (org.eclipse.jgit.api Git GitCommand TransportCommand)
    (org.eclipse.jgit.dircache DirCache DirCacheEntry)
    (org.eclipse.jgit.lib CommitBuilder Constants FileMode PersonIdent)
