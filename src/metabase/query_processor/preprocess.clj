@@ -24,7 +24,6 @@
    [metabase.query-processor.middleware.cumulative-aggregations :as qp.cumulative-aggregations]
    [metabase.query-processor.middleware.desugar :as desugar]
    [metabase.query-processor.middleware.drop-fields-in-summaries :as drop-fields-in-summaries]
-   [metabase.query-processor.middleware.ensure-joins-use-source-query :as ensure-joins-use-source-query]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.query-processor.middleware.expand-aggregations :as expand-aggregations]
    [metabase.query-processor.middleware.expand-macros :as expand-macros]
@@ -109,9 +108,6 @@
    (ensure-mbql5 #'parameters/substitute-parameters)
    (ensure-mbql5 #'qp.resolve-source-table/resolve-source-tables)
    (ensure-mbql5 #'qp.auto-bucket-datetimes/auto-bucket-datetimes)
-   ;; TODO (Cam 9/10/25) -- once we convert the [[metabase.query-processor.middleware.resolve-joins/resolve-joins]]
-   ;; middleware to Lib we can remove this middleware entirely
-   (ensure-mbql5 #'ensure-joins-use-source-query/ensure-joins-use-source-query)
    (ensure-mbql5 #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing)
    (ensure-mbql5 #'qp.middleware.enterprise/apply-impersonation)
    (ensure-mbql5 #'qp.middleware.enterprise/attach-destination-db-middleware)

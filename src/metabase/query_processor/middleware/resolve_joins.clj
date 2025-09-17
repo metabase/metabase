@@ -137,9 +137,6 @@
                                                  joins)))]
     (append-join-fields-to-fields stage join-fields)))
 
-;; TODO (Cam 9/10/25) -- once we convert this to Lib we can remove
-;; the [[metabase.query-processor.middleware.ensure-joins-use-source-query/ensure-joins-use-source-query]] middleware
-;; entirely
 (mu/defn resolve-joins :- ::lib.schema/query
   "1. Walk joins and merge defaults like `:strategy :left-join`
    2. Walk joins and resolve `:fields :all` to a vector of field refs
