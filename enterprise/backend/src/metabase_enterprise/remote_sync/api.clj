@@ -207,33 +207,35 @@
      :message "Remote Sync collection not found"}))
 
 (defn save-to-git!
-  [branch message]
-  (if-let [source (source/source-from-settings)]
-    (try
-      (serdes/with-cache
-        (-> (v2.extract/extract {:targets [["Collection" collection/library-entity-id]]
-                                 :no-collections false
-                                 :no-data-model true
-                                 :no-settings true
-                                 :include-field-values :false
-                                 :include-database-secrets :false
-                                 :continue-on-error false})
-            (source/store! source branch message)))
-      (lib.events/publish-remote-sync! "export" nil api/*current-user-id*
-                                       {:branch branch
-                                        :status "success"
-                                        :message message})
-      {:status :success}
+  ([branch message]
+   (save-to-git! branch message (t2/select-fn-set :entity_id :model/Collection :type "remote-synced")))
+  ([branch message collections]
+   (if-let [source (source/source-from-settings)]
+     (try
+       (serdes/with-cache
+         (-> (v2.extract/extract (cond-> {:targets (mapv #(vector "Collection" %) collections)
+                                          :no-collections false
+                                          :no-data-model true
+                                          :no-settings true
+                                          :include-field-values :false
+                                          :include-database-secrets :false
+                                          :continue-on-error false}))
+             (source/store! source branch message)))
+       (lib.events/publish-remote-sync! "export" nil api/*current-user-id*
+                                        {:branch branch
+                                         :status "success"
+                                         :message message})
+       {:status :success}
 
-      (catch Exception e
-        (lib.events/publish-remote-sync! "export" nil api/*current-user-id*
-                                         {:branch branch
-                                          :status "error"
-                                          :message (ex-message e)})
-        {:status :error
-         :message (format "Failed to export to git repository: %s" (.getMessage e))}))
-    {:status :error
-     :message "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}))
+       (catch Exception e
+         (lib.events/publish-remote-sync! "export" nil api/*current-user-id*
+                                          {:branch branch
+                                           :status "error"
+                                           :message (ex-message e)})
+         {:status :error
+          :message (format "Failed to export to git repository: %s" (.getMessage e))}))
+     {:status :error
+      :message "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."})))
 
 (api.macros/defendpoint :post "/export"
   "Export the current state of the Remote Sync collection to a Source
