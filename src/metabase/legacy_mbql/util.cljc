@@ -28,7 +28,7 @@
 (mu/defn normalize-token :- [:or :keyword :string]
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
-  [token :- schema.helpers/KeywordOrString]
+  [token :- [:or :keyword :string]]
   (let [s (u/qualified-name token)]
     (if (str/starts-with? s "type/")
       ;; TODO (Cam 8/12/25) -- there's tons of code using incorrect parameter types or normalizing base types
@@ -549,21 +549,6 @@
     ;; otherwise resolve the source Table
     :else
     source-table-id))
-
-(mu/defn add-order-by-clause :- mbql.s/MBQLQuery
-  "Add a new `:order-by` clause to an MBQL `inner-query`. If the new order-by clause references a Field that is
-  already being used in another order-by clause, this function does nothing."
-  [inner-query     :- mbql.s/MBQLQuery
-   [dir orderable] :- ::mbql.s/OrderBy]
-  (let [existing-orderables (into #{}
-                                  (map (fn [[_dir orderable]]
-                                         orderable))
-                                  (:order-by inner-query))]
-    (if (existing-orderables orderable)
-      ;; Field already referenced, nothing to do
-      inner-query
-      ;; otherwise add new clause at the end
-      (update inner-query :order-by (comp vec distinct conj) [dir orderable]))))
 
 (defn dispatch-by-clause-name-or-class
   "Dispatch function perfect for use with multimethods that dispatch off elements of an MBQL query. If `x` is an MBQL

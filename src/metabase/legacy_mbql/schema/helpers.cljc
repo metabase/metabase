@@ -7,8 +7,6 @@
 
 (comment metabase.types.core/keep-me)
 
-;;; --------------------------------------------------- defclause ----------------------------------------------------
-
 (defn mbql-clause?
   "True if `x` is an MBQL clause (a sequence with a keyword as its first arg)."
   [x]
@@ -87,10 +85,6 @@
      [tag (if (qualified-keyword? schema)
             [:ref schema]
             schema)])))
-
-(def KeywordOrString
-  "Schema for any keyword or string."
-  [:or :keyword :string])
 
 (defn non-empty
   "Add an addditonal constraint to `schema` (presumably an array) that requires it to be non-empty
