@@ -50,6 +50,7 @@ type GitSyncSettingsType = Pick<
   | "remote-sync-token"
   | "remote-sync-type"
   | "remote-sync-branch"
+  | "remote-sync-configured"
 >;
 
 export const GitSyncSettings = (): JSX.Element => {
@@ -77,7 +78,10 @@ export const GitSyncSettings = (): JSX.Element => {
 
   const onSubmit = useCallback(
     (values: GitSyncSettingsType) => {
-      return updateGitSyncSettings(values);
+      return updateGitSyncSettings({
+        ...values,
+        "remote-sync-configured": true,
+      }).unwrap();
     },
     [updateGitSyncSettings],
   );
@@ -91,6 +95,7 @@ export const GitSyncSettings = (): JSX.Element => {
       "remote-sync-token": null,
       "remote-sync-type": null,
       "remote-sync-branch": null,
+      "remote-sync-configured": false,
     } as Partial<EnterpriseSettings>);
     setIsDeactivateModalOpen(false);
   }, [updateSettings]);
@@ -177,7 +182,8 @@ export const GitSyncSettings = (): JSX.Element => {
                   {...getEnvSettingProps(settingDetails?.[BRANCH_KEY])}
                 />
 
-                <Flex justify="end">
+                <Flex justify="end" align="center" gap="md">
+                  <FormErrorMessage />
                   <FormSubmitButton
                     label={
                       isGitSyncConfigured ? t`Save changes` : t`Save and enable`
@@ -186,7 +192,6 @@ export const GitSyncSettings = (): JSX.Element => {
                     disabled={!dirty}
                   />
                 </Flex>
-                <FormErrorMessage />
               </Stack>
             </Form>
           )}

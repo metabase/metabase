@@ -26,14 +26,12 @@ import {
 } from "metabase/collections/utils";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
 import ItemsDragLayer from "metabase/common/components/dnd/ItemsDragLayer";
-import { useSetting } from "metabase/common/hooks";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import Bookmarks from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import Search from "metabase/entities/search";
 import { useDispatch } from "metabase/lib/redux";
-import { PLUGIN_GIT_SYNC } from "metabase/plugins";
 import { addUndo } from "metabase/redux/undo";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -191,8 +189,6 @@ const CollectionContentViewInner = ({
   const pinnedItems = list && !isRootTrashCollection(collection) ? list : [];
   const hasPinnedItems = pinnedItems.length > 0;
   const actionId = { id: collectionId };
-  const isDevMode = useSetting("remote-sync-allow-edit");
-  const showDevBanner = collection.git_sync && isDevMode;
 
   return (
     <CollectionRoot {...dropzoneProps}>
@@ -228,8 +224,6 @@ const CollectionContentViewInner = ({
           }
         />
       )}
-
-      {showDevBanner && <PLUGIN_GIT_SYNC.LibraryDevModeBanner />}
 
       <CollectionMain>
         <ErrorBoundary>
