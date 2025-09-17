@@ -343,12 +343,18 @@ export function setPublicDashboardEndpoints(uuid) {
   });
 }
 
+/**
+ * @param token {string}
+ */
 export function setEmbedQuestionEndpoints(token) {
   const encodedToken = encodeURIComponent(token);
   setCardEndpoints({ base: embedBase, encodedToken });
   PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(encodedToken);
 }
 
+/**
+ * @param token {string}
+ */
 export function setEmbedDashboardEndpoints(token) {
   const encodedToken = encodeURIComponent(token);
   setDashboardEndpoints({ base: embedBase, encodedToken });

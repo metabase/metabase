@@ -100,6 +100,7 @@ export const SdkQuestionProvider = ({
     question,
     originalQuestion,
     parameterValues,
+    token,
 
     queryResults,
 
@@ -143,6 +144,7 @@ export const SdkQuestionProvider = ({
 
   const questionContext: SdkQuestionContextType = {
     originalId: questionId,
+    token,
     isQuestionLoading,
     isQueryRunning,
     resetQuestion: loadAndQueryQuestion,

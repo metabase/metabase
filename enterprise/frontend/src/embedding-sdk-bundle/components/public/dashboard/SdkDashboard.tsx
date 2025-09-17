@@ -24,7 +24,7 @@ import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
 } from "embedding-sdk-bundle/hooks/private/use-sdk-dashboard-params";
-import { getResolvedEntityIdForStaticLikeEntity } from "embedding-sdk-bundle/lib/get-resolved-entity-id-for-static-like-entity";
+import { resolveTokenForMaybeStaticEntity } from "embedding-sdk-bundle/lib/resolve-token-for-maybe-static-entity";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import {
   getFetchStaticTokenFn,
@@ -160,11 +160,16 @@ const SdkDashboardInner = ({
   const customFetchStaticTokenFn = useSdkSelector(getFetchStaticTokenFn);
 
   const [
-    { loading: dashboardIdLoading, value: dashboardId = null },
+    {
+      loading: tokenLoading,
+      value: { entityId: dashboardId = null } = {
+        entityId: null,
+      },
+    },
     resolveDashboardId,
   ] = useAsyncFn(
     () =>
-      getResolvedEntityIdForStaticLikeEntity({
+      resolveTokenForMaybeStaticEntity({
         entityType: "dashboard",
         entityId: rawDashboardId,
         isStaticEmbedding,
@@ -174,9 +179,11 @@ const SdkDashboardInner = ({
   );
 
   useEffect(() => {
-    resolveDashboardId().then((resolveDashboardId) => {
+    resolveDashboardId().then(({ entityId: dashboardId, isToken }) => {
+      const token = isToken && dashboardId ? dashboardId.toString() : null;
+
       if (isStaticEmbedding) {
-        setEmbedDashboardEndpoints(resolveDashboardId);
+        setEmbedDashboardEndpoints(token ?? "");
       }
     });
   }, [isStaticEmbedding, resolveDashboardId]);
@@ -258,7 +265,7 @@ const SdkDashboardInner = ({
   const { modalContent, show } = useConfirmation();
   const isDashboardDirty = useSelector(getIsDirty);
 
-  if (dashboardIdLoading || isLocaleLoading) {
+  if (tokenLoading || isLocaleLoading) {
     return (
       <SdkDashboardStyledWrapper className={className} style={style}>
         <SdkLoader />

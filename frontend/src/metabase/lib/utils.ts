@@ -32,7 +32,7 @@ export function numberToWord(num: number) {
   }
 }
 
-export function isJWT(string: unknown) {
+export function isJWT(string: unknown): string is string {
   return (
     typeof string === "string" &&
     /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(string)
