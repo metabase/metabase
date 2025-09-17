@@ -15,7 +15,6 @@ import {
   TableBodyRow,
   TableFooter,
   TableHeader,
-  TableTitle,
 } from "./ChartColorSettings.styled";
 import {
   getAutoChartColors,
@@ -103,7 +102,6 @@ const ChartColorTable = ({
   return (
     <div>
       <TableHeader>
-        <TableTitle>{t`Chart colors`}</TableTitle>
         {hasCustomColors && (
           <>
             <Button variant="subtle" onClick={openResetModal}>

@@ -6,8 +6,7 @@ import { Box, Stack } from "metabase/ui";
 import type { ColorSettings as ColorSettingsType } from "metabase-types/api";
 
 import BrandColorSettings from "../BrandColorSettings";
-import ChartColorPreview from "../ChartColorPreview";
-import ChartColorSettings from "../ChartColorSettings";
+import ChartColorTabs from "../ChartColorTabs";
 
 import { SectionContent } from "./ColorSettings.styled";
 
@@ -54,15 +53,14 @@ export const ColorSettings = ({
         <SettingHeader
           id="chart-colors"
           title={t`Chart colors`}
-          description={t`Choose up to 24 hex values. We’ll auto-generate what you leave blank.`}
+          description={t`Choose up to 24 hex values. We'll auto-generate what you leave blank.`}
         />
         <SectionContent>
-          <ChartColorSettings
+          <ChartColorTabs
             colors={colors}
             colorPalette={colorPalette}
             onChange={handleChange}
           />
-          <ChartColorPreview colorPalette={colorPalette} />
         </SectionContent>
       </Box>
     </Stack>
