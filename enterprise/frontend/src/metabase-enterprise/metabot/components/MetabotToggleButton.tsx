@@ -14,8 +14,10 @@ export function MetabotToggleButton({ className }: MetabotToggleButtonProps) {
     metabot.setVisible(!metabot.visible);
   };
 
+  const label = metabot.visible ? t`Close Metabot chat` : t`Open Metabot chat`;
+
   return (
-    <Tooltip label={t`Open Metabot chat`}>
+    <Tooltip label={label}>
       <Button
         className={className}
         variant="subtle"
@@ -23,7 +25,7 @@ export function MetabotToggleButton({ className }: MetabotToggleButtonProps) {
         h="fit-content"
         bd="none"
         leftSection={<Icon name="metabot" />}
-        aria-label={t`Open Metabot chat`}
+        aria-label={label}
         onClick={handleClick}
       />
     </Tooltip>
