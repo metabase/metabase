@@ -8,7 +8,7 @@
   text-decoration: none;
   padding: 0.5rem 0.75rem;
   background: transparent;
-  border: 2px solid color-mix(in srgb, var(--mb-color-border), black 5%);
+  border: 1px solid color-mix(in srgb, var(--mb-color-border), black 5%);
   color: var(--mb-color-text-primary);
   cursor: pointer;
   font-weight: bold;
@@ -26,7 +26,7 @@
 
 .Button:focus-visible {
   border-color: var(--mb-color-background);
-  outline: 2px solid var(--mb-color-brand);
+  outline: 1px solid var(--mb-color-brand);
 }
 
 @media screen and (--breakpoint-min-lg) {
