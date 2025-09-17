@@ -1141,7 +1141,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       createMbqlTransform({ visitTransform: true });
 
       cy.log("delete the transform");
-      getTransformPage().button("Delete").click();
+      getTransformPage().button("Delete transform").click();
       H.modal().within(() => {
         cy.findByLabelText("Delete the transform only").should("not.exist");
         cy.findByLabelText("Delete the transform and the table").should(
@@ -1160,7 +1160,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       runTransformAndWaitForSuccess();
 
       cy.log("delete the transform but keep the table");
-      getTransformPage().button("Delete").click();
+      getTransformPage().button("Delete transform").click();
       H.modal().within(() => {
         cy.findByLabelText("Delete the transform only").should("be.checked");
         cy.button("Delete transform only").click();
@@ -1179,7 +1179,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       runTransformAndWaitForSuccess();
 
       cy.log("delete the transform and the table");
-      getTransformPage().button("Delete").click();
+      getTransformPage().button("Delete transform").click();
       H.modal().within(() => {
         cy.findByLabelText("Delete the transform and the table").click();
         cy.button("Delete transform and table").click();

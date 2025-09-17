@@ -2,6 +2,8 @@ import { QA_MYSQL_PORT, QA_POSTGRES_PORT } from "e2e/support/cypress_data";
 
 import { waitForDbSync } from "./helpers/e2e-database-helpers";
 
+const { H } = cy;
+
 beforeEach(() => {
   cy.H.restore();
   cy.signInAsAdmin();
@@ -354,5 +356,61 @@ describe("Database connection strings", () => {
 
       cy.button("Failed").should("exist");
     });
+  });
+});
+
+H.describeWithSnowplow("Database connection strings events", () => {
+  beforeEach(() => {
+    H.resetSnowplow();
+    H.restore();
+    H.enableTracking();
+    cy.visit("/admin/databases/create?engine=mysql");
+  });
+
+  it("should track success events correctly", () => {
+    const successEvent = {
+      event: "connection_string_parsed_success",
+      triggered_from: "full-page",
+    };
+
+    cy.findByLabelText("Connection string (optional)")
+      .focus()
+      .paste("jdbc:mysql://testuser:testpass@host:3306/dbname?ssl=true")
+      .paste("jdbc:mysql://a:b@c:3/dbname?ssl=false");
+
+    cy.findByTextEnsureVisible("Connection details pre-filled below.").should(
+      "exist",
+    );
+
+    cy.findByLabelText("Display name").click();
+
+    H.expectUnstructuredSnowplowEvent(successEvent, 1);
+
+    cy.findByLabelText("Connection string (optional)").click();
+    cy.findByLabelText("Display name").click();
+
+    // Should not track the same event again
+    H.expectUnstructuredSnowplowEvent(successEvent, 1);
+  });
+
+  it("should track failure events correctly", () => {
+    cy.findByLabelText("Connection string (optional)")
+      .focus()
+      .paste("broken string")
+      .type("also not a valid string");
+
+    cy.findByTextEnsureVisible("Couldn’t use this connection string.").should(
+      "exist",
+    );
+
+    cy.findByLabelText("Display name").click();
+
+    H.expectUnstructuredSnowplowEvent(
+      {
+        event: "connection_string_parsed_failed",
+        triggered_from: "full-page",
+      },
+      1,
+    );
   });
 });
