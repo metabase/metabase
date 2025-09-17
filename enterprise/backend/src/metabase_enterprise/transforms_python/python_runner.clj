@@ -204,7 +204,7 @@
                                                                       (map (fn [[n v]]
                                                                              (maybe-fixup-value (filtered-col-meta n) v))))))
                                                               reducible-rows)]
-                              (write-to-stream! os (keep filtered-col-meta col-names) filtered-rows))))
+                              (write-to-stream! os (filter filtered-col-meta col-names) filtered-rows))))
                         cancel-chan)
     manifest))
 
