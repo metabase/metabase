@@ -60,6 +60,9 @@ jobs:
       CYPRESS_IS_EMBEDDING_SDK: "${{ inputs.name == 'embedding-sdk' }}"
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Prepare Docker containers
         uses: ./.github/actions/e2e-prepare-containers
@@ -70,6 +73,7 @@ jobs:
           openldap: true
           webhook: true
           snowplow: true
+          python-runner: true
           postgres: ${{ inputs.name != 'mongo' }}
           mysql: ${{ inputs.name != 'mongo' }}
           mongo: ${{ inputs.name == 'mongo' }}
