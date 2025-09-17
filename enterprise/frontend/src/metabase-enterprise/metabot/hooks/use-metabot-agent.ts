@@ -16,7 +16,7 @@ import {
   getMetabotReactionsState,
   getMetabotRequestId,
   getMetabotVisible,
-  getProfile,
+  getProfileOverride,
   getToolCalls,
   resetConversation as resetConversationAction,
   retryPrompt,
@@ -66,8 +66,8 @@ export const useMetabotAgent = () => {
     [dispatch],
   );
 
-  const profile = useSelector(getProfile as any) as ReturnType<
-    typeof getProfile
+  const profileOverride = useSelector(getProfileOverride as any) as ReturnType<
+    typeof getProfileOverride
   >;
 
   const reactions = useSelector(getMetabotReactionsState as any) as ReturnType<
@@ -176,7 +176,7 @@ export const useMetabotAgent = () => {
     submitInput,
     retryMessage,
     toolCalls,
-    profile,
+    profileOverride,
     reactions,
   };
 };

@@ -90,7 +90,7 @@ export function TransformQueryPageBody({
     });
   };
   const onAcceptProposed = async (query: DatasetQuery) => {
-    await handleSave(query);
+    await handleSave(query, { leaveEditor: false });
     dispatch(setSuggestedTransform(undefined));
     metabot.submitInput({
       type: "action",
@@ -101,7 +101,10 @@ export function TransformQueryPageBody({
     });
   };
 
-  const handleSave = async (query: DatasetQuery) => {
+  const handleSave = async (
+    query: DatasetQuery,
+    { leaveEditor } = { leaveEditor: true },
+  ) => {
     const { error } = await updateTransform({
       id: transform.id,
       source: {
@@ -114,7 +117,9 @@ export function TransformQueryPageBody({
       sendErrorToast(t`Failed to update transform query`);
     } else {
       sendSuccessToast(t`Transform query updated`);
-      dispatch(push(getTransformUrl(transform.id)));
+      if (leaveEditor) {
+        dispatch(push(getTransformUrl(transform.id)));
+      }
     }
   };
 

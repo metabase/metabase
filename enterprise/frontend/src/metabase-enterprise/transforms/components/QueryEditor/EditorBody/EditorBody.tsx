@@ -15,6 +15,7 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Database as ApiDatabase,
+  DatasetQuery,
   NativeQuerySnippet,
   RecentItem,
 } from "metabase-types/api";
