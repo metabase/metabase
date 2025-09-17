@@ -17,14 +17,11 @@
                                 (when (lib.metadata.protocols/metadata-provider? existing)
                                   existing))
                               (qp.store/metadata-provider))]
-    ;; removing `:lib/converted?` will keep MLv2 from doing a bunch of extra transformations to something that's already
-    ;; a well-formed pMBQL query, we don't need that and it actually ends up breaking some stuff
-    ;; TODO: Get the library to a stable state, where `lib/query` is idempotent, then this can be dropped.
-    (lib/query metadata-provider (dissoc query :lib.convert/converted?))))
+    (lib/query metadata-provider query)))
 
 (mu/defn normalize-preprocessing-middleware :- ::lib.schema/query
   "Preprocessing middleware. Normalize a query, meaning do things like convert keys and MBQL clause tags to kebab-case
-  keywords. Convert query to pMBQL if needed."
+  keywords. Convert query to MBQL 5 if needed."
   [query :- [:map [:database ::lib.schema.id/database]]]
   (try
     (u/prog1 (normalize* query)
