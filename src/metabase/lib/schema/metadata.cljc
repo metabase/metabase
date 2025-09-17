@@ -502,10 +502,12 @@
    ;; TODO (Cam 6/13/25) -- go add this to some of the other metadata schemas as well.
    ::kebab-cased-map
    (lib.schema.common/disallowed-keys
-    {:field-ref    "Do not use column metadata :field-refs in Lib"
+    {:binning      "Use :metabase.lib.field/binning"
+     :field-ref    "Do not use column metadata :field-refs in Lib"
      :join-alias   "Use :metabase.lib.join/join-alias"
      :source       "Use :lib/source"
-     :source-alias "Use :metabase.lib.join/join-alias or :lib/original-join-alias instead"})
+     :source-alias "Use :metabase.lib.join/join-alias or :lib/original-join-alias"
+     :unit         "Use :metabase.lib.field/temporal-unit"})
    [:ref ::column.validate-for-source]])
 
 (mr/def ::persisted-info.definition
