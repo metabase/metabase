@@ -101,9 +101,9 @@ export function GlossaryTable({
         rows={sortedRows}
         cols={
           <>
-            <col style={{ minWidth: "22.5%", maxWidth: "22.5%" }} />
-            <col style={{ width: "70%" }} />
-            <col style={{ width: "7.5%" }} />
+            <col style={{ width: "22.5%" }} />
+            <col style={{ width: "65%" }} />
+            <col style={{ width: "5rem" }} />
           </>
         }
         emptyBody={
@@ -170,7 +170,7 @@ export function GlossaryTable({
                   <Box
                     component="td"
                     valign="top"
-                    style={{ wordBreak: "break-word" }}
+                    style={{ wordBreak: "break-word", whiteSpace: "pre-wrap" }}
                     onClick={() => {
                       setEditingId(item.id);
                       setEditingField("definition");
@@ -181,7 +181,13 @@ export function GlossaryTable({
                     </Text>
                   </Box>
 
-                  <Box component="td" valign="top" align="center" p="sm">
+                  <Box
+                    component="td"
+                    valign="top"
+                    align="center"
+                    p="sm"
+                    w="25px"
+                  >
                     <Tooltip label={t`Delete`}>
                       <ActionIcon
                         aria-label={t`Delete`}

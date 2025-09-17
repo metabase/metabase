@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useHotkeys } from "@mantine/hooks";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import type { GlossaryItem } from "metabase/api";
@@ -32,6 +33,21 @@ export function GlossaryRowEditor({
 
   const canSave = term.trim() !== "" && definition.trim() !== "";
 
+  const save = useCallback(() => {
+    void onSave(term.trim(), definition.trim());
+    onCancel();
+  }, [onSave, onCancel, term, definition]);
+
+  useHotkeys(
+    [
+      ["mod+Enter", save],
+      ["Escape", onCancel],
+    ],
+    [],
+  );
+
+  const { termRef, definitionRef } = useFocusOnMount(autoFocusField);
+
   return (
     <>
       <Box component="td" valign="top">
@@ -46,6 +62,7 @@ export function GlossaryRowEditor({
           value={term}
           onChange={(e) => setTerm(e.currentTarget.value)}
           miw="8rem"
+          ref={termRef}
         />
       </Box>
       <Box component="td" valign="top" pr="0">
@@ -63,9 +80,10 @@ export function GlossaryRowEditor({
           autoFocus={autoFocusField === "definition"}
           styles={{
             input: {
-              paddingTop: "0.75rem",
+              paddingTop: "0.725rem",
             },
           }}
+          ref={definitionRef}
         />
       </Box>
       <Box component="td" valign="top" align="center" px="md" pt="sm" pb={0}>
@@ -84,7 +102,7 @@ export function GlossaryRowEditor({
               aria-label={t`Save`}
               variant={canSave ? "filled" : "subtle"}
               disabled={!canSave}
-              onClick={() => void onSave(term.trim(), definition.trim())}
+              onClick={save}
             >
               <Icon name="check" />
             </ActionIcon>
@@ -93,4 +111,37 @@ export function GlossaryRowEditor({
       </Box>
     </>
   );
+}
+
+function useFocusOnMount(autoFocusField: "term" | "definition") {
+  const termRef = useRef<HTMLInputElement>(null);
+  const definitionRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (autoFocusField === "term" && termRef.current) {
+      const el = termRef.current;
+      // defer to ensure value is rendered before setting selection (helps Safari)
+      setTimeout(() => {
+        el.focus();
+        const len = el.value.length;
+        el.setSelectionRange(len, len);
+      }, 0);
+    }
+  }, [autoFocusField]);
+
+  useEffect(() => {
+    if (autoFocusField === "definition" && definitionRef.current) {
+      const el = definitionRef.current;
+      setTimeout(() => {
+        el.focus();
+        const len = el.value.length;
+        el.setSelectionRange(len, len);
+      }, 0);
+    }
+  }, [autoFocusField]);
+
+  return {
+    termRef,
+    definitionRef,
+  };
 }
