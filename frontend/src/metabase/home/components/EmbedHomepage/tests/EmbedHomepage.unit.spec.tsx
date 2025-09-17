@@ -216,5 +216,12 @@ describe("EmbedHomepage (OSS)", () => {
     expect(
       screen.getByRole("link", { name: "Try Metabase Pro" }),
     ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("link", { name: "Try Metabase Pro" }),
+    ).toHaveAttribute(
+      "href",
+      "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_campaign=advanced-embeds&utm_content=embedding-homepage&source_plan=oss",
+    );
   });
 });

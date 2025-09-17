@@ -5,7 +5,7 @@ import { Text } from "metabase/ui";
 import { UpsellCard } from "./components";
 import { UPGRADE_URL } from "./constants";
 
-const campaign = "embed-homepage";
+const campaign = "advanced-embeds";
 
 export const UpsellEmbedHomepage = ({ location }: { location: string }) => {
   return (
