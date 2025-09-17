@@ -20,9 +20,9 @@
 
 (set! *warn-on-reflection* true)
 
-(defn reload-from-git!
-  "Reloads the Metabase entities from the remote source"
-  [branch]
+(defn- reload-from-git!
+  "Reloads the Metabase entities from the git repo"
+  [branch & [collections]]
   (log/info "Reloading remote entities from the remote source")
   (if-let [source (source/source-from-settings)]
     (let [remote-sync-collection (t2/select-one :model/Collection :entity_id collection/library-entity-id)]
@@ -30,9 +30,10 @@
         (git/fetch! source)
         ;; Load all entities from Git first - this handles creates/updates via entity_id matching
         (let [load-result (serdes/with-cache
-                            (v2.load/load-metabase! (source/ingestable-source source (or branch (settings/remote-sync-branch)))
-                                                    :root-dependency-path [{:id collection/library-entity-id
-                                                                            :model "Collection"}]))
+                            (if (seq collections)
+                              (v2.load/load-metabase! (source/ingestable-source source (or branch (settings/remote-sync-branch)))
+                                                      :root-dependency-path (mapv #(assoc nil :id % :model "Collection") collections))
+                              (v2.load/load-metabase! (source/ingestable-source source (or branch (settings/remote-sync-branch))))))
               ;; Extract entity_ids by model from the :seen paths
               imported-entities (->> (:seen load-result)
                                      (map last) ; Get the last element of each path (the entity itself)

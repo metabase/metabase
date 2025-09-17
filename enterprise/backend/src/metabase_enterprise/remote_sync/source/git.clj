@@ -161,7 +161,8 @@
 
 (defn branches
   "Return the branches in the repo"
-  [{:keys [^Git git]}]
+  [{:keys [^Git git] :as source}]
+  (fetch! source)
   (->> (call-command (.branchList git))
        (filter #(str/starts-with? (.getName ^Ref %) "refs/heads/"))
        (remove #(.isSymbolic ^Ref %))
