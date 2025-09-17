@@ -226,19 +226,13 @@
   [_driver _metadata-provider col-spec]
   [(assoc col-spec ::bad-reference true)])
 
-(defn- lca
-  ([]
-   :type/*)
-  ([t]
-   t)
-  ([t1 t2 & more]
-   (let [a1 (into #{} (conj (ancestors t1) t1))
-         a2 (into #{} (conj (ancestors t2) t2))
-         ac (set/intersection a1 a2)
-         ancestor (if (seq ac)
-                    (apply (partial max-key (comp count ancestors)) ac)
-                    :type/*)]
-     (apply lca ancestor more))))
+(defn- lca [& types]
+  (let [common-ancestors (->> (map #(conj (ancestors %) %)
+                                   types)
+                              (apply set/intersection))]
+    (if (seq common-ancestors)
+      (apply (partial max-key (comp count ancestors)) common-ancestors)
+      :type/*)))
 
 (defmethod resolve-field :composite-field
   [driver metadata-provider col-spec]
