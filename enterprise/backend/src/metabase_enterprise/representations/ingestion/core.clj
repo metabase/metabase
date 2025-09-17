@@ -10,7 +10,6 @@
   (:require
    [clojure.java.io :as io]
    [metabase-enterprise.representations.schema.core :as schema]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]))
 
@@ -38,13 +37,11 @@
 (defn ingest-representation
   "Ingest a single representation file and convert to Metabase entity.
    Returns the created/updated entity or nil on failure."
-  [file-path]
-  (when-let [representation (parse-representation file-path)]
-    (when-let [validated (validate-representation representation)]
-      ;; TODO: Convert to Metabase entity based on type
-      (log/info "Successfully ingested" file-path)
-      validated)))
+  [representation]
+  (when-let [validated (validate-representation representation)]
+    validated))
 
+;; TOTALLY UNTESTED
 (defn ingest-directory
   "Recursively ingest all YAML files in a directory.
    Returns a map of results by file path."

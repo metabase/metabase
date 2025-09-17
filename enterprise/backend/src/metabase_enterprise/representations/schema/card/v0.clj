@@ -8,11 +8,6 @@
 
 ;;; ------------------------------------ Schema Definitions ------------------------------------
 
-(mr/def ::type
-  [:enum {:decode/json keyword
-          :description "Card type - question for queries, model for reusable datasets, metric for aggregations"}
-   :question :model :metric])
-
 (mr/def ::type-question
   [:enum {:decode/json keyword
           :description "Type must be 'question'"}
@@ -52,7 +47,7 @@
 (mr/def ::mbql-query
   [:and
    {:description "MBQL (Metabase Query Language) query to execute"}
-   ::lib.schema.common/non-blank-string])
+   any?])
 
 (mr/def ::database
   [:and

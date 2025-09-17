@@ -1833,8 +1833,12 @@
   enterprise/representations
   {:team "Querying"
    :api #{metabase-enterprise.representations.core
-          metabase-enterprise.representations.init}
-   :uses #{lib
+          metabase-enterprise.representations.init
+          metabase-enterprise.representations.ingestion.core
+          metabase-enterprise.representations.schema.core}
+   :uses #{config
+           lib
+           models
            util}}
 
   enterprise/sandbox
