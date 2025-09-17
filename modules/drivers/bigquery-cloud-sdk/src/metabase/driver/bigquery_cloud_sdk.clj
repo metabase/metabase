@@ -876,7 +876,7 @@
 
 (defmethod driver/rename-tables!* :bigquery-cloud-sdk
   [driver db-id sorted-rename-map]
-  ;; TODO: QUE-2474
+  ;; TODO: QUE-2474. renames may be not supported, and are not atomic
   (let [database (t2/select-one :model/Database db-id)]
     (doseq [[old-table-name new-table-name] sorted-rename-map]
       (let [old-table-str (get-table-str old-table-name)
