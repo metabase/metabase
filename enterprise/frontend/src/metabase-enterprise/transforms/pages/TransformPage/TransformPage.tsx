@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { parseTimestamp } from "metabase/lib/time-dayjs";
 import * as Urls from "metabase/lib/urls";
 import { Stack } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
@@ -66,7 +67,7 @@ export function TransformPage({ params }: TransformPageProps) {
   );
 }
 
-export function getParsedParams({
+function getParsedParams({
   transformId,
 }: TransformPageParams): TransformPageParsedParams {
   return {
@@ -74,9 +75,29 @@ export function getParsedParams({
   };
 }
 
-export function isPollingNeeded(transform?: Transform) {
-  return (
-    transform?.last_run?.status === "started" ||
-    (transform?.last_run?.status === "succeeded" && transform.table == null)
-  );
+function isPollingNeeded(transform?: Transform) {
+  const lastRun = transform?.last_run;
+
+  if (transform == null || lastRun == null) {
+    return false;
+  }
+
+  if (lastRun.status === "started") {
+    return true;
+  }
+
+  // If the last run succeeded but there is no table yet, wait for the sync to
+  // finish. If the transform is changed until the sync finishes, stop polling,
+  // because the table could be already deleted.
+  if (
+    transform.table == null &&
+    lastRun.status === "succeeded" &&
+    lastRun.end_time != null
+  ) {
+    const endedAt = parseTimestamp(lastRun.end_time);
+    const updatedAt = parseTimestamp(transform.updated_at);
+    return endedAt.isAfter(updatedAt);
+  }
+
+  return false;
 }
