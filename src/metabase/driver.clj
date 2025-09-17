@@ -734,6 +734,9 @@
     ;; Does this driver support transforms with a table as the target?
     :transforms/table
 
+    ;; Does this driver support executing python transforms?
+    :transforms/python
+
     ;; Does this driver properly support the table-exists? method for checking table existence?
     :metadata/table-existence-check
 

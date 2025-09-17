@@ -393,3 +393,11 @@
           (qp/process-query success-query)
           (is (= 3.0 (mt/metric-value system :metabase-query-processor/query {:driver driver/*driver* :status "success"})))
           (is (= 2.0 (mt/metric-value system :metabase-query-processor/query {:driver driver/*driver* :status "failure"}))))))))
+
+(deftest python-transform-drivers-multimethods-support
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
+    (let [driver driver/*driver*]
+      (is (get-method driver/rename-tables!* driver))
+      (is (get-method driver/create-table! driver))
+      (is (get-method driver/drop-table! driver))
+      (is (get-method driver/insert-from-source! [driver :jsonl-file])))))

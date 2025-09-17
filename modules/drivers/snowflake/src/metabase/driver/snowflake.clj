@@ -67,6 +67,7 @@
                               :now                                    true
                               :database-routing                       true
                               :metadata/table-existence-check         true
+                              :transforms/python                      true
                               :transforms/table                       true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
