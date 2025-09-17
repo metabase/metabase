@@ -27,15 +27,19 @@
               </a>
             </div>
 
+            <div>
+              {{{payload.event_info.comment_html}}}
+            </div>
+
             {{!-- CTA button --}}
             <div style="text-align: center; margin: 12px 0 32px 0;">
               <a href="{{context.site_url}}{{payload.event_info.comment_href}}"
-                 style="display: inline-block; background-color: {{context.application_color}}; color: #ffffff !important; font-weight: 700; font-size: 14px; border-radius: 8px; padding: 12px 16px;">
+                 style="display: inline-block; background-color: {{context.application_color}}; color: #ffffff !important; font-weight: 700; font-size: 14px; border-radius: 8px; padding: 12px 16px; text-decoration: none;">
                  Open in Metabase
               </a>
             </div>
             <hr style="margin-top: 32px; margin-bottom: 32px;">
-            <div class="footer" style="font-size: 12px; line-height: 16px; width: max-content; margin: 0 auto; color: {{payload.style.color_text_medium}};">
+            <div style="font-size: 12px; line-height: 16px; width: max-content; margin: 0 auto; color: {{payload.style.color_text_medium}};">
               Sent from <a href="{{context.site_url}}" style="color: {{context.application_color}}">{{context.site_url}}</a>.
             </div>
           </div>
