@@ -135,7 +135,7 @@ const AutomaticDashboardAppInner = () => {
                         borderless
                         actionFn={() => {
                           trackXRaySaved();
-                          save();
+                          return save();
                         }}
                       >
                         {t`Save this`}
