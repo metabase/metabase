@@ -1,6 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import type {
+  Transform,
   TransformJob,
   TransformJobId,
   TransformTag,
