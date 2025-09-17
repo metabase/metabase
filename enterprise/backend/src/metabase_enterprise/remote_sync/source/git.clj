@@ -10,9 +10,9 @@
   (:import
    (org.eclipse.jgit.api Git GitCommand TransportCommand)
    (org.eclipse.jgit.dircache DirCache DirCacheEntry)
-   (org.eclipse.jgit.lib CommitBuilder Constants FileMode PersonIdent)
+   (org.eclipse.jgit.lib CommitBuilder Constants FileMode PersonIdent Ref)
    (org.eclipse.jgit.revwalk RevCommit RevWalk)
-   (org.eclipse.jgit.transport RefSpec
+   (org.eclipse.jgit.transport PushResult RefSpec RemoteRefUpdate
                                RemoteRefUpdate$Status UsernamePasswordCredentialsProvider)
    (org.eclipse.jgit.treewalk TreeWalk)))
 
@@ -21,7 +21,7 @@
 (defn- call-command [^GitCommand command]
   (.call command))
 
-(defn- call-remote-command [^TransportCommand command {:keys [token]}]
+(defn- call-remote-command [^TransportCommand command {:keys [^String token]}]
   (let [credentials-provider (when token (UsernamePasswordCredentialsProvider. "x-access-token" token))]
     (-> command
         (.setCredentialsProvider credentials-provider)
@@ -107,13 +107,14 @@
         push-response (call-remote-command
                        (-> (.push git)
                            (.setRemote "origin")
-                           (.setRefSpecs [(RefSpec. (str branch-name ":" branch-name))]))
+                           (.setRefSpecs (doto (java.util.ArrayList.)
+                                           (.add (RefSpec. (str branch-name ":" branch-name))))))
                        git-source)
         push-results (->> push-response
-                          (map #(into [] (.getRemoteUpdates %)))
+                          (map #(into [] (.getRemoteUpdates ^PushResult %)))
                           flatten)]
 
-    (when-let [failures (seq (remove #(#{RemoteRefUpdate$Status/OK RemoteRefUpdate$Status/UP_TO_DATE} %) (map #(.getStatus %) push-results)))]
+    (when-let [failures (seq (remove #(#{RemoteRefUpdate$Status/OK RemoteRefUpdate$Status/UP_TO_DATE} %) (map #(.getStatus ^RemoteRefUpdate %) push-results)))]
       (throw (ex-info (str "Failed to push branch " branch-name " to remote") {:failures failures})))
     push-response))
 
@@ -133,7 +134,7 @@
             builder (.builder index)]
 
         (doseq [{:keys [path content]} files]
-          (let [blob-id (.insert inserter Constants/OBJ_BLOB (.getBytes content "UTF-8"))
+          (let [blob-id (.insert inserter Constants/OBJ_BLOB (.getBytes ^String content "UTF-8"))
                 entry (doto (DirCacheEntry. ^String path)
                         (.setFileMode FileMode/REGULAR_FILE)
                         (.setObjectId blob-id))]
@@ -162,9 +163,9 @@
   "Return the branches in the repo"
   [{:keys [^Git git]}]
   (->> (call-command (.branchList git))
-       (filter #(str/starts-with? (.getName %) "refs/heads/"))
-       (remove #(.isSymbolic %))
-       (map #(str/replace-first (.getName %) "refs/heads/" ""))
+       (filter #(str/starts-with? (.getName ^Ref %) "refs/heads/"))
+       (remove #(.isSymbolic ^Ref %))
+       (map #(str/replace-first (.getName ^Ref %) "refs/heads/" ""))
        sort))
 
 (defrecord GitSource [git remote-url token]
