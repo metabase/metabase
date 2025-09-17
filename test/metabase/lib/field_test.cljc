@@ -1490,7 +1490,7 @@
                                (dissoc :id :table-id)))
           join-cols      [(-> (meta/field-metadata :products :category)
                               (assoc :lib/source :source/card
-                                     :source-alias "Products")
+                                     :lib/original-join-alias "Products")
                               (dissoc :id :table-id))]
           implicit-cols  (for [col (meta/fields :people)]
                            (-> (meta/field-metadata :people col)

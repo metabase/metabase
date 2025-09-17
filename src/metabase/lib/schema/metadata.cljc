@@ -1,5 +1,6 @@
 (ns metabase.lib.schema.metadata
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.schema.binning :as lib.schema.binning]
@@ -190,7 +191,10 @@
                   (and (:id m) (not (pos-int? (:id m))))
                   (dissoc :id)))
         ;; remove deprecated `:ident` and `:model/inner_ident` keys (normalized to `:model/inner-ident`)
-        (dissoc :ident :model/inner-ident))))
+        (dissoc :ident :model/inner-ident)
+        ;; if we see the deprecated `:source-alias` key, rename it to `:lib/original-join-alias`, which serves a
+        ;; similar purpose.
+        (set/rename-keys {:source-alias :lib/original-join-alias}))))
 
 (def ^:private column-validate-for-source-specs
   "Schemas to use to validate columns with a given `:lib/source`. Since a lot of these schemas are applicable to
@@ -356,18 +360,6 @@
     ;; an foreign key, and points to this Field ID. This is mostly used to determine how to add implicit joins by
     ;; the [[metabase.query-processor.middleware.add-implicit-joins]] middleware.
     [:fk-target-field-id {:optional true} [:maybe ::lib.schema.id/field]]
-    ;;
-    ;; Join alias of the table we're joining against, if any. Not really 100% clear why we would need this on top
-    ;; of [[metabase.lib.join/current-join-alias]], which stores the same info under a namespaced key. I think we can
-    ;; remove it.
-    ;;
-    ;; TODO (Cam 6/19/25) -- yes, we should remove this key, I've tried to do so but a few places are still
-    ;; setting (AND USING!) it. It actually appears that this gets propagated beyond the current stage where the join
-    ;; has happened and has thus taken on a purposes as a 'previous stage join alias' column. We should use
-    ;; `:lib/original-join-alias` instead to serve this purpose since `:source-alias` is not set or used correctly.
-    ;; Check out experimental https://github.com/metabase/metabase/pull/59772 where I updated this schema to 'ban'
-    ;; this key so we can root out anywhere trying to use it. (QUE-1403)
-    [:source-alias {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
     ;; Join alias of the table we're joining against, if any. SHOULD ONLY BE SET IF THE JOIN HAPPENED AT THIS STAGE OF
     ;; THE QUERY! (Also ok within a join's conditions for previous joins within the parent stage, because a join is
     ;; allowed to join on the results of something else)
@@ -489,12 +481,6 @@
     ;; here and if it's actually used for anything important in Lib or the QP (I suspect it's not).
     [:settings {:optional true} [:maybe [:map-of {:decode/normalize lib.schema.common/normalize-map-no-kebab-case} :keyword :any]]]
     ;;
-    ;; Added by [[metabase.lib.metadata.result-metadata]] primarily for legacy/backward-compatibility purposes with
-    ;; legacy viz settings. This should not be used for anything other than that.
-    [:field-ref {:optional true} [:maybe [:ref :metabase.legacy-mbql.schema/Reference]]]
-    ;;
-    [:source {:optional true} [:maybe [:ref ::column.legacy-source]]]
-    ;;
     ;; these next two keys are derived by looking at `FieldValues` and `Dimension` instances associated with a `Field`;
     ;; they are used by the Query Processor to add column remappings to query results. To see how this maps to stuff in
     ;; the application database, look at the implementation for fetching a `:metadata/column`
@@ -515,6 +501,11 @@
    ;;
    ;; TODO (Cam 6/13/25) -- go add this to some of the other metadata schemas as well.
    ::kebab-cased-map
+   (lib.schema.common/disallowed-keys
+    {:field-ref    "Do not use column metadata :field-refs in Lib"
+     :join-alias   "Use :metabase.lib.join/join-alias"
+     :source       "Use :lib/source"
+     :source-alias "Use :metabase.lib.join/join-alias or :lib/original-join-alias instead"})
    [:ref ::column.validate-for-source]])
 
 (mr/def ::persisted-info.definition

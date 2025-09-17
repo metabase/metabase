@@ -439,7 +439,7 @@
       (when-some [col (resolve-in-implicit-join-current-stage query source-field-id id-or-name)]
         (-> col
             lib.field.util/update-keys-for-col-from-previous-stage
-            (assoc :lib/original-join-name  (:alias join)
+            (assoc :lib/original-join-alias  (:alias join)
                    :lib/source-column-alias (lib.join.util/joined-field-desired-alias
                                              (:alias join)
                                              ((some-fn :lib/source-column-alias :name) col))

@@ -41,23 +41,16 @@
   get a nice performance boost."
   (u.memo/fast-memo u/->kebab-case-en))
 
-(def ^:private metadata-type->schema
-  {:metadata/card ::lib.schema.metadata/card})
-
 (defn instance->metadata
   "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a MLv2 style
   metadata instance with `:lib/type` and `kebab-case` keys."
   [instance metadata-type]
-  (let [normalize (if-let [schema (get metadata-type->schema metadata-type)]
-                    (fn [instance]
-                      (lib.normalize/normalize schema instance))
-                    identity)]
-    (-> instance
-        (perf/update-keys memoized-kebab-key)
-        (assoc :lib/type metadata-type)
-        normalize
-        u.snake-hating-map/snake-hating-map
-        (vary-meta assoc :metabase/toucan-instance instance))))
+  (-> instance
+      (perf/update-keys memoized-kebab-key)
+      (assoc :lib/type metadata-type)
+      lib.normalize/normalize
+      u.snake-hating-map/snake-hating-map
+      (vary-meta assoc :metabase/toucan-instance instance)))
 
 ;;;
 ;;; Database

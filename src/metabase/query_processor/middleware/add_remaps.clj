@@ -591,7 +591,8 @@
   added and each row flowing through needs to include the remapped data for the new column. For external remappings
   the column information needs to be updated with what it's being remapped from and the user specified name for the
   remapped column."
-  [{:keys [internal-only-dims]} :- ::internal-columns-info rf]
+  [{:keys [internal-only-dims]} :- ::internal-columns-info
+   rf]
   (if-let [remap-fn (make-row-map-fn internal-only-dims)]
     ((map remap-fn) rf)
     rf))
@@ -604,9 +605,9 @@
   (if disable-remaps?
     rff
     (fn remap-results-rff* [metadata]
-      (let [mlv2-cols          (map
-                                #(lib.metadata.jvm/instance->metadata % :metadata/column)
-                                (:cols metadata))
-            internal-cols-info (internal-columns-info mlv2-cols)
+      (let [lib-cols          (map
+                               #(lib.metadata.jvm/instance->metadata % :metadata/column)
+                               (:cols metadata))
+            internal-cols-info (internal-columns-info lib-cols)
             metadata           (add-remapped-to-and-from-metadata metadata external-remaps internal-cols-info)]
         (remap-results-xform internal-cols-info (rff metadata))))))

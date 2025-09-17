@@ -14,7 +14,7 @@
              "database-type"             "CHARACTER VARYING"
              "display-name"              "Category"
              "effective-type"            "type/Text"
-             "field-ref"                 ["field" 61339 nil]
+             "field-ref"                 ["field" 61339 nil] ; should get removed
              "fingerprint"               {"global" {"distinct-count" 4, "nil%" 0.0}
                                           "type"   {"type/Text"   {"average-length" 6.375
                                                                    "percent-email"  0.0
@@ -35,7 +35,7 @@
              "position"                  3
              "semantic-type"             "type/Category"
              "settings"                  {"is_priceless" true}
-             "source"                    "breakout"
+             "source"                    "breakout" ; should get removed
              "table-id"                  10808
              "visibility-type"           "normal"}]
     (is (= {:active                    true
@@ -43,7 +43,6 @@
             :database-type             "CHARACTER VARYING"
             :display-name              "Category"
             :effective-type            :type/Text
-            :field-ref                 [:field 61339 nil]
             :fingerprint               {:global {:distinct-count 4, :nil% 0.0}
                                         :type   {:type/Text   {:average-length 6.375
                                                                :percent-email  0.0
@@ -56,7 +55,6 @@
             :position                  3
             :semantic-type             :type/Category
             :settings                  {:is_priceless true}
-            :source                    :breakout
             :table-id                  10808
             :visibility-type           :normal
             :lib/breakout?             true

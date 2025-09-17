@@ -107,7 +107,7 @@
     (meta/field-metadata table col)))
 
 (defn- sort-cols [cols]
-  (sort-by (juxt :id :name :source-alias :lib/desired-column-alias) cols))
+  (sort-by (juxt :id :name (some-fn :metabase.lib.join/join-alias :lib/original-join-alias) :lib/desired-column-alias) cols))
 
 (deftest ^:parallel visible-columns-use-result-metadata-test
   (testing "visible-columns should use the Card's `:result-metadata` (regardless of what's actually in the Card)"
