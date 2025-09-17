@@ -22,6 +22,8 @@ Here are a few ideas for what you can do with actions:
 
 Actions must be added to a [model](../data-modeling/models.md), but actions only run on the raw tables that back those models (so actions will never edit your [model definition](../data-modeling/models.md#edit-a-models-query)).
 
+If you're an admin who just wants to edit data in your tables, check out [Editable table data](../data-modeling/editing.md).
+
 ## Enabling actions for a database
 
 For actions to work, you'll first need to do the following two things:

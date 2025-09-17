@@ -25,14 +25,20 @@ To set up table editing, admins can:
 
 For this to work, Metabase's connection to your database must support writing back to its tables. See [privileges to enable actions and editable table data](../databases/users-roles-privileges.md#privileges-to-enable-actions-and-editable-table-data).
 
-## Edit a table
+## Update or delete records in a table
 
-To edit a table, admins can:
+To update or delete records in a table:
 
 1. Navigate to the left sidebar.
 2. In the Data section, click **Databases**.
 3. Hover over the table you want to edit and click the **Pencil** icon.
 4. Edit rows in the table just like you would in a spreadsheet.
+
+Depending on the data in the column, Metabase may show a list of values to choose from. If you need add an option, simply type out the option and add it.
+
+![Add option](./images/add-option.png)
+
+To remove an option from the list of values, you'll need to change any records with that value to a different value.
 
 ## Create a new record
 
@@ -52,3 +58,28 @@ If you try to delete a row that has foreign key references from other tables, yo
 
 - You can't edit sequential primary keys.
 - If you try to add a value of a different type (like changing the number 13579 to the string "Wizard"), Metabase won't allow it.
+
+## Editable table data vs. actions
+
+Metabase offers two ways to modify data in your database: **editable table data** and [actions](../actions/introduction.md).
+
+###  When to use editable table data
+
+Use editable table data to
+
+- Do data maintenance or cleanup
+- Modify many records at once
+- Direct access to all table data
+- Do one-off data corrections
+
+You need to be an admin to edit tables directly.
+
+### When to use actions
+
+Use actions to:
+
+- Create custom forms 
+- Give non-admins the ability to modify data
+- Add a button to a dashboard to trigger a form or query
+
+See [actions](../actions/introduction.md).
