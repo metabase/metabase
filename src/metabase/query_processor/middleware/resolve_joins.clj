@@ -22,14 +22,6 @@
            {:qp/keep-default-join-alias true})
          join))
 
-(defn- join-field-refs [cols]
-  (for [col  cols
-        :let [[_tag opts id-or-name, :as field-ref] (lib/ref col)
-              force-field-name-ref? (pos-int? id-or-name)]]
-    (if force-field-name-ref?
-      [:field opts (:lib/source-column-alias col)]
-      field-ref)))
-
 (mu/defn- handle-all-fields :- ::lib.schema.join/join
   "Replace `:fields :all` in a join with an appropriate list of Fields."
   [query                             :- ::lib.schema/query
@@ -40,7 +32,8 @@
    (when (= fields :all)
      ;; do not `:include-remaps?` here, they will get added by the [[metabase.query-processor.middleware.add-remaps]]
      ;; middleware.
-     {:fields (join-field-refs
+     {:fields (mapv
+               lib/ref
                (lib.walk/apply-f-for-stage-at-path
                 lib/join-fields-to-add-to-parent-stage
                 query
