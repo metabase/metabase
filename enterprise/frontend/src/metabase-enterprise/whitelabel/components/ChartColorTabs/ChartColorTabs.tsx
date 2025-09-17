@@ -30,7 +30,7 @@ const ChartColorTabs = ({
     <Tabs value={activeTab} onChange={handleTabChange}>
       <Tabs.List>
         <Tabs.Tab value="chart-colors">{t`Chart colors`}</Tabs.Tab>
-        <Tabs.Tab value="palette-preview">{t`Palette preview`}</Tabs.Tab>
+        <Tabs.Tab value="palette-preview">{t`Preview`}</Tabs.Tab>
       </Tabs.List>
 
       <Box mt="lg">

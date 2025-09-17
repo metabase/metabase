@@ -23,16 +23,11 @@ export const TableBodyRow = styled.div`
 
 export const TableBodyCell = styled.div`
   flex: 1 1 auto;
-  width: 12rem;
   padding: 1rem 1.5rem;
 
   &:not(:first-of-type) {
     border-left: 1px solid var(--mb-color-border);
     background-color: var(--mb-color-bg-light);
-  }
-
-  ${breakpointMinLarge} {
-    flex-grow: 0;
   }
 `;
 

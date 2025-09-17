@@ -1,16 +1,10 @@
 import { useMemo } from "react";
-import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 
 import ChartColorSample from "../ChartColorSample";
 
-import {
-  TableBody,
-  TableHeader,
-  TableRoot,
-  TableTitle,
-} from "./ChartColorPreview.styled";
+import { TableBody, TableRoot } from "./ChartColorPreview.styled";
 import { getAccentColorGroups } from "./utils";
 
 const PREVIEW_TIMEOUT = 400;
@@ -30,9 +24,6 @@ const ChartColorPreview = ({
 
   return (
     <TableRoot>
-      <TableHeader>
-        <TableTitle>{t`Palette preview`}</TableTitle>
-      </TableHeader>
       <TableBody>
         <ChartColorSample colorGroups={colorGroups} />
       </TableBody>
