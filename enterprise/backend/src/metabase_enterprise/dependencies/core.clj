@@ -19,7 +19,7 @@
    [toucan2.core :as t2]))
 
 (mr/def ::entity-type
-  [:enum :card :transform :snippet])
+  [:enum :card :transform :snippet :table])
 
 (mr/def ::updates-map
   ;; TODO: Make this more specific.
@@ -30,14 +30,6 @@
 
 (defn- merge-deps [deps-maps]
   (reduce (partial merge-with set/union) {} deps-maps))
-
-(mu/defn all-dependents
-  "Returns a single map of deps, taking the union of all the deps of the `updated-entities`."
-  [updated-entities :- ::updates-map]
-  (->> (for [[entity-type updates] updated-entities
-             {:keys [id]}          updates]
-         (deps.graph/id-dependents entity-type id))
-       merge-deps))
 
 (mu/defn metadata-provider :- ::lib.schema.metadata/metadata-provider
   "Constructs a `MetadataProvider` with some pending edits applied.
@@ -51,7 +43,7 @@
   [base-provider    :- ::lib.schema.metadata/metadata-provider
    updated-entities :- ::updates-map
    #_#_#_dependent-ids    :- ::dependents-map]
-  (let [deps (all-dependents updated-entities)]
+  (let [deps (deps.graph/transitive-dependents updated-entities)]
     (deps.provider/override-metadata-provider base-provider updated-entities deps)))
 
 (mu/defn check-query-soundness ;; :- [:map-of ::lib.schema.id/card [:sequential ::lib.schema.mbql-clause/clause]]
@@ -163,22 +155,22 @@
   (let [card-ids [1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20
                   21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37]
         base-mp  #_{:clj-kondo/ignore [:unresolved-namespace]}
-        (lib-be.metadata.jvm/application-database-metadata-provider 1)
-        card     (lib.metadata/card base-mp 1)
-        card'    (-> card
-                     (update-in [:dataset-query :query :expressions]
-                                ;; Replacing the expression Age with Duration - this breaks downstream uses!
-                                update-keys (constantly "Duration"))
-                     (dissoc :result-metadata))
-        mp       (metadata-provider base-mp {:card [card']})]
-    #_(doseq [id card-ids]
-        (replace-upstream-deps:card! (t2/select-one :model/Card :id id)))
+        (lib-be.metadata.jvm/application-database-metadata-provider 39)
+        transform (lib.metadata/transform base-mp 1)
+        transform (-> transform
+                      (update-in [:source :query :query :expressions]
+                                 ;; Replacing the expression Age with Duration - this breaks downstream uses!
+                                 update-keys (constantly "Fair Die"))
+                      #_(dissoc :result-metadata))
+        mp       (metadata-provider base-mp {:transform [transform]})]
     #_(deps.provider/all-overrides mp)
-    #_(lib.metadata/card mp 1)
-    #_(lib.metadata/card mp 36)
-    (check-query-soundness mp)
-    #_(deps.graph/id-dependents :card 1))
+    (check-query-soundness mp))
 
+  (t2/select-fn-vec (juxt :id :name :active :table_id) :model/Field :id [:in [1065 1066 1067 1068 1069]])
+
+  (t2/select-one :model/Card :id 124)
+  (deps.graph/transitive-dependents {:transform [{:id 1}]})
+  (deps.graph/transitive-dependents {:table [{:id 155}]})
   (metabase.premium-features.core/token-features)
 
   (let [card (toucan2.core/select-one :model/Card :id 121)

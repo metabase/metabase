@@ -65,20 +65,37 @@
         card           (-> original
                            (assoc :dataset-query (:dataset_query body)
                                   :type          (:type body (:type original)))
+                           ;; Remove the old `:result-metadata` from the card, it's likely wrong now.
                            (dissoc :result-metadata)
+                           ;; But if the request includes `:result_metadata`, use that. It may be from a native card
+                           ;; that's been run before saving the card.
                            (cond-> #_card
                             (:result_metadata body) (assoc :result-metadata (:result_metadata body))))
         edits          {:card [card]}
         breakages      (dependencies/errors-from-proposed-edits base-provider edits)]
     (broken-cards-response breakages)))
 
+(mr/def ::transform-body
+  [:map
+   [:id     {:optional false} ms/PositiveInt]
+   [:name   {:optional true}  :string]
+   [:source {:optional true}  [:maybe ms/Map]]
+   [:target {:optional true}  [:maybe ms/Map]]])
+
 (api.macros/defendpoint :post "/check_transform"
   "Check a proposed edit to a transform, and return the card, transform, etc. IDs for things that will break."
   [_route-params
    _query-params
-   _body :- [:map [:id ms/PositiveInt]]]
-  ;; FIXME: This is just a stub - implement it!
-  {:success true})
+   {:keys [id source target] :as body} :- ::transform-body]
+  (let [database-id   (-> source :query :database)
+        base-provider (lib-be.metadata.jvm/application-database-metadata-provider database-id)
+        original      (lib.metadata/transform base-provider id)
+        transform     (-> original
+                          (cond-> #_transform source (assoc :source source))
+                          (cond-> #_transform target (assoc :target target)))
+        edits         {:transform [transform]}
+        breakages     (dependencies/errors-from-proposed-edits base-provider edits)]
+    (broken-cards-response breakages)))
 
 (defn- card-uses-snippet?
   [card {snippet-id :id snippet-name :name}]

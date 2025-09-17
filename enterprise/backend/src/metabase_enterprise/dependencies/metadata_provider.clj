@@ -14,6 +14,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [pretty.core :as pretty]))
 
@@ -26,9 +27,11 @@
         metadata-keys   (set (or id name))]
     (log/tracef "OverridingMetadataProvider request for %s" metadata-spec)
     (cond
-      ;; For tables, fields, cards, snippets and transforms, return overrides if present and delegate if not.
-      (#{:metadata/table :metadata/field :metadata/card
-         :metadata/transform :metadata/native-query-snippet} metadata-type)
+      ;; For tables, cards, snippets and transforms, return overrides if present and delegate if not.
+      (or (#{:metadata/table :metadata/card :metadata/transform :metadata/native-query-snippet} metadata-type)
+          ;; Or for fetching a set of columns/fields by ID.
+          (and (= metadata-type :metadata/column)
+               (seq id)))
       (let [overrides       (if (seq id)
                               (into [] (comp (keep #(get type-overrides %))
                                              (map deref))
@@ -48,9 +51,9 @@
 
       ;; For columns, return overrides if they're present.
       (= metadata-type :metadata/column)
-      (if-let [overridden-columns (if card-id
-                                    (get-in overrides [::card-columns  card-id])
-                                    (get-in overrides [::table-columns table-id]))]
+      (if-let [overridden-columns (cond
+                                    card-id  (get-in overrides [::card-columns  card-id])
+                                    table-id (get-in overrides [::table-columns table-id]))]
         @overridden-columns
         (lib.metadata.protocols/metadatas delegate metadata-spec))
 
@@ -158,7 +161,7 @@
             ;; For each pre-existing output column, we need to add an override for a direct read by ID.
             ;; If the column does not exist in the output, the delay contains nil!
             (map (fn [existing-col]
-                   [[:metadata/field (:id existing-col)]
+                   [[:metadata/column (:id existing-col)]
                     (delay (get @outputs-by-id (:id existing-col)))]))
             existing-cols))))
 
@@ -200,6 +203,15 @@
                                                 :query
                                                 (lib/query mp)
                                                 lib/returned-columns))})))
+
+(defmethod add-override :table [^OverridingMetadataProvider mp _entity-type id updates]
+  (when (seq updates)
+    (throw (ex-info "Updating a table directly is not supported" {:table-id id, :edited updates})))
+  (with-overrides mp
+    {[:metadata/table id] (delay (throw (ex-info "Can't happen: Table deps should be replaced by transforms"
+                                                 {:table-id id})))
+     [::table-columns id] (delay (throw (ex-info "Can't happen: Table columns deps should be replaced by transforms"
+                                                 {:table-id id})))}))
 
 (defmethod add-override :snippet [^OverridingMetadataProvider mp _entity-type id updates]
   (with-overrides mp

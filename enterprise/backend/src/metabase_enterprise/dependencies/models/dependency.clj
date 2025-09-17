@@ -213,19 +213,46 @@
   [[key-dependents]] to search downstream."
   [children-fn start-nodes]
   (let [all-nodes (java.util.LinkedHashSet.)
-        new? #(not (.contains all-nodes %))
-        instance-key (juxt entity-type :id)]
-    (loop [new-nodes (map instance-key start-nodes)]
+        new?      #(not (.contains all-nodes %))]
+    (loop [new-nodes start-nodes]
       (if (seq new-nodes)
         (let [new-children (filter new? (children-fn new-nodes))]
           (.addAll all-nodes new-children)
           (recur new-children))
-        (let [other-keys (drop (count start-nodes) all-nodes)
-              key->instance (->> (resolve-keys other-keys)
-                                 (group-by instance-key))]
-          (into (vec start-nodes)
-                (map key->instance)
-                other-keys))))))
+        (into (vec start-nodes) (drop (count start-nodes) all-nodes))))))
+
+(defn bfs-entities
+  "Return a topologically ordered vector of Toucan instances linked to the instances in `start-nodes`.
+
+  `children-fn` determines the direction of the search.  Use [[key-dependencies]] to search upstream,
+  [[key-dependents]] to search downstream."
+  [children-fn start-entities]
+  (let [instance-key (juxt entity-type :id)
+        start-nodes  (map instance-key start-entities)
+        all-nodes    (bfs-nodes children-fn start-nodes)]
+    (let [other-keys (drop (count start-nodes) all-nodes)
+          key->instance (->> (resolve-keys other-keys)
+                             (group-by instance-key))]
+      (into (vec start-entities)
+            (map key->instance)
+            other-keys))))
+
+(defn transitive-dependents
+  "Given a map of updated entities `{entity-type [{:id 1, ...} ...]}`, return a map of its transitive dependents
+  as `{entity-type #{4 5 6}}` - that is, a map from downstream entity type to a set of IDs.
+
+  The inputs must be maps containing `:id`; anything without an `:id` is skipped. They could be Toucan entities,
+  `MetadataProvider` entities, user input, etc.
+
+  **Excludes** the input entities from the list of dependents!"
+  [updated-entities]
+  (let [starters (for [[entity-type updates] updated-entities
+                       entity                updates
+                       :when (:id entity)]
+                   [entity-type (:id entity)])]
+    (->> (bfs-nodes key-dependents starters)
+         (remove (set starters))
+         (u/group-by first second conj #{}))))
 
 (defn replace-dependencies
   "Replace the dependencies of the entity of type `entity-type` with id `entity-id` with
@@ -290,7 +317,15 @@
   (replace-dependencies :card 31 {:card (disj card-ids 31) :table table-ids})
   (replace-dependencies :card 31 {:table #{3 4}})
   (replace-dependencies :table 31 {})
-  (t2/select :model/Dependency)
   (upsert-generic-dependency :card 31 :table 1)
-  (bfs-nodes key-dependencies (t2/select :model/Card 31))
-  -)
+
+  (upsert-generic-dependency :table 155 :transform 1)
+  (t2/select :model/Dependency :from_entity_type :transform :from_entity_id 1)
+  (t2/select :model/Dependency :to_entity_type   :transform :to_entity_id   1)
+
+  (u/group-by first second (key-dependents [[:transform 1]]))
+
+  (bfs-nodes key-dependents [[:transform 1]])
+  (bfs-entities key-dependents (t2/select :model/Transform 1))
+  (transitive-dependents {:transform [{:id 1}]})
+  (transitive-dependents {:transform [{:id 1}]}))
