@@ -53,17 +53,15 @@ export function LibrarySyncControl() {
     reject: (reason?: any) => void;
   } | null>(null);
 
-  const defaultPullBranch = useSetting("git-sync-import-branch");
-  const defaultPushBranch = useSetting("git-sync-export-branch");
-  const allowEdit = useSetting("git-sync-allow-edit");
+  const remoteSyncBranch = useSetting("remote-sync-branch");
 
   const [pullBranch, setPullBranch] = useState<string>(
-    defaultPullBranch ?? "main",
+    remoteSyncBranch ?? "main",
   );
   const [pushBranch, setPushBranch] = useState<string>(
-    defaultPushBranch ?? "main",
+    remoteSyncBranch ?? "main",
   );
-  const gitSyncConfigured = useSetting("git-sync-configured");
+  const gitSyncConfigured = useSetting("remote-sync-configured");
 
   const { data: collections } = useListCollectionsTreeQuery();
 
@@ -93,7 +91,7 @@ export function LibrarySyncControl() {
     } else {
       return importGit({
         branch: pullBranch,
-        collectionIds: collections?.map((c) => c.git_sync) || [], // FIXME: use whatever the backend provides
+        collectionIds: [], // FIXME: use whatever the backend provides
       }).unwrap();
     }
   };
@@ -171,7 +169,7 @@ export function LibrarySyncControl() {
                 title={t`Import branch`}
                 value={pullBranch ?? ""}
                 onChange={setPullBranch}
-                defaultValue={defaultPullBranch ?? "main"}
+                defaultValue={"main"}
                 w="20rem"
                 data={SAMPLE_BRANCHES}
                 disabled
@@ -192,7 +190,7 @@ export function LibrarySyncControl() {
                 </Group>
               </ActionButton>
             </Flex>
-            {allowEdit && (
+            {/* {allowEdit && (
               <Flex gap="md" align="end">
                 <Autocomplete
                   name="git-sync-export-branch"
@@ -222,7 +220,7 @@ export function LibrarySyncControl() {
                   </Group>
                 </ActionButton>
               </Flex>
-            )}
+            )} */}
             <Box>
               <Link to="/admin/settings/library/sync">
                 <Text c="brand" component="span">

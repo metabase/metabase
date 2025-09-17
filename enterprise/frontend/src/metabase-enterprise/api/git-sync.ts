@@ -1,5 +1,4 @@
 import type {
-  Collection,
   CollectionId,
   EnterpriseSettings,
   Transform,
@@ -59,9 +58,6 @@ export type UnsyncedChangesResponse = {
   message?: string;
 };
 
-export type SyncedCollectionsResponse = {
-  collections: Collection[];
-};
 
 export type GitSyncSettings = Pick<
   EnterpriseSettings,
@@ -83,7 +79,7 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
         body: { branch },
       }),
       invalidatesTags: (response, error, request) =>
-        request.collectionIds.map((id) => `collection-${id}-items`),
+        invalidateTags(error, request.collectionIds.map((id) => ({ type: "collection", id: `${id}-items` }))),
     }),
     exportGit: builder.mutation<void, { branch: string }>({
       query: ({ branch }) => ({
@@ -112,97 +108,6 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/library/unsynced-changes",
       }),
     }),
-    getSyncedCollections: builder.query<SyncedCollectionsResponse, void>({
-      queryFn: async () => {
-        try {
-          // Mock implementation using localStorage
-          const stored = localStorage.getItem("mock_synced_collections");
-          const collections = stored ? JSON.parse(stored) : [];
-          return { data: { collections } };
-        } catch (error) {
-          return {
-            error: { status: 500, data: "Failed to fetch synced collections" },
-          };
-        }
-      },
-      providesTags: [tag("synced-collections")],
-    }),
-    addSyncedCollection: builder.mutation<
-      Collection,
-      { collectionId: CollectionId; collection?: Collection }
-    >({
-      queryFn: async ({ collectionId, collection }) => {
-        try {
-          // Mock implementation using localStorage
-          const stored = localStorage.getItem("mock_synced_collections");
-          const collections: Collection[] = stored ? JSON.parse(stored) : [];
-
-          // Check if already exists
-          if (collections.some((c) => c.id === collectionId)) {
-            return {
-              error: { status: 409, data: "Collection already synced" },
-            };
-          }
-
-          // Create a mock synced collection
-          const newCollection: Collection = collection
-            ? {
-                ...collection,
-                git_sync_enabled: true,
-              }
-            : ({
-                id: collectionId,
-                name: `Collection ${collectionId}`,
-                description: null,
-                can_write: true,
-                can_restore: false,
-                can_delete: true,
-                archived: false,
-                git_sync_enabled: true,
-              } as Collection);
-
-          collections.push(newCollection);
-          localStorage.setItem(
-            "mock_synced_collections",
-            JSON.stringify(collections),
-          );
-
-          return { data: newCollection };
-        } catch (error) {
-          return {
-            error: { status: 500, data: "Failed to add synced collection" },
-          };
-        }
-      },
-      invalidatesTags: [tag("synced-collections")],
-    }),
-    removeSyncedCollection: builder.mutation<
-      void,
-      { collectionId: CollectionId }
-    >({
-      queryFn: async ({ collectionId }) => {
-        try {
-          // Mock implementation using localStorage
-          const stored = localStorage.getItem("mock_synced_collections");
-          const collections: Collection[] = stored ? JSON.parse(stored) : [];
-
-          const filteredCollections = collections.filter(
-            (c) => c.id !== collectionId,
-          );
-          localStorage.setItem(
-            "mock_synced_collections",
-            JSON.stringify(filteredCollections),
-          );
-
-          return { data: undefined };
-        } catch (error) {
-          return {
-            error: { status: 500, data: "Failed to remove synced collection" },
-          };
-        }
-      },
-      invalidatesTags: [tag("synced-collections")],
-    }),
     updateGitSyncSettings: builder.mutation<void, GitSyncSettings>({
       query: (settings) => ({
         method: "PUT",
@@ -221,8 +126,5 @@ export const {
   useGetRepositoryTreeQuery,
   useGetFileContentQuery,
   useGetUnsyncedChangesQuery,
-  useGetSyncedCollectionsQuery,
-  useAddSyncedCollectionMutation,
-  useRemoveSyncedCollectionMutation,
   useUpdateGitSyncSettingsMutation,
 } = gitSyncApi;

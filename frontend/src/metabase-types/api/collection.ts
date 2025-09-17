@@ -30,7 +30,11 @@ export type CollectionContentModel = "card" | "dataset";
 
 export type CollectionAuthorityLevel = "official" | null;
 
-export type CollectionType = "instance-analytics" | "trash" | null;
+export type CollectionType =
+  | "instance-analytics"
+  | "trash"
+  | "remote-synced"
+  | null;
 
 export type LastEditInfo = {
   email: string;
@@ -69,7 +73,7 @@ export interface Collection {
   archived: boolean;
   children?: Collection[];
   authority_level?: CollectionAuthorityLevel;
-  type?: "instance-analytics" | "trash" | null;
+  type?: CollectionType;
 
   parent_id?: CollectionId | null;
   personal_owner_id?: UserId;
@@ -187,6 +191,7 @@ export interface UpdateCollectionRequest {
   archived?: boolean;
   parent_id?: RegularCollectionId | null;
   authority_level?: CollectionAuthorityLevel;
+  type?: CollectionType;
 }
 
 export interface CreateCollectionRequest {
@@ -202,6 +207,7 @@ export interface ListCollectionsRequest {
   namespace?: string;
   "personal-only"?: boolean;
   "exclude-other-user-collections"?: boolean;
+  collection_type?: CollectionType;
 }
 export interface ListCollectionsTreeRequest {
   "exclude-archived"?: boolean;
@@ -209,6 +215,7 @@ export interface ListCollectionsTreeRequest {
   namespace?: string;
   shallow?: boolean;
   "collection-id"?: RegularCollectionId | null;
+  collection_type?: CollectionType;
 }
 
 export interface DeleteCollectionRequest {

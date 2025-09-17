@@ -191,8 +191,7 @@ const CollectionContentViewInner = ({
   const pinnedItems = list && !isRootTrashCollection(collection) ? list : [];
   const hasPinnedItems = pinnedItems.length > 0;
   const actionId = { id: collectionId };
-  const isDevMode = useSetting("git-sync-allow-edit");
-  const showDevBanner = collection.git_sync && isDevMode;
+  const showDevBanner = collection.type === "remote-synced";
 
   return (
     <CollectionRoot {...dropzoneProps}>
