@@ -30,20 +30,20 @@
   Where `rff` has the form
 
     (f metadata) -> rf"
-  [[::legacy #'format-rows/format-rows]
-   [::legacy #'results-metadata/record-and-return-metadata!]
+  [[::mbql5  #'format-rows/format-rows]
+   [::mbql5  #'results-metadata/record-and-return-metadata!]
    [::mbql5  #'limit/limit-result-rows]
-   [::legacy #'qp.middleware.enterprise/limit-download-result-rows]
-   [::legacy #'qp.add-rows-truncated/add-rows-truncated]
-   [::legacy #'qp.add-timezone-info/add-timezone-info]
-   [::legacy #'qp.middleware.enterprise/merge-sandboxing-metadata]
-   [::legacy #'qp.add-remaps/remap-results]
-   [::legacy #'pivot-export/add-data-for-pivot-export]
-   [::legacy #'large-int/convert-large-int-to-string]
-   [::legacy #'viz-settings/update-viz-settings]
-   [::legacy #'qp.cumulative-aggregations/sum-cumulative-aggregation-columns]
+   [::mbql5  #'qp.middleware.enterprise/limit-download-result-rows]
+   [::mbql5  #'qp.add-rows-truncated/add-rows-truncated]
+   [::mbql5  #'qp.add-timezone-info/add-timezone-info]
+   [::mbql5  #'qp.middleware.enterprise/merge-sandboxing-metadata]
+   [::mbql5  #'qp.add-remaps/remap-results]
+   [::mbql5  #'pivot-export/add-data-for-pivot-export]
+   [::mbql5  #'large-int/convert-large-int-to-string]
+   [::mbql5  #'viz-settings/update-viz-settings]
+   [::mbql5  #'qp.cumulative-aggregations/sum-cumulative-aggregation-columns]
    [::mbql5  #'annotate/add-column-info]
-   [::legacy #'fetch-source-query/add-dataset-info]])
+   [::mbql5  #'fetch-source-query/add-dataset-info]])
 ;; ↑↑↑ POST-PROCESSING ↑↑↑ happens from BOTTOM TO TOP
 
 (mu/defn post-processing-rff :- ::qp.schema/rff

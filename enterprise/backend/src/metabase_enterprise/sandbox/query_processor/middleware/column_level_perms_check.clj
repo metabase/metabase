@@ -6,6 +6,8 @@
    ;; Lib only soon
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.premium-features.core :refer [defenterprise-schema]]
    [metabase.query-processor.schema :as qp.schema]
@@ -24,7 +26,6 @@
   nil)
 
 (mu/defn- maybe-apply-column-level-perms-check*
-  {:arglists '([query])}
   [{{{source-query-fields :fields} :source-query} :query, :as query} :- ::mbql.s/Query]
   (let [restricted-field-ids (and *gtap-perms*
                                   (field-ids source-query-fields))]
@@ -39,7 +40,8 @@
   "Check column-level permissions if applicable."
   :feature :sandboxes
   [qp :- ::qp.schema/qp]
-  (mu/fn [query :- ::mbql.s/Query
+  (mu/fn [query :- ::lib.schema/query
           rff   :- ::qp.schema/rff]
-    (maybe-apply-column-level-perms-check* query)
+    ;; TODO (Cam 9/11/25) -- update this middleware to use Lib/MBQL 5
+    (maybe-apply-column-level-perms-check* (lib/->legacy-MBQL query))
     (qp query rff)))

@@ -79,6 +79,7 @@
    "PermissionsGroupMembership"
    "PermissionsRevision"
    "PersistedInfo"
+   "PythonLibrary"
    "Pulse"
    "PulseCard"
    "PulseChannel"

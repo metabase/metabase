@@ -2,6 +2,6 @@
   cursor: pointer;
 }
 
-.nowrap {
-  white-space: nowrap;
+.cell {
+  overflow-wrap: break-word;
 }

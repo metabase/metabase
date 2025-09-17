@@ -32,6 +32,7 @@
     :model/ContentTranslation
     :model/DashboardFavorite
     :model/DatabaseRouter
+    :model/PythonLibrary
     :model/Query
     :model/QueryCache
     :model/QueryExecution

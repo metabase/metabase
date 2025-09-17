@@ -34,11 +34,12 @@
     (doseq [f [#'lib/metadata
                #'lib.field.resolution/resolve-field-ref]]
       (testing f
-        (is (=? {:name          "sum"
-                 :display-name  "sum of User ID"
-                 :base-type     :type/Integer
-                 :semantic-type :type/FK
-                 :lib/source    :source/native}
+        (is (=? {:name                                     "sum"
+                 :display-name                             "sum of User ID"
+                 :base-type                                :type/Integer
+                 :semantic-type                            :type/FK
+                 :lib/source                               :source/native
+                 ::lib.field.resolution/fallback-metadata? (symbol "nil #_\"key is not present.\"")}
                 (lib/metadata
                  (lib.tu/native-query)
                  -1
@@ -1447,14 +1448,14 @@
                        {:stages [{:joins [{:alias      "J"
                                            :stages     [{:source-table (meta/id :venues)
                                                          :joins        [{:alias       "CATEGORIES__via__ID"
-                                                                         :fk-field-id (meta/id :venues :category-id)
+                                                                         :fk-field-id (meta/id :venues :id)
                                                                          :stages      [{:source-table (meta/id :categories)
                                                                                         :fields       [[:field {} (meta/id :categories :id)]
                                                                                                        [:field {} (meta/id :categories :name)]]}]
                                                                          :conditions  [[:= {} 1 1]]
                                                                          :fields      :none}
                                                                         {:alias       "CATEGORIES__via__CATEGORY_ID"
-                                                                         :fk-field-id (meta/id :venues :id)
+                                                                         :fk-field-id (meta/id :venues :category-id)
                                                                          :stages      [{:source-table (meta/id :categories)
                                                                                         :fields       [[:field {} (meta/id :categories :id)]
                                                                                                        [:field {} (meta/id :categories :name)]]}]
@@ -1508,3 +1509,66 @@
                      :lib/source-column-alias      "CATEGORIES__via__CATEGORY_ID__NAME"
                      :metabase.lib.join/join-alias "J"}
                     (lib.field.resolution/resolve-field-ref query 0 field-ref)))))))))
+
+(deftest ^:parallel resolve-implicit-column-test
+  (testing "fields implicitly joined in a previous stage"
+    (let [query (-> (lib/query
+                     meta/metadata-provider
+                     (lib.tu.macros/mbql-query venues
+                       {:fields   [$category-id->categories.name]
+                        :order-by [[:asc $id]]}))
+                    lib/append-stage)]
+      (is (=? {:id                                       (meta/id :categories :name)
+               :table-id                                 (meta/id :categories)
+               :lib/original-fk-field-id                 (meta/id :venues :category-id)
+               ::lib.field.resolution/fallback-metadata? (symbol "nil #_\"key is not present.\"")}
+              (lib.field.resolution/resolve-field-ref query -1 [:field
+                                                                {:base-type :type/Text, :effective-type :type/Text, :lib/uuid "ee91656b-08c7-4ca2-9f9e-5845e2edd80a"}
+                                                                "CATEGORIES__via__CATEGORY_ID__NAME"]))
+          ":fk-field-id needs to get propagated as :lib/previous-stage-fk-field-id this to work correctly"))))
+
+(deftest ^:parallel resolve-by-name-from-join-test
+  (let [query (lib/query
+               meta/metadata-provider
+               {:lib/type :mbql/query
+                :stages   [{:lib/type     :mbql.stage/mbql
+                            :source-table (meta/id :people)
+                            :joins        [{:lib/type   :mbql/join
+                                            :strategy   :left-join
+                                            :alias      "Q1"
+                                            :stages     [{:lib/type     :mbql.stage/mbql
+                                                          :source-table (meta/id :orders)
+                                                          :fields       [[:field {} (meta/id :orders :id)]
+                                                                         [:field {:base-type :type/Integer, :join-alias "O"} "ID"]]
+                                                          :joins        [{:lib/type   :mbql/join
+                                                                          :strategy   :left-join
+                                                                          :alias      "O"
+                                                                          :stages     [{:lib/type     :mbql.stage/mbql
+                                                                                        :source-table (meta/id :orders)
+                                                                                        :fields       [[:field {} (meta/id :orders :id)]]}]
+                                                                          :conditions [[:=
+                                                                                        {}
+                                                                                        [:field {} (meta/id :orders :id)]
+                                                                                        [:field {:join-alias "O"} (meta/id :orders :id)]]]
+                                                                          :fields     [[:field {:base-type :type/Integer, :join-alias "O"} "ID"]]}]}
+                                                         {:lib/type :mbql.stage/mbql
+                                                          :fields   [[:field {:base-type :type/BigInteger} "ID"]
+                                                                     [:field {:base-type :type/Integer} "O__ID"]]}]
+                                            :conditions [[:= {}
+                                                          [:field {} (meta/id :people :id)]
+                                                          [:field {:base-type :type/BigInteger, :join-alias "Q1"} (meta/id :orders :user-id)]]]
+                                            :fields     [[:field {:base-type :type/Integer, :join-alias "Q1"} "ID"]
+                                                         [:field {:base-type :type/Integer, :join-alias "Q1"} "o__ID"]]}]
+                            :fields       [[:field {} (meta/id :orders :id)]
+                                           [:field {:base-type :type/Integer, :join-alias "Q1"} "ID"]
+                                           [:field {:base-type :type/Integer, :join-alias "Q1"} "O__ID"]]}]
+                :database (meta/id)})]
+    (is (=? {:id                                       (meta/id :orders :id)
+             :table-id                                 (meta/id :orders)
+             :metabase.lib.join/join-alias             "Q1"
+             :lib/source-column-alias                  "O__ID"
+             ::lib.field.resolution/fallback-metadata? (symbol "nil #_\"key is not present.\"")}
+            (lib.field.resolution/resolve-field-ref query -1 [:field {:base-type  :type/Integer
+                                                                      :lib/uuid   "00000000-0000-0000-0000-000000000000"
+                                                                      :join-alias "Q1"}
+                                                              "O__ID"])))))

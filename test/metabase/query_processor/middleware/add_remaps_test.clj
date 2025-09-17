@@ -693,10 +693,10 @@
                             ;; -- Cam
                             ;;
                             ;;
-                            ;; 1 remap for self-joined orders.user-id => people.email
-                            [:field (meta/id :people :email) {:join-alias "j"}]
                             ;; 1 remap for source table orders.user-id => people.email
-                            [:field (meta/id :people :email) {:join-alias "PEOPLE__via__USER_ID", ::qp.add-remaps/new-field-dimension-id pos-int?}]]}
+                            [:field (meta/id :people :email) {:join-alias "PEOPLE__via__USER_ID", ::qp.add-remaps/new-field-dimension-id pos-int?}]
+                            ;; 1 remap for self-joined orders.user-id => people.email
+                            [:field (meta/id :people :email) {:join-alias "j"}]]}
                   preprocessed-query)))))))
 
 (deftest ^:parallel add-remaps-to-joins-e2e-test-2
@@ -760,10 +760,8 @@
                                                 [:field (meta/id :venues :longitude)   {:join-alias "J"}]
                                                 [:field (meta/id :venues :price)       {:join-alias "J"}]
                                                 ;; we shouldn't use IDs here because they would be ambiguous.
-                                                [:field "NAME_2"        {:join-alias "J"}]
-                                                [:field "NAME_3"        {:join-alias "J"}]
-                                                ;; TODO -- this shouldn't be here! DUPLICATE!
-                                                [:field (meta/id :categories :name) {}]]}
+                                                [:field (meta/id :categories :name)    {:join-alias "J", :source-field (meta/id :venues :id)}]
+                                                [:field (meta/id :categories :name)    {:join-alias "J", :source-field (meta/id :venues :category-id)}]]}
                                 ;; these are in the opposite order as the join source query because `CATEGORY_ID`
                                 ;; appears before `ID` here but the other way around above.
                                 {:alias "CATEGORIES__via__CATEGORY_ID"}
@@ -777,15 +775,14 @@
                                 [:field (meta/id :venues :latitude)    {:join-alias "J"}]
                                 [:field (meta/id :venues :longitude)   {:join-alias "J"}]
                                 [:field (meta/id :venues :price)       {:join-alias "J"}]
-                                [:field "NAME_2"                       {:join-alias "J"}]
-                                [:field "NAME_3"                       {:join-alias "J"}]
                                 [:field (meta/id :categories :name)    {:join-alias "CATEGORIES__via__CATEGORY_ID"}]
                                 [:field (meta/id :categories :name)    {:join-alias "CATEGORIES__via__ID"}]
-                                ;; TODO DUPLICATE!!!
-                                [:field (meta/id :categories :name) {:join-alias "J"}]]}}
+                                [:field (meta/id :categories :name)    {:join-alias "J", :source-field (meta/id :venues :id)}]
+                                [:field (meta/id :categories :name)    {:join-alias "J", :source-field (meta/id :venues :category-id)}]]}}
               (-> query
                   qp.preprocess/preprocess
-                  lib/->legacy-MBQL))))))
+                  lib/->legacy-MBQL
+                  (select-keys [:query])))))))
 
 (deftest ^:parallel do-not-include-remaps-in-joins-for-columns-that-are-not-in-fields-e2e-test
   (testing "Do not include remaps in joins for columns that are not in :fields (#63165)"
