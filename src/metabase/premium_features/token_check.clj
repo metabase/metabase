@@ -12,6 +12,7 @@
    [diehard.circuit-breaker :as dh.cb]
    [diehard.core :as dh]
    [environ.core :refer [env]]
+   [java-time.api :as t]
    [metabase.config.core :as config]
    [metabase.internal-stats.core :as internal-stats]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
@@ -94,23 +95,37 @@
   [_embedded-dashboard-count _embedded-question-count]
   {:enabled-embedding-static      false
    :enabled-embedding-interactive false
-   :enabled-embedding-sdk         false})
+   :enabled-embedding-sdk         false
+   :enabled-embedding-simple      false})
+
+(defenterprise metabot-stats
+  "Stats for Metabot"
+  metabase-enterprise.metabot-v3.core
+  []
+  {:metabot-tokens     0
+   :metabot-queries    0
+   :metabot-users      0
+   :metabot-usage-date (-> (t/offset-date-time (t/zone-offset "+00"))
+                           (t/minus (t/days 1))
+                           t/local-date
+                           str)})
 
 (defn- stats-for-token-request
   []
-  (let [users (premium-features.settings/active-users-count)
-        ext-users (internal-stats/external-users-count)
+  (let [users                     (premium-features.settings/active-users-count)
+        ext-users                 (internal-stats/external-users-count)
         embedding-dashboard-count (internal-stats/embedding-dashboard-count)
-        embedding-question-count (internal-stats/embedding-question-count)
-        stats (merge (internal-stats/query-execution-last-utc-day)
-                     (embedding-settings embedding-dashboard-count embedding-question-count)
-                     {:users users
-                      :embedding-dashboard-count embedding-dashboard-count
-                      :embedding-question-count embedding-question-count
-                      :external-users ext-users
-                      :internal-users (- users ext-users)
-                      :domains (internal-stats/email-domain-count)})]
-    (log/info "Reporting embedding stats:" stats)
+        embedding-question-count  (internal-stats/embedding-question-count)
+        stats                     (merge (internal-stats/query-execution-last-utc-day)
+                                         (embedding-settings embedding-dashboard-count embedding-question-count)
+                                         #_(metabot-stats)
+                                         {:users                     users
+                                          :embedding-dashboard-count embedding-dashboard-count
+                                          :embedding-question-count  embedding-question-count
+                                          :external-users            ext-users
+                                          :internal-users            (- users ext-users)
+                                          :domains                   (internal-stats/email-domain-count)})]
+    (log/info "Reporting Metabase stats:" stats)
     stats))
 
 (defn- token-status-url [token base-url]
@@ -128,7 +143,10 @@
    [:trial         {:optional true} :boolean]
    [:valid-thru    {:optional true} [:string {:min 1}]]
    [:max-users     {:optional true} pos-int?]
-   [:company       {:optional true} [:string {:min 1}]]])
+   [:company       {:optional true} [:string {:min 1}]]
+   [:store-users   {:optional true} [:maybe [:sequential [:map
+                                                          [:email :string]]]]]
+   [:quotas        {:optional true} [:sequential [:map]]]])
 
 (def ^:private ^:const token-status-cache-ttl
   "Amount of time in ms to cache the status of a valid enterprise token before forcing a re-check."
@@ -199,6 +217,11 @@
     ;; other exceptions are wrapped by Diehard in a FailsafeException. Unwrap them before rethrowing.
     (catch dev.failsafe.FailsafeException e
       (throw (.getCause e)))))
+
+(defn clear-cache
+  "Clear the token cache so that [[fetch-token-and-parse-body]] will return the latest data."
+  []
+  (memoize/memo-clear! fetch-token-and-parse-body*))
 
 ;;;;;;;;;;;;;;;;;;;; Airgap Tokens ;;;;;;;;;;;;;;;;;;;;
 
@@ -340,6 +363,14 @@
   (some-> (premium-features.settings/premium-embedding-token)
           fetch-token-status
           :plan-alias))
+
+(mu/defn quotas :- [:maybe [:sequential [:map]]]
+  "Returns a vector of maps for each quota of the subscription."
+  []
+  (memoize/memo-clear! fetch-token-and-parse-body*)
+  (some-> (premium-features.settings/premium-embedding-token)
+          fetch-token-status
+          :quotas))
 
 (defn has-any-features?
   "True if we have a valid premium features token with ANY features."

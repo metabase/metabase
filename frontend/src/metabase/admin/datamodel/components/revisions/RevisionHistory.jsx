@@ -4,8 +4,8 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
-import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import Breadcrumbs from "metabase/common/components/Breadcrumbs";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { assignUserColors } from "metabase/lib/formatting";
 
@@ -29,9 +29,12 @@ export default class RevisionHistory extends Component {
     }
 
     return (
-      <LoadingAndErrorWrapper loading={!segment || !revisions}>
+      <LoadingAndErrorWrapper
+        loading={!segment || !revisions}
+        className={cx(CS.wrapper, CS.scrollY, CS.bgWhite)}
+      >
         {() => (
-          <div className={CS.wrapper}>
+          <>
             <Breadcrumbs
               className={CS.py4}
               crumbs={[
@@ -39,7 +42,7 @@ export default class RevisionHistory extends Component {
                   t`Segments`,
                   `/admin/datamodel/segments?table=${segment.table_id}`,
                 ],
-                [t`Segment` + t` History`],
+                [t`Segment History`],
               ]}
             />
             <div
@@ -63,7 +66,7 @@ export default class RevisionHistory extends Component {
                 ))}
               </ol>
             </div>
-          </div>
+          </>
         )}
       </LoadingAndErrorWrapper>
     );

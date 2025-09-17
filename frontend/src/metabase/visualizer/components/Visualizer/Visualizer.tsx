@@ -7,6 +7,7 @@ import {
   useSensor,
 } from "@dnd-kit/core";
 import { useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useUnmount } from "react-use";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -182,9 +183,12 @@ const VisualizerInner = (props: VisualizerProps) => {
           <VizSettingsSidebar className={S.settingsSidebarContent} />
         </Box>
 
-        <DragOverlay dropAnimation={null}>
-          {draggedItem && <VisualizerDragOverlay item={draggedItem} />}
-        </DragOverlay>
+        {createPortal(
+          <DragOverlay dropAnimation={null}>
+            {draggedItem && <VisualizerDragOverlay item={draggedItem} />}
+          </DragOverlay>,
+          document.body,
+        )}
       </Box>
     </DndContext>
   );

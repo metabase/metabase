@@ -14,6 +14,7 @@ export interface Undo {
   showProgress?: boolean;
   icon?: IconName | null;
   toastColor?: string;
+  iconColor?: string;
   actionLabel?: string;
   canDismiss?: boolean;
   startedAt?: number;
@@ -28,7 +29,13 @@ export interface Undo {
   count?: number;
   verb?: string;
   subject?: string;
+  extraAction?: {
+    label: string;
+    action: () => void;
+  };
   ref?: RefObject<HTMLDivElement>;
+  renderChildren?: (undo: Undo) => ReactNode;
+  onDismiss?: (undoId: string | number) => void;
 }
 
 export type UndoState = Undo[];

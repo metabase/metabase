@@ -69,8 +69,8 @@ import {
 } from "./actions";
 import {
   CLOSED_NATIVE_EDITOR_SIDEBARS,
-  DEFAULT_DASHBOARD_STATE,
   DEFAULT_LOADING_CONTROLS,
+  DEFAULT_PARENT_ENTITY_STATE,
   DEFAULT_QUERY_STATUS,
   DEFAULT_UI_CONTROLS,
   UI_CONTROLS_SIDEBAR_DEFAULTS,
@@ -126,9 +126,8 @@ export const uiControls = handleActions(
     [UPDATE_QUESTION]: {
       next: (state, { payload }) => ({
         ...state,
-        highlightedNativeQueryLineNumbers: state.isNativeQueryFixApplied
-          ? DEFAULT_UI_CONTROLS.highlightedNativeQueryLineNumbers
-          : state.highlightedNativeQueryLineNumbers,
+        highlightedNativeQueryLineNumbers:
+          DEFAULT_UI_CONTROLS.highlightedNativeQueryLineNumbers,
       }),
     },
     [TOGGLE_DATA_REFERENCE]: {
@@ -196,7 +195,6 @@ export const uiControls = handleActions(
     [RUN_QUERY]: (state) => ({
       ...state,
       isRunning: true,
-      isNativeQueryFixApplied: false,
       highlightedNativeQueryLineNumbers:
         DEFAULT_UI_CONTROLS.highlightedNativeQueryLineNumbers,
     }),
@@ -472,23 +470,27 @@ export const currentState = handleActions(
   null,
 );
 
-export const parentDashboard = handleActions(
+export const parentEntity = handleActions(
   {
     [NAVIGATE_TO_NEW_CARD]: {
-      next: (state, { payload: { dashboardId } }) => ({
-        dashboardId,
+      next: (_state, { payload: { id, model, name } }) => ({
+        id,
+        model,
+        name,
         isEditing: false,
       }),
     },
     [EDIT_QUESTION]: {
-      next: (state, { payload: { dashboardId } }) => ({
-        dashboardId,
+      next: (_state, { payload: { id, model, name } }) => ({
+        id,
+        model,
+        name,
         isEditing: true,
       }),
     },
-    [CLOSE_QB]: { next: () => DEFAULT_DASHBOARD_STATE },
+    [CLOSE_QB]: { next: () => DEFAULT_PARENT_ENTITY_STATE },
   },
-  DEFAULT_DASHBOARD_STATE,
+  DEFAULT_PARENT_ENTITY_STATE,
 );
 
 export const visibleTimelineEventIds = handleActions(

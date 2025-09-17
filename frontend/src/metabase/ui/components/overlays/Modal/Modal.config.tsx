@@ -3,6 +3,7 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import Animation from "metabase/css/core/animation.module.css";
+import Layout from "metabase/css/core/layout.module.css";
 import ZIndex from "metabase/css/core/z-index.module.css";
 
 export const DEFAULT_MODAL_Z_INDEX = 200;
@@ -20,7 +21,7 @@ export const modalOverrides = {
       title: Styles.title,
       overlay: cx(Styles.overlay, ZIndex.Overlay, Animation.fadeIn),
       content: cx(Styles.content, ZIndex.Overlay, Animation.popInFromBottom),
-      inner: cx(ZIndex.Overlay, Animation.popInFromBottom),
+      inner: cx(ZIndex.Overlay, Layout.left, Animation.popInFromBottom),
       header: Styles.header,
       close: Styles.ModalCloseButton,
     },

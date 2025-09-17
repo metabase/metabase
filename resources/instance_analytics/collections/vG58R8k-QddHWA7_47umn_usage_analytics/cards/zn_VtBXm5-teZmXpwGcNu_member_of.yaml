@@ -54,7 +54,6 @@ dataset_query:
         - base-type: type/Integer
           join-alias: People - User
       fields: none
-      ident: join_zn_VtBXm5-teZmXpwGcNu@0__People - User
       source-table: 0wVIfjBJWclD0lKeABYYl
       strategy: left-join
     source-table: lTp-ATFsCUFEr9I0fMEaO

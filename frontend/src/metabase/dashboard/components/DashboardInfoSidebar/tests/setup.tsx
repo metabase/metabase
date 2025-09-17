@@ -11,6 +11,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import type { Dashboard, Settings, TokenFeatures } from "metabase-types/api";
 import {
   createMockDashboard,
@@ -66,11 +67,13 @@ export async function setup({
     <Route
       path="*"
       component={() => (
-        <DashboardInfoSidebar
+        <MockDashboardContext
           dashboard={dashboard}
-          setDashboardAttribute={setDashboardAttribute}
-          onClose={onClose}
-        />
+          setDashboardAttributes={setDashboardAttribute as any}
+          closeSidebar={onClose}
+        >
+          <DashboardInfoSidebar />
+        </MockDashboardContext>
       )}
     />,
     { storeInitialState: state, withRouter: true },
@@ -80,6 +83,7 @@ export async function setup({
   return {
     setDashboardAttribute,
     onClose,
+    dashboard,
   };
 }
 

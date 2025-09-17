@@ -20,6 +20,7 @@ const DataSourceSelectorsPropTypes = {
   setDatabaseId: PropTypes.func,
   setTableId: PropTypes.func,
   editorContext: PropTypes.oneOf(["action", "question"]),
+  databaseIsDisabled: PropTypes.func,
 };
 
 const PopulatedDataSourceSelectorsPropTypes = {
@@ -30,6 +31,7 @@ const PopulatedDataSourceSelectorsPropTypes = {
   readOnly: PropTypes.bool,
   setDatabaseId: PropTypes.func,
   setTableId: PropTypes.func,
+  databaseIsDisabled: PropTypes.func,
 };
 
 const DatabaseSelectorPropTypes = {
@@ -37,6 +39,7 @@ const DatabaseSelectorPropTypes = {
   databases: PropTypes.array,
   readOnly: PropTypes.bool,
   setDatabaseId: PropTypes.func,
+  databaseIsDisabled: PropTypes.func,
 };
 
 const SingleDatabaseNamePropTypes = {
@@ -63,6 +66,7 @@ const DataSourceSelectors = ({
   setDatabaseId,
   setTableId,
   editorContext,
+  databaseIsDisabled,
 }) => {
   const database = question.database();
 
@@ -96,6 +100,7 @@ const DataSourceSelectors = ({
       readOnly={readOnly}
       setDatabaseId={setDatabaseId}
       setTableId={setTableId}
+      databaseIsDisabled={databaseIsDisabled}
     />
   );
 };
@@ -109,6 +114,7 @@ const PopulatedDataSourceSelectors = ({
   readOnly,
   setDatabaseId,
   setTableId,
+  databaseIsDisabled,
 }) => {
   const dataSourceSelectors = [];
 
@@ -125,6 +131,7 @@ const PopulatedDataSourceSelectors = ({
         key="db_selector"
         readOnly={readOnly}
         setDatabaseId={setDatabaseId}
+        databaseIsDisabled={databaseIsDisabled}
       />,
     );
   } else if (database) {
@@ -154,7 +161,13 @@ const checkIfThereAreMultipleDatabases = (database, databases) =>
   database == null ||
   (databases.length > 1 && databases.some((db) => db.id === database.id));
 
-const DatabaseSelector = ({ database, databases, readOnly, setDatabaseId }) => (
+const DatabaseSelector = ({
+  database,
+  databases,
+  readOnly,
+  setDatabaseId,
+  databaseIsDisabled,
+}) => (
   <div
     className={cx(
       QueryBuilderS.GuiBuilderSection,
@@ -171,6 +184,7 @@ const DatabaseSelector = ({ database, databases, readOnly, setDatabaseId }) => (
       setDatabaseFn={setDatabaseId}
       isInitiallyOpen={database == null && databases.length > 1}
       readOnly={readOnly}
+      databaseIsDisabled={databaseIsDisabled}
     />
   </div>
 );

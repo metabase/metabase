@@ -21,7 +21,9 @@ describe("Logout", () => {
 
     setup();
 
-    await waitFor(() => expect(fetchMock.done("path:/api/session")).toBe(true));
+    await waitFor(() =>
+      expect(fetchMock.callHistory.done("path:/api/session")).toBe(true),
+    );
     await waitFor(() => expect(domUtils.reload).toHaveBeenCalled());
   });
 });

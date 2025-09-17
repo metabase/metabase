@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { ParameterOptions, TemplateTag } from "metabase-types/api";
-import { createMockParameter } from "metabase-types/api/mocks";
+import { createMockParameter } from "metabase-types/api/mocks/parameters";
 
 import {
   BOOLEAN_OPTION,

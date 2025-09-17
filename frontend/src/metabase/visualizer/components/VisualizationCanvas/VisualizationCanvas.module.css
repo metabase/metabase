@@ -2,12 +2,12 @@
   width: 100%;
   height: 100%;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) minmax(118px, auto);
   grid-template-rows: auto minmax(0, 1fr) minmax(auto, 42px);
   grid-template-areas:
-    "left main top-right"
-    "left main ."
-    "bottom-left bottom .";
+    ". . top"
+    "left main main"
+    "bottom-left bottom bottom";
   position: relative;
 }
 

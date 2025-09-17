@@ -11,11 +11,13 @@ export function NameInput({
   onChange,
   onSubmit,
   expressionMode,
+  readOnly,
 }: {
   value: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
   expressionMode: Lib.ExpressionMode;
+  readOnly?: boolean;
 }) {
   const handleChange = useCallback(
     (evt: ChangeEvent<HTMLInputElement>) => {
@@ -26,6 +28,9 @@ export function NameInput({
 
   const handleKeyDown = useCallback(
     (evt: KeyboardEvent<HTMLInputElement>) => {
+      if (evt.nativeEvent.isComposing) {
+        return;
+      }
       if (evt.key === "Enter") {
         onSubmit();
       }
@@ -42,6 +47,7 @@ export function NameInput({
       placeholder={getPlaceholder(expressionMode)}
       onChange={handleChange}
       onKeyDown={handleKeyDown}
+      readOnly={readOnly}
       classNames={{
         root: S.root,
         input: S.input,

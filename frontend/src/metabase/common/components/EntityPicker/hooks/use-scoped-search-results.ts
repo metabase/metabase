@@ -11,6 +11,7 @@ import { isNotNull } from "metabase/lib/types";
 import type {
   CollectionId,
   CollectionItem,
+  CollectionItemModel,
   DashboardId,
   SearchResultId,
   Table,
@@ -22,6 +23,20 @@ import type {
   TypeWithModel,
 } from "../types";
 import { isSchemaItem } from "../utils";
+
+const searchModelsToCollectionItemModels = (
+  searchModels: string[],
+): CollectionItemModel[] => {
+  const validModels = [
+    "card",
+    "collection",
+    "dataset",
+    "dashboard",
+    "snippet",
+    "metric",
+  ] as const;
+  return validModels.filter((model) => searchModels.includes(model));
+};
 
 export const useScopedSearchResults = <
   Id extends SearchResultId,
@@ -44,7 +59,12 @@ export const useScopedSearchResults = <
 
   const { data: collectionItemsData, isFetching: isFetchingCollectionItems } =
     useListCollectionItemsQuery(
-      shouldUseCollectionItems ? { id: folder.id as CollectionId } : skipToken,
+      shouldUseCollectionItems
+        ? {
+            id: folder.id as CollectionId,
+            models: searchModelsToCollectionItemModels(searchModels),
+          }
+        : skipToken,
     );
 
   const { data: dashboardItemsData, isFetching: isFetchingDashboardItems } =

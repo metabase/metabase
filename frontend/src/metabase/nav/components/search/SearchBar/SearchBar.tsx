@@ -1,15 +1,19 @@
 import type { LocationDescriptorObject } from "history";
 import { useKBar } from "kbar";
-import type { ChangeEvent, MouseEvent } from "react";
+import type {
+  ChangeEvent,
+  MouseEvent,
+  KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
-import { useKeyboardShortcut } from "metabase/hooks/use-keyboard-shortcut";
-import { useOnClickOutside } from "metabase/hooks/use-on-click-outside";
-import { useToggle } from "metabase/hooks/use-toggle";
+import { useKeyboardShortcut } from "metabase/common/hooks/use-keyboard-shortcut";
+import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import { isSmallScreen, isWithinIframe } from "metabase/lib/dom";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
@@ -159,7 +163,10 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   }, [onChangeLocation, previousLocation, searchFilters, searchText]);
 
   const handleInputKeyPress = useCallback(
-    (e: React.KeyboardEvent) => {
+    (e: ReactKeyboardEvent) => {
+      if (e.nativeEvent.isComposing) {
+        return;
+      }
       if (e.key === "Enter" && hasSearchText) {
         goToSearchApp();
       }

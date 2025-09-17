@@ -1,11 +1,6 @@
 // eslint-disable-next-line no-direct-helper-import
 import { H } from "e2e/support";
 
-export const visitApiKeySettings = () => {
-  cy.visit("/admin/settings/authentication/api-keys");
-  return cy.wait("@getKeys");
-};
-
 export const tryToCreateApiKeyViaModal = ({
   name,
   group,
@@ -16,12 +11,10 @@ export const tryToCreateApiKeyViaModal = ({
   cy.findByTestId("api-keys-settings-header")
     .button(/create api key/i)
     .click();
-  cy.findByRole("dialog", { name: "Create a new API Key" })
-    .as("modal")
-    .within(() => {
-      cy.findByLabelText(/Key name/).type(name);
-      cy.findByLabelText(/group/).click();
-    });
+  H.modal().within(() => {
+    cy.findByLabelText(/Key name/).type(name);
+    cy.findByLabelText(/group/).click();
+  });
 
   H.selectDropdown()
     .findByRole("option", {
@@ -31,7 +24,7 @@ export const tryToCreateApiKeyViaModal = ({
     })
     .click();
 
-  cy.get("@modal").button("Create").click();
+  H.modal().button("Create").click();
 
   return cy.wait("@createKey");
 };

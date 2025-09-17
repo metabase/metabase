@@ -17,8 +17,10 @@ export function DefaultFilterPicker({
   filter,
   isNew,
   withAddButton,
+  withSubmitButton,
   onBack,
   onChange,
+  readOnly,
 }: FilterPickerWidgetProps) {
   const columnInfo = useMemo(
     () => Lib.displayInfo(query, stageIndex, column),
@@ -69,6 +71,7 @@ export function DefaultFilterPicker({
       <FilterPickerHeader
         columnName={columnInfo.longDisplayName}
         onBack={onBack}
+        readOnly={readOnly}
       />
       <div>
         <Radio.Group value={operator} onChange={handleOperatorChange}>
@@ -88,6 +91,7 @@ export function DefaultFilterPicker({
           isNew={isNew}
           isValid
           withAddButton={withAddButton}
+          withSubmitButton={withSubmitButton}
           onAddButtonClick={handleAddButtonClick}
         />
       </div>

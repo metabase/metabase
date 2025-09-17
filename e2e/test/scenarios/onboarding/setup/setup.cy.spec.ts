@@ -9,7 +9,10 @@ const { admin } = USERS;
 const locales = ["en", "xx"];
 
 describe("scenarios > setup", () => {
-  beforeEach(() => H.restore("blank"));
+  beforeEach(() => {
+    H.restore("blank");
+    H.resetSnowplow();
+  });
 
   locales.forEach((locale) => {
     it(
@@ -94,13 +97,13 @@ describe("scenarios > setup", () => {
           cy.findByText("MySQL").click();
           cy.findByText("Need help connecting?").should("be.visible");
           cy.findByLabelText("Remove database").click();
-          cy.findByPlaceholderText("Search for a database…").type("SQL");
+          cy.findByPlaceholderText("Search databases").type("SQL");
           cy.findByText("SQLite").click();
           cy.findByText("Need help connecting?");
 
           // remove sqlite database
           cy.findByLabelText("Remove database").click();
-          cy.findByText("I'll add my data later").click();
+          cy.findByText("Continue with sample data").click();
 
           // test database setup help card is hidden on the next step
           cy.findByText("Need help connecting?").should("not.be.visible");
@@ -166,7 +169,7 @@ describe("scenarios > setup", () => {
 
       // Database
       cy.findByText("Add your data");
-      cy.findByText("I'll add my data later").click();
+      cy.findByText("Continue with sample data").click();
 
       skipLicenseStepOnEE();
 
@@ -239,6 +242,52 @@ describe("scenarios > setup", () => {
       cy.findByDisplayValue("Doe Unlimited").should("exist");
       cy.findByLabelText("Create a password").should("be.empty");
     });
+  });
+
+  it("should not show 'Sample Database' if env var is explicitly set to false during setup", () => {
+    H.mockSessionProperty("has-sample-database?", false);
+
+    navigateToDatabaseStep();
+
+    cy.findByLabelText("Add your data").within(() => {
+      cy.button("Continue with sample data").should("not.exist");
+      cy.button("I'll add my data later").click();
+    });
+
+    cy.log("We're done with the database step");
+    cy.findByLabelText("I'll add my own data later").should("be.visible");
+  });
+
+  it("should create a new user upon inviting a teammate", () => {
+    H.mockSessionProperty("email-configured?", true);
+
+    navigateToDatabaseStep();
+    cy.findByTestId("step-number").should("have.text", "4");
+
+    cy.findByLabelText("Setup section").click();
+    cy.findByLabelText("First name").type("TeammateFirstName");
+    cy.findByLabelText("Last name").type("TeammateLastName");
+    cy.findByLabelText("Email").type("teammate@metabase.test");
+    cy.intercept("POST", "/api/user").as("createUser");
+
+    cy.button("Send invitation").click();
+
+    cy.wait("@createUser").then((interception) => {
+      expect(interception.request.body).to.include({
+        first_name: "TeammateFirstName",
+        last_name: "TeammateLastName",
+        email: "teammate@metabase.test",
+      });
+    });
+
+    // Checks invite event was sent
+    H.expectUnstructuredSnowplowEvent({
+      event: "invite_sent",
+      source: "setup",
+    });
+
+    // Checks we are now in the next step
+    cy.findByTestId("step-number").should("have.text", "5");
   });
 
   it("should allow a quick setup for the 'embedding' use case", () => {
@@ -344,7 +393,7 @@ describe("scenarios > setup", () => {
       .click();
 
     cy.findByTestId("database-form").within(() => {
-      cy.findByPlaceholderText("Search for a database…").type("lite").blur();
+      cy.findByPlaceholderText("Search databases").type("lite").blur();
       cy.findByText("SQLite").click();
       cy.findByLabelText("Display name").type(dbName);
       cy.findByLabelText("Filename").type("./resources/sqlite-fixture.db", {
@@ -352,6 +401,8 @@ describe("scenarios > setup", () => {
       });
       cy.button("Connect database").click();
     });
+
+    cy.findByRole("status").should("contain", `Connected to ${dbName}`);
 
     skipLicenseStepOnEE();
 
@@ -481,11 +532,11 @@ describe("scenarios > setup (EE)", () => {
 
       cy.button("Next").click();
 
-      cy.findByText("I'll add my data later").click();
+      cy.findByText("Continue with sample data").click();
 
       cy.findByText("Activate your commercial license").should("exist");
 
-      typeToken(Cypress.env("NO_FEATURES_TOKEN"));
+      typeToken(Cypress.env("MB_STARTER_CLOUD_TOKEN"));
 
       cy.button("Activate").click();
 
@@ -562,7 +613,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
         step_number: 4,
         step: "db_connection",
       });
-      cy.findByText("I'll add my data later").click();
+      cy.findByText("Continue with sample data").click();
 
       H.expectUnstructuredSnowplowEvent({
         event: "add_data_later_clicked",
@@ -576,7 +627,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
           step: "license_token",
         });
 
-        cy.button("Skip").click();
+        cy.button("I'll activate later").click();
         H.expectUnstructuredSnowplowEvent({
           event: "license_token_step_submitted",
           valid_token_present: false,
@@ -683,7 +734,7 @@ const fillUserAndContinue = ({
 const skipLicenseStepOnEE = () => {
   if (IS_ENTERPRISE) {
     cy.findByText("Activate your commercial license").should("exist");
-    cy.button("Skip").click();
+    cy.button("I'll activate later").click();
   }
 };
 
@@ -694,4 +745,27 @@ const typeToken = (token: string) => {
     // hides the token from failure screenshots
     .invoke("attr", "type", "password")
     .type(token, { log: false });
+};
+
+// Navigate to the setup page, fills user data, password, skips usage questionnaire and proceeds to the database step
+const navigateToDatabaseStep = () => {
+  cy.visit(
+    "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited",
+  );
+
+  skipWelcomePage();
+  selectPreferredLanguageAndContinue();
+
+  cy.findByTestId("setup-forms").within(() => {
+    const password = "12341234";
+    cy.findByLabelText("Create a password").should("be.empty").type(password);
+    cy.findByLabelText("Confirm your password").type(password);
+    cy.button("Next").click();
+
+    cy.log("Just go through the usage questionnaire");
+    cy.findByLabelText("What will you use Metabase for?").should("be.visible");
+    cy.button("Next").click();
+  });
+
+  cy.log("We are now on the database step");
 };

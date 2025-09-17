@@ -175,10 +175,11 @@
     :test.query/products-native
     {:query          (-> (lib/native-query metadata-provider "SELECT * FROM products")
                          (assoc-in [:stages 0 :lib/stage-metadata]
-                                   {:columns (->> (meta/fields :products)
+                                   {:lib/type :metadata/results
+                                    :columns (->> (meta/fields :products)
                                                   (map #(meta/field-metadata :products %))
                                                   (sort-by :position)
-                                                  (map #(select-keys % [:lib/type :name :display-name :field-ref :ident
+                                                  (map #(select-keys % [:lib/type :name :display-name :field-ref
                                                                         :base-type :effective-type :semantic-type])))}))
      :native?        true
      :row            {"ID"         "3"

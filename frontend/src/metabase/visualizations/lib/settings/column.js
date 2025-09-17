@@ -17,6 +17,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { getVisualizationRaw } from "metabase/visualizations";
 import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
 import { ChartSettingTableColumns } from "metabase/visualizations/components/settings/ChartSettingTableColumns";
+import { getDeduplicatedTableColumnSettings } from "metabase/visualizations/lib/settings/utils";
 import {
   getDefaultCurrency,
   getDefaultCurrencyInHeader,
@@ -42,9 +43,23 @@ import {
 
 import { nestedSettings } from "./nested";
 
+/**
+ * @typedef {import("metabase-types/api").Series} Series
+ * @typedef {import("metabase-types/api").DatasetColumn} DatasetColumn
+ * @typedef {(series: Series, vizSettings) => DatasetColumn[]} GetColumnsFn
+ */
+
+/** @type {GetColumnsFn} */
 const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
   [].concat(...series.map((s) => (s.data && s.data.cols) || []));
 
+/**
+ * @param {Object}        [settings]
+ * @param {GetColumnsFn}  [settings.getColumns]
+ * @param {boolean}       [settings.hidden]
+ * @param {string}        [settings.section]
+ * @param {string[]}      [settings.readDependencies]
+ */
 export function columnSettings({
   getColumns = DEFAULT_GET_COLUMNS,
   hidden,
@@ -58,14 +73,14 @@ export function columnSettings({
     getObjectSettings: getObjectColumnSettings,
     getSettingDefinitionsForObject: getSettingDefinitionsForColumn,
     component: ChartNestedSettingColumns,
-    getInheritedSettingsForObject: getInhertiedSettingsForColumn,
+    getInheritedSettingsForObject: getInheritedSettingsForColumn,
     useRawSeries: true,
     hidden,
     ...def,
   });
 }
 
-export function getGlobalSettingsForColumn(column) {
+export function getGlobalSettingsForColumn() {
   const columnSettings = {};
   const customFormatting = MetabaseSettings.get("custom-formatting") || {};
 
@@ -81,9 +96,9 @@ function getLocalSettingsForColumn(column) {
   return column.settings || {};
 }
 
-function getInhertiedSettingsForColumn(column) {
+function getInheritedSettingsForColumn(column) {
   return {
-    ...getGlobalSettingsForColumn(column),
+    ...getGlobalSettingsForColumn(),
     ...getLocalSettingsForColumn(column),
   };
 }
@@ -495,12 +510,20 @@ export const tableColumnSettings = {
     getValue: ([{ data }], vizSettings) => {
       const { cols } = data;
       const settings = vizSettings["table.columns"] ?? [];
-      const columnIndexes = findColumnIndexesForColumnSettings(cols, settings);
-      const settingIndexes = findColumnSettingIndexesForColumns(cols, settings);
+      const uniqColumnSettings = getDeduplicatedTableColumnSettings(settings);
+
+      const columnIndexes = findColumnIndexesForColumnSettings(
+        cols,
+        uniqColumnSettings,
+      );
+      const settingIndexes = findColumnSettingIndexesForColumns(
+        cols,
+        uniqColumnSettings,
+      );
 
       return [
         // retain settings with matching columns only
-        ...settings.filter(
+        ...uniqColumnSettings.filter(
           (_, settingIndex) => columnIndexes[settingIndex] >= 0,
         ),
         // add columns that do not have matching settings to the end

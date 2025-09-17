@@ -1,59 +1,70 @@
 import cx from "classnames";
-import { type ReactNode, useMemo } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
+import {
+  AccordionList,
+  type Section as BaseSection,
+} from "metabase/common/components/AccordionList";
 import {
   HoverParent,
   QueryColumnInfoIcon,
-} from "metabase/components/MetadataInfo/ColumnInfoIcon";
-import AccordionList from "metabase/core/components/AccordionList";
+} from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
+import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
+import { isNotNull } from "metabase/lib/types";
+import {
+  type DefinedClauseName,
+  clausesForMode,
+  getClauseDefinition,
+} from "metabase/querying/expressions";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
-import type { IconName } from "metabase/ui";
 import { DelayGroup, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { WIDTH } from "../constants";
-import type { ColumnListItem, SegmentListItem } from "../types";
+import type {
+  ColumnListItem,
+  ExpressionClauseItem,
+  SegmentListItem,
+} from "../types";
 
 import S from "./FilterColumnPicker.module.css";
+
+type Item = ColumnListItem | SegmentListItem | ExpressionClauseItem;
+
+type Section = BaseSection<Item> & {
+  key?: string;
+};
+
+const SEARCH_PROP = [
+  "name",
+  "displayName",
+  "combinedDisplayName",
+  "longDisplayName",
+] as const;
 
 export interface FilterColumnPickerProps {
   className?: string;
   query: Lib.Query;
   stageIndexes: number[];
-  checkItemIsSelected?: (item: ColumnListItem | SegmentListItem) => boolean;
+  checkItemIsSelected?: (item: Item) => boolean;
   onColumnSelect: (item: ColumnListItem) => void;
   onSegmentSelect: (item: SegmentListItem) => void;
-  onExpressionSelect?: () => void;
+  onExpressionSelect?: (clause?: DefinedClauseName) => void;
 
   withCustomExpression?: boolean;
   withColumnGroupIcon?: boolean;
   withColumnItemIcon?: boolean;
 }
 
-type Section = {
-  key?: string;
-  type: string;
-  name: string;
-  items: (Lib.ColumnMetadata | Lib.SegmentMetadata)[];
-  icon?: IconName;
-};
-
-const CUSTOM_EXPRESSION_SECTION: Section = {
-  key: "custom-expression",
-  type: "action",
-  get name() {
-    return t`Custom Expression`;
-  },
-  items: [],
-  icon: "filter",
-};
-
-export const isSegmentListItem = (
-  item: ColumnListItem | SegmentListItem,
-): item is SegmentListItem => {
+export const isSegmentListItem = (item: Item): item is SegmentListItem => {
   return (item as SegmentListItem).segment != null;
+};
+
+export const isExpressionClauseItem = (
+  item: Item,
+): item is ExpressionClauseItem => {
+  return "type" in item && item.type === "expression-clause";
 };
 
 /**
@@ -72,15 +83,25 @@ export function FilterColumnPicker({
   withColumnGroupIcon = true,
   withColumnItemIcon = true,
 }: FilterColumnPickerProps) {
+  const [searchText, setSearchText] = useState("");
+  const isSearching = searchText !== "";
+
   const sections = useMemo(
     () =>
-      getSections(
+      getSections({
         query,
         stageIndexes,
         withColumnGroupIcon,
         withCustomExpression,
-      ),
-    [query, stageIndexes, withColumnGroupIcon, withCustomExpression],
+        isSearching,
+      }),
+    [
+      query,
+      stageIndexes,
+      withColumnGroupIcon,
+      withCustomExpression,
+      isSearching,
+    ],
   );
 
   const handleSectionChange = (section: Section) => {
@@ -89,47 +110,68 @@ export function FilterColumnPicker({
     }
   };
 
-  const handleSelect = (item: ColumnListItem | SegmentListItem) => {
+  const handleSelect = (item: Item) => {
     if (isSegmentListItem(item)) {
       onSegmentSelect(item);
+    } else if (isExpressionClauseItem(item)) {
+      onExpressionSelect?.(item.clause);
     } else {
       onColumnSelect(item);
     }
   };
 
+  const handleSearchTextChange = (searchText: string) => {
+    setSearchText(searchText);
+    if (searchText.trim().endsWith("(")) {
+      const name = searchText.trim().slice(0, -1);
+      const clause = getClauseDefinition(name);
+      if (clause) {
+        onExpressionSelect?.(clause.name);
+      }
+    }
+  };
+
   return (
     <DelayGroup>
-      <AccordionList
+      <AccordionList<Item, Section>
         className={cx(S.StyledAccordionList, className)}
         sections={sections}
         onChange={handleSelect}
         onChangeSection={handleSectionChange}
+        onChangeSearchText={handleSearchTextChange}
         itemIsSelected={checkItemIsSelected}
         renderItemWrapper={renderItemWrapper}
         renderItemName={renderItemName}
-        renderItemIcon={(item: ColumnListItem | SegmentListItem) =>
+        renderItemDescription={omitDescription}
+        renderItemIcon={(item) =>
           withColumnItemIcon ? renderItemIcon(query, item) : null
         }
         // disable scrollbars inside the list
-        style={{ overflow: "visible", "--accordion-list-width": `${WIDTH}px` }}
+        width={WIDTH}
         maxHeight={Infinity}
         // Compat with E2E tests around MLv1-based components
         // Prefer using a11y role selectors
         itemTestId="dimension-list-item"
-        searchProp={["name", "displayName"]}
+        searchProp={SEARCH_PROP}
         globalSearch
-        withBorders
       />
     </DelayGroup>
   );
 }
 
-function getSections(
-  query: Lib.Query,
-  stageIndexes: number[],
-  withColumnGroupIcon: boolean,
-  withCustomExpression: boolean,
-) {
+function getSections({
+  query,
+  stageIndexes,
+  withColumnGroupIcon,
+  withCustomExpression,
+  isSearching,
+}: {
+  query: Lib.Query;
+  stageIndexes: number[];
+  withColumnGroupIcon: boolean;
+  withCustomExpression: boolean;
+  isSearching: boolean;
+}): Section[] {
   const withMultipleStages = stageIndexes.length > 1;
   const columnSections = stageIndexes.flatMap((stageIndex) => {
     const columns = Lib.filterableColumns(query, stageIndex);
@@ -146,6 +188,9 @@ function getSections(
           column,
           query,
           stageIndex,
+          combinedName: `${columnInfo.table?.name ?? ""} ${columnInfo.name}`,
+          combinedDisplayName: `${columnInfo.table?.displayName ?? ""} ${columnInfo.displayName}`,
+          longDisplayName: columnInfo.longDisplayName,
         };
       });
       const segments = groupInfo.isSourceTable
@@ -154,9 +199,7 @@ function getSections(
       const segmentItems = segments.map((segment) => {
         const segmentInfo = Lib.displayInfo(query, stageIndex, segment);
         return {
-          name: segmentInfo.name,
-          displayName: segmentInfo.displayName,
-          filterPositions: segmentInfo.filterPositions,
+          ...segmentInfo,
           segment,
           stageIndex,
         };
@@ -172,25 +215,43 @@ function getSections(
     });
   });
 
+  const expressionClausesSection = {
+    key: "expression-clauses",
+    name: t`Custom Expressions`,
+    icon: "function" as const,
+    items: clausesForMode("filter").map((clause) => ({
+      type: "expression-clause" as const,
+      clause: clause.name,
+      displayName: clause.displayName,
+    })),
+    alwaysSortLast: true,
+  };
+  const expressionClauseAction = {
+    key: "custom-expression",
+    type: "action" as const,
+    name: t`Custom Expression`,
+    items: [],
+    icon: "filter" as const,
+    alwaysSortLast: true,
+  };
+
   return [
     ...columnSections,
-    ...(withCustomExpression ? [CUSTOM_EXPRESSION_SECTION] : []),
-  ];
+    withCustomExpression && isSearching ? expressionClausesSection : null,
+    withCustomExpression ? expressionClauseAction : null,
+  ].filter(isNotNull);
 }
 
-function renderItemName(item: ColumnListItem) {
+function renderItemName(item: Item) {
   return item.displayName;
 }
 
-function renderItemIcon(
-  query: Lib.Query,
-  item: ColumnListItem | SegmentListItem,
-) {
+function renderItemIcon(query: Lib.Query, item: Item) {
   if (isSegmentListItem(item)) {
     return <Icon name="star" size={18} />;
-  }
-
-  if (item.column) {
+  } else if (isExpressionClauseItem(item)) {
+    return <Icon name="function" size={18} />;
+  } else {
     const { column, stageIndex } = item;
     return (
       <QueryColumnInfoIcon
@@ -206,4 +267,8 @@ function renderItemIcon(
 
 function renderItemWrapper(content: ReactNode) {
   return <HoverParent>{content}</HoverParent>;
+}
+
+function omitDescription() {
+  return undefined;
 }

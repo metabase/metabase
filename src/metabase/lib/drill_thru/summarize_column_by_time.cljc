@@ -58,7 +58,7 @@
                                                 (lib.temporal-bucket/available-temporal-buckets query stage-number breakout-column))]
           ;; only suggest this drill thru if the breakout it would apply does not already exist.
           (let [bucketed (lib.temporal-bucket/with-temporal-bucket breakout-column bucketing-unit)]
-            (when (lib.schema.util/distinct-refs? (map lib.ref/ref (cons bucketed (lib.breakout/breakouts query stage-number))))
+            (when (lib.schema.util/distinct-mbql-clauses? (map lib.ref/ref (cons bucketed (lib.breakout/breakouts query stage-number))))
               {:lib/type :metabase.lib.drill-thru/drill-thru
                :type     :drill-thru/summarize-column-by-time
                :column   column

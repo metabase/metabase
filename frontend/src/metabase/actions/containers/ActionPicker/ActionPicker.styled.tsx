@@ -3,9 +3,9 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import CollapseSection from "metabase/components/CollapseSection";
-import UnstyledEmptyState from "metabase/components/EmptyState";
-import Button from "metabase/core/components/Button";
+import Button from "metabase/common/components/Button";
+import CollapseSection from "metabase/common/components/CollapseSection";
+import UnstyledEmptyState from "metabase/common/components/EmptyState";
 import { alpha } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 

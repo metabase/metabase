@@ -157,7 +157,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
 
     // This part reproduces metabase#13960
     // Remove default filter (category)
-    cy.get("fieldset .Icon-close").click();
+    cy.get('[data-testid="parameter-widget"] .Icon-close').click();
     waitDashboardCardQuery();
 
     cy.location("search").should("eq", "?id=&text=");

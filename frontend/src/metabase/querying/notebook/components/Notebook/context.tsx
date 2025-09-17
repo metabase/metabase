@@ -1,6 +1,6 @@
 import { type PropsWithChildren, createContext, useContext } from "react";
 
-import type { DataPickerValue } from "metabase/common/components/DataPicker";
+import type { DataPickerValue } from "metabase/common/components/Pickers/DataPicker";
 
 export type NotebookContextType = {
   modelsFilterList: DataPickerValue["model"][];

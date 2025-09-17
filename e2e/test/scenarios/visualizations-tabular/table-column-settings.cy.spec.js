@@ -586,6 +586,70 @@ describe("scenarios > visualizations > table column settings", () => {
       _hideColumn(testData2);
       _showColumn(testData2);
     });
+
+    it("should be able to show and hide columns in a multi-stage query with custom columns (metabase#35067)", () => {
+      H.createQuestion(
+        {
+          query: {
+            "source-query": {
+              "source-table": ORDERS_ID,
+              aggregation: [["count"]],
+              breakout: [
+                [
+                  "field",
+                  PRODUCTS.ID,
+                  {
+                    "base-type": "type/Integer",
+                    "source-field": ORDERS.PRODUCT_ID,
+                  },
+                ],
+              ],
+            },
+            expressions: {
+              CC: ["*", 2, ["field", "count", { "base-type": "type/Integer" }]],
+            },
+            limit: 5,
+          },
+        },
+        { visitQuestion: true },
+      );
+      openSettings();
+
+      const countColumn = {
+        column: "Count",
+        columnName: "Count",
+        table: "summaries",
+        sanityCheck: "CC",
+        needsScroll: false,
+      };
+
+      const productIdColumn = {
+        column: "Product → ID",
+        columnName: "Product → ID",
+        table: "summaries",
+        sanityCheck: "Count",
+        needsScroll: false,
+      };
+
+      const customColumn = {
+        column: "CC",
+        columnName: "CC",
+        table: "summaries",
+        sanityCheck: "Count",
+        needsScroll: false,
+      };
+
+      _hideColumn(countColumn);
+      _showColumn(countColumn);
+      _removeColumn(countColumn);
+      _addColumn(countColumn);
+      _hideColumn(productIdColumn);
+      _showColumn(productIdColumn);
+      _removeColumn(productIdColumn);
+      _addColumn(productIdColumn);
+      _hideColumn(customColumn);
+      _showColumn(customColumn);
+    });
   });
 
   describe("nested structured questions", () => {
@@ -745,7 +809,7 @@ describe("scenarios > visualizations > table column settings", () => {
         openSettings();
 
         const taxColumn = {
-          column: "Tax",
+          column: `Question ${card.id} → Tax`,
           columnName: `Question ${card.id} → Tax`,
           table: "test question 2",
           scrollTimes: 3,
@@ -767,7 +831,7 @@ describe("scenarios > visualizations > table column settings", () => {
         openSettings();
 
         const mathColumn = {
-          column: "Math",
+          column: `Question ${card.id} → Math`,
           columnName: `Question ${card.id} → Math`,
           table: "test question",
           needsScroll: false,
@@ -820,6 +884,57 @@ describe("scenarios > visualizations > table column settings", () => {
       _removeColumn(taxColumn);
       _addColumn(taxColumn);
     });
+  });
+
+  it("should handle duplicated values in table.columns viz settings (metabase#62053)", () => {
+    const nativeQuestionWithDuplicatedColumns = {
+      display: "table",
+      native: {
+        query: "SELECT ID, TAX FROM ORDERS LIMIT 5",
+      },
+      visualization_settings: {
+        "table.columns": [
+          {
+            name: "ID",
+            enabled: true,
+          },
+          // Duplicate ID column entry
+          {
+            name: "ID",
+            enabled: true,
+          },
+          {
+            name: "TAX",
+            enabled: true,
+          },
+        ],
+      },
+    };
+
+    H.createNativeQuestion(nativeQuestionWithDuplicatedColumns, {
+      visitQuestion: true,
+    });
+
+    // Verify the table renders correctly despite duplicated viz settings
+    visualization().should("be.visible");
+
+    // Verify expected columns are visible
+    visualization().findAllByText("ID").should("have.length", 1);
+    visualization().findByText("TAX").should("exist");
+
+    // Open settings to verify column settings work
+    openSettings();
+
+    // Verify that column controls are displayed correctly
+    visibleColumns()
+      .should("exist")
+      .within(() => {
+        cy.findByText("ID").should("exist");
+        cy.findByTestId("ID-hide-button").should("exist");
+
+        cy.findByText("TAX").should("exist");
+        cy.findByTestId("TAX-hide-button").should("exist");
+      });
   });
 });
 

@@ -1,22 +1,26 @@
+import type { ButtonHTMLAttributes } from "react";
 import { t } from "ttag";
 
-import { ToolbarButton } from "metabase/components/ToolbarButton";
-import { closeSidebar, setSidebar } from "metabase/dashboard/actions";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
+import { useDashboardContext } from "metabase/dashboard/context/context";
 import { getIsShowDashboardInfoSidebar } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import type { ActionIconProps } from "metabase/ui";
 
-export const DashboardInfoButton = () => {
-  const dispatch = useDispatch();
+export const DashboardInfoButton = (
+  props: ActionIconProps & ButtonHTMLAttributes<HTMLButtonElement>,
+) => {
+  const { closeSidebar, setSidebar } = useDashboardContext();
   const isShowingDashboardInfoSidebar = useSelector(
     getIsShowDashboardInfoSidebar,
   );
 
   const handleClick = () => {
     isShowingDashboardInfoSidebar
-      ? dispatch(closeSidebar())
-      : dispatch(setSidebar({ name: SIDEBAR_NAME.info }));
+      ? closeSidebar()
+      : setSidebar({ name: SIDEBAR_NAME.info });
   };
 
   useRegisterShortcut(
@@ -37,6 +41,7 @@ export const DashboardInfoButton = () => {
       isActive={isShowingDashboardInfoSidebar}
       disabled={isShowingDashboardInfoSidebar}
       onClick={handleClick}
+      {...props}
     />
   );
 };

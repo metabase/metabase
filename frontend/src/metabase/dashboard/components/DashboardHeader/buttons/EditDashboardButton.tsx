@@ -1,21 +1,16 @@
 import { t } from "ttag";
 
-import { ToolbarButton } from "metabase/components/ToolbarButton";
-import { setEditingDashboard } from "metabase/dashboard/actions";
-import { getDashboardComplete } from "metabase/dashboard/selectors";
-import type { DashboardRefreshPeriodControls } from "metabase/dashboard/types";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { useDashboardContext } from "metabase/dashboard/context/context";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 
-export const EditDashboardButton = ({
-  onRefreshPeriodChange,
-}: Pick<DashboardRefreshPeriodControls, "onRefreshPeriodChange">) => {
-  const dispatch = useDispatch();
-  const dashboard = useSelector(getDashboardComplete);
+export const EditDashboardButton = () => {
+  const { dashboard, onRefreshPeriodChange, setEditingDashboard } =
+    useDashboardContext();
   const onBeginEditing = () => {
     if (dashboard) {
       onRefreshPeriodChange(null);
-      dispatch(setEditingDashboard(dashboard));
+      setEditingDashboard(dashboard);
     }
   };
 

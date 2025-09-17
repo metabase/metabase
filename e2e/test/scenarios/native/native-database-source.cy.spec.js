@@ -192,7 +192,7 @@ describe(
 
       cy.signOut();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       cy.updatePermissionsGraph({
         [DATA_GROUP]: {
           [SAMPLE_DB_ID]: {
@@ -297,7 +297,7 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
 
     // Save the query
     H.saveQuestion("sql count", { wrapId: true });
-    cy.url().should("match", /\/dashboard\/\d+-[a-z0-9-]*#edit$/);
+    cy.url().should("match", /\/dashboard\/\d+-[a-z0-9-]*$/);
   });
 });
 

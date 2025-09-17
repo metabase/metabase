@@ -8,43 +8,29 @@ import {
 } from "e2e/support/helpers";
 
 describe("qa databases snapshots", { tags: "@external" }, () => {
-  beforeEach(() => {
-    restoreAndAuthenticate();
-  });
-
   it("creates snapshots for supported qa databases", () => {
     if (Cypress.env("QA_DB_MONGO") === true) {
+      restoreAndAuthenticate();
       addMongoDatabase();
       snapshot("mongo-5");
-      deleteDatabase("mongoID");
-
-      restoreAndAuthenticate();
     } else {
+      // Postgres
+      restoreAndAuthenticate();
+
       addPostgresDatabase();
       snapshot("postgres-12");
-      deleteDatabase("postgresID");
 
-      restoreAndAuthenticate();
-
-      setupWritableDB("postgres");
-      addPostgresDatabase("Writable Postgres12", true);
+      convertToWritable("postgres");
       snapshot("postgres-writable");
-      deleteDatabase("postgresID");
 
+      // MySQL
       restoreAndAuthenticate();
 
       addMySQLDatabase({});
       snapshot("mysql-8");
-      deleteDatabase("mysqlID");
 
-      restoreAndAuthenticate();
-
-      setupWritableDB("mysql");
-      addMySQLDatabase({ displayName: "Writable MySQL8", writable: true });
+      convertToWritable("mysql");
       snapshot("mysql-writable");
-      deleteDatabase("mysqlID");
-
-      restoreAndAuthenticate();
     }
 
     restore("blank");
@@ -56,8 +42,27 @@ function restoreAndAuthenticate() {
   cy.signInAsAdmin();
 }
 
-function deleteDatabase(idAlias) {
-  cy.get("@" + idAlias).then((id) => {
-    return cy.request("DELETE", `/api/database/${id}`);
+/**
+ * Takes the existing postgres or mysql database, creates a new database with the
+ * name `writable_db` if it doesn't exist already, and then alters the connection
+ * details to point to that new database.
+ *
+ * @param {"postgres" | "mysql"} engine
+ */
+function convertToWritable(engine) {
+  setupWritableDB(engine);
+
+  const idAlias = `@${engine}ID`;
+
+  cy.get(idAlias).then((id) => {
+    cy.log("**-- Enabling actions --**");
+    cy.request("PUT", `/api/database/${id}`, {
+      name: engine === "postgres" ? "Writable Postgres12" : "Writable MySQL8",
+      details: {
+        dbname: "writable_db",
+        ...(engine === "mysql" ? { user: "root" } : {}),
+      },
+      settings: { "database-enable-actions": true },
+    });
   });
 }

@@ -15,9 +15,8 @@ title: Troubleshooting SQL questions
 ## SQL variables and field filters
 
 - [Filter widget doesn't display a dropdown menu of values](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter).
-- [SQL query contains table aliases](../questions/native-editor/sql-parameters.md#field-filters-dont-work-with-table-aliases).
-- [SQL syntax error: missing `FROM` clause](../questions/native-editor/sql-parameters.md#field-filters-must-be-connected-to-fields-included-in-the-query).
-- [No option to display a filter widget](../questions/native-editor/sql-parameters.md#field-filter-compatible-types).
+- [SQL query contains table aliases](../questions/native-editor/field-filters.md#specifying-the-table-and-field-alias).
+- [SQL syntax error: missing `FROM` clause](../questions/native-editor/field-filters.md#field-filters-must-be-connected-to-database-fields-included-in-the-query).
 - [I don't know the SQL variable type](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/sql-variables)
 
 ## SQL syntax errors

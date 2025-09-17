@@ -24,6 +24,10 @@
 
 (use-fixtures :once (fixtures/initialize :web-server))
 
+(defn- take-notification!
+  [queue]
+  (#'notification.send/take-notification-with-timeout! queue 1000))
+
 (deftest send-notification!*-test
   (testing "sending a notification will call render on all of its handlers"
     (notification.tu/with-notification-testing-setup!
@@ -50,12 +54,12 @@
                                               [:context :map]
                                               [:payload :map]])
               renders           (atom [])]
-          (mt/with-dynamic-fn-redefs [channel/render-notification (fn [channel-type notification-payload template recipients]
+          (mt/with-dynamic-fn-redefs [channel/render-notification (fn [channel-type notification-payload {:keys [template recipients]}]
                                                                     (swap! renders conj {:channel-type channel-type
                                                                                          :notification-payload notification-payload
                                                                                          :template template
                                                                                          :recipients recipients})
-                                                                 ;; rendered messages are recipients
+                                                                    ;; rendered messages are recipients
                                                                     recipients)]
             (testing "channel/send! are called on rendered messages"
               (is (=? {:channel/metabase-test [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}
@@ -242,8 +246,8 @@
           (is (= 1 (count @mt/inbox))))))))
 
 (def ^:private fake-slack-notification
-  {:channel-id  "#test-channel"
-   :attachments [{:blocks [{:type "section", :text {:type "plain_text", :text ""}}]}]})
+  {:channel  "#test-channel"
+   :blocks [{:type "section", :text {:type "plain_text", :text ""}}]})
 
 (deftest slack-notification-retry-test
   (notification.tu/with-send-notification-sync
@@ -484,7 +488,7 @@
                                                                 (Thread/sleep 20)
                                                                 (swap! sent-notifications conj notification))]
         (let [queue           (#'notification.send/create-dedup-priority-queue)
-              test-dispatcher (#'notification.send/create-notification-dispatcher 2 queue)]
+              test-dispatcher (:dispatch-fn (#'notification.send/create-notification-dispatcher 2 queue))]
           (testing "basic processing"
             (reset! sent-notifications [])
             (let [notification {:id 1 :test-value "A"}]
@@ -549,7 +553,7 @@
 
       (is (= [high-priority middle-priority low-priority]
              (for [_ (range 3)]
-               (#'notification.send/take-notification! queue)))))))
+               (take-notification! queue)))))))
 
 (deftest notification-queue-preserves-deadline-on-replacement-test
   (testing "notifications with same ID are replaced in queue while preserving original deadline"
@@ -575,7 +579,7 @@
              ;; If deadline is preserved, high-priority should come first since it was added after notification-v1
              ;; If deadline was recalculated, notification-v2 would come first due to its minutely schedule
              (for [_ (range 2)]
-               (#'notification.send/take-notification! queue)))))))
+               (take-notification! queue)))))))
 
 (deftest notification-dedup-priority-test
   (let [queue (#'notification.send/create-dedup-priority-queue)]
@@ -583,14 +587,14 @@
     (testing "put and take operations work correctly"
       (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})
       (is (= {:id 1 :payload_type :notification/testing :test-value "A"}
-             (#'notification.send/take-notification! queue))))
+             (take-notification! queue))))
 
     (testing "notifications with same ID are replaced in queue"
       (let [queue (#'notification.send/create-dedup-priority-queue)]
         (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})
         (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "B"})
         (is (= {:id 1 :payload_type :notification/testing :test-value "B"}
-               (#'notification.send/take-notification! queue)))))
+               (take-notification! queue)))))
 
     (testing "multiple notifications are processed in order"
       (let [queue (#'notification.send/create-dedup-priority-queue)]
@@ -599,11 +603,11 @@
         (#'notification.send/put-notification! queue {:id 3 :payload_type :notification/testing :test-value "C"})
 
         (is (= {:id 1 :payload_type :notification/testing :test-value "A"}
-               (#'notification.send/take-notification! queue)))
+               (take-notification! queue)))
         (is (= {:id 2 :payload_type :notification/testing :test-value "B"}
-               (#'notification.send/take-notification! queue)))
+               (take-notification! queue)))
         (is (= {:id 3 :payload_type :notification/testing :test-value "C"}
-               (#'notification.send/take-notification! queue)))))
+               (take-notification! queue)))))
 
     (testing "take blocks until notification is available"
       (let [result (atom nil)
@@ -611,7 +615,7 @@
             take-latch (java.util.concurrent.CountDownLatch. 1)
             thread (Thread. (fn []
                               (.countDown ready-latch) ; signal thread is ready to take
-                              (reset! result (#'notification.send/take-notification! queue))
+                              (reset! result (take-notification! queue))
                               (.countDown take-latch)))] ; signal take is complete
         (.start thread)
         (.await ready-latch) ; wait for thread to be ready to take
@@ -633,6 +637,9 @@
           total-items            (* num-producers num-items-per-producer)
           received-items         (atom #{})
           producer-latch         (java.util.concurrent.CountDownLatch. 1)
+          ;; inter-consumer coordination:
+          consumer-countdown     (atom total-items)
+          ;; coordination with main test thread:
           consumer-latch         (java.util.concurrent.CountDownLatch. total-items)
           producer-fn            (fn [producer-id]
                                    (.await producer-latch)
@@ -642,14 +649,14 @@
                                        (#'notification.send/put-notification! queue item))))
           consumer-fn            (fn [consumer-id]
                                    (try
-                                     (while (pos? (.getCount consumer-latch))
-                                       (let [item (#'notification.send/take-notification! queue)]
+                                     (while (<= 0 (swap! consumer-countdown dec))
+                                       (let [item (take-notification! queue)]
                                          (swap! received-items conj [(:id item) item {:consumer consumer-id}])
                                          (.countDown consumer-latch)))
                                      (catch Exception e
                                        (log/errorf e "Consumer %s error:" consumer-id))))
-          producers               (mapv #(doto (Thread. (fn [] (producer-fn %))) .start) (range num-producers))
-          _consumers              (mapv #(doto (Thread. (fn [] (consumer-fn %))) .start) (range num-consumers))]
+          _consumers              (mapv #(doto (Thread. (fn [] (consumer-fn %))) .start) (range num-consumers))
+          producers               (mapv #(doto (Thread. (fn [] (producer-fn %))) .start) (range num-producers))]
 
       ; Start all producers simultaneously
       (.countDown producer-latch)
@@ -700,7 +707,7 @@
     (testing "put and take operations work correctly"
       (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})
       (is (= {:id 1 :payload_type :notification/testing :test-value "A"}
-             (#'notification.send/take-notification! queue))))
+             (take-notification! queue))))
 
     (testing "multiple notifications are processed in order, no dedup"
       (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})
@@ -708,11 +715,11 @@
       (#'notification.send/put-notification! queue {:id 2 :payload_type :notification/testing :test-value "C"})
 
       (is (= {:id 1 :payload_type :notification/testing :test-value "A"}
-             (#'notification.send/take-notification! queue)))
+             (take-notification! queue)))
       (is (= {:id 1 :payload_type :notification/testing :test-value "B"}
-             (#'notification.send/take-notification! queue)))
+             (take-notification! queue)))
       (is (= {:id 2 :payload_type :notification/testing :test-value "C"}
-             (#'notification.send/take-notification! queue))))
+             (take-notification! queue))))
 
     (testing "take blocks until notification is available"
       (let [result (atom nil)
@@ -720,7 +727,7 @@
             take-latch (java.util.concurrent.CountDownLatch. 1)
             thread (Thread. (fn []
                               (.countDown ready-latch) ; signal thread is ready to take
-                              (reset! result (#'notification.send/take-notification! queue))
+                              (reset! result (take-notification! queue))
                               (.countDown take-latch)))] ; signal take is complete
         (.start thread)
         (.await ready-latch) ; wait for thread to be ready to take
@@ -732,3 +739,44 @@
         (.await take-latch)
 
         (is (= {:id 42 :payload_type :notification/testing :test-value "X"} @result))))))
+
+(deftest notification-dispatcher-graceful-shutdown-test
+  (testing "dispatcher gracefully processes all notifications in queue before shutting down"
+    (let [processed-notifications (atom [])
+          processing-latch        (java.util.concurrent.CountDownLatch. 1)
+          queue                   (#'notification.send/create-dedup-priority-queue)
+          dispatcher              (#'notification.send/create-notification-dispatcher 2 queue)
+          dispatch-fn             (:dispatch-fn dispatcher)
+          shutdown-fn             (:shutdown-fn dispatcher)]
+      (with-redefs [notification.send/send-notification-sync!
+                    (fn [notification]
+                      ;; Wait for the latch to be released before processing
+                      (.await processing-latch)
+                      (swap! processed-notifications conj notification))]
+
+        (testing "notifications are queued and processed during shutdown"
+          (dispatch-fn {:id 1 :payload_type :notification/testing :test-value "A"})
+          (dispatch-fn {:id 2 :payload_type :notification/testing :test-value "B"})
+          (dispatch-fn {:id 3 :payload_type :notification/testing :test-value "C"})
+          (dispatch-fn {:id 4 :payload_type :notification/testing :test-value "D"})
+
+          ;; why "at least 2"? because popping items off the queue is in another thread, it may not have happened yet.
+          (testing "there are at least 2 notifications waiting in the queue"
+            (is (<= 2 (notification.send/queue-size queue))))
+          (testing "sanity check that notifications were not processed"
+            (is (= 0 (count @processed-notifications))
+                "No notifications should be processed before latch is released"))
+
+          (let [shutdown-fut (future (shutdown-fn 1000))]
+            (.countDown processing-latch)
+            @shutdown-fut
+            (testing "all notifications were processed during shutdown"
+              (is (= 0 (notification.send/queue-size queue)))
+              (is (= 4 (count @processed-notifications)))
+              (is (= #{"A" "B" "C" "D"}
+                     (into #{} (map :test-value @processed-notifications)))))
+
+            (testing "shutdown dispatcher won't accept new items"
+              (is (= ::notification.send/shutdown
+                     (dispatch-fn {:id 5 :payload_type :notification/testing :test-value "E"})))
+              (is (= 0 (notification.send/queue-size queue))))))))))

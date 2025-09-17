@@ -89,7 +89,9 @@
   [mbql-query]
   (let [cols        (try
                       (->> (lib/returned-columns mbql-query)
-                           (map #(assoc % :lib/source :source/native)))
+                           (map #(-> %
+                                     (assoc :lib/source :source/native)
+                                     (dissoc :lib/breakout? :lib/expression-name :metabase.lib.join/join-alias))))
                       (catch #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) e
                         ;; Not all the input queries passed to this are real. Some of them are skeletons used
                         ;; as test expectations. If we fail to generate the returned columns, just return nil.
@@ -259,8 +261,10 @@
    query-kind         :- [:enum :mbql :native]
    {:keys [column-name click-type query-type], :as _test-case} :- TestCase]
   (let [cols       (cond->> (lib/returned-columns mbql -1 (lib.util/query-stage mbql -1))
-                     true                   (map #(assoc % :lib/original-source (:lib/source %)))
-                     (= query-kind :native) (map #(assoc % :lib/source :source/native)))
+                     true                   (map #(assoc % ::was-breakout-in-original-query? (:lib/breakout? %)))
+                     (= query-kind :native) (map #(-> %
+                                                      (assoc :lib/source :source/native)
+                                                      (dissoc :lib/breakout? :lib/expression-name :metabase.lib.join/join-alias))))
         by-name    (m/index-by :name cols)
         col        (get by-name column-name)
         refs       (update-vals by-name lib/ref)
@@ -272,7 +276,7 @@
                        (if (some? v) v :null)))
         dimensions (when (= query-type :aggregated)
                      (for [col   cols
-                           :when (and (= (:lib/original-source col) :source/breakouts)
+                           :when (and (::was-breakout-in-original-query? col)
                                       (not= (:name col) column-name))]
                        {:column     col
                         :column-ref (get refs (:name col))
@@ -286,11 +290,11 @@
      (when (= click-type :cell)
        {:value      value
         :row        (for [[column-name value] row
-                          :let [column (or (by-name column-name)
-                                           (throw (ex-info
-                                                   (lib.util/format "Invalid row: no column named %s in query returned-columns"
-                                                                    (pr-str column-name))
-                                                   {:column-name column-name, :returned-columns (keys by-name)})))]]
+                          :let                [column (or (by-name column-name)
+                                                          (throw (ex-info
+                                                                  (lib.util/format "Invalid row: no column named %s in query returned-columns"
+                                                                                   (pr-str column-name))
+                                                                  {:column-name column-name, :returned-columns (keys by-name)})))]]
                       {:column     column
                        :column-ref (get refs column-name)
                        :value      value})
@@ -339,13 +343,13 @@
     [:expected [:map
                 [:type ::lib.schema.drill-thru/drill-thru.type]]]]])
 
-(defn- drop-uuids-and-idents [form]
-  (walk/postwalk #(cond-> % (map? %) (dissoc :lib/uuid :ident))
+(defn- drop-uuids [form]
+  (walk/postwalk #(cond-> % (map? %) (dissoc :lib/uuid))
                  form))
 
 (defn- clean-expected-query [form]
   (-> form
-      drop-uuids-and-idents
+      drop-uuids
       (dissoc :lib/metadata)))
 
 (defn- clean-expected-query-on-drill [form query-kind]

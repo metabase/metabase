@@ -70,6 +70,7 @@
                        (top-left :lon)
                        (bottom-right :lat)
                        (bottom-right :lon)]]
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (update details :filter mbql.u/combine-filter-clauses inside-filter)))
 
 ;;; --------------------------------------------------- RENDERING ----------------------------------------------------
@@ -167,6 +168,8 @@
 
 (defn- result->points
   [{{:keys [rows cols]} :data} lat-field-ref lon-field-ref]
+  ;; existing usages, don't use this going forward.
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (let [lat-key (qp.util/field-ref->key lat-field-ref)
         lon-key (qp.util/field-ref->key lon-field-ref)
         find-fn (fn [lat-or-lon-key]

@@ -1,8 +1,10 @@
 (ns metabase.driver.sql-jdbc
   "Shared code for drivers for SQL databases using their respective JDBC drivers under the hood."
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.java.jdbc :as jdbc]
    [honey.sql :as sql]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql :as driver.sql]
@@ -13,6 +15,7 @@
    [metabase.driver.sql-jdbc.quoting :refer [quote-columns quote-identifier
                                              quote-table with-quoting]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.util.honey-sql-2 :as h2x]
@@ -81,13 +84,14 @@
 
 (defmethod driver/notify-database-updated :sql-jdbc
   [_ database]
-  (sql-jdbc.conn/invalidate-pool-for-db! database))
+  (sql-jdbc.conn/invalidate-pool-for-db! database)
+  (memoize/memo-clear! driver-api/secret-value-as-file!))
 
 (defmethod driver/dbms-version :sql-jdbc
   [driver database]
   (sql-jdbc.sync/dbms-version driver (sql-jdbc.conn/db->pooled-connection-spec database)))
 
-(defmethod driver/describe-database :sql-jdbc
+(defmethod driver/describe-database* :sql-jdbc
   [driver database]
   (sql-jdbc.sync/describe-database driver database))
 
@@ -149,14 +153,16 @@
 (defmethod driver/create-table! :sql-jdbc
   [driver database-id table-name column-definitions & {:keys [primary-key]}]
   (let [sql (create-table!-sql driver table-name column-definitions :primary-key primary-key)]
-    (driver-api/execute-write-sql! database-id sql)))
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)]
+      (jdbc/execute! conn sql))))
 
 (defmethod driver/drop-table! :sql-jdbc
   [driver db-id table-name]
   (let [sql (first (sql/format {:drop-table [:if-exists (keyword table-name)]}
                                :quoted true
                                :dialect (sql.qp/quote-style driver)))]
-    (driver-api/execute-write-sql! db-id sql)))
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+      (jdbc/execute! conn sql))))
 
 (defmethod driver/truncate! :sql-jdbc
   [driver db-id table-name]
@@ -205,7 +211,8 @@
                                                                    column-definitions)}
                                                 :quoted true
                                                 :dialect (sql.qp/quote-style driver)))]
-      (driver-api/execute-write-sql! db-id sql))))
+      (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+        (jdbc/execute! conn sql)))))
 
 ;; kept for get-method driver compatibility
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -227,8 +234,14 @@
 
 (defmethod driver/syncable-schemas :sql-jdbc
   [driver database]
-  (let [[inclusion-patterns exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)]
-    (sql-jdbc.sync/filtered-syncable-schemas driver database inclusion-patterns exclusion-patterns)))
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   database
+   nil
+   (fn [^java.sql.Connection conn]
+     (let [[inclusion-patterns
+            exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)]
+       (into #{} (sql-jdbc.sync/filtered-syncable-schemas driver conn (.getMetaData conn) inclusion-patterns exclusion-patterns))))))
 
 (defmethod driver/set-role! :sql-jdbc
   [driver conn role]
@@ -297,3 +310,12 @@
   (if-let [sql-exception (extract-sql-exception e)]
     (impl-table-known-to-not-exist? driver sql-exception)
     false))
+
+(defmethod driver/schema-exists? :sql-jdbc
+  [driver db-id schema]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver db-id {}
+   (fn [^Connection conn]
+     (->> (.getMetaData conn)
+          sql-jdbc.describe-database/all-schemas
+          (m/find-first #(= % schema))))))

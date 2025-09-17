@@ -2,10 +2,14 @@ import cx from "classnames";
 import { updateIn } from "icepick";
 import type { Dispatch, SetStateAction } from "react";
 
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
-import type { DisplayTheme } from "metabase/public/lib/types";
+import type {
+  DisplayTheme,
+  EmbedResourceDownloadOptions,
+} from "metabase/public/lib/types";
 import { PublicOrEmbeddedQuestionDownloadPopover } from "metabase/query_builder/components/QuestionDownloadPopover/QuestionDownloadPopover";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -38,7 +42,7 @@ export interface PublicOrEmbeddedQuestionViewProps {
   theme: DisplayTheme | undefined;
   titled: boolean;
   setCard: Dispatch<SetStateAction<Card<DatasetQuery> | null>>;
-  downloadsEnabled: boolean;
+  downloadsEnabled: EmbedResourceDownloadOptions;
 }
 
 export function PublicOrEmbeddedQuestionView({
@@ -60,22 +64,30 @@ export function PublicOrEmbeddedQuestionView({
 }: PublicOrEmbeddedQuestionViewProps) {
   const question = new Question(card, metadata);
 
+  const isTable = question.display() === "table";
+  const downloadInFooter = !titled && isTable;
+
   const questionResultDownloadButton =
-    result && downloadsEnabled ? (
+    result && downloadsEnabled.results ? (
       <PublicOrEmbeddedQuestionDownloadPopover
         className={cx(
           CS.m1,
-          CS.textMediumHover,
-          CS.hoverChild,
-          CS.hoverChildSmooth,
+          !downloadInFooter && CS.textMediumHover,
+          !downloadInFooter && CS.hoverChild,
+          !downloadInFooter && CS.hoverChildSmooth,
         )}
         question={question}
         result={result}
         uuid={uuid}
         token={token}
-        floating={!titled}
+        floating={!titled && !isTable}
       />
     ) : null;
+
+  const untranslatedRawSeries = [{ card, data: result?.data }] as RawSeries;
+  const rawSeries = PLUGIN_CONTENT_TRANSLATION.useTranslateSeries(
+    untranslatedRawSeries,
+  );
 
   return (
     <EmbedFrame
@@ -93,7 +105,7 @@ export function PublicOrEmbeddedQuestionView({
       hide_parameters={hide_parameters}
       theme={theme}
       titled={titled}
-      headerButtons={questionResultDownloadButton}
+      headerButtons={downloadInFooter ? null : questionResultDownloadButton}
       // We don't support PDF downloads on questions
       pdfDownloadsEnabled={false}
     >
@@ -107,7 +119,7 @@ export function PublicOrEmbeddedQuestionView({
           <Visualization
             isNightMode={theme === "night"}
             error={result?.error?.toString()}
-            rawSeries={[{ card, data: result?.data }] as RawSeries}
+            rawSeries={rawSeries}
             className={cx(CS.full, CS.flexFull, CS.z1)}
             onUpdateVisualizationSettings={(
               settings: VisualizationSettings,
@@ -131,6 +143,9 @@ export function PublicOrEmbeddedQuestionView({
             onChangeCardAndRun={() => {}}
             token={token}
             uuid={uuid}
+            tableFooterExtraButtons={
+              downloadInFooter ? questionResultDownloadButton : null
+            }
           />
         )}
       </LoadingAndErrorWrapper>

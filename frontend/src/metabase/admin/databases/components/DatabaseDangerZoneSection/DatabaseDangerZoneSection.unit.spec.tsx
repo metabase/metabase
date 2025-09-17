@@ -81,7 +81,9 @@ describe("DatabaseDangerZoneSection", () => {
 
       await waitFor(() => {
         expect(
-          fetchMock.called(`path:/api/database/${database.id}/discard_values`),
+          fetchMock.callHistory.called(
+            `path:/api/database/${database.id}/discard_values`,
+          ),
         ).toBe(true);
       });
     });
@@ -98,7 +100,9 @@ describe("DatabaseDangerZoneSection", () => {
 
       expect(getDiscardFieldValuesConfirmModal()).not.toBeInTheDocument();
       expect(
-        fetchMock.called(`path:/api/database/${database.id}/discard_values`),
+        fetchMock.callHistory.called(
+          `path:/api/database/${database.id}/discard_values`,
+        ),
       ).toBe(false);
     });
 

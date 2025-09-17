@@ -1,7 +1,7 @@
 import * as ML from "cljs/metabase.lib.js";
 import * as TYPES from "cljs/metabase.lib.types.isa";
 import type Field from "metabase-lib/v1/metadata/Field";
-import type { DatasetColumn } from "metabase-types/api";
+import type { Field as ApiField, DatasetColumn } from "metabase-types/api";
 
 import type { ColumnMetadata, ColumnTypeInfo } from "./types";
 
@@ -13,16 +13,11 @@ export const isTemporal: TypeFn = TYPES.temporal_QMARK_;
 export const isDateOrDateTime: TypeFn = TYPES.date_or_datetime_QMARK_;
 export const isDateWithoutTime: TypeFn = TYPES.date_without_time_QMARK_;
 export const isInteger: TypeFn = TYPES.integer_QMARK_;
+export const isNumeric: TypeFn = TYPES.numeric_QMARK_;
 export const isString: TypeFn = TYPES.string_QMARK_;
 export const isStringLike: TypeFn = TYPES.string_like_QMARK_;
 export const isStringOrStringLike: TypeFn = TYPES.string_or_string_like_QMARK_;
 export const isTime: TypeFn = TYPES.time_QMARK_;
-
-// Checks for both effective and semantic types. This hack is required to
-// support numbers stored as strings in MySQL until there is a proper
-// coercion strategy. `isString` and `isNumeric` would be both `true` for such
-// columns; that's why `isNumeric` needs to be called first. See #44431.
-export const isNumeric: TypeFn = TYPES.numeric_QMARK_;
 
 // Semantic type checks. A semantic type can be assigned to a column with an
 // unrelated effective type. Do not imply any effective type when checking for a
@@ -54,7 +49,7 @@ export const isURL: TypeFn = TYPES.URL_QMARK_;
 export const isZipCode: TypeFn = TYPES.zip_code_QMARK_;
 
 export function legacyColumnTypeInfo(
-  column: DatasetColumn | Field,
+  column: DatasetColumn | Field | ApiField,
 ): ColumnTypeInfo {
   return ML.legacy_column__GT_type_info(column);
 }

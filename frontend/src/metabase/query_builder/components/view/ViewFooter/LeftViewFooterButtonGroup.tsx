@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import ButtonGroup from "metabase/core/components/ButtonGroup";
+import ButtonGroup from "metabase/common/components/ButtonGroup";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
@@ -12,7 +12,7 @@ import {
   onOpenChartType,
 } from "metabase/query_builder/actions";
 import ViewButton from "metabase/query_builder/components/view/ViewButton";
-import { getUiControls } from "metabase/query_builder/selectors";
+import { getQuestion, getUiControls } from "metabase/query_builder/selectors";
 import { Group } from "metabase/ui";
 import type { QueryBuilderUIControls } from "metabase-types/store";
 
@@ -23,6 +23,7 @@ export const LeftViewFooterButtonGroup = () => {
     isShowingChartSettingsSidebar,
     isShowingChartTypeSidebar,
   }: QueryBuilderUIControls = useSelector(getUiControls);
+  const question = useSelector(getQuestion);
 
   const dispatch = useDispatch();
 
@@ -62,6 +63,7 @@ export const LeftViewFooterButtonGroup = () => {
           {t`Visualization`}
         </ViewButton>
         <ViewButton
+          disabled={question?.display() === "list"}
           className={S.Button}
           active={isShowingChartSettingsSidebar}
           icon="gear"

@@ -280,15 +280,20 @@ export function getDateFilterDisplayName(
         return `${formatDate(startDate, hasTime)} - ${formatDate(endDate, hasTime)}`;
       },
     )
-    .with({ type: "relative" }, ({ value, unit, offsetValue, offsetUnit }) => {
-      if (offsetValue != null && offsetUnit != null) {
-        const prefix = Lib.describeTemporalInterval(value, unit);
-        const suffix = Lib.describeRelativeDatetime(offsetValue, offsetUnit);
-        return `${prefix}, ${suffix}`;
-      } else {
-        return Lib.describeTemporalInterval(value, unit);
-      }
-    })
+    .with(
+      { type: "relative" },
+      ({ value, unit, offsetValue, offsetUnit, options }) => {
+        if (offsetValue != null && offsetUnit != null) {
+          const prefix = Lib.describeTemporalInterval(value, unit);
+          const suffix = Lib.describeRelativeDatetime(offsetValue, offsetUnit);
+          return `${prefix}, ${suffix}`;
+        } else {
+          return Lib.describeTemporalInterval(value, unit, {
+            "include-current": options?.includeCurrent,
+          });
+        }
+      },
+    )
     .with({ type: "exclude", operator: "!=" }, ({ values, unit }) => {
       if (values.length <= 2 && unit != null) {
         const parts = values.map((value) => formatExcludeUnit(value, unit));

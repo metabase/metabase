@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
@@ -166,6 +167,11 @@
   "Filled by `enforced-sandboxes-for-user`. Empty on OSS instances, or EE instances without the `sandboxes` feature."
   (delay nil))
 
+(defn sandboxes-for-user
+  "Derefs the *sandboxes-for-user* dynamic variable so it can be contained to this namespace"
+  []
+  @*sandboxes-for-user*)
+
 (defmacro with-relevant-permissions-for-user
   "Populates the `*permissions-for-user*` and `*sandboxes-for-user*` dynamic vars for use by the cache-aware functions
   in this namespace."
@@ -185,11 +191,14 @@
   `(binding [*use-perms-cache?* false]
      ~@body))
 
+(defn- use-cache?
+  [user-id]
+  (and *use-perms-cache?*
+       (= user-id api/*current-user-id*)))
+
 (defn- get-permissions [user-id perm-type db-id]
-  (if (or (= user-id api/*current-user-id*)
-          (not *use-perms-cache?*))
-    ;; Use the cache if we can; if not, add perms to the cache for this DB
-    (do
+  (if (use-cache? user-id)
+    (do ; Use the cache if we can
       (prime-db-cache [db-id])
       (get-in (:perms @*permissions-for-user*) [user-id perm-type db-id]))
     ;; If we're checking permissions for a *different* user than ourselves, fetch it straight from the DB
@@ -445,7 +454,8 @@
   "Returns the effective download permission value for a given user and database ID, for native queries on the database.
   For each group, the native download permission for a database is equal to the lowest permission level of any table in
   the database."
-  [user-id database-id]
+  [user-id     :- ::lib.schema.id/user
+   database-id :- ::lib.schema.id/database]
   (if (is-superuser? user-id)
     (most-permissive-value :perms/download-results)
     (let [perm-values

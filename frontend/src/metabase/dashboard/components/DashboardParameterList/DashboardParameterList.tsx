@@ -1,43 +1,79 @@
+import cx from "classnames";
+import { type ComponentProps, forwardRef, useMemo } from "react";
+
 import {
   setEditingParameter,
   setParameterIndex,
   setParameterValue,
   setParameterValueToDefault,
 } from "metabase/dashboard/actions";
-import {
-  getDashboardComplete,
-  getEditingParameter,
-  getIsEditing,
-  getIsNightMode,
-  getTabHiddenParameterSlugs,
-  getValuePopulatedParameters,
-} from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME } from "metabase/dashboard/constants";
+import { useDashboardContext } from "metabase/dashboard/context";
+import { useDispatch } from "metabase/lib/redux";
+import { ParametersList } from "metabase/parameters/components/ParametersList";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 
-import { ParametersList } from "../../../parameters/components/ParametersList";
-
-interface DashboardParameterListProps {
-  isFullscreen: boolean;
+export interface DashboardParameterListProps
+  extends Pick<
+    ComponentProps<typeof ParametersList>,
+    | "widgetsWithinPortal"
+    | "widgetsPopoverPosition"
+    | "vertical"
+    | "hasTestIdProps"
+  > {
+  className?: string;
+  parameters: UiParameter[];
+  isSortable?: boolean;
 }
 
-export function DashboardParameterList({
-  isFullscreen,
-}: DashboardParameterListProps) {
-  const dashboard = useSelector(getDashboardComplete);
-  const parameters = useSelector(getValuePopulatedParameters);
-  const editingParameter = useSelector(getEditingParameter);
-  const hiddenParameterSlugs = useSelector(getTabHiddenParameterSlugs);
-  const isEditing = useSelector(getIsEditing);
-  const isNightMode = useSelector(getIsNightMode);
-  const shouldRenderAsNightMode = isNightMode && isFullscreen;
+export const DashboardParameterList = forwardRef<
+  HTMLDivElement,
+  DashboardParameterListProps
+>(function DashboardParameterList(
+  {
+    className,
+    parameters,
+    isSortable = true,
+    widgetsWithinPortal,
+    widgetsPopoverPosition,
+    vertical,
+    hasTestIdProps = true,
+  },
+  ref,
+) {
   const dispatch = useDispatch();
+
+  const {
+    editingParameter,
+    shouldRenderAsNightMode,
+    isFullscreen,
+    isEditing,
+    dashboard,
+    hideParameters,
+    parameters: dashboardParameters,
+    parameterValues,
+  } = useDashboardContext();
+
+  const linkedFilterParameters = useMemo(
+    () =>
+      getValuePopulatedParameters({
+        parameters: dashboardParameters,
+        values: parameterValues,
+      }),
+    [dashboardParameters, parameterValues],
+  );
 
   return (
     <ParametersList
+      ref={ref}
+      className={cx(DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME, className)}
       parameters={parameters}
+      linkedFilterParameters={linkedFilterParameters}
       editingParameter={editingParameter}
-      hideParameters={hiddenParameterSlugs}
-      dashboard={dashboard}
+      hideParameters={hideParameters}
+      dashboardId={dashboard?.id}
+      isSortable={isSortable}
       isFullscreen={isFullscreen}
       isNightMode={shouldRenderAsNightMode}
       isEditing={isEditing}
@@ -48,6 +84,10 @@ export function DashboardParameterList({
         dispatch(setParameterValueToDefault(id))
       }
       enableParameterRequiredBehavior
+      widgetsWithinPortal={widgetsWithinPortal}
+      widgetsPopoverPosition={widgetsPopoverPosition}
+      vertical={vertical}
+      hasTestIdProps={hasTestIdProps}
     />
   );
-}
+});

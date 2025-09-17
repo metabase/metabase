@@ -1,6 +1,8 @@
 /* eslint-disable import/no-commonjs */
 /* eslint-disable no-undef */
 
+const path = require("path");
+
 // `postcss-modules` lints css modules class names, but it currently crashes
 // eslint on vscode. If you use webstorm or want to run the lint for the cli, you
 // can use this flag to enable it. This is set to true in CI
@@ -12,6 +14,7 @@ if (shouldLintCssModules) {
 }
 
 module.exports = {
+  ignorePatterns: ["!.storybook"],
   rules: {
     strict: [2, "never"],
     "no-undef": 2,
@@ -46,6 +49,7 @@ module.exports = {
     ],
     curly: [1, "all"],
     eqeqeq: [1, "smart"],
+    "import/no-duplicates": ["warn", { considerQueryString: true }],
     "import/no-default-export": 2,
     "import/no-named-as-default": 0,
     "import/no-commonjs": 1,
@@ -155,6 +159,7 @@ module.exports = {
     "import/internal-regex": "^metabase/|^metabase-lib/",
     "import/resolver": {
       webpack: {
+        config: path.resolve(__dirname, "./rspack.main.config.js"),
         typescript: true,
       },
     },
@@ -175,6 +180,7 @@ module.exports = {
     {
       files: ["*.js", "*.jsx", "*.ts", "*.tsx"],
       rules: {
+        "jtag-missing-key": "error",
         "no-unconditional-metabase-links-render": "error",
         "no-color-literals": "error",
         "no-literal-metabase-strings": "error",
@@ -199,12 +205,15 @@ module.exports = {
         "enterprise/frontend/src/metabase-enterprise/whitelabel/**/*",
         "frontend/lint/**/*",
         "*.stories.*",
+        "**/.storybook/*",
         "stories-data.*",
         "e2e/**/*",
         "**/tests/*",
         "release/**/*",
-        "webpack.config.js",
         "rspack.config.js",
+        "rspack.main.config.js",
+        "rspack.embedding-sdk-package.config.js",
+        "rspack.embedding-sdk-bundle.config.js",
       ],
       rules: {
         "no-color-literals": "off",
@@ -221,8 +230,7 @@ module.exports = {
         "e2e/**/*",
         "**/tests/*",
         "release/**/*",
-        "webpack.config.js",
-        "rspack.config.js",
+        "rspack.main.config.js",
       ],
       rules: {
         "i18next/no-literal-string": "off",
@@ -316,6 +324,12 @@ module.exports = {
       },
     },
     {
+      files: ["frontend/src/metabase/query_builder/**/*"],
+      rules: {
+        "import/no-cycle": "error",
+      },
+    },
+    {
       files: ["docs/**/snippets/**/*.{ts,tsx,js,jsx}"],
       rules: {
         "@typescript-eslint/no-unused-vars": "off",
@@ -325,6 +339,12 @@ module.exports = {
         "import/order": "off",
         "import/no-unresolved": "off",
         "no-color-literals": "off",
+      },
+    },
+    {
+      files: ["frontend/build/**/*.js"],
+      rules: {
+        "import/no-commonjs": "off",
       },
     },
   ],

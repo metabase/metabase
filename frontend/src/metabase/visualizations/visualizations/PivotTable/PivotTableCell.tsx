@@ -3,8 +3,9 @@ import * as React from "react";
 import type { ControlPosition, DraggableBounds } from "react-draggable";
 import Draggable from "react-draggable";
 
-import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import { PivotTableCell, ResizeHandle } from "./PivotTable.styled";
@@ -140,12 +141,14 @@ export const TopHeaderCell = ({
 }: TopHeaderCellProps) => {
   const { value, hasChildren, clicked, isSubtotal, maxDepthBelow, span } = item;
 
+  const tc = useTranslateContent();
+
   return (
     <Cell
       style={{
         ...style,
       }}
-      value={value}
+      value={tc(value)}
       isNightMode={isNightMode}
       isBorderedHeader={maxDepthBelow === 0}
       isEmphasized={hasChildren}

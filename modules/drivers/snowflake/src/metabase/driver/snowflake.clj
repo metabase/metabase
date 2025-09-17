@@ -63,18 +63,22 @@
                               :expressions/date                       true
                               :identifiers-with-spaces                true
                               :split-part                             true
-                              :now                                    true}]
+                              :now                                    true
+                              :database-routing                       true
+                              :metadata/table-existence-check         true
+                              :transforms/table                       true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (defmethod driver/humanize-connection-error-message :snowflake
-  [_ message]
-  (log/spy :error (type message))
-  (condp re-matches message
-    #"(?s).*Object does not exist.*$"
-    :database-name-incorrect
+  [_ messages]
+  (let [message (first messages)]
+    (log/spy :error (type message))
+    (condp re-matches message
+      #"(?s).*Object does not exist.*$"
+      :database-name-incorrect
 
-    ; default - the Snowflake errors have a \n in them
-    message))
+      ; default - the Snowflake errors have a \n in them
+      message)))
 
 (defmethod driver/db-start-of-week :snowflake
   [_]
@@ -204,6 +208,8 @@
                 ;; keep open connections open indefinitely instead of closing them. See #9674 and
                 ;; https://docs.snowflake.net/manuals/sql-reference/parameters.html#client-session-keep-alive
                 :client_session_keep_alive                  true
+                ;; identify this connection as coming from Metabase for easier monitoring in Snowflake
+                :application                                "Metabase_Metabase"
                 ;; other SESSION parameters
                 ;; not 100% sure why we need to do this but if we don't set the connection to UTC our report timezone
                 ;; stuff doesn't work, even though we ultimately override this when we set the session timezone
@@ -225,8 +231,7 @@
                    ;; of `db`. If we run across `dbname`, correct our behavior
                    (set/rename-keys {:dbname :db})
                    ;; see https://github.com/metabase/metabase/issues/27856
-                   (cond-> (:quote-db-name details)
-                     (update :db quote-name))
+                   (update :db quote-name)
                    (cond-> use-password
                      (dissoc :private-key))
                    ;; password takes precedence if `use-password` is missing
@@ -450,6 +455,10 @@
 (defmethod sql.qp/datetime-diff [:snowflake :minute] [_driver _unit x y] (sub-day-datediff :minute x y))
 (defmethod sql.qp/datetime-diff [:snowflake :second] [_driver _unit x y] (sub-day-datediff :second x y))
 
+(defmethod sql.qp/cast-temporal-string [:snowflake :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion-strategy expr]
+  (h2x/with-database-type-info [:to_timestamp expr (h2x/literal "YYYYMMDDHH24MISS")] "timestamp"))
+
 (defmethod sql.qp/->honeysql [:snowflake :regex-match-first]
   [driver [_ arg pattern]]
   [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
@@ -501,7 +510,7 @@
 ;; :field]` below.
 (defn- qualify-identifier [[_identifier identifier-type components, :as identifier]]
   {:pre [(h2x/identifier? identifier)]}
-  (apply h2x/identifier identifier-type (query-db-name) components))
+  (apply h2x/identifier identifier-type components))
 
 (defmethod sql.qp/->honeysql [:snowflake ::h2x/identifier]
   [_driver [_identifier identifier-type :as identifier]]
@@ -586,37 +595,42 @@
                             :from   [[table-identifier]]}]
       (sql-jdbc/query driver database query))))
 
-(defmethod driver/describe-database :snowflake
+(defmethod driver/describe-database* :snowflake
   [driver database]
   (let [db-name          (db-name database)
         excluded-schemas (set (sql-jdbc.sync/excluded-schemas driver))]
     (driver-api/with-metadata-provider (u/the-id database)
       (let [schema-patterns (driver.s/db-details->schema-filter-patterns "schema-filters" database)
-            [inclusion-patterns exclusion-patterns] schema-patterns
-            filter-tables (fn [{schema :schema table-name :name}]
-                            (and (not (contains? excluded-schemas schema))
-                                 (sql-jdbc.describe-database/include-schema-logging-exclusion inclusion-patterns
-                                                                                              exclusion-patterns
-                                                                                              schema)
-                                 (sql-jdbc.describe-database/have-select-privilege? driver database schema table-name)))]
-        ;; you know what, if we really wanted to make this efficient we would do
-        ;;
-        ;;    SHOW SCHEMAS IN DATABASE <db>
-        ;;
-        ;; first, and filter out the ones we're not interested in, and THEN do
-        ;;
-        ;;    SHOW OBJECTS IN SCHEMA <schema>
-        ;;
-        ;; for each of the schemas we wanted to sync. Right now we're fetching EVERY table, including ones from schemas
-        ;; we aren't interested in.
-        {:tables (into #{}
-                       (map #(dissoc % :type))
-                       ;; The Snowflake JDBC drivers is dumb and broken, it will narrow the results to the current
-                       ;; session schema pass in `nil` for `schema-or-nil` to `getTables()`... `%` seems to fix it.
-                       ;; See [[metabase.driver.snowflake/describe-database-default-schema-test]] and
-                       ;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1706220295862639?thread_ts=1706156558.940489&cid=C04DN5VRQM6
-                       ;; for more info.
-                       (sql-jdbc.describe-database/db-tables driver database {:schema-or-nil "%" :db-name-or-nil db-name :filter-tables filter-tables}))}))))
+            [inclusion-patterns exclusion-patterns] schema-patterns]
+        (sql-jdbc.execute/do-with-connection-with-options
+         driver
+         database
+         nil
+         ;; you know what, if we really wanted to make this efficient we would do
+         ;;
+         ;;    SHOW SCHEMAS IN DATABASE <db>
+         ;;
+         ;; first, and filter out the ones we're not interested in, and THEN do
+         ;;
+         ;;    SHOW OBJECTS IN SCHEMA <schema>
+         ;;
+         ;; for each of the schemas we wanted to sync. Right now we're fetching EVERY table, including ones from schemas
+         ;; we aren't interested in.
+         (fn [^Connection conn]
+           {:tables (into #{}
+                          (comp (filter (fn [{schema :schema table-name :name}]
+                                          (and (not (contains? excluded-schemas schema))
+                                               (sql-jdbc.describe-database/include-schema-logging-exclusion inclusion-patterns
+                                                                                                            exclusion-patterns
+                                                                                                            schema)
+                                               (sql-jdbc.sync/have-select-privilege? driver conn schema table-name))))
+                                (map #(dissoc % :type)))
+                          ;; The Snowflake JDBC drivers is dumb and broken, it will narrow the results to the current
+                          ;; session schema pass in `nil` for `schema-or-nil` to `getTables()`... `%` seems to fix it.
+                          ;; See [[metabase.driver.snowflake/describe-database-default-schema-test]] and
+                          ;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1706220295862639?thread_ts=1706156558.940489&cid=C04DN5VRQM6
+                          ;; for more info.
+                          (vec (sql-jdbc.describe-database/db-tables driver (.getMetaData conn) "%" db-name)))}))))))
 
 (defmethod driver/describe-table :snowflake
   [driver database table]
@@ -834,3 +848,26 @@
 
 (defmethod sql-jdbc/impl-query-canceled? :snowflake [_ e]
   (= (sql-jdbc/get-sql-state e) "57014"))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :snowflake
+  [_ e]
+  (= (sql-jdbc/get-sql-state e) "42S02"))
+
+(defmethod driver/table-exists? :snowflake
+  [driver database {:keys [schema name]}]
+  (let [db-name (db-name database)]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     database
+     nil
+     (fn [^Connection conn]
+       (let [^DatabaseMetaData metadata (.getMetaData conn)
+             schema-name (escape-name-for-metadata schema)
+             table-name (escape-name-for-metadata name)]
+         (with-open [rs (.getTables metadata db-name schema-name table-name nil)]
+           (.next rs)))))))
+
+(defmethod driver/create-schema-if-needed! :snowflake
+  [driver conn-spec schema]
+  (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS \"%s\";" schema)]]]
+    (driver/execute-raw-queries! driver conn-spec sql)))

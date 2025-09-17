@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import Markdown from "metabase/core/components/Markdown";
+import Markdown from "metabase/common/components/Markdown";
 import { color } from "metabase/lib/colors";
 import { isEmpty } from "metabase/lib/validate";
 import { Icon } from "metabase/ui";

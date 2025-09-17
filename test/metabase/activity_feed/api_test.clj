@@ -319,9 +319,16 @@
                                          :description "just another dashboard"
                                          :creator_id  (mt/user->id :crowberto)
                                          :view_count  5}
+                 :model/Dashboard archived-dash {:name        "archived-dashboard"
+                                                 :description "archived dashboard"
+                                                 :creator_id  (mt/user->id :crowberto)
+                                                 :view_count  5
+                                                 :archived true}
                  :model/Table     table1 {:name "rand-name"}
                  :model/Table     hidden-table {:name            "hidden table"
                                                 :visibility_type "hidden"}
+                 :model/Table     inactive-table {:name            "inactive table"
+                                                  :active false}
                  :model/Card      dataset {:name                   "rand-name"
                                            :type                   :model
                                            :creator_id             (mt/user->id :crowberto)
@@ -332,7 +339,7 @@
                                            :creator_id             (mt/user->id :crowberto)
                                            :display                "table"
                                            :visualization_settings {}}]
-    (let [test-ids (set (map :id [card1 archived dash1 dash2 table1 hidden-table dataset metric]))]
+    (let [test-ids (set (map :id [card1 archived dash1 dash2 table1 hidden-table dataset metric inactive-table archived-dash]))]
       (testing "Items viewed by multiple users are never duplicated in the popular items list."
         (mt/with-model-cleanup [:model/RecentViews :model/QueryExecution]
           (create-views! [[(mt/user->id :rasta)     "dashboard" (:id dash1)]
@@ -351,7 +358,9 @@
           (create-views! [[(mt/user->id :rasta) "dashboard" (:id dash1)]
                           [(mt/user->id :rasta) "card"      (:id card1)]
                           [(mt/user->id :rasta) "table"     (:id table1)]
-                          [(mt/user->id :rasta) "card"      (:id metric)]])
+                          [(mt/user->id :rasta) "card"      (:id metric)]
+                          [(mt/user->id :rasta) "table"      (:id inactive-table)]
+                          [(mt/user->id :rasta) "dashboard"      (:id archived-dash)]])
           (is (= [["dashboard" (:id dash1)]
                   ["card" (:id card1)]
                   ["metric" (:id metric)]

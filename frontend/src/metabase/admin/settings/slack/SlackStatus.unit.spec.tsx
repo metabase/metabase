@@ -32,21 +32,17 @@ const setup = async ({
 
   renderWithProviders(<SlackStatus />);
 
-  await screen.findByText("Metabase on Slack");
+  await screen.findByText("Slack token");
 };
 
 describe("SlackStatus", () => {
   it("should show valid status badge", async () => {
     await setup({ isValid: true });
-
-    expect(screen.getByText("Metabase on Slack")).toBeInTheDocument();
     expect(await screen.findByText("Slack app is working")).toBeInTheDocument();
   });
 
   it("Should show invalid status badge", async () => {
     await setup({ isValid: false });
-
-    expect(screen.getByText("Metabase on Slack")).toBeInTheDocument();
     expect(
       await screen.findByText("Slack app is not working."),
     ).toBeInTheDocument();
@@ -55,21 +51,21 @@ describe("SlackStatus", () => {
   it("Should show disabled token input", async () => {
     await setup({ isValid: true });
 
-    const input = await screen.findByLabelText("Slack Token");
+    const input = await screen.findByLabelText("Slack token");
     expect(input).toBeDisabled();
   });
 
   it("should show bug reporting channel if bug reporting is enabled", async () => {
     await setup({ isValid: true, bugReporting: true });
-    await screen.findByLabelText("Slack Token");
+    await screen.findByLabelText("Slack token");
     expect(
-      await screen.findByText("Slack Bug report channel"),
+      await screen.findByText("Slack bug report channel"),
     ).toBeInTheDocument();
   });
 
   it("should not show bug reporting channel if bug reporting is disabled", async () => {
     await setup({ isValid: true, bugReporting: false });
-    await screen.findByLabelText("Slack Token");
+    await screen.findByLabelText("Slack token");
     expect(
       screen.queryByText("Slack Bug report channel"),
     ).not.toBeInTheDocument();

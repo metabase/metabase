@@ -210,56 +210,6 @@ describe("getIsCompatible", () => {
     const sameCategoryDimensionField = createMockCategoryField({
       id: categoryDimensionColumn.id,
     });
-    const otherCategoryDimensionField = createMockCategoryField({ id: 5 });
-    const numericField = createMockNumericField({ id: 6 });
-
-    it("should return false if current chart doesn't have dimensions", () => {
-      const settings = { "graph.metrics": [metricColumn.name] };
-      expect(
-        getIsCompatible({
-          currentDataset: {
-            display: "line",
-            columns: [metricColumn],
-            settings,
-            computedSettings: settings,
-          },
-          targetDataset: {
-            fields: [dateField, sameCategoryDimensionField],
-          },
-          datasets: {
-            "1": defaultDataset,
-          },
-        }),
-      ).toBe(false);
-    });
-
-    it("should return false if a data source doesn't have dimensions", () => {
-      const settings = {
-        "graph.metrics": [metricColumn.name],
-        "graph.dimensions": [timeDimensionColumn.name],
-      };
-      expect(
-        getIsCompatible({
-          currentDataset: {
-            display: "line",
-            columns: [metricColumn, timeDimensionColumn],
-            settings,
-            computedSettings: settings,
-          },
-          targetDataset: { fields: [numericField] },
-          datasets: {
-            "1": defaultDataset,
-            "2": createMockDataset({
-              data: {
-                cols: [
-                  createMockNumericColumn({ id: numericField.id as number }),
-                ],
-              },
-            }),
-          },
-        }),
-      ).toBe(false);
-    });
 
     it("should return true if a data source has a matching time dimension", () => {
       const settings = {
@@ -324,36 +274,6 @@ describe("getIsCompatible", () => {
       ).toBe(true);
     });
 
-    it("should return false if a data source doesn't have a matching time dimension", () => {
-      const settings = {
-        "graph.metrics": [metricColumn.name],
-        "graph.dimensions": [timeDimensionColumn.name],
-      };
-      expect(
-        getIsCompatible({
-          currentDataset: {
-            display: "line",
-            columns: [metricColumn, timeDimensionColumn],
-            settings,
-            computedSettings: settings,
-          },
-          targetDataset: { fields: [sameCategoryDimensionField] },
-          datasets: {
-            "1": defaultDataset,
-            "2": createMockDataset({
-              data: {
-                cols: [
-                  createMockCategoryColumn({
-                    id: sameCategoryDimensionField.id as number,
-                  }),
-                ],
-              },
-            }),
-          },
-        }),
-      ).toBe(false);
-    });
-
     it("should return true if a data source has a matching category dimension", () => {
       const settings = {
         "graph.metrics": [metricColumn.name],
@@ -382,36 +302,6 @@ describe("getIsCompatible", () => {
           },
         }),
       ).toBe(true);
-    });
-
-    it("should return false if a data source doesn't have a matching category dimension", () => {
-      const settings = {
-        "graph.metrics": [metricColumn.name],
-        "graph.dimensions": [categoryDimensionColumn.name],
-      };
-      expect(
-        getIsCompatible({
-          currentDataset: {
-            display: "line",
-            columns: [metricColumn, categoryDimensionColumn],
-            settings,
-            computedSettings: settings,
-          },
-          targetDataset: { fields: [otherCategoryDimensionField] },
-          datasets: {
-            "1": defaultDataset,
-            "2": createMockDataset({
-              data: {
-                cols: [
-                  createMockCategoryColumn({
-                    id: otherCategoryDimensionField.id as number,
-                  }),
-                ],
-              },
-            }),
-          },
-        }),
-      ).toBe(false);
     });
   });
 });

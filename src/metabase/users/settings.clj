@@ -101,6 +101,14 @@
   :visibility :authenticated
   :type       :string)
 
+(defsetting sdk-iframe-embed-setup-settings
+  (deferred-tru "The embed settings last chosen in the setup flow for sdk-based iframe embedding.")
+  :user-local :only
+  :encryption :no
+  :export?    false
+  :visibility :authenticated
+  :type       :json)
+
 (defsetting license-token-missing-banner-dismissal-timestamp
   (deferred-tru "The array of last two ISO8601 dates when an admin dismissed the license token missing banner.")
   :encryption :no

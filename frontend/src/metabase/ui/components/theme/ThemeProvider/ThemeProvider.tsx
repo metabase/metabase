@@ -1,18 +1,16 @@
 // eslint-disable-next-line no-restricted-imports
 import { ThemeProvider as _CompatibilityEmotionThemeProvider } from "@emotion/react";
-import type {
-  MantineProviderProps,
-  MantineTheme,
-  MantineThemeOverride,
-} from "@mantine/core";
+import type { MantineTheme, MantineThemeOverride } from "@mantine/core";
 import { MantineProvider } from "@mantine/core";
 import { merge } from "icepick";
-import { type ReactNode, useMemo } from "react";
+import { type ReactNode, useContext, useMemo } from "react";
 
-import { isEmbeddingSdk } from "metabase/env";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 
 import { getThemeOverrides } from "../../../theme";
 import { DatesProvider } from "../DatesProvider";
+
+import { ThemeProviderContext } from "./context";
 
 interface ThemeProviderProps {
   children: ReactNode;
@@ -23,7 +21,6 @@ interface ThemeProviderProps {
    * to allow SDK users to customize the theme.
    */
   theme?: MantineThemeOverride;
-  mantineProviderProps?: MantineProviderProps;
 }
 
 export const ThemeProvider = (props: ThemeProviderProps) => {
@@ -70,13 +67,18 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
     } as MantineTheme;
   }, [props.theme]);
 
+  const { withCssVariables, withGlobalClasses } =
+    useContext(ThemeProviderContext);
+
   return (
     <MantineProvider
       theme={theme}
       getStyleNonce={() => window.MetabaseNonce ?? "metabase"}
       classNamesPrefix="mb-mantine"
-      cssVariablesSelector={isEmbeddingSdk ? ".mb-wrapper" : undefined}
-      {...props.mantineProviderProps}
+      cssVariablesSelector={isEmbeddingSdk() ? ".mb-wrapper" : undefined}
+      // This slows down unit tests like crazy
+      withCssVariables={withCssVariables}
+      withGlobalClasses={withGlobalClasses}
     >
       <_CompatibilityEmotionThemeProvider theme={theme}>
         <DatesProvider>{props.children}</DatesProvider>

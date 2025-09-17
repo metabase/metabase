@@ -7,6 +7,10 @@ import type {
   NativeQuestionDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
+import {
+  createMockDashboardCard,
+  createMockParameter,
+} from "metabase-types/api/mocks";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -141,10 +145,10 @@ describe(
       });
     });
 
-    describe("native queries", () => {
+    describe("native queries with field filters", () => {
       it("should allow to map a boolean parameter to a boolean field filter of a SQL query and drill-thru", () => {
-        createNativeQuestionAndDashboard().then(({ dashboardId }) =>
-          H.visitDashboard(dashboardId),
+        createNativeQuestionWithFieldFilterAndDashboard().then(
+          ({ dashboardId }) => H.visitDashboard(dashboardId),
         );
         H.editDashboard();
         createAndMapParameter();
@@ -165,8 +169,8 @@ describe(
       });
 
       it("should allow to use a 'Go to a custom destination - Saved question' click behavior", () => {
-        createNativeQuestionAndDashboard().then(({ dashboardId }) =>
-          H.visitDashboard(dashboardId),
+        createNativeQuestionWithFieldFilterAndDashboard().then(
+          ({ dashboardId }) => H.visitDashboard(dashboardId),
         );
 
         cy.log("set up click behavior");
@@ -194,7 +198,7 @@ describe(
       });
 
       it("should allow to use a 'Go to a custom destination - URL' click behavior", () => {
-        createNativeQuestionAndDashboard().then(
+        createNativeQuestionWithFieldFilterAndDashboard().then(
           ({ dashboardId, questionId }) => {
             H.visitDashboard(dashboardId);
 
@@ -225,6 +229,55 @@ describe(
             H.filterWidget().findByText("true").should("be.visible");
           },
         );
+      });
+    });
+
+    describe("native queries with variables", () => {
+      it("should allow to map a boolean parameter to a boolean variable of a SQL query and drill-thru", () => {
+        createNativeQuestionWithVariableAndDashboard().then(({ dashboardId }) =>
+          H.visitDashboard(dashboardId),
+        );
+        H.editDashboard();
+        createAndMapParameter();
+        H.saveDashboard();
+
+        testParameterWidget({
+          allRowCountText: "200 rows",
+          trueRowCountText: "53 rows",
+          falseRowCountText: "54 rows",
+        });
+
+        H.filterWidget().click();
+        H.popover().button("Add filter").click();
+        H.getDashboardCard().findByText(QUESTION_NAME).click();
+        H.assertQueryBuilderRowCount(53);
+        H.filterWidget().findByText("true").should("be.visible");
+      });
+
+      it("should allow to use boolean parameters mapped to SQL query parameters in a public dashboard", () => {
+        createNativeQuestionWithVariableAndDashboardWithMapping().then(
+          ({ dashboardId }) => H.visitPublicDashboard(dashboardId),
+        );
+        testParameterWidget({
+          allRowCountText: "200 rows",
+          trueRowCountText: "53 rows",
+          falseRowCountText: "54 rows",
+        });
+      });
+
+      it("should allow to use boolean parameters mapped to SQL query parameters in an embedded dashboard", () => {
+        createNativeQuestionWithVariableAndDashboardWithMapping().then(
+          ({ dashboardId }) =>
+            H.visitEmbeddedPage({
+              resource: { dashboard: dashboardId },
+              params: {},
+            }),
+        );
+        testParameterWidget({
+          allRowCountText: "200 rows",
+          trueRowCountText: "53 rows",
+          falseRowCountText: "54 rows",
+        });
       });
     });
   },
@@ -258,7 +311,7 @@ function createQuestionAndDashboard({
   });
 }
 
-function createNativeQuestionAndDashboard({
+function createNativeQuestionWithFieldFilterAndDashboard({
   questionName = QUESTION_NAME,
   dashboardName = DASHBOARD_NAME,
 } = {}) {
@@ -295,6 +348,79 @@ function createNativeQuestionAndDashboard({
       });
     });
   });
+}
+
+function createNativeQuestionWithVariableAndDashboard() {
+  cy.log("create a dashboard");
+
+  const questionDetails: NativeQuestionDetails = {
+    name: QUESTION_NAME,
+    native: {
+      query:
+        "select id from products [[where category = (case when {{boolean}} then 'Gadget' else 'Widget' end)]]",
+      "template-tags": {
+        boolean: {
+          id: "0b004110-d64a-a413-5aa2-5a5314fc8fec",
+          name: "boolean",
+          "display-name": "Boolean",
+          type: "boolean",
+          default: null,
+        },
+      },
+    },
+  };
+  const dashboardDetails: DashboardDetails = {
+    name: DASHBOARD_NAME,
+  };
+  return H.createNativeQuestionAndDashboard({
+    questionDetails,
+    dashboardDetails,
+  }).then(({ body: { dashboard_id, id }, questionId }) => {
+    return {
+      dashboardId: Number(dashboard_id),
+      dashcardId: id,
+      questionId,
+    };
+  });
+}
+
+function createNativeQuestionWithVariableAndDashboardWithMapping() {
+  return createNativeQuestionWithVariableAndDashboard().then(
+    ({ dashboardId, dashcardId, questionId }) => {
+      cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+        dashcards: [
+          createMockDashboardCard({
+            id: dashcardId,
+            dashboard_id: dashboardId,
+            card_id: questionId,
+            size_x: 6,
+            size_y: 6,
+            parameter_mappings: [
+              {
+                card_id: questionId,
+                parameter_id: "boolean",
+                target: ["variable", ["template-tag", "boolean"]],
+              },
+            ],
+          }),
+        ],
+        parameters: [
+          createMockParameter({
+            id: "boolean",
+            type: "boolean/=",
+            slug: "boolean",
+            name: "Boolean",
+          }),
+        ],
+        enable_embedding: true,
+        embedding_params: {
+          boolean: "enabled",
+        },
+      }).then(() => {
+        return { dashboardId };
+      });
+    },
+  );
 }
 
 function createAndMapParameter({

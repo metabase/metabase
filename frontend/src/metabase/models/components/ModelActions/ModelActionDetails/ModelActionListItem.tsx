@@ -2,10 +2,10 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
-import EntityMenu from "metabase/components/EntityMenu";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import Link from "metabase/core/components/Link";
-import { useConfirmation } from "metabase/hooks/use-confirmation";
+import EntityMenu from "metabase/common/components/EntityMenu";
+import Link from "metabase/common/components/Link";
+import ModalWithTrigger from "metabase/common/components/ModalWithTrigger";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { Icon } from "metabase/ui";
 import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
 

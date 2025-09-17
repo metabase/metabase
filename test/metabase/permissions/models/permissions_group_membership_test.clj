@@ -56,3 +56,28 @@
                               (perms/add-user-to-group! normal-user tenant-group))))
       (testing "can be added to a normal group"
         (perms/add-user-to-group! normal-user normal-group)))))
+
+(deftest permissions-group-membership-audit-add-test
+  (testing "PermissionsGroupMembership audit events"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/User {user-id :id} {}
+                     :model/PermissionsGroup {group-id :id} {:name "Test Group"}]
+        (let [initial-audit-count (t2/count :model/AuditLog)]
+          (testing "adding user to group is audited"
+            (perms/add-user-to-group! user-id group-id)
+            (is (> (t2/count :model/AuditLog) initial-audit-count))
+            (let [audit-entry (t2/select-one :model/AuditLog :topic "group-membership-create" {:order-by [[:id :desc]]})]
+              (is (some? audit-entry))
+              (is (= "PermissionsGroupMembership" (:model audit-entry)))
+              (is (= user-id (get-in audit-entry [:details :user_id])))
+              (is (= group-id (get-in audit-entry [:details :group_id])))))
+
+          (testing "removing user from group is audited"
+            (let [before-remove-count (t2/count :model/AuditLog)]
+              (perms/remove-user-from-group! user-id group-id)
+              (is (> (t2/count :model/AuditLog) before-remove-count))
+              (let [audit-entry (t2/select-one :model/AuditLog :topic "group-membership-delete" {:order-by [[:id :desc]]})]
+                (is (some? audit-entry))
+                (is (= "PermissionsGroupMembership" (:model audit-entry)))
+                (is (= user-id (get-in audit-entry [:details :user_id])))
+                (is (= group-id (get-in audit-entry [:details :group_id])))))))))))

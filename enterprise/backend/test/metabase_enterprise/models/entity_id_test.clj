@@ -21,6 +21,7 @@
     :model/Table
     :model/Field
     :model/FieldValues
+    :model/FieldUserSettings
     ;; Settings have human-selected unique names.
     :model/Setting})
 
@@ -40,13 +41,17 @@
     :model/CardBookmark
     :model/ChannelTemplate
     :model/CollectionBookmark
+    :model/ContentTranslation
     :model/DashboardBookmark
     :model/DataPermissions
     :model/DatabaseRouter
+    :model/DocumentBookmark
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory
     :model/FieldValues
+    :model/MetabotConversation
+    :model/MetabotMessage
     :model/ModelIndex
     :model/ModelIndexValue
     :model/ModerationReview
@@ -66,7 +71,6 @@
     :model/PulseChannel
     :model/PulseChannelRecipient
     :model/Query
-    :model/QueryAnalysis
     :model/QueryCache
     :model/QueryExecution
     :model/QueryField
@@ -78,13 +82,25 @@
     :model/Session
     :model/TaskHistory
     :model/TimelineEvent
+    ;; TODO we should remove these models from here once serialization is supported
+    :model/Transform
+    :model/TransformRun
+    :model/TransformRunCancelation
+    :model/TransformJob
+    :model/TransformJobRun
+    :model/TransformJobTransformTag
+    :model/TransformTag
+    :model/TransformTransformTag
+    :model/Undo
     :model/User
     :model/UserParameterValue
     :model/UserKeyValue
     :model/ViewLog
-    :model/GroupTableAccessPolicy
+    :model/Sandbox
     :model/ConnectionImpersonation
-    :model/CloudMigration})
+    :model/CloudMigration
+    :model/Comment
+    :model/CommentReaction})
 
 (deftest ^:parallel comprehensive-entity-id-test
   (let [entity-id-models (->> (v2.entity-ids/toucan-models)

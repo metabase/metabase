@@ -4,13 +4,16 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.events.core :as events]
+   ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
+   ;; Lib soon
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.parameters.operators :as params.ops]
    [metabase.users.models.user-parameter-value :as user-parameter-value]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]

@@ -25,7 +25,7 @@ import {
   createMockModelResult,
   createMockRecentModel,
 } from "metabase/browse/models/test-utils";
-import type { DataPickerValue } from "metabase/common/components/DataPicker";
+import type { DataPickerValue } from "metabase/common/components/Pickers/DataPicker";
 import { checkNotNull } from "metabase/lib/types";
 import type { IconName } from "metabase/ui";
 import {

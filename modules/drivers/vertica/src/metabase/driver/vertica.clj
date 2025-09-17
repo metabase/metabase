@@ -35,7 +35,8 @@
                               :now                       true
                               :identifiers-with-spaces   true
                               :percentile-aggregations   false
-                              :test/jvm-timezone-setting false}]
+                              :test/jvm-timezone-setting false
+                              :database-routing          false}]
   (defmethod driver/database-supports? [:vertica feature] [_driver _feature _db] supported?))
 
 (defmethod driver/db-start-of-week :vertica
@@ -81,6 +82,10 @@
 (defmethod sql.qp/unix-timestamp->honeysql [:vertica :seconds]
   [_driver _seconds-or-milliseconds honeysql-expr]
   (h2x/with-database-type-info [:to_timestamp honeysql-expr] "timestamp"))
+
+(defmethod sql.qp/cast-temporal-string [:vertica :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion-strategy expr]
+  [:to_timestamp expr (h2x/literal "YYYYMMDDHH24MISS")])
 
 ;; TODO - not sure if needed or not
 (defn- cast-timestamp
@@ -287,9 +292,9 @@
        (catch Throwable e
          (log/error e "Failed to fetch materialized views for this database"))))
 
-(defmethod driver/describe-database :vertica
+(defmethod driver/describe-database* :vertica
   [driver database]
-  (-> ((get-method driver/describe-database :sql-jdbc) driver database)
+  (-> ((get-method driver/describe-database* :sql-jdbc) driver database)
       (update :tables set/union (materialized-views database))))
 
 (defmethod driver/db-default-timezone :vertica

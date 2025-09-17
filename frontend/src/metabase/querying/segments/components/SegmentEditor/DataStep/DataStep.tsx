@@ -4,7 +4,7 @@ import { t } from "ttag";
 import {
   DataPickerModal,
   getDataPickerValue,
-} from "metabase/common/components/DataPicker";
+} from "metabase/common/components/Pickers/DataPicker";
 import Tables from "metabase/entities/tables";
 import { useDispatch, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";

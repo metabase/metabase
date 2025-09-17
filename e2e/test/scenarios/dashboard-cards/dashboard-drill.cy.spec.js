@@ -265,12 +265,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
     // check that param was set to "foo"
     cy.location("search").should("eq", "?my_param=foo");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("My Param")
-      .parent()
-      .within(() => {
-        cy.findByText("foo");
-      });
+    H.filterWidget("My Param").findByText("foo");
   });
 
   it("should open the same dashboard when a custom URL click behavior points to the same dashboard (metabase#22702)", () => {
@@ -301,7 +296,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       H.saveDashboard();
 
       cy.findByTestId("dashcard").findByText("Click behavior").click();
-      cy.get("fieldset").should("contain", "Aaron Hand");
+      H.filterWidget("My Param").findByText("Aaron Hand").should("be.visible");
 
       cy.location("pathname").should("eq", `/dashboard/${dashboardId}`);
       cy.location("search").should("eq", "?my_param=Aaron+Hand");
@@ -309,7 +304,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
   });
 
   // This was flaking. Example: https://dashboard.cypress.io/projects/a394u1/runs/2109/test-results/91a15b66-4b80-40bf-b569-de28abe21f42
-  it.skip("should handle cross-filter on a table", () => {
+  it("should handle cross-filter on a table", { tags: "@skip" }, () => {
     createDashboardWithQuestion({}, (dashboardId) =>
       H.visitDashboard(dashboardId),
     );

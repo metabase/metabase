@@ -40,6 +40,14 @@
 .row {
   display: flex;
   width: 100%;
+
+  &.active {
+    background-color: color-mix(
+      in srgb,
+      var(--mb-color-brand),
+      transparent 90%
+    );
+  }
 }
 
 .headerCell {
@@ -49,6 +57,16 @@
 .bodyCell {
   position: relative;
   cursor: pointer;
+}
+
+.focusedCell {
+  user-select: text;
+  outline: 2px solid var(--mb-color-focus);
+  outline-offset: -2px;
+}
+
+.focusedCell * {
+  pointer-events: auto;
 }
 
 .rowHoverContent {

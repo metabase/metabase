@@ -799,9 +799,11 @@ function getTableCell(columnName, rowIndex) {
       .toArray()
       .findIndex(($columnHeader) => $columnHeader.textContent === columnName);
     // eslint-disable-next-line no-unsafe-element-filtering
-    const row = cy.findAllByRole("row").eq(rowIndex);
-    // eslint-disable-next-line no-unsafe-element-filtering
-    row.findAllByTestId("cell-data").eq(columnHeaderIndex).as("cellData");
+    cy.findAllByRole("row")
+      .eq(rowIndex)
+      .findAllByTestId("cell-data")
+      .eq(columnHeaderIndex)
+      .as("cellData");
   });
 
   return cy.get("@cellData");

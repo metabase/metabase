@@ -101,7 +101,7 @@
   u.random/keep-me)
 
 ;; Add more stuff here as needed
-#_{:clj-kondo/ignore [:discouraged-var]}
+#_{:clj-kondo/ignore [:discouraged-var :deprecated-var]}
 (p/import-vars
  [actions.test-util
   with-actions
@@ -120,7 +120,6 @@
   driver-select
   format-name
   id
-  ident
   mbql-query
   metadata-provider
   native-query
@@ -148,6 +147,7 @@
   received-email-body?
   received-email-subject?
   regex-email-bodies
+  email-subjects
   reset-inbox!
   summarize-multipart-email
   summarize-multipart-single-email
@@ -245,6 +245,7 @@
   user->id
   user-descriptor
   user-http-request
+  user-http-request-full-response
   user-real-request
   with-group
   with-group-for-user
@@ -281,7 +282,7 @@
   with-discarded-collections-perms-changes
   with-discard-model-updates!
   with-env-keys-renamed-by
-  with-locale
+  with-locale!
   with-model-cleanup
   with-non-admin-groups-no-root-collection-for-namespace-perms
   with-non-admin-groups-no-root-collection-perms
@@ -326,8 +327,10 @@
   with-system-timezone-id!]
 
  [tx
+  arbitrary-select-query
   count-with-template-tag-query
   count-with-field-filter-query
+  make-alias
   dataset-definition
   db-qualified-table-name
   db-test-env-var

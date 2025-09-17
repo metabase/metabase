@@ -18,7 +18,7 @@ Filters can only be linked when they're connected to columns that have an explic
 
 - In the same table.
 - In two different tables that have a foreign key relationship specified in the [table metadata](../data-modeling/metadata-editing.md).
-- In two different tables that have a foreign key relationships to one or more intermediate tables, as specified in the [table metadata](../data-modeling/metadata-editing.md)
+- In two different tables that have a foreign key relationships to one or more intermediate tables, as specified in the [table metadata](../data-modeling/metadata-editing.md).
 
 ![Setting up foreign key in table metadata](./images/foreign-key-linked-filters.png)
 
@@ -46,7 +46,7 @@ The filter(s) you select in the **linked filters** tab will be the parent filter
 Linked filters are only "aware" of relationships defined in the table metadata. This constraint lets people connect filters to the same column on multiple dashboard cards (across multiple tabs), but the constraint also means that:
 
 - Linked filters can't see relationships defined by joins in models or questions.
-- Linked filters can't use any filter or join logic from any underlying card or model
+- Linked filters can't use any filter or join logic from any underlying card or model.
 
 For example, say you have a table with State and City columns, and you build a model that filters out rows with `City = San Francisco`. You ask a question based on that model, and add it to a dashboard. You add State and City filters to the dashboard, and link them. If you select were to select `State = CA`, the city filter may still show `San Francisco` as option, even though there are no records with `San Francisco` in the question and the underlying model, because the filter only "knows" about the underlying table metadata (which includes sample values for the column).
 
@@ -54,9 +54,9 @@ For example, say you have a table with State and City columns, and you build a m
 
 Metabase uses database column metadata to populate values for linked filters, which means that linked filters have to be connected to database columns. In particular:
 
-- You can't create linked filters on custom columns
+- You can't create linked filters on custom columns.
 
-- Native/SQL questions must have a [field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type) variable in order to be linked. Basic SQL variables aren't connected to database columns, so they won't work for linked filters.
+- Native/SQL questions must have a [field filter](../questions/native-editor/field-filters.md) variable in order to be linked. Basic SQL variables aren't connected to database columns, so they won't work for linked filters.
 
 - You can't link filters that use "Custom List" or "From another model or question" as their value's source.
 

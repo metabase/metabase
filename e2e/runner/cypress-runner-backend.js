@@ -31,6 +31,7 @@ const CypressBackend = {
         "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
         "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
         "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
+        "-Dmail.smtps.ssl.trust=*", // trust self signed certs for testing
         "-Duser.timezone=US/Pacific",
         process.env.SHOW_BACKEND_LOGS === "true"
           ? null
@@ -47,6 +48,7 @@ const CypressBackend = {
         MB_LAST_ANALYTICS_CHECKSUM: "-1",
         MB_DB_CONNECTION_URI: "", // ignore connection URI in favor of the db file
         MB_CONFIG_FILE_PATH: "__cypress__", // ignore config.yml
+        MB_HTTP_CHANNEL_HOST_STRATEGY: "allow-all", // we use a local webhook service for testing
       };
 
       /**

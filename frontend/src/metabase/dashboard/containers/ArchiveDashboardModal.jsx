@@ -6,7 +6,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { ArchiveModal } from "metabase/components/ArchiveModal";
+import { ArchiveModal } from "metabase/common/components/ArchiveModal";
 import { setArchivedDashboard } from "metabase/dashboard/actions";
 import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";

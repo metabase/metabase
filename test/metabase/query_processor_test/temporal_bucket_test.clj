@@ -2,14 +2,13 @@
   (:require
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]))
 
 (deftest ^:parallel temporal-unit-in-display-name-test
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp (mt/metadata-provider)
         single-stage-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                                (lib/aggregate (lib/count))
                                (lib/breakout (lib/with-temporal-bucket
@@ -42,10 +41,10 @@
                  (cols-display-name-by-index
                   (qp/process-query (lib/breakout multi-stage-query 1 (lib/with-temporal-bucket col :quarter)))
                   0)))))
-      (testing "Second bucketing of a column on a next stage by different unit appends it into displa_name"
+      (testing "Second bucketing of a column on a next stage by different unit appends it into display_name"
         (let [col (m/find-first (comp #{"Created At: Quarter"} :display-name)
                                 (lib/breakoutable-columns multi-stage-query 1))]
-          (is (= "Created At: Quarter: Year"
+          (is (= "Created At: Year"
                  (cols-display-name-by-index
                   (qp/process-query (lib/breakout multi-stage-query 1 (lib/with-temporal-bucket col :year)))
                   0))))))))

@@ -33,7 +33,7 @@ export function DefaultRequiredValueControl({
   return (
     <div>
       <ContainerLabel id={`default-value-label-${tag.id}`}>
-        {t`Default filter widget value`}
+        {getLabel(tag)}
         {isMissing && <ErrorSpan> ({t`required`})</ErrorSpan>}
       </ContainerLabel>
 
@@ -78,4 +78,10 @@ export function DefaultRequiredValueControl({
       </Flex>
     </div>
   );
+}
+
+function getLabel(tag: TemplateTag) {
+  return tag.type === "temporal-unit"
+    ? t`Default parameter widget value`
+    : t`Default filter widget value`;
 }

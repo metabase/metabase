@@ -48,8 +48,9 @@
   "Pick out interesting fields and sort them by interestingness."
   [fields]
   (->> fields
-       (filter (fn [{:keys [semantic_type] :as field}]
+       (filter (fn [{:keys [base_type effective_type semantic_type] :as field}]
                  (or (temporal? field)
+                     (isa? (or effective_type base_type) :type/Boolean)
                      (isa? semantic_type :type/Category))))
        sort-by-interestingness))
 
@@ -157,6 +158,7 @@
   [[clause-name, :as filter-clause]]
   (when (seq filter-clause)
     (if (= clause-name :and)
+      #_{:clj-kondo/ignore [:deprecated-var]}
       (rest (mbql.u/simplify-compound-filter filter-clause))
       [filter-clause])))
 
@@ -180,6 +182,7 @@
     (if (seq existing-filters)
       ;; since the filters are programatically generated they won't have passed thru normalization, so make sure we
       ;; normalize them before passing them to `combine-filter-clauses`, which validates its input
+      #_{:clj-kondo/ignore [:deprecated-var]}
       (apply mbql.u/combine-filter-clauses (map (partial mbql.normalize/normalize-fragment [:query :filter])
                                                 (cons refinement existing-filters)))
       refinement)))

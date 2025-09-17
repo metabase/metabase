@@ -2,8 +2,8 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { useGetUserQuery } from "metabase/api";
-import { ConfirmModal } from "metabase/components/ConfirmModal";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";

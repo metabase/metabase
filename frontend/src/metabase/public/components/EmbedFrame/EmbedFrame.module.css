@@ -19,11 +19,6 @@ body:where(:global(.mb-wrapper)) {
   border-color: var(--mb-color-border);
 }
 
-.EmbedFrame .DashCard .Card {
-  /* this is for proper transitions from the `transparent` value to other values if set */
-  border: 1px solid transparent;
-}
-
 .EmbedFrameHeader,
 .EmbedFrameFooter {
   color: var(--mb-color-text-primary);
@@ -82,20 +77,20 @@ body:where(:global(.mb-wrapper)) {
     var(--mb-color-text-white) 45%,
     transparent
   );
-  --mb-color-bg-light: var(--mb-base-color-orion-70);
+  --mb-color-bg-light: var(--mb-color-bg-darker);
 }
 
 [data-metabase-theme="night"][data-metabase-theme="night"] {
-  --mb-color-text-selected: var(--mb-base-color-white);
-  --mb-color-text-hover: var(--mb-base-color-brand-30);
+  --mb-color-text-selected: var(--mb-color-text-white);
+  --mb-color-text-hover: var(--mb-color-brand-light);
   --mb-color-border: var(--mb-color-text-medium);
   --mb-color-bg-dashboard: var(--mb-color-bg-black);
   --mb-color-background: var(--mb-color-bg-black);
-  --mb-color-background-selected: var(--mb-base-color-brand-60);
-  --mb-color-background-hover: var(--mb-base-color-brand-70);
-  --mb-color-background-disabled: var(--mb-base-color-orion-70);
-  --mb-color-background-brand: var(--mb-base-color-brand-60);
-  --mb-color-switch-off: var(--mb-base-color-orion-70);
+  --mb-color-background-selected: var(--mb-color-brand-dark);
+  --mb-color-background-hover: var(--mb-color-brand-darker);
+  --mb-color-background-disabled: var(--mb-color-text-dark);
+  --mb-color-background-brand: var(--mb-color-brand-dark);
+  --mb-color-switch-off: var(--mb-color-text-dark);
 
   .EmbedFrameHeader,
   .EmbedFrameFooter {
@@ -114,7 +109,8 @@ body:where(:global(.mb-wrapper)) {
     stroke: none !important;
   }
 
-  .EmbedFrame .DashCard .Card {
+  .EmbedFrame .DashCard .Card,
+  .dropdown {
     background-color: var(--mb-color-bg-black);
     border: 1px solid var(--mb-color-border);
   }
@@ -159,4 +155,22 @@ body:where(:global(.mb-wrapper)) {
     );
     border-bottom-color: transparent;
   }
+}
+
+.CompactExportAsPdfButton {
+  position: absolute;
+  right: 1rem;
+  top: 0.5rem;
+  z-index: 1;
+}
+
+.CompactExportAsPdfButton.ParametersVisibleWithNoTabs {
+  top: 1.75rem;
+
+  /* (metabase#59503) We want to fix this differently (here's the first attempt https://github.com/metabase/metabase/pull/59418).
+  So we should just make this work for this particular case for now rather than marking a markup change.
+
+  The reason we need `z-index: 4` here is because the parameter container is defined after this download button in the DOM, and it
+  has `z-index: 3`. */
+  z-index: 4;
 }

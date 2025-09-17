@@ -1,34 +1,39 @@
 import type { TextInputProps } from "@mantine/core";
 import { TextInput } from "@mantine/core";
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, FocusEvent, KeyboardEvent } from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import _ from "underscore";
+import { flushSync } from "react-dom";
 
-import { useUnmountLayout } from "metabase/hooks/use-unmount-layout";
+import { useUnmountLayout } from "metabase/common/hooks/use-unmount-layout";
 
 type TextInputRestProps = Omit<TextInputProps, "onBlur" | "ref">;
 
 export type TextInputBlurChangeProps<
   T extends TextInputRestProps = TextInputRestProps,
 > = T & {
+  normalize?: (value?: T["value"] | undefined) => T["value"] | undefined;
+  resetOnEsc?: boolean;
   value: T["value"] | undefined;
   onBlurChange: (event: { target: HTMLInputElement }) => void;
-  normalize?: (value?: T["value"] | undefined) => T["value"] | undefined;
 };
 
 /**
  * A wrapper around TextInput to be used with onBlurChange prop.
  *
  * In case you don't need it, use TextInput directly.
+ *
+ * If you're modifying this component, make the same change in TextareaBlurChange.
  */
 export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
-  value,
-  onChange,
-  onBlurChange,
   normalize = (value) => value,
-  ...restProps
+  resetOnEsc,
+  value,
+  onBlur,
+  onBlurChange,
+  onChange,
+  ...props
 }: TextInputBlurChangeProps<T>) {
-  const [internalValue, setInternalValue] = useState<T["value"]>();
+  const [internalValue, setInternalValue] = useState<T["value"]>("");
   const ref = useRef<HTMLInputElement>(null);
 
   useLayoutEffect(() => setInternalValue(value), [value]);
@@ -46,13 +51,25 @@ export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
   );
 
   const handleBlur = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
+    (event: FocusEvent<HTMLInputElement>) => {
+      onBlur?.(event);
+
       if (onBlurChange && (value || "") !== event.target.value) {
         onBlurChange(event);
         setInternalValue(normalize(event.target.value) ?? undefined);
       }
     },
-    [normalize, onBlurChange, value],
+    [normalize, onBlur, onBlurChange, value],
+  );
+
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (resetOnEsc && event.key === "Escape") {
+        flushSync(() => setInternalValue(value));
+        ref.current?.blur();
+      }
+    },
+    [ref, resetOnEsc, value],
   );
 
   useUnmountLayout(() => {
@@ -66,15 +83,14 @@ export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
     }
   });
 
-  const inputProps = _.omit(restProps, "onBlur", "onChange", "ref");
-
   return (
     <TextInput
-      {...inputProps}
+      {...props}
       ref={ref}
       value={internalValue}
-      onChange={handleChange}
       onBlur={handleBlur}
+      onChange={handleChange}
+      onKeyDown={handleKeyDown}
     />
   );
 }

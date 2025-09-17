@@ -1,0 +1,21 @@
+name: Uberjar Containerize labeled
+
+on:
+  pull_request:
+    types: [ labeled, opened, synchronize, reopened ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  uberjar:
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar') || github.event.label.name == 'build-docker-uberjar' }}
+    uses: ./.github/workflows/uberjar.yml
+    secrets: inherit
+
+  containerize:
+    needs: [uberjar]
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar') || github.event.label.name == 'build-docker-uberjar' }}
+    uses: ./.github/workflows/containerize-uberjar.yml
+    secrets: inherit

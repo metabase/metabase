@@ -29,7 +29,7 @@ describe("scenarios > alert", () => {
         cy.findByText("Set up Slack")
           .should("be.visible")
           .closest("a")
-          .should("have.attr", "href", "/admin/settings/notifications/slack");
+          .should("have.attr", "href", "/admin/settings/notifications");
         cy.findByText("Add a webhook")
           .should("be.visible")
           .closest("a")
@@ -45,7 +45,7 @@ describe("scenarios > alert", () => {
 
       H.modal().within(() => {
         cy.findByText(
-          "To get notified when something happens, or to send this chart on a schedule, ask your Admin to set up SMTP, Slack, or a webhook.",
+          "To get notified when something happens, or to send this chart on a schedule, ask your Admin to set up SMTP or Slack.",
         );
 
         cy.findByText("Set up SMTP").should("not.exist");
@@ -147,9 +147,10 @@ describe("scenarios > alert", () => {
       const deniedDomain = "metabase.example";
       const deniedEmail = `mailer@${deniedDomain}`;
       // We're not exposing allowed domains to normal users.
-      const normalError = `The following email addresses are not allowed: ${deniedEmail}`;
-      const adminSubscriptionError = `You're only allowed to email subscriptions to addresses ending in ${allowedDomain}`;
+      const normalUserAlertError = `Failed save alert. The following email addresses are not allowed: ${deniedEmail}`;
+      const normalUserSubscriptionError = `Cannot create subscription. The following email addresses are not allowed: ${deniedEmail} Please contact your administrator.`;
       const adminAlertError = `You're only allowed to email alerts to addresses ending in ${allowedDomain}`;
+      const adminSubscriptionError = `You're only allowed to email subscriptions to addresses ending in ${allowedDomain}`;
 
       function addEmailRecipient(email) {
         cy.findByRole("textbox").click().type(`${email}`).blur();
@@ -162,7 +163,7 @@ describe("scenarios > alert", () => {
       beforeEach(() => {
         H.restore();
         cy.signInAsAdmin();
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
         H.setupSMTP();
         setAllowedDomains();
       });
@@ -215,7 +216,7 @@ describe("scenarios > alert", () => {
         });
         cy.findByTestId("toast-undo").within(() => {
           cy.root().should("have.attr", "color", "error");
-          cy.findByText(normalError);
+          cy.root().should("have.text", normalUserAlertError);
         });
 
         H.visitDashboard(ORDERS_DASHBOARD_ID);
@@ -228,7 +229,7 @@ describe("scenarios > alert", () => {
         });
         cy.findByTestId("toast-undo").within(() => {
           cy.root().should("have.attr", "color", "error");
-          cy.findByText(normalError);
+          cy.root().should("have.text", normalUserSubscriptionError);
         });
       });
     },

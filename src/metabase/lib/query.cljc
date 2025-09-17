@@ -3,13 +3,14 @@
   (:require
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib.cache :as lib.cache]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
@@ -210,6 +211,7 @@
         query (-> query
                   (assoc :lib/metadata metadata-provider)
                   (dissoc :lib.convert/converted?)
+
                   lib.normalize/normalize)
         stages (:stages query)]
     (cond-> query
@@ -281,13 +283,22 @@
   [metadata-providerable native-stage]
   (query-with-stages metadata-providerable [native-stage]))
 
+(defn- ensure-cached-metadata-provider
+  "Ensure `a-query` has a cached metadata provider (needed so we can use the general `cached-value` and `cache-value!`
+  facilities; wrap the current metadata in one that adds caching if needed."
+  [a-query]
+  (let [mp         (:lib/metadata a-query)
+        cached-mp? (lib.metadata.protocols/cached-metadata-provider-with-cache? mp)]
+    (cond-> a-query
+      (and mp (not cached-mp?)) (update :lib/metadata lib.metadata.cached-provider/cached-metadata-provider))))
+
 (mu/defn query :- ::lib.schema/query
   "Create a new MBQL query from anything that could conceptually be an MBQL query, like a Database or Table or an
   existing MBQL query or saved question or whatever. If the thing in question does not already include metadata, pass
   it in separately -- metadata is needed for most query manipulation operations."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    x]
-  (lib.cache/attach-query-cache (query-method metadata-providerable x)))
+  (ensure-cached-metadata-provider (query-method metadata-providerable x)))
 
 (mu/defn ->query :- ::lib.schema/query
   "[[->]] friendly form of [[query]].
@@ -431,14 +442,13 @@
   (let [{q :query, n :stage-number} (wrap-native-query-with-mbql a-query stage-number card-id)]
     (apply f q n args)))
 
-(defn serializable
-  "Given a query, ensure it doesn't have any keys or structures that aren't safe for serialization.
-
-  For example, any Atoms or Delays or should be removed."
-  [a-query]
-  (-> a-query
-      (dissoc a-query :lib/metadata)
-      lib.cache/discard-query-cache))
+(defn- template-tag-stages
+  [template-tags]
+  (for [{:keys [card-id snippet-id] tag-type :type} (vals template-tags)
+        :when (#{:card :snippet} tag-type)]
+    (case tag-type
+      :card {:source-card card-id}
+      :snippet {:source-snippet-id snippet-id})))
 
 (defn- stage-seq* [query-fragment]
   (cond
@@ -450,37 +460,54 @@
       (mapcat stage-seq* query-fragment))
 
     (map? query-fragment)
-    (concat (:stages query-fragment) (mapcat stage-seq* (vals query-fragment)))
+    (if (= (:lib/type query-fragment) :mbql.stage/native)
+      (-> query-fragment :template-tags template-tag-stages)
+      (concat (:stages query-fragment) (mapcat stage-seq* (vals query-fragment))))
 
     :else
     []))
 
-(defn- stage-seq [card-id a-query]
-  (map #(assoc % ::from-card card-id) (stage-seq* a-query)))
+(defn- stage-seq [from-entity a-query]
+  ;; from-entity is [entity-type entity-id] like [:card 123] or [:snippet 456]
+  (map #(assoc % ::from-entity from-entity) (stage-seq* a-query)))
+
+(defn- snippet-seq [from-entity snippet]
+  (map #(assoc % ::from-entity from-entity) (template-tag-stages (:template-tags snippet))))
 
 (defn- expand-stage [metadata-provider stage]
-  (let [card-id (:source-card stage)
-        expanded-query (some->> card-id
-                                (lib.metadata/card metadata-provider)
-                                :dataset-query
-                                (query metadata-provider))]
-    (stage-seq card-id expanded-query)))
+  (let [{card-id    :source-card
+         snippet-id :source-snippet-id} stage]
+    (cond
+      card-id
+      (let [expanded-query (some->> card-id
+                                    (lib.metadata/card metadata-provider)
+                                    :dataset-query
+                                    (query metadata-provider))]
+        (stage-seq [:card card-id] expanded-query))
+
+      snippet-id
+      (when-let [snippet (lib.metadata/native-query-snippet metadata-provider snippet-id)]
+        (snippet-seq [:snippet snippet-id] snippet))
+
+      :else [])))
 
 (defn- add-stage-dep [graph stage]
-  (let [card-id  (:source-card  stage)
-        table-id (:source-table stage)
-        from-id  (::from-card   stage)]
+  (let [{card-id :source-card
+         snippet-id :source-snippet-id
+         table-id :source-table
+         from-entity ::from-entity} stage]
     (try
       (cond-> graph
-        card-id  (dep/depend [:card from-id] [:card  card-id])
-        table-id (dep/depend [:card from-id] [:table table-id]))
-      (catch #?(:clj Exception :cljs :default) _e
-        (throw (ex-info (i18n/tru "Cannot save card with cycles.") {}))))))
+        card-id (dep/depend from-entity [:card card-id])
+        snippet-id (dep/depend from-entity [:snippet snippet-id])
+        table-id (dep/depend from-entity [:table table-id]))
+      (catch #?(:clj Exception :cljs :default) e
+        (throw (ex-info (i18n/tru "Cannot save card with cycles.") {} e))))))
 
-(defn- build-graph [source-id metadata-provider a-query]
+(defn- build-card-snippet-graph [source-entity metadata-provider a-query]
   (loop [graph (dep/graph)
          stages-visited 0
-         stages (stage-seq source-id a-query)]
+         stages (stage-seq source-entity a-query)]
     (cond
       (empty? stages)
       graph
@@ -494,12 +521,12 @@
                (inc stages-visited)
                (concat stages (expand-stage metadata-provider stage)))))))
 
-(defn check-overwrite
+(defn check-card-overwrite
   "Returns nil if the card with given `card-id` can be overwritten with `query`.
   Throws `ExceptionInfo` with a user-facing message otherwise.
 
   Currently checks for cycles (self-referencing queries)."
   [card-id new-query]
-  (build-graph card-id new-query new-query)
+  (build-card-snippet-graph [:card card-id] new-query new-query)
   ;; return nil if nothing throws
   nil)

@@ -2,10 +2,10 @@ import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { ConfirmModal } from "metabase/components/ConfirmModal";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import Link from "metabase/core/components/Link";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import Link from "metabase/common/components/Link";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { ActionIcon, Icon, Loader } from "metabase/ui";

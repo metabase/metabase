@@ -15,6 +15,7 @@
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
    [metabase.util.log :as log])
@@ -39,7 +40,6 @@
                               :test/jvm-timezone-setting       false
                               :test/date-time-type             false
                               :test/time-type                  false
-                              :schemas                         true
                               :datetime-diff                   true
                               :expression-literals             true
                               :expressions/integer             true
@@ -53,9 +53,14 @@
                               :left-join                       (not driver-api/is-test?)
                               :describe-fks                    false
                               :actions                         false
-                              :uuid-type                       true
-                              :metadata/key-constraints        (not driver-api/is-test?)}]
+                              :metadata/key-constraints        (not driver-api/is-test?)
+                              :database-routing                true
+                              :transforms/table                true}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
+
+(defmethod driver/database-supports? [:clickhouse :schemas]
+  [_driver _feature db]
+  (boolean (:enable-multiple-db (:details db))))
 
 (def ^:private default-connection-details
   {:user "default" :password "" :dbname "default" :host "localhost" :port 8123})
@@ -66,9 +71,6 @@
                            default-connection-details
                            details)
         {:keys [user password dbname host port ssl clickhouse-settings max-open-connections]} details
-        ;; if multiple databases were specified for the connection,
-        ;; use only the first dbname as the "main" one
-        dbname (first (str/split (str/trim dbname) #" "))
         host   (cond ; JDBCv1 used to accept schema in the `host` configuration option
                  (str/starts-with? host "http://")  (subs host 7)
                  (str/starts-with? host "https://") (subs host 8)
@@ -97,6 +99,16 @@
    db-or-id-or-spec
    options
    (fn [^java.sql.Connection conn]
+     (when-let [db (cond
+                     ;; id?
+                     (integer? db-or-id-or-spec)
+                     (driver-api/with-metadata-provider db-or-id-or-spec
+                       (driver-api/database (driver-api/metadata-provider)))
+                     ;; db?
+                     (u/id db-or-id-or-spec)     db-or-id-or-spec
+                     ;; otherwise it's a spec and we can't get the db
+                     :else nil)]
+       (sql-jdbc.execute/set-role-if-supported! driver conn db))
      (when-not (sql-jdbc.execute/recursive-connection?)
        (when session-timezone
          (let [^com.clickhouse.jdbc.ConnectionImpl clickhouse-conn (.unwrap conn com.clickhouse.jdbc.ConnectionImpl)
@@ -104,17 +116,7 @@
            (.setOption query-settings "session_timezone" session-timezone)
            (.setDefaultQuerySettings clickhouse-conn query-settings)))
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
-       (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone)
-       (when-let [db (cond
-                       ;; id?
-                       (integer? db-or-id-or-spec)
-                       (driver-api/with-metadata-provider db-or-id-or-spec
-                         (driver-api/database (driver-api/metadata-provider)))
-                       ;; db?
-                       (u/id db-or-id-or-spec)     db-or-id-or-spec
-                       ;; otherwise it's a spec and we can't get the db
-                       :else nil)]
-         (sql-jdbc.execute/set-role-if-supported! driver conn db)))
+       (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone))
      (f conn))))
 
 (def ^:private ^{:arglists '([db-details])} cloud?
@@ -187,6 +189,14 @@
   [_ table-or-field-name]
   (when table-or-field-name
     (str/replace table-or-field-name #"-" "_")))
+
+(defmethod driver/humanize-connection-error-message :clickhouse
+  [_ messages]
+  (condp re-matches (str/join " -> " messages)
+    #".*AUTHENTICATION_FAILED.*"
+    :username-or-password-incorrect
+
+    (first messages)))
 
 ;;; ------------------------------------------ Connection Impersonation ------------------------------------------
 
@@ -269,7 +279,8 @@
   [_driver _feature db]
   (if db
     (try (clickhouse-version/is-at-least? 24 4 db)
-         (catch Throwable _e
+         (catch Throwable e
+           (log/warn e "Error checking connection impersonation")
            false))
     false))
 
@@ -293,4 +304,22 @@
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :clickhouse
   [_ ^SQLException e]
   ;; the clickhouse driver doesn't set ErrorCode, we must parse it from the message
-  (str/starts-with? (.getMessage e) "Code: 60."))
+  (let [msg (.getMessage e)]
+    (or (str/starts-with? msg "Code: 60")
+        (str/starts-with? msg "Code: 81"))))
+
+(defmethod driver/compile-transform :clickhouse
+  [driver {:keys [query output-table]}]
+  (let [pieces [(sql.qp/format-honeysql driver {:create-table output-table})
+                ;; TODO(rileythomp, 2025-08-22): Is there a better way to do this?
+                ;; i.e. only do this if we don't have a non-nullable field to use as a primary key?
+                (sql.qp/format-honeysql driver {:raw "ORDER BY ()"})
+                ["AS"]
+                (sql.qp/format-honeysql driver {:raw query})]
+        query (str/join " " (map first pieces))]
+    (into [query] (mapcat rest) pieces)))
+
+(defmethod driver/create-schema-if-needed! :clickhouse
+  [driver conn-spec schema]
+  (let [sql [[(format "CREATE DATABASE IF NOT EXISTS `%s`;" schema)]]]
+    (driver/execute-raw-queries! driver conn-spec sql)))

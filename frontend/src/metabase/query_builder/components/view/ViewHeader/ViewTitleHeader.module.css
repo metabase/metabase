@@ -1,10 +1,18 @@
 .FilterButton {
   &[data-variant="default"] {
-    transition: background 300ms linear;
+    transition:
+      background 300ms linear,
+      border 300ms linear;
 
     &:hover {
       color: var(--mb-color-filter);
       background-color: color-mix(in srgb, var(--mb-color-filter) 10%, white);
+      border-color: color-mix(in srgb, var(--mb-color-filter) 40%, white);
+    }
+
+    /* this pevents the divider between the button group from changing color */
+    &:hover&.FiltersActive {
+      border-right-color: var(--mb-color-border);
     }
   }
 }
@@ -12,10 +20,13 @@
 .FilterButtonAttachment {
   &[data-variant="default"] {
     padding: 0.5rem;
-    transition: background 300ms linear;
+    transition:
+      background 300ms linear,
+      border 300ms linear;
 
     &:hover {
       background-color: color-mix(in srgb, var(--mb-color-filter) 10%, white);
+      border-color: color-mix(in srgb, var(--mb-color-filter) 40%, white);
     }
 
     &:hover,
@@ -46,6 +57,30 @@
     color: var(--mb-color-summarize);
     border-color: color-mix(in srgb, var(--mb-color-summarize) 40%, white);
     background-color: color-mix(in srgb, var(--mb-color-summarize) 15%, white);
+  }
+}
+
+.NotebookButton {
+  transition:
+    background 300ms linear,
+    border 300ms linear;
+
+  &:hover:not([data-active="true"]) {
+    color: var(--mb-color-brand);
+    border-color: color-mix(in srgb, var(--mb-color-brand) 40%, white);
+    background-color: color-mix(in srgb, var(--mb-color-brand) 15%, white);
+  }
+}
+
+.ToggleNativeQueryButton {
+  transition:
+    background 300ms linear,
+    border 300ms linear;
+
+  &:hover:not([data-active="true"]) {
+    color: var(--mb-color-brand);
+    border-color: color-mix(in srgb, var(--mb-color-brand) 40%, white);
+    background-color: color-mix(in srgb, var(--mb-color-brand) 15%, white);
   }
 }
 
@@ -150,6 +185,7 @@
 
 .SavedQuestionHeaderButtonContainer {
   right: 0.38rem;
+  width: 100%;
 
   &.isModelOrMetric {
     right: 0;
@@ -157,6 +193,9 @@
 }
 
 .SavedQuestionLeftSideRoot {
+  width: 100%;
+  min-width: 0;
+
   .SavedQuestionHeaderButtonContainer {
     transition: all 400ms ease;
     position: relative;

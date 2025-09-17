@@ -1,7 +1,10 @@
 import { t } from "ttag";
 
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
 import { useSetting } from "metabase/common/hooks";
-import { Stack, Text } from "metabase/ui";
 
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import {
@@ -13,36 +16,27 @@ import {
 export function PublicSharingSettingsPage() {
   const publicSharingEnabled = useSetting("enable-public-sharing");
   return (
-    <Stack gap="xl" p="0 2rem 2rem 1rem">
-      <AdminSettingInput
-        name="enable-public-sharing"
-        title={t`Enable Public Sharing`}
-        inputType="boolean"
-      />
+    <SettingsPageWrapper title={t`Public sharing`}>
+      <SettingsSection>
+        <AdminSettingInput
+          name="enable-public-sharing"
+          title={t`Enable Public Sharing`}
+          inputType="boolean"
+        />
+      </SettingsSection>
       {publicSharingEnabled && (
-        <Stack gap="xl">
-          <Stack gap="sm">
-            <Text c="text-medium" fw="bold" tt="uppercase" display="block">
-              {t`Shared Dashboards`}
-            </Text>
-
+        <>
+          <SettingsSection title={t`Shared dashboards`}>
             <PublicLinksDashboardListing />
-          </Stack>
-          <Stack gap="sm">
-            <Text c="text-medium" fw="bold" tt="uppercase" display="block">
-              {t`Shared Questions`}
-            </Text>
-
+          </SettingsSection>
+          <SettingsSection title={t`Shared questions`}>
             <PublicLinksQuestionListing />
-          </Stack>
-          <Stack gap="sm">
-            <Text c="text-medium" fw="bold" tt="uppercase" display="block">
-              {t`Shared Action Forms`}
-            </Text>
+          </SettingsSection>
+          <SettingsSection title={t`Shared action forms`}>
             <PublicLinksActionListing />
-          </Stack>
-        </Stack>
+          </SettingsSection>
+        </>
       )}
-    </Stack>
+    </SettingsPageWrapper>
   );
 }

@@ -3,17 +3,27 @@ import { type HTMLAttributes, forwardRef, useEffect, useRef } from "react";
 import { type PlainRoute, withRouter } from "react-router";
 import { t } from "ttag";
 
-import { useOnClickOutside } from "metabase/hooks/use-on-click-outside";
+import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
 import { isWithinIframe } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 import { Box, Card, Center, Overlay, type OverlayProps } from "metabase/ui";
 
+import { useCommandPalette } from "../hooks/useCommandPalette";
 import { useCommandPaletteBasicActions } from "../hooks/useCommandPaletteBasicActions";
 
 import { PaletteInput } from "./Palette.styled";
 import { PaletteFooter } from "./PaletteFooter";
 import { PaletteResults } from "./PaletteResults";
+
+/**
+ * Thin wrapper for useCommandPalette.
+ * Limits re-render scope and provides an easy way to enable/disable entire hook.
+ */
+const AdvancedPaletteActions = withRouter((props) => {
+  useCommandPalette({ locationQuery: props.location.query });
+  return null;
+});
 
 /** Command palette */
 export const Palette = withRouter((props) => {
@@ -26,18 +36,20 @@ export const Palette = withRouter((props) => {
 
   useCommandPaletteBasicActions({ ...props, isLoggedIn });
 
-  //Disable when iframed in
   const { query } = useKBar();
+  const disabled =
+    isWithinIframe() || !isLoggedIn || disableCommandPaletteForRoute;
   useEffect(() => {
-    query.disable(
-      isWithinIframe() || !isLoggedIn || disableCommandPaletteForRoute,
-    );
-  }, [isLoggedIn, query, disableCommandPaletteForRoute]);
+    query.disable(disabled);
+  }, [disabled, query]);
 
   return (
-    <KBarPortal>
-      <PaletteContainer />
-    </KBarPortal>
+    <>
+      <KBarPortal>
+        <PaletteContainer />
+      </KBarPortal>
+      {!disabled && <AdvancedPaletteActions />}
+    </>
   );
 });
 

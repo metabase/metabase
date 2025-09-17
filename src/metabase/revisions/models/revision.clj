@@ -3,6 +3,7 @@
    [clojure.data :as data]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
+   [metabase.queries.core :as queries]
    [metabase.revisions.models.revision.diff :refer [diff-strings*]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -104,6 +105,12 @@
   ;; those cases
   (let [model (u/ignore-exceptions (t2.model/resolve-model (symbol model)))]
     (cond-> revision
+      ;; For Card revisions, ensure :card_schema is present before calling after-select.
+      ;; Old revisions from before v0.55 won't have this field!
+      ;; We add the legacy default value to handle these cases.
+      (and (= model :model/Card) (map? (:object revision)) (not (:card_schema (:object revision))))
+      (update :object assoc :card_schema queries/starting-card-schema-version)
+
       model (update :object (partial mi/do-after-select model)))))
 
 (defn- delete-old-revisions!
@@ -197,7 +204,12 @@
                                         [:message      {:optional true} [:maybe :string]]]]
   (let [entity-name (name entity)
         serialized-object (serialize-instance entity id (dissoc object :message))
-        last-object       (t2/select-one-fn :object :model/Revision :model entity-name :model_id id {:order-by [[:id :desc]]})]
+        last-object (t2/select-one-fn :object :model/Revision :model entity-name :model_id id {:order-by [[:id :desc]]})
+        ;; For Card entities, ensure :card_schema is excluded from comparison
+        ;; Old revisions might have :card_schema added by after-select, but this field
+        ;; shouldn't trigger new revisions as it's a technical/internal field
+        last-object-for-comparison (cond-> last-object
+                                     (= entity :model/Card) (dissoc :card_schema))]
     ;; make sure we still have a map after calling out serialization function
     (assert (map? serialized-object))
     ;; the last-object could have nested object, e.g: Dashboard can have multiple Card in it,
@@ -205,7 +217,7 @@
     ;; E.g: Cards inside Dashboard will not be transformed
     ;; so to be safe, we'll just compare them as string
     (when-not (= (json/encode serialized-object)
-                 (json/encode last-object))
+                 (json/encode last-object-for-comparison))
       (t2/insert! :model/Revision
                   :model        entity-name
                   :model_id     id

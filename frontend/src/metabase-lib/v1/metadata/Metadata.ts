@@ -5,6 +5,7 @@ import type {
   DatabaseId,
   FieldId,
   FieldReference,
+  NativeQuerySnippet,
   SchemaId,
   SegmentId,
   SettingKey,
@@ -45,6 +46,7 @@ class Metadata {
   fields: Record<string, Field> = {};
   segments: Record<string, Segment> = {};
   questions: Record<string, Question> = {};
+  snippets: Record<string, NativeQuerySnippet> = {};
   settings?: Settings;
 
   constructor(opts?: MetadataOpts) {
@@ -141,8 +143,21 @@ class Metadata {
   /**
    * @deprecated load data via RTK Query - useGetCardQuery
    */
-  question(cardId: CardId | undefined | null): Question | null {
-    return (cardId != null && this.questions[cardId]) || null;
+  question(cardId: CardId | string | undefined | null): Question | null {
+    if (typeof cardId === "number") {
+      return this.questions[cardId];
+    }
+
+    // TODO: move loadCard in QB to use RTK Query
+    if (typeof cardId === "string") {
+      for (const numericId in this.questions) {
+        if (this.questions[numericId]._card?.entity_id === cardId) {
+          return this.questions[numericId];
+        }
+      }
+    }
+
+    return null;
   }
 
   setting<T extends SettingKey>(key: T): Settings[T] | null {

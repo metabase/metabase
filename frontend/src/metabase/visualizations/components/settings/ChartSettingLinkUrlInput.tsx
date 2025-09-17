@@ -1,12 +1,14 @@
 import { useState } from "react";
 
-import AutocompleteInput from "metabase/core/components/AutocompleteInput";
+import AutocompleteInput from "metabase/common/components/AutocompleteInput";
+import type { VisualizationSettings } from "metabase-types/api";
 
 interface ChartSettingLinkUrlInputProps {
   value: string | undefined | null;
   onChange: (value: string) => void;
   id?: string;
   options?: string[];
+  onChangeSettings?: (settings: Partial<VisualizationSettings>) => void;
 }
 
 const linkVariablePattern = /.*{{([^{}]*)$/;
@@ -52,7 +54,9 @@ const ChartSettingLinkUrlInput = ({
 
   const handleBlur = () => {
     setIsFocused(false);
-    onChange(focusedValue);
+    if (focusedValue !== (value ?? "")) {
+      onChange(focusedValue);
+    }
   };
 
   return (

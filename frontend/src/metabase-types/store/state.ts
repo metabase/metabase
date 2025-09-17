@@ -1,5 +1,6 @@
 import type { RouterState } from "react-router-redux";
 
+import type { Api } from "metabase/api/api";
 import type { User } from "metabase-types/api";
 
 import type { AdminState } from "./admin";
@@ -20,6 +21,8 @@ import type { FileUploadState } from "./upload";
 import type { VisualizerState } from "./visualizer";
 
 type ModalName = null | "collection" | "dashboard" | "action" | "help";
+
+type MetabaseApiState = ReturnType<typeof Api.reducer>;
 
 export interface State {
   admin: AdminState;
@@ -45,6 +48,7 @@ export interface State {
     present: VisualizerState;
     future: VisualizerState[];
   };
+  "metabase-api": MetabaseApiState;
 }
 
 export type Dispatch<T = any> = (action: T) => unknown | Promise<unknown>;

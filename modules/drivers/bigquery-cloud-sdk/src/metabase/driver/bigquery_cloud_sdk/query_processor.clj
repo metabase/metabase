@@ -8,6 +8,7 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.common.parameters]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
@@ -34,6 +35,8 @@
    (metabase.driver.common.parameters FieldFilter)))
 
 (set! *warn-on-reflection* true)
+
+(comment metabase.driver.common.parameters/keep-me)
 
 (defn- valid-project-identifier?
   "Is String `s` a valid BigQuery project identifier (a.k.a. project-id)? Identifiers are only allowed to contain
@@ -296,7 +299,8 @@
 (defmethod temporal-type :case
   [[_case & rezt]]
   ;; Following logic for picking a type is taken from
-  ;; the [[metabase.query-processor.middleware.annotate/infer-expression-type]].
+  ;; the [[metabase.query-processor.middleware.annotate/infer-expression-type]] (now replaced by
+  ;; lib [[metabase.lib.metadata.calculation/type-of-method]]).
   (loop [[cond-or-else expr & rezt*] rezt]
     (when (and expr (not= :else cond-or-else))
       (if-some [t (temporal-type expr)]
@@ -543,6 +547,10 @@
         (with-temporal-type :timestamp)
         (h2x/with-database-type-info "timestamp")
         (with-temporal-type :timestamp))))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:bigquery-cloud-sdk :nanoseconds]
+  [driver _ expr]
+  (sql.qp/unix-timestamp->honeysql driver :microseconds [:div expr 1000]))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]

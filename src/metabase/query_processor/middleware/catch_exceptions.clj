@@ -2,6 +2,8 @@
   "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format."
   (:require
    [clojure.string :as str]
+   [metabase.analytics.core :as analytics]
+   [metabase.driver :as driver]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -122,7 +124,7 @@
   "Middleware for catching exceptions thrown by the query processor and returning them in a 'normal' format. Forwards
   exceptions to the `result-chan`."
   [qp :- ::qp.schema/qp]
-  (mu/fn [query :- ::qp.schema/query
+  (mu/fn [query :- ::qp.schema/any-query
           rff   :- ::qp.schema/rff]
     (if-not (get-in query [:middleware :userland-query?])
       (qp query rff)
@@ -134,6 +136,7 @@
         (try
           (qp query rff)
           (catch Throwable e
+            (analytics/inc! :metabase-query-processor/query {:driver driver/*driver* :status "failure"})
             ;; format the Exception and return it
             (let [formatted-exception (format-exception* query e @extra-info)]
               (log/errorf "Error processing query: %s\n%s"

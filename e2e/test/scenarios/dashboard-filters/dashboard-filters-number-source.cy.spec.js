@@ -163,7 +163,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
         cy.findByText("225").click();
         cy.button("Update filter").click();
       });
-      H.getDashboardCard().findByText("2000 rows").should("be.visible");
+      H.getDashboardCard().findByText("2,000 rows").should("be.visible");
     });
 
     it("should allow to use a card source with numeric columns and multiple values", () => {

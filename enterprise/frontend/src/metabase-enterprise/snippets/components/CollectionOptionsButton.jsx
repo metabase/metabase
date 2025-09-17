@@ -3,8 +3,8 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import AccordionList from "metabase/core/components/AccordionList";
+import { AccordionList } from "metabase/common/components/AccordionList";
+import TippyPopoverWithTrigger from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 

@@ -24,8 +24,8 @@
    (build-driver! driver edition nil))
 
   ([driver edition {:keys [project-dir target-dir], :as options}]
-   (let [edition       (or edition :oss)
-         start-time-ms (System/currentTimeMillis)]
+   (let [edition (or edition :oss)
+         timer   (u/start-timer)]
      (binding [c/*driver-project-dir* (or project-dir
                                           c/*driver-project-dir*)
                c/*target-directory*   (or target-dir
@@ -35,5 +35,5 @@
          (copy-source-files/copy-source-files! driver edition)
          (compile-source-files/compile-clojure-source-files! driver edition)
          (create-uberjar/create-uberjar! driver edition)
-         (u/announce "Built %s driver in %d ms." driver (- (System/currentTimeMillis) start-time-ms))
+         (u/announce "Built %s driver in %d ms." driver (u/since-ms timer))
          (verify/verify-driver driver))))))

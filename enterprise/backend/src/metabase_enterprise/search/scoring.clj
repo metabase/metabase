@@ -3,12 +3,13 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.search.appdb.scoring :as appdb.scoring]
    [metabase.search.config :as search.config]
-   [metabase.search.in-place.scoring :as scoring]))
+   [metabase.search.in-place.scoring :as scoring]
+   [metabase.search.scoring :as search.scoring]))
 
 (def ^:private enterprise-scorers
-  {:official-collection {:expr (appdb.scoring/truthy :official_collection)
+  {:official-collection {:expr (search.scoring/truthy :official_collection)
                          :pred #(premium-features/has-feature? :official-collections)}
-   :verified            {:expr (appdb.scoring/truthy :verified)
+   :verified            {:expr (search.scoring/truthy :verified)
                          :pred #(premium-features/has-feature? :content-verification)}})
 
 (defn- additional-scorers

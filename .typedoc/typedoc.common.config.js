@@ -39,7 +39,7 @@ const config = {
     "SetSignature",
     "Module",
   ],
-  sort: ["alphabetical"],
+  sort: ["kind", "alphabetical"],
   readme: "none",
   excludePrivate: true,
   excludeExternals: true,

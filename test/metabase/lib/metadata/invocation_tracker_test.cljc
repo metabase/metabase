@@ -4,6 +4,7 @@
    [clojure.test :refer [deftest is]]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
 
@@ -20,6 +21,7 @@
         mp     (lib.metadata.invocation-tracker/invocation-tracker-provider
                 (lib.tu/mock-metadata-provider
                  {:cards [card-1 card-2]}))]
+    (is (lib.metadata.protocols/cached-metadata-provider? mp))
     (is (=? card-1 (lib.metadata/card mp (:id card-1))))
     (is (= [(:id card-1)]
            (lib.metadata/invoked-ids mp :metadata/card)))

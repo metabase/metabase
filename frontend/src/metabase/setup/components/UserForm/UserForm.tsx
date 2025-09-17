@@ -3,10 +3,11 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
-import FormInput from "metabase/core/components/FormInput";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import FormInput from "metabase/common/components/FormInput";
+import FormSubmitButton from "metabase/common/components/FormSubmitButton";
 import { FormProvider, useFormSubmitButton } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
+import { validatePassword } from "metabase/setup/utils";
 import { Flex } from "metabase/ui";
 import type { UserInfo } from "metabase-types/store";
 
@@ -34,26 +35,17 @@ const USER_SCHEMA = Yup.object({
 interface UserFormProps {
   user?: UserInfo;
   isHosted: boolean;
-  onValidatePassword: (password: string) => Promise<string | undefined>;
   onSubmit: (user: UserInfo) => Promise<void>;
 }
 
-export const UserForm = ({
-  user,
-  isHosted,
-  onValidatePassword,
-  onSubmit,
-}: UserFormProps) => {
+const validationContext = {
+  onValidatePassword: _.memoize(validatePassword),
+};
+
+export const UserForm = ({ user, isHosted, onSubmit }: UserFormProps) => {
   const initialValues = useMemo(() => {
     return user ?? USER_SCHEMA.getDefault();
   }, [user]);
-
-  const validationContext = useMemo(
-    () => ({
-      onValidatePassword: _.memoize(onValidatePassword),
-    }),
-    [onValidatePassword],
-  );
 
   return (
     <FormProvider

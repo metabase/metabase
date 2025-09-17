@@ -41,30 +41,29 @@ describe("scenarios > home > homepage", () => {
 
     it("should display x-rays for a user database", () => {
       cy.signInAsAdmin();
+      H.addSqliteDatabase();
 
-      const dbId = 2;
+      cy.get("@sqliteID").then((dbId) => {
+        H.withDatabase(dbId, ({ NUMBER_WITH_NULLS: { NUM } }) => {
+          // we first set the semantic type of the num field to Category,
+          // else no X-rays would be computed
+          cy.request("PUT", `/api/field/${NUM}`, {
+            semantic_type: "type/Category",
+            has_field_values: "none",
+          });
 
-      H.restore("withSqlite");
+          cy.visit("/");
+          cy.wait("@getXrayCandidates");
 
-      H.withDatabase(dbId, ({ NUMBER_WITH_NULLS: { NUM } }) => {
-        // we first set the semantic type of the num field to Category,
-        // else no X-rays would be computed
-        cy.request("PUT", `/api/field/${NUM}`, {
-          semantic_type: "type/Category",
-          has_field_values: "none",
+          cy.findByText("Here are some explorations of");
+          cy.findAllByRole("link").contains("sqlite");
+
+          cy.findByText("Number With Nulls").click();
+
+          cy.wait("@getXrayDashboard");
+
+          cy.findByText("More X-rays");
         });
-
-        cy.visit("/");
-        cy.wait("@getXrayCandidates");
-
-        cy.findByText("Here are some explorations of");
-        cy.findAllByRole("link").contains("sqlite");
-
-        cy.findByText("Number With Nulls").click();
-
-        cy.wait("@getXrayDashboard");
-
-        cy.findByText("More X-rays");
       });
     });
 
@@ -188,7 +187,7 @@ describe("scenarios > home > homepage", () => {
         cy.signInAsAdmin();
         // Setting this to true so that displaying popular items for new users works.
         // This requires the audit-app feature to be enabled
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
 
         H.visitDashboard(ORDERS_DASHBOARD_ID);
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -316,7 +315,7 @@ describe("scenarios > home > custom homepage", () => {
 
       cy.findByTestId("custom-homepage-dashboard-setting").should(
         "contain",
-        "Select a dashboard",
+        "Pick a dashboard",
       );
 
       cy.findByTestId("custom-homepage-dashboard-setting")
@@ -330,13 +329,13 @@ describe("scenarios > home > custom homepage", () => {
         "Orders in a dashboard",
       );
 
-      cy.findByRole("navigation").findByText("Exit admin").click();
+      cy.findByTestId("admin-navbar").findByText("Exit admin").click();
       cy.location("pathname").should(
         "equal",
         `/dashboard/${ORDERS_DASHBOARD_ID}`,
       );
 
-      // Do a page refresh and test dashboard header
+      cy.log("Do a page refresh and test dashboard header");
       cy.visit("/");
       cy.location("pathname").should(
         "equal",
@@ -371,8 +370,8 @@ describe("scenarios > home > custom homepage", () => {
       cy.get("main").findByText("Customize").click();
 
       H.modal().within(() => {
-        cy.findByRole("button", { name: "Save" }).should("be.disabled");
-        cy.findByText(/Select a dashboard/i).click();
+        cy.findByRole("button", { name: "Done" }).should("be.disabled");
+        cy.findByText("Pick a dashboard").click();
       });
 
       H.entityPickerModal().within(() => {
@@ -391,7 +390,7 @@ describe("scenarios > home > custom homepage", () => {
         cy.findByText("Orders in a dashboard").click();
       });
 
-      H.modal().findByRole("button", { name: "Save" }).click();
+      H.modal().findByRole("button", { name: "Done" }).click();
       cy.location("pathname").should(
         "equal",
         `/dashboard/${ORDERS_DASHBOARD_ID}`,
@@ -604,12 +603,10 @@ H.describeWithSnowplow("scenarios > setup", () => {
   it("should send snowplow events through homepage", () => {
     cy.visit("/");
     cy.get("main").findByText("Customize").click();
-    H.modal()
-      .findByText(/Select a dashboard/i)
-      .click();
+    H.modal().findByText("Pick a dashboard").click();
 
     H.entityPickerModal().findByText("Orders in a dashboard").click();
-    H.modal().findByText("Save").click();
+    H.modal().findByText("Done").click();
     H.expectUnstructuredSnowplowEvent({
       event: "homepage_dashboard_enabled",
       source: "homepage",
@@ -621,7 +618,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
 
     cy.log("From the app bar");
     H.newButton().should("be.visible").click();
-    cy.findByRole("dialog").should("be.visible");
+    cy.findByRole("menu", { name: /new/i }).should("be.visible");
     H.expectUnstructuredSnowplowEvent({
       event: "new_button_clicked",
       triggered_from: "app-bar",
@@ -629,7 +626,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
 
     cy.log("Track closing the button as well");
     H.newButton().should("be.visible").click();
-    cy.findByRole("dialog").should("not.exist");
+    cy.findByRole("menu", { name: /new/i }).should("not.exist");
     H.expectUnstructuredSnowplowEvent(
       {
         event: "new_button_clicked",
@@ -645,7 +642,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
       cy.findByText("New").click();
     });
 
-    cy.findByRole("dialog").should("be.visible");
+    cy.findByRole("menu", { name: /new/i }).should("be.visible");
     H.expectUnstructuredSnowplowEvent({
       event: "new_button_clicked",
       triggered_from: "empty-collection",
@@ -660,7 +657,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
     cy.visit("/");
 
     H.newButton().should("be.visible").click();
-    cy.findByRole("dialog").findByText("Dashboard").click();
+    cy.findByRole("menu", { name: /new/i }).findByText("Dashboard").click();
     cy.findByTestId("new-dashboard-modal").should("be.visible");
     H.expectUnstructuredSnowplowEvent({
       event: "new_button_item_clicked",
@@ -675,7 +672,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
       cy.findByText("This collection is empty").should("be.visible");
       cy.findByText("New").click();
     });
-    cy.findByRole("dialog").findByText("Dashboard").click();
+    cy.findByRole("menu", { name: /new/i }).findByText("Dashboard").click();
     cy.findByTestId("new-dashboard-modal").should("be.visible");
     H.expectUnstructuredSnowplowEvent(
       {

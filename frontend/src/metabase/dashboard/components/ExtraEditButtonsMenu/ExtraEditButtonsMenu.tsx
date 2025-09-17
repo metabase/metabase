@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { ToolbarButton } from "metabase/components/ToolbarButton";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { setDashboardAttributes } from "metabase/dashboard/actions";
 import { trackDashboardWidthChange } from "metabase/dashboard/analytics";
 import { getDashboard, getDashboardId } from "metabase/dashboard/selectors";

@@ -4,10 +4,10 @@ import { memo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import InputBlurChange from "metabase/components/InputBlurChange";
-import L from "metabase/components/List/List.module.css";
-import Button from "metabase/core/components/Button";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
+import Button from "metabase/common/components/Button";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import InputBlurChange from "metabase/common/components/InputBlurChange";
+import L from "metabase/common/components/List/List.module.css";
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 
@@ -84,7 +84,12 @@ const EditableReferenceHeader = ({
           ]
         )}
         {user && user.is_superuser && !isEditing && (
-          <Button icon="pencil" style={{ fontSize: 14 }} onClick={startEditing}>
+          <Button
+            icon="pencil"
+            style={{ fontSize: 14 }}
+            type="button"
+            onClick={startEditing}
+          >
             {t`Edit`}
           </Button>
         )}

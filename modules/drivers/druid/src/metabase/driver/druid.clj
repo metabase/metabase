@@ -18,7 +18,8 @@
                               :expression-literals            true
                               :schemas                        false
                               :set-timezone                   true
-                              :temporal/requires-default-unit true}]
+                              :temporal/requires-default-unit true
+                              :database-routing               true}]
   (defmethod driver/database-supports? [:druid feature] [_driver _feature _db] supported?))
 
 (defmethod driver/can-connect? :druid
@@ -38,7 +39,7 @@
   [_ database]
   (druid.sync/dbms-version database))
 
-(defmethod driver/describe-database :druid
+(defmethod driver/describe-database* :druid
   [_ database]
   (druid.sync/describe-database database))
 

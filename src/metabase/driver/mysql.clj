@@ -86,7 +86,10 @@
                               ;; fully support `offset` we need to do some kooky query transformations just for MySQL
                               ;; and make this work.
                               :window-functions/offset                false
-                              :expression-literals                    true}]
+                              :expression-literals                    true
+                              :database-routing                       true
+                              :metadata/table-existence-check         true
+                              :transforms/table                       true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
@@ -95,7 +98,7 @@
 (defmethod driver/database-supports? [:mysql :nested-field-columns] [_driver _feat db]
   (driver.common/json-unfolding-default db))
 
-(doseq [feature [:actions :actions/custom]]
+(doseq [feature [:actions :actions/custom :actions/data-editing]]
   (defmethod driver/database-supports? [:mysql feature]
     [driver _feat _db]
     ;; Only supported for MySQL right now. Revise when a child driver is added.
@@ -111,11 +114,33 @@
   [driver conn]
   (->> conn (sql-jdbc.sync/dbms-version driver) :flavor (= "MariaDB")))
 
+(defn- partial-revokes-enabled?
+  [driver db]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   db
+   nil
+   (fn [^java.sql.Connection conn]
+     (let [stmt (.prepareStatement conn "SHOW VARIABLES LIKE 'partial_revokes';")
+           rset (.executeQuery stmt)]
+       (when (.next rset)
+         (= "ON" (.getString rset 2)))))))
+
 (defmethod driver/database-supports? [:mysql :table-privileges]
   [_driver _feat _db]
   ;; Disabled completely due to errors when dealing with partial revokes (metabase#38499)
   false
   #_(and (= driver :mysql) (not (mariadb? db))))
+
+(defmethod driver/database-supports? [:mysql :metadata/table-writable-check]
+  [driver _feat db]
+  (and (= driver :mysql)
+       (not (mariadb? db))
+       (not (try
+              (partial-revokes-enabled? driver db)
+              (catch Exception e
+                (log/warn e "Failed to check table writable")
+                false)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
@@ -221,22 +246,23 @@
   (h2x/current-datetime-honeysql-form driver))
 
 (defmethod driver/humanize-connection-error-message :mysql
-  [_ message]
-  (condp re-matches message
-    #"^Communications link failure\s+The last packet sent successfully to the server was 0 milliseconds ago. The driver has not received any packets from the server.$"
-    :cannot-connect-check-host-and-port
+  [_ messages]
+  (let [message (first messages)]
+    (condp re-matches message
+      #"^Communications link failure\s+The last packet sent successfully to the server was 0 milliseconds ago. The driver has not received any packets from the server.$"
+      :cannot-connect-check-host-and-port
 
-    #"^Unknown database .*$"
-    :database-name-incorrect
+      #"^Unknown database .*$"
+      :database-name-incorrect
 
-    #"Access denied for user.*$"
-    :username-or-password-incorrect
+      #"Access denied for user.*$"
+      :username-or-password-incorrect
 
-    #"Must specify port after ':' in connection string"
-    :invalid-hostname
+      #"Must specify port after ':' in connection string"
+      :invalid-hostname
 
-    ;; else
-    message))
+      ;; else
+      message)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod sql-jdbc.sync/db-default-timezone :mysql
@@ -271,7 +297,20 @@
   [_]
   :sunday)
 
-;;; +----------------------------------------------------------------------------------------------------------------+
+(defmethod driver/rename-tables!* :mysql
+  [_driver db-id sorted-rename-map]
+  (let [rename-clauses (map (fn [[from-table to-table]]
+                              (str (sql/format-entity from-table) " TO " (sql/format-entity to-table)))
+                            sorted-rename-map)
+        sql (str "RENAME TABLE " (str/join ", " rename-clauses))]
+    (sql-jdbc.execute/do-with-connection-with-options
+     :mysql
+     db-id
+     nil
+     (fn [^java.sql.Connection conn]
+       (jdbc/execute! {:connection conn} [sql])))))
+
+;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -293,6 +332,10 @@
 (defmethod sql.qp/cast-temporal-byte [:mysql :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal expr))
+
+(defmethod sql.qp/cast-temporal-byte [:mysql :Coercion/ISO8601Bytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime expr))
 
 (defn- date-format [format-str expr]
   [:date_format expr (h2x/literal format-str)])
@@ -1046,3 +1089,7 @@
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :mysql
   [_ e]
   (= (sql-jdbc/get-sql-state e) "42S02"))
+
+(defmethod driver.sql/default-schema :mysql
+  [_]
+  nil)

@@ -36,8 +36,7 @@ export function FilterWidgetTypeSelect({
     [hasOptions, options],
   );
 
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- It's hard to tell if this is still used in the app. Please see https://metaboat.slack.com/archives/C505ZNNH4/p1703243785315819
-  const { url: docsUrl } = useDocsUrl(
+  const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
     "questions/native-editor/sql-parameters",
     { anchor: "the-field-filter-variable-type" },
   );
@@ -48,7 +47,7 @@ export function FilterWidgetTypeSelect({
         {t`Filter widget type`}
         {/* TODO this might be incorrect, because we allow running the query (see sql-field-filter e2e test)
             but show "required" here despite it's None */}
-        {hasNoWidgetType && <ErrorSpan>({t`required`})</ErrorSpan>}
+        {hasNoWidgetType && <ErrorSpan ml="xs">({t`required`})</ErrorSpan>}
       </ContainerLabel>
 
       <Select
@@ -63,9 +62,11 @@ export function FilterWidgetTypeSelect({
       {!hasOptions && (
         <p>
           {t`There aren't any filter widgets for this type of field yet.`}{" "}
-          <Link to={docsUrl} target="_blank" className={CS.link}>
-            {t`Learn more`}
-          </Link>
+          {showMetabaseLinks && (
+            <Link to={docsUrl} target="_blank" className={CS.link}>
+              {t`Learn more`}
+            </Link>
+          )}
         </p>
       )}
     </InputContainer>

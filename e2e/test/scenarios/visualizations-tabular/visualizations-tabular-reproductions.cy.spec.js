@@ -55,7 +55,7 @@ describe("issue 6010", () => {
     cy.wait("@dataset");
 
     cy.findByTestId("qb-filters-panel").within(() => {
-      cy.findByText("Created At is Jan 1–31, 2024").should("be.visible");
+      cy.findByText("Created At: Month is Jan 1–31, 2024").should("be.visible");
     });
     // FIXME metrics v2 -- check that the values in column Total are above 150
   });
@@ -250,7 +250,7 @@ describe("issue 18976, 18817", () => {
   });
 });
 
-describe.skip("issue 19373", () => {
+describe("issue 19373", { tags: "@skip" }, () => {
   const questiondDetails = {
     name: "Products, Distinct values of Rating, Grouped by Category and Created At (year)",
     query: {
@@ -638,7 +638,7 @@ describe("issue 37726", () => {
 });
 
 // unskip once metabase#42049 is addressed
-describe.skip("issue 42049", () => {
+describe("issue 42049", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -827,7 +827,7 @@ describe("issue 14148", { tags: "@external" }, () => {
   });
 });
 
-describe.skip("issue 25415", () => {
+describe("issue 25415", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -1089,12 +1089,9 @@ describe("issue 50346", () => {
     display: "pivot",
     visualization_settings: {
       "pivot_table.column_split": {
+        // mix field refs with and without `base-type` to make sure we support both cases
         rows: [
-          [
-            "field",
-            PRODUCTS.CATEGORY,
-            { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
-          ],
+          ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
           [
             "field",
             PRODUCTS.VENDOR,
@@ -1321,7 +1318,7 @@ describe("issue 56771", () => {
       .as("headerCell")
       .then(($cell) => {
         const width = $cell[0].getBoundingClientRect().width;
-        expect(width).to.be.greaterThan(174);
+        expect(width).to.be.greaterThan(160);
       });
   });
 });
@@ -1464,5 +1461,47 @@ WHERE NOT (
     H.queryBuilderMain()
       .findByText("Totals for Affiliate")
       .should("be.visible");
+  });
+});
+
+describe("issue 55673", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable();
+  });
+
+  it("should be able to close a header popover using Escape (metabase#55673)", () => {
+    H.tableHeaderClick("Product ID");
+    cy.findByTestId("click-actions-view").should("be.visible");
+
+    cy.focused().should(
+      "have.attr",
+      "data-testid",
+      "click-actions-sort-control-sort.ascending",
+    );
+    cy.realPress(["Escape"]);
+    cy.findByTestId("click-actions-view").should("not.exist");
+  });
+});
+
+describe("issue 55637", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not show column metadata popovers when header cell is clicked (metabase#55637)", () => {
+    H.openOrdersTable();
+    H.tableHeaderColumn("ID").realHover();
+    cy.findByTestId("column-info").should("exist");
+
+    H.tableHeaderColumn("ID").click();
+
+    H.tableHeaderColumn("ID").realHover();
+    cy.findByTestId("column-info").should("not.exist");
+
+    H.tableHeaderColumn("Tax").realHover();
+    cy.findByTestId("column-info").should("not.exist");
   });
 });

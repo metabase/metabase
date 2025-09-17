@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { DelayedLoadingSpinner } from "metabase/common/components/EntityPicker/components/LoadingSpinner";
-import { Grid } from "metabase/components/Grid";
+import { Grid } from "metabase/common/components/Grid";
 import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import { useSelector } from "metabase/lib/redux";

@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import { AccordionList } from "metabase/common/components/AccordionList";
 import {
   HoverParent,
   TableColumnInfoIcon,
-} from "metabase/components/MetadataInfo/ColumnInfoIcon";
-import AccordionList from "metabase/core/components/AccordionList";
+} from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
 import CS from "metabase/css/core/index.css";
 import type { IconName } from "metabase/ui";
 import { Box, DelayGroup, Icon } from "metabase/ui";
@@ -91,7 +91,7 @@ const DataSelectorFieldPicker = ({
           searchable={hasFiltering}
           onChange={(item: { field: Field }) => onChangeField(item.field)}
           itemIsSelected={checkIfItemIsSelected}
-          itemIsClickable={(item: FieldWithName) => item.field}
+          itemIsClickable={(item: FieldWithName) => Boolean(item.field)}
           renderItemWrapper={renderItemWrapper}
           renderItemIcon={renderItemIcon}
         />

@@ -1,4 +1,5 @@
 const { H } = cy;
+
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
@@ -39,7 +40,7 @@ describe("issue 9339", () => {
   });
 });
 
-describe.skip("issue 12496", () => {
+describe("issue 12496", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -731,7 +732,7 @@ describe("issue 25994", () => {
   });
 });
 
-describe.skip("issue 26861", () => {
+describe("issue 26861", { tags: "@skip" }, () => {
   const filter = {
     id: "a3b95feb-b6d2-33b6-660b-bb656f59b1d7",
     name: "filter",
@@ -898,15 +899,18 @@ describe("issue 31340", () => {
     cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
     cy.intercept("GET", "/api/field/*/search/*").as("search");
 
-    cy.visit(
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${PEOPLE_ID}`,
-    );
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: PEOPLE_ID,
+      fieldId: PEOPLE.PASSWORD,
+    });
 
-    cy.findByTestId("column-PASSWORD")
-      .findByDisplayValue("Password")
-      .type(`{selectAll}${LONG_COLUMN_NAME}`)
+    H.DataModel.FieldSection.getNameInput()
+      .focus()
+      .clear()
+      .type(LONG_COLUMN_NAME)
       .blur();
-
     cy.wait("@fieldUpdate");
 
     H.createQuestion(
@@ -1041,7 +1045,7 @@ describe("metabase#32985", () => {
   });
 });
 
-describe.skip("metabase#44550", () => {
+describe("metabase#44550", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -1294,7 +1298,7 @@ describe("issue 45877", () => {
     };
 
     H.createNativeQuestion(questionDetails, { visitQuestion: true });
-    cy.get("fieldset").should("contain", "Expected Invoice").click();
+    H.filterWidget().should("contain", "Expected Invoice").click();
     H.popover().within(() => {
       cy.findByPlaceholderText("Search the list").should("exist");
 
@@ -1312,7 +1316,7 @@ describe("issue 45877", () => {
     // We don't even have to run the query to reproduce this issue
     // so let's not waste time and resources doing so.
     cy.get(H.POPOVER_ELEMENT).should("not.exist");
-    cy.get("fieldset").should("contain", "false").click();
+    H.filterWidget().should("contain", "false").click();
     H.popover().within(() => {
       cy.findAllByLabelText("true").should("have.length", 1);
       cy.findAllByLabelText("false")
@@ -1623,6 +1627,30 @@ describe("issue 58923", () => {
               cy.wrap(top - bottom).should("be.gt", 16);
             });
         });
+      });
+  });
+});
+
+describe("issue QUE-1359", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should render an outline on the custom expression item in the filter popover (QUE-1359)", () => {
+    H.openReviewsTable({ mode: "notebook" });
+    H.filter({ mode: "notebook" });
+
+    Cypress._.times(10, () => cy.realPress("ArrowDown"));
+
+    H.popover()
+      .findByText("Custom Expression")
+      .parent()
+      .then((el) => {
+        cy.wrap(window.getComputedStyle(el[0]).outline).should(
+          "contain",
+          "solid",
+        );
       });
   });
 });

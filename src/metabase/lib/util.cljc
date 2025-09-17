@@ -14,7 +14,6 @@
    [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
-   [metabase.lib.ident :as lib.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -24,7 +23,10 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf]))
 
 #?(:clj
    (set! *warn-on-reflection* true))
@@ -40,20 +42,24 @@
    :cljs
    (def format "Exactly like [[clojure.core/format]] but ClojureScript-friendly." gstring/format))
 
+;;; TODO (Cam 9/8/25) -- overlapping functionality with [[metabase.lib.schema.common/is-clause?]]
 (defn clause?
   "Returns true if this is a clause."
   [clause]
   (and (vector? clause)
        (keyword? (first clause))
-       (let [opts (get clause 1)]
+       (let [opts (second clause)]
          (and (map? opts)
               (contains? opts :lib/uuid)))))
 
+;;; TODO (Cam 9/8/25) -- some overlap with [[metabase.lib.dispatch/mbql-clause-type]]
 (defn clause-of-type?
   "Returns true if this is a clause."
   [clause clause-type]
   (and (clause? clause)
-       (= (first clause) clause-type)))
+       (if (set? clause-type)
+         (clause-type (first clause))
+         (= (first clause) clause-type))))
 
 (defn field-clause?
   "Returns true if this is a field clause."
@@ -78,13 +84,15 @@
   (and (clause? clause)
        (lib.hierarchy/isa? (first clause) ::lib.schema.ref/metric)))
 
+;;; TODO (Cam 8/28/25) -- base type is the original effective type!!! We shouldn't need a separate
+;;; `:metabase.lib.field/original-effective-type` key.
 (defn original-isa?
   "Returns whether the type of `expression` isa? `typ`.
    If the expression has an original-effective-type due to bucketing, check that."
   [expression typ]
   (isa?
    (or (and (clause? expression)
-            (:metabase.lib.field/original-effective-type (second expression)))
+            ((some-fn :metabase.lib.field/original-effective-type :base-type) (lib.options/options expression)))
        (lib.schema.expression/type-of expression))
    typ))
 
@@ -104,8 +112,7 @@
          clause])
       (lib.options/update-options (fn [opts]
                                     (-> opts
-                                        (assoc :lib/expression-name a-name
-                                               :ident (lib.ident/random-ident))
+                                        (assoc :lib/expression-name a-name)
                                         (dissoc :name :display-name))))))
 
 (defmulti custom-name-method
@@ -135,8 +142,7 @@
   (let [new-clause (if (= :expressions (first location))
                      (-> new-clause
                          (top-level-expression-clause (or (custom-name new-clause)
-                                                          (expression-name target-clause)))
-                         (lib.common/preserve-ident-of target-clause))
+                                                          (expression-name target-clause))))
                      new-clause)]
     (m/update-existing-in
      stage
@@ -212,26 +218,29 @@
   "Convert legacy `:source-metadata` to [[metabase.lib.metadata/StageMetadata]]."
   [source-metadata]
   (when source-metadata
-    (-> (if (seqable? source-metadata)
-          {:columns source-metadata}
-          source-metadata)
-        (update :columns (fn [columns]
-                           (mapv (fn [column]
-                                   (-> column
-                                       (update-keys u/->kebab-case-en)
-                                       (assoc :lib/type :metadata/column)))
-                                 columns)))
-        (assoc :lib/type :metadata/results))))
+    (when-let [m (cond
+                   (seqable? source-metadata) {:columns source-metadata}
+                   (map? source-metadata)     source-metadata
+                   :else                      (do
+                                                (log/warnf "Ignoring invalid source metadata: expected sequence of columns, got %s" (pr-str (type source-metadata)))
+                                                nil))]
+      (-> m
+          (update :columns (fn [columns]
+                             (mapv (fn [column]
+                                     (-> column
+                                         (perf/update-keys u/->kebab-case-en)
+                                         (assoc :lib/type :metadata/column)))
+                                   columns)))
+          (assoc :lib/type :metadata/results)))))
 
 (defn- join->pipeline [join]
-  (let [source (select-keys join [:source-table :source-query])
-        stages (inner-query->stages source)
-        stages (if-let [source-metadata (and (>= (count stages) 2)
-                                             (:source-metadata join))]
-                 (assoc-in stages [(- (count stages) 2) :lib/stage-metadata] (->stage-metadata source-metadata))
+  (let [stages (inner-query->stages (or (:source-query join)
+                                        (select-keys join [:source-table])))
+        stages (if-let [source-metadata (:source-metadata join)]
+                 (assoc-in stages [(dec (count stages)) :lib/stage-metadata] (->stage-metadata source-metadata))
                  stages)]
     (-> join
-        (dissoc :source-table :source-query)
+        (dissoc :source-table :source-query :source-metadata)
         (update-legacy-boolean-expression->list :condition :conditions)
         (assoc :lib/type :mbql/join
                :stages stages)
@@ -490,15 +499,65 @@
   (-> (str original \_ suffix)
       (truncate-alias)))
 
-(mu/defn unique-name-generator :- [:function
-                                   ;; (f str) => unique-str
-                                   [:=>
-                                    [:cat :string]
-                                    ::lib.schema.common/non-blank-string]
-                                   ;; (f id str) => unique-str
-                                   [:=>
-                                    [:cat :any :string]
-                                    ::lib.schema.common/non-blank-string]]
+(mr/def ::unique-name-generator
+  "Stateful function with the signature
+
+    (f)        => 'fresh' unique name generator
+    (f str)    => unique-str
+    (f id str) => unique-str
+
+  i.e. repeated calls with the same string should return different unique strings."
+  [:function
+   ;; (f) => generates a new instance of the unique name generator for recursive generation without 'poisoning the
+   ;; well'.
+   [:=>
+    [:cat]
+    [:ref ::unique-name-generator]]
+   ;; (f str) => unique-str
+   [:=>
+    [:cat :string]
+    ::lib.schema.common/non-blank-string]
+   ;; (f id str) => unique-str
+   [:=>
+    [:cat :any :string]
+    ::lib.schema.common/non-blank-string]])
+
+(mu/defn- unique-name-generator-with-options :- ::unique-name-generator
+  [options :- :map]
+  ;; ok to use here because this is the one designated wrapper for it.
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (let [f         (mbql.u/unique-name-generator options)
+        truncate* (if (::truncate? options)
+                    truncate-alias
+                    identity)]
+    ;; I know we could just use `comp` here but it gets really hard to figure out where it's coming from when you're
+    ;; debugging things; a named function like this makes it clear where this function came from
+    (fn unique-name-generator-fn
+      ([]
+       (unique-name-generator-with-options options))
+      ([s]
+       (->> s truncate* f))
+      ([id s]
+       (->> s truncate* (f id))))))
+
+(mu/defn- unique-name-generator-factory :- [:function
+                                            [:=>
+                                             [:cat]
+                                             ::unique-name-generator]
+                                            [:=>
+                                             [:cat [:schema [:sequential :string]]]
+                                             ::unique-name-generator]]
+  [options :- :map]
+  (mu/fn :- ::unique-name-generator
+    ([]
+     (unique-name-generator-with-options options))
+    ([existing-names :- [:sequential :string]]
+     (let [f (unique-name-generator-with-options options)]
+       (doseq [existing existing-names]
+         (f existing))
+       f))))
+
+(def ^{:arglists '([] [existing-names])} unique-name-generator
   "Create a new function with the signature
 
     (f str) => str
@@ -514,32 +573,28 @@
   that currently exist on a stage of the query.
 
   The two-arity version of the returned function can be used for idempotence. See docstring
-  for [[metabase.legacy-mbql.util/unique-name-generator]] for more information."
-  ([]
-   (let [uniqify      (mbql.u/unique-name-generator
-                       ;; unique by lower-case name, e.g. `NAME` and `name` => `NAME` and `name_2`
-                       ;;
-                       ;; some databases treat aliases as case-insensitive so make sure the generated aliases are
-                       ;; unique regardless of case
-                       :name-key-fn     u/lower-case-en
-                       :unique-alias-fn unique-alias)]
-     ;; I know we could just use `comp` here but it gets really hard to figure out where it's coming from when you're
-     ;; debugging things; a named function like this makes it clear where this function came from
-     (fn unique-name-generator-fn
-       ([s]
-        (->> s
-             truncate-alias
-             uniqify))
-       ([id s]
-        (->> s
-             truncate-alias
-             (uniqify id))))))
+  for [[metabase.legacy-mbql.util/unique-name-generator]] for more information.
 
-  ([existing-names    :- [:sequential :string]]
-   (let [f (unique-name-generator)]
-     (doseq [existing existing-names]
-       (f existing))
-     f)))
+  New!
+
+  You can call
+
+    (f)
+
+  to get a new, fresh unique name generator for recursive usage without 'poisoning the well'."
+  ;; unique by lower-case name, e.g. `NAME` and `name` => `NAME` and `name_2`
+   ;;
+   ;; some databases treat aliases as case-insensitive so make sure the generated aliases are unique regardless of
+   ;; case
+  (unique-name-generator-factory
+   {::truncate?      true
+    :name-key-fn     u/lower-case-en
+    :unique-alias-fn unique-alias}))
+
+(def ^{:arglists '([] [existing-names])} non-truncating-unique-name-generator
+  "This is the same as [[unique-name-generator]] but doesn't truncate names, matching the 'classic' behavior in QP
+  results metadata."
+  (unique-name-generator-factory {::truncate? false}))
 
 (def ^:private strip-id-regex
   #?(:cljs (js/RegExp. " id$" "i")
@@ -571,16 +626,13 @@
                    (fn [summary-clauses]
                      (->> a-summary-clause
                           lib.common/->op-arg
-                          lib.common/ensure-ident
                           (conj (vec summary-clauses)))))]
     (if new-summary?
       (-> new-query
           (update-query-stage
            stage-number
            (fn [stage]
-             (-> stage
-                 (dissoc :order-by :fields)
-                 (m/update-existing :joins (fn [joins] (mapv #(dissoc % :fields) joins))))))
+             (dissoc stage :order-by)))
           (update :stages #(into [] (take (inc (canonical-stage-index query stage-number))) %)))
       new-query)))
 
@@ -590,8 +642,8 @@
    (find-stage-index-and-clause-by-uuid query -1 lib-uuid))
   ([query stage-number lib-uuid]
    (first (keep-indexed (fn [idx stage]
-                          (lib.util.match/match-one stage
-                            (clause :guard #(= lib-uuid (lib.options/uuid %)))
+                          (lib.util.match/match-lite-recursive stage
+                            (clause :guard (= lib-uuid (lib.options/uuid clause)))
                             [idx clause]))
                         (:stages (drop-later-stages query stage-number))))))
 
@@ -653,8 +705,9 @@
   "Get the `:lib/type` or `:type` from `query`, even if it is not-yet normalized."
   [query :- [:maybe :map]]
   (when (map? query)
-    (when-let [query-type (keyword (some #(get query %)
-                                         [:lib/type :type "lib/type" "type"]))]
+    (when-let [query-type (some-> (some #(get query %)
+                                        [:lib/type :type "lib/type" "type"])
+                                  keyword)]
       (when (#{:mbql/query :query :native :internal} query-type)
         query-type))))
 

@@ -53,7 +53,7 @@ const DefaultTemplate: StoryFn<{
     ? createMockState({
         settings: createMockSettingsState({
           "token-features": createMockTokenFeatures({
-            "development-mode": true,
+            development_mode: true,
           }),
         }),
       })
@@ -144,6 +144,31 @@ export const DashboardTableEmbeddingThemeWithStickyBackgroundColor = {
         },
       },
     },
+  },
+};
+
+export const DashboardTableWithRowId = {
+  render: DefaultTemplate,
+  args: {
+    series: data.groupedOrders,
+    isDashboard: true,
+  },
+};
+
+export const PreserveWhitespaceWrapped = {
+  parameters: {
+    loki: { skip: true },
+  },
+  render: DefaultTemplate,
+  args: {
+    series: data.preserveWhitespaceWrapped,
+  },
+};
+
+export const PreserveWhitespaceUnwrapped = {
+  render: DefaultTemplate,
+  args: {
+    series: data.preserveWhitespaceUnwrapped,
   },
 };
 

@@ -365,7 +365,9 @@ describe("issue 31701", () => {
 const assertLinkCardOverflow = (link, card) => {
   link.then((linkElem) => {
     card.then((dashCardElem) => {
-      expect(linkElem[0].scrollHeight).to.eq(dashCardElem[0].scrollHeight);
+      expect(linkElem[0].scrollHeight).to.eq(
+        dashCardElem[0].firstChild.scrollHeight,
+      );
     });
   });
 };

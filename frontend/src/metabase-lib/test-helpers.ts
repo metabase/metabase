@@ -179,7 +179,7 @@ interface BreakoutClauseOpts {
   binningStrategyName?: string;
 }
 
-interface ExpressionClauseOpts {
+export interface ExpressionClauseOpts {
   name: string;
   operator: Lib.ExpressionOperator;
   args: (Lib.ExpressionArg | Lib.ExpressionClause)[];
@@ -328,10 +328,7 @@ export const getJoinQueryHelpers = (
     throw new Error("No default strategy found");
   }
 
-  const defaultOperator = Lib.joinConditionOperators(query, stageIndex).find(
-    (operator) => Lib.displayInfo(query, stageIndex, operator).default,
-  );
-
+  const defaultOperator = Lib.joinConditionOperators(query, stageIndex)[0];
   if (!defaultOperator) {
     throw new Error("No default operator found");
   }

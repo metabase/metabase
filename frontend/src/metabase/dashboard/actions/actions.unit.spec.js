@@ -1,5 +1,10 @@
 import { DashboardApi } from "metabase/services";
-import { createMockRoutingState } from "metabase-types/store/mocks/index";
+import { createMockDashboard } from "metabase-types/api/mocks";
+import {
+  createMockDashboardState,
+  createMockRoutingState,
+  createMockState,
+} from "metabase-types/store/mocks/index";
 
 import { SIDEBAR_NAME } from "../constants";
 
@@ -27,17 +32,18 @@ describe("dashboard actions", () => {
 
   beforeEach(() => {
     dispatch = jest.fn();
-    getState = () => ({
-      dashboard: {
-        dashboardId: 1,
-        dashboards: {
-          1: {
-            id: 1,
-            parameters: [{ id: 123 }, { id: 456 }],
+    getState = () =>
+      createMockState({
+        dashboard: createMockDashboardState({
+          dashboardId: 1,
+          dashboards: {
+            1: createMockDashboard({
+              id: 1,
+              parameters: [{ id: 123 }, { id: 456 }],
+            }),
           },
-        },
-      },
-    });
+        }),
+      });
   });
 
   describe("setSidebar", () => {
@@ -98,7 +104,7 @@ describe("dashboard actions", () => {
 
   describe("setEditingParameter", () => {
     it("should set an edit parameter sidebar when given a parameterId", () => {
-      setEditingParameter(0)(dispatch);
+      setEditingParameter(0)(dispatch, getState);
 
       expect(dispatch).toHaveBeenCalledWith(
         setSidebar({
@@ -109,7 +115,7 @@ describe("dashboard actions", () => {
     });
 
     it("should clear sidebar state when given a nil parameterId", () => {
-      setEditingParameter()(dispatch);
+      setEditingParameter(null)(dispatch, getState);
 
       expect(dispatch).toHaveBeenCalledWith(closeSidebar());
     });

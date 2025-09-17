@@ -1,6 +1,8 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": ".tsbuildinfo",
     "outDir": "build",
     "paths": {
       "*": [
@@ -9,6 +11,7 @@
         "./enterprise/frontend/src/*",
         "./enterprise/frontend/test/*"
       ],
+      "build-configs/*": ["./frontend/build/*"],
       "cljs/*": ["./target/cljs_dev/*"]
     },
     "plugins": [

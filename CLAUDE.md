@@ -13,11 +13,10 @@
 
 ### JavaScript/TypeScript
 
-- **Lint:** `yarn lint-eslint`
-- **Test:** `yarn test-unit path/to/file.unit.spec.js` or `yarn test-unit -t "pattern"`
-- **Watch:** `yarn test-unit-watch path/to/file.unit.spec.js`
+- **Lint:** `yarn lint-eslint-pure`
+- **Test:** `yarn test-unit-keep-cljs path/to/file.unit.spec.js` or `yarn test-unit-keep-cljs -t "pattern"`
 - **Format:** `yarn prettier`
-- **Type Check:** `yarn type-check`
+- **Type Check:** `yarn type-check-pure`
 
 ### Clojure
 
@@ -144,6 +143,7 @@ For effective REPL usage:
 
 - End all files with a newline.
 - When editing tabular code, where the columns line up, try to keep them aligned.
+- Spaces on a line with nothing after it is not allowed
 
 ## Critical REPL Usage Rules
 

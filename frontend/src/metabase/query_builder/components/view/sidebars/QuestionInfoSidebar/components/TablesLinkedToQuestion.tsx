@@ -1,9 +1,10 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import Link from "metabase/core/components/Link";
+import Link from "metabase/common/components/Link";
+import { useSelector } from "metabase/lib/redux";
+import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
 import { Flex, Icon, Stack, Text } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
 
 import { ToggleFullList } from "./ToggleFullList";
 import { useExpandableList } from "./hooks";
@@ -11,13 +12,10 @@ import type { QuestionSource } from "./types";
 import { getJoinedTablesWithIcons } from "./utils";
 
 /** Displays tables linked to the question via a foreign-key relationship */
-export const TablesLinkedToQuestion = ({
-  question,
-}: {
-  question: Question;
-}) => {
+export const TablesLinkedToQuestion = () => {
+  const question = useSelector(getQuestionWithoutComposing);
   const joinedTablesWithIcons: QuestionSource[] = useMemo(
-    () => getJoinedTablesWithIcons(question),
+    () => (question ? getJoinedTablesWithIcons(question) : []),
     [question],
   );
 

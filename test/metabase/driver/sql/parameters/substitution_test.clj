@@ -6,8 +6,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.common.parameters :as params]
-   [metabase.driver.sql.parameters.substitution
-    :as sql.params.substitution]
+   [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -17,14 +16,14 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest ^:parallel field->clause-test
+(deftest ^:parallel field->field-filter-clause-test
   (is (=? [:field
            (meta/id :venues :id)
            {:base-type                                                           :type/BigInteger
             :temporal-unit                                                       nil
             :metabase.query-processor.util.add-alias-info/source-table           (meta/id :venues)
             :metabase.driver.sql.parameters.substitution/compiling-field-filter? true}]
-          (#'sql.params.substitution/field->clause
+          (#'sql.params.substitution/field->field-filter-clause
            :h2
            (meta/field-metadata :venues :id)
            :number/=

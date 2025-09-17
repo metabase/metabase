@@ -5,6 +5,7 @@
     "no-color-literals": 0,
     "no-console": 0,
     "@typescript-eslint/no-namespace": "off",
+    "cypress/no-assigning-return-values": "error",
     "cypress/no-async-tests": "error",
     "cypress/no-pause": "error",
     "quotes": ["error", "double", { "avoidEscape": true }],
@@ -32,8 +33,8 @@
         "patterns": [
           {
             "group": [
-              "**/enterprise/frontend/src/embedding-sdk",
-              "**/enterprise/frontend/src/embedding-sdk/*"
+              "**/enterprise/frontend/src/embedding-sdk-package",
+              "**/enterprise/frontend/src/embedding-sdk-package/*"
             ],
             "message": "Please use SDK package name - '@metabase/embedding-sdk-react'"
           }

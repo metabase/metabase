@@ -1,28 +1,24 @@
-import cx from "classnames";
-import type { Ref } from "react";
-import { forwardRef, useMemo } from "react";
-import { t } from "ttag";
+import { Popover } from "metabase/ui";
+import type * as Lib from "metabase-lib";
 
-import {
-  type ColumnListItem,
-  QueryColumnPicker,
-} from "metabase/common/components/QueryColumnPicker";
-import { Popover, Text } from "metabase/ui";
-import * as Lib from "metabase-lib";
-
-import S from "./JoinConditionColumnPicker.module.css";
+import { JoinColumnButton } from "./JoinColumnButton";
+import { JoinColumnDropdown } from "./JoinColumnDropdown";
 
 interface JoinConditionColumnPickerProps {
   query: Lib.Query;
   stageIndex: number;
   joinable: Lib.JoinOrJoinable;
+  strategy: Lib.JoinStrategy;
   tableName: string | undefined;
-  lhsColumn: Lib.ColumnMetadata | undefined;
-  rhsColumn: Lib.ColumnMetadata | undefined;
+  lhsExpression: Lib.ExpressionClause | undefined;
+  rhsExpression: Lib.ExpressionClause | undefined;
   isOpened: boolean;
-  isLhsColumn: boolean;
+  isLhsPicker: boolean;
   isReadOnly: boolean;
-  onChange: (column: Lib.ColumnMetadata) => void;
+  onChange: (
+    newExpression: Lib.ExpressionClause,
+    newTemporalBucket: Lib.Bucket | null,
+  ) => void;
   onOpenChange: (isOpened: boolean) => void;
 }
 
@@ -30,11 +26,12 @@ export function JoinConditionColumnPicker({
   query,
   stageIndex,
   joinable,
+  strategy,
   tableName,
-  lhsColumn,
-  rhsColumn,
+  lhsExpression,
+  rhsExpression,
   isOpened,
-  isLhsColumn,
+  isLhsPicker,
   isReadOnly,
   onChange,
   onOpenChange,
@@ -42,13 +39,13 @@ export function JoinConditionColumnPicker({
   return (
     <Popover opened={isOpened} position="bottom-start" onChange={onOpenChange}>
       <Popover.Target>
-        <JoinColumnTarget
+        <JoinColumnButton
           query={query}
           stageIndex={stageIndex}
           tableName={tableName}
-          lhsColumn={lhsColumn}
-          rhsColumn={rhsColumn}
-          isLhsColumn={isLhsColumn}
+          lhsExpression={lhsExpression}
+          rhsExpression={rhsExpression}
+          isLhsPicker={isLhsPicker}
           isOpened={isOpened}
           isReadOnly={isReadOnly}
           onClick={() => onOpenChange(!isOpened)}
@@ -59,137 +56,14 @@ export function JoinConditionColumnPicker({
           query={query}
           stageIndex={stageIndex}
           joinable={joinable}
-          lhsColumn={lhsColumn}
-          rhsColumn={rhsColumn}
-          isLhsColumn={isLhsColumn}
+          strategy={strategy}
+          lhsExpression={lhsExpression}
+          rhsExpression={rhsExpression}
+          isLhsPicker={isLhsPicker}
           onChange={onChange}
           onClose={() => onOpenChange(false)}
         />
       </Popover.Dropdown>
     </Popover>
   );
-}
-
-interface JoinColumnTargetProps {
-  query: Lib.Query;
-  stageIndex: number;
-  tableName: string | undefined;
-  lhsColumn: Lib.ColumnMetadata | undefined;
-  rhsColumn: Lib.ColumnMetadata | undefined;
-  isLhsColumn: boolean;
-  isOpened: boolean;
-  isReadOnly: boolean;
-  onClick: () => void;
-}
-
-const JoinColumnTarget = forwardRef(function JoinColumnTarget(
-  {
-    query,
-    stageIndex,
-    tableName,
-    lhsColumn,
-    rhsColumn,
-    isLhsColumn,
-    isOpened,
-    isReadOnly,
-    onClick,
-  }: JoinColumnTargetProps,
-  ref: Ref<HTMLButtonElement>,
-) {
-  const column = isLhsColumn ? lhsColumn : rhsColumn;
-  const columnInfo = useMemo(
-    () => (column ? Lib.displayInfo(query, stageIndex, column) : undefined),
-    [query, stageIndex, column],
-  );
-
-  return (
-    <button
-      className={cx(S.JoinCellItem, {
-        [S.isReadOnly]: isReadOnly,
-        [S.hasColumnStyle]: column != null,
-        [S.noColumnStyle]: column == null,
-        [S.isOpen]: isOpened,
-      })}
-      ref={ref}
-      disabled={isReadOnly}
-      onClick={onClick}
-      aria-label={isLhsColumn ? t`Left column` : t`Right column`}
-    >
-      {tableName != null && (
-        <Text
-          display="block"
-          fz={11}
-          lh={1}
-          color={columnInfo ? "text-white" : "brand"}
-          ta="left"
-          fw={400}
-        >
-          {tableName}
-        </Text>
-      )}
-      <Text
-        display="block"
-        color={columnInfo ? "text-white" : "brand"}
-        ta="left"
-        fw={700}
-        lh={1}
-      >
-        {columnInfo?.displayName ?? t`Pick a column…`}
-      </Text>
-    </button>
-  );
-});
-
-interface JoinColumnDropdownProps {
-  query: Lib.Query;
-  stageIndex: number;
-  joinable: Lib.JoinOrJoinable;
-  lhsColumn: Lib.ColumnMetadata | undefined;
-  rhsColumn: Lib.ColumnMetadata | undefined;
-  isLhsColumn: boolean;
-  onChange: (column: Lib.ColumnMetadata) => void;
-  onClose: () => void;
-}
-
-function JoinColumnDropdown({
-  query,
-  stageIndex,
-  joinable,
-  lhsColumn,
-  rhsColumn,
-  isLhsColumn,
-  onChange,
-  onClose,
-}: JoinColumnDropdownProps) {
-  const columnGroups = useMemo(() => {
-    const getColumns = isLhsColumn
-      ? Lib.joinConditionLHSColumns
-      : Lib.joinConditionRHSColumns;
-    const columns = getColumns(
-      query,
-      stageIndex,
-      joinable,
-      lhsColumn,
-      rhsColumn,
-    );
-    return Lib.groupColumns(columns);
-  }, [query, stageIndex, joinable, lhsColumn, rhsColumn, isLhsColumn]);
-
-  return (
-    <QueryColumnPicker
-      className={S.JoinColumnPicker}
-      query={query}
-      columnGroups={columnGroups}
-      stageIndex={stageIndex}
-      hasTemporalBucketing
-      checkIsColumnSelected={checkIsColumnSelected}
-      onSelect={onChange}
-      onClose={onClose}
-      data-testid={isLhsColumn ? "lhs-column-picker" : "rhs-column-picker"}
-    />
-  );
-}
-
-function checkIsColumnSelected(item: ColumnListItem) {
-  return Boolean(item.selected);
 }

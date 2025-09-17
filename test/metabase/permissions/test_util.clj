@@ -15,7 +15,7 @@
   ;; Select sandboxes _before_ permissions.
   (let [original-perms     (t2/select :model/Permissions)
         original-sandboxes (if config/ee-available?
-                             (t2/select :model/GroupTableAccessPolicy)
+                             (t2/select :model/Sandbox)
                              [])]
     (try
       (thunk)
@@ -23,12 +23,12 @@
         (binding [perms/*allow-root-entries* true
                   perms/*allow-admin-permissions-changes* true]
           (when config/ee-available?
-            (t2/delete! :model/GroupTableAccessPolicy))
+            (t2/delete! :model/Sandbox))
           (t2/delete! :model/Permissions)
           ;; Insert perms _before_ sandboxes because of a foreign key constraint on sandboxes.permission_id
           (t2/insert! :model/Permissions original-perms)
           (when config/ee-available?
-            (t2/insert! :model/GroupTableAccessPolicy original-sandboxes)))))))
+            (t2/insert! :model/Sandbox original-sandboxes)))))))
 
 (defmacro with-restored-perms!
   "Runs `body`, and restores permissions and sandboxes to their original state afterwards."
@@ -101,6 +101,8 @@
   "Implementation of `with-full-data-perms-for-all-users`. Sets every data permission for all databases to the
   most permissive value for the All Users permission group for the duration of the test."
   [thunk]
+  ;; make sure app DB is set up and test users are created
+  (initialize/initialize-if-needed! :db :test-users)
   (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
     (doseq [[perm-type _] data-perms/Permissions
             db-id         (t2/select-pks-set :model/Database)]
@@ -124,19 +126,27 @@
     (data-perms/set-database-permission! group-or-id (data/db) perm-type value)
     (thunk)))
 
-(defn do-with-perm-for-group-and-table!
+(defn do-with-perms-for-group-and-tables!
   "Implementation of `with-perm-for-group-and-table`. Sets the data permission for the test dataset/table to the given
   value for the given permission group for the duration of the test."
-  [group-or-id table-or-id perm-type value thunk]
+  [group-or-id table-or-id->perm-type->value thunk]
   (with-restored-data-perms-for-group! (u/the-id group-or-id)
-    (data-perms/set-table-permission! group-or-id table-or-id perm-type value)
+    (doseq [[table-or-id perm-type->value] table-or-id->perm-type->value
+            [perm-type value] perm-type->value]
+      (data-perms/set-table-permission! group-or-id table-or-id perm-type value))
     (thunk)))
 
 (defmacro with-perm-for-group-and-table!
   "Sets the data permission for the test dataset and specified table to the given value for the given permission group
   and runs `body` in that context."
   [group-or-id table-or-id perm-type value & body]
-  `(do-with-perm-for-group-and-table! ~group-or-id ~table-or-id ~perm-type ~value (fn [] ~@body)))
+  `(do-with-perms-for-group-and-tables! ~group-or-id ~{table-or-id {perm-type value}} (fn [] ~@body)))
+
+(defmacro with-perms-for-group-and-tables!
+  "Sets the data permission for the test dataset and specified tables to the given values for the given permission
+  group, running `body` in that context."
+  [group-or-id table-or-id->perm-type->value & body]
+  `(do-with-perms-for-group-and-tables! ~group-or-id ~table-or-id->perm-type->value (fn [] ~@body)))
 
 (defmacro with-perm-for-group!
   "Runs `body`, and sets the data permission for the the test dataset to the given value for the given permission

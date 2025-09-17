@@ -6,9 +6,10 @@ import rehypeExternalLinks from "rehype-external-links";
 import remarkGfm from "remark-gfm";
 import { t } from "ttag";
 
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import { getParameterValues } from "metabase/dashboard/selectors";
-import { useToggle } from "metabase/hooks/use-toggle";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
@@ -46,6 +47,9 @@ export function Text({
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
   const [textValue, setTextValue] = useState(settings.text);
 
+  const tc = useTranslateContent();
+  const translatedText = tc(settings.text);
+
   const [isFocused, { turnOn: toggleFocusOn, turnOff: toggleFocusOff }] =
     useToggle(justAdded);
   const isPreviewing = !isFocused;
@@ -65,10 +69,10 @@ export function Text({
         dashcard,
         dashboard,
         parameterValues,
-        text: settings.text,
+        text: translatedText,
         escapeMarkdown: true,
       }),
-    [dashcard, dashboard, parameterValues, settings.text],
+    [dashcard, dashboard, parameterValues, translatedText],
   );
 
   const hasContent = !isEmpty(settings.text);
@@ -84,6 +88,7 @@ export function Text({
         onClick={toggleFocusOn}
         isSingleRow={isSingleRow}
         isMobile={isMobile}
+        isFixedWidth={dashboard?.width === "fixed"}
       >
         {isPreviewing ? (
           <ReactMarkdownStyleWrapper
@@ -136,6 +141,7 @@ export function Text({
       className={cx(className)}
       isSingleRow={isSingleRow}
       isMobile={isMobile}
+      isFixedWidth={dashboard?.width === "fixed"}
     >
       <ReactMarkdownStyleWrapper>
         <ReactMarkdown

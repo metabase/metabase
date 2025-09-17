@@ -16,20 +16,21 @@ import {
   BrowseSchemas,
   BrowseTables,
 } from "metabase/browse";
+import { ArchiveCollectionModal } from "metabase/collections/components/ArchiveCollectionModal";
 import CollectionLanding from "metabase/collections/components/CollectionLanding";
 import { MoveCollectionModal } from "metabase/collections/components/MoveCollectionModal";
 import { TrashCollectionLanding } from "metabase/collections/components/TrashCollectionLanding";
-import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
-import { Unauthorized } from "metabase/components/ErrorPages";
-import { MoveQuestionsIntoDashboardsModal } from "metabase/components/MoveQuestionsIntoDashboardsModal";
-import NotFoundFallbackPage from "metabase/containers/NotFoundFallbackPage";
-import { UnsubscribePage } from "metabase/containers/Unsubscribe";
-import { UserCollectionList } from "metabase/containers/UserCollectionList";
+import { Unauthorized } from "metabase/common/components/ErrorPages";
+import { MoveQuestionsIntoDashboardsModal } from "metabase/common/components/MoveQuestionsIntoDashboardsModal";
+import NotFoundFallbackPage from "metabase/common/components/NotFoundFallbackPage";
+import { UnsubscribePage } from "metabase/common/components/Unsubscribe";
+import { UserCollectionList } from "metabase/common/components/UserCollectionList";
 import { DashboardCopyModalConnected } from "metabase/dashboard/components/DashboardCopyModal";
 import { DashboardMoveModalConnected } from "metabase/dashboard/components/DashboardMoveModal";
 import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
-import { AutomaticDashboardAppConnected } from "metabase/dashboard/containers/AutomaticDashboardApp";
-import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
+import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDashboardApp";
+import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
+import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import { HomePage } from "metabase/home/components/HomePage";
@@ -39,8 +40,11 @@ import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
   PLUGIN_COLLECTIONS,
+  PLUGIN_DOCUMENTS,
+  PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   PLUGIN_LANDING_PAGE,
   PLUGIN_METABOT,
+  PLUGIN_TABLE_EDITING,
 } from "metabase/plugins";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { loadCurrentUser } from "metabase/redux/user";
@@ -58,6 +62,7 @@ import SegmentListContainer from "metabase/reference/segments/SegmentListContain
 import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
 import SearchApp from "metabase/search/containers/SearchApp";
+import { EmbeddingSetup } from "metabase/setup/components/EmbeddingSetup/EmbeddingSetup";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
@@ -86,10 +91,31 @@ export const getRoutes = (store) => {
           if (hasUserSetup) {
             replace("/");
           }
+          const searchParams = new URLSearchParams(window.location.search);
+          if (
+            searchParams.get("use_case") === "embedding" &&
+            searchParams.get("new_embedding_flow") === "true"
+          ) {
+            replace("/setup/embedding" + window.location.search);
+          }
           trackPageView(location.pathname);
         }}
         onChange={(prevState, nextState) => {
           trackPageView(nextState.location.pathname);
+        }}
+        disableCommandPalette
+      />
+
+      {/* EMBEDDING SETUP */}
+      <Route
+        path="/setup/embedding"
+        component={EmbeddingSetup}
+        onEnter={async (nextState, replace, done) => {
+          if (hasUserSetup) {
+            replace("/");
+          }
+          trackPageView(location.pathname);
+          done();
         }}
         disableCommandPalette
       />
@@ -155,6 +181,13 @@ export const getRoutes = (store) => {
             component={TrashCollectionLanding}
           />
 
+          {PLUGIN_DOCUMENTS.getRoutes()}
+
+          <Route
+            path="embed-js"
+            component={PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.SdkIframeEmbedSetup}
+          />
+
           <Route
             path="collection/entity/:entity_id(**)"
             component={createEntityIdRedirect({
@@ -205,7 +238,7 @@ export const getRoutes = (store) => {
           <Route
             path="dashboard/:slug"
             title={t`Dashboard`}
-            component={DashboardAppConnected}
+            component={DashboardApp}
           >
             <ModalRoute
               path="move"
@@ -250,6 +283,7 @@ export const getRoutes = (store) => {
             <Route path=":slug" component={QueryBuilder} />
             <Route path=":slug/notebook" component={QueryBuilder} />
             <Route path=":slug/query" component={QueryBuilder} />
+            <Route path=":slug/columns" component={QueryBuilder} />
             <Route path=":slug/metadata" component={QueryBuilder} />
             <Route path=":slug/metabot" component={QueryBuilder} />
             <Route path=":slug/:objectId" component={QueryBuilder} />
@@ -278,6 +312,8 @@ export const getRoutes = (store) => {
               component={BrowseTables}
             />
 
+            {PLUGIN_TABLE_EDITING.getRoutes()}
+
             {/* These two Redirects support legacy paths in v48 and earlier */}
             <Redirect from=":dbId-:slug" to="databases/:dbId-:slug" />
             <Redirect
@@ -286,12 +322,13 @@ export const getRoutes = (store) => {
             />
           </Route>
 
+          <Route path="table">
+            <Route path=":tableId/detail/:rowId" component={TableDetailPage} />
+          </Route>
+
           {/* INDIVIDUAL DASHBOARDS */}
 
-          <Route
-            path="/auto/dashboard/*"
-            component={AutomaticDashboardAppConnected}
-          />
+          <Route path="/auto/dashboard/*" component={AutomaticDashboardApp} />
 
           {/* REFERENCE */}
           <Route path="/reference" title={t`Data Reference`}>

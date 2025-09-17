@@ -7,7 +7,6 @@ import {
   deserializeNumberParameterValue,
   deserializeStringParameterValue,
   deserializeTemporalUnitParameterValue,
-  normalizeNumberParameterValue,
   serializeDateParameterValue,
   serializeNumberParameterValue,
 } from "./parsing";
@@ -38,37 +37,96 @@ describe("number parameters", () => {
     { value: [10.1], expectedValue: [10.1] },
     { value: [-10.1], expectedValue: [-10.1] },
     { value: [10, 9007199254740993n], expectedValue: [10, "9007199254740993"] },
+    { value: [10, 20], expectedValue: [10, 20] },
+    { value: [10, null], expectedValue: [10, null] },
+    { value: [null, 20], expectedValue: [null, 20] },
   ])("should serialize $value", ({ value, expectedValue }) => {
     expect(serializeNumberParameterValue(value)).toEqual(expectedValue);
   });
 
-  it.each([
-    { value: 1, expectedValue: [1] },
-    { value: "1", expectedValue: [1] },
-    { value: 1.5, expectedValue: [1.5] },
-    { value: "1.5", expectedValue: [1.5] },
-    { value: [1, 2, 3], expectedValue: [1, 2, 3] },
-    { value: ["1", "2", "3"], expectedValue: [1, 2, 3] },
-    { value: [10, "9007199254740993"], expectedValue: [10, 9007199254740993n] },
-  ])("should deserialize $value", ({ value, expectedValue }) => {
-    expect(deserializeNumberParameterValue(value)).toEqual(expectedValue);
-  });
-
-  it.each([
-    { value: undefined, expectedValue: [] },
-    { value: null, expectedValue: [] },
-    {
-      value: [0, "1", 1.5, "abc", "9007199254740993"],
-      expectedValue: [0, 1, 1.5, "9007199254740993"],
+  describe.each(["number/=", "number/!=", "number/>=", "number/<="])(
+    "%s",
+    (type) => {
+      it.each([
+        { value: 1, expectedValue: [1] },
+        { value: "1", expectedValue: [1] },
+        { value: 1.5, expectedValue: [1.5] },
+        { value: "1.5", expectedValue: [1.5] },
+        {
+          value: ["9007199254740993"],
+          expectedValue: [9007199254740993n],
+        },
+      ])("should deserialize $value", ({ value, expectedValue }) => {
+        expect(deserializeNumberParameterValue(type, value)).toEqual(
+          expectedValue,
+        );
+      });
     },
-  ])("should normalize $value", ({ value, expectedValue }) => {
-    expect(normalizeNumberParameterValue(value)).toEqual(expectedValue);
+  );
+
+  describe.each(["number/=", "number/!="])("%s", (type) => {
+    it.each([
+      { value: [1, 2, 3], expectedValue: [1, 2, 3] },
+      { value: ["1", "2", "3"], expectedValue: [1, 2, 3] },
+      {
+        value: ["9007199254740993", "9007199254740995"],
+        expectedValue: [9007199254740993n, 9007199254740995n],
+      },
+      {
+        value: [10, "9007199254740993"],
+        expectedValue: [10, 9007199254740993n],
+      },
+    ])("should deserialize $value", ({ value, expectedValue }) => {
+      expect(deserializeNumberParameterValue(type, value)).toEqual(
+        expectedValue,
+      );
+    });
   });
 
-  it.each([null, undefined, "", [""], ["abc"], NaN, [NaN], [true, false]])(
-    "should ignore invalid value %s",
-    (value) => {
-      expect(deserializeNumberParameterValue(value)).toEqual([]);
+  describe.each(["number/between"])("%s", (type) => {
+    it.each([
+      {
+        value: [10, "9007199254740993"],
+        expectedValue: [10, 9007199254740993n],
+      },
+      {
+        value: ["9007199254740993", "9007199254740995"],
+        expectedValue: [9007199254740993n, 9007199254740995n],
+      },
+      { value: [10, 20], expectedValue: [10, 20] },
+      { value: [10, null], expectedValue: [10, null] },
+      {
+        value: ["9007199254740993", null],
+        expectedValue: [9007199254740993n, null],
+      },
+      { value: [null, 20], expectedValue: [null, 20] },
+      {
+        value: [null, "9007199254740993"],
+        expectedValue: [null, 9007199254740993n],
+      },
+    ])("should deserialize $value", ({ value, expectedValue }) => {
+      expect(deserializeNumberParameterValue(type, value)).toEqual(
+        expectedValue,
+      );
+    });
+  });
+
+  describe.each(["number/=", "number/!=", "number/>=", "number/<="])(
+    "%s",
+    (type) => {
+      it.each([
+        null,
+        undefined,
+        "",
+        [""],
+        ["abc"],
+        NaN,
+        [NaN],
+        [true, false],
+        [null, null],
+      ])("should ignore invalid value %s", (value) => {
+        expect(deserializeNumberParameterValue(type, value)).toEqual([]);
+      });
     },
   );
 });

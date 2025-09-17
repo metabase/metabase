@@ -10,6 +10,10 @@ To add a database connection, click on the **gear** icon in the top right, and n
 
 You can edit these settings at any time. Just remember to save your changes.
 
+### Connection string
+
+Paste a connection string here to pre-fill the remaining fields below.
+
 ### Display name
 
 The display name for the database in the Metabase interface.
@@ -72,10 +76,6 @@ If you've selected **Choose when syncs and scans happen** > **ON**, you'll see t
 Turn this option **ON** to scan a sample of values every time Metabase runs a [sync](../sync-scan.md#how-database-syncs-work).
 
 A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you leave this option **OFF**, Metabase will only fingerprint your columns once during setup.
-
-## Database routing
-
-See [Database routing](../../permissions/database-routing.md).
 
 ## Danger zone
 

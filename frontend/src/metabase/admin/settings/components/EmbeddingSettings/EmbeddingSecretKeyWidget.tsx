@@ -1,14 +1,14 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
+import { SetByEnvVarWrapper } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useAdminSetting } from "metabase/api/utils";
-import { ConfirmModal } from "metabase/components/ConfirmModal";
-import InputBlurChange from "metabase/components/InputBlurChange";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import InputBlurChange from "metabase/common/components/InputBlurChange";
 import { UtilApi } from "metabase/services";
 import { Box, Button, Flex } from "metabase/ui";
 
 import { SettingHeader } from "../SettingHeader";
-import { SetByEnvVarWrapper } from "../SettingsSetting";
 
 export const EmbeddingSecretKeyWidget = () => {
   const [modalOpened, { open: openModal, close: closeModal }] =
@@ -37,7 +37,10 @@ export const EmbeddingSecretKeyWidget = () => {
         title={t`Embedding secret key`}
         description={t`Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations.`}
       />
-      <SetByEnvVarWrapper setting={settingDetails}>
+      <SetByEnvVarWrapper
+        settingDetails={settingDetails}
+        settingKey="embedding-secret-key"
+      >
         <Flex maw="52rem" py="md" gap="md" w="full">
           <InputBlurChange
             value={value}

@@ -1,5 +1,7 @@
 ---
 title: Permissions overview
+redirect_from:
+  - /docs/latest/permissions
 ---
 
 # Permissions overview
@@ -22,9 +24,9 @@ Granting group access to collections of questions, dashboards, models, and sub-c
 
 Granting group access to different Metabase features.
 
-## [Data sandboxing](./data-sandboxes.md)
+## [Row and column security](./row-and-column-security.md)
 
-Creating data sandboxes to restrict access to rows and columns in tables.
+Setting up row and column security to restrict access to rows and columns in tables.
 
 ## [Snippet folder permissions](./snippets.md)
 
@@ -33,3 +35,7 @@ Organize snippets into folders that require permissions to view.
 ## [Notification permissions](./notifications.md)
 
 Notes on how permissions interact with dashboard subscriptions and alerts.
+
+## [Configuring permissions for embedding](./embedding.md)
+
+The permissions tooling available for different embedding setups.

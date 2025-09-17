@@ -7,7 +7,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.slack :as slack]
    [metabase.config.core :as config]
-   [metabase.permissions.validation :as validation]
+   [metabase.permissions.core :as perms]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]))
@@ -88,7 +88,7 @@
    :- [:map
        [:slack-app-token          {:optional true} [:maybe ms/NonBlankString]]
        [:slack-bug-report-channel {:optional true} [:maybe :string]]]]
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   (try
     ;; Clear settings if no values are provided
     (when (nil? slack-app-token)
@@ -128,7 +128,7 @@
 (api.macros/defendpoint :get "/manifest"
   "Returns the YAML manifest file that should be used to bootstrap new Slack apps"
   []
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   @slack-manifest)
 
 ;; Handle bug report submissions to Slack
@@ -145,9 +145,7 @@
           file-info (slack/upload-file! file-content "diagnostic-info.json")
           blocks (create-slack-message-blocks diagnostic-info file-info)]
       (slack/post-chat-message!
-       bug-report-channel
-       nil
-       {:blocks blocks})
+       {:channel bug-report-channel :blocks blocks})
       {:success true
        :file-url (get file-info :permalink_public)})
     (catch Exception e

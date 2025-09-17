@@ -164,6 +164,8 @@ const mockLocaleJsonResponse = (locale: string) => {
 
 async function waitForLocaleJson(locale: string) {
   await waitFor(() => {
-    expect(fetchMock.done(`/app/locales/${locale}.json`)).toBe(true);
+    expect(fetchMock.callHistory.done(`/app/locales/${locale}.json`)).toBe(
+      true,
+    );
   });
 }

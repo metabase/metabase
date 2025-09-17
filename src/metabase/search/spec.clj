@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [malli.error :as me]
-   [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.search.config :as search.config]
    [metabase.util :as u]
@@ -13,13 +12,17 @@
    [toucan2.tools.transformed :as t2.transformed]))
 
 (def search-models
-  "Set of search model string names."
-  #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "indexed-entity" "metric" "card"})
+  "Set of search model string names. Sorted by order to index based on importance and amount of time to index"
+  (cond->  ["collection" "dashboard" "segment" "database" "action"]
+    config/ee-available? (conj "document")
+    ;; metric/card/dataset moved to the end because they take a long time due to computing has_temporal_dim etc.
+    ;; table and indexed-entity moved to the end because there can be a large number of them
+    true (conj "table" "indexed-entity" "metric" "card" "dataset")))
 
 (def ^:private search-model->toucan-model
   (into {}
         (map (fn [search-model]
-               [search-model (-> search-model api/model->db-model :db-model)]))
+               [search-model (-> search-model search.config/model->db-model :db-model)]))
         search-models))
 
 (def ^:private SearchModel
@@ -33,28 +36,48 @@
   - keyword: given by the corresponding column
   - vector: calculated by the given expression
   - map: a sub-select"
-  [:union :boolean :keyword vector? :map])
+  [:union :boolean :keyword vector? :map
+   [:map
+    [:fn fn?]
+    [:req-fields {:optional true} [:vector :keyword]]]])
+
+(defn function-attr?
+  "Attributes populate by clojure functions"
+  [attr-def]
+  (and (map? attr-def) (:fn attr-def)))
+
+(defn collect-fn-attr-req-fields
+  "Return set of required appdb fields declared in a spec's function attrs"
+  [spec]
+  (->> (:attrs spec)
+       vals
+       (filter function-attr?)
+       (mapcat :req-fields)
+       distinct))
 
 (def attr-types
   "The abstract types of each attribute."
-  {:archived            :boolean
-   :collection-id       :pk
-   :created-at          :timestamp
-   :creator-id          :pk
-   :dashboard-id        :int
-   :dashboardcard-count :int
-   :database-id         :pk
-   :id                  :text
-   :last-edited-at      :timestamp
-   :last-editor-id      :pk
-   :last-viewed-at      :timestamp
-   :name                :text
-   :native-query        nil
-   :official-collection :boolean
-   :pinned              :boolean
-   :updated-at          :timestamp
-   :verified            :boolean
-   :view-count          :int})
+  {:archived                :boolean
+   :collection-id           :pk
+   :created-at              :timestamp
+   :creator-id              :pk
+   :dashboard-id            :int
+   :dashboardcard-count     :int
+   :database-id             :pk
+   :id                      :text
+   :last-edited-at          :timestamp
+   :last-editor-id          :pk
+   :last-viewed-at          :timestamp
+   :name                    :text
+   :native-query            nil
+   :official-collection     :boolean
+   :pinned                  :boolean
+   :updated-at              :timestamp
+   :verified                :boolean
+   :view-count              :int
+   :non-temporal-dim-ids    :text
+   :has-temporal-dim        :boolean
+   :display-type            :text})
 
 (def ^:private explicit-attrs
   "These attributes must be explicitly defined, omitting them could be a source of bugs."
@@ -75,7 +98,9 @@
          :pinned
          :verified                                          ;;  in addition to being a filter, this is also a ranker
          :view-count
-         :updated-at])
+         :updated-at
+         :non-temporal-dim-ids
+         :has-temporal-dim])
        distinct
        vec))
 
@@ -282,13 +307,13 @@
   identity)
 
 (defn spec
-  "Register a metabase model as a search-model.
+  "Register a Metabase model as a search-model.
   Once we're trying up the fulltext search project, we can inline a detailed explanation.
   For now, see its schema, and the existing definitions that use it."
-  [search-model]
-  ;; make sure the model namespace is loaded.
-  (t2/resolve-model (search-model->toucan-model search-model))
-  (spec* search-model))
+  ([search-model]
+   ;; make sure the model namespace is loaded.
+   (t2/resolve-model (search-model->toucan-model search-model))
+   (spec* search-model)))
 
 (defn specifications
   "A mapping from each search-model to its specification."

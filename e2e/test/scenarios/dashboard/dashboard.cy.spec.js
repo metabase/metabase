@@ -10,7 +10,6 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { mapPinIcon } from "e2e/support/helpers";
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
 import {
   createMockVirtualCard,
@@ -590,13 +589,14 @@ describe("scenarios > dashboard", () => {
         });
       });
 
-      const longTitle =
-        "a really really really really really really really really really really really really really really really really long title";
-
-      it("should prevent entering a title longer than 100 chars", () => {
-        const dashboardNameInput = cy.findByTestId("dashboard-name-heading");
-        dashboardNameInput.clear().type(longTitle).blur();
-        dashboardNameInput.invoke("text").should("have.length", 100);
+      it("should prevent entering a title longer than 254 chars", () => {
+        const longTitle = "A".repeat(256);
+        cy.findByTestId("dashboard-name-heading")
+          .as("dashboardInput")
+          .clear()
+          .type(longTitle, { delay: 0 })
+          .blur();
+        cy.get("@dashboardInput").invoke("text").should("have.length", 254);
       });
     });
 
@@ -773,9 +773,8 @@ describe("scenarios > dashboard", () => {
     H.saveDashboard();
 
     cy.log("Assert that the selected filter is present in the dashboard");
-    cy.icon("location");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Location");
+    cy.findByText("Location", { exact: false }).should("be.visible");
   });
 
   it("should link filters to custom question with filtered aggregate data (metabase#11007)", () => {
@@ -897,7 +896,7 @@ describe("scenarios > dashboard", () => {
         });
 
         H.visitDashboard(dashboardId);
-        mapPinIcon().eq(0).click({ force: true });
+        H.mapPinIcon().eq(0).click({ force: true });
         cy.url().should("include", `/dashboard/${dashboardId}?id=1`);
         cy.contains("Hudson Borer - 1");
       });
@@ -1113,7 +1112,7 @@ describe("scenarios > dashboard", () => {
       row: 0,
       col: 0,
       size_x: 16,
-      size_y: 8,
+      size_y: 9,
     };
     const paddingCard = H.getTextCardDetails({
       col: 0,
@@ -1212,7 +1211,7 @@ describe("scenarios > dashboard", () => {
     cy.findByTestId("dashcard").findByText("Orders");
   });
 
-  describe("warn before leave", () => {
+  describe("warn before leave", { tags: "@flaky" }, () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/card/*/query_metadata").as("queryMetadata");
     });
@@ -1235,10 +1234,11 @@ describe("scenarios > dashboard", () => {
 
       // edit
       H.editDashboard();
-      const card = cy
-        .findAllByTestId("dashcard-container", { scrollBehavior: false })
-        .eq(0);
-      dragOnXAxis(card, 100);
+      const card = () =>
+        cy
+          .findAllByTestId("dashcard-container", { scrollBehavior: false })
+          .eq(0);
+      dragOnXAxis(card(), 100);
       assertPreventLeave();
       H.saveDashboard();
 
@@ -1541,52 +1541,58 @@ describe("LOCAL TESTING ONLY > dashboard", () => {
    *        - Then start the server and Cypress tests
    */
 
-  it.skip("dashboard filter should not show placeholder for translated languages (metabase#15694)", () => {
-    cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
-      cy.request("PUT", `/api/user/${USER_ID}`, { locale: "fr" });
-    });
-    H.createQuestionAndDashboard({
-      questionDetails: {
-        name: "15694",
-        query: { "source-table": PEOPLE_ID },
-      },
-      dashboardDetails: {
-        parameters: [
-          {
-            name: "Location",
-            slug: "location",
-            id: "5aefc725",
-            type: "string/=",
-            sectionId: "location",
-          },
-        ],
-      },
-    }).then(({ body: { card_id, dashboard_id } }) => {
-      H.addOrUpdateDashboardCard({
-        card_id,
-        dashboard_id,
-        card: {
-          parameter_mappings: [
+  it(
+    "dashboard filter should not show placeholder for translated languages (metabase#15694)",
+    { tags: "@skip" },
+    () => {
+      cy.request("GET", "/api/user/current").then(
+        ({ body: { id: USER_ID } }) => {
+          cy.request("PUT", `/api/user/${USER_ID}`, { locale: "fr" });
+        },
+      );
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          name: "15694",
+          query: { "source-table": PEOPLE_ID },
+        },
+        dashboardDetails: {
+          parameters: [
             {
-              parameter_id: "5aefc725",
-              card_id,
-              target: ["dimension", ["field", PEOPLE.STATE, null]],
+              name: "Location",
+              slug: "location",
+              id: "5aefc725",
+              type: "string/=",
+              sectionId: "location",
             },
           ],
         },
-      });
+      }).then(({ body: { card_id, dashboard_id } }) => {
+        H.addOrUpdateDashboardCard({
+          card_id,
+          dashboard_id,
+          card: {
+            parameter_mappings: [
+              {
+                parameter_id: "5aefc725",
+                card_id,
+                target: ["dimension", ["field", PEOPLE.STATE, null]],
+              },
+            ],
+          },
+        });
 
-      cy.visit(`/dashboard/${dashboard_id}?location=AK&location=CA`);
-      H.filterWidget().contains(/\{0\}/).should("not.exist");
-    });
-  });
+        cy.visit(`/dashboard/${dashboard_id}?location=AK&location=CA`);
+        H.filterWidget().contains(/\{0\}/).should("not.exist");
+      });
+    },
+  );
 });
 
 describe("scenarios > dashboard > caching", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   /**

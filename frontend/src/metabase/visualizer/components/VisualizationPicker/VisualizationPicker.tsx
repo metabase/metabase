@@ -56,7 +56,6 @@ export function VisualizationPicker({
                   event: "visualizer_data_changed",
                   event_detail: "visualizer_viz_type_changed",
                   triggered_from: "visualizer-modal",
-                  event_data: o.value,
                 });
 
                 onChange(o.value);

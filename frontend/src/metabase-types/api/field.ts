@@ -50,8 +50,8 @@ export type FieldVisibilityType =
   | "sensitive";
 
 type HumanReadableFieldValue = string;
-type RemappedFieldValue = [RowValue, HumanReadableFieldValue];
-type NotRemappedFieldValue = [RowValue];
+export type RemappedFieldValue = [RowValue, HumanReadableFieldValue];
+export type NotRemappedFieldValue = [RowValue];
 export type FieldValue = NotRemappedFieldValue | RemappedFieldValue;
 
 export type FieldValuesType = "list" | "search" | "none";
@@ -59,16 +59,11 @@ export type FieldValuesType = "list" | "search" | "none";
 export type FieldDimensionType = "internal" | "external";
 
 export type FieldDimension = {
+  id: number;
   type: FieldDimensionType;
   name: string;
   human_readable_field_id?: FieldId;
   human_readable_field?: Field;
-};
-
-export type FieldDimensionOption = {
-  name: string;
-  mbql: unknown[] | null;
-  type: string;
 };
 
 export interface Field {
@@ -99,8 +94,6 @@ export interface Field {
   settings?: FieldFormattingSettings;
 
   dimensions?: FieldDimension[];
-  default_dimension_option?: FieldDimensionOption;
-  dimension_options?: FieldDimensionOption[];
   name_field?: Field;
 
   max_value?: number;
@@ -132,18 +125,18 @@ export interface GetFieldRequest {
 
 export interface UpdateFieldRequest {
   id: FieldId;
-  caveats?: string;
-  description?: string;
+  caveats?: string | null;
+  description?: string | null;
   display_name?: string;
-  fk_target_field_id?: FieldId;
+  fk_target_field_id?: FieldId | null;
   points_of_interest?: string;
-  semantic_type?: string;
-  coercion_strategy?: string;
+  semantic_type?: string | null;
+  coercion_strategy?: string | null;
   visibility_type?: FieldVisibilityType;
   has_field_values?: FieldValuesType;
   settings?: FieldFormattingSettings;
-  nfc_path?: string[];
-  json_unfolding?: boolean;
+  nfc_path?: string[] | null;
+  json_unfolding?: boolean | null;
 }
 
 export interface GetFieldValuesResponse {
@@ -155,7 +148,7 @@ export interface GetFieldValuesResponse {
 export interface SearchFieldValuesRequest {
   fieldId: FieldId;
   searchFieldId: FieldId;
-  value: string;
+  value?: string;
   limit: number;
 }
 
@@ -169,7 +162,7 @@ export interface CreateFieldDimensionRequest {
   id: FieldId;
   type: FieldDimensionType;
   name: string;
-  human_readable_field_id?: FieldId;
+  human_readable_field_id?: FieldId | null;
 }
 
 export interface UpdateFieldValuesRequest {

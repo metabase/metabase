@@ -590,23 +590,6 @@
                           :slice-els-colours  slice-elements
                           :total-els-text     total-elements})))))))))))
 
-(deftest render-progress
-  (let [col [{:name          "NumPurchased",
-              :display_name  "NumPurchased",
-              :base_type     :type/Integer
-              :semantic_type nil}]
-        render  (fn [rows]
-                  (body/render :progress :inline pacific-tz
-                               render.tu/test-card
-                               nil
-                               {:cols col :rows rows}))]
-    (testing "Renders without error"
-      (let [rendered-info (render [[25]])]
-        (is (has-inline-image? rendered-info))))
-    (testing "Renders negative value without error"
-      (let [rendered-info (render [[-25]])]
-        (is (has-inline-image? rendered-info))))))
-
 (deftest ^:parallel format-percentage-test
   (are [value expected] (= expected
                            (body/format-percentage 12345.4321 value))
@@ -1072,3 +1055,27 @@
                       svg    (html doc)]
                   (testing "Renders with custom whitelabel color"
                     (is (str/includes? svg "#0005FF"))))))))))))
+
+(deftest order-data-handles-duplicated-table-columns-test
+  (testing "order-data function handles duplicated table columns correctly"
+    (let [test-cols [{:name "ID" :display_name "ID" :base_type :type/BigInteger}
+                     {:name "NAME" :display_name "Name" :base_type :type/Text}]
+          test-rows [[1 "Alice"] [2 "Bob"]]
+          test-data {:cols test-cols :rows test-rows}
+          ;; Simulate duplicated table columns viz settings
+          viz-settings {:metabase.models.visualization-settings/table-columns
+                        [{:metabase.models.visualization-settings/table-column-name "ID"
+                          :metabase.models.visualization-settings/table-column-enabled true}
+                         {:metabase.models.visualization-settings/table-column-name "ID" ; duplicate
+                          :metabase.models.visualization-settings/table-column-enabled true}
+                         {:metabase.models.visualization-settings/table-column-name "NAME"
+                          :metabase.models.visualization-settings/table-column-enabled true}]}
+          [ordered-cols ordered-rows] (#'body/order-data test-data viz-settings)]
+      (testing "should return cols without errors"
+        (is (= 2 (count ordered-cols)))
+        (is (= "ID" (:name (first ordered-cols))))
+        (is (= "NAME" (:name (second ordered-cols)))))
+      (testing "should return rows without errors"
+        (is (= 2 (count ordered-rows)))
+        (is (= [1 "Alice"] (first ordered-rows)))
+        (is (= [2 "Bob"] (second ordered-rows)))))))

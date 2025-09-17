@@ -25,7 +25,6 @@ const cardWithJoins = createMockCard({
     query: {
       joins: [
         {
-          ident: "ident",
           fields: "all",
           strategy: "left-join",
           alias: "joined table",

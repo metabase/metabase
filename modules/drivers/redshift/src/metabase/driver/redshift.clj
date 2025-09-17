@@ -34,14 +34,17 @@
 
 (driver/register! :redshift, :parent #{:postgres})
 
-(doseq [[feature supported?] {:connection-impersonation  true
-                              :describe-fields           true
-                              :describe-fks              true
-                              :expression-literals       true
-                              :identifiers-with-spaces   false
-                              :uuid-type                 false
-                              :nested-field-columns      false
-                              :test/jvm-timezone-setting false}]
+(doseq [[feature supported?] {:connection-impersonation       true
+                              :describe-fields                true
+                              :describe-fks                   true
+                              :expression-literals            true
+                              :identifiers-with-spaces        false
+                              :uuid-type                      false
+                              :nested-field-columns           false
+                              :test/jvm-timezone-setting      false
+                              :database-routing               true
+                              :metadata/table-existence-check true
+                              :transforms/table               true}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -111,7 +114,7 @@
            (map #(dissoc % :type)))
      (sql-jdbc.execute/reducible-query database get-tables-sql))))
 
-(defmethod driver/describe-database :redshift
+(defmethod driver/describe-database* :redshift
   [driver database]
   ;; TODO: change this to return a reducible so we don't have to hold 100k tables in memory in a set like this
   ;;
@@ -163,8 +166,8 @@
                             [:= :c.column_name :pk.column_name]]]
                :where [:and
                        [:raw "c.table_schema !~ '^information_schema|catalog_history|pg_'"]
-                       (when schema-names [:in :c.table_schema schema-names])
-                       (when table-names [:in :c.table_name table-names])]
+                       (when schema-names [:in :c.table_schema (map u/lower-case-en schema-names)])
+                       (when table-names [:in :c.table_name (map u/lower-case-en table-names)])]
                :order-by [:table-schema :table-name :database-position]}
               :dialect (sql.qp/quote-style driver)))
 
@@ -271,12 +274,13 @@
    db-or-id-or-spec
    options
    (fn [^Connection conn]
+     (let [db (cond (integer? db-or-id-or-spec) (driver-api/with-metadata-provider db-or-id-or-spec
+                                                  (driver-api/database (driver-api/metadata-provider)))
+                    (u/id db-or-id-or-spec)     db-or-id-or-spec)]
+       (sql-jdbc.execute/set-role-if-supported! driver conn db))
      (when-not (sql-jdbc.execute/recursive-connection?)
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone)
-       (sql-jdbc.execute/set-role-if-supported! driver conn (cond (integer? db-or-id-or-spec) (driver-api/with-metadata-provider db-or-id-or-spec
-                                                                                                (driver-api/database (driver-api/metadata-provider)))
-                                                                  (u/id db-or-id-or-spec)     db-or-id-or-spec))
        (try
          (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
          (catch Throwable e
@@ -499,9 +503,9 @@
                   [(:name param) (:value param)]
 
                   (when-let [field-id (driver-api/match-one param
-                                                            [:field (field-id :guard integer?) _]
-                                                            (when (contains? (set &parents) :dimension)
-                                                              field-id))]
+                                        [:field (field-id :guard integer?) _]
+                                        (when (contains? (set &parents) :dimension)
+                                          field-id))]
                     [(:name (driver-api/field (driver-api/metadata-provider) field-id))
                      (:value param)]))))
         user-parameters))
@@ -615,6 +619,13 @@
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
                                [:from_varbyte expr (h2x/literal "UTF8")]))
 
+(defmethod sql.qp/cast-temporal-byte [:redshift :Coercion/ISO8601Bytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime
+                               [:from_varbyte expr (h2x/literal "UTF8")]))
+
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :redshift
   [_ e]
-  (= (sql-jdbc/get-sql-state e) "42P01"))
+  ;; https://docs.aws.amazon.com/redshift/latest/mgmt/rsql-query-tool-error-codes.html
+  ;; 42P01: undefined_table, 3F000: invalid_schema_name
+  (contains? #{"42P01" "3F000"} (sql-jdbc/get-sql-state e)))

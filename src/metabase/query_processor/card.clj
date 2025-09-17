@@ -5,10 +5,14 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.cache.core :as cache]
+   ;; legacy usages -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
+   ;; Lib soon
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util.match :as lib.util.match]
@@ -70,6 +74,7 @@
 
 (defn- last-stage-number
   [outer-query]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (mbql.u/legacy-last-stage-number (:query outer-query)))
 
 (defn- nest-query
@@ -161,7 +166,8 @@
                     (not= widget-type :none))
                [param-name widget-type]
 
-               (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
+               (or (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
+                   (= tag-type :temporal-unit))
                [param-name tag-type])))
       (filter some?))
      (get-in query [:native :template-tags]))))
@@ -213,7 +219,7 @@
   "Unless [[*allow-arbitrary-mbql-parameters*]] is truthy, check to make all supplied `parameters` actually match up
   with template tags in the query for Card with `card-id`."
   [card-id    :- ::lib.schema.id/card
-   parameters :- mbql.s/ParameterList]
+   parameters :- [:maybe [:ref ::lib.schema.parameter/parameters]]]
   (when-not *allow-arbitrary-mbql-parameters*
     (let [template-tags (card-template-tag-parameters card-id)]
       (doseq [request-parameter parameters
@@ -230,15 +236,16 @@
 
 (mu/defn process-query-for-card-default-qp :- :some
   "Default value of the `:qp` option for [[process-query-for-card]]."
-  [query :- ::qp.schema/query
+  [query :- ::qp.schema/any-query
    rff   :- [:maybe ::qp.schema/rff]]
   (qp/process-query (qp/userland-query query) rff))
 
 (defn process-query-for-card-default-run-fn
   "Create the default `:make-run` function for [[process-query-for-card]]."
   [qp export-format]
-  (^:once fn* [query info]
-    (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]
+  (mu/fn [query :- :map
+          info :- [:maybe ::lib.schema.info/info]]
+    (qp.streaming/streaming-response [rff export-format (qp.streaming/safe-filename-prefix (:card-name info))]
       (qp (update query :info merge info) rff))))
 
 (defn combined-parameters-and-template-tags
@@ -322,7 +329,6 @@
         info       (cond-> {:executed-by            api/*current-user-id*
                             :context                context
                             :card-id                card-id
-                            :card-entity-id         (:entity_id card)
                             :card-name              (:name card)
                             :dashboard-id           dashboard-id
                             :visualization-settings merged-viz}

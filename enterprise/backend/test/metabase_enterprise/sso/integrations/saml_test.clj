@@ -112,7 +112,9 @@
 (defn successful-login?
   "Return true if the response indicates a successful user login"
   [resp]
-  (string? (get-in resp [:cookies request/metabase-session-cookie :value])))
+  (or
+   (string? (get-in resp [:cookies request/metabase-session-cookie :value]))
+   (some #(str/starts-with? % request/metabase-session-cookie) (get-in resp [:headers "Set-Cookie"]))))
 
 (defn- do-with-some-validators-disabled!
   "The sample responses all have `InResponseTo=\"_1\"` and invalid assertion signatures (they were edited by hand) so
@@ -545,7 +547,7 @@
          (with-saml-default-setup!
            (try
              (is (not (t2/exists? :model/User :%lower.email "newuser@metabase.com")))
-            ;; login with a user with no givenname or surname attributes
+             ;; login with a user with no givenname or surname attributes
              (let [req-options (saml-post-request-options (new-user-no-names-saml-test-response)
                                                           default-redirect-uri)]
                (is (successful-login? (client/client-real-response :post 302 "/auth/sso" req-options)))
@@ -560,7 +562,7 @@
                         :tenant_id    false}]
                       (->> (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
                            (map #(dissoc % :last_login))))))
-            ;; login with the same user, but now givenname and surname attributes exist
+             ;; login with the same user, but now givenname and surname attributes exist
              (let [req-options (saml-post-request-options (new-user-saml-test-response)
                                                           default-redirect-uri)]
                (is (successful-login? (client/client-real-response :post 302 "/auth/sso" req-options)))
@@ -695,7 +697,7 @@
   (testing "Redirect URL (RelayState) should work correctly end-to-end (#13666)"
     (with-other-sso-types-disabled!
       (with-saml-default-setup!
-      ;; The test HTTP client will automatically URL encode these for us.
+        ;; The test HTTP client will automatically URL encode these for us.
         (doseq [redirect-url ["http://localhost:3001/collection/root"
                               default-redirect-uri
                               "http://localhost:3001/"]]
@@ -775,7 +777,7 @@
               (let [req-options (-> (saml-post-request-options
                                      (saml-slo-test-response)
                                      default-redirect-uri)
-                              ;; Client sends their session cookie during the SLO request redirect from the IDP.
+                                    ;; Client sends their session cookie during the SLO request redirect from the IDP.
                                     (assoc-in [:request-options :cookies request/metabase-session-cookie :value] session-key))
                     response    (client/client-real-response :post 302 "/auth/sso/handle_slo" req-options)]
                 (is (str/blank? (get-in response [:cookies request/metabase-session-cookie :value]))
@@ -796,7 +798,7 @@
               (let [req-options (-> (saml-post-request-options
                                      (saml-slo-test-response)
                                      default-redirect-uri)
-                                  ;; Client sends their session cookie during the SLO request redirect from the IDP.
+                                    ;; Client sends their session cookie during the SLO request redirect from the IDP.
                                     (assoc-in [:request-options :cookies request/metabase-session-cookie :value] session-key))
                     response    (client/client-real-response :post 403 "/auth/sso/handle_slo" req-options)]
                 (is (str/blank? (get-in response [:cookies request/metabase-session-cookie :value]))
@@ -893,3 +895,35 @@
                            response))
              (is (str/includes? (:body response) "SAML_AUTH_COMPLETE"))
              (is (str/includes? (:body response) "authData")))))))))
+
+(deftest non-string-saml-attributes-dropped-test
+  (testing "SAML attributes with non-string values are dropped"
+    (with-other-sso-types-disabled!
+      (with-saml-default-setup!
+        (do-with-some-validators-disabled!
+         (fn []
+           ;; Mock the saml-response->attributes function to return mixed attribute types
+           (with-redefs [saml.mt/saml-response->attributes
+                         (fn [_]
+                           {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" "rasta@metabase.com"
+                            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname" "Rasta"
+                            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname" "Toucan"
+                            "string_attr" "valid-string"
+                            "number_attr" 42
+                            "boolean_attr" true
+                            "array_attr" ["item1" "item2"]
+                            "object_attr" {:nested "value"}
+                            "null_attr" nil})]
+             (let [req-options (saml-post-request-options (saml-test-response)
+                                                          default-redirect-uri)
+                   response    (client/client-real-response :post 302 "/auth/sso" req-options)]
+               (is (successful-login? response))
+
+               ;; Doesn't test the warning message because there are issues setting up log capture with client-real-response
+               ;; and client-full-response doesn't work with the saml lib
+
+               (testing "only string attributes are saved to login_attributes"
+                 (let [user-attrs (t2/select-one-fn :login_attributes :model/User :email "rasta@metabase.com")]
+                   (is (=? {"string_attr" "valid-string"
+                            "number_attr" 42
+                            "boolean_attr" true} user-attrs))))))))))))

@@ -4,11 +4,12 @@ import { withRouter } from "react-router";
 import { t } from "ttag";
 import { findWhere } from "underscore";
 
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellCacheConfig } from "metabase/admin/upsells";
 import { useListDatabasesQuery } from "metabase/api";
-import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PLUGIN_CACHING } from "metabase/plugins";
-import { Flex, Stack } from "metabase/ui";
+import { Flex } from "metabase/ui";
 import type { CacheableModel } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
 
@@ -18,11 +19,7 @@ import { useConfirmIfFormIsDirty } from "../hooks/useConfirmIfFormIsDirty";
 import { useSaveStrategy } from "../hooks/useSaveStrategy";
 import type { UpdateTargetId } from "../types";
 
-import {
-  Panel,
-  RoundedBox,
-  TabWrapper,
-} from "./StrategyEditorForDatabases.styled";
+import { Panel, RoundedBox } from "./StrategyEditorForDatabases.styled";
 import { StrategyForm } from "./StrategyForm";
 
 const StrategyEditorForDatabases_Base = ({
@@ -127,13 +124,17 @@ const StrategyEditorForDatabases_Base = ({
   }
 
   return (
-    <TabWrapper role="region" aria-label={t`Data caching settings`}>
-      <Stack gap="xl" lh="1.5rem" maw="32rem" mb="1.5rem">
-        <aside>
+    <SettingsPageWrapper
+      title={t`Database caching`}
+      aria-label={t`Data caching settings`}
+      description={
+        <>
           {t`Speed up queries by caching their results.`}
           <PLUGIN_CACHING.GranularControlsExplanation />
-        </aside>
-      </Stack>
+        </>
+      }
+      h="calc(100vh - 7rem)"
+    >
       {confirmationModal}
       <Flex gap="xl" style={{ overflow: "hidden" }}>
         <RoundedBox twoColumns={canOverrideRootStrategy}>
@@ -163,9 +164,9 @@ const StrategyEditorForDatabases_Base = ({
             )}
           </Panel>
         </RoundedBox>
-        <UpsellCacheConfig source="performance-data_cache" />
+        <UpsellCacheConfig location="performance-data_cache" />
       </Flex>
-    </TabWrapper>
+    </SettingsPageWrapper>
   );
 };
 

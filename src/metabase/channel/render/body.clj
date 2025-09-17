@@ -71,14 +71,16 @@
 
 ;;; --------------------------------------------------- Formatting ---------------------------------------------------
 
-(mu/defn- format-cell
+(mu/defn- format-scalar-value
   [timezone-id :- [:maybe :string] value col visualization-settings]
   (cond
+    ;; legacy usage -- do not use going forward
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (types/temporal-field? col)
     ((formatter/make-temporal-str-formatter timezone-id col {}) value)
 
     (number? value)
-    (formatter/format-number-and-wrap value col visualization-settings)
+    (formatter/format-scalar-number value col visualization-settings)
 
     :else
     (str value)))
@@ -153,7 +155,7 @@
       (query-results->row-seq timezone-id remapping-lookup cols (take row-limit rows) viz-settings)))))
 
 (defn- strong-limit-text [number]
-  [:strong {:style (style/style {:color style/color-gray-3})} (h (formatter/format-number-and-wrap number))])
+  [:strong {:style (style/style {:color style/color-gray-3})} (h (formatter/format-scalar-number number))])
 
 (defn- render-truncation-warning
   [row-limit row-count]
@@ -194,7 +196,12 @@
 
 (defn- order-data [data viz-settings]
   (if (some? (::mb.viz/table-columns viz-settings))
-    (let [[ordered-cols output-order] (qp.streaming/order-cols (:cols data) viz-settings)
+    (let [;; Deduplicate table-columns by name to handle duplicated viz settings
+          deduped-table-columns     (->> (::mb.viz/table-columns viz-settings)
+                                         (m/index-by ::mb.viz/table-column-name)
+                                         vals)
+          deduped-viz-settings      (assoc viz-settings ::mb.viz/table-columns deduped-table-columns)
+          [ordered-cols output-order] (qp.streaming/order-cols (:cols data) deduped-viz-settings)
           keep-filtered-idx           (fn [row] (if output-order
                                                   (let [row-v (into [] row)]
                                                     (for [i output-order] (row-v i)))
@@ -322,33 +329,6 @@
                (DecimalFormat. base))]
      (.format fmt value))))
 
-(mu/defmethod render :progress :- ::RenderedPartCard
-  [_chart-type
-   render-type
-   _timezone-id
-   _card
-   _dashcard
-   {:keys [cols rows viz-settings] :as _data}]
-  (let [value        (ffirst rows)
-        goal         (:progress.goal viz-settings)
-        color        (:progress.color viz-settings)
-        settings     (assoc
-                      (->js-viz (first cols) (first cols) viz-settings)
-                      :color color)
-        ;; ->js-viz fills in our :x but we actually want that under :format key
-        settings     (assoc settings :format (:x settings))
-        image-bundle (image-bundle/make-image-bundle
-                      render-type
-                      (js.svg/progress value goal settings))]
-    {:attachments
-     (when image-bundle
-       (image-bundle/image-bundle->attachment image-bundle))
-
-     :content
-     [:div
-      [:img {:style (style/style {:display :block :width :100%})
-             :src   (:image-src image-bundle)}]]}))
-
 (defn- add-dashcard-timeline-events
   "If there's a timeline associated with this card, add its events in."
   [card-with-data]
@@ -385,21 +365,6 @@
       (assoc :data (:data result))
       (dissoc :result)))
 
-(mu/defmethod render :row :- ::RenderedPartCard
-  [_chart-type render-type _timezone-id card _dashcard data]
-  (let [viz-settings (get card :visualization_settings)
-        image-bundle   (image-bundle/make-image-bundle
-                        render-type
-                        (js.svg/row-chart viz-settings data))]
-    {:attachments
-     (when image-bundle
-       (image-bundle/image-bundle->attachment image-bundle))
-
-     :content
-     [:div
-      [:img {:style (style/style {:display :block :width :100%})
-             :src   (:image-src image-bundle)}]]}))
-
 (mu/defmethod render :scalar :- ::RenderedPartCard
   [_chart-type _render-type timezone-id _card _dashcard {:keys [cols rows viz-settings]}]
   (let [field-name    (:scalar.field viz-settings)
@@ -408,7 +373,7 @@
                           [0 (first cols)])
         row           (first rows)
         raw-value     (get row row-idx)
-        value         (format-cell timezone-id raw-value col viz-settings)]
+        value         (format-scalar-value timezone-id raw-value col viz-settings)]
     {:attachments
      nil
 
@@ -481,8 +446,8 @@
           {:keys [last-value previous-value unit last-change] :as _insight}
           (where (comp #{(:name metric-col)} :col) insights)]
       (if (and last-value previous-value unit last-change)
-        (let [value                (format-cell timezone-id last-value metric-col viz-settings)
-              previous             (format-cell timezone-id previous-value metric-col viz-settings)
+        (let [value                (format-scalar-value timezone-id last-value metric-col viz-settings)
+              previous             (format-scalar-value timezone-id previous-value metric-col viz-settings)
               delta-statement      (cond
                                      (= last-value previous-value)
                                      (tru "No change")
@@ -515,7 +480,7 @@
                                                  :font-weight   700
                                                  :padding-right :16px})}
                         (trs "Nothing to compare to.")]]
-         :render/text (str (format-cell timezone-id last-value metric-col viz-settings)
+         :render/text (str (format-scalar-value timezone-id last-value metric-col viz-settings)
                            "\n" (trs "Nothing to compare to."))}))))
 
 (defn- all-unique?

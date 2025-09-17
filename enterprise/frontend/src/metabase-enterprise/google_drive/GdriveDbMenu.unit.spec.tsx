@@ -210,7 +210,9 @@ describe("Google Drive > DB Menu", () => {
     // sync should cause a refetch
     expect(await screen.findByText("Syncing")).toBeInTheDocument();
 
-    const syncCalls = fetchMock.calls("path:/api/ee/gsheets/connection/sync");
+    const syncCalls = fetchMock.callHistory.calls(
+      "path:/api/ee/gsheets/connection/sync",
+    );
     expect(syncCalls).toHaveLength(1);
 
     await closeMenu();

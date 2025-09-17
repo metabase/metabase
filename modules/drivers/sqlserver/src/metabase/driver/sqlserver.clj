@@ -8,6 +8,7 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
+   [macaw.core :as macaw]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql :as driver.sql]
@@ -27,6 +28,7 @@
   (:import
    (java.sql
     Connection
+    DatabaseMetaData
     PreparedStatement
     ResultSet
     Time)
@@ -38,7 +40,9 @@
     OffsetTime
     ZonedDateTime)
    (java.time.format DateTimeFormatter)
-   [java.util UUID]))
+   (java.util UUID)
+   (net.sf.jsqlparser.schema Table)
+   (net.sf.jsqlparser.statement.select PlainSelect Select)))
 
 (set! *warn-on-reflection* true)
 
@@ -46,6 +50,7 @@
 
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
                               :connection-impersonation               true
+                              :connection-impersonation-requires-role true
                               :uuid-type                              true
                               :convert-timezone                       true
                               :datetime-diff                          true
@@ -54,12 +59,10 @@
                               :index-info                             false
                               :now                                    true
                               :regex                                  false
-                              :test/jvm-timezone-setting              false}]
+                              :test/jvm-timezone-setting              false
+                              :metadata/table-existence-check         true
+                              :transforms/table                       true}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
-
-(defmethod driver/database-supports? [:sqlserver :connection-impersonation-requires-role]
-  [_driver _feature db]
-  (= (u/lower-case-en (-> db :details :user)) "sa"))
 
 (defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
   [_ _ db]
@@ -545,7 +548,7 @@
         (update :order-by distinct))))
 
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :filter]
-  [driver _ honeysql-form query]
+  [driver _k honeysql-form query]
   (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql-jdbc :filter])]
     (->> (update query :filter sql.qp.boolean-to-comparison/boolean->comparison)
          (parent-method driver :filter honeysql-form))))
@@ -775,11 +778,11 @@
                  (in-source-query? path)))]
     (driver-api/replace inner-query
       ;; remove order by and then recurse in case we need to do more tranformations at another level
-                        (m :guard (partial remove-order-by? &parents))
-                        (fix-order-bys (dissoc m :order-by))
+      (m :guard (partial remove-order-by? &parents))
+      (fix-order-bys (dissoc m :order-by))
 
-                        (m :guard (partial add-limit? &parents))
-                        (fix-order-bys (assoc m :limit driver-api/absolute-max-results)))))
+      (m :guard (partial add-limit? &parents))
+      (fix-order-bys (assoc m :limit driver-api/absolute-max-results)))))
 
 (defmethod sql.qp/preprocess :sqlserver
   [driver inner-query]
@@ -923,12 +926,46 @@
 
 (defmethod driver.sql/default-database-role :sqlserver
   [_driver database]
-  ;; Use a "role" (sqlserver user) if it exists, otherwise use
-  ;; the user if it can be impersonated (ie not the 'sa' user).
-  (let [{:keys [role user]} (:details database)]
-    (or role (when-not (= (u/lower-case-en user) "sa") user))))
+  ;; Use a "role" (sqlserver user) if it exists. Do not fall back to the user
+  ;; field automatically, as it represents the login user which may not be a
+  ;; valid database user for impersonation (see issue #60665).
+  (let [{:keys [role]} (:details database)]
+    role))
 
 (defmethod driver.sql/set-role-statement :sqlserver
   [_driver role]
   ;; REVERT to handle the case where the users role attribute has changed
   (format "REVERT; EXECUTE AS USER = '%s';" role))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :sqlserver
+  [_ e]
+  (= (sql-jdbc/get-sql-state e) "S0002"))
+
+(defmethod driver/compile-transform :sqlserver
+  [driver {:keys [query output-table]}]
+  (let [^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))
+        ^Select parsed-query (macaw/parsed-query query)
+        ^PlainSelect select-body (.getSelectBody parsed-query)]
+    (.setIntoTables select-body [(Table. table-name)])
+    [(str parsed-query)]))
+
+(defmethod driver/table-exists? :sqlserver
+  [driver database {:keys [schema name] :as _table}]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   database
+   nil
+   (fn [^Connection conn]
+     (let [^DatabaseMetaData metadata (.getMetaData conn)
+             ;; SQL Server doesn't have a special escape method, but we should still handle nil
+           schema-name (some->> schema (driver/escape-entity-name-for-metadata driver))
+           table-name (some->> name (driver/escape-entity-name-for-metadata driver))
+             ;; SQL Server uses the database name from the connection, not as a parameter
+           db-name nil]
+       (with-open [rs (.getTables metadata db-name schema-name table-name (into-array String ["TABLE"]))]
+         (.next rs))))))
+
+(defmethod driver/create-schema-if-needed! :sqlserver
+  [driver conn-spec schema]
+  (let [sql [[(format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA [%s];');" schema schema)]]]
+    (driver/execute-raw-queries! driver conn-spec sql)))

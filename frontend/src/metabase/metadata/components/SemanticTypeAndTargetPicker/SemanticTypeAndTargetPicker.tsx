@@ -1,113 +1,109 @@
-import { Box, Flex, Icon } from "metabase/ui";
-import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
-import type Field from "metabase-lib/v1/metadata/Field";
-import type { FieldFormattingSettings, FieldId } from "metabase-types/api";
+import type { ReactNode } from "react";
+
+import { getFieldCurrency } from "metabase/metadata/utils/field";
+import { Flex, type SelectProps, Stack, rem } from "metabase/ui";
+import { isCurrency, isFK } from "metabase-lib/v1/types/utils/isa";
+import type { Field, FieldId } from "metabase-types/api";
 
 import { CurrencyPicker } from "../CurrencyPicker";
 import { FkTargetPicker } from "../FkTargetPicker";
 import { SemanticTypePicker } from "../SemanticTypePicker";
 
+import SubInputIllustration from "./illustrations/sub-input.svg?component";
+
 interface SemanticTypeAndTargetPickerProps {
-  className?: string;
+  description?: string;
   field: Field;
   idFields: Field[];
-  hasSeparator?: boolean;
-  onUpdateField: (field: Field, updates: Partial<Field>) => void;
+  label?: string;
+  selectProps?: Omit<SelectProps, "data" | "value" | "onChange">;
+  semanticTypeError?: ReactNode;
+  onChange: (
+    patch: Partial<
+      Pick<Field, "semantic_type" | "fk_target_field_id" | "settings">
+    >,
+  ) => void;
 }
 
 export const SemanticTypeAndTargetPicker = ({
-  className,
+  description,
   field,
   idFields,
-  hasSeparator,
-  onUpdateField,
+  label,
+  selectProps,
+  semanticTypeError,
+  onChange,
 }: SemanticTypeAndTargetPickerProps) => {
-  const showFKTargetSelect = field.isFK();
-  const showCurrencyTypeSelect = field.isCurrency();
+  const showFKTargetSelect = isFK(field);
+  const showCurrencyTypeSelect = isCurrency(field);
 
   const handleChangeSemanticType = (semanticType: string | null) => {
     // If we are changing the field from a FK to something else, we should delete any FKs present
-    if (field.target && field.target.id != null && field.isFK()) {
-      onUpdateField(field, {
+    if (field.fk_target_field_id != null && isFK(field)) {
+      onChange({
         semantic_type: semanticType,
         fk_target_field_id: null,
       });
     } else {
-      onUpdateField(field, {
+      onChange({
         semantic_type: semanticType,
       });
     }
   };
 
   const handleChangeCurrency = (currency: string) => {
-    onUpdateField(field, {
+    onChange({
       settings: { ...field.settings, currency },
     });
   };
 
   const handleChangeTarget = (fieldId: FieldId | null) => {
-    onUpdateField(field, {
+    onChange({
       fk_target_field_id: fieldId,
     });
   };
 
   return (
-    <Flex
-      align="center"
-      data-testid="semantic-type-target-picker"
-      display={hasSeparator ? "flex" : "block"}
-    >
+    <Stack gap={0}>
       <SemanticTypePicker
-        className={className}
-        field={field.getPlainObject()}
+        {...selectProps}
+        description={description}
+        error={semanticTypeError}
+        field={field}
+        label={label}
         value={field.semantic_type}
         onChange={handleChangeSemanticType}
       />
 
-      {showCurrencyTypeSelect && hasSeparator && (
-        <Box color="text-medium" px="md">
-          <Icon name="chevronright" size={12} />
-        </Box>
-      )}
-
       {showCurrencyTypeSelect && (
-        <CurrencyPicker
-          className={className}
-          mt={hasSeparator ? 0 : "xs"}
-          value={getFieldCurrency(field)}
-          onChange={handleChangeCurrency}
-        />
-      )}
+        <>
+          <Flex ml={rem(12)}>
+            <SubInputIllustration />
+          </Flex>
 
-      {showFKTargetSelect && hasSeparator && (
-        <Box color="text-medium" px="md">
-          <Icon name="chevronright" size={12} />
-        </Box>
+          <CurrencyPicker
+            {...selectProps}
+            value={getFieldCurrency(field.settings)}
+            onChange={handleChangeCurrency}
+          />
+        </>
       )}
 
       {showFKTargetSelect && (
-        <FkTargetPicker
-          className={className}
-          field={field.getPlainObject()}
-          idFields={idFields}
-          mt={hasSeparator ? 0 : "xs"}
-          value={field.fk_target_field_id}
-          onChange={handleChangeTarget}
-        />
+        <>
+          <Flex ml={rem(12)}>
+            <SubInputIllustration />
+          </Flex>
+
+          <FkTargetPicker
+            {...selectProps}
+            field={field}
+            idFields={idFields}
+            value={field.fk_target_field_id}
+            onChange={handleChangeTarget}
+          />
+        </>
       )}
-    </Flex>
+    </Stack>
   );
-};
-
-const getFieldCurrency = (field: Field) => {
-  if (field.settings?.currency) {
-    return field.settings.currency;
-  }
-
-  const settings = getGlobalSettingsForColumn(field) as FieldFormattingSettings;
-  if (settings.currency) {
-    return settings.currency;
-  }
-
-  return "USD";
 };

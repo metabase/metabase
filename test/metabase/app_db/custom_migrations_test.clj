@@ -2366,15 +2366,17 @@
             create-dashcard (fn create-dashcard
                               ([card-id] (create-dashcard card-id (parameter-mappings-without-stage-numbers card-id)))
                               ([card-id pmappings]
-                               (insert-returning-pk! :model/DashboardCard
-                                                     {:dashboard_id dashboard-id
-                                                      :parameter_mappings pmappings
+                               (insert-returning-pk! (t2/table-name :model/DashboardCard)
+                                                     {:dashboard_id           dashboard-id
+                                                      :parameter_mappings     (json/encode pmappings)
+                                                      :created_at             :%now
+                                                      :updated_at             :%now
                                                       :visualization_settings "{}"
-                                                      :card_id card-id
-                                                      :size_x  4
-                                                      :size_y  4
-                                                      :col     1
-                                                      :row     1})))
+                                                      :card_id                card-id
+                                                      :size_x                 4
+                                                      :size_y                 4
+                                                      :col                    1
+                                                      :row                    1})))
             single-stage-dashcard-id      (create-dashcard single-stage-question-id)
             native-dashcard-id            (create-dashcard native-question-id)
             multi-stage-dashcard1-id      (create-dashcard multi-stage-question-id)
@@ -2509,19 +2511,21 @@
 
             create-dashcard (fn create-dashcard
                               [card-id targets-or-viz-settings]
-                              (insert-returning-pk! :model/DashboardCard
-                                                    {:dashboard_id dashboard-id
-                                                     :parameter_mappings []
-                                                     :visualization_settings
-                                                     (if (map? targets-or-viz-settings)
-                                                       targets-or-viz-settings
-                                                       (viz-settings-without-stage-numbers
-                                                        targets-or-viz-settings))
-                                                     :card_id card-id
-                                                     :size_x  4
-                                                     :size_y  4
-                                                     :col     1
-                                                     :row     1}))
+                              (insert-returning-pk! (t2/table-name :model/DashboardCard)
+                                                    {:dashboard_id           dashboard-id
+                                                     :created_at             :%now
+                                                     :updated_at             :%now
+                                                     :parameter_mappings     "[]"
+                                                     :visualization_settings (json/encode
+                                                                              (if (map? targets-or-viz-settings)
+                                                                                targets-or-viz-settings
+                                                                                (viz-settings-without-stage-numbers
+                                                                                 targets-or-viz-settings)))
+                                                     :card_id                card-id
+                                                     :size_x                 4
+                                                     :size_y                 4
+                                                     :col                    1
+                                                     :row                    1}))
             single-stage-dashcard-id (create-dashcard single-stage-question-id
                                                       [single-stage-question-id dashboard-id native-question-id])
             multi-stage-dashcard-id  (create-dashcard single-stage-question-id
@@ -2615,3 +2619,80 @@
           (testing "after downgrade"
             (migrate! :down 52)
             (is (zero? (t2/count :notification :payload_type "notification/card")))))))))
+
+(deftest migrate-clickhouse-details-to-multi-db-test
+  (testing "v57.2025-08-22T00:16:00: migrate clickhouse db details to use `enable-multiple-db` with db filters"
+    (encryption-test/with-secret-key "dont-tell-anyone-about-this"
+      (impl/test-migrations
+       ["v57.2025-08-22T00:16:00"] [migrate!]
+        (letfn [(insert-clickhouse-db [name details]
+                  (let [details (merge {:host "localhost"
+                                        :port 8123
+                                        :user "default"
+                                        :password nil
+                                        :ssl false
+                                        :tunnel-enabled false
+                                        :advanced-options false
+                                        :destination-database false}
+                                       details)]
+                    (t2/insert! :metabase_database
+                                {:name name
+                                 :engine "clickhouse"
+                                 :created_at :%now
+                                 :updated_at :%now
+                                 :details (mi/encrypted-json-in details)})))
+                (assert-pre-conditions []
+                  (let [clickhouse-dbs (t2/select :metabase_database :engine "clickhouse")
+                        details-list (map #(mi/encrypted-json-out (:details %)) clickhouse-dbs)]
+                    (is (= 4 (count clickhouse-dbs)))
+                    (is (every? #(contains? % :scan-all-databases) details-list))
+                    (is (every? #(contains? % :dbname) details-list))
+                    (is (every? #(not (contains? % :enable-multiple-db)) details-list))
+                    (is (every? #(not (contains? % :db-filters-type)) details-list))
+                    (is (every? #(not (contains? % :db-filters-patterns)) details-list))
+                    (is (= 2 (count (filter :scan-all-databases details-list))))
+                    (is (= 2 (count (filter #(nil? (:dbname %)) details-list))))
+                    (is (= 2 (count (filter #(= "db_1 db_2 db_3" (:dbname %)) details-list))))))]
+          ;; load data
+          (insert-clickhouse-db "clickhouse no scan no dbs" {:scan-all-databases false :dbname nil})
+          (insert-clickhouse-db "clickhouse no scan with dbs" {:scan-all-databases false :dbname "db_1 db_2 db_3"})
+          (insert-clickhouse-db "clickhouse scan all no dbs" {:scan-all-databases true :dbname nil})
+          (insert-clickhouse-db "clickhouse scan all with db" {:scan-all-databases true :dbname "db_1 db_2 db_3"})
+          ;; assert pre conditions
+          (assert-pre-conditions)
+          ;; run migration
+          (migrate!)
+          ;; assert post conditions
+          (let [clickhouse-dbs (t2/select :metabase_database :engine "clickhouse")]
+            (is (= 4 (count clickhouse-dbs)))
+            (doseq [db clickhouse-dbs]
+              (let [details (mi/encrypted-json-out (:details db))]
+                (is (true? (:enable-multiple-db details)))
+                (is (contains? details :db-filters-type))
+                (cond
+                  (and (false? (:scan-all-databases details)) (nil? (:dbname details)))
+                  (do
+                    (is (= "inclusion" (:db-filters-type details)))
+                    (is (= "default" (:db-filters-patterns details))))
+
+                  (and (false? (:scan-all-databases details)) (= "db_1 db_2 db_3" (:dbname details)))
+                  (do
+                    (is (= "inclusion" (:db-filters-type details)))
+                    (is (= "db_1, db_2, db_3" (:db-filters-patterns details))))
+
+                  (and (true? (:scan-all-databases details)) (nil? (:dbname details)))
+                  (do
+                    (is (= "all" (:db-filters-type details)))
+                    (is (not (contains? details :db-filters-patterns))))
+
+                  (and (true? (:scan-all-databases details)) (= "db_1 db_2 db_3" (:dbname details)))
+                  (do
+                    (is (= "all" (:db-filters-type details)))
+                    (is (not (contains? details :db-filters-patterns))))
+
+                  :else
+                  (throw (ex-info "Unexpected database configuration" {:details details}))))))
+          ;; rollback
+          (migrate! :down 56)
+          ;; assert pre conditions
+          (assert-pre-conditions))))))

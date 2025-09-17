@@ -193,7 +193,7 @@ H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
     H.restore();
     cy.signInAsAdmin();
     H.enableTracking();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     cy.intercept("PUT", "/api/setting/browse-filter-only-verified-models").as(
       "updateFilter",
     );

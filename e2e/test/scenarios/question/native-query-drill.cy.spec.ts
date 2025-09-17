@@ -1,21 +1,22 @@
 const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import type { NativeQuestionDetails } from "e2e/support/helpers";
 
-const ordersTableQuestionDetails: H.NativeQuestionDetails = {
+const ordersTableQuestionDetails: NativeQuestionDetails = {
   display: "table",
   native: {
     query: "SELECT ID, CREATED_AT, QUANTITY FROM ORDERS ORDER BY ID LIMIT 10",
   },
 };
 
-const peopleTableQuestionDetails: H.NativeQuestionDetails = {
+const peopleTableQuestionDetails: NativeQuestionDetails = {
   display: "table",
   native: {
     query: "SELECT ID, EMAIL, CREATED_AT FROM PEOPLE ORDER BY ID LIMIT 10",
   },
 };
 
-const timeseriesLineQuestionDetails: H.NativeQuestionDetails = {
+const timeseriesLineQuestionDetails: NativeQuestionDetails = {
   display: "line",
   native: {
     query: "SELECT CREATED_AT, QUANTITY FROM ORDERS ORDER BY ID LIMIT 10",
@@ -26,7 +27,7 @@ const timeseriesLineQuestionDetails: H.NativeQuestionDetails = {
   },
 };
 
-const timeseriesWithCategoryLineQuestionDetails: H.NativeQuestionDetails = {
+const timeseriesWithCategoryLineQuestionDetails: NativeQuestionDetails = {
   display: "line",
   native: {
     query:
@@ -38,7 +39,7 @@ const timeseriesWithCategoryLineQuestionDetails: H.NativeQuestionDetails = {
   },
 };
 
-const numericLineQuestionDetails: H.NativeQuestionDetails = {
+const numericLineQuestionDetails: NativeQuestionDetails = {
   display: "line",
   native: {
     query: "SELECT ID, QUANTITY FROM ORDERS ORDER BY ID LIMIT 10",
@@ -49,7 +50,7 @@ const numericLineQuestionDetails: H.NativeQuestionDetails = {
   },
 };
 
-const pinMapQuestionDetails: H.NativeQuestionDetails = {
+const pinMapQuestionDetails: NativeQuestionDetails = {
   display: "map",
   native: {
     query: "SELECT LATITUDE, LONGITUDE FROM PEOPLE ORDER BY ID LIMIT 10",
@@ -61,7 +62,7 @@ const pinMapQuestionDetails: H.NativeQuestionDetails = {
   },
 };
 
-const gridMapQuestionDetails: H.NativeQuestionDetails = {
+const gridMapQuestionDetails: NativeQuestionDetails = {
   display: "map",
   native: {
     query: "SELECT LATITUDE, LONGITUDE FROM PEOPLE ORDER BY ID LIMIT 10",
@@ -434,7 +435,7 @@ describe("scenarios > question > native query drill", () => {
         applyBrushFilter({ left: 100, right: 300 }),
       );
       cy.wait("@dataset");
-      H.assertQueryBuilderRowCount(5);
+      H.assertQueryBuilderRowCount(6);
     });
   });
 });

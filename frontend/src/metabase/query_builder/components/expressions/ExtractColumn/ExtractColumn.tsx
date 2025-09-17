@@ -6,7 +6,7 @@ import { getExample } from "metabase/querying/drills/utils/column-extract-drill"
 import { Box, Button, Flex, Stack, Text, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { ExpressionWidgetHeader } from "../ExpressionWidgetHeader";
+import { ExpressionWidgetHeader } from "../ExpressionWidget/ExpressionWidgetHeader";
 
 import styles from "./ExtractColumn.module.css";
 import { getName } from "./util";
@@ -14,6 +14,7 @@ import { getName } from "./util";
 type Props = {
   query: Lib.Query;
   stageIndex: number;
+  availableColumns: Lib.ColumnMetadata[];
   onSubmit: (
     clause: Lib.ExpressionClause,
     name: string,
@@ -25,6 +26,7 @@ type Props = {
 export function ExtractColumn({
   query,
   stageIndex,
+  availableColumns,
   onCancel,
   onSubmit,
 }: Props) {
@@ -39,6 +41,7 @@ export function ExtractColumn({
       <ColumnPicker
         query={query}
         stageIndex={stageIndex}
+        availableColumns={availableColumns}
         column={column}
         onCancel={onCancel}
         onSelect={handleSelect}
@@ -74,22 +77,24 @@ export function ExtractColumn({
 function ColumnPicker({
   query,
   stageIndex,
+  availableColumns,
   column,
   onSelect,
   onCancel,
 }: {
   query: Lib.Query;
   stageIndex: number;
+  availableColumns: Lib.ColumnMetadata[];
   column: Lib.ColumnMetadata | null;
   onSelect: (column: Lib.ColumnMetadata) => void;
   onCancel?: () => void;
 }) {
   const extractableColumns = useMemo(
     () =>
-      Lib.expressionableColumns(query, stageIndex).filter(
+      availableColumns.filter(
         (column) => Lib.columnExtractions(query, column).length > 0,
       ),
-    [query, stageIndex],
+    [query, availableColumns],
   );
   const columnGroups = Lib.groupColumns(extractableColumns);
 

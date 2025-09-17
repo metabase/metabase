@@ -334,7 +334,7 @@
                      (:count (t2/query-one {:select [[:%count.* :count]]
                                             :from :metabase_field
                                             :join [[:metabase_table :table] [:= :table.id :table_id]]
-                                            :where [:= :table.db_id (:id (mt/db))]
+                                            :where [:= :table.db_id (mt/id)]
                                             :group-by [:table_id]
                                             :order-by [[:count :desc]]
                                             :limit 1}))))))))))
@@ -347,7 +347,7 @@
                                                              (swap! tables-fingerprinted inc)
                                                              (throw (CannotAcquireResourceException. "Unable to acquire resource")))
                       sync.fingerprint/*refingerprint?* true]
-          (is (=? (assoc (sync.fingerprint/empty-stats-map 0)
-                         :throwable #(instance? CannotAcquireResourceException %))
-                  (sync.fingerprint/fingerprint-fields-for-db! (mt/db) (constantly nil))))
+          (is (= (assoc (sync.fingerprint/empty-stats-map 0)
+                        :failed-fingerprints 1)
+                 (sync.fingerprint/fingerprint-fields-for-db! (mt/db) (constantly nil))))
           (is (= 1 @tables-fingerprinted)))))))

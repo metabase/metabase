@@ -99,6 +99,17 @@ const getColor = ({
   return color(theme.other.table.cell.textColor);
 };
 
+const borderRight = css`
+  &:after {
+    content: " ";
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    border-right: 1px solid var(--mb-color-border);
+  }
+`;
+
 export const PivotTableCell = styled.div<PivotTableCellProps>`
   flex: 1 0 auto;
   position: relative;
@@ -109,12 +120,12 @@ export const PivotTableCell = styled.div<PivotTableCellProps>`
   font-weight: ${(props) => (props.isBold ? "bold" : "normal")};
   cursor: ${(props) => (props.onClick ? "pointer" : "default")};
   color: ${getColor};
-  box-shadow: -1px 0 0 0 var(--mb-color-border) inset;
+  ${borderRight}
   border-bottom: 1px solid
     ${(props) =>
-      props.isBorderedHeader
-        ? "var(--mb-color-bg-dark)"
-        : "var(--mb-color-border)"};
+    props.isBorderedHeader
+      ? "var(--mb-color-bg-dark)"
+      : "var(--mb-color-border)"};
   background-color: ${getCellBackgroundColor};
   ${(props) =>
     props.hasTopBorder &&
@@ -136,7 +147,8 @@ interface PivotTableTopLeftCellsContainerProps {
 export const PivotTableTopLeftCellsContainer = styled.div<PivotTableTopLeftCellsContainerProps>`
   display: flex;
   align-items: flex-end;
-  box-shadow: -1px 0 0 0 var(--mb-color-border) inset;
+  position: relative;
+  ${borderRight}
   background-color: ${(props) =>
     getCellBackgroundColor({
       isEmphasized: true,

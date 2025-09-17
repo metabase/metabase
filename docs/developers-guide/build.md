@@ -18,9 +18,9 @@ To complete any build of the Metabase code, you'll need to install the following
 
 1. [Clojure (https://clojure.org)](https://clojure.org/guides/getting_started) - install the latest release by following the guide depending on your OS
 
-2. [Java Development Kit JDK (https://adoptopenjdk.net/releases.html)](https://adoptopenjdk.net/releases.html) - you need to install JDK 11 ([more info on Java versions](../installation-and-operation/running-the-metabase-jar-file.md))
+2. [Java Development Kit JDK (https://adoptopenjdk.net/releases.html)](https://adoptopenjdk.net/releases.html) - you need to install JDK 21 ([more info on Java versions](../installation-and-operation/running-the-metabase-jar-file.md))
 
-3. [Node.js (http://nodejs.org/)](http://nodejs.org/) - latest LTS release
+3. [Node.js (https://nodejs.org/)](https://nodejs.org/) - latest LTS release
 
 4. [Yarn package manager for Node.js](https://yarnpkg.com/) - latest release of version 1.x - you can install it in any OS by running:
 
@@ -31,7 +31,7 @@ npm install --global yarn
 On a most recent stable Ubuntu/Debian, all the tools above, with the exception of Clojure, can be installed by using:
 
 ```
-sudo apt install openjdk-11-jdk nodejs && sudo npm install --global yarn
+sudo apt install openjdk-21-jdk nodejs && sudo npm install --global yarn
 ```
 
 If you have multiple JDK versions installed in your machine, be sure to switch your JDK before building with:
@@ -141,7 +141,7 @@ When it’s done, you should see a message that says something like “Metabase 
 yarn build-hot
 ```
 
-If you're having trouble with this step, make sure you are using the LTS version of [Node.js (http://nodejs.org/)](http://nodejs.org/).
+If you're having trouble with this step, make sure you are using the LTS version of [Node.js (https://nodejs.org/)](https://nodejs.org/).
 
 11. In your web browser of choice, navigate to `http://localhost:3000`, where you should see Metabase!
 

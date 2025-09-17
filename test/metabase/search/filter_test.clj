@@ -2,6 +2,7 @@
   (:require
    [clojure.math.combinatorics :as math.combo]
    [clojure.test :refer :all]
+   [metabase.config.core :as config]
    [metabase.models.resolution]
    [metabase.search.config :as search.config]
    [metabase.search.filter :as search.filter]
@@ -24,13 +25,36 @@
 (defn- with-all-models-and-sandboxed-user [search-ctx]
   (with-all-models (assoc search-ctx :is-impersonated-user? false :is-sandboxed-user? true)))
 
+(defn- test-value-for-filter
+  "Returns an appropriate test value for each filter type."
+  [filter-key]
+  (case filter-key
+    ;; Boolean filters
+    (:archived? :search-native-query :verified) true
+    ;; Collection filters (sets/sequences)
+    (:created-by :last-edited-by :ids) #{1}
+    :display-type #{"table"}
+    ;; Date range filters (strings)
+    (:created-at :last-edited-at) "2023-01-01"
+    ;; Single value filters
+    :table-db-id 1
+    true))
+
+(defn- create-test-filter-context
+  "Creates a test filter context with appropriate values for each filter."
+  [active-filters]
+  (into {} (map (fn [filter-key]
+                  [filter-key (test-value-for-filter filter-key)])
+                active-filters)))
+
 (deftest search-context->applicable-models-test
   (testing "All models are relevant if we're not looking in the trash"
     (is (= search.config/all-models
            (search.filter/search-context->applicable-models (with-all-models-and-regular-user {:archived? false})))))
 
   (testing "We only search for certain models in the trash"
-    (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card"}
+    (is (= (cond-> #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card"}
+             config/ee-available? (conj "document"))
            (search.filter/search-context->applicable-models (with-all-models-and-regular-user {:archived? true})))))
 
   (testing "Indexed entities are not visible for sandboxed users"
@@ -39,7 +63,7 @@
 
   (doseq [active-filters (active-filter-combinations)]
     (testing (str "Consistent models included when filtering on " (vec active-filters))
-      (let [search-ctx (with-all-models-and-regular-user (zipmap active-filters (repeat true)))]
+      (let [search-ctx (with-all-models-and-regular-user (create-test-filter-context active-filters))]
         (is (= (search.in-place.filter/search-context->applicable-models search-ctx)
                (search.filter/search-context->applicable-models search-ctx)))))))
 
@@ -54,6 +78,9 @@
    :search-native-query          true
    :verified                     true
    :ids                          [1 2 3 4]
+   :non-temporal-dim-ids         "[1]"
+   :has-temporal-dim             true
+   :display-type                 ["line"]
    :models                       (disj search.config/all-models "dataset")})
 
 (deftest with-filters-test
@@ -79,7 +106,8 @@
             :from   :somewhere
             ;; This :where clause is a set to avoid flakes, since the clause order will be non-deterministic.
             :where  #{:and
-                      [:in :search_index.model #{"dashboard" "table" "segment" "collection" "database" "action" "indexed-entity" "metric" "card"}]
+                      [:in :search_index.model (cond-> #{"dashboard" "table" "segment" "collection" "database" "action" "indexed-entity" "metric" "card"}
+                                                 config/ee-available? (conj "document"))]
                       [:in :search_index.model_id ["1" "2" "3" "4"]]
                       [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]
                       [:= :search_index.archived true]
@@ -94,6 +122,9 @@
                       [:= :search_index.database_id 231]
                       [:>= [:cast :search_index.last_edited_at :date] #t"2024-10-02"]
                       [:< [:cast :search_index.last_edited_at :date] #t"2024-10-03"]
-                      [:in :search_index.last_editor_id [321]]}}
+                      [:in :search_index.last_editor_id [321]]
+                      [:= :search_index.non_temporal_dim_ids "[1]"]
+                      [:= :search_index.has_temporal_dim true]
+                      [:in :search_index.display_type ["line"]]}}
            (-> (search.filter/with-filters kitchen-sink-filter-context {:select [:some :stuff], :from :somewhere})
                (update :where set))))))

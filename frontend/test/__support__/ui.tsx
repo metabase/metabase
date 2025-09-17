@@ -3,11 +3,11 @@ import type { Reducer, Store } from "@reduxjs/toolkit";
 import type { MatcherFunction } from "@testing-library/dom";
 import type { ByRoleMatcher, RenderHookOptions } from "@testing-library/react";
 import {
+  renderHook,
   screen,
   render as testingLibraryRender,
   waitFor,
 } from "@testing-library/react";
-import { renderHook } from "@testing-library/react-hooks/dom";
 import type { History } from "history";
 import { createMemoryHistory } from "history";
 import { KBarProvider } from "kbar";
@@ -19,13 +19,14 @@ import { routerMiddleware, routerReducer } from "react-router-redux";
 import _ from "underscore";
 
 import { Api } from "metabase/api";
-import { UndoListing } from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import type { MantineThemeOverride } from "metabase/ui";
 import { ThemeProvider } from "metabase/ui";
+import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -232,6 +233,7 @@ export function TestWrapper({
   withDND,
   withUndos,
   theme,
+  withCssVariables = false,
 }: {
   children: React.ReactElement;
   store: any;
@@ -241,23 +243,23 @@ export function TestWrapper({
   withDND: boolean;
   withUndos?: boolean;
   theme?: MantineThemeOverride;
+  withCssVariables?: boolean;
 }): JSX.Element {
   return (
     <MetabaseReduxProvider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
-        <ThemeProvider
-          theme={theme}
-          mantineProviderProps={{ withCssVariables: false }}
-        >
-          <GlobalStylesForTest />
+        <ThemeProviderContext.Provider value={{ withCssVariables }}>
+          <ThemeProvider theme={theme}>
+            <GlobalStylesForTest />
 
-          <MaybeKBar hasKBar={withKBar}>
-            <MaybeRouter hasRouter={withRouter} history={history}>
-              {children}
-            </MaybeRouter>
-          </MaybeKBar>
-          {withUndos && <UndoListing />}
-        </ThemeProvider>
+            <MaybeKBar hasKBar={withKBar}>
+              <MaybeRouter hasRouter={withRouter} history={history}>
+                {children}
+              </MaybeRouter>
+            </MaybeKBar>
+            {withUndos && <UndoListing />}
+          </ThemeProvider>
+        </ThemeProviderContext.Provider>
       </MaybeDNDProvider>
     </MetabaseReduxProvider>
   );
@@ -411,13 +413,30 @@ export function createMockClipboardData(
   return clipboardData as unknown as DataTransfer;
 }
 
+/**
+ * jsdom doesn't have MediaQueryList
+ */
+export const createMockMediaQueryList = (
+  opts?: Partial<MediaQueryList>,
+): MediaQueryList => ({
+  media: "",
+  matches: false,
+  onchange: jest.fn(),
+  dispatchEvent: jest.fn(),
+  addListener: jest.fn(),
+  addEventListener: jest.fn(),
+  removeListener: jest.fn(),
+  removeEventListener: jest.fn(),
+  ...opts,
+});
+
 const ThemeProviderWrapper = ({
   children,
   ...props
 }: React.PropsWithChildren) => (
-  <ThemeProvider mantineProviderProps={{ withCssVariables: false }} {...props}>
-    {children}
-  </ThemeProvider>
+  <ThemeProviderContext.Provider value={{ withCssVariables: false }}>
+    <ThemeProvider {...props}>{children}</ThemeProvider>
+  </ThemeProviderContext.Provider>
 );
 
 export function renderWithTheme(children: React.ReactElement) {

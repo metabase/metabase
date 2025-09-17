@@ -5,6 +5,19 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "resources/migrations/**"
+  workflow_dispatch:
+    inputs:
+      base-ref:
+        description: 'Base reference for the migration test'
+        required: true
+        type: string
+      head-ref:
+        description: 'Head reference for the migration test'
+        required: true
+        type: string
+env:
+  BASE_REF: ${{ inputs.base-ref || github.base_ref }}
+  HEAD_REF: ${{ inputs.head-ref || github.head_ref }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -13,19 +26,21 @@ concurrency:
 jobs:
   migrations-h2-ee:
     runs-on: ubuntu-22.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     env:
       CI: 'true'
       MB_DB_TYPE: h2
+
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/cross-branch-migration-test
         with:
-          base-ref: ${{ github.base_ref }}
+          base-ref: ${{ env.BASE_REF }}
+          head-ref: ${{ env.HEAD_REF }}
 
   migrations-postgres-12-ee:
     runs-on: ubuntu-22.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     env:
       CI: 'true'
       MB_DB_TYPE: postgres
@@ -46,11 +61,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/cross-branch-migration-test
         with:
-          base-ref: ${{ github.base_ref }}
+          base-ref: ${{ env.BASE_REF }}
+          head-ref: ${{ env.HEAD_REF }}
 
   migrations-postgres-latest-ee:
     runs-on: ubuntu-22.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     env:
       CI: 'true'
       MB_DB_TYPE: postgres
@@ -71,11 +87,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/cross-branch-migration-test
         with:
-          base-ref: ${{ github.base_ref }}
+          base-ref: ${{ env.BASE_REF }}
+          head-ref: ${{ env.HEAD_REF }}
 
   migrations-mysql-8-0-ee:
     runs-on: ubuntu-22.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     env:
       CI: 'true'
       MB_DB_TYPE: mysql
@@ -92,11 +109,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/cross-branch-migration-test
         with:
-          base-ref: ${{ github.base_ref }}
+          base-ref: ${{ env.BASE_REF }}
+          head-ref: ${{ env.HEAD_REF }}
 
   migrations-mysql-latest-ee:
     runs-on: ubuntu-22.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     env:
       CI: 'true'
       MB_DB_TYPE: mysql
@@ -117,11 +135,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/cross-branch-migration-test
         with:
-          base-ref: ${{ github.base_ref }}
+          base-ref: ${{ env.BASE_REF }}
+          head-ref: ${{ env.HEAD_REF }}
 
   migrations-mariadb-10-2-ee:
     runs-on: ubuntu-22.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     env:
       CI: 'true'
       MB_DB_TYPE: mysql
@@ -138,11 +157,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/cross-branch-migration-test
         with:
-          base-ref: ${{ github.base_ref }}
+          base-ref: ${{ env.BASE_REF }}
+          head-ref: ${{ env.HEAD_REF }}
 
   migrations-mariadb-latest-ee:
     runs-on: ubuntu-22.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     env:
       CI: 'true'
       MB_DB_TYPE: mysql
@@ -159,4 +179,5 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/cross-branch-migration-test
         with:
-          base-ref: ${{ github.base_ref }}
+          base-ref: ${{ env.BASE_REF }}
+          head-ref: ${{ env.HEAD_REF }}

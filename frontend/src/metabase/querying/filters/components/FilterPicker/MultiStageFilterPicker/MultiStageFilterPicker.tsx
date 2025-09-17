@@ -38,7 +38,7 @@ export function MultiStageFilterPicker({
     stageIndex: number,
     opts: FilterChangeOpts,
   ) => {
-    const newQuery = Lib.filter(query, stageIndex, filter);
+    const newQuery = Lib.dropEmptyStages(Lib.filter(query, stageIndex, filter));
     onChange(newQuery, opts);
   };
 

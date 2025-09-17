@@ -1,7 +1,7 @@
 import { jt, t } from "ttag";
 
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { isSameOrigin } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/utils";

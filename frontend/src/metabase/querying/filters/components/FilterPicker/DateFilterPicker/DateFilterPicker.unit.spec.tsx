@@ -38,12 +38,14 @@ function setup({
 
   renderWithProviders(
     <DateFilterPicker
+      autoFocus
       query={query}
       stageIndex={STAGE_INDEX}
       column={column}
       filter={filter}
       isNew={isNew}
       withAddButton={withAddButton}
+      withSubmitButton
       onChange={onChange}
       onBack={onBack}
     />,

@@ -4,7 +4,7 @@ import { t } from "ttag";
 import {
   HoverParent,
   QueryColumnInfoIcon,
-} from "metabase/components/MetadataInfo/ColumnInfoIcon";
+} from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
 import { Checkbox, DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
 

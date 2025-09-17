@@ -74,7 +74,6 @@ describe("Google Drive > Connect / Disconnect modal", () => {
       status: "not-connected",
     });
     expect(await screen.findByText("Import Google Sheets")).toBeInTheDocument();
-
     expect(
       await screen.findByText("super-service-account@testing.metabase.com"),
     ).toBeInTheDocument();

@@ -38,54 +38,44 @@
                                           orderable-columns))]
     (testing "effective type"
       (is (=? [{:name "NAME"
-                :lib/desired-column-alias "NAME"
                 :semantic-type :type/Name
                 :effective-type :type/Text}
                {:name "NAME"
-                :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__NAME"
                 :semantic-type :type/Name
                 :effective-type :type/Text}]
               (columns-of-type :type/Text))))
     (testing "semantic type"
       (is (=? [{:name "ID"
-                :lib/desired-column-alias "ID"
                 :semantic-type :type/PK
                 :effective-type :type/BigInteger}
                {:name "CATEGORY_ID"
-                :lib/desired-column-alias "CATEGORY_ID"
                 :semantic-type :type/FK
                 :effective-type :type/Integer}
                {:name "ID"
-                :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__ID"
+                :fk-field-id (meta/id :venues :category-id)
                 :semantic-type :type/PK
                 :effective-type :type/BigInteger}]
               (columns-of-type :Relation/*))))
-    (testing "experssions"
+    (testing "expressions"
       (is (=? [{:name "ID"
-                :lib/desired-column-alias "ID"
                 :semantic-type :type/PK
                 :effective-type :type/BigInteger}
                {:name "CATEGORY_ID"
-                :lib/desired-column-alias "CATEGORY_ID"
                 :semantic-type :type/FK
                 :effective-type :type/Integer}
                {:name "LATITUDE"
-                :lib/desired-column-alias "LATITUDE"
                 :semantic-type :type/Latitude
                 :effective-type :type/Float}
                {:name "LONGITUDE"
-                :lib/desired-column-alias "LONGITUDE"
                 :semantic-type :type/Longitude
                 :effective-type :type/Float}
                {:name "PRICE"
-                :lib/desired-column-alias "PRICE"
                 :semantic-type :type/Category
                 :effective-type :type/Integer}
                {:name "myadd"
-                :lib/desired-column-alias "myadd"
                 :effective-type :type/Integer}
                {:name "ID"
-                :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__ID"
+                :fk-field-id (meta/id :venues :category-id)
                 :semantic-type :type/PK
                 :effective-type :type/BigInteger}]
               (filter lib.types.isa/numeric? orderable-columns))))))
@@ -101,7 +91,7 @@
             [{:pred #'lib.types.isa/temporal?,           :positive :type/Date,              :negative :type/CreationDate}
              {:pred #'lib.types.isa/temporal?,           :positive :type/DateTime,          :negative :type/City}
              {:pred #'lib.types.isa/numeric?,            :positive :type/Integer,           :negative :type/FK}
-             {:pred #'lib.types.isa/numeric?,            :positive :type/Price,             :negative :type/CreationDate}
+             {:pred #'lib.types.isa/numeric?,            :positive :type/Float,             :negative :type/Price}
              {:pred #'lib.types.isa/boolean?,            :positive :type/Boolean,           :negative :type/PK}
              {:pred #'lib.types.isa/string?,             :positive :type/Text,              :negative :type/URL}
              {:pred #'lib.types.isa/string-like?,        :positive :type/TextLike,          :negative :type/Address}
@@ -148,10 +138,13 @@
             (is (false? (pred (column negative))))))))))
 
 (deftest ^:parallel string?-test
-  #_{:clj-kondo/ignore [:equals-true]}
-  (are [exp column] (= exp (lib.types.isa/string? column))
-    true  {:effective-type :type/Text :semantic-type :type/SerializedJSON}
-    false {:effective-type :type/JSON :semantic-type :type/SerializedJSON}))
+  (is (true? (lib.types.isa/string? {:effective-type :type/Text :semantic-type :type/SerializedJSON})))
+  (is (false? (lib.types.isa/string? {:effective-type :type/JSON :semantic-type :type/SerializedJSON}))))
+
+(deftest ^:parallel numeric?-test
+  (is (true? (lib.types.isa/numeric? {:effective-type :type/Float :semantic-type nil})))
+  (is (true? (lib.types.isa/numeric? {:effective-type :type/Float :semantic-type :type/Price})))
+  (is (false? (lib.types.isa/numeric? {:effective-type :type/Text :semantic-type :type/Price}))))
 
 (deftest ^:parallel valid-filter-for?-test
   #_{:clj-kondo/ignore [:equals-true]}

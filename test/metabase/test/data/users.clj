@@ -69,14 +69,14 @@
   (or (t2/select-one :model/User :email email)
       (locking create-user-lock
         (or (t2/select-one :model/User :email email)
-            (first (t2/insert-returning-instances! :model/User
-                                                   {:email        email
-                                                    :first_name   first-name
-                                                    :last_name    last-name
-                                                    :password     password
-                                                    :is_superuser superuser
-                                                    :is_qbnewb    true
-                                                    :is_active    active}))))))
+            (t2/insert-returning-instance! :model/User
+                                           {:email        email
+                                            :first_name   first-name
+                                            :last_name    last-name
+                                            :password     password
+                                            :is_superuser superuser
+                                            :is_qbnewb    true
+                                            :is_active    active})))))
 
 (mu/defn fetch-user :- (ms/InstanceOf :model/User)
   "Fetch the User object associated with `username`. Creates user if needed.
@@ -221,6 +221,11 @@
 
   Note: this makes a mock API call, not an actual HTTP call, use [[user-real-request]] for that."
   (partial user-request client/client))
+
+(def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
+                    request-options? http-body-map? & {:as query-params}])} user-http-request-full-response
+  "Like user-http-request but uses the full-response client so will return the http response instead of the body"
+  (partial user-request client/client-full-response))
 
 (def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
                     request-options? http-body-map? & {:as query-params}])} user-real-request

@@ -1,7 +1,7 @@
 import { c, t } from "ttag";
 
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
 
 import { UpsellBigCard } from "./components";
 import S from "./components/Upsells.module.css";
@@ -25,7 +25,7 @@ export const UpsellCloud = ({
       campaign="cloud"
       buttonText={t`Try for free`}
       source={source}
-      onOpenModal={onOpenModal}
+      onClick={onOpenModal}
       illustrationSrc="app/assets/img/upsell-cloud.png"
     >
       {c("'restores' and 'upgrades' are nouns in plural in this context")

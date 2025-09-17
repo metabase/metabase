@@ -1,6 +1,5 @@
 (ns metabase.query-processor.pivot.test-util
   (:require
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.test :as mt]))
 
@@ -71,10 +70,10 @@
   "A dashboard card query with a pivot table."
   []
   (let [dataset-query     (pivot-query false)
-        metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        metadata-provider (mt/metadata-provider)
         query             (lib/query metadata-provider dataset-query)
         breakouts         (into []
-                                (comp (filter (comp #{:source/breakouts} :lib/source)) (map :name))
+                                (comp (filter :lib/breakout?) (map :name))
                                 (lib/returned-columns query))]
     {:dataset_query dataset-query
      :visualization_settings

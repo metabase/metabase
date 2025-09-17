@@ -17,10 +17,10 @@ export const ChartSettingInput = ({
   placeholder,
   id,
 }: ChartSettingInputProps) => {
-  const [inputValue, setInputValue] = useState(value);
+  const [inputValue, setInputValue] = useState(value ?? "");
 
   useEffect(() => {
-    setInputValue(value);
+    setInputValue(value ?? "");
   }, [value]);
 
   const onChangeRef = useLatest(onChange);

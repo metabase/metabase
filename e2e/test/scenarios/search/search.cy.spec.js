@@ -160,20 +160,18 @@ describe("scenarios > search", () => {
         H.getSearchBar().type("Test");
       });
 
-      const resultDescription = cy.findByTestId("result-description");
-      const parentContainer = cy.findByTestId(
-        "search-results-floating-container",
-      );
-
-      parentContainer.invoke("outerWidth").then((parentWidth) => {
-        resultDescription
-          .invoke("outerWidth")
-          .should(
-            "be.lessThan",
-            parentWidth,
-            "Result description width should not exceed parent container width",
-          );
-      });
+      cy.findByTestId("search-results-floating-container")
+        .as("parentContainer")
+        .invoke("outerWidth")
+        .then((parentWidth) => {
+          cy.findByTestId("result-description")
+            .invoke("outerWidth")
+            .should(
+              "be.lessThan",
+              parentWidth,
+              "Result description width should not exceed parent container width",
+            );
+        });
     });
 
     it("should not dismiss when a dashboard finishes loading (metabase#35009)", () => {
@@ -251,7 +249,7 @@ describe("scenarios > search", () => {
   });
 });
 
-describe.skip("issue 16785", () => {
+describe("issue 16785", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

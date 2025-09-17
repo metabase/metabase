@@ -1,0 +1,80 @@
+.highlight {
+  background: var(--mb-color-brand-light);
+}
+
+.editor {
+  :global {
+    .cm-editor {
+      height: 100%;
+      background: none;
+      white-space: pre;
+    }
+
+    .cm-focused {
+      outline: none;
+    }
+
+    .cm-content {
+      color: var(--mb-color-text-dark);
+      background: none;
+      padding-block: 8px;
+    }
+
+    .cm-line {
+      background: none;
+    }
+
+    .cm-gutters {
+      background-color: var(--mb-color-bg-light);
+      border: none;
+    }
+
+    .cm-gutterElement {
+      font-weight: bold;
+      font-size: 10px;
+      color: var(--mb-color-text-light);
+      vertical-align: baseline;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+
+      span[title="Fold line"] {
+        position: relative;
+        top: -3px;
+      }
+    }
+
+    .cm-activeLineGutter {
+      background: none;
+    }
+
+    .cm-selectionBackground {
+      background: var(--mb-color-focus) !important;
+      border-radius: 1px;
+    }
+
+    .cm-selectionMatch {
+      background: none;
+    }
+
+    .cm-cursor {
+      border-left-width: 1.6px;
+    }
+
+    .cm-tooltip:not(.cm-tooltip-autocomplete) {
+      border: none !important;
+      background: none !important;
+    }
+
+    .cm-matchingBracket {
+      background: none !important;
+      outline: 0.5px solid var(--mb-color-text-light);
+      border-radius: 2px;
+    }
+
+    .cm-snippetField {
+      font-style: italic;
+      background: none;
+    }
+  }
+}

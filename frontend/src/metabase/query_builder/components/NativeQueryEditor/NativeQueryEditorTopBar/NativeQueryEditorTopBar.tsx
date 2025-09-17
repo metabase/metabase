@@ -1,7 +1,9 @@
+import { useDispatch } from "metabase/lib/redux";
+import { updateQuestion } from "metabase/query_builder/actions/core";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { Flex } from "metabase/ui";
-import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Collection,
@@ -13,10 +15,9 @@ import type {
 
 import { ResponsiveParametersList } from "../../ResponsiveParametersList";
 import DataSourceSelectors from "../DataSourceSelectors/DataSourceSelectors";
-import type { Features as SidebarFeatures } from "../NativeQueryEditorActionButtons";
 import { NativeQueryEditorActionButtons } from "../NativeQueryEditorActionButtons/NativeQueryEditorActionButtons";
 import { VisibilityToggler } from "../VisibilityToggler/VisibilityToggler";
-import { formatQuery } from "../utils";
+import type { SidebarFeatures } from "../types";
 
 interface NativeQueryEditorTopBarProps {
   question: Question;
@@ -40,18 +41,18 @@ interface NativeQueryEditorTopBarProps {
   snippetCollections?: Collection[];
   sidebarFeatures: SidebarFeatures;
 
-  toggleDataReference: () => void;
-  toggleTemplateTagsEditor: () => void;
-  toggleEditor: () => void;
-  toggleSnippetSidebar: () => void;
+  toggleEditor?: () => void;
+  toggleDataReference?: () => void;
+  toggleSnippetSidebar?: () => void;
   setIsNativeEditorOpen?: (isOpen: boolean) => void;
+  onFormatQuery?: () => void;
   onSetDatabaseId?: (id: DatabaseId) => void;
-  onOpenModal: (modalType: QueryModalType) => void;
+  onOpenModal?: (modalType: QueryModalType) => void;
   onChange: (queryText: string) => void;
-  setParameterValueToDefault: (parameterId: ParameterId) => void;
-  setParameterValue: (parameterId: ParameterId, value: string) => void;
+  setParameterValue?: (parameterId: ParameterId, value: string) => void;
   focus: () => void;
   setDatasetQuery: (query: NativeQuery) => Promise<Question>;
+  databaseIsDisabled?: (database: Database) => boolean;
 }
 
 const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
@@ -75,18 +76,20 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
     isShowingDataReference,
     isShowingTemplateTagsEditor,
     isShowingSnippetSidebar,
+    onFormatQuery,
     onOpenModal,
-    toggleDataReference,
-    toggleTemplateTagsEditor,
-    toggleSnippetSidebar,
     nativeEditorSelectedText,
     setIsNativeEditorOpen,
     toggleEditor,
+    toggleDataReference,
+    toggleSnippetSidebar,
     onSetDatabaseId,
     hasParametersList = true,
-    setParameterValueToDefault,
     setDatasetQuery,
+    databaseIsDisabled,
   } = props;
+
+  const dispatch = useDispatch();
 
   const setTableId = (tableId: TableId) => {
     const table = query.metadata().table(tableId);
@@ -99,9 +102,9 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
     parameterId: ParameterId,
     parameterIndex: number,
   ) => {
-    // could be
-    // dispatch(updateQuestion(question.setDatasetQuery(datasetQuery)));
-    setDatasetQuery(query.setParameterIndex(parameterId, parameterIndex));
+    const newQuery = query.setParameterIndex(parameterId, parameterIndex);
+
+    dispatch(updateQuestion(question.setDatasetQuery(newQuery.datasetQuery())));
   };
 
   // Change the Database we're currently editing a query for.
@@ -112,21 +115,6 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
       onSetDatabaseId?.(databaseId);
       setFocus();
     }
-  };
-
-  const handleFormatQuery = async () => {
-    const query = question.query();
-    const engine = Lib.engine(query);
-    const queryText = Lib.rawNativeQuery(query);
-
-    if (!engine) {
-      // no engine found, do nothing
-      return;
-    }
-
-    const formattedQuery = await formatQuery(queryText, engine);
-    onChange(formattedQuery);
-    setFocus();
   };
 
   if (!question) {
@@ -146,23 +134,24 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
           setDatabaseId={setDatabaseId}
           setTableId={setTableId}
           editorContext={editorContext}
+          databaseIsDisabled={databaseIsDisabled}
         />
       )}
-      {hasParametersList && (
+      {hasParametersList && setParameterValue && (
         <ResponsiveParametersList
-          question={question}
+          cardId={question.id()}
+          dashboardId={question.getDashboardProps().dashboardId}
           parameters={parameters}
           setParameterValue={setParameterValue}
           setParameterIndex={setParameterIndex}
-          setParameterValueToDefault={setParameterValueToDefault}
           enableParameterRequiredBehavior
         />
       )}
-      <Flex ml="auto" gap="lg" mr="lg" align="center" h="55px">
+      <Flex ml="auto" gap="lg" mr="lg" align="center" h="55px" pl="md">
         {isNativeEditorOpen && hasEditingSidebar && !readOnly && (
           <NativeQueryEditorActionButtons
             features={sidebarFeatures}
-            onFormatQuery={handleFormatQuery}
+            onFormatQuery={onFormatQuery}
             onGenerateQuery={onChange}
             question={question}
             nativeEditorSelectedText={nativeEditorSelectedText}
@@ -174,15 +163,15 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
             isShowingDataReference={isShowingDataReference}
             isShowingTemplateTagsEditor={isShowingTemplateTagsEditor}
             isShowingSnippetSidebar={isShowingSnippetSidebar}
-            onOpenModal={onOpenModal}
             toggleDataReference={toggleDataReference}
-            toggleTemplateTagsEditor={toggleTemplateTagsEditor}
             toggleSnippetSidebar={toggleSnippetSidebar}
+            onOpenModal={onOpenModal}
           />
         )}
         {query.hasWritePermission() &&
           !question.isArchived() &&
-          setIsNativeEditorOpen && (
+          setIsNativeEditorOpen &&
+          toggleEditor && (
             <VisibilityToggler
               isOpen={isNativeEditorOpen}
               readOnly={!!readOnly}

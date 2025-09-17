@@ -15,7 +15,7 @@ const { nocollection } = USERS;
 const PG_DB_ID = 2;
 
 // NOTE: This issue wasn't specifically related to PostgreSQL. We simply needed to add another DB to reproduce it.
-describe.skip("issue 13347", { tags: "@external" }, () => {
+describe("issue 13347", { tags: ["@external", "@skip"] }, () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
@@ -78,7 +78,7 @@ describe("postgres > user > query", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore("postgres-12");
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     // Update basic permissions (the same starting "state" as we have for the "Sample Database")
     cy.updatePermissionsGraph({
@@ -149,7 +149,7 @@ describe("postgres > user > query", { tags: "@external" }, () => {
   });
 });
 
-describe.skip("issue 17777", () => {
+describe("issue 17777", { tags: "@skip" }, () => {
   function hideTables(tables) {
     cy.request("PUT", "/api/table", {
       ids: tables,
@@ -231,7 +231,7 @@ describe("issue 20436", () => {
 
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
@@ -272,7 +272,7 @@ describe("issue 20436", () => {
   });
 });
 
-describe("UI elements that make no sense for users without data permissions (metabase#22447, metabase##22449, metabase#22450)", () => {
+describe("UI elements that make no sense for users without data permissions (metabase#22447, metabase#22449, metabase#22450)", () => {
   beforeEach(() => {
     H.restore();
   });
@@ -312,7 +312,7 @@ describe("UI elements that make no sense for users without data permissions (met
 
   it("should not show visualization or question settings to users with block data permissions", () => {
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
         [SAMPLE_DB_ID]: { "view-data": "blocked" },
@@ -326,11 +326,14 @@ describe("UI elements that make no sense for users without data permissions (met
 
     H.visitQuestion(ORDERS_QUESTION_ID);
 
-    cy.findByTextEnsureVisible("There was a problem with your question");
+    cy.findByTextEnsureVisible(
+      "Sorry, you don't have permission to run this query.",
+    );
 
-    cy.findByTestId("viz-settings-button").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization").should("not.exist");
+    H.queryBuilderFooter()
+      .findByTestId("viz-settings-button")
+      .should("not.exist");
+    H.queryBuilderFooter().findByText("Visualization").should("not.exist");
 
     cy.findByTestId("qb-header-action-panel").within(() => {
       cy.icon("refresh").should("not.exist");
@@ -394,7 +397,7 @@ describe("issue 22695 ", () => {
 
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
@@ -574,7 +577,7 @@ describe("issue 24966", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
 
     // Add user attribute to existing user

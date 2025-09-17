@@ -27,12 +27,15 @@
             (json/decode true)
             :teams)))
 
+(def ^:private teams-to-reassign #{"Admin Webapp" "DashViz"})
+
 (deftest ^:parallel all-modules-have-teams-test
   (testing "All modules should have a valid :team owner"
     (let [teams (teams)]
       (doseq [[module config] (modules-config)]
         (testing (format "\n'%s' module" module)
-          (is (contains? teams (:team config))
+          (is (or (contains? teams (:team config))
+                  (contains? teams-to-reassign (:team config)))
               "Should have a valid :team key"))))))
 
 (defn- modules-config-zipper

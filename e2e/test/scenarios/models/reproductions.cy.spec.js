@@ -280,7 +280,7 @@ describe("issue 20517", () => {
     H.createQuestion(modelDetails).then(({ body: { id } }) => {
       cy.intercept("POST", `/api/card/${id}/query`).as("modelQuery");
       cy.intercept("PUT", `/api/card/${id}`).as("updateModel");
-      cy.visit(`/model/${id}/metadata`);
+      cy.visit(`/model/${id}/columns`);
       cy.wait("@modelQuery");
     });
   });
@@ -304,7 +304,7 @@ describe("issue 20517", () => {
   });
 });
 
-describe.skip("issue 20624", () => {
+describe("issue 20624", { tags: "@skip" }, () => {
   const renamedColumn = "TITLE renamed";
 
   const questionDetails = {
@@ -423,34 +423,38 @@ describe("issue 22517", () => {
     cy.wait("@updateMetadata");
   });
 
-  it.skip("adding or removing a column should not drop previously edited metadata (metabase#22517)", () => {
-    H.openQuestionActions();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Edit query definition").click();
+  it(
+    "adding or removing a column should not drop previously edited metadata (metabase#22517)",
+    { tags: "@skip" },
+    () => {
+      H.openQuestionActions();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Edit query definition").click();
 
-    // Make sure previous metadata changes are reflected in the UI
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Foo");
+      // Make sure previous metadata changes are reflected in the UI
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Foo");
 
-    // This will edit the original query and add the `SIZE` column
-    // Updated query: `select *, case when quantity > 4 then 'large' else 'small' end size from orders`
-    H.NativeEditor.focus().type(
-      "{leftarrow}".repeat(" from orders".length) +
-        ", case when quantity > 4 then 'large' else 'small' end size ",
-    );
+      // This will edit the original query and add the `SIZE` column
+      // Updated query: `select *, case when quantity > 4 then 'large' else 'small' end size from orders`
+      H.NativeEditor.focus().type(
+        "{leftarrow}".repeat(" from orders".length) +
+          ", case when quantity > 4 then 'large' else 'small' end size ",
+      );
 
-    cy.findByTestId("native-query-editor-container").icon("play").click();
-    cy.wait("@dataset");
+      cy.findByTestId("native-query-editor-container").icon("play").click();
+      cy.wait("@dataset");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Foo");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Foo");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save changes").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Save changes").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Foo");
-  });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Foo");
+    },
+  );
 });
 
 describe("issue 22518", () => {
@@ -493,9 +497,7 @@ describe("issue 22518", () => {
   });
 });
 
-describe.skip("issue 22519", () => {
-  const ratingDataModelUrl = `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${REVIEWS_ID}/field/${REVIEWS.RATING}/general`;
-
+describe("issue 22519", { tags: "@skip" }, () => {
   const questionDetails = {
     query: {
       "source-table": REVIEWS_ID,
@@ -509,7 +511,12 @@ describe.skip("issue 22519", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.visit(ratingDataModelUrl);
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaName: SAMPLE_DB_SCHEMA_ID,
+      tableId: REVIEWS_ID,
+      fieldId: REVIEWS.REVIEWS,
+    });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Don't cast").click();
@@ -536,16 +543,6 @@ describe(
   "filtering based on the remapped column name should result in a correct query (metabase#22715)",
   { tags: "@flaky" },
   () => {
-    function mapColumnTo({ table, column } = {}) {
-      cy.findByText("Database column this maps to")
-        .parent()
-        .contains("None")
-        .click();
-
-      H.popover().findByText(table).click();
-      H.popover().findByText(column).click();
-    }
-
     beforeEach(() => {
       cy.intercept("POST", "/api/dataset").as("dataset");
       cy.intercept("PUT", "/api/card/*").as("updateModel");
@@ -566,21 +563,14 @@ describe(
         cy.request("PUT", `/api/card/${id}`, { type: "model" });
 
         // Let's go straight to the model metadata editor
-        cy.visit(`/model/${id}/metadata`);
-        // Without this Cypress fails to remap the column because an element becomes detached from the DOM.
-        // This is caused by the DatasetFieldMetadataSidebar component rerendering mulitple times.
-        cy.findByText("Database column this maps to");
-        cy.wait(5000);
+        cy.visit(`/model/${id}/columns`);
+        cy.findByText("Database column this maps to").should("be.visible");
 
         // The first column `ID` is automatically selected
-        mapColumnTo({ table: "Orders", column: "ID" });
-
+        H.mapColumnTo({ table: "Orders", column: "ID" });
         cy.findByText("ALIAS_CREATED_AT").click();
 
-        // Without this Cypress fails to remap the column because an element becomes detached from the DOM.
-        // This is caused by the DatasetFieldMetadataSidebar component rerendering mulitple times.
-        cy.wait(5000);
-        mapColumnTo({ table: "Orders", column: "Created At" });
+        H.mapColumnTo({ table: "Orders", column: "Created At" });
 
         // Make sure the column name updated before saving
         cy.findByDisplayValue("Created At");
@@ -588,22 +578,19 @@ describe(
         cy.button("Save changes").click();
         cy.wait("@updateModel");
 
-        cy.visit(`/model/${id}`);
-        cy.wait("@dataset");
+        H.visitModel(id);
       });
     });
 
     it("when done through the column header action (metabase#22715-1)", () => {
       H.tableHeaderClick("Created At");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Filter by this column").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Today").click();
-
+      H.popover().within(() => {
+        cy.findByText("Filter by this column").click();
+        cy.findByText("Today").click();
+      });
       cy.wait("@dataset");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Today").should("not.exist");
-
       cy.get("[data-testid=cell-data]")
         .should("have.length", 4)
         .and("contain", "Created At");
@@ -1052,7 +1039,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
       cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
         "schema",
       );
-      cy.visit(`/model/${id}/metadata`);
+      cy.visit(`/model/${id}/columns`);
       cy.wait("@schema");
 
       mapModelColumnToDatabase({ table: "Orders", field: "ID" });
@@ -1162,7 +1149,7 @@ describe("issue 53556 - nested question based on native model with remapped valu
       cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
         "schema",
       );
-      cy.visit(`/model/${id}/metadata`);
+      cy.visit(`/model/${id}/columns`);
       cy.wait("@schema");
 
       mapModelColumnToDatabase({ table: "Orders", field: "ID" });
@@ -1281,55 +1268,55 @@ describe("issue 53556 - nested question based on native model with remapped valu
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(312);
     H.assertTableData({
-      columns: ["Created At", "Total", "Count"],
+      columns: ["Created At: Month", "Total: 8 bins", "Count"],
       firstRows: [
-        ["January 2024", "140", "18"],
-        ["February 2024", "140", "17"],
+        ["January 2024", "140  –  160", "18"],
+        ["February 2024", "140  –  160", "17"],
       ],
     });
 
     cy.log("Sort by Total in ascending order");
-    H.tableHeaderClick("Total");
+    H.tableHeaderClick("Total: 8 bins");
     H.popover()
       .findAllByTestId("click-actions-sort-control-sort.ascending")
       .click();
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(312);
     H.assertTableData({
-      columns: ["Created At", "Total", "Count"],
+      columns: ["Created At: Month", "Total: 8 bins", "Count"],
       firstRows: [
-        ["December 2023", "-60", "1"],
-        ["September 2022", "0", "2"],
+        ["December 2023", "-60  –  -40", "1"],
+        ["September 2022", "0  –  20", "2"],
       ],
     });
 
     cy.log("Sort by Created At in descending order");
-    H.tableHeaderClick("Created At");
+    H.tableHeaderClick("Created At: Month");
     H.popover()
       .findAllByTestId("click-actions-sort-control-sort.descending")
       .click();
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(312);
     H.assertTableData({
-      columns: ["Created At", "Total", "Count"],
+      columns: ["Created At: Month", "Total: 8 bins", "Count"],
       firstRows: [
-        ["April 2026", "20", "27"],
-        ["April 2026", "40", "57"],
+        ["April 2026", "20  –  40", "27"],
+        ["April 2026", "40  –  60", "57"],
       ],
     });
 
     cy.log("Sort by Created At in ascending order");
-    H.tableHeaderClick("Created At");
+    H.tableHeaderClick("Created At: Month");
     H.popover()
       .findAllByTestId("click-actions-sort-control-sort.ascending")
       .click();
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(312);
     H.assertTableData({
-      columns: ["Created At", "Total", "Count"],
+      columns: ["Created At: Month", "Total: 8 bins", "Count"],
       firstRows: [
-        ["April 2022", "40", "1"],
-        ["May 2022", "20", "1"],
+        ["April 2022", "40  –  60", "1"],
+        ["May 2022", "20  –  40", "1"],
       ],
     });
   });
@@ -1361,7 +1348,7 @@ FROM
       cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
         "schema",
       );
-      cy.visit(`/model/${id}/metadata`);
+      cy.visit(`/model/${id}/columns`);
       cy.wait("@schema");
 
       selectModelColumn("source orders");
@@ -1455,7 +1442,7 @@ describe("issue 53604 - nested native question with multiple breakouts on same c
     );
 
     cy.findByTestId("qb-filters-panel").findByText(
-      "CREATED_AT is Jan 1 – Dec 31, 2024",
+      "CREATED_AT: Year is Jan 1 – Dec 31, 2024",
     );
 
     H.assertQueryBuilderRowCount(520);
@@ -1688,15 +1675,16 @@ describe("issue 31663", () => {
     H.tableInteractive().findByText("Product ID").click();
     cy.wait("@idFields");
     cy.findByPlaceholderText("Select a target").click();
-    H.popover().within(() => {
-      cy.findByText("Orders Model → ID").should("not.exist");
-      cy.findByText("Products Model → ID").should("not.exist");
+    H.popover().findByText("Orders Model → ID").should("not.exist");
+    H.popover().findByText("Products Model → ID").should("not.exist");
 
-      cy.findByText("Orders → ID").should("be.visible");
-      cy.findByText("People → ID").should("be.visible");
-      cy.findByText("Products → ID").should("be.visible");
-      cy.findByText("Reviews → ID").should("be.visible");
-    });
+    H.popover().findByText("Orders → ID").should("be.visible");
+    H.popover().findByText("People → ID").should("be.visible");
+    H.popover().findByText("Products → ID").should("be.visible");
+    H.popover()
+      .scrollTo("bottom")
+      .findByText("Reviews → ID")
+      .should("be.visible");
   });
 });
 
@@ -2129,7 +2117,7 @@ describe("issue 40252", () => {
       .should("be.enabled")
       .click();
 
-    cy.url().should("not.contain", "/metadata");
+    cy.url().should("not.contain", "/columns");
 
     cy.wait("@dataset");
 
@@ -2229,7 +2217,6 @@ describe("cumulative count - issue 33330", () => {
     });
     cy.wait("@dataset");
 
-    H.queryBuilderHeader().findByLabelText("Show filters").click();
     cy.findByTestId("filter-pill").should("have.text", "Created At is today");
     cy.findAllByTestId("header-cell")
       .should("contain", "Created At: Month")

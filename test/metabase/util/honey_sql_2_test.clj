@@ -136,7 +136,7 @@
                 "like Turkish, it can turn an i into an İ. This test converts a keyword with an `i` in it to verify "
                 "that we convert the identifier correctly using the english locale even when the user has changed the "
                 "locale to Turkish")
-    (mt/with-locale "tr"
+    (mt/with-locale! "tr"
       (is (= ["SELECT \"SETTING\""]
              (sql/format {:select [:setting]} {:dialect :h2}))))))
 

@@ -160,6 +160,7 @@ describe("ParameterFieldWidget", () => {
       values_source_config: {
         values: [["foo"]],
       },
+      isMultiSelect: false,
       hasVariableTemplateTagTarget: true,
     });
 

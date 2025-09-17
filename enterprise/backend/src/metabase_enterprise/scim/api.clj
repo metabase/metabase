@@ -29,12 +29,12 @@
     (t2/delete! :model/ApiKey :scope :scim)
     (let [unhashed-key (api-key/generate-key)]
       (->
-       (t2/insert-returning-instance! :model/ApiKey {:user_id       nil
-                                                     :scope         :scim
-                                                     :name          (scim-api-key-name)
-                                                     :unhashed_key  unhashed-key
-                                                     :creator_id    user-id
-                                                     :updated_by_id user-id})
+       (t2/insert-returning-instance! :model/ApiKey {:user_id               nil
+                                                     :scope                 :scim
+                                                     :name                  (scim-api-key-name)
+                                                     ::api-key/unhashed-key unhashed-key
+                                                     :creator_id            user-id
+                                                     :updated_by_id         user-id})
        (assoc :unmasked_key (u.secret/expose unhashed-key))))))
 
 (api.macros/defendpoint :get "/api_key"

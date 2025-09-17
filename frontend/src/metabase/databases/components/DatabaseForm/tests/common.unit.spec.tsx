@@ -1,14 +1,16 @@
+import { within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { screen, waitFor } from "__support__/ui";
 import type { Engine } from "metabase-types/api";
+
+import * as utils from "../utils";
 
 import { TEST_ENGINES, setup } from "./setup";
 
 describe("DatabaseForm", () => {
   it("should submit default values", async () => {
     const { onSubmit } = setup();
-
     const expectedDatabaseName = "My H2 Database";
     const expectedConnectionString = "file:/somewhere";
     await userEvent.type(
@@ -92,6 +94,103 @@ describe("DatabaseForm", () => {
       screen.queryByText("Choose when syncs and scans happen"),
     ).not.toBeInTheDocument();
   });
+
+  it("should allow tab navigation through form fields", async () => {
+    setup();
+
+    // tabs ou tof the search
+    await userEvent.tab();
+    // select the first option (H2)
+    await userEvent.tab();
+    await userEvent.keyboard("{Enter}");
+
+    expect(screen.getByPlaceholderText("Our H2")).toBeInTheDocument();
+  });
+});
+
+describe("DatabaseForm with provider name", () => {
+  it("submits provider name", async () => {
+    const { onSubmit } = setup({
+      initialValues: {
+        engine: "postgres",
+      },
+    });
+
+    const connectionString =
+      "jdbc:postgresql://user:passs@pooler.ap-southeast-1.aws.neon.tech:5432/mydb";
+    await userEvent.type(
+      screen.getByLabelText("Connection string (optional)"),
+      connectionString,
+    );
+
+    const saveButton = screen.getByRole("button", { name: "Save" });
+    await waitFor(() => expect(saveButton).toBeEnabled());
+    await userEvent.click(saveButton);
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider_name: "Neon",
+        }),
+      );
+    });
+  });
+
+  it("submits empty provider name if not matched", async () => {
+    const { onSubmit } = setup({
+      initialValues: {
+        engine: "postgres",
+      },
+    });
+
+    const connectionString = "jdbc:postgresql://user:passs@localhost:5432/mydb";
+    await userEvent.type(
+      screen.getByLabelText("Connection string (optional)"),
+      connectionString,
+    );
+
+    const saveButton = screen.getByRole("button", { name: "Save" });
+    await waitFor(() => expect(saveButton).toBeEnabled());
+    await userEvent.click(saveButton);
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider_name: null,
+        }),
+      );
+    });
+  });
+
+  describe("Connection error handling", () => {
+    const errorHandlingSetup = ({ isAdvanced }: { isAdvanced?: boolean }) => {
+      setup({
+        engines: TEST_ENGINES,
+        isAdvanced,
+      });
+    };
+    const errorMessage = /Metabase tried, but couldn't connect/;
+
+    beforeEach(() => {
+      jest.spyOn(utils, "useHasConnectionError").mockImplementation(() => true);
+    });
+
+    it("shows error message in the footer if isAdvanced is false (setup page)", () => {
+      errorHandlingSetup({ isAdvanced: false });
+      // Check error is rendered in the footer
+      expect(
+        within(screen.getByTestId("form-footer")).getByText(errorMessage),
+      ).toBeInTheDocument();
+    });
+
+    it("shows error message outside the footer if isAdvanced is true (admin page)", () => {
+      errorHandlingSetup({ isAdvanced: true });
+      // Check error is rendered
+      expect(screen.getByText(errorMessage)).toBeInTheDocument();
+      // But not in the footer
+      expect(
+        within(screen.getByTestId("form-footer")).queryByText(errorMessage),
+      ).not.toBeInTheDocument();
+    });
+  });
 });
 
 const EXPECTED_DEFAULT_SCHEMA = {
@@ -105,4 +204,5 @@ const EXPECTED_DEFAULT_SCHEMA = {
   is_sample: false,
   is_full_sync: true,
   is_on_demand: false,
+  provider_name: null,
 };

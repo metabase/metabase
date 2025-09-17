@@ -52,7 +52,8 @@
                               :now                     true
                               :identifiers-with-spaces true
                               :convert-timezone        true
-                              :expressions/date        false}]
+                              :expressions/date        false
+                              :database-routing        false}]
   (defmethod driver/database-supports? [:oracle feature] [_driver _feature _db] supported?))
 
 (mr/def ::details
@@ -404,6 +405,16 @@
   [_driver _coercion-strategy expr]
   [:to_timestamp expr "YYYYMMDDHH24miSS"])
 
+(defmethod sql.qp/cast-temporal-byte [:oracle :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
+                               [:utl_raw.cast_to_varchar2 expr]))
+
+(defmethod sql.qp/cast-temporal-byte [:oracle :Coercion/ISO8601Bytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime
+                               [:utl_raw.cast_to_varchar2 expr]))
+
 (defmethod sql.qp/unix-timestamp->honeysql [:oracle :milliseconds]
   [driver _ field-or-value]
   (sql.qp/unix-timestamp->honeysql driver :seconds (h2x// field-or-value [:inline 1000])))
@@ -560,12 +571,13 @@
   (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar2(256)"]))
 
 (defmethod driver/humanize-connection-error-message :oracle
-  [_ message]
+  [_ messages]
   ;; if the connection error message is caused by the assertion above checking whether sid or service-name is set,
   ;; return a slightly nicer looking version. Otherwise just return message as-is
-  (if (str/includes? message "(or sid service-name)")
-    "You must specify the SID and/or the Service Name."
-    message))
+  (let [message (first messages)]
+    (if (str/includes? message "(or sid service-name)")
+      "You must specify the SID and/or the Service Name."
+      message)))
 
 (defn- remove-rownum-column
   "Remove the `:__rownum__` column from results, if present."

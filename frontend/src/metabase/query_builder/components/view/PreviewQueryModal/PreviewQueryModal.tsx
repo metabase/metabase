@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useGetNativeDatasetQuery } from "metabase/api";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { formatNativeQuery } from "metabase/lib/engine";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
@@ -40,7 +40,10 @@ export const PreviewQueryModal = ({
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
   const engine = question.database()?.engine;
-  const formattedQuery = formatNativeQuery(data?.query, engine);
+  const formattedQuery =
+    data != null && engine != null
+      ? formatNativeQuery(data.query, engine)
+      : undefined;
   const formattedError = error ? getResponseErrorMessage(error) : undefined;
 
   return (

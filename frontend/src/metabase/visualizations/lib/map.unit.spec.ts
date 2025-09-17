@@ -89,6 +89,30 @@ describe("map", () => {
         );
       });
 
+      it("should handle an x-ray dashboard", () => {
+        const datasetQuery: JsonQuery = {
+          database: 1,
+          type: "query",
+          query: { "source-table": 1 },
+        } as JsonQuery;
+        const encodedQuery = encodeURIComponent(JSON.stringify(datasetQuery));
+
+        const url = getTileUrl({
+          dashboardId: "/auto/dashboard/table/5",
+          dashcardId: 20,
+          cardId: 30,
+          zoom,
+          coord,
+          latField,
+          lonField,
+          datasetQuery,
+        });
+
+        expect(url).toBe(
+          `/api/tiles/${zoom}/${coord.x}/${coord.y}/${latField}/${lonField}?query=${encodedQuery}`,
+        );
+      });
+
       it("should generate url for dashboard with parameters", () => {
         const datasetResult = createMockDataset({
           json_query: {
@@ -155,7 +179,8 @@ describe("map", () => {
     describe("public dashboard", () => {
       it("should generate url for public dashboard without parameters", () => {
         const url = getTileUrl({
-          dashboardId: 10,
+          // public dashboards have a uuid instead of an id
+          dashboardId: "621efc8c-9fd9-42db-a39a-1abdbfe23937",
           dashcardId: 20,
           cardId: 30,
           zoom,
@@ -178,7 +203,8 @@ describe("map", () => {
         });
 
         const url = getTileUrl({
-          dashboardId: 10,
+          // public dashboards have a uuid instead of an id
+          dashboardId: "621efc8c-9fd9-42db-a39a-1abdbfe23937",
           dashcardId: 20,
           cardId: 30,
           zoom,

@@ -472,7 +472,7 @@ H.describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
             [
               "field",
               PRODUCTS.CATEGORY,
-              { "base-type": "type/text", "source-field": ORDERS.PRODUCT_ID },
+              { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
             ],
           ],
         },
@@ -484,8 +484,8 @@ H.describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
 
     H.tableInteractive().should("exist");
     combineColumns({
-      columns: ["Created At: Hour of day", "Category"],
-      newColumn: "Combined Created At: Hour of day, Category",
+      columns: ["Created At: Hour of day", "Product → Category"],
+      newColumn: "Combined Created At: Hour of day, Product → Category",
       example: "2042-01-01 12:34:56.789 text",
       newValue: "0 Doohickey",
     });

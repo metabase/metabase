@@ -2,8 +2,8 @@ import { type ComponentProps, useCallback, useEffect } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
-import { useConfirmation } from "metabase/hooks/use-confirmation";
-import { useModalOpen } from "metabase/hooks/use-modal-open";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
+import { useModalOpen } from "metabase/common/hooks/use-modal-open";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Modal } from "metabase/ui";
 import { getIsDirty } from "metabase/visualizer/selectors";
@@ -64,6 +64,11 @@ export function VisualizerModal({
         withCloseButton={false}
         onClose={onModalClose}
         padding={0}
+        styles={{
+          content: {
+            overflow: "hidden",
+          },
+        }}
       >
         {open && (
           <Visualizer

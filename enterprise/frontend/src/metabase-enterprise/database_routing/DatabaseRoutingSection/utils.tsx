@@ -11,7 +11,12 @@ export const getDisabledFeatureMessage = (database: Database) => {
     hasActionsEnabled: hasActionsEnabled(database),
     isPersisted: hasFeature(database, "persist-models-enabled"),
     isUploadDb: database.uploads_enabled,
+    supportsRouting: !!database.features?.includes("database-routing"),
   })
+    .with(
+      { supportsRouting: false },
+      () => t`Database routing is not supported for this database type.`,
+    )
     .with(
       { hasActionsEnabled: true, isPersisted: true },
       () =>

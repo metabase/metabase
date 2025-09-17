@@ -4,20 +4,23 @@
   (:refer-clojure :exclude [alias])
   (:require
    [medley.core :as m]
+   ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
+   ;; Lib soon
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
 (def ^:private Joins
   "Schema for a non-empty sequence of Joins. Unlike [[mbql.s/Joins]], this does not enforce the constraint that all join
-  aliases be unique; that is handled by the [[metabase.query-processor.middleware.escape-join-aliases]] middleware."
+  aliases be unique."
   [:sequential {:min 1} mbql.s/Join])
 
 (def ^:private UnresolvedMBQLQuery
@@ -91,6 +94,20 @@
               [:field field-id {:join-alias alias}]))
           [:field field-name {:base-type base-type, :join-alias alias}]))))
 
+(mu/defn- sorted-implicit-fields-for-table :- mbql.s/Fields
+  "For use when adding implicit Field IDs to a query. Return a sequence of field clauses, sorted by the rules listed
+  in [[metabase.query-processor.sort]], for all the Fields in a given Table."
+  [table-id :- ::lib.schema.id/table]
+  (let [fields (lib.metadata/active-fields (qp.store/metadata-provider) table-id)]
+    (when (empty? fields)
+      (throw (ex-info (tru "No fields found for table {0}." (pr-str (:name (lib.metadata/table (qp.store/metadata-provider) table-id))))
+                      {:table-id table-id
+                       :type     qp.error-type/invalid-query})))
+    (mapv
+     (fn [field]
+       [:field (u/the-id field) nil])
+     fields)))
+
 (mu/defn- handle-all-fields :- mbql.s/Join
   "Replace `:fields :all` in a join with an appropriate list of Fields."
   [{:keys [source-table source-query alias fields source-metadata], :as join} :- mbql.s/Join]
@@ -99,15 +116,21 @@
    (when (= fields :all)
      {:fields (if source-query
                 (source-metadata->fields join source-metadata)
-                (for [[_ id-or-name opts] (qp.add-implicit-clauses/sorted-implicit-fields-for-table source-table)]
+                (for [[_ id-or-name opts] (sorted-implicit-fields-for-table source-table)]
                   [:field id-or-name (assoc opts :join-alias alias)]))})))
+
+(defn- deduplicate-aliases []
+  (let [unique-name-generator (lib.util/non-truncating-unique-name-generator)]
+    (map (fn [join]
+           (update join :alias unique-name-generator)))))
 
 (mu/defn- resolve-references :- Joins
   [joins :- Joins]
   (resolve-tables! joins)
   (u/prog1 (into []
                  (comp (map merge-defaults)
-                       (map handle-all-fields))
+                       (map handle-all-fields)
+                       (deduplicate-aliases))
                  joins)
     (resolve-fields! <>)))
 
@@ -127,9 +150,18 @@
   "Return a flattened list of all `:fields` referenced in `joins`."
   [joins]
   (into []
-        (comp (map :fields)
-              (filter sequential?)
-              cat)
+        (mapcat (fn [{:keys [fields], :as join}]
+                  (when (sequential? fields)
+                    ;; make sure the field ref has `:join-alias`... it already SHOULD but if the query is NAUGHTY then
+                    ;; we better just add it in to be safe. In #61398 which is pending I actually make this happen
+                    ;; automatically in MBQL 5 normalization, so we can take this out eventually.
+                    (for [[tag id-or-name opts] fields]
+                      [tag id-or-name (assoc opts
+                                             :join-alias         (:alias join)
+                                             ;; Any coercion or temporal bucketing will already have been done in the
+                                             ;; subquery for the join itself. Mark the parent ref to make sure it is
+                                             ;; not double-coerced, which leads to SQL errors.
+                                             :qp/ignore-coercion true)]))))
         joins))
 
 (defn- should-add-join-fields?
@@ -138,21 +170,29 @@
   [{breakouts :breakout, aggregations :aggregation}]
   (every? empty? [aggregations breakouts]))
 
-(defn- append-join-fields [fields join-fields]
-  (into []
-        (comp cat
-              (m/distinct-by (fn [clause]
-                               (-> clause
-                                   ;; remove namespaced options and other things that are definitely irrelevant
-                                   add/normalize-clause
-                                   ;; we shouldn't consider different type info to mean two Fields are different even if
-                                   ;; everything else is the same. So give everything `:base-type` of `:type/*` (it will
-                                   ;; complain if we remove `:base-type` entirely from fields with a string name)
-                                   (mbql.u/update-field-options (fn [opts]
-                                                                  (-> opts
-                                                                      (assoc :base-type :type/*)
-                                                                      (dissoc :effective-type))))))))
-        [fields join-fields]))
+(defn- append-join-fields
+  "This (supposedly) matches the behavior of [[metabase.lib.stage/add-cols-from-join]]. When we migrate this namespace
+  to Lib we can maybe use that."
+  [fields join-fields]
+  ;; we shouldn't consider different type info to mean two Fields are different even if everything else is the same. So
+  ;; give everything `:base-type` of `:type/*` (it will complain if we remove `:base-type` entirely from fields with a
+  ;; string name)
+  (letfn [(opts-signature [opts]
+            (not-empty
+             (merge
+              (u/select-non-nil-keys opts [:join-alias :binning])
+              ;; for purposes of deduplicating stuff, temporal unit = default is the same as not specifying temporal
+              ;; unit at all. Should that be part of normalization? Maybe, but there is some logic around adding default
+              ;; temporal bucketing that we don't do if `:default` is explicitly specified.
+              (when-let [temporal-unit (:temporal-unit opts)]
+                (when-not (= temporal-unit :default)
+                  {:temporal-unit temporal-unit})))))
+          (ref-signature [[tag id-or-name opts, :as _ref]]
+            [tag id-or-name (opts-signature opts)])]
+    (into []
+          (comp cat
+                (m/distinct-by ref-signature))
+          [fields join-fields])))
 
 (defn append-join-fields-to-fields
   "Add the fields from join `:fields`, if any, to the parent-level `:fields`."
@@ -193,6 +233,9 @@
     (seq joins)  resolve-joins-in-mbql-query
     source-query (update :source-query resolve-joins-in-mbql-query-all-levels)))
 
+;; TODO (Cam 9/10/25) -- once we convert this to Lib we can remove
+;; the [[metabase.query-processor.middleware.ensure-joins-use-source-query/ensure-joins-use-source-query]] middleware
+;; entirely
 (defn resolve-joins
   "Add any Tables and Fields referenced by the `:joins` clause to the QP store."
   [{inner-query :query, :as outer-query}]

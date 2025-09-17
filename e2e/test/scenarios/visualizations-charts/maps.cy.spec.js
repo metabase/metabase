@@ -83,6 +83,42 @@ describe("scenarios > visualizations > maps", () => {
     });
   });
 
+  it("should wrap markers around the international date line correctly (metabase#5369)", () => {
+    H.createNativeQuestion(
+      {
+        name: "friends across time",
+        native: {
+          query: `
+            SELECT 'Kleavor' as name, 68 as lat, -159 as lng
+            UNION ALL
+            SELECT 'Spectrier' as name, 68 as lat, 159 as lng
+          `,
+          "template-tags": {},
+        },
+        display: "map",
+        visualization_settings: {
+          "map.region": "world",
+          "map.type": "pin",
+          "map.latitude_column": "LAT",
+          "map.longitude_column": "LNG",
+          "map.center_latitude": 67,
+          "map.center_longitude": -175,
+          "map.zoom": 4,
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.get(".leaflet-marker-icon").then((markers) => {
+      // should draw 4 markers
+      expect(markers).to.have.length(4);
+      cy.get(markers[0]).should("be.visible");
+      cy.get(markers[1]).should("not.be.visible"); // outside the viewport
+      cy.get(markers[2]).should("not.be.visible"); // outside the viewport
+      cy.get(markers[3]).should("be.visible");
+    });
+  });
+
   it("should not assign the full name of the state as the filter value on a drill-through (metabase#14650)", () => {
     cy.intercept("/app/assets/geojson/**").as("geojson");
     H.visitQuestionAdhoc({
@@ -130,6 +166,48 @@ describe("scenarios > visualizations > maps", () => {
     cy.findByText("State is TX");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("171 Olive Oyle Lane"); // Address in the first row
+  });
+
+  it("should display pins when a breakout column sets a base-type (metabase#59984)", () => {
+    cy.intercept("/api/tiles/**").as("tiles");
+
+    H.visitQuestionAdhoc({
+      display: "map",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": PEOPLE_ID,
+          aggregation: ["count"],
+          breakout: [
+            [
+              "field",
+              PEOPLE.LONGITUDE,
+              {
+                "base-type": "type/Float",
+              },
+            ],
+            [
+              "field",
+              PEOPLE.LATITUDE,
+              {
+                "base-type": "type/Float",
+              },
+            ],
+          ],
+        },
+      },
+      visualization_settings: {
+        "map.type": "pin",
+        "map.latitude_column": "LATITUDE",
+        "map.longitude_column": "LONGITUDE",
+      },
+    });
+
+    // this should not create a 400 error
+    cy.wait("@tiles").then((xhr) => {
+      expect(xhr.response.statusCode).to.equal(200);
+    });
   });
 
   it("should display a tooltip for a grid map without a metric column (metabase#17940)", () => {
@@ -214,6 +292,58 @@ describe("scenarios > visualizations > maps", () => {
     cy.get("@sensibleOptions").within(() => {
       cy.findByTestId("Map-button").should("be.visible");
     });
+  });
+
+  it("should display pins type viz setting (metabase#40999)", () => {
+    cy.intercept("/api/tiles/**").as("tiles");
+
+    H.visitQuestionAdhoc({
+      display: "map",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": PEOPLE_ID,
+          aggregation: ["count"],
+          breakout: [
+            [
+              "field",
+              PEOPLE.LONGITUDE,
+              {
+                "base-type": "type/Float",
+              },
+            ],
+            [
+              "field",
+              PEOPLE.LATITUDE,
+              {
+                "base-type": "type/Float",
+              },
+            ],
+          ],
+        },
+      },
+      visualization_settings: {
+        "map.type": "pin",
+        "map.latitude_column": "LATITUDE",
+        "map.longitude_column": "LONGITUDE",
+      },
+    });
+
+    cy.wait("@tiles");
+
+    cy.findByTestId("viz-settings-button").click();
+
+    H.leftSidebar().within(() => {
+      cy.findByText("Pin type").should("be.visible");
+
+      cy.findByLabelText("Pin type").click();
+      H.popover().findByText("Markers").click();
+    });
+
+    cy.findByTestId("visualization-root")
+      .get(".leaflet-marker-icon")
+      .should("have.length.greaterThan", 10);
   });
 
   describe(

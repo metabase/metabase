@@ -2,13 +2,13 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.path :as permissions.path]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -207,8 +207,7 @@
       (is (= {:card-ids             #{card-id}
               :perms/view-data      {(mt/id :users) :unrestricted
                                      (mt/id :checkins) :unrestricted}
-              :perms/create-queries {(mt/id :users) :query-builder
-                                     (mt/id :checkins) :query-builder}}
+              :perms/create-queries {(mt/id :users) :query-builder}}
              (query-perms/required-perms-for-query
               (mt/mbql-query users
                 {:joins [{:fields       :all
@@ -231,9 +230,34 @@
                           :condition    [:= $id &c.*USER_ID/Integer]}]})
               :throw-exceptions? true))))))
 
+(deftest ^:parallel query->source-ids-join-cards-test
+  (testing "query->source-ids should return both card IDs when joining one card to another"
+    (mt/with-temp [:model/Card {card-1-id :id} (qp.test-util/card-with-source-metadata-for-query
+                                                (mt/mbql-query venues
+                                                  {:aggregation [[:count]]
+                                                   :breakout    [$id]}))
+                   :model/Card {card-2-id :id} (qp.test-util/card-with-source-metadata-for-query
+                                                (mt/mbql-query checkins
+                                                  {:aggregation [[:sum $id]]
+                                                   :breakout    [$venue_id]}))]
+      (let [query {:database (mt/id)
+                   :type     :query
+                   :query    {:source-table (str "card__" card-1-id)
+                              :joins        [{:fields       :all
+                                              :alias        "joined_card"
+                                              :source-table (str "card__" card-2-id)
+                                              :condition    [:=
+                                                             [:field "ID" {:base-type :type/Integer}]
+                                                             [:field "VENUE_ID" {:base-type :type/Integer, :join-alias "joined_card"}]]}]}}]
+        (is (= #{card-1-id card-2-id}
+               (:card-ids
+                (query-perms/query->source-ids
+                 (qp.preprocess/preprocess
+                  query)))))))))
+
 (deftest ^:parallel pmbql-query-test
   (testing "Should be able to calculate permissions for a pMBQL query (#39024)"
-    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [metadata-provider (mt/metadata-provider)
           venues            (lib.metadata/table metadata-provider (mt/id :venues))
           query             (lib/query metadata-provider venues)]
       (is (= {:perms/view-data      {(mt/id :venues) :unrestricted}
@@ -242,7 +266,7 @@
 
 (deftest ^:parallel pmbql-native-query-test
   (testing "Should be able to calculate permissions for a pMBQL native query (#39024)"
-    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [metadata-provider (mt/metadata-provider)
           query             (lib/query metadata-provider {:lib/type :mbql.stage/native
                                                           :native   "SELECT *;"})]
       (is (= {:perms/view-data :unrestricted
@@ -272,7 +296,6 @@
                             :query    {:source-query {:native "SELECT * FROM (SELECT * FROM whatever);"
                                                       :query-permissions/referenced-card-ids #{card-1-id}}
                                        :joins        [{:alias        "J"
-                                                       :ident        (u/generate-nano-id)
                                                        :source-query {:native "SELECT * FROM (SELECT * FROM whatever);"
                                                                       :query-permissions/referenced-card-ids #{card-2-id}}
                                                        :condition    [:= true false]}]}}]
@@ -287,7 +310,7 @@
                     :paths                #{(format "/collection/%d/read/" collection-1-id)
                                             (format "/collection/%d/read/" collection-2-id)}}
                    (query-perms/required-perms-for-query
-                    (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                    (lib/query (mt/metadata-provider)
                                (lib/->pMBQL native-query)))))))))))
 
 (deftest ^:parallel native-query-source-card-id-join-permissions-test

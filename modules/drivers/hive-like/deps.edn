@@ -2,4 +2,4 @@
  ["src" "resources"]
 
  :deps
- {org.apache.hive/hive-jdbc$standalone {:mvn/version "4.0.1"}}}
+ {org.apache.hive/hive-jdbc$standalone {:mvn/version "4.1.0"}}}

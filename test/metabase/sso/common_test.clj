@@ -150,3 +150,95 @@
             (is (@log-warn-count
                  (str "Attempted to remove the last admin during group sync! "
                       "Check your SSO group mappings and make sure the Administrators group is mapped correctly.")))))))))
+
+(deftest sync-groups-2-arity-unchanged-memberships-test
+  (testing "2-arity version: does syncing group memberships leave existing memberships in place if nothing has changed?"
+    (mt/with-user-in-groups [group {:name (str ::group)}
+                             user  [group]]
+      (integrations.common/sync-group-memberships! user #{group})
+      (is (= #{"All Users" ":metabase.sso.common-test/group"}
+             (group-memberships user))))))
+
+(deftest sync-groups-2-arity-add-groups-test
+  (testing "2-arity version: does syncing group memberships add users to new groups correctly?"
+    (mt/with-user-in-groups [group-1 {:name (str ::group-1)}
+                             group-2 {:name (str ::group-2)}
+                             user    [group-1]]
+      (integrations.common/sync-group-memberships! user #{group-1 group-2})
+      (is (= #{":metabase.sso.common-test/group-1"
+               ":metabase.sso.common-test/group-2"
+               "All Users"}
+             (group-memberships user))))))
+
+(deftest sync-groups-2-arity-remove-groups-test
+  (testing "2-arity version: does syncing group memberships remove users from old groups correctly?"
+    (mt/with-user-in-groups [group-1 {:name (str ::group-1)}
+                             group-2 {:name (str ::group-2)}
+                             user    [group-1 group-2]]
+      (integrations.common/sync-group-memberships! user #{group-1})
+      (is (= #{":metabase.sso.common-test/group-1" "All Users"}
+             (group-memberships user))))))
+
+(deftest sync-groups-2-arity-add-and-remove-test
+  (testing "2-arity version: does adding & removing at the same time work correctly?"
+    (mt/with-user-in-groups [group-1 {:name (str ::group-1)}
+                             group-2 {:name (str ::group-2)}
+                             user    [group-1]]
+      (integrations.common/sync-group-memberships! user #{group-2})
+      (is (= #{":metabase.sso.common-test/group-2" "All Users"}
+             (group-memberships user))))))
+
+(deftest sync-groups-2-arity-remove-all-test
+  (testing "2-arity version: removes ALL mapped groups when given empty set"
+    (mt/with-user-in-groups [group-1 {:name (str ::group-1)}
+                             group-2 {:name (str ::group-2)}
+                             user    [group-1 group-2]]
+      (integrations.common/sync-group-memberships! user #{})
+      (is (= #{"All Users"}
+             (group-memberships user))))))
+
+(deftest sync-groups-2-arity-admin-handling-test
+  (testing "2-arity version: Admin group is handled correctly"
+    (mt/with-test-user :crowberto
+      (testing "remove admin role when not in new groups"
+        (mt/with-user-in-groups [user [(perms-group/admin)]]
+          (integrations.common/sync-group-memberships! user #{})
+          (is (= #{"All Users"}
+                 (group-memberships user)))))
+
+      (testing "add admin role when in new groups"
+        (mt/with-user-in-groups [user []]
+          (integrations.common/sync-group-memberships! user #{(perms-group/admin)})
+          (is (= #{"All Users" "Administrators"}
+                 (group-memberships user)))))
+
+      (testing "keep admin role when already present and in new groups"
+        (mt/with-user-in-groups [user [(perms-group/admin)]]
+          (integrations.common/sync-group-memberships! user #{(perms-group/admin)})
+          (is (= #{"All Users" "Administrators"}
+                 (group-memberships user))))))))
+
+(deftest sync-groups-2-arity-nonexistent-group-test
+  (testing "2-arity version: if we attempt to add a user to a group that doesn't exist, does the group sync complete for the other groups?"
+    (mt/test-helpers-set-global-values!
+      (mt/with-user-in-groups [group {:name (str ::group)}
+                               user    []]
+        (integrations.common/sync-group-memberships! user #{Integer/MAX_VALUE group})
+        (is (= #{"All Users" ":metabase.sso.common-test/group"}
+               (group-memberships user)))))))
+
+(deftest sync-groups-2-arity-last-admin-exception-test
+  (testing "2-arity version: Make sure the delete last admin exception is caught"
+    (mt/with-log-messages-for-level [messages :warn]
+      (mt/with-user-in-groups [user [(perms-group/admin)]]
+        (with-redefs [t2/delete!
+                      (fn [model & _args]
+                        (when (= model :model/PermissionsGroupMembership)
+                          (throw (ex-info (str perms/fail-to-remove-last-admin-msg)
+                                          {:status-code 400}))))]
+          ;; make sure sync runs without throwing exception
+          (integrations.common/sync-group-memberships! user #{})
+          ;; make sure we log a msg for that
+          (is (= (str "Attempted to remove the last admin during group sync! "
+                      "Check your SSO group mappings and make sure the Administrators group is mapped correctly.")
+                 (:message (first (messages))))))))))

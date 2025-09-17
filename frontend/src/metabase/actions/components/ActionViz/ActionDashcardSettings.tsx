@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { ConnectedActionPicker } from "metabase/actions/containers/ActionPicker";
-import EmptyState from "metabase/components/EmptyState";
-import Button from "metabase/core/components/Button";
+import Button from "metabase/common/components/Button";
+import EmptyState from "metabase/common/components/EmptyState";
 import CS from "metabase/css/core/index.css";
 import { setActionForDashcard } from "metabase/dashboard/actions";
 import { connect } from "metabase/lib/redux";
@@ -84,7 +84,7 @@ export function ActionDashcardSettings({
     });
 
   return (
-    <ActionSettingsWrapper>
+    <ActionSettingsWrapper data-testid="action-dashcard-settings">
       <ActionSettingsLeft>
         <h4 className={CS.pb2}>{t`Action Library`}</h4>
         <ConnectedActionPicker currentAction={action} onClick={setAction} />

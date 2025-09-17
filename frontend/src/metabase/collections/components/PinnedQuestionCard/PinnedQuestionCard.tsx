@@ -10,7 +10,7 @@ import {
   isFullyParameterized,
   isPreviewShown,
 } from "metabase/collections/utils";
-import EventSandbox from "metabase/components/EventSandbox";
+import EventSandbox from "metabase/common/components/EventSandbox";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box, Flex, Group, Icon, type IconName, Text } from "metabase/ui";
@@ -79,7 +79,7 @@ const PinnedQuestionCard = ({
     <CardRoot
       to={item.getUrl()}
       isPreview={isPreview}
-      className={cx(CS.hoverParent, CS.hoverVisibility)}
+      className={cx(CS.hoverChild, CS.hoverVisibility)}
     >
       <Flex h="100%" direction="column">
         {isPreview ? (
@@ -112,7 +112,6 @@ const PinnedQuestionCard = ({
               {({ question, rawSeries, loading, error, errorIcon }) =>
                 loading ? (
                   <CardPreviewSkeleton
-                    name={question?.displayName()}
                     display={question?.display()}
                     description={question?.description()}
                   />

@@ -1,7 +1,10 @@
 (ns metabase-enterprise.sso.api.saml-test
   (:require
    [clojure.test :refer :all]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]))
+
+(use-fixtures :once fixtures/initialize :db :test-users)
 
 (deftest saml-settings-test
   (testing "PUT /api/saml/settings"

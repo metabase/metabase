@@ -224,7 +224,7 @@
         (when (u/ignore-exceptions
                 (u.password/bcrypt-verify token reset_token))
           ;; check that the reset was triggered within the last 48 HOURS, after that the token is considered expired
-          (let [token-age (- (System/currentTimeMillis) reset_triggered)]
+          (let [token-age (u/since-ms-wall-clock reset_triggered)]
             (when (< token-age (reset-token-ttl-ms))
               user)))))))
 

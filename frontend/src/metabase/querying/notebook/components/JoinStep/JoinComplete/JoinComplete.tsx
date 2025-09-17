@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Flex, Text } from "metabase/ui";
+import { Flex, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import {
@@ -132,10 +132,14 @@ export function JoinComplete({
           />
         </Flex>
       </NotebookCell>
-      <Box mt={{ md: "lg" }}>
-        <Text color="brand" fw="bold">{t`on`}</Text>
-      </Box>
-      <NotebookCell className={S.JoinConditionCell} color={color}>
+      <Flex className={S.JoinConditionOn}>
+        <Text c="brand" fw="bold">{t`on`}</Text>
+      </Flex>
+      <NotebookCell
+        className={S.JoinConditionCell}
+        color={color}
+        p={rem("10px")}
+      >
         {conditions.map((condition, index) => {
           const testId = `join-condition-${index}`;
           const isLast = index === conditions.length - 1;
@@ -173,6 +177,7 @@ export function JoinComplete({
               query={query}
               stageIndex={stageIndex}
               joinable={join}
+              strategy={strategy}
               lhsTableName={lhsTableName}
               rhsTableName={rhsTableName}
               isReadOnly={isReadOnly}

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { NoDataError } from "metabase/components/errors/NoDataError";
+import { NoDataError } from "metabase/common/components/errors/NoDataError";
 import { Tooltip } from "metabase/ui";
 
 import { Root, ShortMessage } from "./NoResultsView.styled";

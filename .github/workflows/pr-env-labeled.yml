@@ -9,9 +9,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  uberjar:
+    if: ${{ github.event.label.name == 'PR-Env' }}
+    uses: ./.github/workflows/uberjar.yml
+    secrets: inherit
+
   pr-env:
+    needs: [uberjar]
     if: ${{ github.event.label.name == 'PR-Env' }}
     uses: ./.github/workflows/pr-env.yml
-    with:
-      wait_for_uberjar: true
     secrets: inherit

@@ -8,8 +8,10 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.ident :as lib.ident]
+   [metabase.lib-be.metadata.jvm :as lib-be.metadata.jvm]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor :as qp]
@@ -58,44 +60,24 @@
   1000)
 
 (defn- values-from-card-query
-  [card value-field-ref opts]
-  (let [query-string (:query-string opts)
-        value-base-type (:base_type (qp.util/field->field-info value-field-ref (:result_metadata card)))
-        new-filter      [:and
-                         [(if (isa? value-base-type :type/Text)
-                            :not-empty
-                            :not-null)
-                          value-field-ref]
-                         (when query-string
-                           (if-not (isa? value-base-type :type/Text)
-                             [:= value-field-ref query-string]
-                             [:contains [:lower value-field-ref] (u/lower-case-en query-string)]))]]
-    {:database (:database_id card)
-     :type     :query
-     :query    (if-let [inner-mbql (and (not= (:type card) :model)
-                                        (-> card :dataset_query :query))]
-                 ;; MBQL query - hijack the final stage, drop its aggregation and breakout (if any).
-                 (let [target-stage (:stage-number opts)
-                       last-stage   (mbql.u/legacy-last-stage-number inner-mbql)
-                       inner-mbql   (if (and target-stage last-stage
-                                             (= (inc last-stage) target-stage))
-                                      {:source-query inner-mbql}
-                                      inner-mbql)]
-                   (-> inner-mbql
-                       (dissoc :aggregation :order-by)
-                       (assoc :breakout        [value-field-ref]
-                              :breakout-idents (lib.ident/indexed-idents 1))
-                       (update :limit (fnil min *max-rows*) *max-rows*)
-                       (update :filter (fn [old]
-                                         (cond->> new-filter
-                                           old (conj [:and old]))))))
-                 ;; Model or Native query - wrap it with a new MBQL stage.
-                 {:source-table    (format "card__%d" (:id card))
-                  :breakout        [value-field-ref]
-                  :breakout-idents (lib.ident/indexed-idents 1)
-                  :limit           *max-rows*
-                  :filter          new-filter})
-     :middleware {:disable-remaps? true}}))
+  [card value-field-ref {:keys [query-string] :as _opts}]
+  (let [metadata-provider (lib-be.metadata.jvm/application-database-metadata-provider (:database_id card))
+        query             (lib/query metadata-provider (lib.metadata/card metadata-provider (:id card)))
+        value-column      (lib/find-column-for-legacy-ref query value-field-ref (lib/visible-columns query))
+        textual?          (lib.types.isa/string? value-column)
+        nonempty          ((if textual? lib/not-empty lib/not-null) value-column)
+        query-filter      (when query-string
+                            (if textual?
+                              (lib/contains (lib/lower value-column) (u/lower-case-en query-string))
+                              (lib/= value-column query-string)))]
+    (-> query
+        (lib/limit *max-rows*)
+        (lib/filter nonempty)
+        (cond-> #_query query-filter (lib/filter query-filter))
+        (lib/breakout value-column)
+        ;; TODO(Braden, 07/04/2025): This should probably become a lib helper? I suspect this isn't the only
+        ;; "internal" query in the BE.
+        (assoc-in [:middleware :disable-remaps?] true))))
 
 (mu/defn values-from-card
   "Get distinct values of a field from a card.
@@ -136,6 +118,8 @@
   [card value-field]
   (boolean
    (and (not (:archived card))
+        ;; existing usage -- do not use this in new code
+        #_{:clj-kondo/ignore [:deprecated-var]}
         (some? (qp.util/field->field-info value-field (:result_metadata card))))))
 
 ;;; --------------------------------------------- Putting it together ----------------------------------------------

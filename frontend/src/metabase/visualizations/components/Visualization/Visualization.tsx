@@ -1,6 +1,6 @@
 /* eslint-disable complexity */
 import cx from "classnames";
-import {
+import React, {
   type CSSProperties,
   type ComponentType,
   type ErrorInfo,
@@ -9,16 +9,17 @@ import {
   type Ref,
   forwardRef,
 } from "react";
-import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { SmallGenericError } from "metabase/components/ErrorPages";
-import ExplicitSize from "metabase/components/ExplicitSize";
+import { SmallGenericError } from "metabase/common/components/ErrorPages";
+import ExplicitSize from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { CardSlownessStatus } from "metabase/dashboard/components/DashCard/types";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { formatNumber } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
@@ -26,7 +27,6 @@ import {
   getIsShowingRawTable,
   getUiControls,
 } from "metabase/query_builder/selectors";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getTokenFeature } from "metabase/setup/selectors";
 import { getFont } from "metabase/styled-components/selectors";
 import type { IconName, IconProps } from "metabase/ui";
@@ -62,7 +62,6 @@ import {
 } from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 import { memoizeClass } from "metabase-lib/v1/utils";
 import type {
@@ -83,7 +82,7 @@ import { EmptyVizState } from "../EmptyVizState";
 
 import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
 import { ErrorView } from "./ErrorView";
-import LoadingView from "./LoadingView";
+import LoadingView, { type LoadingViewProps } from "./LoadingView";
 import NoResultsView from "./NoResultsView";
 import {
   VisualizationActionButtonsContainer,
@@ -140,14 +139,15 @@ type VisualizationOwnProps = {
   height?: number | null;
   isAction?: boolean;
   isDashboard?: boolean;
+  isDocument?: boolean;
   isMobile?: boolean;
   isShowingSummarySidebar?: boolean;
   isSlow?: CardSlownessStatus;
   isVisible?: boolean;
+  renderLoadingView?: (props: LoadingViewProps) => JSX.Element | null;
   metadata?: Metadata;
   mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
   onEditSummary?: () => void;
-  query?: NativeQuery;
   rawSeries?: (
     | SingleSeries
     | {
@@ -162,8 +162,10 @@ type VisualizationOwnProps = {
   showWarnings?: boolean;
   style?: CSSProperties;
   timelineEvents?: TimelineEvent[];
+  tc?: ContentTranslationFunction;
   uuid?: string;
   token?: string;
+  zoomedRowIndex?: number;
   onOpenChartSettings?: (data: {
     initialChartSettings: { section: string };
     showSidebarTitle?: boolean;
@@ -200,10 +202,10 @@ type VisualizationState = {
 };
 
 const mapStateToProps = (state: State): StateProps => ({
-  hasDevWatermark: getTokenFeature(state, "development-mode"),
+  hasDevWatermark: getTokenFeature(state, "development_mode"),
   fontFamily: getFont(state),
   isRawTable: getIsShowingRawTable(state),
-  isEmbeddingSdk: getIsEmbeddingSdk(state),
+  isEmbeddingSdk: isEmbeddingSdk(),
   scrollToLastColumn: getUiControls(state)?.scrollToLastColumn,
 });
 
@@ -256,6 +258,7 @@ class Visualization extends PureComponent<
     height: 0,
     isAction: false,
     isDashboard: false,
+    isDocument: false,
     isEditing: false,
     isEmbeddingSdk: false,
     isFullscreen: false,
@@ -350,7 +353,11 @@ class Visualization extends PureComponent<
     const { rawSeries = [] } = props;
 
     let warnings = state.warnings || [];
-    if (state.series && state.series[0].card.display !== "table") {
+    if (
+      state.series &&
+      state.series[0].card.display !== "table" &&
+      state.series[0].card.display !== "list"
+    ) {
       warnings = warnings.concat(
         rawSeries
           .filter(
@@ -585,6 +592,7 @@ class Visualization extends PureComponent<
       height: rawHeight,
       isAction,
       isDashboard,
+      isDocument,
       isEditing,
       isEmbeddingSdk,
       isFullscreen,
@@ -601,11 +609,11 @@ class Visualization extends PureComponent<
       metadata,
       mode,
       onEditSummary,
-      query,
       queryBuilderMode,
       rawSeries = [],
       visualizerRawSeries,
       renderEmptyMessage,
+      renderLoadingView = LoadingView,
       renderTableHeader,
       replacementContent,
       scrollToColumn,
@@ -628,6 +636,8 @@ class Visualization extends PureComponent<
       onUpdateVisualizationSettings = () => {},
       onUpdateWarnings,
       titleMenuItems,
+      zoomedRowIndex,
+      tableFooterExtraButtons,
     } = this.props;
     const { width, height } = this.getNormalizedSizes();
 
@@ -639,6 +649,7 @@ class Visualization extends PureComponent<
 
     const clickActions = this.getClickActions(clicked);
     const regularClickActions = clickActions.filter(isRegularClickAction);
+
     // disable hover when click action is active
     if (clickActions.length > 0) {
       hovered = null;
@@ -658,7 +669,7 @@ class Visualization extends PureComponent<
       } else {
         try {
           if (visualization.checkRenderable && series) {
-            visualization.checkRenderable(series, settings, query);
+            visualization.checkRenderable(series, settings);
           }
         } catch (e: unknown) {
           error =
@@ -794,10 +805,10 @@ class Visualization extends PureComponent<
           ) : genericError ? (
             <SmallGenericError bordered={false} />
           ) : loading ? (
-            <LoadingView
-              expectedDuration={expectedDuration}
-              isSlow={!!isSlow}
-            />
+            renderLoadingView({
+              expectedDuration,
+              isSlow,
+            })
           ) : isPlaceholder ? (
             <EmptyVizState
               chartType={visualization?.identifier}
@@ -810,7 +821,7 @@ class Visualization extends PureComponent<
               <div
                 data-card-key={getCardKey(series[0].card?.id)}
                 className={cx(CS.flex, CS.flexColumn, CS.flexFull)}
-                style={{ position: "relative" }}
+                style={{ position: hasDevWatermark ? "relative" : undefined }}
               >
                 <VisualizationRenderedWrapper
                   onRendered={this.handleVisualizationRendered}
@@ -839,6 +850,7 @@ class Visualization extends PureComponent<
                     height={rawHeight}
                     hovered={hovered}
                     isDashboard={!!isDashboard}
+                    isDocument={!!isDocument}
                     isEditing={!!isEditing}
                     isEmbeddingSdk={isEmbeddingSdk}
                     isFullscreen={!!isFullscreen}
@@ -872,6 +884,7 @@ class Visualization extends PureComponent<
                     width={rawWidth}
                     uuid={uuid}
                     token={token}
+                    zoomedRowIndex={zoomedRowIndex}
                     onActionDismissal={this.hideActions}
                     onChangeCardAndRun={
                       this.props.onChangeCardAndRun
@@ -892,6 +905,7 @@ class Visualization extends PureComponent<
                     onVisualizationClick={this.handleVisualizationClick}
                     onHeaderColumnReorder={this.props.onHeaderColumnReorder}
                     titleMenuItems={hasHeader ? undefined : titleMenuItems}
+                    tableFooterExtraButtons={tableFooterExtraButtons}
                   />
                 </VisualizationRenderedWrapper>
                 {hasDevWatermark && <Watermark card={series[0].card} />}

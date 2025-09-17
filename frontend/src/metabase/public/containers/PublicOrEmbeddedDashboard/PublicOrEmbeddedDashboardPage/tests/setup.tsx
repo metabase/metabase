@@ -3,6 +3,7 @@ import { Route } from "react-router";
 import _ from "underscore";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { setupEmbedDashboardEndpoints } from "__support__/server-mocks/embed";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -17,6 +18,7 @@ import {
   createMockDashboard,
   createMockDashboardCard,
   createMockDashboardTab,
+  createMockDatabase,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
@@ -50,6 +52,7 @@ export async function setup(
   mockSettings({
     "token-features": tokenFeatures,
   });
+  setupDatabasesEndpoints([createMockDatabase()]);
 
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();

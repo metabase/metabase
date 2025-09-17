@@ -2,6 +2,7 @@
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.schema.common :as common]
    [metabase.types.core :as types]
    [metabase.util :as u]
@@ -196,8 +197,7 @@
    [:cat
     #_tag :any
     #_opts [:map
-            [:lib/expression-name [:string {:decode/normalize common/normalize-string-key}]]
-            [:ident               [:ref {:decode/normalize common/normalize-string-key} ::common/non-blank-string]]]
+            [:lib/expression-name [:string {:decode/normalize common/normalize-string-key}]]]
     #_args [:* :any]]
    [:fn
     {:error/message "non-aggregation expression"}
@@ -209,9 +209,15 @@
                         (some agg-expr? (nnext expr)))))]
        (not (agg-expr? %)))]])
 
-;;; the `:expressions` definition map as found as a top-level key in an MBQL stage
 (mr/def ::expressions
-  [:sequential {:min 1} [:ref ::expression.definition]])
+  "The `:expressions` definition map as found as a top-level key in an MBQL stage."
+  [:and
+   [:sequential {:min 1} [:ref ::expression.definition]]
+   [:fn
+    {:error/message "expressions must have unique names"}
+    (fn [expressions]
+      (or (empty? expressions)
+          (apply distinct? (map #(:lib/expression-name (lib.options/options %)) expressions))))]])
 
 (mr/def ::positive-integer-or-numeric-expression
   [:and

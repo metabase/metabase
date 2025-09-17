@@ -25,11 +25,16 @@ import {
 } from "./version-helpers";
 
 function isBackport(pullRequest: Issue) {
-  return pullRequest.title.includes('backport') ||
-    (
-      Array.isArray(pullRequest.labels) &&
-      pullRequest.labels.some((label) => label.name === 'was-backported')
-    );
+  return (
+    pullRequest.title.includes("backport") || hasLabel(pullRequest, "was-backport")
+  );
+}
+
+function hasLabel(issue: Issue, labelName: string) {
+  return (
+    Array.isArray(issue.labels) &&
+    issue.labels.some((label) => label.name === labelName)
+  );
 }
 
 const isNotNull = <T>(value: T | null): value is T => value !== null;

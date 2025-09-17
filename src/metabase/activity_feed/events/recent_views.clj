@@ -7,7 +7,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as m]
-   [steffan-westcott.clj-otel.api.trace.span :as span]))
+   [steffan-westcott.clj-otel.api.trace.span :as span]
+   [toucan2.core :as t2]))
 
 (derive ::dashboard-read :metabase/event)
 (derive :event/dashboard-read ::dashboard-read)
@@ -48,8 +49,9 @@
   [topic {:keys [card-id user-id context] :as _event}]
   (try
     (let [user-id  (or user-id api/*current-user-id*)]
-      ;; we don't want to count pinned card views
-      (when-not (#{:collection :dashboard :dashboard-subscription} context)
+      ;; we don't want to count pinned card views or document cards
+      (when-not (or (#{:collection :dashboard :dashboard-subscription} context)
+                    (some? (t2/select-one-fn :document_id :model/Card :id card-id)))
         (recent-views/update-users-recent-views! user-id :model/Card card-id :view)))
     (catch Throwable e
       (log/warnf e "Failed to process recent_views event: %s" topic))))
@@ -62,8 +64,10 @@
   "Handle recent-view processing for card reads"
   [topic {:keys [object-id user-id context]}]
   ;; Cards can be read indirectly, either through a pinned collection, or in a dashboard.
-  ;; We only want to count direct views of cards, so we skip processing for indirect views here:
-  (when (= context :question)
+  ;; We only want to count direct views of cards, so we skip processing for indirect views here.
+  ;; Also skip document cards.
+  (when (and (= context :question)
+             (nil? (t2/select-one-fn :document_id :model/Card :id object-id)))
     (try
       (recent-views/update-users-recent-views! (or user-id api/*current-user-id*) :model/Card object-id :view)
       (catch Throwable e

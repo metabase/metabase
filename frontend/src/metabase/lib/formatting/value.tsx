@@ -1,13 +1,12 @@
 import cx from "classnames";
+import dayjs from "dayjs";
 import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import Mustache from "mustache";
-import type * as React from "react";
 import ReactMarkdown from "react-markdown";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
-import { isEmbeddingSdk } from "metabase/env";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { renderLinkTextForClick } from "metabase/lib/formatting/link";
 import { parseNumber } from "metabase/lib/number";
@@ -31,6 +30,7 @@ import { formatEmail } from "./email";
 import { formatCoordinate } from "./geography";
 import { formatImage } from "./image";
 import { formatNumber } from "./numbers";
+import { removeNewLines } from "./strings";
 import { formatTime } from "./time";
 import type { OptionsType } from "./types";
 import { formatUrl } from "./url";
@@ -126,6 +126,9 @@ function formatStringFallback(value: any, options: OptionsType = {}) {
       value = formatImage(value, options);
     }
   }
+  if (typeof value === "string" && options.collapseNewlines) {
+    value = removeNewLines(value);
+  }
   return value;
 }
 
@@ -143,7 +146,7 @@ export function formatValueRaw(
 
   const remapped = getRemappedValue(value as string | number, options);
   if (remapped !== undefined && options.view_as !== "link") {
-    return remapped;
+    value = remapped;
   }
 
   if (value == null) {
@@ -153,22 +156,22 @@ export function formatValueRaw(
     options.click_behavior &&
     clickBehaviorIsValid(options.click_behavior) &&
     options.jsx &&
-    !isEmbeddingSdk // (metabase#51099) do not show as link in sdk
+    !isEmbeddingSdk() // (metabase#51099) do not show as link in sdk
   ) {
     // Style this like a link if we're in a jsx context.
     // It's not actually a link since we handle the click differently for dashboard and question targets.
     return (
-      <div
+      <span
         data-testid="link-formatted-text"
         className={cx(CS.link, CS.linkWrappable)}
       >
         {formatValueRaw(value, { ...options, jsx: false })}
-      </div>
+      </span>
     );
   } else if (
     options.click_behavior &&
     options.click_behavior.linkTextTemplate &&
-    !isEmbeddingSdk // (metabase#51099) do not show custom link text in sdk
+    !isEmbeddingSdk() // (metabase#51099) do not show custom link text in sdk
   ) {
     return renderLinkTextForClick(
       options.click_behavior.linkTextTemplate,
@@ -191,9 +194,9 @@ export function formatValueRaw(
     );
   } else if (
     isDate(column) ||
-    moment.isDate(value) ||
-    moment.isMoment(value) ||
-    moment(value as string, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()
+    isDateValue(value) ||
+    dayjs.isDayjs(value) ||
+    dayjs(value as string, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()
   ) {
     return formatDateTimeWithUnit(value as string | number, "minute", options);
   } else if (typeof value === "string") {
@@ -207,7 +210,7 @@ export function formatValueRaw(
       return formatImage(value, options);
     }
     if (column?.semantic_type) {
-      return value;
+      return options.collapseNewlines ? removeNewLines(value) : value;
     }
     return formatStringFallback(value, options);
   } else if (typeof value === "number" && isCoordinate(column)) {
@@ -232,6 +235,11 @@ export function formatValueRaw(
     // no extra whitespace for table cells
     return JSON.stringify(value);
   } else {
-    return String(value);
+    const strValue = String(value);
+    return options.collapseNewlines ? removeNewLines(strValue) : strValue;
   }
+}
+
+function isDateValue(value: unknown): value is Date {
+  return Object.prototype.toString.call(value) === "[object Date]";
 }

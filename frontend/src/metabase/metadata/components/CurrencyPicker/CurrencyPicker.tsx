@@ -1,3 +1,4 @@
+import type { FocusEvent } from "react";
 import { t } from "ttag";
 
 import { currency } from "cljs/metabase.util.currency";
@@ -21,7 +22,18 @@ interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   onChange: (value: string) => void;
 }
 
-export const CurrencyPicker = ({ value, onChange, ...props }: Props) => {
+export const CurrencyPicker = ({
+  comboboxProps,
+  value,
+  onChange,
+  onFocus,
+  ...props
+}: Props) => {
+  const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
+    event.target.select();
+    onFocus?.(event);
+  };
+
   return (
     <Select
       comboboxProps={{
@@ -32,10 +44,9 @@ export const CurrencyPicker = ({ value, onChange, ...props }: Props) => {
           },
         },
         position: "bottom-start",
-        width: 300,
+        ...comboboxProps,
       }}
       data={DATA}
-      fw="bold"
       nothingFoundMessage={t`Didn't find any results`}
       placeholder={t`Select a currency type`}
       renderOption={(item) => {
@@ -77,7 +88,8 @@ export const CurrencyPicker = ({ value, onChange, ...props }: Props) => {
       }
       searchable
       value={value}
-      onChange={onChange}
+      onChange={(value) => onChange(value)}
+      onFocus={handleFocus}
       {...props}
     />
   );

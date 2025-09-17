@@ -190,7 +190,6 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
     cy.wait(["@getCard", "@datasetMetadata"]);
 
     getSdkRoot().within(() => {
-      cy.findByText("New question").should("be.visible");
       cy.findByTestId("visualization-root").should("be.visible");
     });
   });

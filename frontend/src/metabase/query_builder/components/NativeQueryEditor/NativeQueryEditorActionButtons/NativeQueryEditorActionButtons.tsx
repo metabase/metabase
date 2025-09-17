@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import { getEngineNativeType } from "metabase/lib/engine";
 import { PLUGIN_AI_SQL_GENERATION } from "metabase/plugins";
-import { canFormatForEngine } from "metabase/query_builder/components/NativeQueryEditor/utils";
 import { DataReferenceButton } from "metabase/query_builder/components/view/DataReferenceButton";
 import { NativeVariablesButton } from "metabase/query_builder/components/view/NativeVariablesButton";
 import { PreviewQueryButton } from "metabase/query_builder/components/view/PreviewQueryButton";
@@ -12,21 +11,16 @@ import { Button, Flex, Icon, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Collection, NativeQuerySnippet } from "metabase-types/api";
 
+import type { SidebarFeatures } from "../types";
+
 import S from "./NativeQueryEditorActionButtons.module.css";
 
 const ICON_SIZE = 18;
 
-export type Features = {
-  dataReference?: boolean;
-  variables?: boolean;
-  snippets?: boolean;
-  promptInput?: boolean;
-};
-
 interface NativeQueryEditorActionButtonsProps {
   question: Question;
   nativeEditorSelectedText?: string;
-  features: Features;
+  features: SidebarFeatures;
   snippets?: NativeQuerySnippet[];
   snippetCollections?: Collection[];
   isRunnable: boolean;
@@ -37,11 +31,10 @@ interface NativeQueryEditorActionButtonsProps {
   isShowingSnippetSidebar: boolean;
   runQuery?: () => void;
   cancelQuery?: () => void;
-  onOpenModal: (modalType: QueryModalType) => void;
-  toggleDataReference: () => void;
-  toggleTemplateTagsEditor: () => void;
-  toggleSnippetSidebar: () => void;
-  onFormatQuery: () => void;
+  toggleDataReference?: () => void;
+  toggleSnippetSidebar?: () => void;
+  onOpenModal?: (modalType: QueryModalType) => void;
+  onFormatQuery?: () => void;
   onGenerateQuery: (queryText: string) => void;
 }
 
@@ -54,6 +47,7 @@ export const NativeQueryEditorActionButtons = (
     snippetCollections,
     snippets,
     features,
+    toggleDataReference,
     onFormatQuery,
     onGenerateQuery,
   } = props;
@@ -68,9 +62,12 @@ export const NativeQueryEditorActionButtons = (
 
   const query = question.query();
   const engine = question.database?.()?.engine;
-  const canFormatQuery = engine != null && canFormatForEngine(engine);
   const canGenerateQuery =
     engine != null && getEngineNativeType(engine) === "sql";
+
+  // Default to true if not explicitly set to false
+  const showFormatButton = features.formatQuery !== false;
+  const showAiGeneration = features.aiGeneration !== false;
 
   return (
     <Flex
@@ -83,7 +80,11 @@ export const NativeQueryEditorActionButtons = (
         <PreviewQueryButton {...props} />
       )}
       {features.dataReference && (
-        <DataReferenceButton {...props} size={ICON_SIZE} />
+        <DataReferenceButton
+          {...props}
+          size={ICON_SIZE}
+          onClick={toggleDataReference}
+        />
       )}
       {features.snippets && showSnippetSidebarButton && (
         <SnippetSidebarButton {...props} size={ICON_SIZE} />
@@ -91,7 +92,7 @@ export const NativeQueryEditorActionButtons = (
       {features.variables && (
         <NativeVariablesButton {...props} size={ICON_SIZE} />
       )}
-      {canFormatQuery && (
+      {showFormatButton && onFormatQuery && (
         <Tooltip label={t`Auto-format`}>
           <Button
             variant="subtle"
@@ -103,7 +104,7 @@ export const NativeQueryEditorActionButtons = (
           />
         </Tooltip>
       )}
-      {canGenerateQuery && (
+      {showAiGeneration && canGenerateQuery && (
         <PLUGIN_AI_SQL_GENERATION.GenerateSqlQueryButton
           query={query}
           selectedQueryText={nativeEditorSelectedText}

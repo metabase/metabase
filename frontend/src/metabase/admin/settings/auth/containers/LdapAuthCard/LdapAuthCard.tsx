@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { EnterpriseSettings } from "metabase-types/api";
 
 import { AuthCard } from "../../components/AuthCard";

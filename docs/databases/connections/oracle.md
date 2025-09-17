@@ -16,6 +16,10 @@ Metabase supports the oldest supported version through the latest stable version
 
 You can edit these settings at any time. Just remember to save your changes.
 
+### Connection string
+
+Paste a connection string here to pre-fill the remaining fields below.
+
 ### Display name
 
 The display name for the database in the Metabase interface.
@@ -126,10 +130,6 @@ For example, if you're running Metabase from a directory called `/app/`, you sho
 ### When running from Docker
 
 The process for adding plugins when running via Docker is similar, but you'll need to mount the `plugins` directory. Refer to instructions [here](../../installation-and-operation/running-metabase-on-docker.md#adding-external-dependencies-or-plugins) for more details.
-
-## Database routing
-
-See [Database routing](../../permissions/database-routing.md).
 
 ## Danger zone
 

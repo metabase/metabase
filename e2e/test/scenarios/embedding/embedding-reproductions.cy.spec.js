@@ -5,7 +5,7 @@ import { defer } from "metabase/lib/promise";
 
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describe.skip("issue 15860", () => {
+describe("issue 15860", { tags: "@skip" }, () => {
   const q1IdFilter = {
     name: "Q1 ID",
     slug: "q1_id",
@@ -658,7 +658,7 @@ describe("issue 30535", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     cy.sandboxTable({
       table_id: PRODUCTS_ID,
@@ -957,24 +957,28 @@ describe("issue 40660", () => {
     });
   });
 
-  it("static dashboard content shouldn't overflow its container (metabase#40660)", () => {
-    H.openStaticEmbeddingModal({
-      activeTab: "parameters",
-      previewMode: "preview",
-    });
+  it(
+    "static dashboard content shouldn't overflow its container (metabase#40660)",
+    { tags: "@flaky" },
+    () => {
+      H.openStaticEmbeddingModal({
+        activeTab: "parameters",
+        previewMode: "preview",
+      });
 
-    H.getIframeBody().within(() => {
-      cy.findByTestId("embed-frame").scrollTo("bottom");
+      H.getIframeBody().within(() => {
+        cy.findByTestId("embed-frame").scrollTo("bottom");
 
-      cy.findByRole("link", { name: "Powered by Metabase" }).should(
-        "be.visible",
-      );
-    });
-  });
+        cy.findByRole("link", { name: "Powered by Metabase" }).should(
+          "be.visible",
+        );
+      });
+    },
+  );
 });
 
 // Skipped since it does not make sense when CSP is disabled
-describe.skip("issue 49142", () => {
+describe("issue 49142", { tags: "@skip" }, () => {
   const questionDetails = {
     name: "Products",
     query: { "source-table": PRODUCTS_ID, limit: 2 },
@@ -1013,7 +1017,7 @@ describe("issue 8490", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     H.createDashboardWithQuestions({
       dashboardDetails: {
@@ -1035,10 +1039,10 @@ describe("issue 8490", () => {
               ],
             ],
             filter: [
-              "time-interval",
+              "between",
               ["field", PRODUCTS.CREATED_AT, { "base-type": "type/DateTime" }],
-              -12,
-              "month",
+              "2024-01-01",
+              "2025-01-01",
             ],
           },
           limit: 100,
@@ -1161,7 +1165,9 @@ describe("issue 8490", () => {
     });
 
     // Loading...
-    cy.findByTestId("embed-frame").findByText("로딩...").should("be.visible");
+    cy.findByTestId("embed-frame")
+      .findByText("로드 중...")
+      .should("be.visible");
 
     cy.log("test a static embedded question");
     cy.get("@lineChartQuestionId").then((lineChartQuestionId) => {
@@ -1215,14 +1221,14 @@ describe("issue 8490", () => {
         "static embeddings with `#locale` should show a translated the loading message",
       );
       // Loading...
-      cy.findByText("로딩...")
+      cy.findByText("로드 중...")
         .should("be.visible")
         .then(resolveDashboardLoaderPromise);
 
       cy.log("assert the line chart");
       H.getDashboardCard(0).within(() => {
         // X-axis labels: Jan 2024 (or some other year)
-        cy.findByText(/1월 20\d\d\b/).should("be.visible");
+        cy.findByText(/^1월 20\d\d\b/).should("be.visible");
         // Aggregation "count"
         cy.findByText("카운트").should("be.visible");
       });
@@ -1327,7 +1333,7 @@ describe("issue 51934 (EMB-189)", () => {
   beforeEach(() => {
     H.restore("postgres-12");
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     H.createModelFromTableName({
       tableName: "products",
       modelName: MODEL_IN_ROOT_NAME,

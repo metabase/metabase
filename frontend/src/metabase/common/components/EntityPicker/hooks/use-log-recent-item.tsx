@@ -3,8 +3,8 @@ import { useCallback } from "react";
 import { useLogRecentItemMutation } from "metabase/api";
 import { isLoggableActivityModel } from "metabase-types/api";
 
-import type { CollectionPickerItem } from "../../CollectionPicker";
-import type { DataPickerValueItem } from "../../DataPicker";
+import type { CollectionPickerItem } from "../../Pickers/CollectionPicker";
+import type { DataPickerValueItem } from "../../Pickers/DataPicker";
 
 export const useLogRecentItem = () => {
   const [logRecentItem] = useLogRecentItemMutation();

@@ -3,7 +3,7 @@ import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import {
@@ -31,6 +31,7 @@ export default class FunnelNormal extends Component {
       rawSeries,
       gridSize,
       hovered,
+      isDashboard,
       onHoverChange,
       onVisualizationClick,
       visualizationIsClickable,
@@ -174,7 +175,10 @@ export default class FunnelNormal extends Component {
         data-testid="funnel-chart"
       >
         <FunnelStep isFirst>
-          <Head isNarrow={isNarrow}>
+          <Head
+            isNarrow={isNarrow}
+            style={{ fontSize: isDashboard ? "0.75rem" : "unset" }}
+          >
             <Ellipsified data-testid="funnel-chart-header">
               {formatDimension(sortedRows[0][dimensionIndex])}
             </Ellipsified>
@@ -195,7 +199,10 @@ export default class FunnelNormal extends Component {
 
           return (
             <FunnelStep key={index}>
-              <Head isNarrow={isNarrow}>
+              <Head
+                isNarrow={isNarrow}
+                style={{ fontSize: isDashboard ? "0.75rem" : "unset" }}
+              >
                 <Ellipsified data-testid="funnel-chart-header">
                   {formatDimension(sortedRows[index + 1][dimensionIndex])}
                 </Ellipsified>
@@ -213,7 +220,9 @@ export default class FunnelNormal extends Component {
                 <Title>
                   <Ellipsified>{formatPercent(stepPercentage)}</Ellipsified>
                 </Title>
-                <Subtitle>
+                <Subtitle
+                  style={{ fontSize: isDashboard ? "0.75rem" : "unset" }}
+                >
                   <Ellipsified>
                     {formatMetric(sortedRows[index + 1][metricIndex])}
                   </Ellipsified>

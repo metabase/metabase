@@ -6,6 +6,7 @@ import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants
 import type {
   BaseCartesianChartModel,
   DateRange,
+  TimeSeriesInterval,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { TimelineEventGroup } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import type { RenderingContext } from "metabase/visualizations/types";
@@ -14,13 +15,16 @@ import type { TimelineEvent } from "metabase-types/api";
 import type { ChartMeasurements } from "../chart-measurements/types";
 import { isTimeSeriesAxis } from "../model/guards";
 
-const getDayWidth = (
+const getIntervalWidth = (
   range: DateRange,
+  interval: TimeSeriesInterval,
   chartMeasurements: ChartMeasurements,
 ) => {
-  const daysCount = Math.abs(dayjs(range[1]).diff(range[0], "day"));
+  const intervalsCount = Math.abs(
+    dayjs(range[1]).diff(range[0], interval.unit) / interval.count,
+  );
 
-  return chartMeasurements.boundaryWidth / daysCount;
+  return chartMeasurements.boundaryWidth / intervalsCount;
 };
 
 const groupEventsByUnitStart = (
@@ -75,7 +79,8 @@ const getMinDistanceFromTimelineEventGroup = (
 
 export const mergeOverlappingTimelineEventGroups = (
   eventGroups: TimelineEventGroup[],
-  dayWidth: number,
+  interval: TimeSeriesInterval,
+  intervalWidth: number,
   renderingContext: RenderingContext,
 ): TimelineEventGroup[] => {
   const sortedGroups = [...eventGroups].sort((a, b) =>
@@ -98,8 +103,9 @@ export const mergeOverlappingTimelineEventGroups = (
     const lastGroupDate = dayjs.utc(lastGroup.date);
     const currentGroupDate = dayjs.utc(currentGroup.date);
 
-    const daysDiff = currentGroupDate.diff(lastGroupDate, "day");
-    const pixelDiff = daysDiff * dayWidth;
+    const intervalsDiff =
+      currentGroupDate.diff(lastGroupDate, interval.unit) / interval.count;
+    const pixelDiff = intervalsDiff * intervalWidth;
     const lastGroupMinDistance = getMinDistanceFromTimelineEventGroup(
       lastGroup,
       renderingContext,
@@ -162,10 +168,15 @@ export const getTimelineEventsModel = (
     chartModel.xAxisModel.interval.unit,
   );
 
-  const dayWidth = getDayWidth(dimensionRange, chartMeasurements);
+  const intervalWidth = getIntervalWidth(
+    dimensionRange,
+    chartModel.xAxisModel.interval,
+    chartMeasurements,
+  );
   return mergeOverlappingTimelineEventGroups(
     timelineEventsByUnitStart,
-    dayWidth,
+    chartModel.xAxisModel.interval,
+    intervalWidth,
     renderingContext,
   );
 };

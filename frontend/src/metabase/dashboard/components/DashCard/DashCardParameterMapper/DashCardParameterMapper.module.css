@@ -10,6 +10,10 @@
   line-height: 1.5rem;
 }
 
+.InfoIcon {
+  flex-shrink: 0;
+}
+
 .CardLabel {
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -29,7 +33,6 @@
   color: var(--mb-color-text-medium);
 
   &.disabled {
-    pointer-events: none;
     opacity: 0.4;
     border-color: inherit;
   }

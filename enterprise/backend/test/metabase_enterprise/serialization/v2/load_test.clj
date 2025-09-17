@@ -9,10 +9,17 @@
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.actions.models :as action]
    [metabase.models.serialization :as serdes]
+   [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
+
+;; `reindex!` below is ok in a parallel test since it's not actually executing anything
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
+(use-fixtures :each (fn [thunk]
+                      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+                        (thunk))))
 
 (defn- no-labels [path]
   (mapv #(dissoc % :label) path))
@@ -229,8 +236,7 @@
             (is (=? {:type  :query
                      :query {:source-table ["my-db" nil "customers"]
                              :filter       [:>= [:field ["my-db" nil "customers" "age"] nil] 18]
-                             :aggregation  [[:count]]
-                             :aggregation-idents {0 string?}}
+                             :aggregation  [[:count]]}
                      :database "my-db"}
                     (:dataset_query card)))))
 
@@ -262,8 +268,7 @@
               (is (=? {:type     :query
                        :query    {:source-table (:id @table1d)
                                   :filter       [:>= [:field (:id @field1d) nil] 18]
-                                  :aggregation  [[:count]]
-                                  :aggregation-idents {0 string?}}
+                                  :aggregation  [[:count]]}
                        :database (:id @db1d)}
                       (:dataset_query @card1d))))))))))
 
@@ -958,6 +963,64 @@
                    :content "11 = 11"}
                   (t2/select-one :model/NativeQuerySnippet :entity_id (:entity_id snippet)))))))))
 
+(deftest snippet-template-tags-import-test
+  (testing "Template tags import preserves nil, empty, and populated values"
+
+    (testing "Missing template_tags field -> {} when selected"
+      (mt/with-empty-h2-app-db!
+        (let [snippet-data {:serdes/meta [{:model "NativeQuerySnippet"
+                                           :id    "test-entity-1"
+                                           :label "test_snippet_1"}]
+                            :name        "no-tags-field"
+                            :content     "WHERE id = {{id}}"
+                            :creator_id  "test@example.com"
+                            :entity_id   "test-entity-1"}
+              ingestion    (ingestion-in-memory [snippet-data])]
+          (serdes.load/load-metabase! ingestion)
+          (let [template-tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :entity_id "test-entity-1")]
+            ;; Toucan hooks compute the template-tags:
+            (is (=? {"id" {:type         :text
+                           :display-name "ID"
+                           :name         "id"}}
+                    template-tags))))))
+
+    (testing "Empty map template_tags -> preserved as empty map"
+      (mt/with-empty-h2-app-db!
+        (let [snippet-data {:serdes/meta   [{:model "NativeQuerySnippet"
+                                             :id    "test-entity-2"
+                                             :label "test_snippet_2"}]
+                            :name          "empty-tags"
+                            :content       "SELECT 1"
+                            :template_tags {}
+                            :creator_id    "test@example.com"
+                            :entity_id     "test-entity-2"}
+              ingestion    (ingestion-in-memory [snippet-data])]
+          (serdes.load/load-metabase! ingestion)
+          (let [template-tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :entity_id "test-entity-2")]
+            (is (= {} template-tags))))))
+
+    (testing "Snippet template tags get preserved rather than recalculated"
+      (mt/with-empty-h2-app-db!
+        (let [snippet-data {:serdes/meta   [{:model "NativeQuerySnippet"
+                                             :id    "test-entity-3"
+                                             :label "test_snippet_3"}]
+                            :name          "with-tags"
+                            :content       "WHERE id = {{snippet: id}}"
+                            :template_tags {"id" {:type         :snippet
+                                                  :name         "snippet: id"
+                                                  :snippet-name "id"
+                                                  ;; Definitely not calculated that way:
+                                                  :display-name "Snippet: WOOP"}}
+                            :creator_id    "test@example.com"
+                            :entity_id     "test-entity-3"}
+              ingestion    (ingestion-in-memory [snippet-data])]
+          (serdes.load/load-metabase! ingestion)
+          (let [template-tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :entity_id "test-entity-3")]
+            (is (=? {"snippet: id" {:type         :snippet
+                                    :name         "snippet: id"
+                                    :display-name "Snippet: WOOP"}}
+                    template-tags))))))))
+
 (deftest load-action-test
   (let [serialized (atom nil)
         eid (u/generate-nano-id)]
@@ -1258,7 +1321,7 @@
                 (is (= 1 (count (:errors report))))
                 (is (= 3 (count (:seen report)))))
               (is (= [["Failed to read file for Collection does-not-exist"]]
-                     (logs-extract #"Skipping deserialization error: (.*) \{.*\}$"
+                     (logs-extract #"Skipping deserialization error: (.*) \{.*\}\n"
                                    (messages)))))))))))
 
 (deftest with-dbs-works-as-expected-test

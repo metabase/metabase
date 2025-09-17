@@ -6,14 +6,15 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { GenericError } from "metabase/components/ErrorPages";
-import { LeaveRouteConfirmModal } from "metabase/components/LeaveConfirmModal";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import {
-  DatabaseForm,
-  type DatabaseFormConfig,
-} from "metabase/databases/components/DatabaseForm";
-import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
+import { GenericError } from "metabase/common/components/ErrorPages";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
+import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
+import type {
+  DatabaseFormConfig,
+  FormLocation,
+} from "metabase/databases/types";
 import { useDispatch } from "metabase/lib/redux";
 import { Text } from "metabase/ui";
 import type {
@@ -42,6 +43,7 @@ export const DatabaseEditConnectionForm = withRouter(
     route,
     location,
     config,
+    formLocation,
     ...props
   }: {
     database?: Partial<DatabaseData>;
@@ -54,6 +56,7 @@ export const DatabaseEditConnectionForm = withRouter(
     location: LocationDescriptorObject;
     autofocusFieldName?: string;
     config?: Omit<DatabaseFormConfig, "isAdvanced">;
+    formLocation: Extract<FormLocation, "admin" | "full-page">;
   }) => {
     const dispatch = useDispatch();
 
@@ -94,6 +97,7 @@ export const DatabaseEditConnectionForm = withRouter(
               onCancel={onCancel}
               onSubmit={handleSubmit}
               setIsDirty={setIsDirty}
+              location={formLocation}
             />
           ) : (
             <Text my="md">{t`This database is managed by Metabase Cloud and cannot be modified.`}</Text>

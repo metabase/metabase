@@ -1,14 +1,18 @@
-import { splice } from "icepick";
-import { useMemo } from "react";
+import { DragOverlay, useDroppable } from "@dnd-kit/core";
 import {
-  Draggable,
-  Droppable,
-  type OnDragEndResponder,
-} from "react-beautiful-dnd";
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { type ReactNode, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { DragDropContext } from "metabase/core/components/DragDropContext";
+import {
+  MultiContainerDraggableContext,
+  type MultiContainerDraggableContextShouldUpdateStateData,
+  findContainer,
+} from "metabase/common/components/MultiContainerDraggableContext";
+import { Sortable } from "metabase/common/components/Sortable";
 import CS from "metabase/css/core/index.css";
 import { Box, Text } from "metabase/ui";
 import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
@@ -21,219 +25,259 @@ import type {
 
 import { ColumnItem } from "./ColumnItem";
 
-const columnMove = (columns: string[], from: number, to: number) => {
-  const columnCopy = [...columns];
-  columnCopy.splice(to, 0, columnCopy.splice(from, 1)[0]);
-  return columnCopy;
+const EMPTY_VALUE: ColumnNameColumnSplitSetting = {
+  columns: [],
+  rows: [],
+  values: [],
 };
 
-const columnRemove = (columns: string[], from: number) => {
-  return splice(columns, from, 1);
+const shouldUpdateDraggableContextState = ({
+  activeContainer,
+  overContainer,
+}: MultiContainerDraggableContextShouldUpdateStateData<ColumnNameColumnSplitSetting>) =>
+  getPartitionType(activeContainer) === getPartitionType(overContainer);
+
+const getPartitionType = (
+  partitionName: keyof ColumnNameColumnSplitSetting,
+) => {
+  switch (partitionName) {
+    case "rows":
+    case "columns":
+      return "dimension";
+    default:
+      return "metric";
+  }
 };
 
-const columnAdd = (columns: string[], to: number, column: string) => {
-  return splice(columns, to, 0, column);
-};
+type ChartSettingFieldsPartitionInternalProps = {
+  activeId: string | null;
+  items: ColumnNameColumnSplitSetting;
+} & Pick<
+  ChartSettingFieldsPartitionProps,
+  "columns" | "partitions" | "getColumnTitle" | "onShowWidget"
+>;
 
-export const ChartSettingFieldsPartition = ({
-  value,
-  onChange,
-  onShowWidget,
-  getColumnTitle,
-  partitions,
+const ChartSettingFieldsPartitionInternal = ({
+  activeId,
+  items,
   columns,
+  partitions,
+  getColumnTitle,
+  onShowWidget,
+}: ChartSettingFieldsPartitionInternalProps) => {
+  const { sourcePartition, activeColumn } = useMemo(() => {
+    const sourcePartition = findContainer(activeId, items);
+    const activeColumn = columns.find((col) => col.name === activeId);
+
+    return {
+      sourcePartition,
+      activeColumn,
+    };
+  }, [activeId, columns, items]);
+
+  const columnsByPartitionName = useMemo(
+    () =>
+      _.mapObject(items || {}, (columnNames) =>
+        columnNames
+          .map((columnName) => columns.find((col) => col.name === columnName))
+          .filter((col): col is RemappingHydratedDatasetColumn => col != null),
+      ),
+    [columns, items],
+  );
+
+  return (
+    <>
+      {Object.keys(items).map((partitionName) => (
+        <PartitionContainer
+          key={partitionName}
+          partitionName={partitionName as keyof ColumnNameColumnSplitSetting}
+          partitions={partitions}
+          items={items}
+          sourcePartition={sourcePartition}
+          columnsByPartitionName={columnsByPartitionName}
+          activeId={activeId}
+          getColumnTitle={getColumnTitle}
+          onShowWidget={onShowWidget}
+        />
+      ))}
+
+      <DragOverlay>
+        {activeId && activeColumn && (
+          <ColumnItem
+            title={getColumnTitle(activeColumn)}
+            draggable
+            onEdit={() => {}}
+          />
+        )}
+      </DragOverlay>
+    </>
+  );
+};
+
+const PartitionContainer = ({
+  partitionName,
+  partitions,
+  items,
+  sourcePartition,
+  columnsByPartitionName,
+  activeId,
+  getColumnTitle,
+  onShowWidget,
 }: {
-  value: ColumnNameColumnSplitSetting;
+  partitionName: keyof ColumnNameColumnSplitSetting;
+  items: ColumnNameColumnSplitSetting;
+  sourcePartition: keyof ColumnNameColumnSplitSetting | null;
+  columnsByPartitionName: Record<
+    keyof ColumnNameColumnSplitSetting,
+    RemappingHydratedDatasetColumn[]
+  >;
+  activeId: string | null;
+} & Pick<
+  ChartSettingFieldsPartitionProps,
+  "partitions" | "getColumnTitle" | "onShowWidget"
+>) => {
+  const partitionIndex = useMemo(
+    () => partitions.findIndex((partition) => partition.name === partitionName),
+    [partitionName, partitions],
+  );
+  const partition = partitions[partitionIndex];
+
+  const handleEditFormatting = useCallback(
+    (column: RemappingHydratedDatasetColumn, targetElement: HTMLElement) => {
+      onShowWidget(
+        { id: "column_settings", props: { initialKey: getColumnKey(column) } },
+        targetElement,
+      );
+    },
+    [onShowWidget],
+  );
+
+  if (!partition) {
+    return null;
+  }
+
+  const { title } = partition;
+
+  const columnNames = items[partitionName];
+  const columns = columnsByPartitionName[partitionName] || [];
+
+  const partitionType = getPartitionType(partitionName);
+  const sourcePartitionType = sourcePartition
+    ? getPartitionType(sourcePartition)
+    : null;
+  const droppableDisabled = partitionType !== sourcePartitionType;
+
+  return (
+    <Box py="md" className={partitionIndex > 0 ? CS.borderTop : undefined}>
+      <Text c="text-medium">{title}</Text>
+
+      <SortableContext
+        id={partitionName}
+        items={columnNames}
+        strategy={verticalListSortingStrategy}
+      >
+        <DroppableItem
+          id={partitionName}
+          disabled={droppableDisabled}
+          isDragging={!!activeId}
+        >
+          {columns.length === 0 ? (
+            <Box
+              w="100%"
+              p="0.75rem"
+              bg="border"
+              c="text-medium"
+              className={CS.rounded}
+            >
+              {t`Drag fields here`}
+            </Box>
+          ) : (
+            <Box mih="2.5rem" className={CS.rounded}>
+              {columns.map((column) => (
+                <Sortable
+                  key={column.name}
+                  id={column.name}
+                  draggingStyle={{ opacity: 0.5 }}
+                >
+                  <ColumnItem
+                    className={CS.m0}
+                    title={getColumnTitle(column)}
+                    draggable
+                    onEdit={(target) => handleEditFormatting(column, target)}
+                  />
+                </Sortable>
+              ))}
+            </Box>
+          )}
+        </DroppableItem>
+      </SortableContext>
+    </Box>
+  );
+};
+
+type DroppableItemProps = {
+  children: ReactNode;
+  id: string;
+  disabled: boolean;
+  isDragging: boolean;
+};
+
+const DroppableItem = ({
+  children,
+  id,
+  disabled,
+  isDragging,
+}: DroppableItemProps) => {
+  const { setNodeRef } = useDroppable({
+    id,
+  });
+
+  return (
+    <Box
+      ref={setNodeRef}
+      mih="2.5rem"
+      className={CS.rounded}
+      {...(isDragging && !disabled && { bg: "border" })}
+    >
+      {children}
+    </Box>
+  );
+};
+
+type ChartSettingFieldsPartitionProps = {
+  value?: ColumnNameColumnSplitSetting;
   onChange: (value: ColumnNameColumnSplitSetting) => void;
   onShowWidget: (
     widget: { id: string; props: { initialKey: string } },
     ref: HTMLElement | undefined,
   ) => void;
   getColumnTitle: (column: DatasetColumn) => string;
-  columns: RemappingHydratedDatasetColumn[];
   partitions: Partition[];
-}) => {
-  const handleEditFormatting = (
-    column: RemappingHydratedDatasetColumn,
-    targetElement: HTMLElement,
-  ) => {
-    if (column) {
-      onShowWidget(
-        {
-          id: "column_settings",
-          props: {
-            initialKey: getColumnKey(column),
-          },
-        },
-        targetElement,
-      );
-    }
-  };
-
-  const getPartitionType = (
-    partitionName: keyof ColumnNameColumnSplitSetting,
-  ) => {
-    switch (partitionName) {
-      case "rows":
-      case "columns":
-        return "dimension";
-      default:
-        return "metric";
-    }
-  };
-
-  const handleDragEnd: OnDragEndResponder = ({ source, destination }) => {
-    if (!source || !destination) {
-      return;
-    }
-    const { droppableId: sourcePartition, index: sourceIndex } = source;
-    const { droppableId: destinationPartition, index: destinationIndex } =
-      destination;
-
-    if (
-      sourcePartition === destinationPartition &&
-      sourceIndex !== destinationIndex
-    ) {
-      onChange({
-        ...value,
-        [sourcePartition]: columnMove(
-          value[sourcePartition as keyof ColumnNameColumnSplitSetting],
-          sourceIndex,
-          destinationIndex,
-        ),
-      });
-    } else if (sourcePartition !== destinationPartition) {
-      const column =
-        value[sourcePartition as keyof ColumnNameColumnSplitSetting][
-          sourceIndex
-        ];
-
-      onChange({
-        ...value,
-        [sourcePartition]: columnRemove(
-          value[sourcePartition as keyof ColumnNameColumnSplitSetting],
-          sourceIndex,
-        ),
-        [destinationPartition]: columnAdd(
-          value[destinationPartition as keyof ColumnNameColumnSplitSetting],
-          destinationIndex,
-          column,
-        ),
-      });
-    }
-  };
-
-  const updatedValue = useMemo(
-    () =>
-      _.mapObject(value || {}, (columnNames) =>
-        columnNames
-          .map((columnName) => columns.find((col) => col.name === columnName))
-          .filter((col): col is RemappingHydratedDatasetColumn => col != null),
-      ),
-    [columns, value],
-  );
-
-  return (
-    <DragDropContext onDragEnd={handleDragEnd}>
-      {partitions.map(({ name: partitionName, title }, index) => {
-        const updatedColumns = updatedValue[partitionName] ?? [];
-        const partitionType = getPartitionType(partitionName);
-        return (
-          <Box
-            py="md"
-            className={index > 0 ? CS.borderTop : undefined}
-            key={partitionName}
-          >
-            <Text c="text-medium">{title}</Text>
-            <Droppable
-              droppableId={partitionName}
-              type={partitionType}
-              renderClone={(provided, snapshot, rubric) => (
-                <Box
-                  ref={provided.innerRef}
-                  {...provided.draggableProps}
-                  {...provided.dragHandleProps}
-                  mb="0.5rem"
-                >
-                  <Column
-                    onEditFormatting={handleEditFormatting}
-                    column={updatedColumns[rubric.source.index]}
-                    title={getColumnTitle(updatedColumns[rubric.source.index])}
-                  />
-                </Box>
-              )}
-            >
-              {(provided, snapshot) => (
-                <Box
-                  {...provided.droppableProps}
-                  bg={snapshot.draggingFromThisWith ? "border" : "none"}
-                  ref={provided.innerRef}
-                  mih="2.5rem"
-                  pos="relative"
-                  mt={updatedColumns.length === 0 ? "sm" : undefined}
-                  className={CS.rounded}
-                >
-                  {updatedColumns.length === 0 ? (
-                    <Box
-                      pos="absolute"
-                      w="100%"
-                      p="0.75rem"
-                      bg="bg-light"
-                      c="text-medium"
-                      className={CS.rounded}
-                    >{t`Drag fields here`}</Box>
-                  ) : (
-                    updatedColumns.map((col, index) => (
-                      <Draggable
-                        key={`draggable-${col.name}`}
-                        draggableId={`draggable-${col.name}`}
-                        index={index}
-                      >
-                        {(provided) => (
-                          <Box
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                            className={CS.mb1}
-                          >
-                            <Column
-                              key={`${partitionName}-${col.name}`}
-                              column={col}
-                              onEditFormatting={handleEditFormatting}
-                              title={getColumnTitle(col)}
-                            />
-                          </Box>
-                        )}
-                      </Draggable>
-                    ))
-                  )}
-                  {provided.placeholder}
-                </Box>
-              )}
-            </Droppable>
-          </Box>
-        );
-      })}
-    </DragDropContext>
-  );
+  columns: RemappingHydratedDatasetColumn[];
 };
 
-const Column = ({
-  title,
-  column,
-  onEditFormatting,
-}: {
-  title: string;
-  column: RemappingHydratedDatasetColumn;
-  onEditFormatting: (
-    column: RemappingHydratedDatasetColumn,
-    target: HTMLElement,
-  ) => void;
-}) => (
-  <ColumnItem
-    title={title}
-    onEdit={(target) => onEditFormatting?.(column, target)}
-    draggable
-    className={CS.m0}
-  />
+export const ChartSettingFieldsPartition = ({
+  value,
+  partitions,
+  columns,
+  getColumnTitle,
+  onChange,
+  onShowWidget,
+}: ChartSettingFieldsPartitionProps) => (
+  <MultiContainerDraggableContext<ColumnNameColumnSplitSetting>
+    value={value ?? EMPTY_VALUE}
+    shouldUpdateState={shouldUpdateDraggableContextState}
+    onChange={onChange}
+  >
+    {({ activeId, items }) => (
+      <ChartSettingFieldsPartitionInternal
+        activeId={activeId}
+        items={items}
+        partitions={partitions}
+        columns={columns}
+        getColumnTitle={getColumnTitle}
+        onShowWidget={onShowWidget}
+      />
+    )}
+  </MultiContainerDraggableContext>
 );

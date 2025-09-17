@@ -12,6 +12,10 @@
   gap: 2px;
 }
 
+.tabLabel {
+  text-align: start;
+}
+
 .panelContainer {
   display: flex;
   flex-direction: column;
@@ -30,4 +34,16 @@
   padding-bottom: var(--mantine-spacing-lg);
   flex: 1;
   overflow: hidden;
+}
+
+.dropZone {
+  background-color: var(--mb-color-background-light);
+  border: 1px dashed var(--mb-color-border);
+  border-radius: var(--default-border-radius);
+  flex: 1;
+
+  &.isActive {
+    background-color: var(--mb-color-brand-alpha-04);
+    border-color: var(--mb-color-background-selected);
+  }
 }

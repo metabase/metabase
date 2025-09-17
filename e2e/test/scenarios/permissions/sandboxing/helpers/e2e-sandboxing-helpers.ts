@@ -59,7 +59,6 @@ const addCustomColumnToQuestion = (customColumnType: CustomColumnType) => {
 };
 
 const baseQuery = {
-  type: "query",
   "source-table": PRODUCTS_ID,
   limit: 20,
 };
@@ -350,16 +349,18 @@ export const configureSandboxPolicy = (
   cy.log(`Show the permissions configuration for the table named ${tableName}`);
   cy.findByRole("menuitem", { name: tableName }).click();
   cy.log("Modify the sandboxing policy for the 'data' group");
-  H.modifyPermission("data", 0, "Sandboxed");
+  H.modifyPermission("data", 0, "Row and column security");
 
   if (databaseId === 1) {
     H.modal().within(() => {
-      cy.findByText(/Change access to this database to .*Sandboxed.*?/);
+      cy.findByText(
+        /Change access to this database to .*Row and column security.*?/,
+      );
       cy.button("Change").click();
     });
   }
 
-  H.modal().findByText(/Restrict access to this table/);
+  H.modal().findByText(/Configure row and column security for this table/);
 
   if (filterTableBy !== "custom_view") {
     cy.log("Filter by a column in the table");
@@ -384,7 +385,7 @@ export const configureSandboxPolicy = (
       .click();
     cy.findByRole("option", { name: filterColumn }).click();
     H.modal()
-      .findByRole("button", { name: /Pick a user attribute/ })
+      .findByPlaceholderText(/Pick a user attribute/)
       .click();
     cy.findByRole("option", { name: "filter-attribute" }).click();
   }
@@ -627,5 +628,5 @@ export const assertAllResultsAndValuesAreSandboxed = (
 
 export const assertResponseFailsClosed = (response) => {
   expect(response?.body.data.rows).to.have.length(0);
-  expect(response?.body.error_type).to.contain("invalid-query");
+  expect(response?.body.error_type).to.be.oneOf(["driver", "invalid-query"]);
 };

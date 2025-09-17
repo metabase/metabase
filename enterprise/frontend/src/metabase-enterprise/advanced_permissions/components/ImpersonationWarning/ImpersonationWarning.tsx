@@ -1,7 +1,7 @@
 import { jt, t } from "ttag";
 
-import { BoldCode } from "metabase/components/Code";
-import Link from "metabase/core/components/Link";
+import { BoldCode } from "metabase/common/components/Code";
+import Link from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import { isEmpty } from "metabase/lib/validate";

@@ -22,7 +22,6 @@ import type {
   DatasetColumn,
   VisualizerColumnReference,
   VisualizerDataSource,
-  VisualizerDataSourceId,
 } from "metabase-types/api";
 import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
@@ -123,16 +122,16 @@ export function canCombineCardWithFunnel({ data }: Dataset) {
 // instead of adding a column, so we need to use a special name for that
 const SCALAR_FUNNEL_SLOT = "scalar_funnel";
 
-export function findColumnSlotForFunnel(
+export function findColumnSlotForFunnel(parameters: {
   state: Pick<
     VisualizerVizDefinitionWithColumns,
     "display" | "columns" | "settings"
-  >,
-  settings: ComputedVisualizationSettings,
-  datasets: Record<VisualizerDataSourceId, Dataset>,
-  dataSourceColumns: DatasetColumn[],
-  column: DatasetColumn,
-) {
+  >;
+  settings: ComputedVisualizationSettings;
+  dataSourceColumns: DatasetColumn[];
+  column: DatasetColumn;
+}) {
+  const { state, settings, dataSourceColumns, column } = parameters;
   const isEmpty = state.columns.length === 0;
 
   if (
@@ -201,13 +200,12 @@ export function addColumnToFunnel(
   dataset: Dataset,
   dataSource: VisualizerDataSource,
 ) {
-  const slot = findColumnSlotForFunnel(
+  const slot = findColumnSlotForFunnel({
     state,
     settings,
-    datasets,
-    dataset.data.cols,
+    dataSourceColumns: dataset.data.cols,
     column,
-  );
+  });
 
   if (!slot) {
     return;

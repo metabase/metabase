@@ -8,26 +8,70 @@ const { H } = cy;
 
 describe("scenarios > embedding > sdk iframe embedding > authentication", () => {
   it("cannot login if no auth methods are enabled", () => {
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [] });
-    cy.signOut();
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: true });
 
     const frame = H.loadSdkIframeEmbedTestPage({
-      dashboardId: ORDERS_DASHBOARD_ID,
+      element: "metabase-dashboard",
+      attributes: {
+        dashboardId: ORDERS_DASHBOARD_ID,
+      },
     });
 
     frame.within(() => {
       cy.findByTestId("sdk-error-container")
         .should("be.visible")
-        .and("contain", "Backend returned an error when refreshing the token.");
+        .and("contain", "SSO has not been enabled and/or configured");
+    });
+  });
+
+  it("can use existing user session when useExistingUserSession is true", () => {
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: false });
+
+    const frame = H.loadSdkIframeEmbedTestPage({
+      element: "metabase-dashboard",
+      attributes: {
+        dashboardId: ORDERS_DASHBOARD_ID,
+      },
+      metabaseConfig: {
+        useExistingUserSession: true,
+      },
+    });
+
+    assertDashboardLoaded(frame);
+  });
+
+  it("cannot use existing user session when useExistingUserSession is false", () => {
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: false });
+
+    const frame = H.loadSdkIframeEmbedTestPage({
+      element: "metabase-dashboard",
+      attributes: {
+        dashboardId: ORDERS_DASHBOARD_ID,
+      },
+      metabaseConfig: {
+        useExistingUserSession: false,
+      },
+    });
+
+    cy.log(
+      "when no auth methods are enabled and the existing user session is not used, it should fail to login",
+    );
+
+    frame.within(() => {
+      cy.findByTestId("sdk-error-container")
+        .should("be.visible")
+        .and("contain", "SSO has not been enabled and/or configured");
     });
   });
 
   it("can login via JWT", () => {
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt"] });
-    cy.signOut();
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt"], signOut: true });
 
     const frame = H.loadSdkIframeEmbedTestPage({
-      dashboardId: ORDERS_DASHBOARD_ID,
+      element: "metabase-dashboard",
+      attributes: {
+        dashboardId: ORDERS_DASHBOARD_ID,
+      },
     });
 
     assertDashboardLoaded(frame);
@@ -35,11 +79,13 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
 
   it("can login via SAML", () => {
     mockAuthSsoEndpointForSamlAuthProvider();
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [] });
-    cy.signOut();
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: true });
 
     const frame = H.loadSdkIframeEmbedTestPage({
-      dashboardId: ORDERS_DASHBOARD_ID,
+      element: "metabase-dashboard",
+      attributes: {
+        dashboardId: ORDERS_DASHBOARD_ID,
+      },
       onVisitPage: () => stubWindowOpenForSamlPopup(),
     });
 
@@ -48,11 +94,13 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
 
   it("shows an error if the SAML login results in an invalid user", () => {
     mockAuthSsoEndpointForSamlAuthProvider();
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [] });
-    cy.signOut();
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: true });
 
     const frame = H.loadSdkIframeEmbedTestPage({
-      dashboardId: ORDERS_DASHBOARD_ID,
+      element: "metabase-dashboard",
+      attributes: {
+        dashboardId: ORDERS_DASHBOARD_ID,
+      },
       onVisitPage: () => stubWindowOpenForSamlPopup({ isUserValid: false }),
     });
 
@@ -67,8 +115,10 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
   });
 
   it("shows an error if we are using an API key in production", () => {
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["api-key"] });
-    cy.signOut();
+    H.prepareSdkIframeEmbedTest({
+      enabledAuthMethods: ["api-key"],
+      signOut: true,
+    });
 
     cy.log("restore the current page's domain");
     cy.visit("http://localhost:4000");
@@ -76,9 +126,14 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     cy.log("visit a test page with an origin of example.com using api keys");
     cy.get<string>("@apiKey").then((apiKey) => {
       const frame = H.loadSdkIframeEmbedTestPage({
+        element: "metabase-dashboard",
         origin: "http://example.com",
-        dashboardId: ORDERS_DASHBOARD_ID,
-        apiKey,
+        attributes: {
+          dashboardId: ORDERS_DASHBOARD_ID,
+        },
+        metabaseConfig: {
+          apiKey,
+        },
       });
 
       frame
@@ -89,14 +144,50 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     });
   });
 
+  it("shows an error if we are using the existing user session in production", () => {
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: true });
+
+    cy.log("restore the current page's domain");
+    cy.visit("http://localhost:4000");
+
+    cy.log(
+      "visit a test page with an origin of example.com using the existing user session",
+    );
+    const frame = H.loadSdkIframeEmbedTestPage({
+      element: "metabase-dashboard",
+      origin: "http://example.com",
+      attributes: {
+        dashboardId: ORDERS_DASHBOARD_ID,
+      },
+      metabaseConfig: {
+        useExistingUserSession: true,
+      },
+    });
+
+    frame
+      .findByText(
+        "Using the existing user's session in production is not allowed.",
+      )
+      .should("exist");
+
+    frame.findByText("Orders in a dashboard").should("not.exist");
+  });
+
   it("does not show an error if we are using an API key in development", () => {
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["api-key"] });
-    cy.signOut();
+    H.prepareSdkIframeEmbedTest({
+      enabledAuthMethods: ["api-key"],
+      signOut: true,
+    });
 
     cy.get<string>("@apiKey").then((apiKey) => {
       const frame = H.loadSdkIframeEmbedTestPage({
-        dashboardId: ORDERS_DASHBOARD_ID,
-        apiKey,
+        element: "metabase-dashboard",
+        attributes: {
+          dashboardId: ORDERS_DASHBOARD_ID,
+        },
+        metabaseConfig: {
+          apiKey,
+        },
       });
 
       assertDashboardLoaded(frame);
@@ -110,12 +201,19 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
   it("uses JWT when authMethod is set to 'jwt' and both SAML and JWT are enabled", () => {
     cy.intercept("GET", "/auth/sso?preferred_method=jwt").as("authSso");
 
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt", "saml"] });
-    cy.signOut();
+    H.prepareSdkIframeEmbedTest({
+      enabledAuthMethods: ["jwt", "saml"],
+      signOut: true,
+    });
 
     const frame = H.loadSdkIframeEmbedTestPage({
-      dashboardId: ORDERS_DASHBOARD_ID,
-      preferredAuthMethod: "jwt",
+      element: "metabase-dashboard",
+      attributes: {
+        dashboardId: ORDERS_DASHBOARD_ID,
+      },
+      metabaseConfig: {
+        preferredAuthMethod: "jwt",
+      },
     });
 
     cy.wait("@authSso").its("response.body.method").should("eq", "jwt");
@@ -125,20 +223,35 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
   it("uses SAML when authMethod is set to 'saml' and both SAML and JWT are enabled", () => {
     cy.intercept("GET", "/auth/sso?preferred_method=saml").as("authSso");
 
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt", "saml"] });
-    cy.signOut();
+    H.prepareSdkIframeEmbedTest({
+      enabledAuthMethods: ["jwt", "saml"],
+      signOut: true,
+    });
 
     const frame = H.loadSdkIframeEmbedTestPage({
-      dashboardId: ORDERS_DASHBOARD_ID,
-      preferredAuthMethod: "saml",
+      element: "metabase-dashboard",
+      attributes: {
+        dashboardId: ORDERS_DASHBOARD_ID,
+      },
+      metabaseConfig: {
+        preferredAuthMethod: "saml",
+      },
     });
 
     cy.log("must fail to login via SAML as the SAML endpoint does not exist");
+
+    // If the error message returns a 500 (internal server error) status code,
+    // we should show a generic error message.
+    // This happens because the SAML endpoint is not mocked in this test.
     cy.wait("@authSso").its("response.statusCode").should("eq", 500);
+
     frame.within(() => {
       cy.findByTestId("sdk-error-container")
         .should("be.visible")
-        .and("contain", "Backend returned an error when refreshing the token.");
+        .and(
+          "contain",
+          "Unable to connect to instance at http://localhost:4000 (status: 500)",
+        );
     });
   });
 });

@@ -19,7 +19,15 @@
    [metabase.util.malli.schema :as ms])
   (:import
    (java.time Duration Instant)
-   (java.util.concurrent ArrayBlockingQueue BlockingQueue DelayQueue Delayed ScheduledExecutorService SynchronousQueue TimeUnit)))
+   (java.util.concurrent
+    ArrayBlockingQueue
+    BlockingQueue
+    DelayQueue
+    Delayed
+    ExecutorService
+    ScheduledExecutorService
+    SynchronousQueue
+    TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -170,11 +178,11 @@
            pool-size
            max-batch-messages
            max-next-ms]
-    :or   {success-handler (constantly nil)
-           err-handler (constantly nil)
-           pool-size       1
+    :or   {success-handler    (constantly nil)
+           err-handler        (constantly nil)
+           pool-size          1
            max-batch-messages 50
-           max-next-ms     100}} :- ::listener-options]
+           max-next-ms        100}} :- ::listener-options]
   (if (listener-exists? listener-name)
     (log/errorf "Listener %s already exists" listener-name)
 
@@ -193,10 +201,12 @@
   "Stops the listener previously started with (listen!).
   If there is no running listener with the given name, it is a no-op"
   [listener-name :- :string]
-  (if-let [executor (get @listeners listener-name)]
+  (if-let [^ExecutorService executor (get @listeners listener-name)]
     (do
       (log/infof "Stopping listener %s..." listener-name)
       (cp/shutdown! executor)
+      ;; wait up to 10 seconds for executor to stop. Largely for CI/tests FAIL in (listener-handler-test) (queue_test.clj:178)
+      (.awaitTermination executor 10 TimeUnit/SECONDS)
 
       (swap! listeners dissoc listener-name)
       (log/infof "Stopping listener %s...done" listener-name))

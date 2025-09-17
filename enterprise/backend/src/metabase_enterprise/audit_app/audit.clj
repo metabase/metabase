@@ -7,11 +7,14 @@
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
+   [metabase.config.core :as config]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -116,7 +119,6 @@
     (when (seq table-ids-to-update)
       (t2/update! :model/Table :id [:in (map :id table-ids-to-update)]
                   {:schema "public" :name [:lower :name]})))
-
   (let [field-ids-to-update (t2/query {:select [:field.id]
                                        :from [[(t2/table-name :model/Field) :field]]
                                        :inner-join [[(t2/table-name :model/Table) :table]
@@ -139,23 +141,44 @@
                   {:name [:lower :name]})))
   (log/info "Adjusted Audit DB for loading Analytics Content"))
 
+(defn- fix-h2-card-metadata! [audit-db-id]
+  (t2/with-connection [^java.sql.Connection conn]
+    (with-open [stmt (.prepareStatement conn "UPDATE \"REPORT_CARD\" SET \"RESULT_METADATA\" = ? WHERE \"ID\" = ?;")]
+      (reduce
+       (fn [_ card]
+         (when-let [result-metadata (not-empty (some-> (:result_metadata card) (json/decode true)))]
+           (let [fixed-metadata (for [col result-metadata]
+                                  (update col :name u/upper-case-en))
+                 json-metadata  (json/encode fixed-metadata)]
+             (.setString stmt 1 json-metadata)
+             (.setInt stmt 2 (:id card))
+             (.addBatch stmt))))
+       nil
+       (t2/reducible-select [(t2/table-name :model/Card) :id :result_metadata] :database_id audit-db-id))
+      (.executeBatch stmt))))
+
 (defn- adjust-audit-db-to-host!
   [{audit-db-id :id :keys [engine] :as audit-db}]
-  (when (not= engine (mdb/db-type))
+  (when-not (= engine (mdb/db-type))
     ;; We need to move the loaded data back to the host db
     (t2/update! :model/Database audit-db-id {:engine (name (mdb/db-type))})
-    (when (= :mysql (mdb/db-type))
-      (t2/update! :model/Table {:db_id audit-db-id} {:schema nil}))
-    (when (= :h2 (mdb/db-type))
-      (t2/update! :model/Table {:db_id audit-db-id} {:schema [:upper :schema] :name [:upper :name]})
-      (t2/update! :model/Field
-                  {:table_id
-                   [:in
-                    {:select [:id]
-                     :from [(t2/table-name :model/Table)]
-                     :where [:= :db_id audit-db-id]}]}
-                  {:name [:upper :name]}))
-    (when (= :postgres (mdb/db-type))
+    (case (mdb/db-type)
+      :mysql
+      (t2/update! :model/Table {:db_id audit-db-id} {:schema nil})
+
+      :h2
+      (do
+        (t2/update! :model/Table {:db_id audit-db-id} {:schema [:upper :schema] :name [:upper :name]})
+        (t2/update! :model/Field
+                    {:table_id
+                     [:in
+                      {:select [:id]
+                       :from   [(t2/table-name :model/Table)]
+                       :where  [:= :db_id audit-db-id]}]}
+                    {:name [:upper :name]})
+        (fix-h2-card-metadata! audit-db-id))
+
+      :postgres
       ;; in postgresql the data should look just like the source
       (adjust-audit-db-to-source! audit-db))
     (log/infof "Adjusted Audit DB to match host engine: %s" (name (mdb/db-type)))))
@@ -244,8 +267,22 @@
             (do
               (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))
               (audit/last-analytics-checksum! current-checksum))))
-        (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
-          (adjust-audit-db-to-host! audit-db))))))
+        (when-let [{:keys [engine] :as audit-db} (t2/select-one :model/Database :is_audit true)]
+          (let [original-engine engine]
+            (adjust-audit-db-to-host! audit-db)
+            ;; Only sync if we actually changed the engine type
+            (when (not= original-engine (mdb/db-type))
+              (when-let [updated-audit-db (t2/select-one :model/Database :is_audit true)]
+                ;; Sync the audit database to update field metadata to match the host database engine
+                ;; This ensures fields with PostgreSQL-specific types (like timestamptz) get updated
+                ;; to the correct types for the host database (e.g., datetime for MySQL)
+                (log/info "Starting Sync of Audit DB fields to update metadata for host engine")
+                (let [sync-future (future
+                                    (log/with-no-logs (sync/sync-database! updated-audit-db {:scan :schema}))
+                                    (log/info "Audit DB field sync complete."))]
+                  (when config/is-test?
+                    ;; Tests need the sync to complete before they run
+                    @sync-future))))))))))
 
 (defn- maybe-install-audit-db
   []

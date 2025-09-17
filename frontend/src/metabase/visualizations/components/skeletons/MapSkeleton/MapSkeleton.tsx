@@ -7,7 +7,7 @@ const MapSkeleton = (): JSX.Element => {
       viewBox="0 0 242 157"
       preserveAspectRatio="xMidYMid"
     >
-      <image href="/app/assets/img/map.svg" />
+      <use xlinkHref="/app/assets/img/map.svg" />
     </SkeletonImage>
   );
 };

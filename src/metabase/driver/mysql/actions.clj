@@ -31,6 +31,10 @@
         (str/replace "``" "`")
         (str/replace #"^`?(.+?)`?$" "$1"))))
 
+(defn- remove-backticks-table [id]
+  (when id
+    (remove-backticks (last (str/split id #"`.`")))))
+
 (defn- constraint->column-names
   "Given a constraint with `constraint-name` fetch the column names associated with that constraint."
   [database constraint-name]
@@ -78,38 +82,84 @@
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql driver-api/violate-foreign-key-constraint]
   [_driver error-type _database action-type error-message]
   (or
-   (when-let [[_match _ref-table _constraint _fkey-cols column _key-cols]
+   (when-let [[_match ref-table _constraint _fkey-cols column _key-cols]
               (re-find #"Cannot delete or update a parent row: a foreign key constraint fails \((.+), CONSTRAINT (.+) FOREIGN KEY \((.+)\) REFERENCES (.+) \((.+)\)\)" error-message)]
      (merge {:type error-type}
             (case action-type
-              :row/delete
-              {:message (tru "Other tables rely on this row so it cannot be deleted.")
-               :errors  {}}
+              (:table.row/delete :model.row/delete)
+              {:message (tru "Other rows refer to this row so it cannot be deleted.")
+               :errors  {(remove-backticks column) (tru "Referenced in table \"{0}\"." (remove-backticks-table ref-table))}}
 
-              :row/update
-              (let [column (remove-backticks column)]
-                {:message (tru "Unable to update the record.")
-                 :errors  {column (tru "This {0} does not exist." (str/capitalize column))}}))))
-   (when-let [[_match _ref-table _constraint column _fk-table _fk-col]
+              :model.row/update
+
+              {:message (tru "Other rows refer to this row so it cannot be changed.")
+               :errors  {(remove-backticks column) (tru "Referenced in table \"{0}\"." (remove-backticks-table ref-table))}})))
+   (when-let [[_match _ref-table _constraint column fk-table _fk-col]
               (re-find #"Cannot add or update a child row: a foreign key constraint fails \((.+), CONSTRAINT (.+) FOREIGN KEY \((.+)\) REFERENCES (.+) \((.+)\)\)" error-message)]
      (let [column (remove-backticks column)]
        {:type    error-type
         :message (case action-type
-                   :row/create
+                   (:table.row/create :model.row/create)
                    (tru "Unable to create a new record.")
 
-                   :row/update
+                   (:table.row/update :model.row/update)
                    (tru "Unable to update the record."))
-        :errors  {(remove-backticks column) (tru "This {0} does not exist." (str/capitalize (remove-backticks column)))}}))))
+        :errors  {(remove-backticks column) (tru "This value does not exist in table \"{0}\"." (remove-backticks-table fk-table))}}))))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql driver-api/incorrect-value-type]
   [_driver error-type _database _action-type error-message]
   (when-let [[_ expected-type _value _database _table column _row]
-             (re-find #"Incorrect (.+?) value: '(.+)' for column (?:(.+)\.)??(?:(.+)\.)?(.+) at row (\d+)"  error-message)]
+             (re-find #"Incorrect (.+?) value: '(.+)' for column (?:(.+)\.)??(?:(.+)\.)?(.+) at row (\d+)" error-message)]
     (let [column (-> column (str/replace #"^'(.*)'$" "$1") remove-backticks)]
       {:type    error-type
        :message (tru "Some of your values aren’t of the correct type for the database.")
        :errors  {column (tru "This value should be of type {0}." (str/capitalize expected-type))}})))
+
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql driver-api/violate-permission-constraint]
+  [_driver error-type _database action-type error-message]
+  (or (when-let [[_match _command _table-name]
+                 (re-find #"(INSERT|UPDATE|DELETE) command denied to user .* for table '(.+)'" error-message)]
+        (merge {:type error-type}
+               (case action-type
+                 (:table.row/create :model.row/create)
+                 {:message (tru "You don''t have permission to add data to this table.")
+                  :errors  {}}
+
+                 (:table.row/update :model.row/update)
+                 {:message (tru "You don''t have permission to update data in this table.")
+                  :errors  {}}
+
+                 (:table.row/delete :model.row/delete)
+                 {:message (tru "You don''t have permission to delete data from this table.")
+                  :errors  {}})))
+      (when-let [[_match _table-name]
+                 (re-find #"Access denied for user .* to database '(.+)'" error-message)]
+        (merge {:type error-type}
+               (case action-type
+                 (:table.row/create :model.row/create)
+                 {:message (tru "You don''t have permission to add data to this database.")
+                  :errors  {}}
+
+                 (:table.row/update :model.row/update)
+                 {:message (tru "You don''t have permission to update data in this database.")
+                  :errors  {}}
+
+                 (:table.row/delete :model.row/delete)
+                 {:message (tru "You don''t have permission to delete data from this database.")
+                  :errors  {}})))))
+
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql driver-api/violate-check-constraint]
+  [_driver error-type _database _action-type error-message]
+  (or (when-let [[_match constraint-name]
+                 (re-find #"Check constraint '([^']+)' is violated" error-message)]
+        {:type    error-type
+         :message (tru "Some of your values violate the constraint: {0}" constraint-name)
+         :errors  {}})
+      (when-let [[_match constraint-name]
+                 (re-find #"CONSTRAINT `([^']+)` failed for" error-message)]
+        {:type    error-type
+         :message (tru "Some of your values violate the constraint: {0}" constraint-name)
+         :errors  {}})))
 
 ;;; There is a huge discrepancy between the types used in DDL statements and
 ;;; types that can be used in CAST:

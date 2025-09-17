@@ -1,9 +1,9 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { isTransientId } from "metabase/dashboard/utils";
 import { stripId } from "metabase/lib/formatting";
 import type { ComboboxItem } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import {
   canListFieldValues,
@@ -18,7 +18,8 @@ import {
   isStringParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
-  Dashboard,
+  CardId,
+  DashboardId,
   FieldValue,
   Parameter,
   RowValue,
@@ -30,16 +31,12 @@ export function canUseParameterEndpoints(parameter?: Parameter) {
   return parameter != null;
 }
 
-export function canUseCardEndpoints(question?: Question) {
-  return question?.isSaved();
+export function canUseCardEndpoints(cardId?: CardId) {
+  return cardId != null;
 }
 
-export function canUseDashboardEndpoints(dashboard?: Dashboard | null) {
-  return dashboard?.id;
-}
-
-export function showRemapping(fields: Field[]) {
-  return fields.length === 1;
+export function canUseDashboardEndpoints(dashboardId?: DashboardId) {
+  return dashboardId != null && !isTransientId(dashboardId);
 }
 
 export function shouldList({

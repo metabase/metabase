@@ -11,12 +11,14 @@ interface ActiveStepProps {
   title: string;
   label: number;
   children?: ReactNode;
+  className?: string;
 }
 
 export const ActiveStep = ({
   title,
   label,
   children,
+  className,
 }: ActiveStepProps): JSX.Element => {
   return (
     <StepRoot
@@ -24,6 +26,7 @@ export const ActiveStep = ({
       aria-label={title}
       aria-current="step"
       data-testid="setup-step"
+      className={className}
     >
       <StepTitle>{title}</StepTitle>
       <StepLabel data-testid="step-number">

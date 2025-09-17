@@ -39,7 +39,7 @@ export const CreateApiKeyModal = ({ onClose }: { onClose: () => void }) => {
         size="30rem"
         opened
         onClose={onClose}
-        title={t`Create a new API Key`}
+        title={t`Create a new API key`}
       >
         <FormProvider
           initialValues={{ name: "", group_id: null }}

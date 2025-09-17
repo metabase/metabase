@@ -4,9 +4,9 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.timezones-test :as timezones-test]
@@ -121,6 +121,32 @@
                                {:filter      [:= $liked nil]
                                 :aggregation [[:count]]}))
                             first)))))))
+
+(deftest ^:parallel comparison-test-6
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset places-cam-likes
+      (testing "Can we use != with literals on both sides: true != false (QUE-1499)"
+        (is (= [[1 "Tempest"     true]
+                [2 "Bullit"      true]
+                [3 "The Dentist" false]]
+               (mt/formatted-rows
+                [int str ->bool]
+                :format-nil-values
+                (mt/run-mbql-query places
+                  {:filter   [:!= true false]
+                   :order-by [[:asc $id]]}))))))))
+
+(deftest ^:parallel comparison-test-7
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset places-cam-likes
+      (testing "Can we use != with literals on both sides: false != false (QUE-1499)"
+        (is (= []
+               (mt/formatted-rows
+                [int str ->bool]
+                :format-nil-values
+                (mt/run-mbql-query places
+                  {:filter   [:!= false false]
+                   :order-by [[:asc $id]]}))))))))
 
 (deftest ^:parallel between-test
   (mt/test-drivers (mt/normal-drivers)
@@ -908,7 +934,7 @@
     (mt/test-drivers (mt/normal-drivers)
       (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
         (let [metadata-provider (lib.tu/merged-mock-metadata-provider
-                                 (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                 (mt/metadata-provider)
                                  {:database {:timezone "US/Pacific"}})
               checkins          (lib.metadata/table metadata-provider (mt/id :checkins))
               checkins-id       (lib.metadata/field metadata-provider (mt/id :checkins :id))
@@ -929,7 +955,7 @@
                 (is (=? {:query {:filter [:=
                                           [:field (mt/id :checkins :date) {:base-type #(isa? % :type/Date), :temporal-unit :default}]
                                           [:absolute-datetime #t "2014-05-08" :default]]}}
-                        preprocessed)))
+                        (lib/->legacy-MBQL preprocessed))))
               (testing (format "\nPreprocessed =\n%s" (u/pprint-to-str preprocessed))
                 (mt/with-native-query-testing-context query
                   (testing "Results: should return correct rows"
@@ -947,7 +973,7 @@
     (mt/test-drivers (mt/normal-drivers)
       (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
         (let [metadata-provider (lib.tu/merged-mock-metadata-provider
-                                 (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                 (mt/metadata-provider)
                                  {:database {:timezone "US/Pacific"}})
               orders            (lib.metadata/table metadata-provider (mt/id :orders))
               orders-id         (lib.metadata/field metadata-provider (mt/id :orders :id))
@@ -972,7 +998,7 @@
                                           [:<
                                            [:field (:id orders-created-at) {:temporal-unit :default}]
                                            [:absolute-datetime #t "2019-02-12T00:00-08:00" :default]]]}}
-                        preprocessed)))
+                        (lib/->legacy-MBQL preprocessed))))
               (testing (format "\nPreprocessed =\n%s" (u/pprint-to-str preprocessed))
                 (mt/with-native-query-testing-context query
                   (testing "Results: should return correct rows"
@@ -1016,3 +1042,87 @@
           (mt/with-native-query-testing-context query
             (is (= [[2]]
                    (mt/rows (qp/process-query query))))))))))
+
+(deftest ^:parallel filter-on-implicitly-joined-column-test
+  (testing "Should be able to filter on an column that was implicitly joined from a column in an explicit join (#59695)"
+    (let [mp    (lib.tu/mock-metadata-provider
+                 (mt/metadata-provider)
+                 {:cards [{:id            1
+                           :dataset-query (mt/mbql-query orders)}]})
+          query (lib/query
+                 mp
+                 (mt/mbql-query nil
+                   {:source-table "card__1"
+                    :joins        [{:source-table (mt/id :checkins)
+                                    :fields       :all
+                                    :strategy     :left-join
+                                    :alias        "CH"
+                                    :condition    [:=
+                                                   [:field "ID" {:base-type :type/BigInteger}]
+                                                   [:field (mt/id :checkins :id) {:base-type :type/BigInteger, :join-alias "CH"}]]}]
+                    :filter       [:=
+                                   [:field (mt/id :venues :price) {:base-type               :type/Text
+                                                                   :source-field            (mt/id :checkins :venue_id)
+                                                                   :source-field-join-alias "CH"}]
+                                   1]
+                    :order-by     [[:asc [:field (mt/id :orders :id) {}]]]
+                    :limit        2}))]
+      (is (= [[3 1 105 52.72 2.9 49.2 6.42 "2019-12-06T22:22:48.544Z" 2 3 "2014-09-15T00:00:00Z" 8 56]
+              [6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50.134Z" 3 6 "2015-07-04T00:00:00Z" 3 35]]
+             (mt/rows (qp/process-query query)))))))
+
+(deftest ^:parallel starts-with-multiple-args-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :case-sensitivity-string-filter-options)
+    (let [mp    (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :categories)))
+                    (lib/filter (-> (lib/starts-with
+                                     (lib.metadata/field mp (mt/id :categories :name))
+                                     "b"
+                                     "c")
+                                    (lib.options/update-options assoc :case-sensitive false)))
+                    (lib/order-by (lib.metadata/field mp (mt/id :categories :id)))
+                    (lib/limit 2))]
+      (is (= [[5 "BBQ"] [6 "Bakery"]]
+             (mt/formatted-rows [int str] (qp/process-query query)))))))
+
+(deftest ^:parallel ends-with-multiple-args-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :case-sensitivity-string-filter-options)
+    (let [mp    (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :categories)))
+                    (lib/filter (-> (lib/ends-with
+                                     (lib.metadata/field mp (mt/id :categories :name))
+                                     "B"
+                                     "C")
+                                    (lib.options/update-options assoc :case-sensitive false)))
+                    (lib/order-by (lib.metadata/field mp (mt/id :categories :id)))
+                    (lib/limit 2))]
+      (is (= [[17 "Comedy Club"] [55 "Nightclub"]]
+             (mt/formatted-rows [int str] (qp/process-query query)))))))
+
+(deftest ^:parallel contains-multiple-args-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :case-sensitivity-string-filter-options)
+    (let [mp    (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :categories)))
+                    (lib/filter (-> (lib/contains
+                                     (lib.metadata/field mp (mt/id :categories :name))
+                                     "B"
+                                     "E")
+                                    (lib.options/update-options assoc :case-sensitive false)))
+                    (lib/order-by (lib.metadata/field mp (mt/id :categories :id)))
+                    (lib/limit 2))]
+      (is (= [[2 "American"] [5 "BBQ"]]
+             (mt/formatted-rows [int str] (qp/process-query query)))))))
+
+(deftest ^:parallel does-not-contain-multiple-args-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :case-sensitivity-string-filter-options)
+    (let [mp    (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :categories)))
+                    (lib/filter (-> (lib/does-not-contain
+                                     (lib.metadata/field mp (mt/id :categories :name))
+                                     "B"
+                                     "C")
+                                    (lib.options/update-options assoc :case-sensitive false)))
+                    (lib/order-by (lib.metadata/field mp (mt/id :categories :id)))
+                    (lib/limit 2))]
+      (is (= [[3 "Artisan"] [4 "Asian"]]
+             (mt/formatted-rows [int str] (qp/process-query query)))))))

@@ -402,6 +402,49 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
       .findByText("Leaflet")
       .should("exist");
   });
+
+  it("should work on questions with breakout by day-of-week and null semantic type (metabase#23820)", () => {
+    cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
+      semantic_type: null,
+    });
+    H.createQuestion(
+      {
+        name: "23820",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "day-of-week" }],
+          ],
+        },
+        display: "line",
+      },
+      { visitQuestion: true },
+    );
+
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    H.cartesianChartCircle()
+      .eq(3) // Wednesday
+      .click();
+
+    H.popover().within(() => {
+      cy.findByText("Automatic insights…").click();
+      cy.findByText("X-ray").click();
+    });
+
+    cy.wait("@dataset");
+
+    H.main().within(() => {
+      cy.findByText(
+        "A closer look at number of Orders where day of week of Created At is Wednesday",
+      ).should("be.visible");
+    });
+
+    getDashcardByTitle("A look at Created At fields").should("exist");
+
+    getDashcardByTitle("A look at the number of Orders").should("exist");
+  });
 });
 
 function waitForSatisfyingResponse(

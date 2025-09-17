@@ -164,7 +164,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
 
         await userEvent.click(within(formSection).getByTestId("select-button"));
 
-        const popover = await screen.findByRole("grid");
+        const popover = await screen.findByRole("tree");
 
         expect(
           within(popover).getByText(dashboardParameter.name),
@@ -214,7 +214,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
 
         await userEvent.click(within(formSection).getByTestId("select-button"));
 
-        const popover = await screen.findByRole("grid");
+        const popover = await screen.findByRole("tree");
 
         expect(
           within(popover).queryByText("Ask the user"),
@@ -273,7 +273,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
 
       await userEvent.click(within(formSection).getByTestId("select-button"));
 
-      const popover = await screen.findByRole("grid");
+      const popover = await screen.findByRole("tree");
 
       expect(within(popover).getByText("Select a value")).toBeInTheDocument();
       expect(within(popover).getByText(DEFAULT_VALUE)).toBeInTheDocument();
@@ -314,7 +314,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
 
         await userEvent.click(within(formSection).getByTestId("select-button"));
 
-        const popover = await screen.findByRole("grid");
+        const popover = await screen.findByRole("tree");
 
         expect(
           within(popover).queryByText("Ask the user"),
@@ -350,7 +350,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
 
         await userEvent.click(within(formSection).getByTestId("select-button"));
 
-        const popover = await screen.findByRole("grid");
+        const popover = await screen.findByRole("tree");
 
         expect(within(popover).getByText("Select a value")).toBeInTheDocument();
         expect(

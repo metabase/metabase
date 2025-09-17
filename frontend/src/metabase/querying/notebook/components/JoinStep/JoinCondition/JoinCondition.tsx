@@ -6,7 +6,6 @@ import * as Lib from "metabase-lib";
 import { JoinConditionColumnPicker } from "../JoinConditionColumnPicker";
 import { JoinConditionOperatorPicker } from "../JoinConditionOperatorPicker";
 import { JoinConditionRemoveButton } from "../JoinConditionRemoveButton";
-import { updateTemporalBucketing } from "../utils";
 
 import S from "./JoinCondition.module.css";
 
@@ -38,36 +37,60 @@ export function JoinCondition({
   const [isLhsOpened, setIsLhsOpened] = useState(false);
   const [isRhsOpened, setIsRhsOpened] = useState(false);
 
-  const { operator, lhsColumn, rhsColumn } = useMemo(
-    () => Lib.joinConditionParts(query, stageIndex, condition),
-    [query, stageIndex, condition],
+  const strategy = useMemo(() => Lib.joinStrategy(join), [join]);
+  const { operator, lhsExpression, rhsExpression } = useMemo(
+    () => Lib.joinConditionParts(condition),
+    [condition],
   );
 
   const createCondition = (
     operator: Lib.JoinConditionOperator,
-    lhsColumn: Lib.ColumnMetadata,
-    rhsColumn: Lib.ColumnMetadata,
-  ) =>
-    Lib.joinConditionClause(query, stageIndex, operator, lhsColumn, rhsColumn);
+    lhsExpression: Lib.ExpressionClause,
+    rhsExpression: Lib.ExpressionClause,
+  ) => Lib.joinConditionClause(operator, lhsExpression, rhsExpression);
 
   const syncTemporalBucket = (
     condition: Lib.JoinCondition,
-    newColumn: Lib.ColumnMetadata,
-  ) => updateTemporalBucketing(query, stageIndex, condition, [newColumn]);
+    temporalBucket: Lib.Bucket | null,
+  ) =>
+    Lib.joinConditionUpdateTemporalBucketing(
+      query,
+      stageIndex,
+      condition,
+      temporalBucket,
+    );
 
   const handleOperatorChange = (newOperator: Lib.JoinConditionOperator) => {
-    const newCondition = createCondition(newOperator, lhsColumn, rhsColumn);
+    const newCondition = createCondition(
+      newOperator,
+      lhsExpression,
+      rhsExpression,
+    );
     onChange(newCondition);
   };
 
-  const handleLhsColumnChange = (newLhsColumn: Lib.ColumnMetadata) => {
-    const newCondition = createCondition(operator, newLhsColumn, rhsColumn);
-    onChange(syncTemporalBucket(newCondition, newLhsColumn));
+  const handleLhsExpressionChange = (
+    newLhsExpression: Lib.ExpressionClause,
+    newLhsTemporalBucket: Lib.Bucket | null,
+  ) => {
+    const newCondition = createCondition(
+      operator,
+      newLhsExpression,
+      rhsExpression,
+    );
+    onChange(syncTemporalBucket(newCondition, newLhsTemporalBucket));
   };
 
-  const handleRhsColumnChange = (newRhsColumn: Lib.ColumnMetadata) => {
-    const newCondition = createCondition(operator, lhsColumn, newRhsColumn);
-    onChange(syncTemporalBucket(newCondition, newRhsColumn));
+  const handleRhsExpressionChange = (
+    newRhsExpression: Lib.ExpressionClause,
+    newRhsTemporalBucket: Lib.Bucket | null,
+  ) => {
+    const newCondition = createCondition(
+      operator,
+      lhsExpression,
+      newRhsExpression,
+    );
+    onChange(syncTemporalBucket(newCondition, newRhsTemporalBucket));
   };
 
   return (
@@ -77,13 +100,14 @@ export function JoinCondition({
           query={query}
           stageIndex={stageIndex}
           joinable={join}
+          strategy={strategy}
           tableName={lhsTableName}
-          lhsColumn={lhsColumn}
-          rhsColumn={rhsColumn}
+          lhsExpression={lhsExpression}
+          rhsExpression={rhsExpression}
           isOpened={isLhsOpened}
-          isLhsColumn={true}
+          isLhsPicker={true}
           isReadOnly={isReadOnly}
-          onChange={handleLhsColumnChange}
+          onChange={handleLhsExpressionChange}
           onOpenChange={setIsLhsOpened}
         />
         <JoinConditionOperatorPicker
@@ -98,13 +122,14 @@ export function JoinCondition({
           query={query}
           stageIndex={stageIndex}
           joinable={join}
+          strategy={strategy}
           tableName={rhsTableName}
-          lhsColumn={lhsColumn}
-          rhsColumn={rhsColumn}
+          lhsExpression={lhsExpression}
+          rhsExpression={rhsExpression}
           isOpened={isRhsOpened}
-          isLhsColumn={false}
+          isLhsPicker={false}
           isReadOnly={isReadOnly}
-          onChange={handleRhsColumnChange}
+          onChange={handleRhsExpressionChange}
           onOpenChange={setIsRhsOpened}
         />
       </Flex>

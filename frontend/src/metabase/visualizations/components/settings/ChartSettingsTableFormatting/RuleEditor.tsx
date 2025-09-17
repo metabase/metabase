@@ -3,8 +3,8 @@ import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { ColorRangeSelector } from "metabase/core/components/ColorRangeSelector";
-import { ColorSelector } from "metabase/core/components/ColorSelector";
+import { ColorRangeSelector } from "metabase/common/components/ColorRangeSelector";
+import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
 import {
   Box,

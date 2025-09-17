@@ -6,6 +6,7 @@ function setupEnterprise(opts?: Partial<SetupOpts>) {
   setup({
     ...opts,
     hasEnterprisePlugins: true,
+    isHosted: false,
   });
 }
 
@@ -19,7 +20,7 @@ describe("EmbedModalContent", () => {
 
         // The card is clickable
         expect(
-          screen.queryByRole("link", { name: INTERACTIVE_EMBEDDING_TITLE }),
+          screen.queryByRole("link", { name: "Learn more" }),
         ).toHaveProperty(
           "href",
           "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedding-interactive&utm_content=static-embed-popover&source_plan=oss",
@@ -40,6 +41,10 @@ describe("EmbedModalContent", () => {
             "Enable in admin settings",
           ),
         ).not.toBeInTheDocument();
+
+        expect(
+          screen.getByRole("button", { name: "Try for free" }),
+        ).toBeInTheDocument();
       });
     });
 
@@ -49,7 +54,7 @@ describe("EmbedModalContent", () => {
 
         // The card is clickable
         expect(
-          screen.queryByRole("link", { name: INTERACTIVE_EMBEDDING_TITLE }),
+          screen.queryByRole("link", { name: "Learn more" }),
         ).toHaveProperty(
           "href",
           "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedding-interactive&utm_content=static-embed-popover&source_plan=oss",

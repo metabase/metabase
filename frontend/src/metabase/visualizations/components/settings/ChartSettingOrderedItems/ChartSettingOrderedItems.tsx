@@ -4,8 +4,8 @@ import { useCallback } from "react";
 import type {
   DragEndEvent,
   SortableDivider,
-} from "metabase/core/components/Sortable";
-import { Sortable, SortableList } from "metabase/core/components/Sortable";
+} from "metabase/common/components/Sortable";
+import { Sortable, SortableList } from "metabase/common/components/Sortable";
 import type { AccentColorOptions } from "metabase/lib/colors/types";
 import type { IconProps } from "metabase/ui";
 

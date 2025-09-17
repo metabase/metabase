@@ -38,5 +38,5 @@ export function getInitialStateForVisualizerCard(
     dataSources,
   );
 
-  return { ...visualizationEntity, columns };
+  return { ...visualizationEntity, columns, datasetFallbacks: datasets };
 }

@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react-hooks";
+import { act, renderHook } from "@testing-library/react";
 
 import { createMockMetadata } from "__support__/metadata";
 import type { BooleanFilterValue } from "metabase/querying/filters/types";

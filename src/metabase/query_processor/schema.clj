@@ -1,22 +1,35 @@
 (ns metabase.query-processor.schema
   (:require
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.regex :as u.regex]))
 
-;; this schema is not very strict because we need to handle different types of queries (legacy MBQL, pMBQL, super-legacy
-;; MBQL, internal audit app queries, etc.) and it might not be normalized yet.
-(mr/def ::query
+(mr/def ::any-query
+  "Schema for a map that is in the general shape of either a legacy MBQL or MBQL 5 query. Query may not be normalized
+  yet!
+
+  This schema is not very strict because we need to handle different types of queries (legacy MBQL, pMBQL,
+  super-legacy MBQL, internal audit app queries, etc.) and it might not be normalized yet."
   [:and
-   :map
+   [:map
+    [:database {:optional true} [:or
+                                 ::lib.schema.id/database
+                                 ::lib.schema.id/saved-questions-virtual-database]]]
    [:fn
     {:error/message "Query with a :type or :lib/type key"}
-    (some-fn :type :lib/type)]])
+    (some-fn :type :lib/type)]
+   [:fn
+    {:error/message "Query should have :database unless it is :type :internal"}
+    #(or
+      (:database %)
+      (= (keyword (:type %)) :internal))]])
 
 ;; TODO -- fill this out a bit.
 (mr/def ::metadata :any)
 
 (mr/def ::rf
+  "Schema for a reducing function."
   [:function
    [:=> [:cat]           :any]
    [:=> [:cat :any]      :any]
@@ -31,9 +44,13 @@
     [:cat ::metadata]
     ::rf]])
 
+(mr/def ::xform
+  "Schema for a transducer (function that takes a reducing function and returns another reducing function)."
+  [:=> [:cat ::rf] ::rf])
+
 (mr/def ::qp
   [:=>
-   [:cat ::query ::rff]
+   [:cat ::any-query ::rff]
    :some])
 
 (def export-formats

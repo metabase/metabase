@@ -13,7 +13,7 @@ There are 3 ways to release
 3. Wait for the build and test jobs to finish
 4. If everything is successful, run the "release" action on github actions, inputting the version and commit hash again (always select the master branch)
 
-## Github action-less release
+## GitHub action-less release
 
 > **Note**
 > Use this only if for some reason the automated release in CI is not available.
@@ -37,9 +37,9 @@ Alternatively, you can put any properly built jar in `target/uberjar` folder and
 
 See also: [Tutorial Video](https://www.loom.com/share/a56f5a6904ff4f48acaa021846c90aeb)
 
-## Totally Github-less release
+## Totally GitHub-less release
 
-If Github goes down completely :fire:, you can still build and publish a release to s3 and dockerhub from a local machine. Because we cannot use github to determine whether this release is a "latest" release, we must manually set that option on the command line.
+If GitHub goes down completely :fire:, you can still build and publish a release to s3 and dockerhub from a local machine. Because we cannot use github to determine whether this release is a "latest" release, we must manually set that option on the command line.
 
 The build step will be exactly the same as the with-github github-action-less release, but the publish step will be different:
 

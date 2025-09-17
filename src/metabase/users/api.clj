@@ -12,7 +12,6 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.validation :as validation]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
@@ -95,6 +94,58 @@
         (when-not (= new-collection-name (:name collection))
           (t2/update! :model/Collection (:id collection) {:name new-collection-name}))))))
 
+;;; ------------ Serialize User Attribute Provenance ------------------
+
+(def ^:private SimpleAttributes
+  "Basic attributes for users and tenants are a map of string keys to string values."
+  [:map-of :string :string])
+
+(def ^:private SystemAttributes
+  "Attributes generated from system properties must be prefixed with @."
+  [:map-of [:re #"@.*"] :string])
+
+(def ^:private AttributeStatus
+  "Describes a possible value of an attribute and where it is sourced from."
+  [:map
+   [:source [:enum :user :jwt :system]]
+   [:frozen boolean?]
+   [:value :string]])
+
+(def ^:private CombinedAttributes
+  "Map of user attributes to their current value and metadata describing where they are sourced from."
+  [:map-of :string
+   [:merge AttributeStatus
+    [:map
+     [:original {:optional true}
+      AttributeStatus]]]])
+
+(def ^:private attribute-merge-order
+  "What order to merge attributes in when used with combine"
+  [:jwt :user])
+
+(mu/defn- combine :- CombinedAttributes
+  "Combines user, tenant, and system attributes. User can override "
+  [attributes :- [:map-of :keyword [:maybe SimpleAttributes]]
+   system :- [:maybe SystemAttributes]]
+  (letfn [(value-map [s f vs] (into {}
+                                    (for [[k v] vs]
+                                      [k {:source s :frozen f :value v}])))
+          (shadow [original new] (if original (assoc new :original original) new))
+          (error [original new] (if original
+                                  (throw (ex-info "Cannot clobber"
+                                                  {:bad-attribute original
+                                                   :attribute new}))
+                                  new))]
+    (merge-with error
+                (apply merge-with shadow
+                       (map #(value-map % false (get attributes %))
+                            attribute-merge-order))
+                (value-map :system true system))))
+
+(defn- add-structured-attributes
+  [{:keys [login_attributes jwt_attributes] :as user}]
+  (assoc user :structured_attributes (combine {:jwt jwt_attributes :user login_attributes} nil)))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                   Fetching Users -- GET /api/user, GET /api/user/current, GET /api/user/:id                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -136,7 +187,7 @@
     :else
     user/non-admin-or-self-visible-columns))
 
-(defn- user-clauses
+(defn user-clauses
   "Honeysql clauses for filtering on users
   - with a status,
   - with a query,
@@ -157,7 +208,7 @@
     (some? (request/limit))                 (sql.helpers/limit (request/limit))
     (some? (request/offset))                (sql.helpers/offset (request/offset))))
 
-(defn- filter-clauses-without-paging
+(defn filter-clauses-without-paging
   "Given a where clause, return a clause that can be used to count."
   [clauses]
   (dissoc clauses :order-by :limit :offset))
@@ -188,8 +239,8 @@
   (or
    api/*is-superuser?*
    (if group_id
-     (validation/check-manager-of-group group_id)
-     (validation/check-group-manager)))
+     (perms/check-manager-of-group group_id)
+     (perms/check-group-manager)))
   (let [include_deactivated include_deactivated
         group-id-clause     (when group_id [group_id])
         clauses             (user-clauses status query group-id-clause include_deactivated)]
@@ -345,9 +396,10 @@
   (try
     (check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
-      (validation/check-group-manager)))
+      (perms/check-group-manager)))
   (-> (api/check-404 (fetch-user :id id))
-      (t2/hydrate :user_group_memberships)))
+      (t2/hydrate :user_group_memberships)
+      add-structured-attributes))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Creating a new User -- POST /api/user                                      |
@@ -355,7 +407,7 @@
 
 (defn invite-user
   "Implementation for `POST /`, invites a user to Metabase."
-  [{:keys [email user_group_memberships] :as body}]
+  [{:keys [email user_group_memberships source] :as body}]
   (api/check-superuser)
   (api/checkp (not (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
               "email" (tru "Email address already in use."))
@@ -369,7 +421,7 @@
       (analytics/track-event! :snowplow/invite
                               {:event           :invite-sent
                                :invited-user-id new-user-id
-                               :source          "admin"})
+                               :source          (or source "admin")})
       (-> (fetch-user :id new-user-id)
           (t2/hydrate :user_group_memberships)))))
 
@@ -382,7 +434,8 @@
             [:last_name              {:optional true} [:maybe ms/NonBlankString]]
             [:email                  ms/Email]
             [:user_group_memberships {:optional true} [:maybe [:sequential ::user-group-membership]]]
-            [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]]]
+            [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]
+            [:source                 {:optional true, :default "admin"} [:maybe ms/NonBlankString]]]]
   (invite-user body))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -430,7 +483,7 @@
   (try
     (check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
-      (validation/check-group-manager)))
+      (perms/check-group-manager)))
   (check-not-internal-user id)
   ;; only allow updates if the specified account is active
   (api/let-404 [user-before-update (fetch-user :id id, :is_active true)]

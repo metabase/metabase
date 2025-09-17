@@ -247,7 +247,8 @@
       (u/with-timeout create-database-timeout-ms
       ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests.
         (test.tz/with-system-timezone-id! "UTC"
-          (tx/create-db! driver dbdef))))))
+          (tx/create-db! driver dbdef)))))
+  (tx/track-dataset driver dbdef))
 
 (mu/defn- create-and-sync-Database!
   "Add DB object to Metabase DB. Return an instance of `:model/Database`."

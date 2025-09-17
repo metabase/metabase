@@ -3,7 +3,7 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component, createRef } from "react";
 
-import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
@@ -44,6 +44,7 @@ export default class LegendItem extends Component {
       title,
       color,
       icon,
+      dotSize,
       showDot,
       showTitle,
       isVisible,
@@ -70,6 +71,7 @@ export default class LegendItem extends Component {
           CS.noDecoration,
           DashboardS.fullscreenNormalText,
           DashboardS.fullscreenNightText,
+          DashboardS.DashboardChartLegend,
           EmbedFrameS.fullscreenNightText,
           CS.flex,
           CS.alignCenter,
@@ -100,6 +102,7 @@ export default class LegendItem extends Component {
           >
             <LegendItemDot
               color={color}
+              dotSize={dotSize}
               isVisible={isVisible}
               onClick={onToggleSeriesVisibility}
             />

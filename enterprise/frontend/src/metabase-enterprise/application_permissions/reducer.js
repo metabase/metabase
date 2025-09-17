@@ -1,11 +1,14 @@
 import { assocIn } from "icepick";
+import { t } from "ttag";
 
+import { getErrorMessage } from "metabase/api/utils";
 import {
   combineReducers,
   createAction,
   createThunkAction,
   handleActions,
 } from "metabase/lib/redux";
+import { addUndo } from "metabase/redux/undo";
 
 import { ApplicationPermissionsApi } from "./api";
 
@@ -44,13 +47,20 @@ const SAVE_APPLICATION_PERMISSIONS =
   "metabase-enterprise/general-permissions/data/SAVE_APPLICATION_PERMISSIONS";
 export const saveApplicationPermissions = createThunkAction(
   SAVE_APPLICATION_PERMISSIONS,
-  () => async (_dispatch, getState) => {
+  () => async (dispatch, getState) => {
     const { applicationPermissions, applicationPermissionsRevision } =
       getState().plugins.applicationPermissionsPlugin;
 
     const result = await ApplicationPermissionsApi.updateGraph({
       groups: applicationPermissions,
       revision: applicationPermissionsRevision,
+    }).catch((error) => {
+      dispatch(
+        addUndo({
+          icon: "warning",
+          message: getErrorMessage(error, t`Error saving permissions`),
+        }),
+      );
     });
 
     return result;

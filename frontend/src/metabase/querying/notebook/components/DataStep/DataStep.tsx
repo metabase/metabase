@@ -1,7 +1,7 @@
 import { type CSSProperties, useMemo } from "react";
 import { t } from "ttag";
 
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -19,6 +19,7 @@ export const DataStep = ({
   readOnly = false,
   color,
   updateQuery,
+  dataPickerOptions,
 }: NotebookStepProps) => {
   const { question, stageIndex } = step;
   const tableId = Lib.sourceTableOrCardId(query);
@@ -66,6 +67,7 @@ export const DataStep = ({
         containerStyle={{ padding: 0 }}
         rightContainerStyle={{ width: 37, padding: 0 }}
         data-testid="data-step-cell"
+        disabled={readOnly}
       >
         <NotebookDataPicker
           query={query}
@@ -76,6 +78,7 @@ export const DataStep = ({
           hasMetrics
           isDisabled={readOnly}
           onChange={handleTableChange}
+          {...dataPickerOptions}
         />
       </NotebookCellItem>
     </NotebookCell>

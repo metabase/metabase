@@ -8,6 +8,6 @@ export const showMessage: ReactionHandler<MetabotMessageReaction> = (
   reaction,
 ) => {
   return ({ dispatch }) => {
-    dispatch(addAgentMessage({ type: "reply", message: reaction.message }));
+    dispatch(addAgentMessage({ message: reaction.message }));
   };
 };

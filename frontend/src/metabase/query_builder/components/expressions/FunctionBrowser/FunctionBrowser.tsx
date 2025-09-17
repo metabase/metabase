@@ -9,13 +9,13 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import EmptyState from "metabase/components/EmptyState";
-import Markdown from "metabase/core/components/Markdown";
+import EmptyState from "metabase/common/components/EmptyState";
+import Markdown from "metabase/common/components/Markdown";
 import { useSelector } from "metabase/lib/redux";
+import type { HelpText } from "metabase/querying/expressions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Input, Text } from "metabase/ui";
 import type * as Lib from "metabase-lib";
-import type { HelpText } from "metabase-lib/v1/expressions";
 
 import { HighlightExpressionSource } from "../HighlightExpression";
 

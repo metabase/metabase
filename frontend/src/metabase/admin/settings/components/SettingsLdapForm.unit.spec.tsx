@@ -31,7 +31,7 @@ const setup = async (settingValues?: Partial<LdapSettings>) => {
 
   renderWithProviders(<SettingsLdapForm />);
 
-  await screen.findByText("Server Settings");
+  await screen.findByText("Server settings");
 };
 
 describe("SettingsLdapForm", () => {
@@ -55,11 +55,11 @@ describe("SettingsLdapForm", () => {
     await setup();
 
     await userEvent.type(
-      await screen.findByLabelText(/LDAP Host/),
+      await screen.findByLabelText(/LDAP host/),
       ATTRS["ldap-host"],
     );
 
-    const portInput = await screen.findByLabelText(/LDAP Port/);
+    const portInput = await screen.findByLabelText(/LDAP port/);
     await userEvent.clear(portInput);
     await userEvent.type(portInput, ATTRS["ldap-port"].toString());
     await userEvent.click(screen.getByRole("radio", { name: /SSL/ }));

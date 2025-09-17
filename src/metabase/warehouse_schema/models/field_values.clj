@@ -21,14 +21,13 @@
     But they will also be automatically deleted when the Full FieldValues of the same Field got updated.
 
   There is also more written about how these are used for remapping in the docstrings
-  for [[metabase.parameters.chain-filter]] and [[metabase.query-processor.middleware.add-dimension-projections]]."
+  for [[metabase.parameters.chain-filter]] and [[metabase.query-processor.middleware.add-remaps]]."
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.app-db.core :as app-db]
-   [metabase.lib.ident :as lib.ident]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -375,9 +374,8 @@
   (try
     (let [result          ((requiring-resolve 'metabase.warehouse-schema.metadata-from-qp/table-query)
                            (:table_id field)
-                           {:breakout        [[:field (u/the-id field) nil]]
-                            :breakout-idents (lib.ident/indexed-idents 1)
-                            :limit           *absolute-max-distinct-values-limit*}
+                           {:breakout [[:field (u/the-id field) nil]]
+                            :limit    *absolute-max-distinct-values-limit*}
                            (limit-max-char-len-rff qp.reducible/default-rff *total-max-length*))
           distinct-values (-> result :data :rows)]
       {:values          distinct-values

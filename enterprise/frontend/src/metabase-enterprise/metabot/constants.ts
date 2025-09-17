@@ -8,9 +8,36 @@ export const FIXED_METABOT_IDS = {
   EMBEDDED: 2 as const,
 };
 
-export function getErrorMessage() {
-  return t`I'm currently offline, try again later.`;
-}
+export const METABOT_REQUEST_IDS = {
+  EMBEDDED: "c61bf5f5-1025-47b6-9298-bf1827105bb6",
+};
 
-// We don't need to translate this yet, as it's from ai-service which isn't translated
-export const METABOT_RESULTS_MESSAGE = "Here are the results";
+export const METABOT_ERR_MSG = {
+  get default() {
+    return t`Sorry, I ran into an error. Could you please try that again?`;
+  },
+  get agentOffline() {
+    return t`Metabot is currently offline. Please try again later.`;
+  },
+};
+
+export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
+  get construct_notebook_query() {
+    return t`Creating a query`;
+  },
+  get analyze_data() {
+    return t`Analyzing the data`;
+  },
+  get analyze_chart() {
+    return t`Inspecting the visualization`;
+  },
+  get list_available_fields() {
+    return undefined;
+  },
+  get search_data_sources() {
+    return t`Checking available data sources`;
+  },
+  get search_metabase_documentation() {
+    return t`Consulting the docs`;
+  },
+};

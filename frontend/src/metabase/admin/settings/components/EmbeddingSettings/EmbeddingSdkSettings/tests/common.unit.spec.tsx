@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
+import { findRequests } from "__support__/server-mocks";
 import { screen, within } from "__support__/ui";
-import { findRequests } from "__support__/utils";
 
 import { setup } from "./setup";
 
@@ -25,29 +25,9 @@ describe("EmbeddingSdkSettings (OSS)", () => {
       expect(
         alertInfo.getByText("upgrade to Metabase Pro"),
       ).toBeInTheDocument();
-      expect(alertInfo.getByText("implement JWT SSO")).toBeInTheDocument();
-    });
-
-    it("should not tell users to switch binaries when they have a cloud instance", async () => {
-      await setup({
-        isEmbeddingSdkEnabled: true,
-        showSdkEmbedTerms: false,
-        isHosted: true,
-      });
       expect(
-        screen.getByText(
-          /You can test Embedded analytics SDK on localhost quickly by using API keys/i,
-        ),
+        alertInfo.getByText("implement JWT or SAML SSO"),
       ).toBeInTheDocument();
-
-      const alertInfo = within(screen.getByTestId("sdk-settings-alert-info"));
-      expect(
-        alertInfo.queryByText("switch Metabase binaries"),
-      ).not.toBeInTheDocument();
-      expect(
-        alertInfo.getByText("upgrade to Metabase Pro"),
-      ).toBeInTheDocument();
-      expect(alertInfo.getByText("implement JWT SSO")).toBeInTheDocument();
     });
   });
 
@@ -60,7 +40,9 @@ describe("EmbeddingSdkSettings (OSS)", () => {
         });
 
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-        await userEvent.click(screen.getByRole("switch"));
+        await userEvent.click(
+          screen.getByRole("switch", { name: "SDK for React toggle" }),
+        );
         assertLegaleseModal();
 
         await userEvent.click(screen.getByText("Agree and continue"));
@@ -83,7 +65,9 @@ describe("EmbeddingSdkSettings (OSS)", () => {
         });
 
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-        await userEvent.click(screen.getByRole("switch"));
+        await userEvent.click(
+          screen.getByRole("switch", { name: "SDK for React toggle" }),
+        );
         assertLegaleseModal();
 
         await userEvent.click(screen.getByText("Decline and go back"));
@@ -103,7 +87,9 @@ describe("EmbeddingSdkSettings (OSS)", () => {
         });
 
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-        await userEvent.click(screen.getByRole("switch"));
+        await userEvent.click(
+          screen.getByRole("switch", { name: "SDK for React toggle" }),
+        );
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
         const puts = await findRequests("PUT");
@@ -131,6 +117,44 @@ describe("EmbeddingSdkSettings (OSS)", () => {
     expect(
       screen.queryByRole("link", { name: "Request version pinning" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("should show cards with related settings", async () => {
+    await setup({
+      isEmbeddingSdkEnabled: true,
+      showSdkEmbedTerms: false,
+    });
+
+    const relatedSettingCards = await screen.findAllByTestId(
+      "related-setting-card",
+    );
+    expect(relatedSettingCards).toHaveLength(5);
+
+    expect(await screen.findByText("Authentication")).toBeInTheDocument();
+    expect(await screen.findByText("Databases")).toBeInTheDocument();
+    expect(await screen.findByText("People")).toBeInTheDocument();
+    expect(await screen.findByText("Permissions")).toBeInTheDocument();
+    expect(await screen.findByText("Appearance")).toBeInTheDocument();
+  });
+
+  it("shows the Embedded Analytics JS toggle is Disabled when token features are missing (EMB-801)", () => {
+    setup({ tokenFeatures: { embedding_simple: false } });
+
+    const toggle = screen.getByRole("switch", {
+      name: "Embedded Analytics JS toggle",
+    });
+
+    expect(toggle).toBeDisabled();
+
+    const toggleContainer = screen
+      .getAllByTestId("switch-with-env-var")
+      .find((toggleElement) =>
+        within(toggleElement).queryByRole("switch", {
+          name: "Embedded Analytics JS toggle",
+        }),
+      );
+
+    expect(within(toggleContainer!).getByText("Disabled")).toBeInTheDocument();
   });
 });
 

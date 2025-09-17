@@ -8,8 +8,11 @@ import {
   getExtraTagsForVersion,
   getGenericVersion,
   getLastReleaseFromTags,
+  getMajorVersion,
   getMajorVersionNumberFromReleaseBranch,
   getMilestoneName,
+  getMinorVersion,
+  getNextSdkVersion,
   getNextVersions,
   getOSSVersion,
   getReleaseBranch,
@@ -798,6 +801,74 @@ describe("version-helpers", () => {
       ]).filter(filterOutNonSupportedPrereleaseIdentifier);
 
       expect(filteredTags).toEqual(createTags(["0.55.0", "0.55.0-nightly"]));
+    });
+  });
+
+  describe("getMajorVersion", () => {
+    it.each([
+      ["v0.52.3", "52"],
+      ["v1.52", "52"],
+      ["v1.43.2.1", "43"],
+    ])("%s -> %s", (input, expected) => {
+      expect(getMajorVersion(input)).toBe(expected);
+    });
+  });
+
+  describe("getMinorVersion", () => {
+    it.each([
+      ["v0.52.3", "3"],
+      ["v1.52", "0"],
+      ["v1.43.2.1", "2"],
+    ])("%s -> %s", (input, expected) => {
+      expect(getMinorVersion(input)).toBe(expected);
+    });
+  });
+
+  describe("getNextSdkVersion", () => {
+    describe("master branch (pre-release versions)", () => {
+      it("should increment pre-release version if suffix exists", () => {
+        const result = getNextSdkVersion("master", "0.57.0-alpha.1");
+        expect(result).toEqual({
+          version: "0.57.0-alpha.2",
+          preReleaseLabel: "alpha",
+          majorVersion: "57",
+        });
+      });
+
+      it("should set next pre-release version to .1 if no numeric part in suffix", () => {
+        const result = getNextSdkVersion("master", "0.57.0-beta");
+        expect(result).toEqual({
+          version: "0.57.0-beta.0",
+          preReleaseLabel: "beta",
+          majorVersion: "57",
+        });
+      });
+
+      it("should throw an error if no suffix is provided on master branch", () => {
+        expect(() => getNextSdkVersion("master", "0.57.0")).toThrow(
+          "Expected pre-release suffix on master branch, got: 0.57.0",
+        );
+      });
+    });
+
+    describe("release/stable branches (non-master)", () => {
+      it("should increment patch version when no suffix", () => {
+        const result = getNextSdkVersion("release-x.57.x", "0.57.0");
+        expect(result).toEqual({
+          version: "0.57.1",
+          preReleaseLabel: "",
+          majorVersion: "57",
+        });
+      });
+
+      it("should increment patch version but keeps suffix if present", () => {
+        const result = getNextSdkVersion("release-x.57.x", "0.57.0-alpha.1");
+        expect(result).toEqual({
+          version: "0.57.1-alpha.1",
+          preReleaseLabel: "",
+          majorVersion: "57",
+        });
+      });
     });
   });
 });

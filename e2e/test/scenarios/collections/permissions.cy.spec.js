@@ -100,9 +100,13 @@ describe("collection permissions", () => {
                   duplicate("Orders in a dashboard");
                 });
 
-                it.skip("should be able to duplicate the question (metabase#15255)", () => {
-                  duplicate("Orders");
-                });
+                it(
+                  "should be able to duplicate the question (metabase#15255)",
+                  { tags: "@skip" },
+                  () => {
+                    duplicate("Orders");
+                  },
+                );
               });
 
               describe("archive", () => {
@@ -388,7 +392,7 @@ describe("collection permissions", () => {
 
   it("should load the collection permissions admin pages", () => {
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     cy.intercept("GET", "/api/collection/graph").as("permissionsGraph");
     cy.intercept("GET", "/api/permissions/group").as("permissionsGroups");
 

@@ -107,6 +107,13 @@
 
 ;;; ------------------------------------------------------ Rows ------------------------------------------------------
 
+(defn- get-dbref-part [dbref part-name]
+  (case part-name
+    "$ref" (.getCollectionName ^com.mongodb.DBRef dbref)
+    "$id" (.getId ^com.mongodb.DBRef dbref)
+    "$db" (.getDatabaseName ^com.mongodb.DBRef dbref)
+    nil))
+
 (defn- row->vec [row-col-names]
   (fn [^org.bson.Document row]
     (mapv (fn [col-name]
@@ -114,7 +121,15 @@
                         (reduce
                          (fn [^org.bson.Document object ^String part-name]
                            (when object
-                             (.get object part-name)))
+                             (cond
+                               (instance? org.bson.Document object)
+                               (.get ^org.bson.Document object part-name)
+
+                               (instance? com.mongodb.DBRef object)
+                               (get-dbref-part object part-name)
+
+                               :else
+                               nil)))
                          row
                          (str/split col-name #"\."))
                         (.get row col-name))]
@@ -142,6 +157,15 @@
     ;; TODO - consider what the best batch size option is here. Not sure what the default is.
     (.batchSize 100)
     (.maxTime timeout-ms TimeUnit/MILLISECONDS)))
+
+(defn aggregate-database
+  "Used in testing to enable aggregate on pipelines sourced with $documents stage."
+  [^MongoDatabase db
+   ^ClientSession session
+   stages timeout-ms]
+  (let [pipe      (ArrayList. ^Collection (mongo.conversion/to-document stages))
+        aggregate (.aggregate db session pipe)]
+    (init-aggregate! aggregate timeout-ms)))
 
 (defn- ^:dynamic *aggregate*
   [^MongoDatabase db

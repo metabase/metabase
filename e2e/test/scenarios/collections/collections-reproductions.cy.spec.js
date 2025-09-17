@@ -113,7 +113,7 @@ describe("issue 30235", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("should allow to turn to official collection after moving it from personal to root parent collection (metabase#30235)", () => {
@@ -134,5 +134,26 @@ describe("issue 30235", () => {
         cy.findByText("Edit permissions").should("be.visible");
       });
     });
+  });
+});
+
+describe("issue 58231", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+  });
+
+  it("should allow to edit permissions for Usage Analytics collection (metabase#58231)", () => {
+    cy.visit("/collection/2-usage-analytics");
+
+    cy.findByTestId("collection-menu")
+      .findByLabelText("Edit permissions")
+      .should("be.visible")
+      .click();
+
+    H.modal()
+      .findByText("Permissions for Usage analytics")
+      .should("be.visible");
   });
 });

@@ -283,24 +283,21 @@ function overwriteDashCardTitle(dashcardElement, textTitle) {
   });
 }
 
+const filterPanel = () =>
+  cy.findByTestId("edit-dashboard-parameters-widget-container");
+
 function connectDashboardFilter(dashcardElement, { filterName, columnName }) {
-  const filterPanel = cy.findByTestId(
-    "edit-dashboard-parameters-widget-container",
-  );
-  filterPanel.findByText(filterName).click();
+  filterPanel().findByText(filterName).click();
   dashcardElement.button(/Select/).click();
   H.popover().findByText(columnName).click();
-  filterPanel.findByText(filterName).click();
+  filterPanel().findByText(filterName).click();
 }
 
 function assertDashboardFilterMapping(
   dashcardElement,
   { filterName, expectedColumName },
 ) {
-  const filterPanel = cy.findByTestId(
-    "edit-dashboard-parameters-widget-container",
-  );
-  filterPanel.findByText(filterName).click();
+  filterPanel().findByText(filterName).click();
   dashcardElement.findByText(expectedColumName).should("exist");
-  filterPanel.findByText(filterName).click();
+  filterPanel().findByText(filterName).click();
 }
