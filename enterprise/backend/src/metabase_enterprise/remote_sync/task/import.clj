@@ -6,14 +6,13 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase-enterprise.remote-sync.api :as api]
    [metabase-enterprise.remote-sync.settings :as settings]
-   [metabase.task.core :as task]
-   [metabase.util.log :as log]))
+   [metabase.task.core :as task]))
 
 (set! *warn-on-reflection* true)
 
 (defn- auto-import!
   []
-  (when (and (= "import" (settings/remote-sync-type)) (< 0 (settings/remote-sync-auto-import-rate)))
+  (when (and (= "import" (settings/remote-sync-type)) (pos-int? (settings/remote-sync-auto-import-rate)))
     (api/reload-from-git! (settings/remote-sync-branch))))
 
 (task/defjob ^{:doc "Auto-imports any remote collections."} AutoImport [_]
@@ -23,7 +22,8 @@
 (def ^:private auto-import-trigger-key "metabase.task.remote-sync.auto-import.trigger")
 
 (defmethod task/init! ::AutoImport [_]
-  (let [job (jobs/build
+  (let [rate (settings/remote-sync-auto-import-rate)
+        job (jobs/build
              (jobs/of-type AutoImport)
              (jobs/with-identity (jobs/key auto-import-job-key)))
         trigger (triggers/build
@@ -32,7 +32,8 @@
                  (triggers/start-now)
                  (triggers/with-schedule
                   (simple/schedule
-                   (simple/with-interval-in-minutes (settings/remote-sync-auto-import-rate))
+                   (simple/with-interval-in-minutes rate)
                    (simple/repeat-forever)
                    (simple/ignore-misfires))))]
-    (task/schedule-task! job trigger)))
+    (when (pos-int? rate)
+      (task/schedule-task! job trigger))))
