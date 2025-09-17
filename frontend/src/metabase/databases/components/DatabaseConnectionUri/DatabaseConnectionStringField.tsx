@@ -35,6 +35,9 @@ export function DatabaseConnectionStringField({
   location: FormLocation;
 }) {
   const [status, setStatus] = useState<"success" | "failure" | null>(null);
+  const [lastClearedStatus, setLastClearedStatus] = useState<
+    "success" | "failure" | null
+  >(null);
   const lastClearedStatusRef = useRef<"success" | "failure" | null>(null);
   const { start: delayedClearStatus, clear: clearTimeout } = useTimeout(
     () => setStatus(null),
@@ -43,6 +46,10 @@ export function DatabaseConnectionStringField({
   const previousEngineKey = usePrevious(engineKey);
   const [{ value: connectionString }, , { setValue: setConnectionString }] =
     useField("connection-string");
+
+  useEffect(() => {
+    status && setLastClearedStatus(status);
+  }, [status]);
 
   useEffect(() => {
     async function handleConnectionStringChange() {
@@ -101,15 +108,15 @@ export function DatabaseConnectionStringField({
   ]);
 
   function handleBlur() {
-    if (lastClearedStatusRef.current === "success") {
+    if (lastClearedStatus === "success") {
       connectionStringParsedSuccess(location);
     }
 
-    if (lastClearedStatusRef.current === "failure") {
+    if (lastClearedStatus === "failure") {
       connectionStringParsedFailed(location);
     }
 
-    lastClearedStatusRef.current = null;
+    setLastClearedStatus(null);
   }
 
   if (!isEngineKey(engineKey)) {

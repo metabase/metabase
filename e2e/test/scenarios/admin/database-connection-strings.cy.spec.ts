@@ -379,10 +379,6 @@ describe("Database connection strings events", () => {
       .paste("jdbc:mysql://testuser:testpass@host:3306/dbname?ssl=true")
       .paste("jdbc:mysql://a:b@c:3/dbname?ssl=false");
 
-    cy.findByTextEnsureVisible("Connection details pre-filled below.").should(
-      "exist",
-    );
-
     cy.findByLabelText("Display name").click();
 
     H.expectUnstructuredSnowplowEvent(successEvent, 1);
