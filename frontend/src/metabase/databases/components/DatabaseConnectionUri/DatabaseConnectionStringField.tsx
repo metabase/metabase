@@ -2,7 +2,6 @@ import { usePrevious, useTimeout } from "@mantine/hooks";
 import type { FormikErrors } from "formik";
 import { useField } from "formik";
 import { type SetStateAction, useEffect, useRef, useState } from "react";
-import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
 import { Group, Icon, Text, Textarea, Transition } from "metabase/ui";
@@ -102,17 +101,13 @@ export function DatabaseConnectionStringField({
   ]);
 
   function handleBlur() {
-    match(lastClearedStatusRef.current)
-      .with("success", () => {
-        connectionStringParsedSuccess(location);
-      })
-      .with("failure", () => {
-        connectionStringParsedFailed(location);
-      })
-      .with(null, () => {
-        return;
-      })
-      .exhaustive();
+    if (lastClearedStatusRef.current === "success") {
+      connectionStringParsedSuccess(location);
+    }
+
+    if (lastClearedStatusRef.current === "failure") {
+      connectionStringParsedFailed(location);
+    }
 
     lastClearedStatusRef.current = null;
   }
