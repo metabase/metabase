@@ -1721,7 +1721,6 @@
            settings
            util}}
 
-
   enterprise/embedding-hub
   {:team "Embedding"
    :api  #{metabase-enterprise.embedding-hub.api}
@@ -1995,6 +1994,7 @@
   enterprise/transforms-python
   {:team "Querying"
    :api  #{metabase-enterprise.transforms-python.api
+           metabase-enterprise.transforms-python.init
            metabase-enterprise.transforms-python.settings}
    :uses #{api
            app-db
@@ -2005,15 +2005,6 @@
            settings
            util
            enterprise/transforms}}
-
-  enterprise/python-transform
-  {:team "Transform"
-   :api  #{metabase-enterprise.python-transform.api
-           metabase-enterprise.python-transform.core
-           metabase-enterprise.python-transform.init}
-   :uses #{api
-           models
-           util}}
 
   enterprise/upload-management
   {:team "UX West"
