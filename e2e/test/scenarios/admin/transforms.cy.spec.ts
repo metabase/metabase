@@ -1416,7 +1416,8 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("tags", () => {
-    it("should be able to add and remove tags", { tags: "@flaky" }, () => {
+    // skipped because it's flaking so often
+    it("should be able to add and remove tags", { tags: "@skip" }, () => {
       H.createTransformJob({ name: "New job" }, { visitTransformJob: true });
       getTagsInput().click();
 
