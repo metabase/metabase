@@ -5,6 +5,8 @@ import { t } from "ttag";
 
 import { Box } from "metabase/ui";
 
+import S from "./LogOutput.modules.css";
+
 interface LogOutputProps {
   content?: string;
 }
@@ -48,7 +50,15 @@ export function LogOutput({ content }: LogOutputProps) {
   };
 
   return (
-    <Box ref={containerRef} onScroll={handleScroll} mah="30rem">
+    <Box
+      ref={containerRef}
+      onScroll={handleScroll}
+      mah="12rem"
+      p="sm"
+      bg="bg-light"
+      className={S.logOutput}
+      fz="xs"
+    >
       {displayContent}
     </Box>
   );

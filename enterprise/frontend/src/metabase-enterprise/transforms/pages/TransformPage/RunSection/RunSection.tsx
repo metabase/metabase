@@ -180,7 +180,7 @@ function RunOutputSection({ transform }: RunSectionProps) {
     return null;
   }
   const { status, message } = transform.last_run;
-  if (status !== "started") {
+  if (status !== "started" && status !== "succeeded") {
     return null;
   }
 

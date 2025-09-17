@@ -1,6 +1,6 @@
-.output {
+.logOutput {
   background-color: var(--mb-color-bg-light);
-  font-family: var(--mb-font-family-monospace);
+  font-family: var(--mb-default-monospace-font-family);
   white-space: pre;
   padding: 1rem;
   overflow: auto;
