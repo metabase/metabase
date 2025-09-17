@@ -25,6 +25,7 @@ export const DIMENSIONS = {
   },
   total: {
     valueFontSize: 22,
+    valueFontSizeSm: 17,
     labelFontSize: 14,
     fontWeight: 700,
   },
