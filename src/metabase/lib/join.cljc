@@ -25,6 +25,7 @@
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.stage.util :as lib.stage.util]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
@@ -361,10 +362,16 @@
                         ;; should disallow refs with `:source-field`/remove it automatically.
                         :let      [field-ref (lib.options/update-options field-ref dissoc :source-field)
                                    match (or (lib.equality/find-matching-column field-ref cols)
+                                             (when-let [resolved (lib.metadata.calculation/metadata (-> (assoc query :stages (:stages join))
+                                                                                                        lib.stage.util/append-stage)
+                                                                                                    (with-join-alias field-ref nil))]
+                                               (when-not (:metabase.lib.field.resolution/fallback-metadata? resolved)
+                                                 resolved))
                                              (log/warnf "Failed to find matching column in join %s for ref %s, found:\n%s"
                                                         (pr-str join-alias)
                                                         (pr-str field-ref)
                                                         (pr-str (map (juxt :id :metabase.lib.join/join-alias :lib/source-column-alias) cols))))]
+
                         :when     (and match
                                        (not (false? (:active match))))]
                     (-> match

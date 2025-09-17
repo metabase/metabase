@@ -373,6 +373,137 @@ databaseChangeLog:
                     AND mt2.name = SUBSTRING(metabase_table.name, 1, POSITION('__mbarchiv__' IN metabase_table.name) - 1)
                     AND mt2.id != metabase_table.id);
 
+  - changeSet:
+      id: v56.2025-09-03T17:15:00
+      author: piranha
+      comment: metabot_conversation table
+      changes:
+        - createTable:
+            tableName: metabot_conversation
+            remarks: Table to store metabot conversation messages
+            columns:
+              - column:
+                  name: id
+                  type: varchar(36)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                  remarks: 'Conversation UUID'
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+                  remarks: 'created_at'
+              - column:
+                  name: user_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_metabot_conversation_user_id
+                  remarks: 'Reference to user having the conversation'
+              - column:
+                  name: summary
+                  type: ${text.type}
+                  remarks: 'Auto-generated summary for the conversation'
+              - column:
+                  name: state
+                  type: ${text.type}
+                  remarks: 'Metabot conversation state'
+
+  - changeSet:
+      id: v56.2025-09-03T17:15:01
+      author: piranha
+      comment: Index on metabot_conversation.user_id
+      changes:
+        - createIndex:
+            indexName: idx_metabot_conversation_user_id
+            tableName: metabot_conversation
+            columns:
+              - column:
+                  name: user_id
+      rollback: # will be dropped with table
+
+  - changeSet:
+      id: v56.2025-09-03T17:16:00
+      author: piranha
+      comment: metabot_message table
+      changes:
+        - createTable:
+            tableName: metabot_message
+            remarks: Table to store metabot conversation messages
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                  remarks: 'Autoincrement PK'
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+                  remarks: 'created_at'
+              - column:
+                  name: profile_id
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+                  remarks: 'ai-service profile used to perform the conversation'
+              - column:
+                  name: role
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+                  remarks: 'Role of the sender'
+              - column:
+                  name: data
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+                  remarks: 'Full message content'
+              - column:
+                  name: usage
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+                  remarks: 'Can be null for user messages; {"<model-name>": {"prompt": 1, "completion": 2}}'
+              - column:
+                  name: total_tokens
+                  type: int
+                  constraints:
+                    nullable: false
+                  remarks: 'A sum of all prompt+completion from `usage`'
+              - column:
+                  name: conversation_id
+                  type: varchar(36)
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabot_conversation
+                    referencedColumnNames: id
+                    foreignKeyName: fk_metabot_message_conversation_id
+                  remarks: 'Reference to a conversation'
+
+  - changeSet:
+      id: v56.2025-09-03T17:16:01
+      author: piranha
+      comment: Index on metabot_message.conversation_id
+      changes:
+        - createIndex:
+            indexName: idx_metabot_message_conversation_id
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: conversation_id
+      rollback: # will be dropped with table
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

@@ -1,11 +1,10 @@
 import { t } from "ttag";
 
+import type { DatabaseFormConfig } from "metabase/databases/types";
 import { FormTextInput } from "metabase/forms";
 import { PLUGIN_DB_ROUTING } from "metabase/plugins";
 import { Icon, Tooltip } from "metabase/ui";
 import type { Engine } from "metabase-types/api";
-
-import type { DatabaseFormConfig } from "../DatabaseForm";
 
 export interface DatabaseNameFieldProps {
   engine: Engine;
@@ -41,6 +40,9 @@ export const DatabaseNameField = ({
       mb="md"
       {...autoFocusProps}
       {...props}
+      labelProps={{
+        mb: "sm",
+      }}
     />
   );
 };

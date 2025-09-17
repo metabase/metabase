@@ -9,7 +9,11 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.api.common :as api]
+   ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
+   ;; Lib only soon
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.schema :as mbql.s]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -27,6 +31,8 @@
        ;; The remove line is taken from the add-implicit-clauses middleware. It shouldn't be necessary, because any
        ;; unused fields should be dropped from the inner query. It also shouldn't hurt anything, because the outer
        ;; query shouldn't use these fields in the first place.
+       ;;
+       ;; TODO (Cam 9/12/25) -- this shouldn't be necessary anymore
        (remove #(#{:sensitive :retired} (:visibility-type %)))
        (map (fn [field]
               [:field (u/the-id field) nil]))))
@@ -149,7 +155,15 @@
                   (log/debugf "Keeping used ref:\n%s" (u/pprint-to-str a-ref))
                   (log/debugf "Removing unused ref:\n%s" (u/pprint-to-str (keep-source+alias-props a-ref))))))
             (remove-unused [refs]
-              (filterv used?* refs))]
+              (into []
+                    (comp (filter used?*)
+                          (m/distinct-by (fn [[_tag _id-or-name opts, :as _a-ref]]
+                                           (or (::add/desired-alias opts)
+                                               ;; if the field ref doesn't have a desired alias (probably because we
+                                               ;; added it in this namespace and haven't generated yet, then always
+                                               ;; keep it... just use a random UUID that should always be distinct
+                                               (random-uuid)))))
+                    refs))]
       (update source :fields remove-unused))))
 
 (defn- append-join-fields

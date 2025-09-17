@@ -297,7 +297,20 @@
   [_]
   :sunday)
 
-;;; +----------------------------------------------------------------------------------------------------------------+
+(defmethod driver/rename-tables!* :mysql
+  [_driver db-id sorted-rename-map]
+  (let [rename-clauses (map (fn [[from-table to-table]]
+                              (str (sql/format-entity from-table) " TO " (sql/format-entity to-table)))
+                            sorted-rename-map)
+        sql (str "RENAME TABLE " (str/join ", " rename-clauses))]
+    (sql-jdbc.execute/do-with-connection-with-options
+     :mysql
+     db-id
+     nil
+     (fn [^java.sql.Connection conn]
+       (jdbc/execute! {:connection conn} [sql])))))
+
+;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 

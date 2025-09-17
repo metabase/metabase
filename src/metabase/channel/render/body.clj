@@ -329,33 +329,6 @@
                (DecimalFormat. base))]
      (.format fmt value))))
 
-(mu/defmethod render :progress :- ::RenderedPartCard
-  [_chart-type
-   render-type
-   _timezone-id
-   _card
-   _dashcard
-   {:keys [cols rows viz-settings] :as _data}]
-  (let [value        (ffirst rows)
-        goal         (:progress.goal viz-settings)
-        color        (:progress.color viz-settings)
-        settings     (assoc
-                      (->js-viz (first cols) (first cols) viz-settings)
-                      :color color)
-        ;; ->js-viz fills in our :x but we actually want that under :format key
-        settings     (assoc settings :format (:x settings))
-        image-bundle (image-bundle/make-image-bundle
-                      render-type
-                      (js.svg/progress value goal settings))]
-    {:attachments
-     (when image-bundle
-       (image-bundle/image-bundle->attachment image-bundle))
-
-     :content
-     [:div
-      [:img {:style (style/style {:display :block :width :100%})
-             :src   (:image-src image-bundle)}]]}))
-
 (defn- add-dashcard-timeline-events
   "If there's a timeline associated with this card, add its events in."
   [card-with-data]

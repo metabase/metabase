@@ -10,6 +10,8 @@ import SidebarItem from "metabase/common/components/SidebarItem";
 import CS from "metabase/css/core/index.css";
 import MetabaseSettings from "metabase/lib/settings";
 
+import { trackReferenceXRayClicked } from "../analytics";
+
 const SegmentSidebar = ({ segment, user, style, className }) => (
   <div className={cx(S.sidebar, className)} style={style}>
     <ul>
@@ -46,6 +48,7 @@ const SegmentSidebar = ({ segment, user, style, className }) => (
             href={`/auto/dashboard/segment/${segment.id}`}
             icon="bolt"
             name={t`X-ray this segment`}
+            onClick={() => trackReferenceXRayClicked("segment")}
           />
         )}
         {user && user.is_superuser && (

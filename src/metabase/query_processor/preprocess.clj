@@ -1,6 +1,9 @@
 (ns metabase.query-processor.preprocess
   (:require
    [metabase.config.core :as config]
+   ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
+   ;; Lib soon
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
@@ -12,7 +15,6 @@
    [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
    [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
-   [metabase.query-processor.middleware.add-source-metadata :as qp.add-source-metadata]
    [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.middleware.auto-bucket-datetimes :as qp.auto-bucket-datetimes]
    [metabase.query-processor.middleware.auto-parse-filter-values :as auto-parse-filter-values]
@@ -22,11 +24,11 @@
    [metabase.query-processor.middleware.cumulative-aggregations :as qp.cumulative-aggregations]
    [metabase.query-processor.middleware.desugar :as desugar]
    [metabase.query-processor.middleware.drop-fields-in-summaries :as drop-fields-in-summaries]
-   [metabase.query-processor.middleware.ensure-joins-use-source-query :as ensure-joins-use-source-query]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.query-processor.middleware.expand-aggregations :as expand-aggregations]
    [metabase.query-processor.middleware.expand-macros :as expand-macros]
    [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
+   [metabase.query-processor.middleware.fix-bad-field-id-refs :as fix-bad-field-id-refs]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.middleware.metrics :as metrics]
    [metabase.query-processor.middleware.normalize-query :as normalize]
@@ -37,7 +39,6 @@
    [metabase.query-processor.middleware.reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
    [metabase.query-processor.middleware.remove-inactive-field-refs :as qp.remove-inactive-field-refs]
    [metabase.query-processor.middleware.resolve-fields :as qp.resolve-fields]
-   [metabase.query-processor.middleware.resolve-joined-fields :as resolve-joined-fields]
    [metabase.query-processor.middleware.resolve-joins :as resolve-joins]
    [metabase.query-processor.middleware.resolve-referenced :as qp.resolve-referenced]
    [metabase.query-processor.middleware.resolve-source-table :as qp.resolve-source-table]
@@ -95,7 +96,7 @@
   [#'normalize/normalize-preprocessing-middleware
    (ensure-mbql5 #'qp.perms/remove-permissions-key)
    (ensure-mbql5 #'qp.perms/remove-source-card-keys)
-   (ensure-mbql5 #'qp.perms/remove-gtapped-table-keys)
+   (ensure-mbql5 #'qp.perms/remove-sandboxed-table-keys)
    (ensure-mbql5 #'qp.constraints/maybe-add-default-userland-constraints)
    (ensure-mbql5 #'validate/validate-query)
    (ensure-mbql5 #'fetch-source-query/resolve-source-cards)
@@ -107,39 +108,35 @@
    (ensure-mbql5 #'parameters/substitute-parameters)
    (ensure-mbql5 #'qp.resolve-source-table/resolve-source-tables)
    (ensure-mbql5 #'qp.auto-bucket-datetimes/auto-bucket-datetimes)
-   (ensure-mbql5 #'ensure-joins-use-source-query/ensure-joins-use-source-query)
    (ensure-mbql5 #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing)
-   (ensure-legacy #'qp.add-source-metadata/add-source-metadata-for-source-queries)
    (ensure-mbql5 #'qp.middleware.enterprise/apply-impersonation)
    (ensure-mbql5 #'qp.middleware.enterprise/attach-destination-db-middleware)
-   (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
-   (ensure-legacy #'qp.persistence/substitute-persisted-query)
-   (ensure-legacy #'qp.add-implicit-clauses/add-implicit-clauses) ; #61398
+   (ensure-mbql5 #'qp.middleware.enterprise/apply-sandboxing)
+   (ensure-mbql5 #'qp.persistence/substitute-persisted-query)
+   (ensure-mbql5 #'qp.add-implicit-clauses/add-implicit-clauses) ; #61398
    ;; this needs to be done twice, once before adding remaps (since we want to add remaps inside joins) and then again
    ;; after adding any implicit joins. Implicit joins do not need to get remaps since we only use them for fetching
    ;; specific columns.
-   (ensure-legacy #'resolve-joins/resolve-joins) ; #61398
+   (ensure-mbql5 #'resolve-joins/resolve-joins)
    (ensure-mbql5 #'qp.add-remaps/add-remapped-columns)
-   #'qp.resolve-fields/resolve-fields ; this middleware actually works with either MBQL 5 or legacy
+   #'qp.resolve-fields/resolve-fields   ; this middleware actually works with either MBQL 5 or legacy
    (ensure-mbql5 #'binning/update-binning-strategy)
    (ensure-mbql5 #'desugar/desugar)
    (ensure-mbql5 #'qp.add-default-temporal-unit/add-default-temporal-unit)
    (ensure-mbql5 #'qp.add-implicit-joins/add-implicit-joins)
-   (ensure-legacy #'resolve-joins/resolve-joins) ; #61398
-   (ensure-mbql5 #'resolve-joined-fields/resolve-joined-fields)
+   (ensure-mbql5 #'resolve-joins/resolve-joins)
+   (ensure-mbql5 #'fix-bad-field-id-refs/fix-bad-field-id-refs)
    (ensure-mbql5 #'qp.remove-inactive-field-refs/remove-inactive-field-refs)
    ;; yes, this is called a second time, because we need to handle any joins that got added
-   (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
-   (ensure-legacy #'qp.cumulative-aggregations/rewrite-cumulative-aggregations)
+   (ensure-mbql5 #'qp.middleware.enterprise/apply-sandboxing)
+   (ensure-mbql5 #'qp.cumulative-aggregations/rewrite-cumulative-aggregations)
    (ensure-mbql5 #'qp.wrap-value-literals/wrap-value-literals)
    (ensure-mbql5 #'auto-parse-filter-values/auto-parse-filter-values)
    (ensure-mbql5 #'validate-temporal-bucketing/validate-temporal-bucketing)
    (ensure-mbql5 #'optimize-temporal-filters/optimize-temporal-filters)
    (ensure-mbql5 #'limit/add-default-limit)
-   (ensure-legacy #'qp.middleware.enterprise/apply-download-limit)
-   (ensure-legacy #'check-features/check-features)
-   ;; return MBQL 5 at the end
-   (ensure-mbql5 identity)])
+   (ensure-mbql5 #'qp.middleware.enterprise/apply-download-limit)
+   (ensure-mbql5 #'check-features/check-features)])
 
 (defn- middleware-fn-name [middleware-fn]
   (if-let [fn-name (:name (meta middleware-fn))]

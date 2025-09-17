@@ -49,7 +49,7 @@
 
 (defenterprise add-sandboxes-to-permissions-graph
   "Augment the permissions graph with active connection impersonation policies. OSS implementation returns graph as-is."
-  metabase-enterprise.sandbox.models.group-table-access-policy
+  metabase-enterprise.sandbox.models.sandbox
   [graph & [_opts]]
   graph)
 
