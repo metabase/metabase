@@ -633,15 +633,12 @@ export type SyncableEntity =
 export interface EnterpriseSettings extends Settings {
   "application-colors"?: ColorSettings | null;
   "application-logo-url"?: string;
-  "git-sync-token"?: string | null;
-  "git-sync-url"?: string | null;
-  "git-sync-import-branch"?: string | null; // import branch
-  "git-sync-export-branch"?: string | null;
-  "git-sync-entities"?: Partial<Record<SyncableEntity, boolean>> | null;
-  "git-sync-configured"?: boolean | null;
-  "git-sync-allow-edit"?: boolean;
-  "git-sync-type"?: "import" | "export";
-  "git-sync-enabled"?: boolean;
+  "remote-sync-token"?: string | null;
+  "remote-sync-url"?: string | null;
+  "remote-sync-branch"?: string | null;
+  "remote-sync-configured"?: boolean | null;
+  "remote-sync-type"?: "import" | "export" | null;
+  "remote-sync-enabled"?: boolean;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
   "landing-page-illustration"?: IllustrationSettingValue;

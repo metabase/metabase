@@ -11,18 +11,17 @@ const REQUIRED_SCHEMA = {
 
 export const GIT_SYNC_SCHEMA = Yup.object({
   "git-sync-enabled": Yup.boolean().nullable().default(false),
-  "git-sync-url": Yup.string()
+  "remote-sync-url": Yup.string()
     .nullable()
     .default(null)
-    .when(["git-sync-enabled", "$git-sync-url"], REQUIRED_SCHEMA),
-  "git-sync-token": Yup.string()
+    .when(["remote-sync-enabled", "$remote-sync-url"], REQUIRED_SCHEMA),
+  "remote-sync-token": Yup.string()
     .nullable()
     .default(null)
-    .when(["git-sync-enabled", "$git-sync-token"], REQUIRED_SCHEMA),
-  "git-sync-type": Yup.string()
+    .when(["remote-sync-enabled", "$remote-sync-token"], REQUIRED_SCHEMA),
+  "remote-sync-type": Yup.string()
     .oneOf(["import", "export"] as const)
     .nullable()
     .default("import"),
-  "git-sync-import-branch": Yup.string().nullable().default("main"),
-  "git-sync-export-branch": Yup.string().nullable().default("main"),
+  "remote-sync-branch": Yup.string().nullable().default("main"),
 });

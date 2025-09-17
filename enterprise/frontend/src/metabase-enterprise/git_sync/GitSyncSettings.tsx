@@ -39,21 +39,18 @@ import type { EnterpriseSettings, SettingDefinition } from "metabase-types/api";
 import { CollectionSyncManager } from "./CollectionSyncManager";
 import { GIT_SYNC_SCHEMA } from "./constants";
 
-const ENABLED_KEY = "git-sync-enabled";
-const URL_KEY = "git-sync-url";
-const TOKEN_KEY = "git-sync-token";
-const TYPE_KEY = "git-sync-type";
-const IMPORT_BRANCH_KEY = "git-sync-import-branch";
-const EXPORT_BRANCH_KEY = "git-sync-export-branch";
+const URL_KEY = "remote-sync-url";
+const TOKEN_KEY = "remote-sync-token";
+const TYPE_KEY = "remote-sync-type";
+const BRANCH_KEY = "remote-sync-branch";
 
 type GitSyncSettingsType = Pick<
   EnterpriseSettings,
-  | "git-sync-enabled"
-  | "git-sync-url"
-  | "git-sync-token"
-  | "git-sync-type"
-  | "git-sync-import-branch"
-  | "git-sync-export-branch"
+  | "remote-sync-enabled"
+  | "remote-sync-url"
+  | "remote-sync-token"
+  | "remote-sync-type"
+  | "remote-sync-branch"
 >;
 
 export const GitSyncSettings = (): JSX.Element => {
@@ -63,32 +60,36 @@ export const GitSyncSettings = (): JSX.Element => {
   const [isDeactivateModalOpen, setIsDeactivateModalOpen] = useState(false);
 
   const { updateSetting: updateEnabledSetting, updateSettings } =
-    useAdminSetting("git-sync-enabled");
+    useAdminSetting("remote-sync-enabled");
 
   const initialValues = useMemo(() => {
     const values = GIT_SYNC_SCHEMA.cast(settingValues, { stripUnknown: true });
     return {
       ...values,
-      [ENABLED_KEY]: true,
-      [TYPE_KEY]: values[TYPE_KEY] || "import",
     };
   }, [settingValues]);
 
   // eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins.
-  const { url: docsUrl } = useDocsUrl("installation-and-operation/library", {
-    anchor: "git-sync",
-  });
+  const { url: docsUrl } = useDocsUrl(
+    "installation-and-operation/remote-sync",
+    {
+      anchor: "remote-sync",
+    },
+  );
 
-  const onSubmit = (values: GitSyncSettingsType) => {
-    return updateGitSyncSettings(values).unwrap();
-  };
+  const onSubmit = useCallback(
+    (values: GitSyncSettingsType) => {
+      return updateGitSyncSettings(values);
+    },
+    [updateGitSyncSettings],
+  );
 
-  const isGitSyncEnabled = useSetting("git-sync-enabled");
-  const isGitSyncConfigured = useSetting("git-sync-configured");
+  const isGitSyncEnabled = useSetting("remote-sync-enabled");
+  const isGitSyncConfigured = useSetting("remote-sync-configured");
 
   const handleToggleEnabled = useCallback(async () => {
     await updateEnabledSetting({
-      key: "git-sync-enabled",
+      key: "remote-sync-enabled",
       value: !isGitSyncEnabled,
     });
   }, [isGitSyncEnabled, updateEnabledSetting]);
@@ -96,12 +97,11 @@ export const GitSyncSettings = (): JSX.Element => {
   const handleDeactivate = useCallback(async () => {
     // Clear all git sync settings
     await updateSettings({
-      "git-sync-enabled": false,
-      "git-sync-url": null,
-      "git-sync-token": null,
-      "git-sync-type": "import",
-      "git-sync-import-branch": "main",
-      "git-sync-export-branch": "main",
+      "remote-sync-enabled": false,
+      "remote-sync-url": null,
+      "remote-sync-token": null,
+      "remote-sync-type": null,
+      "remote-sync-branch": null,
     } as Partial<EnterpriseSettings>);
     setIsDeactivateModalOpen(false);
   }, [updateSettings]);
@@ -145,7 +145,7 @@ export const GitSyncSettings = (): JSX.Element => {
           validationContext={settingValues}
           onSubmit={onSubmit}
         >
-          {({ dirty, values }) => (
+          {({ dirty }) => (
             <Form disabled={!dirty}>
               <Stack gap="md">
                 <Title order={2}>{t`Git Sync`}</Title>
@@ -188,23 +188,13 @@ export const GitSyncSettings = (): JSX.Element => {
                   </Group>
                 </FormRadioGroup>
 
-                {values[TYPE_KEY] === "import" ? (
-                  <FormTextInput
-                    name={IMPORT_BRANCH_KEY}
-                    label={t`Import Branch`}
-                    description={t`Branch to pull content from`}
-                    placeholder="main"
-                    {...getEnvSettingProps(settingDetails?.[IMPORT_BRANCH_KEY])}
-                  />
-                ) : (
-                  <FormTextInput
-                    name={EXPORT_BRANCH_KEY}
-                    label={t`Export Branch`}
-                    description={t`Branch to push content to`}
-                    placeholder="main"
-                    {...getEnvSettingProps(settingDetails?.[EXPORT_BRANCH_KEY])}
-                  />
-                )}
+                <FormTextInput
+                  name={BRANCH_KEY}
+                  label={t`Branch`}
+                  description={t`Branch to pull content from`}
+                  placeholder="main"
+                  {...getEnvSettingProps(settingDetails?.[BRANCH_KEY])}
+                />
 
                 <Flex justify="end">
                   <FormSubmitButton
@@ -222,7 +212,7 @@ export const GitSyncSettings = (): JSX.Element => {
         </FormProvider>
       </SettingsSection>
 
-      {isGitSyncConfigured && (
+      {isGitSyncConfigured && settingValues?.[TYPE_KEY] === "export" && (
         <SettingsSection
           title={t`Collections`}
           description={t`Select top-level collections to sync with Git`}
@@ -244,8 +234,8 @@ export const GitSyncSettings = (): JSX.Element => {
 };
 
 const GitSyncStatus = () => {
-  const syncStatus = useSetting("git-sync-configured");
-  const isEnabled = useSetting("git-sync-enabled");
+  const syncStatus = useSetting("remote-sync-configured");
+  const isEnabled = useSetting("remote-sync-enabled");
 
   const color = syncStatus ? "success" : "error";
   const message = syncStatus

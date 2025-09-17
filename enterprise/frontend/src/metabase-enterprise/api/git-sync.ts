@@ -65,12 +65,11 @@ export type SyncedCollectionsResponse = {
 
 export type GitSyncSettings = Pick<
   EnterpriseSettings,
-  | "git-sync-enabled"
-  | "git-sync-url"
-  | "git-sync-token"
-  | "git-sync-type"
-  | "git-sync-import-branch"
-  | "git-sync-export-branch"
+  | "remote-sync-enabled"
+  | "remote-sync-url"
+  | "remote-sync-token"
+  | "remote-sync-type"
+  | "remote-sync-branch"
 >;
 
 export const gitSyncApi = EnterpriseApi.injectEndpoints({
