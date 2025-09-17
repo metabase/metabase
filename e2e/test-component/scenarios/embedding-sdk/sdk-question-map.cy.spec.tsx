@@ -50,18 +50,21 @@ describe("scenarios > embedding-sdk > interactive-question-map", () => {
     });
   });
 
-  it.only("should load tiles properly from an instance (#63638)", () => {
+  it("should load card tiles properly from an instance (#63638)", () => {
     setup({
       pinType: "tiles",
     });
 
+    cy.intercept("/api/tiles/**").as("getTiles");
+
     mountInteractiveQuestion();
 
-    getSdkRoot().within(() => {
-      mapPinIcon()
-        .should("be.visible")
-        .should("have.attr", "src")
-        .and("include", METABASE_INSTANCE_URL);
-    });
+    cy.wait("@getTiles").then(
+      ({ request: tilesRequest, response: tileResponse }) => {
+        expect(tilesRequest.url).to.include(METABASE_INSTANCE_URL);
+        expect(tilesRequest.headers["x-metabase-session"]).to.not.eq(undefined);
+        expect(tileResponse?.statusCode).to.equal(200);
+      },
+    );
   });
 });
