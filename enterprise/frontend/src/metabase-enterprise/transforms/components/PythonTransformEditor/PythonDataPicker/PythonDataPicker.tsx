@@ -258,10 +258,8 @@ export function PythonDataPicker({
       data-testid="python-data-picker"
     >
       <Box>
-        <Text size="sm" fw="bold" mb="xs">
-          {t`Source Database`}
-        </Text>
-        <Text size="xs" c="dimmed" mb="sm">
+        <Text fw="bold">{t`Source database`}</Text>
+        <Text size="sm" c="text-light" mb="sm">
           {t`Select the database that contains your source data`}
         </Text>
         <Select
@@ -274,10 +272,8 @@ export function PythonDataPicker({
       </Box>
       {selectedDatabaseId && (
         <Box>
-          <Text size="sm" fw="bold" mb="xs">
-            {t`Source Tables`}
-          </Text>
-          <Text size="xs" c="dimmed" mb="sm">
+          <Text fw="bold">{t`Source tables`}</Text>
+          <Text size="sm" c="text-light" mb="sm">
             {t`Select tables to use as data sources and provide aliases for each`}
           </Text>
           <Stack gap="sm">
