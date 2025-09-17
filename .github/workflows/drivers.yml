@@ -338,12 +338,11 @@ jobs:
     name: H2
     steps:
     - uses: actions/checkout@v4
-      with:
-        submodules: true
-        token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-    - name: Start python-runner
-      working-directory: python-runner
-      run: make run
+    - name: Clone and start python-runner
+      run: |
+        git clone https://${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}@github.com/metabase/python-runner-container.git python-runner
+        cd python-runner
+        make run
     - name: Test H2 driver
       uses: ./.github/actions/test-driver
       with:
@@ -448,12 +447,11 @@ jobs:
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: true
-          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-      - name: Start python-runner
-        working-directory: python-runner
-        run: make run
+      - name: Clone and start python-runner
+        run: |
+          git clone https://${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}@github.com/metabase/python-runner-container.git python-runner
+          cd python-runner
+          make run
       - name: Test ${{ matrix.version.name }}
         uses: ./.github/actions/test-driver
         with:
@@ -757,12 +755,11 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: true
-          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-      - name: Start python-runner
-        working-directory: python-runner
-        run: make run
+      - name: Clone and start python-runner
+        run: |
+          git clone https://${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}@github.com/metabase/python-runner-container.git python-runner
+          cd python-runner
+          make run
       - name: Test ${{ matrix.version.name }} (${{ matrix.job.name }})
         uses: ./.github/actions/test-driver
         with:
