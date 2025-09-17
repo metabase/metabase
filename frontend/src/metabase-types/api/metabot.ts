@@ -57,18 +57,6 @@ export type MetabotHistory = any[];
 
 export type MetabotStateContext = Record<string, any>;
 
-export type MetabotMessageReaction = {
-  type: "metabot.reaction/message";
-  message: string;
-};
-
-export type MetabotRedirectReaction = {
-  type: "metabot.reaction/redirect";
-  url: string;
-};
-
-export type MetabotReaction = MetabotMessageReaction | MetabotRedirectReaction;
-
 export type MetabotColumnType =
   | "number"
   | "string"
@@ -159,7 +147,6 @@ export type MetabotAgentRequest = {
 };
 
 export type MetabotAgentResponse = {
-  reactions: MetabotReaction[];
   history: MetabotHistory[];
   conversation_id: string;
   state: any;
@@ -251,3 +238,12 @@ export interface MetabotGenerateContentResponse {
 export interface PurchaseMetabotAddOnRequest {
   terms_of_service: boolean;
 }
+
+/* Metabot v3 - Data Part Types */
+
+export type MetabotTodoItem = {
+  id: string;
+  content: string;
+  status: "pending" | "in_progress" | "completed" | "cancelled";
+  priority: "high" | "medium" | "low";
+};

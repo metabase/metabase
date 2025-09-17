@@ -3,7 +3,11 @@ import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
 import { uuid } from "metabase/lib/uuid";
-import type { MetabotHistory, SuggestedTransform } from "metabase-types/api";
+import type {
+  MetabotHistory,
+  MetabotTodoItem,
+  SuggestedTransform,
+} from "metabase-types/api";
 
 import { TOOL_CALL_MESSAGES } from "../constants";
 
@@ -32,6 +36,13 @@ export type MetabotAgentTextChatMessage = {
   message: string;
 };
 
+export type MetabotAgentTodoListChatMessage = {
+  id: string;
+  role: "agent";
+  type: "todo_list";
+  payload: MetabotTodoItem[];
+};
+
 export type MetabotAgentEditSuggestionChatMessage = {
   id: string;
   role: "agent";
@@ -42,6 +53,7 @@ export type MetabotAgentEditSuggestionChatMessage = {
 
 export type MetabotAgentChatMessage =
   | MetabotAgentTextChatMessage
+  | MetabotAgentTodoListChatMessage
   | MetabotAgentEditSuggestionChatMessage;
 
 export type MetabotUserChatMessage =
@@ -120,33 +132,15 @@ export const metabot = createSlice({
     },
     addAgentMessage: (
       state,
-      action: PayloadAction<
-        Omit<MetabotAgentTextChatMessage, "id" | "role" | "type">
-      >,
-    ) => {
-      state.toolCalls = [];
-      state.messages.push({
-        id: createMessageId(),
-        role: "agent",
-        type: "text",
-        message: action.payload.message,
-      });
-    },
-    addAgentEditSuggestionMessage: (
-      state,
-      action: PayloadAction<
-        Omit<MetabotAgentEditSuggestionChatMessage, "id" | "role">
-      >,
+      action: PayloadAction<Omit<MetabotAgentChatMessage, "id" | "role">>,
     ) => {
       state.toolCalls = [];
       // @ts-expect-error - TODO: figure out why this type causes issues
       state.messages.push({
         id: createMessageId(),
         role: "agent",
-        type: "edit_suggestion",
-        model: action.payload.model,
-        payload: action.payload.payload,
-      });
+        ...action.payload,
+      } as MetabotAgentChatMessage);
     },
     addAgentErrorMessage: (
       state,
