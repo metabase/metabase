@@ -59,12 +59,10 @@ export function JobList({ params }: { params: JobListParams }) {
         columnTitles={[
           t`Job`,
           <Flex align="center" gap="xs" key="last-run-at">
-            <span className={S.nowrap}>{t`Last run at`}</span>{" "}
-            <TimezoneIndicator />
+            {t`Last run at`} <TimezoneIndicator />
           </Flex>,
           <Flex align="center" gap="xs" key="next-run">
-            <span className={S.nowrap}>{t`Next run`}</span>{" "}
-            <TimezoneIndicator />
+            {t`Next run`} <TimezoneIndicator />
           </Flex>,
           t`Tags`,
         ]}

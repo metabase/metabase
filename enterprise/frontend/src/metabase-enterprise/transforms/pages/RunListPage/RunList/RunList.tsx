@@ -69,11 +69,10 @@ function RunTable({ runs }: RunTableProps) {
         columnTitles={[
           t`Transform`,
           <Flex key="started-at" align="center" gap="xs">
-            <span className={S.nowrap}>{t`Started at`}</span>{" "}
-            <TimezoneIndicator />
+            {t`Started at`} <TimezoneIndicator />
           </Flex>,
           <Flex key="end-at" align="center" gap="xs">
-            <span className={S.nowrap}>{t`End at`}</span> <TimezoneIndicator />
+            {t`End at`} <TimezoneIndicator />
           </Flex>,
           t`Status`,
           t`Trigger`,

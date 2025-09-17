@@ -3,7 +3,7 @@
 }
 
 .wrap {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .nowrap {
