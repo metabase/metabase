@@ -187,7 +187,7 @@ describe("getPlaceholderText", () => {
 
     it("should return metabot placeholder text for sql", () => {
       expect(getPlaceholderText("sql")).toBe(
-        "Ask Metabot to write SQL, or type SQL directly",
+        "Write your SQL here, or have Metabot help you",
       );
     });
 

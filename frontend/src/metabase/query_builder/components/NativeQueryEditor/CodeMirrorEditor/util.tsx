@@ -266,7 +266,7 @@ export const getPlaceholderText = (engine?: string | null): string => {
 
   if (PLUGIN_METABOT.isEnabled()) {
     if (engineType === "sql") {
-      return t`Ask Metabot to write SQL, or type SQL directly`;
+      return t`Write your SQL here, or have Metabot help you`;
     }
   }
 
