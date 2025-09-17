@@ -80,7 +80,8 @@ export function GlossaryRowEditor({
           autoFocus={autoFocusField === "definition"}
           styles={{
             input: {
-              paddingTop: "0.725rem",
+              paddingTop: "0.75rem",
+              lineHeight: 1.2,
             },
           }}
           ref={definitionRef}

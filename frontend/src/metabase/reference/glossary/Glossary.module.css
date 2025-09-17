@@ -14,7 +14,7 @@
 
   td {
     padding: var(--mantine-spacing-sm) var(--mantine-spacing-md)
-      var(--mantine-spacing-md);
+      var(--mantine-spacing-sm) var(--mantine-spacing-md);
   }
 
   tr:last-child td {
@@ -35,7 +35,8 @@
 .rowEditor {
   td {
     padding-top: 0;
-    padding-bottom: 5px;
+    padding-bottom: 4px;
+    line-height: 1.2;
   }
 
   &:hover {
