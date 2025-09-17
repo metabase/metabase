@@ -14,7 +14,7 @@ export function getRowCountMessage(
     return t`Showing first ${formatRowCount(result.row_count, formatNumber)}`;
   }
   if (result.row_count === HARD_ROW_LIMIT) {
-    return t`Showing first ${formatRowCount(HARD_ROW_LIMIT, formatNumber)} rows`;
+    return t`Showing first ${formatRowCount(HARD_ROW_LIMIT, formatNumber)}`;
   }
   return t`Showing ${formatRowCount(result.row_count, formatNumber)}`;
 }
