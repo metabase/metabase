@@ -771,7 +771,7 @@ describe("scenarios > question > multiple column breakouts", () => {
 
   describe("previous stage", () => {
     describe("notebook", () => {
-      it.skip("should be able to add post-aggregation expressions for each breakout column", () => {
+      it("should be able to add post-aggregation expressions for each breakout column", () => {
         function testDatePostAggregationExpression({
           questionDetails,
           expression1,
@@ -872,7 +872,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         });
       });
 
-      it.skip("should be able to add post-aggregation filters for each breakout column", () => {
+      it("should be able to add post-aggregation filters for each breakout column", () => {
         function addDateBetweenFilter({
           columnName,
           columnMinValue,
@@ -1195,7 +1195,7 @@ describe("scenarios > question > multiple column breakouts", () => {
     });
 
     describe("filter picker", () => {
-      it.skip("should be able to add post-aggregation filters for each breakout in the filter picker", () => {
+      it("should be able to add post-aggregation filters for each breakout in the filter picker", () => {
         function addDateBetweenFilter({
           columnName,
           columnMinValue,
@@ -1451,7 +1451,7 @@ describe("scenarios > question > multiple column breakouts", () => {
 
   describe("data source", () => {
     describe("notebook", () => {
-      it.skip("should be able to add filters for each source column", () => {
+      it("should be able to add filters for each source column", () => {
         function addDateBetweenFilter({
           columnName,
           columnMinValue,
