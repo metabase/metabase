@@ -24,6 +24,8 @@ import {
 } from "../components/DatabaseHelpSidePanel";
 import { useDatabaseConnection } from "../hooks/use-database-connection";
 
+import { trackHelpButtonClick } from "./analytics";
+
 interface DatabasePageProps {
   params: { databaseId: string };
   route: Route;
@@ -33,7 +35,7 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
   const engines = useSelector(getEngines);
   const { database, databaseReq, handleCancel, handleOnSubmit, title, config } =
     useDatabaseConnection({ databaseId: params.databaseId, engines });
-  const [showSidePanel, { toggle: toggleSidePanel, close: closeSidePanel }] =
+  const [showSidePanel, { open: openSidePanel, close: closeSidePanel }] =
     useDisclosure(false);
   const [selectedEngineKey, setSelectedEngineKey] = useState<EngineKey>(
     database?.engine as EngineKey,
@@ -50,6 +52,13 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
       closeSidePanel();
     }
   }, [closeSidePanel, helpContentsExist]);
+
+  const onHelpButtonClick = () => {
+    if (!showSidePanel) {
+      openSidePanel();
+      trackHelpButtonClick();
+    }
+  };
 
   return (
     <Flex direction="row" h="100%">
@@ -81,7 +90,7 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
                 {t`Need a hand?`}{" "}
                 <Button
                   h="auto"
-                  onClick={toggleSidePanel}
+                  onClick={onHelpButtonClick}
                   p={0}
                   style={{ verticalAlign: "baseline" }}
                   variant="subtle"
@@ -110,7 +119,7 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
           <Divider orientation="vertical" h="100%" />
           <DatabaseHelpSidePanel
             engineKey={selectedEngineKey}
-            onClose={toggleSidePanel}
+            onClose={closeSidePanel}
           />
         </>
       )}
