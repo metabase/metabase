@@ -5,12 +5,16 @@
    [environ.core :as env]
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
+   [metabase-enterprise.semantic-search.gate :as semantic.gate]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
+   [metabase-enterprise.semantic-search.indexer :as semantic.indexer]
+   [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.analytics.core :as analytics]
    [metabase.test :as mt]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [toucan2.core :as t2])
   (:import
    [java.nio ByteBuffer ByteOrder]
    [java.util Base64]))
@@ -269,5 +273,40 @@
             (semantic.index/query-index pgvector index {:search-string "xixix"})
             (run! (fn [[_embedding-model _texts opts]]
                     (is (= :query (:type opts))))
-                  (:called-with @cache))
-            (def cccc @cache)))))))
+                  (:called-with @cache))))))))
+
+;; NOTE: I'll modify the test if it turns out testing against exact number of tokens is not a best idea.
+(deftest token-tracking-write-test
+  (mt/with-premium-features #{:semantic-search}
+    (when (string? (not-empty (:mb-pgvector-db-url env/env)))
+      (semantic.tu/with-test-db! {:mode :blank}
+        (let [pgvector (semantic.env/get-pgvector-datasource!)
+              index-metadata (semantic.env/get-index-metadata)
+              embedding-model (semantic.env/get-configured-embedding-model)
+              _ (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model)
+              {:keys [index metadata-row]} (semantic.index-metadata/get-active-index-state pgvector index-metadata)
+              indexing-state (semantic.indexer/init-indexing-state metadata-row)
+              gate-docs (mapv #(semantic.gate/search-doc->gate-doc % (java.sql.Timestamp. 1000))
+                              (semantic.tu/mock-documents))]
+
+          (semantic.gate/gate-documents! pgvector index-metadata gate-docs)
+          (t2/delete! :model/SemanticSearchTokenTracking)
+
+          (testing "Indexing tokens are tracked"
+            (semantic.indexer/indexing-step pgvector index-metadata index indexing-state)
+            (is (= 1 (t2/count :model/SemanticSearchTokenTracking)))
+            (let [{:keys [request_type total_tokens prompt_tokens]}
+                  (t2/select-one :model/SemanticSearchTokenTracking)]
+              (is (= :index request_type))
+              (is (= 11 prompt_tokens))
+              (is (= 11 total_tokens))))
+
+          (testing "Querying tokens are tracked"
+            (t2/delete! :model/SemanticSearchTokenTracking)
+            (semantic.index/query-index pgvector index {:search-string "elephant"})
+            (is (= 1 (t2/count :model/SemanticSearchTokenTracking)))
+            (let [{:keys [request_type total_tokens prompt_tokens]}
+                  (t2/select-one :model/SemanticSearchTokenTracking)]
+              (is (= :query request_type))
+              (is (= 5 total_tokens))
+              (is (= 5 prompt_tokens)))))))))
