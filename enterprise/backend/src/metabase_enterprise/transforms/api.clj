@@ -107,7 +107,7 @@
             [:target ::transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
-  (api/check-superuser)
+  (api/write-check :model/Transform body)
   (check-database-feature body)
   (api/check (not (transforms.util/target-table-exists? body))
              403
@@ -180,7 +180,7 @@
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "put transform" id)
-  (api/check-superuser)
+  (api/write-check :model/Transform id)
   (t2/with-transaction [_]
     ;; Cycle detection should occur within the transaction to avoid race
     (let [old (t2/select-one :model/Transform id)
@@ -207,7 +207,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (log/info "delete transform" id)
-  (api/check-superuser)
+  (api/write-check :model/Transform id)
   (t2/delete! :model/Transform id)
   nil)
 
@@ -238,7 +238,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (log/info "run transform" id)
-  (api/check-superuser)
+  (api/write-check :model/Transform id)
   (let [transform (api/check-404 (t2/select-one :model/Transform id))
         start-promise (promise)]
     (if (transforms.util/python-transform? transform)
