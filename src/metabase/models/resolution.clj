@@ -45,7 +45,6 @@
     :model/FieldUserSettings                 metabase.warehouse-schema.models.field-user-settings
     :model/FieldValues                       metabase.warehouse-schema.models.field-values
     :model/Glossary                          metabase.glossary.models.glossary
-    :model/GroupTableAccessPolicy            metabase-enterprise.sandbox.models.group-table-access-policy
     :model/Sandbox                           metabase-enterprise.sandbox.models.sandbox
     :model/HTTPAction                        metabase.actions.models
     :model/ImplicitAction                    metabase.actions.models

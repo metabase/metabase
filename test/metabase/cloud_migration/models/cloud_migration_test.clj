@@ -65,7 +65,7 @@
                  (dissoc @progress-calls :upload))
               "one progress call during other stages"))))))
 
-(deftest migrate!-test-menaged-scheduler
+(deftest migrate!-test-managed-scheduler
   (let [migration         (mock-external-calls! (mt/user-http-request :crowberto :post 200 "cloud-migration"))]
     (with-redefs [cloud-migration/cluster?     (constantly false)]
       (http-fake/with-fake-routes-in-isolation (fake-upload-route-handler migration)
