@@ -42,6 +42,7 @@ import type {
 import { isObject } from "metabase-types/guards";
 
 import styles from "./SmartLinkNode.module.css";
+import { reactNodeToHtmlString } from "metabase/lib/react-to-html";
 
 type SmartLinkEntity =
   | Card
@@ -153,7 +154,14 @@ export const SmartLink = Node.create<{
       },
       label: {
         default: null,
-        parseHTML: (element) => element.getAttribute("data-label"),
+        parseHTML: (element) => {
+          const label = element.getAttribute("data-label");
+          return label;
+        },
+      },
+      href: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-href"),
       },
     };
   },
@@ -171,21 +179,41 @@ export const SmartLink = Node.create<{
   },
 
   renderHTML({ node, HTMLAttributes }) {
-    const { entityId, model } = node.attrs;
+    const { entityId, model, label, href } = node.attrs;
 
+    // return [
+    //   "span",
+    //   mergeAttributes(
+    //     HTMLAttributes,
+    //     {
+    //       "data-type": "smart-link",
+    //       "data-entity-id": entityId,
+    //       "data-model": model,
+    //       "data-label": node.attrs.label ?? undefined,
+    //     },
+    //     this.options.HTMLAttributes,
+    //   ),
+    //   `{% entity id="${entityId}" model="${model}" %}`,
+
+    // ];
+
+    // console.log({ href, HTMLAttributes, options: this.options });
     return [
-      "span",
+      "a",
       mergeAttributes(
-        HTMLAttributes,
+        // HTMLAttributes,
         {
           "data-type": "smart-link",
           "data-entity-id": entityId,
           "data-model": model,
-          "data-label": node.attrs.label ?? undefined,
+          "data-label": label ?? undefined,
+          "data-href": href ?? undefined, // for parseHTML fallback
+          "data-site-url": this.options.siteUrl,
+          href: this.options.siteUrl + href ?? undefined,
         },
         this.options.HTMLAttributes,
       ),
-      `{% entity id="${entityId}" model="${model}" %}`,
+      label,
     ];
   },
 
@@ -323,9 +351,20 @@ const useEntityData = (
 };
 
 export const SmartLinkComponent = memo(
-  ({ node }: NodeViewProps) => {
-    const { entityId, model } = node.attrs;
+  ({ node, updateAttributes }: NodeViewProps) => {
+    const { entityId, model, label, href } = node.attrs;
     const { entity, isLoading, error } = useEntityData(entityId, model);
+
+    useEffect(() => {
+      // When entity is loaded, update it's attributes to allow
+      // serializing it as HTML
+      if (entity && entity.name) {
+        const nextLabel = entity.name as string;
+        const entityUrlableModel = entityToUrlableModel(entity, model);
+        const nextHref = modelToUrl(entityUrlableModel);
+        updateAttributes({ label: nextLabel, href: nextHref });
+      }
+    }, [entity, model, entityId, label, href, updateAttributes]);
 
     const dispatch = useDispatch();
     useEffect(() => {

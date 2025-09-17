@@ -43,7 +43,7 @@ interface Props {
   readonly?: boolean;
   onBlur?: (content: DocumentContent, editor: Editor) => void;
   onChange?: (content: DocumentContent) => void;
-  onSubmit?: (content: DocumentContent) => void;
+  onSubmit?: (content: DocumentContent, html: string) => void;
   onEscape?: () => void;
 }
 
@@ -146,8 +146,11 @@ export const CommentEditor = ({
     const content = editor.getJSON() as DocumentContent;
     const isEmpty = editor.isEmpty;
 
+    const html = stripInternalIds(editor.getHTML());
+    console.log({ html });
+
     if (!isEmpty && onSubmit) {
-      onSubmit(content);
+      onSubmit(content, html);
       editor.commands.clearContent(true);
       editor.commands.blur();
     }
@@ -209,3 +212,15 @@ export const CommentEditor = ({
     </Flex>
   );
 };
+
+function stripInternalIds(html: string): string {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+  const elements = doc.body.querySelectorAll("*");
+  elements.forEach((el) => {
+    if (el.hasAttribute("_id")) {
+      el.removeAttribute("_id");
+    }
+  });
+  return doc.body.innerHTML;
+}
