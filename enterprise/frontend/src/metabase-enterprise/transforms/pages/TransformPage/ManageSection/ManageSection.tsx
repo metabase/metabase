@@ -78,7 +78,7 @@ function DeleteTransformButton({ transform }: DeleteTransformButtonProps) {
         disabled={isTransformRunning(transform)}
         onClick={openModal}
       >
-        {t`Delete`}
+        {t`Delete transform`}
       </Button>
       {isModalOpened && (
         <DeleteTransformModal
