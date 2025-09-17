@@ -6,6 +6,9 @@ import { ActionIcon, Group, Icon, Stack, Text } from "metabase/ui";
 
 import { EmbeddingHub } from "./EmbeddingHub";
 
+/**
+ * Embedding Hub shown in the embedding home page for admins in EE instances.
+ */
 export const EmbeddingHubHomePage = (): ReactNode => {
   return (
     <Stack mx="auto" py="xl" maw={800}>

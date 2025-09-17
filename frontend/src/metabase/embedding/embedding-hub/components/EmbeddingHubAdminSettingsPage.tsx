@@ -8,7 +8,7 @@ import { Stack, Text, Title } from "metabase/ui";
 
 import { EmbeddingHub } from "./EmbeddingHub";
 
-export const EmbeddingHubSetupGuidePage = () => {
+export const EmbeddingHubAdminSettingsPage = () => {
   return (
     <Stack mx="auto" py="xl" gap="xl" maw={800}>
       <Stack gap="xs" ml="3rem">
