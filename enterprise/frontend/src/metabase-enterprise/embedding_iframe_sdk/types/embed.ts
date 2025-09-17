@@ -154,6 +154,14 @@ export type SdkIframeEmbedTemplateSettings =
 export type SdkIframeEmbedSettings = SdkIframeEmbedBaseSettings &
   SdkIframeEmbedTemplateSettings;
 
+export type SdkIframeEmbedElementSettings = SdkIframeEmbedBaseSettings &
+  (
+    | DashboardEmbedOptions
+    | QuestionEmbedOptions
+    | (Omit<ExplorationEmbedOptions, "questionId"> & { questionId: "new" })
+    | BrowserEmbedOptions
+  );
+
 export type SdkIframeEmbedEvent = { type: "ready" };
 
 export type SdkIframeEmbedEventHandler = () => void;

@@ -65,7 +65,7 @@ function reportAnalyticsOnce(activeEmbeds: Set<MetabaseEmbedElement>) {
   }
 }
 
-function createEmbeddedAnalyticsJsUsage(
+export function createEmbeddedAnalyticsJsUsage(
   activeEmbeds: Set<MetabaseEmbedElement>,
 ): EmbeddedAnalyticsJsEventSchema {
   const [firstEmbed] = activeEmbeds;
@@ -103,7 +103,24 @@ function createEmbeddedAnalyticsJsUsage(
         );
       })
       .with(
-        { componentName: "metabase-question", template: P.not("exploration") },
+        { componentName: "metabase-question", questionId: "new" },
+        (properties) => {
+          if (!usage.exploration) {
+            usage.exploration = {
+              is_save_enabled: { true: 0, false: 0 },
+            };
+          }
+          usage = incrementComponentPropertyCount(
+            "exploration.is_save_enabled",
+            properties.isSaveEnabled,
+            usage,
+          );
+        },
+      )
+      .with(
+        {
+          componentName: "metabase-question",
+        },
         (properties) => {
           if (!usage.question) {
             usage.question = {
@@ -130,21 +147,6 @@ function createEmbeddedAnalyticsJsUsage(
           );
           usage = incrementComponentPropertyCount(
             "question.is_save_enabled",
-            properties.isSaveEnabled,
-            usage,
-          );
-        },
-      )
-      .with(
-        { componentName: "metabase-question", template: "exploration" },
-        (properties) => {
-          if (!usage.exploration) {
-            usage.exploration = {
-              is_save_enabled: { true: 0, false: 0 },
-            };
-          }
-          usage = incrementComponentPropertyCount(
-            "exploration.is_save_enabled",
             properties.isSaveEnabled,
             usage,
           );

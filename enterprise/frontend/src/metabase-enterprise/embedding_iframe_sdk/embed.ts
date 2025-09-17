@@ -15,6 +15,7 @@ import {
   DISABLE_UPDATE_FOR_KEYS,
 } from "./constants";
 import type {
+  SdkIframeEmbedElementSettings,
   SdkIframeEmbedEvent,
   SdkIframeEmbedEventHandler,
   SdkIframeEmbedMessage,
@@ -68,7 +69,9 @@ const setupConfigWatcher = () => {
   }
 };
 
-export const updateAllEmbeds = (config: Partial<SdkIframeEmbedSettings>) => {
+export const updateAllEmbeds = (
+  config: Partial<SdkIframeEmbedElementSettings>,
+) => {
   assertFieldCanBeUpdated(config);
 
   _activeEmbeds.forEach((embedElement) => {
@@ -93,7 +96,9 @@ const raiseError = (message: string) => {
   throw new MetabaseError("EMBED_ERROR", message);
 };
 
-function assertFieldCanBeUpdated(newValues: Partial<SdkIframeEmbedSettings>) {
+function assertFieldCanBeUpdated(
+  newValues: Partial<SdkIframeEmbedElementSettings>,
+) {
   const currentConfig = (window as any).metabaseConfig || {};
   for (const field of DISABLE_UPDATE_FOR_KEYS) {
     if (
@@ -110,7 +115,7 @@ type AllowedMetabaseConfigKey =
   (typeof ALLOWED_EMBED_SETTING_KEYS_MAP.base)[number];
 
 function assertValidMetabaseConfigField(
-  newValues: Partial<SdkIframeEmbedSettings>,
+  newValues: Partial<SdkIframeEmbedElementSettings>,
 ) {
   for (const field in newValues) {
     if (
@@ -141,7 +146,7 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
   }
 
   // returns the attributes converted to camelCase + global settings
-  get properties(): SdkIframeEmbedSettings {
+  get properties(): SdkIframeEmbedElementSettings {
     const attributesConverted = this._attributeNames.reduce(
       (acc, attr) => {
         const attrValue = this.getAttribute(attr as string);
@@ -159,7 +164,7 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
       ...attributesConverted,
       componentName: this._componentName,
       _isLocalhost: this._getIsLocalhost(),
-    } as SdkIframeEmbedSettings;
+    } as SdkIframeEmbedElementSettings;
   }
 
   addEventListener(
@@ -222,11 +227,11 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
   /**
    * Send a message with the new settings
    */
-  _updateSettings(settings: Partial<SdkIframeEmbedSettings>) {
+  _updateSettings(settings: Partial<SdkIframeEmbedElementSettings>) {
     const newValues = {
       ...this.properties,
       ...settings,
-    } as SdkIframeEmbedSettings;
+    } as SdkIframeEmbedElementSettings;
 
     // If the iframe isn't ready yet, don't send the message now.
     if (!this._isEmbedReady) {
@@ -236,7 +241,11 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
     this._validateEmbedSettings(newValues);
 
     // Iframe is ready – propagate the delta
-    this.sendMessage("metabase.embed.setSettings", newValues);
+    this.sendMessage(
+      "metabase.embed.setSettings",
+      // When we properly fix the type for Exploration template which uses `questionId: "new"` on the custom element, we should remove this type casting.
+      newValues as SdkIframeEmbedSettings,
+    );
   }
 
   destroy() {
@@ -285,7 +294,9 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
       return;
     }
 
-    const key = attributeToSettingKey(attrName) as keyof SdkIframeEmbedSettings;
+    const key = attributeToSettingKey(
+      attrName,
+    ) as keyof SdkIframeEmbedElementSettings;
     if (
       (DISABLE_UPDATE_FOR_KEYS as readonly string[]).includes(key as string)
     ) {
@@ -295,7 +306,7 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
 
     this._updateSettings({
       [key]: parseAttributeValue(newVal),
-    } as Partial<SdkIframeEmbedSettings>);
+    } as Partial<SdkIframeEmbedElementSettings>);
   }
 
   private _emitEvent(event: SdkIframeEmbedEvent) {
@@ -344,7 +355,7 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
     return hostname === "localhost" || hostname === "127.0.0.1";
   }
 
-  private _validateEmbedSettings(settings: SdkIframeEmbedSettings) {
+  private _validateEmbedSettings(settings: SdkIframeEmbedElementSettings) {
     if (!settings.instanceUrl) {
       raiseError("instanceUrl must be provided");
     }
