@@ -34,7 +34,7 @@ To update or delete records in a table:
 3. Hover over the table you want to edit and click the **Pencil** icon.
 4. Edit rows in the table just like you would in a spreadsheet.
 
-Depending on the data in the column, Metabase may show a list of values to choose from. If you need add an option, simply type out the option and add it.
+Depending on the data in the column, Metabase may show a list of values to choose from. If you need to add an option to that list, simply type out the option and add it.
 
 ![Add option](./images/add-option.png)
 
@@ -48,7 +48,7 @@ You can add a row to a table by clicking **+ New record** in the top right of th
 
 ## Delete a record
 
-To delete a record, check the box next to the record you want to delete and click **Delete**. Deletion is permanent and cannot be undone. Metabase will prompt you to confirm the deletion.
+To delete a record, check the box next to the record you want to delete and click **Delete**. Deletion is permanent. Metabase will prompt you to confirm the deletion.
 
 You can also select multiple rows and delete them all at once (nervous sweating).
 
@@ -65,12 +65,12 @@ Metabase offers two ways to modify data in your database: **editable table data*
 
 ###  When to use editable table data
 
-Use editable table data to
+Use editable table data to:
 
-- Do data maintenance or cleanup
-- Modify many records at once
-- Direct access to all table data
-- Do one-off data corrections
+- Do data maintenance or cleanup.
+- Modify many records at once.
+- Get direct access to all table data.
+- Do one-off data corrections.
 
 You need to be an admin to edit tables directly.
 
@@ -78,8 +78,8 @@ You need to be an admin to edit tables directly.
 
 Use actions to:
 
-- Create custom forms 
-- Give non-admins the ability to modify data
-- Add a button to a dashboard to trigger a form or query
+- Create custom forms.
+- Give non-admins the ability to modify data.
+- Add a button to a dashboard to trigger a form or query.
 
 See [actions](../actions/introduction.md).
