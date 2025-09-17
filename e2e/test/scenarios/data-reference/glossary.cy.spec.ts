@@ -47,11 +47,11 @@ describe("data reference > glossary", () => {
     cy.findByRole("button", { name: /new term/i }).click();
 
     cy.findByPlaceholderText(/bird/i).type("  Bird  ");
-    cy.findByPlaceholderText(/a thing with wings\./i).type(
+    cy.findByPlaceholderText(/a warm-blooded.*/i).type(
       "  A thing with wings.  ",
     );
 
-    cy.findByLabelText("Add").click();
+    cy.findByLabelText("Save").click();
 
     cy.wait("@createGlossary");
 
@@ -82,7 +82,7 @@ describe("data reference > glossary", () => {
       });
 
       cy.findByPlaceholderText(/bird/i).clear().type("Kitten");
-      cy.findByPlaceholderText(/a thing with wings\./i)
+      cy.findByPlaceholderText(/a warm-blooded.*/i)
         .clear()
         .type("Young cat");
 
