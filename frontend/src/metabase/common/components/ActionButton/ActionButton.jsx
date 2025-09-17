@@ -4,13 +4,9 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button";
-import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { cancelable } from "metabase/lib/promise";
-import { Icon } from "metabase/ui";
-
-import { SmallSpinner } from "./ActionButton.styled";
+import { Button, Icon } from "metabase/ui";
 
 export default class ActionButton extends Component {
   constructor(props) {
@@ -28,14 +24,11 @@ export default class ActionButton extends Component {
   };
 
   static defaultProps = {
-    className: ButtonsS.Button,
-    successClassName: ButtonsS.ButtonSuccess,
-    failedClassName: ButtonsS.ButtonDanger,
     get normalText() {
       return t`Save`;
     },
     get activeText() {
-      return t`Saving...`;
+      return t`Saving…`;
     },
     get failedText() {
       return t`Save failed`;
@@ -121,8 +114,6 @@ export default class ActionButton extends Component {
       resetState,
       actionFn,
       className,
-      successClassName,
-      failedClassName,
       forceActiveStyle,
       children,
       ...props
@@ -131,28 +122,29 @@ export default class ActionButton extends Component {
     const isActionDisabled = active || result === "success";
     const actionStatus = active ? "pending" : (result ?? "idle");
 
+    // Determine button color based on result state
+    let buttonColor = undefined;
+    if (result === "success") {
+      buttonColor = "success";
+    } else if (result === "failed") {
+      buttonColor = "error";
+    }
+
     return (
       <Button
         ref={innerRef}
         {...props}
         data-action-status={actionStatus}
-        className={
-          forceActiveStyle
-            ? ButtonsS.Button
-            : cx(className, {
-                [successClassName]: result === "success",
-                [failedClassName]: result === "failed",
-                [CS.pointerEventsNone]: isActionDisabled,
-              })
-        }
+        className={cx(className, {
+          [CS.pointerEventsNone]: isActionDisabled,
+        })}
+        color={buttonColor}
+        loading={active && useLoadingSpinner}
+        disabled={isActionDisabled}
         onClick={this.onClick}
       >
-        {active ? (
-          useLoadingSpinner ? (
-            <SmallSpinner />
-          ) : (
-            activeText
-          )
+        {active && !useLoadingSpinner ? (
+          activeText
         ) : result === "success" ? (
           <span>
             {forceActiveStyle ? null : <Icon name="check" size={12} />}
