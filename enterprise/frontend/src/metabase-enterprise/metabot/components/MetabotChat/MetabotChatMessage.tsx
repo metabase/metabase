@@ -3,7 +3,7 @@ import { match } from "ts-pattern";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import cx from "classnames";
-import { useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
@@ -41,7 +41,7 @@ import Styles from "./MetabotChat.module.css";
 import { MetabotFeedbackModal } from "./MetabotFeedbackModal";
 
 // Create a read-only TipTap viewer for user messages with SmartLinks
-const UserMessageContent = ({ message }: { message: string }) => {
+const UserMessageContent = memo(({ message }: { message: string }) => {
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
 
   const extensions = useMemo(
@@ -70,14 +70,21 @@ const UserMessageContent = ({ message }: { message: string }) => {
     [siteUrl],
   );
 
-  const editor = useEditor({
-    extensions,
-    content: message.includes("metabase://")
+  const parsedContent = useMemo(() => {
+    return message.includes("metabase://")
       ? parseMetabotFormat(message)
-      : message,
-    editable: false,
-    immediatelyRender: false,
-  });
+      : message;
+  }, [message]);
+
+  const editor = useEditor(
+    {
+      extensions,
+      content: parsedContent,
+      editable: false,
+      immediatelyRender: false,
+    },
+    [extensions, parsedContent],
+  ); // Add dependencies to prevent recreation
 
   if (!editor) {
     // Fallback to plain text
@@ -92,7 +99,9 @@ const UserMessageContent = ({ message }: { message: string }) => {
       className={cx(Styles.message, Styles.messageUser)}
     />
   );
-};
+});
+
+UserMessageContent.displayName = "UserMessageContent";
 
 interface BaseMessageProps extends Omit<FlexProps, "onCopy"> {
   message: MetabotChatMessage;

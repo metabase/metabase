@@ -63,9 +63,12 @@ function serializeSmartLink(node: JSONContent): string {
     return label || "[unknown]";
   }
 
+  // Map internal types back to URL types for serialization
+  const urlModel = model === "dataset" ? "model" : model;
+
   // Format: [entity name](metabase://model/id)
   const displayName = label || `${model} ${entityId}`;
-  return `[${displayName}](metabase://${model}/${entityId})`;
+  return `[${displayName}](metabase://${urlModel}/${entityId})`;
 }
 
 /**
@@ -106,11 +109,14 @@ export function parseMetabotFormat(text: string): JSONContent {
       }
 
       // Add MetabotSmartLink node
+      // Map URL types back to internal types for SmartLink component
+      const internalModel = match[2] === "model" ? "dataset" : match[2];
+
       paragraph.content!.push({
         type: "metabotSmartLink",
         attrs: {
           label: match[1],
-          model: match[2],
+          model: internalModel,
           entityId: parseInt(match[3], 10),
         },
       });

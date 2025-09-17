@@ -27,6 +27,7 @@ import {
   useGetDocumentQuery,
   useListMentionsQuery,
 } from "metabase-enterprise/api";
+import { useGetTransformQuery } from "metabase-enterprise/api/transform";
 import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
 import { updateMentionsCache } from "metabase-enterprise/documents/documents.slice";
 import type {
@@ -38,6 +39,7 @@ import type {
   Document,
   MentionableUser,
   Table,
+  Transform,
 } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
@@ -50,6 +52,7 @@ type SmartLinkEntity =
   | Table
   | Database
   | Document
+  | Transform
   | MentionableUser;
 
 export const MetabotSmartLink = Node.create<{
@@ -125,7 +128,11 @@ const useEntityData = (
 ) => {
   const cardQuery = useGetCardQuery(
     { id: entityId! },
-    { skip: !entityId || (model !== "card" && model !== "dataset") },
+    {
+      skip:
+        !entityId ||
+        (model !== "card" && model !== "dataset" && model !== "metric"),
+    },
   );
 
   const dashboardQuery = useGetDashboardQuery(
@@ -161,8 +168,12 @@ const useEntityData = (
     skip: !entityId || model !== "user",
   });
 
+  const transformQuery = useGetTransformQuery(entityId!, {
+    skip: !entityId || model !== "transform",
+  });
+
   // Determine which query is active and return its state
-  if (model === "card" || model === "dataset") {
+  if (model === "card" || model === "dataset" || model === "metric") {
     return {
       entity: cardQuery.data,
       isLoading: cardQuery.isLoading,
@@ -207,6 +218,14 @@ const useEntityData = (
       entity: documentQuery.data,
       isLoading: documentQuery.isLoading,
       error: documentQuery.error,
+    };
+  }
+
+  if (model === "transform") {
+    return {
+      entity: transformQuery.data,
+      isLoading: transformQuery.isLoading,
+      error: transformQuery.error,
     };
   }
 

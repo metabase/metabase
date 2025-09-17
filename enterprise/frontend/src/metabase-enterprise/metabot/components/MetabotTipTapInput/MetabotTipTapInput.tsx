@@ -3,7 +3,7 @@ import type { Editor as TiptapEditor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import cx from "classnames";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
@@ -15,6 +15,7 @@ import {
   MetabotMentionPluginKey,
 } from "../../extensions/MetabotMentionExtension";
 import { MetabotMentionSuggestion } from "../../extensions/MetabotMentionSuggestion";
+import { MetabotPasteExtension } from "../../extensions/MetabotPasteExtension";
 import { createMetabotSuggestionRenderer } from "../../extensions/metabotSuggestionRenderer";
 import {
   parseMetabotFormat,
@@ -41,6 +42,9 @@ export const MetabotTipTapInput = ({
 }: MetabotTipTapInputProps) => {
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
 
+  // Ref to prevent infinite update loops between external value changes and editor updates
+  const isInternalUpdateRef = useRef(false);
+
   // Configure minimal extensions for chat input
   const extensions = useMemo(
     () => [
@@ -59,7 +63,7 @@ export const MetabotTipTapInput = ({
         strike: false,
       }),
       Placeholder.configure({
-        placeholder: t`Tell me to do something, or ask a question. Type @ to mention entities...`,
+        placeholder: t`Tell me to do something, or ask a question.`,
       }),
       MetabotSmartLink.configure({
         siteUrl,
@@ -72,6 +76,7 @@ export const MetabotTipTapInput = ({
           render: createMetabotSuggestionRenderer(MetabotMentionSuggestion),
         },
       }),
+      MetabotPasteExtension,
     ],
     [siteUrl],
   );
@@ -83,6 +88,12 @@ export const MetabotTipTapInput = ({
     immediatelyRender: false,
     autofocus: true,
     onUpdate: ({ editor }) => {
+      // Skip onChange if this is an internal update to prevent infinite loops
+      if (isInternalUpdateRef.current) {
+        isInternalUpdateRef.current = false;
+        return;
+      }
+
       // Serialize to string format for state management
       const jsonContent = editor.getJSON();
       const serialized = serializeToMetabotFormat(jsonContent);
@@ -136,19 +147,27 @@ export const MetabotTipTapInput = ({
 
   // Sync external value changes to editor
   useEffect(() => {
-    if (editor && value) {
-      // Check if we need to update - compare serialized content
-      const currentSerialized = serializeToMetabotFormat(editor.getJSON());
-      if (value !== currentSerialized) {
-        // If value looks like it contains metabase:// links, parse it
-        if (value.includes("metabase://")) {
-          editor.commands.setContent(parseMetabotFormat(value));
-        } else {
-          // Plain text
-          editor.commands.setContent(value);
-        }
+    if (!editor) {
+      return;
+    }
+
+    // Check if we need to update - compare serialized content
+    const currentSerialized = serializeToMetabotFormat(editor.getJSON());
+
+    if (value && value !== currentSerialized) {
+      // Mark as internal update to prevent onChange callback
+      isInternalUpdateRef.current = true;
+
+      // If value looks like it contains metabase:// links, parse it
+      if (value.includes("metabase://")) {
+        editor.commands.setContent(parseMetabotFormat(value));
+      } else {
+        // Plain text
+        editor.commands.setContent(value);
       }
-    } else if (editor && !value) {
+    } else if (!value && currentSerialized) {
+      // Mark as internal update to prevent onChange callback
+      isInternalUpdateRef.current = true;
       editor.commands.clearContent();
     }
   }, [editor, value]);
