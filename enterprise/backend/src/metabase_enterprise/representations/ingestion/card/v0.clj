@@ -120,7 +120,6 @@
         (let [card-data-with-creator (-> card-data
                                          (assoc :creator_id creator-id)
                                          (assoc :entity_id entity-id))]
-          (clojure.pprint/pprint card-data-with-creator)
           (first (t2/insert-returning-instances! :model/Card card-data-with-creator)))))))
 
 (comment

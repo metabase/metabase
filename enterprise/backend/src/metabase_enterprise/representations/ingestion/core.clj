@@ -9,6 +9,7 @@
    - Managing references between entities"
   (:require
    [clojure.java.io :as io]
+   [metabase-enterprise.representations.ingestion.card.v0 :as v0-card-ingest]
    [metabase-enterprise.representations.schema.core :as schema]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]))
@@ -39,6 +40,7 @@
    Returns the created/updated entity or nil on failure."
   [representation]
   (when-let [validated (validate-representation representation)]
+    (v0-card-ingest/ingest-card! validated)
     validated))
 
 ;; TOTALLY UNTESTED
