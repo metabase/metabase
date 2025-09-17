@@ -38,6 +38,7 @@ export const engineKeys = [
   "databricks",
   "druid-jdbc",
   "druid",
+  "mongo",
   "mysql",
   "oracle",
   "postgres",

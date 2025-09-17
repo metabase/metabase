@@ -1353,6 +1353,52 @@ databaseChangeLog:
                   name: comment_id
       rollback: # will be removed along the table
 
+  - changeSet:
+      id: v57.2025-09-11T10:00:00
+      author: qnkhuat
+      comment: Add python_library table for storing Python transform user modules
+      changes:
+        - createTable:
+            tableName: python_library
+            remarks: Store Python library code for user modules in transforms
+            columns:
+              - column:
+                  name: id
+                  type: integer
+                  autoIncrement: true
+                  remarks: Primary key for python_library
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_python_library
+              - column:
+                  name: path
+                  type: varchar(254)
+                  remarks: Path identifier for the library
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uk_python_library_path
+              - column:
+                  name: source
+                  type: ${text.type}
+                  remarks: Python source code for user modules
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When the record was created
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: current_timestamp
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: When the record was last updated
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: current_timestamp
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

@@ -3,11 +3,24 @@ const BRANCH_NAME = "main"; // Affects the `local` testing only. On CI is passed
 const BASE_ENV = {
   WATCH:
     process.env.SAMPLE_APP_ENVIRONMENT === "development" ? "true" : "false",
-  PREMIUM_EMBEDDING_TOKEN: process.env.CYPRESS_MB_ALL_FEATURES_TOKEN ?? "",
+  PREMIUM_EMBEDDING_TOKEN:
+    process.env.CYPRESS_MB_ALL_FEATURES_TOKEN ||
+    process.env.CYPRESS_ALL_FEATURES_TOKEN ||
+    process.env.MB_ALL_FEATURES_TOKEN ||
+    process.env.ENTERPRISE_TOKEN ||
+    "",
   MB_PORT: 4300,
   CLIENT_PORT: 4400,
   AUTH_PROVIDER_PORT: 4500,
 };
+
+console.log(typeof process.env.MB_ALL_FEATURES_TOKEN);
+
+if (!BASE_ENV.PREMIUM_EMBEDDING_TOKEN) {
+  throw new Error(
+    "Define one of the following environment variables with enterprise token: CYPRESS_MB_ALL_FEATURES_TOKEN, CYPRESS_ALL_FEATURES_TOKEN, MB_ALL_FEATURES_TOKEN, ENTERPRISE_TOKEN",
+  );
+}
 
 const BASE_SETUP_CONFIG = {
   "docker-up-command": "yarn docker:up",
