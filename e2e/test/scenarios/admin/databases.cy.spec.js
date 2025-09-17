@@ -267,10 +267,7 @@ describe("admin > database > add", () => {
       "should add Mongo database and redirect to db info page",
       { tags: "@mongo" },
       () => {
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains("MongoDB").click({ force: true });
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains("Additional connection string options");
+        H.popover().contains("MongoDB").click();
 
         H.typeAndBlurUsingLabel("Display name", "QA Mongo");
         H.typeAndBlurUsingLabel("Host", "localhost");
@@ -280,11 +277,14 @@ describe("admin > database > add", () => {
         H.typeAndBlurUsingLabel("Password", "metasample123");
         H.typeAndBlurUsingLabel("Authentication database (optional)", "admin");
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Show advanced options").click();
+        cy.findByRole("button", { name: /Show advanced options/ }).click();
+        cy.findByLabelText(
+          "Additional connection string options (optional)",
+        ).should("exist");
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Save").should("not.be.disabled").click();
+        cy.findByRole("button", { name: /Save/ })
+          .should("not.be.disabled")
+          .click();
 
         cy.wait("@createDatabase");
 
