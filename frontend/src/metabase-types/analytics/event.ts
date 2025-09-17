@@ -420,6 +420,19 @@ export type LearnAboutDataClickedEvent = ValidateEvent<{
   event: "learn_about_our_data_clicked";
 }>;
 
+export type MetadataEditEvent = ValidateEvent<{
+  event: "metadata_edited";
+  event_detail:
+    | "type_casting"
+    | "semantic_type_change"
+    | "visibility_change"
+    | "filtering_change"
+    | "display_values"
+    | "json_unfolding"
+    | "formatting";
+  triggered_from: "admin";
+}>;
+
 export type SimpleEvent =
   | CustomSMTPSetupClickedEvent
   | CustomSMTPSetupSuccessEvent
@@ -468,4 +481,5 @@ export type SimpleEvent =
   | XRayEvent
   | MetabotEvent
   | RevertVersionEvent
-  | LearnAboutDataClickedEvent;
+  | LearnAboutDataClickedEvent
+  | MetadataEditEvent;

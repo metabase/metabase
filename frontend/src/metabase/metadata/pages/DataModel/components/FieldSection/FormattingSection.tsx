@@ -12,6 +12,7 @@ import type {
   FieldFormattingSettings as FieldSettings,
 } from "metabase-types/api";
 
+import { trackMetadataChange } from "../../analytics";
 import { TitledSection } from "../TitledSection";
 
 interface Props {
@@ -32,6 +33,8 @@ const FormattingSectionBase = ({ field }: Props) => {
 
   const handleChange = async (settings: FieldSettings) => {
     const { error } = await updateField({ id, settings });
+
+    trackMetadataChange("formatting");
 
     if (error) {
       sendErrorToast(t`Failed to update formatting of ${field.display_name}`);

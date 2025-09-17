@@ -11,6 +11,7 @@ import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type { DatabaseId, Field, Table } from "metabase-types/api";
 
+import { trackMetadataChange } from "../../analytics";
 import { TitledSection } from "../TitledSection";
 
 import { getSemanticTypeError } from "./utils";
@@ -40,6 +41,8 @@ const MetadataSectionBase = ({ databaseId, field, table }: Props) => {
 
   const handleChange = async (patch: Patch) => {
     const { error } = await updateField({ id, ...patch });
+
+    trackMetadataChange("semantic_type_change");
 
     if (error) {
       sendErrorToast(

@@ -11,6 +11,7 @@ import {
   useUpdateFieldValuesMutation,
 } from "metabase/api";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { trackMetadataChange } from "metabase/metadata/pages/DataModel/analytics";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { FieldDataSelector } from "metabase/query_builder/components/DataSelector";
@@ -153,6 +154,8 @@ export const RemappingPicker = ({
   const handleDisplayValueChange = async (value: RemappingValue) => {
     setHasChanged(false);
     setIsChoosingInitialFkTarget(false);
+
+    trackMetadataChange("display_values");
 
     if (value === "original") {
       const { error } = await deleteFieldDimension(id);

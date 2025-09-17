@@ -12,6 +12,7 @@ import {
 import { Flex, Stack, Switch, rem } from "metabase/ui";
 import type { Field } from "metabase-types/api";
 
+import { trackMetadataChange } from "../../../analytics";
 import { TitledSection } from "../../TitledSection";
 
 import S from "./DataSection.module.css";
@@ -79,6 +80,8 @@ const DataSectionBase = ({ field }: Props) => {
       id,
       coercion_strategy: coercionStrategy,
     });
+
+    trackMetadataChange("type_casting");
 
     if (error) {
       sendErrorToast(

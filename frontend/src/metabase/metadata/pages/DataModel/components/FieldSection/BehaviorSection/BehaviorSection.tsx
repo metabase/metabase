@@ -21,6 +21,7 @@ import type {
   FieldVisibilityType,
 } from "metabase-types/api";
 
+import { trackMetadataChange } from "../../../analytics";
 import { TitledSection } from "../../TitledSection";
 
 import { RemappingPicker } from "./RemappingPicker";
@@ -48,6 +49,8 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
       visibility_type: visibilityType,
     });
 
+    trackMetadataChange("visibility_change");
+
     if (error) {
       sendErrorToast(t`Failed to update visibility of ${field.display_name}`);
     } else {
@@ -69,6 +72,8 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
       id,
       has_field_values: hasFieldValues,
     });
+
+    trackMetadataChange("filtering_change");
 
     if (error) {
       sendErrorToast(t`Failed to update filtering of ${field.display_name}`);
@@ -93,6 +98,8 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
       id,
       json_unfolding: jsonUnfolding,
     });
+
+    trackMetadataChange("json_unfolding");
 
     if (error) {
       sendErrorToast(
