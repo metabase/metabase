@@ -16,15 +16,17 @@ import {
   Stack,
   Tooltip,
 } from "metabase/ui";
+import type { TransformRunStatus } from "metabase-types/api";
 
-import S from "./RunErrorInfo.module.css";
+import S from "./RunInfo.module.css";
 
-type RunErrorInfoProps = {
+type RunInfoProps = {
+  status: TransformRunStatus;
   message: string;
   endTime: Date | null;
 };
 
-export function RunErrorInfo({ message, endTime }: RunErrorInfoProps) {
+export function RunInfo({ status, message, endTime }: RunInfoProps) {
   const [isOpened, { open, close }] = useDisclosure();
 
   const handleIconClick = (event: MouseEvent) => {
@@ -38,16 +40,20 @@ export function RunErrorInfo({ message, endTime }: RunErrorInfoProps) {
     event.stopPropagation();
   };
 
+  if (!message || (status !== "failed" && status !== "succeeded")) {
+    return null;
+  }
+
   return (
     <>
-      <Tooltip label={t`See error`}>
+      <Tooltip label={getTooltip(status)}>
         <ActionIcon aria-label={t`See error`} onClick={handleIconClick}>
           <Icon name="document" />
         </ActionIcon>
       </Tooltip>
       {isOpened && (
         <Modal
-          title={getTitle(endTime)}
+          title={getTitle(status, endTime)}
           size="xl"
           padding="xl"
           opened
@@ -55,17 +61,34 @@ export function RunErrorInfo({ message, endTime }: RunErrorInfoProps) {
           onClose={close}
         >
           <FocusTrap.InitialFocus />
-          <RunErrorModalContent message={message} onClose={close} />
+          <RunInfoModalContent message={message} onClose={close} />
         </Modal>
       )}
     </>
   );
 }
 
-function getTitle(endTime: Date | null) {
-  return endTime
-    ? t`Failed at ${dayjs(endTime).format("lll")}, with this error`
-    : t`Failed with this error`;
+function getTooltip(status: TransformRunStatus) {
+  if (status === "failed") {
+    return t`See error`;
+  }
+  if (status === "succeeded") {
+    return t`See logs`;
+  }
+}
+
+function getTitle(status: TransformRunStatus, endTime: Date | null) {
+  if (status === "failed") {
+    return endTime
+      ? t`Failed at ${dayjs(endTime).format("lll")}, with this error`
+      : t`Failed with this error`;
+  }
+  if (status === "succeeded") {
+    return endTime
+      ? t`Succeeded at ${dayjs(endTime).format("lll")}, with the following logs`
+      : t`Succeeded with the following logs`;
+  }
+  return null;
 }
 
 type RunErrorModalContentProps = {
@@ -73,7 +96,7 @@ type RunErrorModalContentProps = {
   onClose: () => void;
 };
 
-function RunErrorModalContent({ message, onClose }: RunErrorModalContentProps) {
+function RunInfoModalContent({ message, onClose }: RunErrorModalContentProps) {
   return (
     <Stack pt="md" gap="lg">
       <Box className={S.codeContainer} pos="relative" pr="lg">
