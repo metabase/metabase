@@ -19,6 +19,7 @@ export const SearchBarRoot = styled.div`
   width: 100%;
 
   ${breakpointMinSmall} {
+    max-width: 14.5rem;
     position: relative;
   }
 `;

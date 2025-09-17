@@ -5,6 +5,7 @@
    [metabase-enterprise.advanced-permissions.query-processor.middleware.permissions :as ee.qp.perms]
    [metabase-enterprise.sandbox.query-processor.middleware.sandboxing :as sandboxing]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.permissions.core :as perms]
@@ -56,25 +57,31 @@
 
 (defn- mbql-download-query
   ([]
-   (mbql-download-query 'venues))
+   (mbql-download-query :venues))
 
   ([table-name]
-   {:database (mt/id)
-    :type     :query
-    :query    {:source-table (mt/id table-name)}
-    :info     {:context (api.dataset/export-format->context :csv)}}))
+   (lib/query
+    (mt/metadata-provider)
+    {:database (mt/id)
+     :type     :query
+     :query    {:source-table (mt/id table-name)}
+     :info     {:context (api.dataset/export-format->context :csv)}})))
 
 (defn- native-download-query []
-  {:database (mt/id)
-   :type     :native
-   :native   {:query "select * from venues"}
-   :info     {:context (api.dataset/export-format->context :csv)}})
+  (lib/query
+   (mt/metadata-provider)
+   {:database (mt/id)
+    :type     :native
+    :native   {:query "select * from venues"}
+    :info     {:context (api.dataset/export-format->context :csv)}}))
 
 (defn- download-limit
   [query]
-  (-> query
-      (ee.qp.perms/apply-download-limit)
-      (get-in [:query :limit])))
+  (-> (if (:lib/type query)
+        query
+        (lib/query (mt/metadata-provider) query))
+      ee.qp.perms/apply-download-limit
+      lib/current-limit))
 
 (deftest apply-download-limit-test
   (let [limited-download-max-rows @#'ee.qp.perms/max-rows-in-limited-downloads]
@@ -86,9 +93,7 @@
 
         (testing "If the query already has a limit lower than the download limit, the limit is not changed"
           (is (= (dec limited-download-max-rows)
-                 (download-limit (assoc-in (mbql-download-query)
-                                           [:query :limit]
-                                           (dec limited-download-max-rows))))))
+                 (download-limit (lib/limit (mbql-download-query) (dec limited-download-max-rows))))))
 
         (testing "Native queries are unmodified"
           (is (= (native-download-query) (ee.qp.perms/apply-download-limit (native-download-query))))))
@@ -124,7 +129,7 @@
           (is (= (inc limited-download-max-rows)
                  (-> (native-download-query) limit-download-result-rows mt/rows count))))))))
 
-(defn- check-download-permisions [query]
+(defn- check-download-permissions [query]
   (let [qp (ee.qp.perms/check-download-permissions
             (fn [query _rff]
               query))]
@@ -139,23 +144,24 @@
         (is (thrown-with-msg?
              ExceptionInfo
              download-perms-error-msg
-             (check-download-permisions (mbql-download-query))))
-
+             (check-download-permissions (mbql-download-query))))
         (testing "No exception is thrown for non-download queries"
-          (let [query (dissoc (mbql-download-query 'venues) :info)]
-            (is (= query (check-download-permisions query)))))))))
+          (let [query (dissoc (mbql-download-query :venues) :info)]
+            (is (= query (check-download-permissions query)))))))))
 
 (deftest check-download-permissions-test-2
   (testing "No exception is thrown if the user has any (full or limited) download permissions for the DB"
     (with-download-perms-for-db! (mt/id) :full
       (mt/with-current-user (mt/user->id :rasta)
         (is (= (mbql-download-query)
-               (check-download-permisions (mbql-download-query))))))
+               (check-download-permissions (mbql-download-query))))))))
 
+(deftest check-download-permissions-test-3
+  (testing "No exception is thrown if the user has any (full or limited) download permissions for the DB"
     (with-download-perms-for-db! (mt/id) :limited
       (mt/with-current-user (mt/user->id :rasta)
         (is (= (mbql-download-query)
-               (check-download-permisions (mbql-download-query))))))))
+               (check-download-permissions (mbql-download-query))))))))
 
 (deftest check-download-permissions-when-advanced-mbql-sandboxed-test
   (testing "Applying a basic sandbox does not affect the download permissions for a table"
@@ -174,9 +180,9 @@
                                                            (mt/id :reviews)    :limited
                                                            (mt/id :orders)     :limited}}}
           (mt/with-metadata-provider (mt/id)
-            (let [with-sandbox (apply-row-level-permissions (mbql-download-query 'checkins))]
+            (let [with-sandbox (apply-row-level-permissions (mbql-download-query :checkins))]
               (is (= with-sandbox
-                     (check-download-permisions with-sandbox))))))))))
+                     (check-download-permissions with-sandbox))))))))))
 
 (deftest check-download-permissions-when-advanced-sql-sandboxed-test
   (testing "Applying a advanced sandbox does not affect the download permissions for a table"
@@ -197,7 +203,7 @@
         (mt/with-metadata-provider (mt/id)
           (let [with-sandbox (apply-row-level-permissions (mbql-download-query 'checkins))]
             (is (= with-sandbox
-                   (check-download-permisions with-sandbox)))))))))
+                   (check-download-permissions with-sandbox)))))))))
 
 ;;; +----------------------------------------------------------------------- -----------------------------------------+
 ;;; |                                                E2E tests                                                       |

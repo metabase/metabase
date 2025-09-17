@@ -2,8 +2,8 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.util.match :as lib.util.match]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise-schema]]
    [metabase.query-permissions.core :as query-perms]
@@ -20,29 +20,18 @@
   (some-> query :info :context name (str/includes? "download")))
 
 (defmulti ^:private current-user-download-perms-level
-  {:arglists '([mbql-query])}
-  (mu/fn [query :- ::mbql.s/Query]
-    (:type query)))
+  {:arglists '([mbql5-query])}
+  (mu/fn [query :- ::lib.schema/query]
+    (:lib/type (lib/query-stage query -1))))
 
-(defmethod current-user-download-perms-level :default
-  [_]
-  :one-million-rows)
-
-(defmethod current-user-download-perms-level :native
+(defmethod current-user-download-perms-level :mbql.stage/native
   [{database-id :database, :as _query}]
   (perms/native-download-permission-for-user api/*current-user-id* database-id))
 
-(mu/defn- any-native-stage?
-  "Returns true if any stage of this query is native."
-  [query :- ::mbql.s/Query]
-  (boolean (lib.util.match/match-one query
-             (m :guard (every-pred map? :native))
-             true)))
-
-(mu/defmethod current-user-download-perms-level :query
-  [{db-id :database, :as query} :- ::mbql.s/Query]
+(mu/defmethod current-user-download-perms-level :mbql.stage/mbql
+  [{db-id :database, :as query} :- ::lib.schema/query]
   (let [{:keys [table-ids native?]} (query-perms/query->source-ids query)
-        perms (if (or native? (any-native-stage? query))
+        perms (if (or native? (lib/any-native-stage? query))
                 ;; If we detect any native subqueries/joins, even with source-card IDs, require full native
                 ;; download perms
                 #{(perms/native-download-permission-for-user api/*current-user-id* db-id)}
@@ -54,26 +43,24 @@
         (perms :ten-thousand-rows)
         :one-million-rows)))
 
-(defenterprise-schema apply-download-limit :- ::mbql.s/Query
+(defenterprise-schema apply-download-limit :- ::lib.schema/query
   "Pre-processing middleware to apply row limits to MBQL export queries if the user has `ten-thousand-rows` download
   perms. This does not apply to native queries, which are instead limited by the [[limit-download-result-rows]]
   post-processing middleware."
   :feature :advanced-permissions
-  [{query-type :type, {original-limit :limit} :query, :as query} :- ::mbql.s/Query]
-  (if (and (is-download? query)
-           (= query-type :query)
-           (= (current-user-download-perms-level query) :ten-thousand-rows))
-    (assoc-in query
-              [:query :limit]
-              (apply min (filter some? [original-limit max-rows-in-limited-downloads])))
-    query))
+  [query :- ::lib.schema/query]
+  (cond-> query
+    (and (is-download? query)
+         (= (:lib/type (lib/query-stage query -1)) :mbql.stage/mbql)
+         (= (current-user-download-perms-level query) :ten-thousand-rows))
+    (lib/limit ((fnil min Integer/MAX_VALUE) (lib/current-limit query -1) max-rows-in-limited-downloads))))
 
 (defenterprise-schema limit-download-result-rows :- ::qp.schema/rff
   "Post-processing middleware to limit the number of rows included in downloads if the user has `limited` download
   perms. Mainly useful for native queries, which are not modified by the [[apply-download-limit]] pre-processing
   middleware."
   :feature :advanced-permissions
-  [query :- ::mbql.s/Query
+  [query :- ::lib.schema/query
    rff   :- ::qp.schema/rff]
   (if (and (is-download? query)
            (= (current-user-download-perms-level query) :ten-thousand-rows))
@@ -89,7 +76,7 @@
   the query metadata so that the frontend can determine whether to show the download option on the UI."
   :feature :advanced-permissions
   [qp :- ::qp.schema/qp]
-  (mu/fn [query :- ::mbql.s/Query
+  (mu/fn [query :- ::lib.schema/query
           rff   :- ::qp.schema/rff]
     (let [download-perms-level (if api/*current-user-id*
                                  (current-user-download-perms-level query)

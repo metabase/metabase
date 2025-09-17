@@ -50,6 +50,8 @@
     :model/DashboardCardSeries
     :model/LoginHistory
     :model/FieldValues
+    :model/MetabotConversation
+    :model/MetabotMessage
     :model/ModelIndex
     :model/ModelIndexValue
     :model/ModerationReview
@@ -89,6 +91,7 @@
     :model/TransformJobTransformTag
     :model/TransformTag
     :model/TransformTransformTag
+    :model/PythonLibrary
     :model/Undo
     :model/User
     :model/UserParameterValue
