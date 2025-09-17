@@ -1,4 +1,4 @@
-import { getIn, updateIn } from "icepick";
+import { getIn, updateIn, assocIn } from "icepick";
 import { P, match } from "ts-pattern";
 import _ from "underscore";
 
@@ -80,11 +80,11 @@ export function createEmbeddedAnalyticsJsUsage(
     match(embed.properties)
       .with({ componentName: "metabase-dashboard" }, (properties) => {
         if (!usage.dashboard) {
-          usage.dashboard = {
+          usage = assocIn(usage, ["dashboard"], {
             drills: { true: 0, false: 0 },
             with_downloads: { true: 0, false: 0 },
             with_title: { true: 0, false: 0 },
-          };
+          });
         }
         usage = incrementComponentPropertyCount(
           "dashboard.drills",
@@ -106,9 +106,9 @@ export function createEmbeddedAnalyticsJsUsage(
         { componentName: "metabase-question", questionId: "new" },
         (properties) => {
           if (!usage.exploration) {
-            usage.exploration = {
+            usage = assocIn(usage, ["exploration"], {
               is_save_enabled: { true: 0, false: 0 },
-            };
+            });
           }
           usage = incrementComponentPropertyCount(
             "exploration.is_save_enabled",
@@ -123,12 +123,12 @@ export function createEmbeddedAnalyticsJsUsage(
         },
         (properties) => {
           if (!usage.question) {
-            usage.question = {
+            usage = assocIn(usage, ["question"], {
               drills: { true: 0, false: 0 },
               with_downloads: { true: 0, false: 0 },
               with_title: { true: 0, false: 0 },
               is_save_enabled: { true: 0, false: 0 },
-            };
+            });
           }
           usage = incrementComponentPropertyCount(
             "question.drills",
@@ -154,9 +154,9 @@ export function createEmbeddedAnalyticsJsUsage(
       )
       .with({ componentName: "metabase-browser" }, (properties) => {
         if (!usage.browser) {
-          usage.browser = {
+          usage = assocIn(usage, ["browser"], {
             read_only: { true: 0, false: 0 },
-          };
+          });
         }
         usage = incrementComponentPropertyCount(
           "browser.read_only",
