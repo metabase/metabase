@@ -140,11 +140,6 @@ function CreateTransformForm({
             minRows={4}
             maxRows={10}
           />
-          <SchemaFormSelect
-            name="targetSchema"
-            label={t`Schema`}
-            data={schemas}
-          />
           {supportsSchemas && (
             <SchemaFormSelect
               name="targetSchema"
