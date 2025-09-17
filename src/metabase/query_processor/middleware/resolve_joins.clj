@@ -6,131 +6,79 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.util :as lib.schema.util]
-   [metabase.lib.util :as lib.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
-   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
-
-(mr/def ::joins
-  "Schema for a non-empty sequence of ::joins. Unlike `:metabase.lib.schema.join/joins`, this does not enforce the
-  constraint that all join aliases be unique."
-  [:sequential {:min 1} ::lib.schema.join/join])
-
-(mr/def ::unresolved-stage
-  "Schema for the parts of the query we're modifying. For use in the various intermediate transformations in the
-  middleware."
-  [:map
-   [:joins [:sequential ::lib.schema.join/join]]
-   [:fields {:optional true} ::lib.schema/fields]])
-
-(mr/def ::resolved-stage
-  "Schema for the final results of this middleware."
-  [:and
-   ::unresolved-stage
-   [:fn
-    {:error/message "Valid MBQL query where `:joins` `:fields` is sequence of Fields or removed"}
-    (fn [{:keys [joins]}]
-      (every?
-       (fn [{:keys [fields]}]
-         (or
-          (empty? fields)
-          (sequential? fields)))
-       joins))]])
-
-(mu/defn- resolve-fields! :- :nil
-  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   joins                 :- ::joins]
-  (lib.metadata/bulk-metadata-or-throw metadata-providerable
-                                       :metadata/column
-                                       (lib.util.match/match joins [:field _opts (id :guard pos-int?)] id))
-  nil)
-
-(mu/defn- resolve-tables! :- :nil
-  "Add Tables referenced by `:joins` to the Query Processor Store. This is only really needed for implicit joins,
-  because their Table references are added after `resolve-source-tables` runs."
-  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   joins                 :- ::joins]
-  (when-let [source-table-ids (not-empty (into #{}
-                                               (comp (mapcat :stages)
-                                                     (keep :source-table))
-                                               joins))]
-    (lib.metadata/bulk-metadata-or-throw metadata-providerable :metadata/table source-table-ids))
-  nil)
+   [metabase.util.malli :as mu]))
 
 (mu/defn- merge-defaults :- ::lib.schema.join/join
   [join]
+  ;;; TODO (Cam 9/16/25) -- if we made `:strategy` a required key with a `:default` value in
+  ;;; `:metabase.lib.schema.join/join` then Lib normalization could handle this for us and we wouldn't need QP
+  ;;; middleware to do it. Seems like the better way to deal with defaults. (QUE-2469)
   (merge {:strategy :left-join}
          (when (str/starts-with? (:alias join) lib/legacy-default-join-alias)
            {:qp/keep-default-join-alias true})
          join))
 
-(defn- join-fields [{:keys [alias], :as join} source-metadata]
-  (when-not (seq source-metadata)
-    (throw (ex-info (tru "Cannot use :fields :all in join against source query unless it has :source-metadata.")
-                    {:join join})))
+(defn- join-field-refs [cols]
   (let [duplicate-ids (into #{}
                             (keep (fn [[item freq]]
                                     (when (> freq 1)
                                       item)))
-                            (frequencies (map :id source-metadata)))]
-    (for [{field-name :name
-           base-type :base-type
-           field-id :id} source-metadata]
-      (-> (or (when (and field-id (not (contains? duplicate-ids field-id)))
-                [:field {} field-id])
-              [:field {:base-type base-type} field-name])
-          lib/ensure-uuid
-          (lib/with-join-alias alias)))))
+                            (frequencies (map :id cols)))]
+    ;; TODO (Cam 9/16/25) -- forcing refs of certain types like this is wonky, but when I try to change this tons of
+    ;; stuff breaks. Forcing ID refs doesn't work because a join can return multiple versions of the same column
+    ;; bucketed in different ways in previous stages; joins thus ought to be using field name refs; but this ends up
+    ;; breaking a ton of stuff, especially `lib.equality`... #63109 was my attempt to make this stuff work when using
+    ;; field name refs for joins but it's a long way off from landing.
+    ;;
+    ;; NOCOMMIT
+    (for [{field-id :id, :as col} cols
+          :let                    [[_tag opts id-or-name, :as field-ref] (lib/ref col)
+                                   force-id-ref?         (and (string? id-or-name)
+                                                              field-id
+                                                              (not (contains? duplicate-ids field-id)))
+                                   force-field-name-ref? (and (pos-int? id-or-name)
+                                                              (contains? duplicate-ids field-id))]]
+
+      (cond
+        force-id-ref?
+        [:field opts field-id]
+
+        force-field-name-ref?
+        [:field opts (:lib/source-column-alias col)]
+
+        :else
+        field-ref))))
 
 (mu/defn- handle-all-fields :- ::lib.schema.join/join
   "Replace `:fields :all` in a join with an appropriate list of Fields."
-  [query                                   :- ::lib.schema/query
-   {:keys [stages fields], :as join} :- ::lib.schema.join/join]
+  [query                             :- ::lib.schema/query
+   path :- ::lib.walk/path
+   {:keys [fields], :as join} :- ::lib.schema.join/join]
   (merge
    join
    (when (= fields :all)
-     {:fields (join-fields join (lib/returned-columns
-                                 (-> (assoc query :stages stages)
-                                     lib/append-stage)
-                                 -1
-                                 -1
-                                 {:include-remaps? (not (get-in query [:middleware :disable-remaps?]))}))})))
+     ;; do not `:include-remaps?` here, they will get added by the [[metabase.query-processor.middleware.add-remaps]]
+     ;; middleware.
+     {:fields (join-field-refs
+               (lib.walk/apply-f-for-stage-at-path
+                lib/join-fields-to-add-to-parent-stage
+                query
+                path
+                join
+                {:include-remaps? false}))})))
 
-(defn- ^:deprecated deduplicate-aliases
-  "DEPRECATED -- no longer needed"
-  []
-  (let [unique-name-generator (lib.util/non-truncating-unique-name-generator)]
-    (map (fn [join]
-           (update join :alias unique-name-generator)))))
-
-(mu/defn- resolve-references :- ::joins
+(mu/defn- resolve-join :- ::lib.schema.join/join
   [query :- ::lib.schema/query
-   joins :- ::joins]
-  (resolve-tables! query joins)
-  (u/prog1 (into []
-                 (comp (map merge-defaults)
-                       (map (partial handle-all-fields query))
-                       (deduplicate-aliases))
-                 joins)
-    (resolve-fields! query <>)))
-
-(declare resolve-joins-in-mbql-query-all-levels)
-
-(mu/defn- resolve-join-source-queries :- ::joins
-  [joins :- ::joins]
-  (for [{:keys [source-query], :as join} joins]
-    (cond-> join
-      source-query resolve-joins-in-mbql-query-all-levels)))
+   path  :- ::lib.walk/path
+   join  :- ::lib.schema.join/join]
+  (->> join
+       merge-defaults
+       (handle-all-fields query path)))
 
 (defn- joins->fields
   "Return a flattened list of all `:fields` referenced in `joins`."
@@ -153,12 +101,12 @@
 (defn- should-add-join-fields?
   "Should we append the `:fields` from `:joins` to the parent-level query's `:fields`? True unless the parent-level
   query has breakouts or aggregations."
-  [{breakouts :breakout, aggregations :aggregation}]
+  [{breakouts :breakout, aggregations :aggregation, :as _stage}]
   (every? empty? [aggregations breakouts]))
 
+;;; TODO (Cam 9/16/25) -- update this to use [[metabase.lib.stage/add-cols-from-join]] or share more logic with it
 (defn- append-join-fields
-  "This (supposedly) matches the behavior of [[metabase.lib.stage/add-cols-from-join]]. When we migrate this namespace
-  to Lib we can maybe use that."
+  "This (supposedly) matches the behavior of [[metabase.lib.stage/add-cols-from-join]]."
   [fields join-fields]
   ;; we shouldn't consider different type info to mean two Fields are different even if everything else is the same. So
   ;; give everything `:base-type` of `:type/*` (it will complain if we remove `:base-type` entirely from fields with a
@@ -174,16 +122,15 @@
   (cond-> stage
     (seq join-fields) (update :fields append-join-fields join-fields)))
 
-(mu/defn- merge-joins-fields :- ::unresolved-stage
+(mu/defn- merge-joins-fields :- ::lib.schema/stage.mbql
   "Append the `:fields` from `:joins` into their parent level as appropriate so joined columns appear in the final
   query results, and remove the `:fields` entry for all joins.
 
   If the parent-level query has breakouts and/or aggregations, this function won't append the joins fields to the
   parent level, because we should only be returning the ones from the ags and breakouts in the final results."
-  [{:keys [joins], :as stage} :- ::unresolved-stage]
+  [{:keys [joins], :as stage} :- ::lib.schema/stage.mbql]
   (let [join-fields (when (should-add-join-fields? stage)
                       (joins->fields joins))
-        ;; remove remaining keyword `:fields` like `:none` from joins
         stage       (update stage :joins (fn [joins]
                                            (mapv (fn [{:keys [fields], :as join}]
                                                    (cond-> join
@@ -191,22 +138,18 @@
                                                  joins)))]
     (append-join-fields-to-fields stage join-fields)))
 
-(mu/defn- resolve-joins-in-stage :- ::resolved-stage
-  [query :- ::lib.schema/query
-   stage :- ::lib.schema/stage]
-  (-> stage
-      (update :joins (comp resolve-join-source-queries
-                           (partial resolve-references query)))
-      merge-joins-fields))
-
 ;; TODO (Cam 9/10/25) -- once we convert this to Lib we can remove
 ;; the [[metabase.query-processor.middleware.ensure-joins-use-source-query/ensure-joins-use-source-query]] middleware
 ;; entirely
 (mu/defn resolve-joins :- ::lib.schema/query
-  "Add any Tables and Fields referenced by the `:joins` clause to the QP store."
+  "1. Walk joins and merge defaults like `:strategy :left-join`
+   2. Walk joins and resolve `:fields :all` to a vector of field refs
+   3. Walk stages and merge in `:fields` from `:joins`"
   [query :- ::lib.schema/query]
-  (lib.walk/walk-stages
-   query
-   (fn [query _path stage]
-     (when (seq (:joins stage))
-       (resolve-joins-in-stage query stage)))))
+  (-> query
+      (lib.walk/walk (fn [query path-type path join]
+                       (when (= path-type :lib.walk/join)
+                         (resolve-join query path join))))
+      (lib.walk/walk-stages (fn [__query _path stage]
+                              (when (seq (:joins stage))
+                                (merge-joins-fields stage))))))

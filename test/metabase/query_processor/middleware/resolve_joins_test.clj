@@ -6,12 +6,8 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.resolve-joins :as resolve-joins]
-   [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.test :as mt]))
-
-(ns-unalias *ns* 'qp.store)
+   [metabase.query-processor.preprocess :as qp.preprocess]))
 
 (defn- resolve-joins
   ([query]
@@ -124,21 +120,6 @@
                          :condition    [:= $category-id 1]}
                         {:source-table $$categories
                          :condition    [:= $category-id 2]}]}))))))
-
-(deftest ^:parallel disallow-joins-against-table-on-different-db-test
-  (testing "Test that joining against a table in a different DB throws an Exception"
-    (let [mp (lib.tu/mock-metadata-provider
-              {:database meta/database
-               :tables   [(meta/table-metadata :venues)]})]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"\QFailed to fetch :metadata/table\E"
-           (resolve-joins
-            mp
-            (lib.tu.macros/mbql-query venues
-              {:joins [{:source-table (meta/id :categories)
-                        :alias        "t"
-                        :condition    [:= $category-id 1]}]})))))))
 
 (deftest ^:parallel resolve-explicit-joins-when-implicit-joins-are-present-test
   (testing "test that resolving explicit joins still works if implict joins are present"
