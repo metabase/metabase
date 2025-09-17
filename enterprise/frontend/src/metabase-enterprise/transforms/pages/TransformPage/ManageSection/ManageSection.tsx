@@ -11,7 +11,7 @@ import type { Transform } from "metabase-types/api";
 import { QueryView } from "../../../components/QueryView";
 import { TitleSection } from "../../../components/TitleSection";
 import { getTransformListUrl, getTransformQueryUrl } from "../../../urls";
-import { isRunningOrSyncing } from "../utils";
+import { isTransformRunning } from "../utils";
 
 import { DeleteTransformModal } from "./DeleteTransformModal";
 
@@ -42,7 +42,7 @@ type EditQueryButtonProps = {
 };
 
 function EditQueryButton({ transform }: EditQueryButtonProps) {
-  const isDisabled = isRunningOrSyncing(transform);
+  const isDisabled = isTransformRunning(transform);
 
   return (
     <Button
@@ -75,7 +75,7 @@ function DeleteTransformButton({ transform }: DeleteTransformButtonProps) {
     <>
       <Button
         leftSection={<Icon name="trash" aria-hidden />}
-        disabled={isRunningOrSyncing(transform)}
+        disabled={isTransformRunning(transform)}
         onClick={openModal}
       >
         {t`Delete`}

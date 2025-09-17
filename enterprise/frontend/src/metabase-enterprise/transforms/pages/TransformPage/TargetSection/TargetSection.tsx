@@ -27,7 +27,7 @@ import {
   getQueryBuilderUrl,
   getTableMetadataUrl,
 } from "../../../urls";
-import { isRunningOrSyncing } from "../utils";
+import { isTransformRunning } from "../utils";
 
 import { UpdateTargetModal } from "./UpdateTargetModal";
 
@@ -185,7 +185,7 @@ function EditTargetButton({ transform }: EditTargetButtonProps) {
     <>
       <Button
         leftSection={<Icon name="pencil_lines" aria-hidden />}
-        disabled={isRunningOrSyncing(transform)}
+        disabled={isTransformRunning(transform)}
         onClick={openModal}
       >
         {t`Change target`}

@@ -16,7 +16,7 @@ import { ManageSection } from "./ManageSection";
 import { NameSection } from "./NameSection";
 import { RunSection } from "./RunSection";
 import { TargetSection } from "./TargetSection";
-import { isRunningOrSyncing } from "./utils";
+import { isTransformRunning, isTransformSyncing } from "./utils";
 
 type TransformPageParams = {
   transformId: string;
@@ -76,5 +76,8 @@ function getParsedParams({
 }
 
 function isPollingNeeded(transform?: Transform) {
-  return transform != null && isRunningOrSyncing(transform);
+  return (
+    transform != null &&
+    (isTransformRunning(transform) || isTransformSyncing(transform))
+  );
 }
