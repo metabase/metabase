@@ -89,6 +89,7 @@
                               :expression-literals                    true
                               :database-routing                       true
                               :metadata/table-existence-check         true
+                              :transforms/python                      true
                               :transforms/table                       true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 

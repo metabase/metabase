@@ -56,6 +56,7 @@
                               :actions                         false
                               :metadata/key-constraints        (not driver-api/is-test?)
                               :database-routing                true
+                              :transforms/python               true
                               :transforms/table                true}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
