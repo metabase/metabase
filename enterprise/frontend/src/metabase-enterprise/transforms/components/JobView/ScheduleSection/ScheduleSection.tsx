@@ -9,7 +9,7 @@ import {
 } from "metabase/lib/cron";
 import { timezoneToUTCOffset } from "metabase/lib/time-dayjs";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box, Divider, Group, Icon, Tooltip } from "metabase/ui";
+import { Divider, Group, Icon, Stack, Tooltip } from "metabase/ui";
 import { useRunTransformJobMutation } from "metabase-enterprise/api";
 import { trackTranformJobTriggerManualRun } from "metabase-enterprise/transforms/analytics";
 
@@ -29,36 +29,19 @@ export function ScheduleSection({
   const [schedule, setSchedule] = useState(() =>
     formatCronExpressionForUI(job.schedule),
   );
-  const scheduleExplanation = getScheduleExplanation(schedule);
-  const systemTimezone = useSetting("system-timezone") ?? "UTC";
-  const timezoneOffset = timezoneToUTCOffset(systemTimezone);
-  const timezoneExplanation =
-    timezoneOffset === "+00:00" ? "UTC" : `UTC${timezoneOffset}`;
-
   return (
     <SplitSection
       label={t`Schedule`}
       description={t`Use cron syntax to set this job’s schedule.`}
     >
-      <Box px="xl" py="lg">
-        <CronSection
-          schedule={schedule}
-          onChangeSchedule={setSchedule}
-          onChangeSubmit={onScheduleChange}
-        />
-      </Box>
+      <CronSection
+        schedule={schedule}
+        onChangeSchedule={setSchedule}
+        onChangeSubmit={onScheduleChange}
+      />
+
       <Divider />
-      <Group
-        px="xl"
-        py="md"
-        justify={scheduleExplanation ? "space-between" : "end"}
-      >
-        {scheduleExplanation != null && (
-          <Group gap="sm" c="text-secondary">
-            <Icon name="calendar" />
-            {t`This job will run ${scheduleExplanation}, ${timezoneExplanation}`}
-          </Group>
-        )}
+      <Group px="xl" py="md" justify="end">
         <RunButtonSection job={job} />
       </Group>
     </SplitSection>
@@ -76,12 +59,26 @@ function CronSection({
   onChangeSchedule,
   onChangeSubmit,
 }: CronSectionProps) {
+  const scheduleExplanation = getScheduleExplanation(schedule);
+  const systemTimezone = useSetting("system-timezone") ?? "UTC";
+  const timezoneOffset = timezoneToUTCOffset(systemTimezone);
+  const timezoneExplanation =
+    timezoneOffset === "+00:00" ? "UTC" : `UTC${timezoneOffset}`;
+
   return (
-    <CronExpressionInput
-      value={schedule}
-      onChange={onChangeSchedule}
-      onBlurChange={onChangeSubmit}
-    />
+    <Stack px="xl" py="lg">
+      <CronExpressionInput
+        value={schedule}
+        onChange={onChangeSchedule}
+        onBlurChange={onChangeSubmit}
+      />
+      {scheduleExplanation != null && (
+        <Group gap="sm" c="text-secondary">
+          <Icon name="calendar" />
+          {t`This job will run ${scheduleExplanation}, ${timezoneExplanation}`}
+        </Group>
+      )}
+    </Stack>
   );
 }
 
