@@ -160,6 +160,18 @@
    :requires [[mage.stats-repl :as stats-repl]]
    :task     (stats-repl/connect (cli/parse! (current-task)))}
 
+  notify
+  {:doc      "Send notification for a comment (that already exists"
+   :requires [[mage.be-dev :refer [nrepl-eval]]]
+   :options  [["-c" "--comment-id ID" "Notify about this comment id"]
+              ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
+   :task     (let [opts (:options (cli/parse! (current-task)))
+                   ;; note: no quoting -> expect it to be int
+                   code (format "(notify-comment-id! %d)" (parse-long (:comment-id opts)))]
+               (if (:port opts)
+                 (nrepl-eval "metabase-enterprise.comments.core" code (:port opts))
+                 (nrepl-eval "metabase-enterprise.comments.core" code)))}
+
   ls {:doc      "List all mage public and private tasks"
       :examples [["./bin/mage ls" "List all tasks"]]
       :requires [[mage.util :as u]]

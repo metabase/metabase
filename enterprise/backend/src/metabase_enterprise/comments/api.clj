@@ -104,6 +104,46 @@
                      (t2/hydrate :creator :reactions))]
     {:comments (render-comments comments)}))
 
+(defn notify-comment!
+  "Send a notification about comment"
+  [{:keys [target_type target_id parent_comment_id] :as comment}
+   & [{:keys [entity parent]
+       ;; if you don't pass them we'll try to fetch them
+       :or   {entity (t2/select-one (TYPE->MODEL target_type) :id target_id)
+              parent (when parent_comment_id
+                       (t2/select-one :model/Comment :id parent_comment_id))}}]]
+  (let [clause     (if parent_comment_id
+                     {:where [:in :id {:from   [:comment]
+                                       :select [:creator_id]
+                                       :where  [:or
+                                                [:= :id parent_comment_id]
+                                                [:= :parent_comment_id parent_comment_id]]}]}
+                     ;; TODO: when we expand to more entity types, add dispatch here if not everyone has `creator_id`
+                     {:where [:= :id (:creator_id entity)]})
+        mentions   (comment/mentions (:content comment))
+        recipients (-> (t2/select-fn-set :email [:model/User :email]
+                                         (cond-> clause
+                                           (seq mentions) (sql.helpers/where :or [:in :id mentions])))
+                       (disj (:email @api/*current-user*)))
+        payload    {:entity_type    (:target_type comment)
+                    :entity_title   (:name entity)
+                    :comment_href   (comment/url entity comment)
+                    :document_href  (urlpath-for entity)
+                    :created_at     (:created_at comment)
+                    :author         (:common_name (:creator comment))
+                    :comment        (content->str (:content comment))
+                    :comment_html   (:content_html comment)
+                    :parent_author  (:common_name (:creator parent))
+                    :parent_comment (content->str (:content parent))}]
+    (doseq [email recipients]
+      (events/publish-event! :event/comment-created (assoc payload :email email)))))
+
+(defn notify-comment-id!
+  "Send a notification using only comment id"
+  [comment-id]
+  (notify-comment! (-> (t2/select-one :model/Comment :id comment-id)
+                       (t2/hydrate :creator :reactions))))
+
 (api.macros/defendpoint :post "/"
   "Create a new comment"
   [_route-params
@@ -130,32 +170,8 @@
                                                        :creator_id        api/*current-user-id*})
                        (t2/hydrate :creator)
                        ;; New comments always have empty reactions map
-                       (assoc :reactions []))
-        clause     (if parent_comment_id
-                     {:where [:in :id {:from   [:comment]
-                                       :select [:creator_id]
-                                       :where  [:or
-                                                [:= :id parent_comment_id]
-                                                [:= :parent_comment_id parent_comment_id]]}]}
-                     ;; FIXME: add dispatch on different entity types
-                     {:where [:= :id (:creator_id entity)]})
-        mentions   (comment/mentions content)
-        recipients (-> (t2/select-fn-set :email [:model/User :email]
-                                         (cond-> clause
-                                           (seq mentions) (sql.helpers/where :or [:in :id mentions])))
-                       (disj (:email @api/*current-user*)))
-        payload    {:entity_type    target_type
-                    :entity_title   (:name entity)
-                    :comment_href   (comment/url entity comment)
-                    :document_href  (urlpath-for entity)
-                    :created_at     (:created_at comment)
-                    :author         (:common_name (:creator comment))
-                    :comment        (content->str (:content comment))
-                    :comment_html   (:content_html comment)
-                    :parent_author  (:common_name (:creator parent))
-                    :parent_comment (content->str (:content parent))}]
-    (doseq [email recipients]
-      (events/publish-event! :event/comment-created (assoc payload :email email)))
+                       (assoc :reactions []))]
+    (notify-comment! comment {:entity entity :parent parent})
     comment))
 
 (api.macros/defendpoint :put "/:comment-id"
@@ -180,13 +196,13 @@
       ;; Anyone with write permission to target entity can resolve/unresolve
       (api/write-check entity))
 
-    (when-let [updates (-> {:content content :is_resolved is_resolved}
-                           u/remove-nils
-                           not-empty)]
-      (t2/update! :model/Comment comment-id updates))
+    (let [updates (u/remove-nils {:content content :is_resolved is_resolved})]
+      (when (seq updates)
+        (t2/update! :model/Comment comment-id updates))
 
-    (-> (t2/select-one :model/Comment :id comment-id)
-        (t2/hydrate :creator :reactions))))
+      (cond-> (t2/select-one :model/Comment :id comment-id)
+        true               (t2/hydrate :creator :reactions)
+        (:content updates) (u/prog1 (notify-comment! <> {:entity entity}))))))
 
 (api.macros/defendpoint :delete "/:comment-id"
   "Soft delete a comment"
