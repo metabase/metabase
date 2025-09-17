@@ -35,7 +35,7 @@ export function DatabaseConnectionStringField({
   location: FormLocation;
 }) {
   const [status, setStatus] = useState<"success" | "failure" | null>(null);
-  const lastClearedStatusRef = useRef<"success" | "failure" | null>(null);
+  const lastParseStatusRef = useRef<"success" | "failure" | null>(null);
   const { start: delayedClearStatus, clear: clearTimeout } = useTimeout(
     () => setStatus(null),
     FEEDBACK_TIMEOUT,
@@ -47,7 +47,7 @@ export function DatabaseConnectionStringField({
   useEffect(() => {
     async function handleConnectionStringChange() {
       if (!connectionString || !isEngineKey(engineKey)) {
-        lastClearedStatusRef.current = null;
+        lastParseStatusRef.current = null;
         delayedClearStatus();
         return () => clearTimeout();
       }
@@ -57,12 +57,10 @@ export function DatabaseConnectionStringField({
       // it was not possible to parse the connection string
       if (!parsedValues) {
         setStatus("failure");
-        lastClearedStatusRef.current = "failure";
+        lastParseStatusRef.current = "failure";
         delayedClearStatus();
         return () => clearTimeout();
       }
-
-      lastClearedStatusRef.current = "success";
 
       const fieldsMap = mapDatabaseValues(parsedValues, engineKey);
       const fields = mapFieldsToNestedObject(fieldsMap) as DatabaseData;
@@ -72,7 +70,9 @@ export function DatabaseConnectionStringField({
 
       // if there are no values, we couldn't get any details from the connection string
       const hasValues = hasNonUndefinedValue(fieldsMap);
-      setStatus(hasValues ? "success" : "failure");
+      const result = hasValues ? "success" : "failure";
+      setStatus(result);
+      lastParseStatusRef.current = result;
 
       delayedClearStatus();
 
@@ -101,15 +101,15 @@ export function DatabaseConnectionStringField({
   ]);
 
   function handleBlur() {
-    if (lastClearedStatusRef.current === "success") {
+    if (lastParseStatusRef.current === "success") {
       connectionStringParsedSuccess(location);
     }
 
-    if (lastClearedStatusRef.current === "failure") {
+    if (lastParseStatusRef.current === "failure") {
       connectionStringParsedFailed(location);
     }
 
-    lastClearedStatusRef.current = null;
+    lastParseStatusRef.current = null;
   }
 
   if (!isEngineKey(engineKey)) {
