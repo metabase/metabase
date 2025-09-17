@@ -17,6 +17,8 @@ import { cancelable } from "metabase/lib/promise";
 import { Center, Icon, Loader } from "metabase/ui";
 
 export interface ActionButtonProps extends Omit<ButtonProps, "onClick"> {
+  // need to expose this ref to allow Tooltip to bind to the correct element
+  innerRef?: React.Ref<HTMLButtonElement>;
   normalText?: React.ReactNode;
   activeText?: React.ReactNode;
   failedText?: React.ReactNode;
@@ -48,9 +50,10 @@ const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
       failedClassName = ButtonsS.ButtonDanger, // not used
       forceActiveStyle = false,
       children,
+      innerRef,
       ...buttonProps
     },
-    innerRef,
+    ref,
   ) {
     const [active, setActive] = useState(false);
     const [result, setResult] = useState<null | "failed" | "success">(null);
@@ -78,7 +81,7 @@ const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
     }, []);
 
     // very rarely, we need to reset a button based on changes outside this button
-    useImperativeHandle(innerRef, () => ({ resetState }), [resetState]);
+    useImperativeHandle(ref, () => ({ resetState }), [resetState]);
 
     const resetStateOnTimeout = () => {
       // clear any previously set timeouts then start a new one
@@ -117,6 +120,7 @@ const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
     return (
       <Button
         {...buttonProps}
+        ref={innerRef}
         data-action-status={actionStatus}
         className={
           forceActiveStyle
