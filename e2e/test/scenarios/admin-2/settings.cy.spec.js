@@ -1343,26 +1343,26 @@ describe("admin > settings > updates", () => {
   // we're mocking this so it can be stable for tests
   const versionInfo = {
     latest: {
-      version: "v1.86.76",
+      version: "v1.56.4",
       released: "2022-10-14",
       rollout: 60,
       highlights: ["New latest feature", "Another new feature"],
     },
     beta: {
-      version: "v1.86.75.309",
+      version: "v1.56.75.3",
       released: "2022-10-15",
       rollout: 70,
       highlights: ["New beta feature", "Another new feature"],
     },
     nightly: {
-      version: "v1.86.75.311",
+      version: "v1.56.75.2",
       released: "2022-10-16",
       rollout: 80,
       highlights: ["New nightly feature", "Another new feature"],
     },
     older: [
       {
-        version: "v1.86.75",
+        version: "v1.56.1",
         released: "2022-10-10",
         rollout: 100,
         highlights: ["Some old feature", "Another old feature"],
@@ -1370,12 +1370,11 @@ describe("admin > settings > updates", () => {
     ],
   };
 
-  const currentVersion = "v1.86.70";
+  const currentVersion = "v1.55.2";
 
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.visit("/admin/settings/updates");
 
     cy.intercept("GET", "/api/session/properties", (req) => {
       req.continue((res) => {
@@ -1387,7 +1386,17 @@ describe("admin > settings > updates", () => {
     cy.intercept("GET", "/api/setting/version-info", (req) => {
       req.reply(versionInfo);
     });
+
+    cy.visit("/admin/settings/updates");
   });
+
+  const assertIframeLoaded = (testId) => {
+    cy.findByTestId(testId).should("be.visible");
+    cy.findByTestId(testId).should(($iframe) => {
+      const body = $iframe.contents().find("body");
+      expect(body).to.exist;
+    });
+  };
 
   it("should show the updates page", () => {
     cy.findByTestId("check-for-updates-setting")
@@ -1395,18 +1404,15 @@ describe("admin > settings > updates", () => {
       .should("be.visible");
 
     cy.findByTestId("settings-updates").within(() => {
-      cy.findByText("Metabase 1.86.76 is available. You're running 1.86.70.");
-      cy.findByText("Some old feature").should("be.visible");
-    });
+      cy.findByText(
+        "Metabase 1.56.4 is available. You're running 1.55.2.",
+      ).should("be.visible");
 
-    cy.log("hide most things if updates are turned off");
+      cy.findByText("Changelog").should("be.visible").click();
+      assertIframeLoaded("changelog-iframe");
 
-    cy.findByTestId("check-for-updates-setting")
-      .findByText("Check for updates")
-      .click();
-
-    cy.findByTestId("settings-updates").within(() => {
-      cy.findByText("Some old feature").should("not.exist");
+      cy.findByText("What's new").should("be.visible").click();
+      assertIframeLoaded("releases-iframe");
     });
   });
 });
