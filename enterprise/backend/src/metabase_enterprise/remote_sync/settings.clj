@@ -81,18 +81,6 @@
   :encryption :no
   :default "import")
 
-(defsetting git-sync-enabled
-  (deferred-tru "Whether git sync is enabled")
-  :type :boolean
-  :visibility :admin
-  :export? false
-  :encryption :no
-  :default false
-  :setter (fn [new-value]
-            (setting/set-value-of-type! :boolean :git-sync-enabled new-value)
-            (when new-value
-              (git-sync-configured! (verify-git-sync-configuration)))))
-
 (defsetting git-sync-allow-edit
   (deferred-tru "Whether library content can be edited on this instance")
   :type :boolean

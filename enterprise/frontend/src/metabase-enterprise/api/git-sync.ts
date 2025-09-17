@@ -65,7 +65,6 @@ export type SyncedCollectionsResponse = {
 
 export type GitSyncSettings = Pick<
   EnterpriseSettings,
-  | "remote-sync-enabled"
   | "remote-sync-url"
   | "remote-sync-token"
   | "remote-sync-type"

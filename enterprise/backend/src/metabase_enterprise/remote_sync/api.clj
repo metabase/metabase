@@ -269,24 +269,21 @@
   "Update Git Sync related settings. You must be a superuser to do this."
   [_route-params
    _query-params
-   {:keys [git-sync-enabled git-sync-url git-sync-token git-sync-type
+   {:keys [git-sync-url git-sync-token git-sync-type
            git-sync-import-branch git-sync-export-branch]}
    :- [:map
-       [:git-sync-enabled       {:optional true} [:maybe :boolean]]
        [:git-sync-url          {:optional true} [:maybe :string]]
        [:git-sync-token        {:optional true} [:maybe :string]]
        [:git-sync-type         {:optional true} [:maybe [:enum "import" "export"]]]
        [:git-sync-import-branch {:optional true} [:maybe :string]]
        [:git-sync-export-branch {:optional true} [:maybe :string]]]]
   (api/check-superuser)
-  ;; Set git-sync-enabled in a separate step because it requires other settings to be set first
   (t2/with-transaction [_conn]
     (settings/git-sync-url! git-sync-url)
     (settings/git-sync-token! git-sync-token)
     (settings/git-sync-type! git-sync-type)
     (settings/git-sync-import-branch! git-sync-import-branch)
-    (settings/git-sync-export-branch! git-sync-export-branch)
-    (settings/git-sync-enabled! git-sync-enabled))
+    (settings/git-sync-export-branch! git-sync-export-branch))
   {:success true})
 
 (api.macros/defendpoint :get "/branches"
