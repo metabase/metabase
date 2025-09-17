@@ -7,9 +7,7 @@ describe("Metabot UI", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/ee/metabot-v3/v2/agent-streaming").as(
-      "agentReq",
-    );
+    cy.intercept("POST", "/api/ee/metabot-v3/agent-streaming").as("agentReq");
     cy.intercept("GET", "/api/session/properties").as("sessionProperties");
   });
 

@@ -57,7 +57,7 @@ jest.mock("metabase/lib/download", () => ({
 }));
 
 const mockAgentEndpoint = (params: MockStreamedEndpointParams) =>
-  mockStreamedEndpoint("/api/ee/metabot-v3/v2/agent-streaming", params);
+  mockStreamedEndpoint("/api/ee/metabot-v3/agent-streaming", params);
 
 function setup(
   options: {
@@ -365,7 +365,7 @@ describe("metabot-streaming", () => {
 
     it("should not show retry option for error messages", async () => {
       setup();
-      fetchMock.post(`path:/api/ee/metabot-v3/v2/agent-streaming`, 500);
+      fetchMock.post(`path:/api/ee/metabot-v3/agent-streaming`, 500);
 
       await enterChatMessage("Who is your favorite?");
 
@@ -680,7 +680,7 @@ describe("metabot-streaming", () => {
   describe("errors", () => {
     it("should handle service error response", async () => {
       setup();
-      fetchMock.post(`path:/api/ee/metabot-v3/v2/agent-streaming`, 500);
+      fetchMock.post(`path:/api/ee/metabot-v3/agent-streaming`, 500);
 
       await enterChatMessage("Who is your favorite?");
 
@@ -693,7 +693,7 @@ describe("metabot-streaming", () => {
 
     it("should handle non-successful responses", async () => {
       setup();
-      fetchMock.post(`path:/api/ee/metabot-v3/v2/agent-streaming`, 400);
+      fetchMock.post(`path:/api/ee/metabot-v3/agent-streaming`, 400);
 
       await enterChatMessage("Who is your favorite?");
 
@@ -736,7 +736,7 @@ describe("metabot-streaming", () => {
 
     it("should remove previous error messages and prompt when submiting next prompt", async () => {
       setup();
-      fetchMock.post(`path:/api/ee/metabot-v3/v2/agent-streaming`, 500);
+      fetchMock.post(`path:/api/ee/metabot-v3/agent-streaming`, 500);
 
       await enterChatMessage("Who is your favorite?");
 
