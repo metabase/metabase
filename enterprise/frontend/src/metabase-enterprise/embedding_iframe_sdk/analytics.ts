@@ -1,4 +1,4 @@
-import { getIn, updateIn, assocIn } from "icepick";
+import { assocIn, getIn, updateIn } from "icepick";
 import { P, match } from "ts-pattern";
 import _ from "underscore";
 
