@@ -2610,27 +2610,25 @@
           (is (= "remote-synced" (t2/select-one-fn :type :model/Collection :id (:id collection)))))))
 
     (testing "Can update a collection from 'remote-synced' to nil"
-      (mt/with-temporary-setting-values [remote-sync-allow-edit true]
-        (mt/with-temp [:model/Collection collection {:name "Remote Collection" :type "remote-synced"}]
-          ;; Verify it starts with remote-synced type
-          (is (= "remote-synced" (t2/select-one-fn :type :model/Collection :id (:id collection))))
-          ;; Update to nil
-          (let [response (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection))
-                                               {:type nil})]
-            (is (nil? (:type response)))
-            ;; Verify it was actually saved with nil type
-            (is (nil? (t2/select-one-fn :type :model/Collection :id (:id collection))))))))
+      (mt/with-temp [:model/Collection collection {:name "Remote Collection" :type "remote-synced"}]
+        ;; Verify it starts with remote-synced type
+        (is (= "remote-synced" (t2/select-one-fn :type :model/Collection :id (:id collection))))
+        ;; Update to nil
+        (let [response (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection))
+                                             {:type nil})]
+          (is (nil? (:type response)))
+          ;; Verify it was actually saved with nil type
+          (is (nil? (t2/select-one-fn :type :model/Collection :id (:id collection)))))))
 
     (testing "Can update other properties without changing type"
-      (mt/with-temporary-setting-values [remote-sync-allow-edit true]
-        (mt/with-temp [:model/Collection collection {:name "Test Collection" :type "remote-synced"}]
-          ;; Update name without specifying type
-          (let [response (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection))
-                                               {:name "Updated Name"})]
-            (is (= "Updated Name" (:name response)))
-            (is (= "remote-synced" (:type response)))
-            ;; Verify type wasn't changed
-            (is (= "remote-synced" (t2/select-one-fn :type :model/Collection :id (:id collection)))))))
+      (mt/with-temp [:model/Collection collection {:name "Test Collection" :type "remote-synced"}]
+        ;; Update name without specifying type
+        (let [response (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection))
+                                             {:name "Updated Name"})]
+          (is (= "Updated Name" (:name response)))
+          (is (= "remote-synced" (:type response)))
+          ;; Verify type wasn't changed
+          (is (= "remote-synced" (t2/select-one-fn :type :model/Collection :id (:id collection))))))
 
       (mt/with-temp [:model/Collection collection {:name "Normal Collection" :type nil}]
         ;; Update name without specifying type (nil type)

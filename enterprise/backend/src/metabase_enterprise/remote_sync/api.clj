@@ -20,7 +20,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- reload-from-git!
+(defn reload-from-git!
   "Reloads the Metabase entities from the git repo"
   [branch & [collections]]
   (log/info "Reloading remote entities from the remote source")

@@ -63,13 +63,6 @@
   :encryption :no
   :default 5)
 
-(defsetting remote-sync-allow-edit
-  (deferred-tru "Whether library content can be edited on this instance")
-  :type :boolean
-  :visibility :authenticated
-  :export? false
-  :default false)
-
 (defn check-git-settings
   "Check that the given settings are valid and update if they are. Throws exception if they are not."
   [{:keys [remote-sync-url remote-sync-token remote-sync-branch]}]
