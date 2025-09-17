@@ -49,7 +49,7 @@
         (do
           (log/info "Using existing cloned repository" {:url url :dir dir})
           (u/prog1 (Git/open dir)
-            (fetch! {:git <>})))
+            (fetch! {:git <> :token token})))
         (do
           (log/info "Cloning repository" {:url url :dir dir})
           (u/prog1 (call-remote-command (-> (Git/cloneRepository)

@@ -4,7 +4,8 @@
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n :refer [deferred-tru]]
+   [toucan2.core :as t2]))
 
 (defsetting remote-sync-configured
   (deferred-tru "Whether git sync is configured.")
@@ -53,20 +54,19 @@
   :export? false
   :default false)
 
-(defn check-settings
+(defn check-git-settings
   "Check that the given settings are valid and update if they are. Throws exception if they are not."
-  [remote-sync-url remote-sync-token remote-sync-branch]
-  (let [source (git/git-source remote-sync-url #p remote-sync-token)
+  [{:keys [remote-sync-url remote-sync-token remote-sync-branch]}]
+  (let [source (git/git-source remote-sync-url remote-sync-token)
         branch-exists (boolean (get (set (source.p/branches source)) remote-sync-branch))]
     (when-not branch-exists
-      (throw (ex-info (deferred-tru "Branch not found") {:branch remote-sync-branch}
-                      {:status-code 400})))))
+      (throw (ex-info "Branch not found" {:branch remote-sync-branch})))))
 
-(defn check-and-update-settings!
-  "Check that the given settings are valid and update if they are. Throws exception if they are not."
-  [remote-sync-url remote-sync-token remote-sync-branch remote-sync-type]
-  (check-settings remote-sync-url remote-sync-token remote-sync-branch)
-  (setting/set-many! {:remote-sync-url    remote-sync-url
-                      :remote-sync-token  remote-sync-token
-                      :remote-sync-branch remote-sync-branch
-                      :remote-sync-type   remote-sync-type}))
+(defn check-and-update-remote-settings!
+  "Check that the given git settings are valid and update if they are. Throws exception if they are not."
+  [settings]
+  (check-git-settings settings)
+  (t2/with-transaction [_conn]
+    (doseq [key [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-configured]]
+      (when (contains? settings :remote-sync-url)
+        (setting/set! key (settings key))))))

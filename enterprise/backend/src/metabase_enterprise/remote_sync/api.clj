@@ -269,8 +269,7 @@
   "Update Git Sync related settings. You must be a superuser to do this."
   [_route-params
    _query-params
-   {:keys [remote-sync-configured remote-sync-url remote-sync-token remote-sync-type
-           remote-sync-branch]}
+   settings
    :- [:map
        [:remote-sync-configured {:optional true} [:maybe :boolean]]
        [:remote-sync-url {:optional true} [:maybe :string]]
@@ -278,14 +277,12 @@
        [:remote-sync-type {:optional true} [:maybe [:enum "import" "export"]]]
        [:remote-sync-branch {:optional true} [:maybe :string]]]]
   (api/check-superuser)
-  ;; Set remote-sync-configured in a separate step because it requires other settings to be set first
   (try
-    (settings/check-and-update-settings! remote-sync-url remote-sync-token remote-sync-branch remote-sync-type)
+    (settings/check-and-update-remote-settings! settings)
     (catch Exception e
       (throw (ex-info "Invalid git settings"
                       {:error (.getMessage e)
                        :status-code  400}))))
-  (settings/remote-sync-configured! remote-sync-configured)
   {:success true})
 
 (api.macros/defendpoint :get "/branches"
