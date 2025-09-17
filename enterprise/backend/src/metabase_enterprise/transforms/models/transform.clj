@@ -3,24 +3,13 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
-   [metabase-enterprise.transforms.util :as transforms.u]
    [metabase.models.interface :as mi]
-   [metabase.premium-features.core :as premium-features]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (methodical/defmethod t2/table-name :model/Transform [_model] :transform)
-
-(defmethod mi/can-write? :model/Transform
-  ([transform]
-   (and (mi/superuser?)
-        (if (transforms.u/python-transform? transform)
-          (premium-features/has-feature? :transforms-python)
-          (premium-features/has-feature? :transforms))))
-  ([_model id]
-   (mi/can-write? (t2/select-one :model/Transform id))))
 
 (doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
   (derive :model/Transform trait))

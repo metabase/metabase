@@ -15,7 +15,7 @@
 (deftest transforms-python-with-library-test
   (testing "Python transform execution with common library"
     (mt/test-drivers #{:h2 :postgres}
-      (mt/with-premium-features #{:transforms-python}
+      (mt/with-premium-features #{:transforms :transforms-python}
         (mt/dataset transforms-dataset/transforms-test
           (mt.util/with-discard-model-updates! [:model/PythonLibrary]
             ;; Create or update the python library
@@ -62,7 +62,7 @@
 (deftest execute-transforms-python-test
   (testing "transform execution with :transforms/table target"
     (mt/test-drivers #{:h2 :postgres}
-      (mt/with-premium-features #{:transforms-python}
+      (mt/with-premium-features #{:transforms :transforms-python}
         (mt/dataset transforms-dataset/transforms-test
           (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
             (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
