@@ -219,12 +219,34 @@
 
 (defmethod resolve-field :custom-field
   [_driver _metadata-provider col-spec]
-  [{:type :type/*
+  [{:base-type :type/*
     :name (:alias col-spec)}])
 
 (defmethod resolve-field :invalid-table-wildcard
   [_driver _metadata-provider col-spec]
   [(assoc col-spec ::bad-reference true)])
+
+(defn- lca
+  ([]
+   :type/*)
+  ([t]
+   t)
+  ([t1 t2 & more]
+   (let [a1 (into #{} (conj (ancestors t1) t1))
+         a2 (into #{} (conj (ancestors t2) t2))
+         ac (set/intersection a1 a2)
+         ancestor (if (seq ac)
+                    (apply (partial max-key (comp count ancestors)) ac)
+                    :type/*)]
+     (apply lca ancestor more))))
+
+(defmethod resolve-field :composite-field
+  [driver metadata-provider col-spec]
+  (let [member-fields (mapcat (partial resolve-field driver metadata-provider)
+                              (:member-fields col-spec))]
+    [{:name (:alias col-spec)
+      :base-type (apply lca (map :base-type member-fields))
+      :semantic-type (apply lca (map :semantic-type member-fields))}]))
 
 (defmethod driver/native-result-metadata :sql
   [driver metadata-provider native-query]
