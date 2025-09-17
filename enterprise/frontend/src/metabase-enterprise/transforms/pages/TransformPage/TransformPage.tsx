@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -77,16 +76,21 @@ export function getParsedParams({
 }
 
 export function isPollingNeeded(transform?: Transform) {
-  if (transform == null || transform.last_run == null) {
+  const lastRun = transform?.last_run;
+  if (transform == null || lastRun == null) {
     return false;
   }
-  if (transform.last_run.status === "started") {
+  if (lastRun.status === "started") {
     return true;
   }
-  if (transform.last_run.status === "succeeded" && transform.table == null) {
-    const now = dayjs();
+  if (
+    transform.table == null &&
+    lastRun.status === "succeeded" &&
+    lastRun.end_time != null
+  ) {
+    const endedAt = parseTimestamp(lastRun.end_time);
     const updatedAt = parseTimestamp(transform.updated_at);
-    return updatedAt.isBefore(now);
+    return endedAt.isAfter(updatedAt);
   }
   return false;
 }
