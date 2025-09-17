@@ -26,14 +26,13 @@ const sdkBundleCleanup = () => {
 
 describe(
   "scenarios > embedding-sdk > sdk-bundle",
-  // These test in some cases load a new SDK Bundle that in combination with the Component Testing is memory-consuming
-  { numTestsKeptInMemory: 1 },
+  {
+    tags: ["@skip-backward-compatibility"],
+    // These test in some cases load a new SDK Bundle that in combination with the Component Testing is memory-consuming
+    numTestsKeptInMemory: 1,
+  },
   () => {
     beforeEach(() => {
-      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-        "dashcardQuery",
-      );
-
       signInAsAdminAndEnableEmbeddingSdk();
 
       cy.signOut();
@@ -44,10 +43,6 @@ describe(
     [{ strictMode: false }, { strictMode: true }].forEach(({ strictMode }) => {
       describe(`Common cases ${strictMode ? "with" : "without"} strict mode`, () => {
         it("should display an SDK question", () => {
-          cy.window().then((win) => {
-            cy.spy(win.console, "warn").as("consoleWarn");
-          });
-
           mountSdkContent(
             <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
             { strictMode },
@@ -199,6 +194,13 @@ describe(
         it("should show a custom loader when the SDK bundle is loading", () => {
           sdkBundleCleanup();
 
+          cy.intercept("GET", "/api/card/*", (request) => {
+            // Delay request for 500ms to avoid flakiness
+            request.continue(
+              () => new Promise((resolve) => setTimeout(resolve, 500)),
+            );
+          });
+
           mountSdkContent(
             <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
             {
@@ -285,7 +287,7 @@ describe(
     describe("Components", () => {
       it("should display an SDK question with custom layout components", () => {
         cy.window().then((win) => {
-          cy.spy(win.console, "warn").as("consoleWarn");
+          cy.spy(win.console, "error").as("consoleError");
         });
 
         mountSdkContent(
@@ -303,14 +305,12 @@ describe(
 
           cy.findByTestId("visualization-root").should("be.visible");
         });
+
+        cy.get("@consoleError").should("not.be.called");
       });
 
       it("should show an error on a component level if SDK components are not wrapped within the MetabaseProvider", () => {
         sdkBundleCleanup();
-
-        cy.window().then((win) => {
-          cy.spy(win.console, "warn").as("consoleWarn");
-        });
 
         cy.mount(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />);
 
@@ -319,6 +319,41 @@ describe(
             /Ensure all SDK components are wrapped in the Provider component./,
           ).should("exist");
         });
+      });
+
+      it("should show a console error if SDK Package component uses a prop that is not yet available in SDK bundle", () => {
+        sdkBundleCleanup();
+
+        cy.window().then((win) => {
+          cy.spy(win.console, "error").as("consoleError");
+        });
+
+        mountSdkContent(
+          <InteractiveQuestion
+            questionId={ORDERS_QUESTION_ID}
+            {...{ foo: "bar" }}
+          />,
+        );
+
+        cy.get("@consoleError").should(
+          "be.calledWithMatch",
+          "this property is not recognized by the component",
+        );
+      });
+
+      it("should show a console error if SDK Package component does not use a prop that is still expected by SDK bundle", () => {
+        sdkBundleCleanup();
+
+        cy.window().then((win) => {
+          cy.spy(win.console, "error").as("consoleError");
+        });
+
+        mountSdkContent(<InteractiveQuestion />);
+
+        cy.get("@consoleError").should(
+          "be.calledWithMatch",
+          "this property is required by the component",
+        );
       });
     });
 
@@ -344,7 +379,7 @@ describe(
 
           cy.findByTestId("sdk-error-container").should(
             "contain.text",
-            "Error loading the Embedding Analytics SDK",
+            "Error loading the Embedded Analytics SDK",
           );
         });
 
@@ -363,7 +398,7 @@ describe(
 
           cy.findByTestId("sdk-error-container").should(
             "contain.text",
-            "Custom error: Error loading the Embedding Analytics SDK",
+            "Custom error: Error loading the Embedded Analytics SDK",
           );
         });
       });

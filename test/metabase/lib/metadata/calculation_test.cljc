@@ -13,7 +13,6 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -432,7 +431,7 @@
                {:name  "price10"}
                {:name  "NAME"}
                {:name  "SUBTOTAL"}]
-              (lib/returned-columns query -1 (lib.util/query-stage query -1) {:include-remaps? true}))))))
+              (lib/returned-columns query -1 -1 {:include-remaps? true}))))))
 
 (deftest ^:parallel remapped-columns-test-2-remapping-in-joins
   (testing "explicitly joined columns with remaps are added after their join"
@@ -459,7 +458,7 @@
                       {:name  "NAME"}]
           exp-join2  [{:name  "CATEGORY"}]
           cols       (fn [query]
-                       (lib/returned-columns query -1 (lib.util/query-stage query -1) {:include-remaps? true}))]
+                       (lib/returned-columns query -1 -1 {:include-remaps? true}))]
       (is (=? (concat exp-main exp-join1 exp-join2)
               (-> base
                   (lib/join join1)
@@ -622,6 +621,10 @@
         ["People - User__SOURCE" :source/card]
         ["People - User__ZIP" :source/card]
         ["People - User__LATITUDE" :source/card]
+        ;; TODO (Cam 9/11/25) -- this should be getting filtered out because the column has `:sensitive`
+        ;; `:visibility-type`... my guess is that we fetch it by ID and need to add additional filtering in
+        ;; a [[metabase.lib.metadata.calculation/visible-columns-method]] somewhere. I've only noticed this recently,
+        ;; this has been a bug since day one. (QUE-2438)
         ["People - User__PASSWORD" :source/card]
         ["People - User__BIRTH_DATE" :source/card]
         ["People - User__LONGITUDE" :source/card]
@@ -680,7 +683,8 @@
         ["Mock users card - User__ID" :source/card]
         ["Mock users card - User__NAME" :source/card]
         ["Mock users card - User__LAST_LOGIN" :source/card]
-        ["Mock users card - User__PASSWORD" :source/card]
+        ;; should not come back because this column has `:sensitive` `:visibility-type`
+        #_["Mock users card - User__PASSWORD" :source/card]
         ["Mock venues card - Venue__ID" :source/joins]
         ["Mock venues card - Venue__NAME" :source/joins]
         ["Mock venues card - Venue__CATEGORY_ID" :source/joins]

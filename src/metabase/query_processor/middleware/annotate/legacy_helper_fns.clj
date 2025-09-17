@@ -5,6 +5,8 @@
   I'm keeping them around for now so drivers can continue to use them until we work on converting drivers to MLv2 (at
   which point they can use MLv2 directly)."
   (:require
+   ;; existing legacy usage -- don't use legacy MBQL namespaces in QP going forward
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -23,6 +25,8 @@
                    [:fn
                     {:error/message "Should be a legacy MBQL inner query"}
                     (some-fn :query :source-table :source-query)]]]
+  ;; existing usage -- don't use going forward
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (qp.store/cached [:mlv2-query (hash inner-query)]
     (try
       (lib/query-from-legacy-inner-query

@@ -12646,6 +12646,226 @@ redirect_from:
         "tags" : [ "/api/ee/cloud-add-ons" ]
       }
     },
+    "/api/ee/comment/" : {
+      "get" : {
+        "summary" : "GET /api/ee/comment/",
+        "description" : "Get comments for an entity",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "target_type",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "document" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "target_id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/comment" ]
+      },
+      "post" : {
+        "summary" : "POST /api/ee/comment/",
+        "description" : "Create a new comment",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "child_target_id" : {
+                    "type" : "string"
+                  },
+                  "content" : {
+                    "type" : "object"
+                  },
+                  "parent_comment_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "target_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "target_type" : {
+                    "type" : "string",
+                    "enum" : [ "document" ]
+                  }
+                },
+                "required" : [ "target_type", "target_id", "content" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/comment" ]
+      }
+    },
+    "/api/ee/comment/mentions" : {
+      "get" : {
+        "summary" : "GET /api/ee/comment/mentions",
+        "description" : "Get a list of entities suitable for mentions. NOTE: only users for now.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/comment" ]
+      }
+    },
+    "/api/ee/comment/{comment-id}" : {
+      "put" : {
+        "summary" : "PUT /api/ee/comment/{comment-id}",
+        "description" : "Update a comment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "comment-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "content" : {
+                    "type" : "object"
+                  },
+                  "is_resolved" : {
+                    "type" : "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/comment" ]
+      },
+      "delete" : {
+        "summary" : "DELETE /api/ee/comment/{comment-id}",
+        "description" : "Soft delete a comment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "comment-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/comment" ]
+      }
+    },
+    "/api/ee/comment/{comment-id}/reaction" : {
+      "post" : {
+        "summary" : "POST /api/ee/comment/{comment-id}/reaction",
+        "description" : "Toggle a reaction on a comment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "comment-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "emoji" : {
+                    "type" : "string",
+                    "minLength" : 1,
+                    "maxLength" : 10
+                  }
+                },
+                "required" : [ "emoji" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/comment" ]
+      }
+    },
     "/api/ee/content-translation/csv" : {
       "get" : {
         "summary" : "GET /api/ee/content-translation/csv",
@@ -13348,6 +13568,25 @@ redirect_from:
           }
         },
         "tags" : [ "/api/ee/email" ]
+      }
+    },
+    "/api/ee/embedding-hub/checklist" : {
+      "get" : {
+        "summary" : "GET /api/ee/embedding-hub/checklist",
+        "description" : "Get the embedding hub checklist status, indicating which setup steps have been completed.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/embedding-hub" ]
       }
     },
     "/api/ee/gsheets/connection" : {

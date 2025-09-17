@@ -1,7 +1,6 @@
 import type { Revision } from "metabase-types/api";
 
 export const createMockRevision = (opts?: Partial<Revision>): Revision => ({
-  model_id: 1,
   id: 1,
   description: "created this",
   message: null,

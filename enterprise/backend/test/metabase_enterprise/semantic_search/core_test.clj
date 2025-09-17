@@ -2,27 +2,27 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.core :as semantic.core]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase.analytics.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.search.appdb.core :as appdb]
    [metabase.search.engine :as search.engine]
    [metabase.search.in-place.legacy :as in-place.legacy]
    [metabase.search.in-place.scoring :as in-place.scoring]
    [metabase.search.settings :as search.settings]
-   [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test :as mt]))
 
-(use-fixtures :once (compose-fixtures
-                     (fixtures/initialize :db)
-                     #'semantic.tu/once-fixture))
+(use-fixtures :once #'semantic.tu/once-fixture)
 
 (deftest fallback-engine-available-with-semantic-test
   (mt/with-premium-features #{:semantic-search}
     (mt/with-temporary-setting-values [search.settings/search-engine "semantic"]
       (with-open [_ (semantic.tu/open-temp-index!)]
-        (semantic.tu/cleanup-index-metadata! semantic.tu/db semantic.tu/mock-index-metadata)
-        (semantic.tu/with-index!
+        (semantic.tu/cleanup-index-metadata! (semantic.env/get-pgvector-datasource!)
+                                             semantic.tu/mock-index-metadata)
+        (semantic.tu/with-test-db! {:mode :mock-indexed}
           (is (search.engine/supported-engine? (if (= :mysql (mdb/db-type))
                                                  ;; appdb is not supported on :mysql, should fallback to in-place
                                                  :search.engine/in-place
@@ -56,7 +56,9 @@
                           in-place.legacy/results
                           (fn [_]
                             (reset! legacy-called? true)
-                            [{:id 2 :name "legacy-result" :model "card" :collection_id 1 :score 0.7}])]
+                            (reify clojure.lang.IReduceInit
+                              (reduce [_this rf init]
+                                (reduce rf init [{:id 2 :name "legacy-result" :model "card" :collection_id 1 :score 0.7}]))))]
               (testing "API defaults to semantic engine when configured"
                 (let [response (mt/user-http-request :crowberto :get 200 "search" :q "test")]
                   (is @semantic-called? "Semantic search should be called by default")
@@ -97,11 +99,15 @@
                                       {:result (dissoc result :score)
                                        :score  (:score result)})
                 search.engine/results (fn [ctx]
-                                        (case (:search-engine ctx)
-                                          :search.engine/semantic (semantic.core/results ctx)
-                                          (if (fn? fallback-results)
-                                            (fallback-results ctx)
-                                            fallback-results)))]
+                                        (let [fallback-results* #(if (fn? fallback-results)
+                                                                   (fallback-results ctx)
+                                                                   fallback-results)]
+                                          (case (:search-engine ctx)
+                                            :search.engine/semantic (semantic.core/results ctx)
+                                            :search.engine/in-place (reify clojure.lang.IReduceInit
+                                                                      (reduce [_this rf init]
+                                                                        (reduce rf init (fallback-results*))))
+                                            (fallback-results*))))]
     (thunk)))
 
 (defn- make-card-result
@@ -119,16 +125,42 @@
                                 (make-card-result 2 "fallback-card-2")
                                 (make-card-result 3 "fallback-card-3")
                                 (make-card-result 4 "fallback-dashboard" :model "dashboard")]
-              search-ctx       search-context]
-          (with-search-engine-mocks! [semantic-result] fallback-results
-            (fn []
-              (let [results (semantic.core/results search-ctx)]
-                (testing "semantic result comes first"
-                  (is (= semantic-result (first results))))
+              search-ctx       search-context
+              metrics (atom {:metabase-search/semantic-fallback-results-usage 0
+                             :metabase-search/semantic-fallback-triggered 0
+                             :metabase-search/semantic-results-before-fallback 0})]
+          (with-redefs [analytics/inc! (fn [metric & _args]
+                                         (case metric
+                                           :metabase-search/semantic-fallback-triggered
+                                           (swap! metrics update
+                                                  :metabase-search/semantic-fallback-triggered
+                                                  inc))
+                                         nil)
+                        analytics/observe! (fn [metric cnt]
+                                             (case metric
+                                               :metabase-search/semantic-fallback-results-usage
+                                               (swap! metrics update
+                                                      :metabase-search/semantic-fallback-results-usage
+                                                      + cnt)
+                                               :metabase-search/semantic-results-before-fallback
+                                               (swap! metrics update
+                                                      :metabase-search/semantic-results-before-fallback
+                                                      + cnt))
+                                             nil)]
+            (with-search-engine-mocks! [semantic-result] fallback-results
+              (fn []
+                (let [results (semantic.core/results search-ctx)]
+                  (testing "semantic result comes first"
+                    (is (= semantic-result (first results))))
 
-                (testing "fallback results are appended, and duplicate model/id pairs are removed"
-                  (is (= (rest fallback-results)
-                         (rest results))))))))))))
+                  (testing "fallback results are appended, and duplicate model/id pairs are removed"
+                    (is (= (rest fallback-results)
+                           (rest results))))
+
+                  (testing "Results metrics are collected"
+                    (is (= 4 (:metabase-search/semantic-fallback-results-usage @metrics)))
+                    (is (= 1 (:metabase-search/semantic-fallback-triggered @metrics)))
+                    (is (= 1 (:metabase-search/semantic-results-before-fallback @metrics)))))))))))))
 
 (deftest test-semantic-search-fallback-failure-resilient
   (testing "semantic search is resilient to fallback engine failure"
