@@ -1,7 +1,7 @@
 .root {
   display: flex;
   align-items: center;
-  height: 36px;
+  height: 48px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
