@@ -87,23 +87,18 @@
         (binding [qp.pipeline/*canceled-chan* cancel-chan]
           (driver/execute-reducible-query driver query {:canceled-chan cancel-chan} respond))))))
 
-(defn- root-type
+(defn root-type
+  "Supported type for rountrip/insertion"
   [base-type]
   (when base-type
     (some #(when (isa? base-type %) %)
-          [:type/Decimal
-           :type/Float
-           :type/Integer
-           :type/BigInteger
-           :type/Boolean
-           :type/DateTimeWithTZ
-           :type/DateTime
+          [:type/Number
            :type/Date
-           :type/Dictionary
-           :type/UUID
-           :type/Array
-           :type/JSON
-           :type/Text])))
+           :type/DateTime
+           :type/Instant
+           :type/DateTimeWithTZ
+           :type/Text
+           :type/Boolean])))
 
 (defn- closest-ancestor [t pred]
   (loop [remaining (conj PersistentQueue/EMPTY [t])]
@@ -136,46 +131,54 @@
    :table_metadata {:table_id table-id}})
 
 (defn- maybe-fixup-value [col v]
-  ;; the clickhouse driver returns bigdecimals for int64 values
-  (if (and (isa? (:base_type col) :type/Integer)
-           (or (instance? BigDecimal v)
-               (float? v)))
+  (cond
+    (nil? (root-type (:base_type col)))
+    ;; we're not a supported base type, so we just stringify it
+    (when v (json/encode v))
+
+    ;; the clickhouse driver returns bigdecimals for int64 values
+    (and (isa? (:base_type col) :type/Integer)
+         (or (instance? BigDecimal v)
+             (float? v)))
     (bigint v)
+
+    :else
     v))
 
-(defn- preprocess-fields-meta [driver fields-meta]
+(defn- preprocess-fields-meta [_driver fields-meta]
   (->> fields-meta
        ;; we are only interested in the parent objects, so we filter out any nested values
        (filter #(and (nil? (:parent_id %)) (nil? (:nfc_path %))))
-       (map (fn [meta]
-              ;; TODO move this into driver method
-              (cond
 
-                (= driver :bigquery-cloud-sdk)
-                (case (:database_type meta)
-                  ;; the bigquery driver returns a lossy database-type
-                  ;; so we must translate to a valid one, even if it may be lossy
-                  ("ARRAY" "RECORD") (assoc meta :database_type "JSON" :base_type :type/JSON)
-                  "FLOAT" (assoc meta :database_type "FLOAT64")
-                  meta)
+       #_(map (fn [meta]
+                ;; TODO move this into driver method
+                (cond
 
-                (= driver :postgres)
-                (if (str/starts-with? (:database_type meta) "_")
-                  (assoc meta :base_type :type/Array)
-                  meta)
+                  (= driver :bigquery-cloud-sdk)
+                  (case (:database_type meta)
+                    ;; the bigquery driver returns a lossy database-type
+                    ;; so we must translate to a valid one, even if it may be lossy
+                    ("ARRAY" "RECORD") (assoc meta :database_type "JSON" :base_type :type/JSON)
+                    "FLOAT" (assoc meta :database_type "FLOAT64")
+                    meta)
 
-                (= driver :mysql)
-                (case (:database_type meta)
-                  ("ENUM" "VARCHAR" "SET")
-                  (dissoc meta :database_type)
+                  (= driver :postgres)
+                  (if (str/starts-with? (:database_type meta) "_")
+                    (assoc meta :base_type :type/Array)
+                    meta)
 
-                  "VARBINARY"
-                  (assoc meta :database_type "BINARY")
+                  (= driver :mysql)
+                  (case (:database_type meta)
+                    ("ENUM" "VARCHAR" "SET")
+                    (dissoc meta :database_type)
 
-                  meta)
+                    "VARBINARY"
+                    (assoc meta :database_type "BINARY")
 
-                :else
-                meta)))))
+                    meta)
+
+                  :else
+                  meta)))))
 
 (defn- write-table-data-to-file! [id temp-file cancel-chan]
   (let [db-id       (t2/select-one-fn :db_id (t2/table-name :model/Table) :id id)
@@ -186,22 +189,22 @@
                                     {:order-by [[:database_position :asc]]})
                          (preprocess-fields-meta driver))
 
-        query       {:source-table id}
-        manifest    (generate-manifest id fields-meta)]
+        query    {:source-table id}
+        manifest (generate-manifest id fields-meta)]
     (execute-mbql-query driver db-id query
                         (fn [{cols-meta :cols} reducible-rows]
                           (with-open [os (io/output-stream temp-file)]
                             (let [filtered-col-meta (m/index-by :name fields-meta)
-                                  filtered-cols     (filter #(contains? filtered-col-meta (:name %)) cols-meta)
-                                  col-name->index   (into {} (map-indexed (fn [i col] [(:name col) i]) cols-meta))
-                                  filtered-indices  (mapv (fn [col] [(col-name->index (:name col)) col]) filtered-cols)
+                                  col-names         (map :name cols-meta)
                                   filtered-rows     (eduction (map (fn [row]
-                                                                     (mapv (fn [[idx col]]
-                                                                             (let [v (nth row idx)]
-                                                                               (maybe-fixup-value col v)))
-                                                                           filtered-indices)))
+                                                                     (->>
+                                                                      (zipmap col-names row)
+                                                                      (filter (fn [[n _]]
+                                                                                (contains? filtered-col-meta n)))
+                                                                      (map (fn [[n v]]
+                                                                             (maybe-fixup-value (filtered-col-meta n) v))))))
                                                               reducible-rows)]
-                              (write-to-stream! os (mapv :name filtered-cols) filtered-rows))))
+                              (write-to-stream! os (mapv :name fields-meta) filtered-rows))))
                         cancel-chan)
     manifest))
 

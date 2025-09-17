@@ -119,12 +119,14 @@
   "Create a table from metadata and insert data from source."
   [driver db-id table-name metadata data-source]
   (let [table-schema {:name (if (keyword? table-name) table-name (keyword table-name))
-                      :columns (mapv (fn [{:keys [name base_type database_type]}]
+                      :columns (mapv (fn [{:keys [name base_type #_database_type]}]
                                        {:name name
-                                        :type (if (#{nil "*" "null"} base_type)
-                                                :type/Text
-                                                (keyword "type" base_type))
-                                        :database-type database_type
+                                        :type (if-let [base-type (keyword "type" base_type)]
+                                                (if (python-runner/root-type base-type)
+                                                  base-type
+                                                  :type/Text)
+                                                :type/Text)
+                                        ;; :database-type database_type
                                         :nullable? true})
                                      (:fields metadata))}
         data-source (assoc data-source :table-schema table-schema)]
