@@ -13,20 +13,26 @@ import { updateTransformSignature, useTestPythonTransform } from "./utils";
 
 type PythonTransformEditorProps = {
   initialSource: PythonTransformSource;
+  proposedSource?: PythonTransformSource;
   isNew?: boolean;
   isSaving?: boolean;
   isRunnable?: boolean;
   onSave: (newSource: PythonTransformSource) => void;
   onCancel: () => void;
+  onAcceptProposed?: (source: PythonTransformSource) => void;
+  onRejectProposed?: () => void;
 };
 
 export function PythonTransformEditor({
   initialSource,
+  proposedSource,
   isNew = true,
   isSaving = false,
   isRunnable = true,
   onSave,
   onCancel,
+  onAcceptProposed,
+  onRejectProposed,
 }: PythonTransformEditorProps) {
   const [source, setSource] = useState(initialSource);
   const [isSourceDirty, setIsSourceDirty] = useState(false);
@@ -69,6 +75,7 @@ export function PythonTransformEditor({
   };
 
   const showDebugger =
+    !!true || // TODO: below logic doesn't seem right?
     new URLSearchParams(window.location.search).get("debugger") === "1";
 
   const handleCmdEnter = () => {
@@ -120,8 +127,18 @@ export function PythonTransformEditor({
             onRun={run}
             onCancel={cancel}
             source={source.body}
+            proposedSource={proposedSource?.body}
             onChange={handleScriptChange}
             withDebugger={showDebugger}
+            onAcceptProposed={
+              proposedSource && onAcceptProposed
+                ? () => {
+                    handleScriptChange(proposedSource.body);
+                    onAcceptProposed(proposedSource);
+                  }
+                : undefined
+            }
+            onRejectProposed={onRejectProposed}
           />
           {showDebugger && (
             <PythonEditorResults

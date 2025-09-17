@@ -33,10 +33,10 @@ export function TransformPageLayout({
   children,
   fullWidth,
 }: TransformPageLayoutProps) {
+  // TODO: check if we need maw="60rem" still?
   return (
     <AdminSettingsLayout
       sidebar={<TransformSidebar params={params} />}
-      maw="60rem"
       fullWidth={fullWidth}
     >
       {children}

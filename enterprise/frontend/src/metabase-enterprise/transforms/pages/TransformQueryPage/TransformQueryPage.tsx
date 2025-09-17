@@ -48,7 +48,11 @@ export function TransformQueryPage({ params }: TransformQueryPageProps) {
     return <LoadingAndErrorWrapper error={t`Transform not found.`} />;
   }
 
-  return <TransformQueryPageBody transform={transform} />;
+  return (
+    <AdminSettingsLayout fullWidth key={transform.id}>
+      <TransformQueryPageBody transform={transform} />
+    </AdminSettingsLayout>
+  );
 }
 
 type TransformQueryPageBodyProps = {
@@ -71,10 +75,7 @@ export function TransformQueryPageBody({
   const suggestedTransform = useSelector(
     (state) => getMetabotSuggestedTransform(state, transform.id) as any,
   ) as ReturnType<typeof getMetabotSuggestedTransform>;
-  const proposedSource =
-    suggestedTransform?.source.type === "query"
-      ? suggestedTransform?.source
-      : undefined;
+  const proposedSource = suggestedTransform?.source;
 
   useRegisterMetabotContextProvider(async () => {
     const viewedTransform = suggestedTransform ?? {
@@ -126,30 +127,38 @@ export function TransformQueryPageBody({
   };
 
   if (transform.source.type === "python") {
+    const pythonProposedSource =
+      proposedSource?.type === "python" ? proposedSource : undefined;
+
     return (
       <PythonTransformEditor
         initialSource={transform.source}
+        proposedSource={pythonProposedSource}
         isNew={false}
         isSaving={isLoading}
         onSave={handleSourceSave}
         onCancel={handleCancel}
+        onAcceptProposed={onAcceptProposed}
+        onRejectProposed={onRejectProposed}
       />
     );
   }
+
+  const queryProposedSource =
+    proposedSource?.type === "query" ? proposedSource : undefined;
+
   return (
-    <AdminSettingsLayout fullWidth key={transform.id}>
-      <QueryEditor
-        initialSource={transform.source}
-        transform={transform}
-        isNew={false}
-        isSaving={isLoading}
-        onSave={handleSourceSave}
-        onChange={setLatestSource}
-        onCancel={handleCancel}
-        proposedSource={proposedSource}
-        onRejectProposed={onRejectProposed}
-        onAcceptProposed={onAcceptProposed}
-      />
-    </AdminSettingsLayout>
+    <QueryEditor
+      initialSource={transform.source}
+      transform={transform}
+      isNew={false}
+      isSaving={isLoading}
+      onSave={handleSourceSave}
+      onChange={setLatestSource}
+      onCancel={handleCancel}
+      proposedSource={queryProposedSource}
+      onRejectProposed={queryProposedSource ? onRejectProposed : undefined}
+      onAcceptProposed={queryProposedSource ? onAcceptProposed : undefined}
+    />
   );
 }

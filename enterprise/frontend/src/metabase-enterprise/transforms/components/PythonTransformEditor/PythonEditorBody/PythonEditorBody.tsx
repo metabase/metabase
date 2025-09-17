@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import Link from "metabase/common/components/Link";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
-import { Box, Checkbox, Flex, Icon, Stack } from "metabase/ui";
+import { Box, Button, Checkbox, Flex, Icon, Stack, Tooltip } from "metabase/ui";
 import { getPythonLibraryUrl } from "metabase-enterprise/transforms/urls";
 
 import { SHARED_LIB_IMPORT_PATH } from "../../../constants";
@@ -16,6 +16,7 @@ import { hasImport, insertImport, removeImport } from "./utils";
 
 type PythonEditorBodyProps = {
   source: string;
+  proposedSource?: string;
   isRunnable: boolean;
   onChange: (source: string) => void;
   onRun?: () => void;
@@ -24,12 +25,15 @@ type PythonEditorBodyProps = {
   isDirty?: boolean;
   tables?: Record<string, number>;
   withDebugger?: boolean;
+  onAcceptProposed?: () => void;
+  onRejectProposed?: () => void;
 };
 
 const EDITOR_HEIGHT = 400;
 
 export function PythonEditorBody({
   source,
+  proposedSource,
   onChange,
   isRunnable,
   onRun,
@@ -37,31 +41,65 @@ export function PythonEditorBody({
   isRunning,
   isDirty,
   withDebugger,
+  onAcceptProposed,
+  onRejectProposed,
 }: PythonEditorBodyProps) {
   return (
     <MaybeResizableBox resizable={withDebugger}>
-      <Flex h="100%" align="end" bg="bg-light">
-        <PythonEditor
-          value={source}
-          onChange={onChange}
-          withPandasCompletions
-          data-testid="python-editor"
-        />
+      <Box w="100%" h="100%">
+        <Flex h="100%" align="end" bg="bg-light">
+          <PythonEditor
+            value={source}
+            proposedValue={proposedSource}
+            onChange={onChange}
+            withPandasCompletions
+            data-testid="python-editor"
+          />
 
-        {withDebugger && (
-          <Box p="md">
-            <RunButtonWithTooltip
-              disabled={!isRunnable}
-              isRunning={isRunning}
-              isDirty={isDirty}
-              onRun={onRun}
-              onCancel={onCancel}
-              getTooltip={() => t`Run Python script`}
-            />
-          </Box>
-        )}
-      </Flex>
-      <SharedLibraryActions source={source} onChange={onChange} />
+          <Stack m="1rem" gap="md" mt="auto">
+            {proposedSource && onRejectProposed && onAcceptProposed && (
+              <>
+                <Tooltip label={t`Accept proposed changes`} position="left">
+                  <Button
+                    variant="filled"
+                    bg="success"
+                    px="0"
+                    w="2.5rem"
+                    onClick={onAcceptProposed}
+                  >
+                    <Icon name="check" />
+                  </Button>
+                </Tooltip>
+                <Tooltip label={t`Reject proposed changes`} position="left">
+                  <Button
+                    w="2.5rem"
+                    px="0"
+                    variant="filled"
+                    bg="danger"
+                    onClick={onRejectProposed}
+                  >
+                    <Icon name="close" />
+                  </Button>
+                </Tooltip>
+              </>
+            )}
+            {withDebugger && (
+              <RunButtonWithTooltip
+                disabled={!isRunnable}
+                isRunning={isRunning}
+                isDirty={isDirty}
+                onRun={onRun}
+                onCancel={onCancel}
+                getTooltip={() => t`Run Python script`}
+              />
+            )}
+          </Stack>
+        </Flex>
+        <SharedLibraryActions
+          source={proposedSource ?? source}
+          onChange={onChange}
+        />
+      </Box>
     </MaybeResizableBox>
   );
 }

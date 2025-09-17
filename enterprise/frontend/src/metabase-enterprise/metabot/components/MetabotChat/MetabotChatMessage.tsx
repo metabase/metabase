@@ -3,6 +3,7 @@ import type { UnknownAction } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { useCallback, useState } from "react";
 import { push } from "react-router-redux";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
@@ -162,9 +163,21 @@ export const AgentMessage = ({
           <Button
             onClick={() => {
               const transform = message.payload;
-              const url = transform.id
-                ? `/admin/transforms/${transform.id}/query`
-                : "/admin/transforms/new/native";
+              const url = match(transform)
+                .with(
+                  { id: P.number },
+                  ({ id }) => `/admin/transforms/${id}/query`,
+                )
+                .with(
+                  { source: { type: "python" } },
+                  () => "/admin/transforms/new/python",
+                )
+                .with(
+                  { source: { type: "query" } },
+                  () => "/admin/transforms/new/native",
+                )
+                .exhaustive();
+
               dispatch(push(url) as UnknownAction);
               dispatch(setSuggestedTransform(transform));
             }}

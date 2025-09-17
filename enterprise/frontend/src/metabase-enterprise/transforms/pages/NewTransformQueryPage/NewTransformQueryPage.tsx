@@ -42,11 +42,16 @@ type NewTransformQueryPageProps = {
 
 export function NewTransformQueryPage({ params }: NewTransformQueryPageProps) {
   const { type, cardId } = getParsedParams(params);
-  if (type === "python") {
-    return <NewPythonTransformPage />;
-  }
 
-  return <NewQueryTransformQueryPage type={type} cardId={cardId} />;
+  return (
+    <AdminSettingsLayout fullWidth>
+      {type === "python" ? (
+        <NewPythonTransformPage />
+      ) : (
+        <NewQueryTransformQueryPage type={type} cardId={cardId} />
+      )}
+    </AdminSettingsLayout>
+  );
 }
 
 function NewQueryTransformQueryPage({
@@ -143,7 +148,7 @@ function NewTransformPageBody({ initialSource }: NewTransformPageBodyProps) {
   );
 
   return (
-    <AdminSettingsLayout fullWidth>
+    <>
       <QueryEditor
         initialSource={initSource}
         isNew
@@ -161,7 +166,7 @@ function NewTransformPageBody({ initialSource }: NewTransformPageBodyProps) {
           onClose={closeModal}
         />
       )}
-    </AdminSettingsLayout>
+    </>
   );
 }
 

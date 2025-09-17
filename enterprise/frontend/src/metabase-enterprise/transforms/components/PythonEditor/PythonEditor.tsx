@@ -7,6 +7,7 @@ import { completion } from "./utils";
 
 export function PythonEditor({
   value,
+  proposedValue,
   onChange,
   withPandasCompletions,
   className,
@@ -14,6 +15,7 @@ export function PythonEditor({
   ...rest
 }: {
   value: string;
+  proposedValue?: string;
   onChange?: (value: string) => void;
   withPandasCompletions?: boolean;
   className?: string;
@@ -23,6 +25,7 @@ export function PythonEditor({
     <CodeEditor
       className={cx(S.editor, className)}
       value={value}
+      proposedValue={proposedValue}
       onChange={onChange}
       language="python"
       extensions={withPandasCompletions ? completion : undefined}
