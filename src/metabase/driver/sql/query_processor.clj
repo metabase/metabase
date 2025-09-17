@@ -864,10 +864,10 @@
         (:name (driver-api/field (driver-api/metadata-provider) id-or-name)))))
 
 (defn- field-nfc-path
-  [[_field id-or-name opts]]
-  (or (get opts driver-api/qp.add.nfc-path)
-      (when (integer? id-or-name)
-        (:nfc-path (driver-api/field (driver-api/metadata-provider) id-or-name)))))
+  [[_field _id-or-name opts]]
+  ;; ignore nfc paths for fields that don't come from a source table
+  (when (pos-int? (get opts driver-api/qp.add.source-table))
+    (get opts driver-api/qp.add.nfc-path)))
 
 (defmethod ->honeysql [:sql ::nfc-path]
   [_driver [_ _nfc-path]]
