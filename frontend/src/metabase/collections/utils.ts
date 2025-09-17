@@ -133,6 +133,12 @@ export function isRootCollection(collection: Pick<Collection, "id">): boolean {
   return canonicalCollectionId(collection?.id) === null;
 }
 
+export function isTopLevelCollection(
+  collection: Pick<Collection, "location">,
+): boolean {
+  return collection.location === "/";
+}
+
 export function isItemPinned(item: CollectionItem) {
   return item.collection_position != null;
 }

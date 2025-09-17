@@ -68,14 +68,6 @@ export const getSettingsRoutes = () => (
       path="remote-sync"
       component={() => <PLUGIN_GIT_SYNC.GitSyncSettings />}
     />
-    <Route
-      path="remote-sync/sync"
-      component={() => <PLUGIN_GIT_SYNC.GitSyncSettings />}
-    />
-    <Route
-      path="remote-sync/changes"
-      component={() => <PLUGIN_GIT_SYNC.GitChangeList />}
-    />
     <Route path="maps" component={MapsSettingsPage} />
     <Route path="localization" component={LocalizationSettingsPage} />
     <Route path="uploads" component={UploadSettingsPage} />

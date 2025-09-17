@@ -12,13 +12,21 @@
   :encryption :no
   :default    false)
 
+(defn- verify-git-sync-configuration
+  "Verifies that git sync is properly configured by checking repository access"
+  []
+  (try
+    (when-let [source (source/source-from-settings)]
+      (and (source/can-access-branch-in-source? source (setting/get :git-sync-import-branch))
+           (some? (setting/get :git-sync-url))
+           (some? (setting/get :git-sync-token))))
+    (catch Exception _
+      false)))
+
 (defn- set-repo-with-verification!-fn [original-key]
   (fn [new-value]
     (setting/set-value-of-type! :string original-key new-value)
-    (if (source/can-access-branch-in-source? (source/source-from-settings)
-                                             (setting/get :git-sync-import-branch))
-      (git-sync-configured! true)
-      (git-sync-configured! false))))
+    (git-sync-configured! (verify-git-sync-configuration))))
 
 (defsetting git-sync-import-branch
   (deferred-tru "The git branch to pull from, e.g. `main`")
@@ -64,6 +72,26 @@
   :encryption :no
   :export? false
   :default "main")
+
+(defsetting git-sync-type
+  (deferred-tru "Git synchronization type - import or export")
+  :type :string
+  :visibility :authenticated
+  :export? false
+  :encryption :no
+  :default "import")
+
+(defsetting git-sync-enabled
+  (deferred-tru "Whether git sync is enabled")
+  :type :boolean
+  :visibility :admin
+  :export? false
+  :encryption :no
+  :default false
+  :setter (fn [new-value]
+            (setting/set-value-of-type! :boolean :git-sync-enabled new-value)
+            (when new-value
+              (git-sync-configured! (verify-git-sync-configuration)))))
 
 (defsetting git-sync-allow-edit
   (deferred-tru "Whether library content can be edited on this instance")

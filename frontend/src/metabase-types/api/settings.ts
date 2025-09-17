@@ -640,6 +640,8 @@ export interface EnterpriseSettings extends Settings {
   "git-sync-entities"?: Partial<Record<SyncableEntity, boolean>> | null;
   "git-sync-configured"?: boolean | null;
   "git-sync-allow-edit"?: boolean;
+  "git-sync-type"?: "import" | "export";
+  "git-sync-enabled"?: boolean;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
   "landing-page-illustration"?: IllustrationSettingValue;
