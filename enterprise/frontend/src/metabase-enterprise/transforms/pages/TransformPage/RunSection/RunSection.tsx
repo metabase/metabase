@@ -10,6 +10,7 @@ import {
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
 import { trackTranformTriggerManualRun } from "metabase-enterprise/transforms/analytics";
+import { LogOutput } from "metabase-enterprise/transforms/components/LogOutput";
 import type { Transform, TransformTagId } from "metabase-types/api";
 
 import { RunButton } from "../../../components/RunButton";
@@ -34,6 +35,7 @@ export function RunSection({ transform }: RunSectionProps) {
           <RunStatusSection transform={transform} />
           <RunButtonSection transform={transform} />
         </Group>
+        <RunOutputSection transform={transform} />
       </Stack>
       <Divider />
       <Group p="lg" gap="lg">
@@ -161,6 +163,18 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
   };
 
   return <RunButton run={transform.last_run} onRun={handleRun} />;
+}
+
+function RunOutputSection({ transform }: RunSectionProps) {
+  if (!transform?.last_run?.message) {
+    return null;
+  }
+  const { status, message } = transform.last_run;
+  if (status !== "started") {
+    return null;
+  }
+
+  return <LogOutput content={message} />;
 }
 
 type TagSectionProps = {
