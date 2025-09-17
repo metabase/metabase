@@ -10,7 +10,10 @@ import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Icon } from "metabase/ui";
 
-import { MetabotMentionExtension } from "../../extensions/MetabotMentionExtension";
+import {
+  MetabotMentionExtension,
+  MetabotMentionPluginKey,
+} from "../../extensions/MetabotMentionExtension";
 import { MetabotMentionSuggestion } from "../../extensions/MetabotMentionSuggestion";
 import { createMetabotSuggestionRenderer } from "../../extensions/metabotSuggestionRenderer";
 import {
@@ -89,6 +92,12 @@ export const MetabotTipTapInput = ({
       handleKeyDown: (view, event) => {
         // Handle Enter key for submit (without Shift)
         if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+          // Check if mention suggestion is active - if so, let it handle Enter
+          const mentionState = MetabotMentionPluginKey.getState(view.state);
+          if (mentionState?.active) {
+            return false; // Let the suggestion system handle it
+          }
+
           const jsonContent = editor?.getJSON();
           if (jsonContent) {
             const serialized = serializeToMetabotFormat(jsonContent);
