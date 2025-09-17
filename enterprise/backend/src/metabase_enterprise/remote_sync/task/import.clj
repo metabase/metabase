@@ -4,7 +4,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase-enterprise.remote-sync.api :as api]
+   [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase.task.core :as task]))
 
@@ -13,7 +13,7 @@
 (defn- auto-import!
   []
   (when (and (= "import" (settings/remote-sync-type)) (settings/remote-sync-auto-import))
-    (api/reload-from-git! (settings/remote-sync-branch))))
+    (impl/import! (settings/remote-sync-branch))))
 
 (task/defjob ^{:doc "Auto-imports any remote collections."} AutoImport [_]
   (auto-import!))
