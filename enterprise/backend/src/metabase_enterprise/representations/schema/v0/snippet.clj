@@ -1,4 +1,4 @@
-(ns metabase-enterprise.representations.schema.snippet.v0
+(ns metabase-enterprise.representations.schema.v0.snippet
   "Schema for v0 of the human-writable SQL snippet representation format.
    
    Note: v0 is a theoretical work-in-progress and subject to change."

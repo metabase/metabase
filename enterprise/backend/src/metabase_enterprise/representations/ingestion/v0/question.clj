@@ -1,6 +1,6 @@
-(ns metabase-enterprise.representations.ingestion.card.v0
-  "Ingestion logic for v0 card representations.
-   Converts validated representation maps into Metabase Card entities.
+(ns metabase-enterprise.representations.ingestion.v0.question
+  "Ingestion logic for v0 question representations.
+   Converts validated representation maps into Metabase Card entities (Questions).
    
    This is a POC implementation focusing on simple SQL queries."
   (:require
@@ -54,22 +54,21 @@
                  mbql_query)))
 
       :else
-      (throw (ex-info "Card must have either 'query' or 'mbql_query'"
+      (throw (ex-info "Question must have either 'query' or 'mbql_query'"
                       {:representation representation})))))
 
 ;;; ------------------------------------ Public API ------------------------------------
 
-(defn representation->card-data
-  "Convert a validated v0 card representation into data suitable for creating/updating a Card.
+(defn representation->question-data
+  "Convert a validated v0 question representation into data suitable for creating/updating a Card (Question).
    
    Returns a map with keys matching the Card model fields.
    Does NOT insert into the database - just transforms the data.
    
    For POC: Focuses on the minimal fields needed."
-  [{card-name :name
+  [{question-name :name
     :keys [type ref description database collection] :as representation}]
-  (let [card-type (keyword (name type))
-        database-id (find-database-id database)]
+  (let [database-id (find-database-id database)]
     (when-not database-id
       (throw (ex-info (str "Database not found: " database)
                       {:database database})))
@@ -77,7 +76,7 @@
      {;; :id
       ;; :created_at
       ;; :updated_at
-      :name card-name
+      :name question-name
       :description (or description "")
       :display :table ; Default display type
       :dataset_query (representation->dataset-query representation)
@@ -89,23 +88,23 @@
       ;; :archived
       ;; :collection_id ; SKIP! Set later
       ;; :public_uuid
-      :type card-type}
+      :type :question}
      ;; Optional fields
      (when-let [coll-id (find-collection-id collection)]
        {:collection_id coll-id}))))
 
-(defn ingest-card!
-  "Ingest a v0 card representation and create or update a Card in the database.
-   
+(defn ingest!
+  "Ingest a v0 question representation and create or update a Card (Question) in the database.
+
    For POC: Uses ref as a stable identifier for upserts.
-   If a card with the same ref exists (via entity_id), it will be updated.
-   Otherwise a new card will be created.
-   
+   If a question with the same ref exists (via entity_id), it will be updated.
+   Otherwise a new question will be created.
+
    Returns the created/updated Card."
   [representation & {:keys [creator-id]
                      :or {creator-id config/internal-mb-user-id}}]
-  (let [card-data (representation->card-data representation)
-        ;; For POC, use ref directly as entity_id
+  (let [question-data (representation->question-data representation)
+        ;; Ugliness within ugliness:
         entity-id (when-let [ref (:ref representation)]
                     (u/generate-nano-id (str
                                          (hash (str (:collection_id representation)
@@ -115,23 +114,28 @@
                    (t2/select-one :model/Card :entity_id entity-id))]
     (if existing
       (do
-        (log/info "Updating existing card" (:name card-data) "with ref" (:ref representation))
-        (t2/update! :model/Card (:id existing) (dissoc card-data :entity_id))
+        (log/info "Updating existing question" (:name question-data) "with ref" (:ref representation))
+        (t2/update! :model/Card (:id existing) (dissoc question-data :entity_id))
         (t2/select-one :model/Card :id (:id existing)))
       (do
-        (log/info "Creating new card" (:name card-data))
-        (let [card-data-with-creator (-> card-data
-                                         (assoc :creator_id creator-id)
-                                         (assoc :entity_id entity-id))]
-          (first (t2/insert-returning-instances! :model/Card card-data-with-creator)))))))
+        (log/info "Creating new question" (:name question-data))
+        (let [question-data-with-creator (-> question-data
+                                             (assoc :creator_id creator-id)
+                                             (assoc :entity_id entity-id))]
+          (first (t2/insert-returning-instances! :model/Card question-data-with-creator)))))))
 
 (comment
   (do ; make the sample_database
     (require '[toucan2.core :as t2])
     (require '[metabase.test :as mt])
     (t2/insert-returning-instance! :model/Database {:name "sample_database" :engine :h2 :details {:db "mem:sample"} :is_sample true}))
-  (do ; load a sample card (question)
+  (do ; load a sample question
     (require '[metabase-enterprise.representations.ingestion.core :as ing-core])
-    (representation->card-data
+    (representation->question-data
      (ing-core/ingest-representation
-      (ing-core/parse-representation "test_resources/representations/v0/monthly-revenue.card.yml")))))
+      (ing-core/parse-representation "test_resources/representations/v0/monthly-revenue.question.yml"))))
+  (do ; load AND WRITE a sample question
+    (require '[metabase-enterprise.representations.ingestion.core :as ing-core])
+    (ingest!
+     (ing-core/ingest-representation
+      (ing-core/parse-representation "test_resources/representations/v0/monthly-revenue.question.yml")))))

@@ -1,6 +1,6 @@
-(ns metabase-enterprise.representations.schema.card.v0
-  "Schema for v0 of the human-writable card representation format.
-   
+(ns metabase-enterprise.representations.schema.v0.question
+  "Schema for v0 of the human-writable question representation format.
+
    Note: v0 is a theoretical work-in-progress and subject to change."
   (:require
    [metabase.lib.schema.common :as lib.schema.common]
@@ -8,20 +8,10 @@
 
 ;;; ------------------------------------ Schema Definitions ------------------------------------
 
-(mr/def ::type-question
+(mr/def ::type
   [:enum {:decode/json keyword
           :description "Type must be 'question'"}
    :v0/question])
-
-(mr/def ::type-model
-  [:enum {:decode/json keyword
-          :description "Type must be 'model'"}
-   :v0/model])
-
-(mr/def ::type-metric
-  [:enum {:decode/json keyword
-          :description "Type must be 'metric'"}
-   :v0/metric])
 
 (mr/def ::ref
   [:and
@@ -65,7 +55,7 @@
   [:and
    [:map
     {:description "v0 schema for human-writable question representation"}
-    [:type ::type-question]
+    [:type ::type]
     [:ref ::ref]
     [:name ::name]
     [:description ::description]
@@ -76,42 +66,3 @@
    [:fn {:error/message "Must have exactly one of :query or :mbql_query"}
     (fn [{:keys [query mbql_query]}]
       (= 1 (count (filter some? [query mbql_query]))))]])
-
-(mr/def ::model
-  [:and
-   [:map
-    {:description "v0 schema for human-writable model representation"}
-    [:type ::type-model]
-    [:ref ::ref]
-    [:name ::name]
-    [:description ::description]
-    [:database ::database]
-    [:query {:optional true} ::query]
-    [:mbql_query {:optional true} ::mbql-query]
-    [:collection {:optional true} ::collection]]
-   [:fn {:error/message "Must have exactly one of :query or :mbql_query"}
-    (fn [{:keys [query mbql_query]}]
-      (= 1 (count (filter some? [query mbql_query]))))]])
-
-(mr/def ::metric
-  [:and
-   [:map
-    {:description "v0 schema for human-writable metric representation"}
-    [:type ::type-metric]
-    [:ref ::ref]
-    [:name ::name]
-    [:description ::description]
-    [:database ::database]
-    [:query {:optional true} ::query]
-    [:mbql_query {:optional true} ::mbql-query]
-    [:collection {:optional true} ::collection]]
-   [:fn {:error/message "Must have exactly one of :query or :mbql_query"}
-    (fn [{:keys [query mbql_query]}]
-      (= 1 (count (filter some? [query mbql_query]))))]])
-
-(mr/def ::card
-  [:or
-   {:description "v0 schema for human-writable card representation - can be question, model, or metric"}
-   ::question
-   ::model
-   ::metric])

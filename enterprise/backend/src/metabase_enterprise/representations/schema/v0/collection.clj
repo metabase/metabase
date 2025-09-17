@@ -1,4 +1,4 @@
-(ns metabase-enterprise.representations.schema.collection.v0
+(ns metabase-enterprise.representations.schema.v0.collection
   "Schema for v0 of the human-writable collection representation format.
    
    Note: v0 is a theoretical work-in-progress and subject to change."

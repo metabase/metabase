@@ -1,4 +1,4 @@
-(ns metabase-enterprise.representations.schema.document.v0
+(ns metabase-enterprise.representations.schema.v0.document
   "Schema for v0 of the human-writable document representation format.
    
    Note: v0 is a theoretical work-in-progress and subject to change."

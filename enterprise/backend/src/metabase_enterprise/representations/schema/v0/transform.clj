@@ -1,4 +1,4 @@
-(ns metabase-enterprise.representations.schema.transform.v0
+(ns metabase-enterprise.representations.schema.v0.transform
   "Schema for v0 of the human-writable transform representation format.
    
    Note: v0 is a theoretical work-in-progress and subject to change."
