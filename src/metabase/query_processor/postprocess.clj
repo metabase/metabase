@@ -34,7 +34,7 @@
    [::mbql5  #'results-metadata/record-and-return-metadata!]
    [::mbql5  #'limit/limit-result-rows]
    [::mbql5  #'qp.middleware.enterprise/limit-download-result-rows]
-   [::legacy #'qp.add-rows-truncated/add-rows-truncated]
+   [::mbql5  #'qp.add-rows-truncated/add-rows-truncated]
    [::mbql5  #'qp.add-timezone-info/add-timezone-info]
    [::mbql5  #'qp.middleware.enterprise/merge-sandboxing-metadata]
    [::mbql5  #'qp.add-remaps/remap-results]

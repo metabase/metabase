@@ -5,7 +5,6 @@
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -46,19 +45,6 @@
   [query]
   (= (:lib/type (lib/query-stage query -1)) :mbql.stage/native))
 
-;;; TODO (Cam 9/11/25) -- move this to `lib.walk.util` once my PR that adds it finally gets reviewed
-(mu/defn- any-native-stage?
-  "Returns true if any stage of this query is native."
-  [query :- ::lib.schema/query]
-  (let [has-native-stage? (atom false)]
-    (lib.walk/walk-stages
-     query
-     (fn [_query _path stage]
-       (when (= (:lib/type stage) :mbql.stage/native)
-         (reset! has-native-stage? true))
-       nil))
-    @has-native-stage?))
-
 (mu/defn- compile* :- ::compiled
   [query :- ::lib.schema/query]
   (assert (not (:qp/compiled query)) "This query has already been compiled!")
@@ -95,7 +81,7 @@
         (assoc :qp/compiled (compile-preprocessed preprocessed))
         ;; if this query is pure-MBQL then we can reliably (re)compile it with inline parameters. If it has any native
         ;; stage then it might already have parameters, and we're not about to try to splice them back in.
-        (cond-> (not (any-native-stage? preprocessed))
+        (cond-> (not (lib/any-native-stage? preprocessed))
           (assoc :qp/compiled-inline (binding [driver/*compile-with-inline-parameters* true]
                                        (compile-preprocessed preprocessed)))))))
 

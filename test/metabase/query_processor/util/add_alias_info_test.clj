@@ -1116,8 +1116,12 @@
                                                                :aggregation  [[:sum $orders.quantity]]}
                                                 :alias        "Orders"
                                                 :condition    [:= $id &Orders.orders.product-id]
-                                                ;; we can get title since product_id is remapped to title
-                                                :fields       [&Orders.title
+                                                ;; we can get title since product_id is remapped to title.
+                                                ;;
+                                                ;; TODO (Cam 9/16/25) -- says who? This is not something we support in
+                                                ;; the FE.
+                                                :fields       [[:field %products.title {:join-alias   "Orders"
+                                                                                        :source-field (meta/id :orders :product-id)}]
                                                                &Orders.*sum/Integer]}]
                                     :fields   [$title $category]
                                     :order-by [[:asc $id]]

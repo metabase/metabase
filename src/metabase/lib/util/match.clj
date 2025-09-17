@@ -383,6 +383,9 @@
 (defmacro match-lite
   "Pattern matching macro, simplified version of [[clojure.core.match]].
 
+  TODO (Cam 9/16/25) -- what exactly is the difference between this and [[match]]? It doesn't recurse? Someone please
+  write an explanation here.
+
   Usage:
   (match-lite value
     pattern1 result1
