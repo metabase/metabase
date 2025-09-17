@@ -20,4 +20,4 @@
   :feature :none
   [collection]
   (or (not (collections/remote-synced-collection? collection))
-      (settings/remote-sync-allow-edit)))
+      (= (settings/remote-sync-type) "export")))
