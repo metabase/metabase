@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { parseTimestamp } from "metabase/lib/time-dayjs";
 import * as Urls from "metabase/lib/urls";
 import { Stack } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
@@ -17,6 +16,7 @@ import { ManageSection } from "./ManageSection";
 import { NameSection } from "./NameSection";
 import { RunSection } from "./RunSection";
 import { TargetSection } from "./TargetSection";
+import { isRunningOrSyncing } from "./utils";
 
 type TransformPageParams = {
   transformId: string;
@@ -32,17 +32,17 @@ type TransformPageProps = {
 
 export function TransformPage({ params }: TransformPageProps) {
   const { transformId } = getParsedParams(params);
-  const [isRunningOrSyncing, setIsRunningOrSyncing] = useState(false);
+  const [isPolling, setIsPolling] = useState(false);
   const {
     data: transform,
     isLoading,
     error,
   } = useGetTransformQuery(transformId ?? skipToken, {
-    pollingInterval: isRunningOrSyncing ? POLLING_INTERVAL : undefined,
+    pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
   });
 
-  if (isRunningOrSyncing !== getIsRunningOrSyncing(transform)) {
-    setIsRunningOrSyncing(!isRunningOrSyncing);
+  if (isPolling !== isPollingNeeded(transform)) {
+    setIsPolling(!isPolling);
   }
 
   if (isLoading || error != null) {
@@ -60,14 +60,8 @@ export function TransformPage({ params }: TransformPageProps) {
         <NameSection transform={transform} />
       </Stack>
       <RunSection transform={transform} />
-      <TargetSection
-        transform={transform}
-        isRunningOrSyncing={isRunningOrSyncing}
-      />
-      <ManageSection
-        transform={transform}
-        isRunningOrSyncing={isRunningOrSyncing}
-      />
+      <TargetSection transform={transform} />
+      <ManageSection transform={transform} />
       <DependenciesSection transform={transform} />
     </Stack>
   );
@@ -81,29 +75,6 @@ function getParsedParams({
   };
 }
 
-function getIsRunningOrSyncing(transform?: Transform) {
-  const lastRun = transform?.last_run;
-
-  if (transform == null || lastRun == null) {
-    return false;
-  }
-
-  if (lastRun.status === "started") {
-    return true;
-  }
-
-  // If the last run succeeded but there is no table yet, wait for the sync to
-  // finish. If the transform is changed until the sync finishes, stop polling,
-  // because the table could be already deleted.
-  if (
-    transform.table == null &&
-    lastRun.status === "succeeded" &&
-    lastRun.end_time != null
-  ) {
-    const endedAt = parseTimestamp(lastRun.end_time);
-    const updatedAt = parseTimestamp(transform.updated_at);
-    return endedAt.isAfter(updatedAt);
-  }
-
-  return false;
+function isPollingNeeded(transform?: Transform) {
+  return transform != null && isRunningOrSyncing(transform);
 }

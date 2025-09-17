@@ -11,31 +11,22 @@ import type { Transform } from "metabase-types/api";
 import { QueryView } from "../../../components/QueryView";
 import { TitleSection } from "../../../components/TitleSection";
 import { getTransformListUrl, getTransformQueryUrl } from "../../../urls";
+import { isRunningOrSyncing } from "../utils";
 
 import { DeleteTransformModal } from "./DeleteTransformModal";
 
 type ManageSectionProps = {
   transform: Transform;
-  isRunningOrSyncing: boolean;
 };
 
-export function ManageSection({
-  transform,
-  isRunningOrSyncing,
-}: ManageSectionProps) {
+export function ManageSection({ transform }: ManageSectionProps) {
   return (
     <TitleSection
       label={t`Query`}
       rightSection={
         <Group>
-          <EditQueryButton
-            transform={transform}
-            isRunningOrSyncing={isRunningOrSyncing}
-          />
-          <DeleteTransformButton
-            transform={transform}
-            isRunningOrSyncing={isRunningOrSyncing}
-          />
+          <EditQueryButton transform={transform} />
+          <DeleteTransformButton transform={transform} />
         </Group>
       }
     >
@@ -48,19 +39,17 @@ export function ManageSection({
 
 type EditQueryButtonProps = {
   transform: Transform;
-  isRunningOrSyncing: boolean;
 };
 
-function EditQueryButton({
-  transform,
-  isRunningOrSyncing,
-}: EditQueryButtonProps) {
+function EditQueryButton({ transform }: EditQueryButtonProps) {
+  const isDisabled = isRunningOrSyncing(transform);
+
   return (
     <Button
-      component={isRunningOrSyncing ? undefined : Link}
+      component={isDisabled ? undefined : Link}
       to={getTransformQueryUrl(transform.id)}
       leftSection={<Icon name="pencil_lines" aria-hidden />}
-      disabled={isRunningOrSyncing}
+      disabled={isDisabled}
     >
       {t`Edit query`}
     </Button>
@@ -69,13 +58,9 @@ function EditQueryButton({
 
 type DeleteTransformButtonProps = {
   transform: Transform;
-  isRunningOrSyncing: boolean;
 };
 
-function DeleteTransformButton({
-  transform,
-  isRunningOrSyncing,
-}: DeleteTransformButtonProps) {
+function DeleteTransformButton({ transform }: DeleteTransformButtonProps) {
   const dispatch = useDispatch();
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
@@ -90,7 +75,7 @@ function DeleteTransformButton({
     <>
       <Button
         leftSection={<Icon name="trash" aria-hidden />}
-        disabled={isRunningOrSyncing}
+        disabled={isRunningOrSyncing(transform)}
         onClick={openModal}
       >
         {t`Delete`}
