@@ -254,6 +254,8 @@ export function PythonDataPicker({
       p="md"
       gap="md"
       h="100%"
+      w="30%"
+      miw="300px"
       className={S.dataPicker}
       data-testid="python-data-picker"
     >
@@ -276,8 +278,13 @@ export function PythonDataPicker({
           <Text size="sm" c="text-light" mb="sm">
             {t`Select tables to use as data sources and provide aliases for each`}
           </Text>
-          <Stack gap="sm">
-            {tableSelections.map((selection, index) => {
+          <Stack gap="xs">
+            <Group gap="xs">
+              <Text fw="bold" size="sm" flex="0 1 45%">{t`Table`}</Text>
+              <Text fw="bold" size="sm">{t`Alias`}</Text>
+            </Group>
+
+            {tableSelections.map((selection) => {
               // Filter available tables to exclude already selected ones (except current selection)
               const filteredTables = availableTables.filter(
                 (table) =>
@@ -295,9 +302,9 @@ export function PythonDataPicker({
                 table;
 
               return (
-                <Group key={selection.id} gap="sm" align="flex-end">
+                <Group key={selection.id} gap="xs" align="center" wrap="nowrap">
                   <Select
-                    style={{ flex: 1 }}
+                    flex="0 1 50%"
                     data={filteredTables}
                     value={selection.tableId?.toString() || null}
                     onChange={(value) => handleTableChange(selection.id, value)}
@@ -306,20 +313,12 @@ export function PythonDataPicker({
                     disabled={isLoadingTables}
                   />
                   <TextInput
-                    style={{ flex: 0.7 }}
+                    flex="0 1 50%"
                     value={selection.alias}
                     onChange={(e) =>
                       handleAliasChange(selection.id, e.target.value)
                     }
                     placeholder={t`Enter alias`}
-                    label={index === 0 ? t`Alias` : undefined}
-                    styles={{
-                      input: {
-                        color: selection.aliasManuallySet
-                          ? undefined
-                          : "var(--mb-color-text-light)",
-                      },
-                    }}
                     rightSection={
                       showReset ? (
                         <ActionIcon
@@ -327,35 +326,28 @@ export function PythonDataPicker({
                           aria-label={t`Reset alias to default`}
                           color="gray"
                           variant="subtle"
-                          size="xs"
                         >
                           <Icon name="refresh" size={12} />
                         </ActionIcon>
                       ) : null
                     }
                   />
-                  {tableSelections.length > 1 && (
-                    <ActionIcon
-                      onClick={() => handleRemoveTable(selection.id)}
-                      aria-label={t`Remove table`}
-                      color="gray"
-                      variant="subtle"
-                    >
-                      <Icon name="trash" />
-                    </ActionIcon>
-                  )}
+
+                  <ActionIcon
+                    onClick={() => handleRemoveTable(selection.id)}
+                    aria-label={t`Remove table`}
+                  >
+                    <Icon name="trash" />
+                  </ActionIcon>
                 </Group>
               );
             })}
+
             <Button
               leftSection={<Icon name="add" />}
               variant="subtle"
               onClick={handleAddTable}
-              disabled={
-                !tableSelections[tableSelections.length - 1]?.tableId ||
-                availableTables.length === 0 ||
-                selectedTableIds.size >= availableTables.length
-              }
+              disabled={availableTables.length === 0}
             >
               {t`Add another table`}
             </Button>
