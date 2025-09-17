@@ -77,12 +77,18 @@ export function getParsedParams({
 
 export function isPollingNeeded(transform?: Transform) {
   const lastRun = transform?.last_run;
+
   if (transform == null || lastRun == null) {
     return false;
   }
+
   if (lastRun.status === "started") {
     return true;
   }
+
+  // If the last run succeeded but there is no table yet, wait for the sync to
+  // finish. If the transform is changed until the sync finishes, stop polling,
+  // because the table could be already deleted.
   if (
     transform.table == null &&
     lastRun.status === "succeeded" &&
@@ -92,5 +98,6 @@ export function isPollingNeeded(transform?: Transform) {
     const updatedAt = parseTimestamp(transform.updated_at);
     return endedAt.isAfter(updatedAt);
   }
+
   return false;
 }
