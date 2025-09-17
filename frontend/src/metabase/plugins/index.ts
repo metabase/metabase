@@ -853,5 +853,5 @@ export const PLUGIN_TRANSFORMS: TransformsPlugin = {
 export const PLUGIN_GIT_SYNC = {
   LibraryNav: PluginPlaceholder,
   GitSyncSettings: NotFoundPlaceholder,
-  LibrarySyncControl: PluginPlaceholder,
+  RemoteSyncReadOnlyBanner: PluginPlaceholder,
 };

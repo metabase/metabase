@@ -1,8 +1,4 @@
-import type {
-  CollectionId,
-  EnterpriseSettings,
-  Transform,
-} from "metabase-types/api";
+import type { EnterpriseSettings, Transform } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
 import { invalidateTags, tag } from "./tags";
@@ -58,49 +54,23 @@ export type UnsyncedChangesResponse = {
   message?: string;
 };
 
-
 export type GitSyncSettings = Pick<
   EnterpriseSettings,
   | "remote-sync-url"
   | "remote-sync-token"
   | "remote-sync-type"
   | "remote-sync-branch"
+  | "remote-sync-configured"
 >;
 
 export const gitSyncApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    importGit: builder.mutation<
-      void,
-      { branch: string; collectionIds: CollectionId[] }
-    >({
-      query: ({ branch }) => ({
-        method: "POST",
-        url: "/api/ee/library/import",
-        body: { branch },
-      }),
-      invalidatesTags: (response, error, request) =>
-        invalidateTags(error, request.collectionIds.map((id) => ({ type: "collection", id: `${id}-items` }))),
-    }),
     exportGit: builder.mutation<void, { branch: string }>({
       query: ({ branch }) => ({
         method: "POST",
         url: "/api/ee/library/export",
         body: { branch },
       }),
-    }),
-    getRepositoryTree: builder.query<GitTreeNode, void>({
-      query: () => ({
-        method: "GET",
-        url: "/api/ee/library/source",
-      }),
-      providesTags: [tag("git-tree")],
-    }),
-    getFileContent: builder.query<GitFileContent, string>({
-      query: (path) => ({
-        method: "GET",
-        url: `/api/ee/library/source/${encodeURIComponent(path)}`,
-      }),
-      providesTags: [tag("git-file-content")],
     }),
     getUnsyncedChanges: builder.query<UnsyncedChangesResponse, void>({
       query: () => ({
@@ -121,10 +91,7 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
 });
 
 export const {
-  useImportGitMutation,
-  useExportGitMutation,
-  useGetRepositoryTreeQuery,
-  useGetFileContentQuery,
   useGetUnsyncedChangesQuery,
   useUpdateGitSyncSettingsMutation,
+  useExportGitMutation,
 } = gitSyncApi;

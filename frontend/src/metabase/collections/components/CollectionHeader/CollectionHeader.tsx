@@ -4,7 +4,6 @@ import {
   isInstanceAnalyticsCollection,
   isTrashedCollection,
 } from "metabase/collections/utils";
-import { PLUGIN_GIT_SYNC } from "metabase/plugins";
 import type { Collection } from "metabase-types/api";
 
 import { CollectionMenu } from "../CollectionMenu";
@@ -82,9 +81,6 @@ const CollectionHeader = ({
             collection={collection}
             onUpdateCollection={onUpdateCollection}
           />
-          {/* {collection.type === "remote-synced" && (
-            <PLUGIN_GIT_SYNC.LibrarySyncControl />
-          )} */}
           {!isInstanceAnalytics && (
             <CollectionMenu
               collection={collection}
