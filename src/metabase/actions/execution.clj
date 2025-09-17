@@ -56,7 +56,7 @@
 (mu/defn- implicit-action-table
   [card-id :- pos-int?]
   (let [card (t2/select-one :model/Card :id card-id)
-        {:keys [table-id]} (query/query->database-and-table-ids (:dataset_query card))]
+        {:keys [table-id]} (query/query->database-and-table-id (:dataset_query card))]
     (t2/hydrate (t2/select-one :model/Table :id table-id) :fields)))
 
 (defn- execute-custom-action! [action request-parameters]

@@ -150,6 +150,8 @@
   but `:number/=` is not)."
   [card-id]
   (let [query (api/check-404 (t2/select-one-fn :dataset_query :model/Card :id card-id))]
+    (assert (= (lib/normalized-mbql-version query) :mbql-version/mbql5)
+            "Expected MBQL 5 query")
     (into
      {}
      (comp

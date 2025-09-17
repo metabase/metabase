@@ -193,47 +193,39 @@
   {:in  json-in-with-eliding
    :out json-out-with-keywordization})
 
+(defn- query->metadata-provider [query]
+  (if (lib.metadata.protocols/metadata-provider? (:lib/metadata query))
+    ;; in case someone passes in an already-normalized query to [[maybe-normalize-query]] below,
+    ;; preserve the existing metadata provider.
+    (:lib/metadata query)
+    ((requiring-resolve 'metabase.lib-be.metadata.jvm/application-database-metadata-provider)
+     (u/the-id (some #(get query %) [:database "database"])))))
+
+(defn- ->mbql5-query [query]
+  (lib/query (query->metadata-provider query) query))
+
 (defn- serialize-mbql5-query
   "Saving MBQL 5 queries​ we can assume MBQL 5 queries are normalized enough already, but remove the metadata provider
   before saving it, because it's not something that lends itself well to serialization."
   [query]
-  (lib/prepare-for-serialization query))
+  (lib/prepare-for-serialization (->mbql5-query query)))
 
 (defn- deserialize-mbql5-query
   "Reading MBQL 5 queries​: normalize them, then attach a MetadataProvider based on their Database."
   [query]
-  (let [metadata-provider (if (lib.metadata.protocols/metadata-provider? (:lib/metadata query))
-                            ;; in case someone passes in an already-normalized query to [[maybe-normalize-query]] below,
-                            ;; preserve the existing metadata provider.
-                            (:lib/metadata query)
-                            ((requiring-resolve 'metabase.lib-be.metadata.jvm/application-database-metadata-provider)
-                             (u/the-id (some #(get query %) [:database "database"]))))]
-    (lib/query metadata-provider query)))
+  (->mbql5-query query))
 
 (mu/defn maybe-normalize-query
   "For top-level query maps like `Card.dataset_query`. Normalizes them on the way in & out."
   [in-or-out :- [:enum :in :out]
    query]
   (letfn [(normalize [query]
-            (when-let [f (case (lib/normalized-mbql-version query)
-                           :mbql-version/mbql5
-                           (case in-or-out
+            (when (and (map? query)
+                       (seq query))
+              (when-let [f (case in-or-out
                              :in  serialize-mbql5-query
-                             :out deserialize-mbql5-query)
-                           ;; legacy queries: just normalize them with the legacy normalization code for now... in the
-                           ;; near future we'll probably convert to MBQL 5 before saving so everything in the app DB
-                           ;; is MBQL 5
-                           :mbql-version/legacy
-                           (case in-or-out
-                             :in  mbql.normalize/normalize
-                             ;; convert to MBQL 5 on the way out
-                             :out deserialize-mbql5-query)
-
-                           #_else
-                           (do
-                             (log/errorf "Invalid query: %s" (pr-str query))
-                             nil))]
-              (f query)))]
+                             :out deserialize-mbql5-query)]
+                (f query))))]
     (cond-> query
       (and (map? query) (seq query))
       normalize)))

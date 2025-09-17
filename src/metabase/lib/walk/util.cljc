@@ -33,11 +33,6 @@
   [query :- ::lib.schema/query]
   (stage-values-set query (keep :source-table)))
 
-(mu/defn all-source-card-ids :- [:maybe [:set {:min 1} ::lib.schema.id/card]]
-  "Return a set of all `:source-card` Card IDs referenced anywhere in the query."
-  [query :- ::lib.schema/query]
-  (stage-values-set query (keep :source-card)))
-
 (mu/defn all-template-tags :- [:maybe [:set {:min 1} ::lib.schema.template-tag/template-tag]]
   "Return a map of Param IDs to sets of Field IDs referenced by each template tag parameter in this `card`.
 
@@ -49,6 +44,27 @@
                                 (mapcat :template-tags)
                                 (map (fn [[template-tag-name template-tag]]
                                        (assoc template-tag :lib.walk/template-tag-name template-tag-name))))))
+
+(mu/defn all-source-card-ids :- [:maybe [:set {:min 1} ::lib.schema.id/card]]
+  "Return a set of all `:source-card` Card IDs anywhere in the query, as well as all `:card-id`s in template tags."
+  [query :- ::lib.schema/query]
+  (not-empty
+   (into (set (stage-values-set query (keep :source-card)))
+         (keep :card-id)
+         (all-template-tags query))))
+
+(mu/defn any-native-stage?
+  "Returns true if any stage of this query is native."
+  [query :- ::lib.schema/query]
+  (let [has-native-stage? (volatile! false)]
+    (lib.walk/walk-stages
+     query
+     (fn [_query _path stage]
+       (when (and (not @has-native-stage?)
+                  (= (:lib/type stage) :mbql.stage/native))
+         (vreset! has-native-stage? true))
+       nil))
+    @has-native-stage?))
 
 (mu/defn all-field-ids :- [:set ::lib.schema.id/field]
   "Set of all Field IDs referenced in `:field` refs in a query or MBQL clause."
@@ -78,16 +94,3 @@
                (map (fn [template-tag]
                       [(:id template-tag) (all-field-ids (:dimension template-tag))])))
          (all-template-tags query))))
-
-(mu/defn any-native-stage?
-  "Returns true if any stage of this query is native."
-  [query :- ::lib.schema/query]
-  (let [has-native-stage? (volatile! false)]
-    (lib.walk/walk-stages
-     query
-     (fn [_query _path stage]
-       (when (and (not @has-native-stage?)
-                  (= (:lib/type stage) :mbql.stage/native))
-         (vreset! has-native-stage? true))
-       nil))
-    @has-native-stage?))

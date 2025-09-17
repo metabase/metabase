@@ -8,11 +8,10 @@
    [metabase.util.malli.registry :as mr]))
 
 (defn- encoder [schema]
-  (mr/cached
-   ::encoder
-   schema
-   (fn []
-     (mc/encoder schema (mtx/transformer {:name :serialize})))))
+  (mr/cached ::encoder
+             schema
+             (fn []
+               (mc/encoder schema (mtx/transformer {:name :serialize})))))
 
 (defn prepare-for-serialization
   "Prepare `x`, usually a query, for serialization to JSON for a REST API response or for persisting into the

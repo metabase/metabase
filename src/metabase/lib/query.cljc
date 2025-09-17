@@ -170,12 +170,12 @@
 (defn- query-from-legacy-query
   [metadata-providerable legacy-query]
   (try
-    (let [pmbql-query (-> (binding [lib.schema.expression/*suppress-expression-type-check?* true]
+    (let [mbql5-query (-> (binding [lib.schema.expression/*suppress-expression-type-check?* true]
                             (lib.convert/->pMBQL (mbql.normalize/normalize-or-throw legacy-query)))
                           (add-types-to-fields metadata-providerable))]
       (merge
-       pmbql-query
-       (query-with-stages metadata-providerable (:stages pmbql-query))))
+       mbql5-query
+       (query-with-stages metadata-providerable (:stages mbql5-query))))
     (catch #?(:clj Throwable :cljs :default) e
       (throw (ex-info (i18n/tru "Error creating query from legacy query: {0}" (ex-message e))
                       {:legacy-query legacy-query}

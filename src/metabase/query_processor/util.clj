@@ -143,8 +143,6 @@
                                   e))))]
     (buddy-hash/sha3-256 (json/encode (select-keys-for-hashing query)))))
 
-;;; --------------------------------------------- Query Source Card IDs ----------------------------------------------
-
 (defn query->source-card-id
   "Return the ID of the Card used as the \"source\" query of this query, if applicable; otherwise return `nil`."
   {:deprecated "0.57.0"}
@@ -153,8 +151,6 @@
     (when (string? source-table)
       (when-let [[_ card-id-str] (re-matches #"^card__(\d+$)" source-table)]
         (parse-long card-id-str)))))
-
-;;; ------------------------------------------- Metadata Combination Utils --------------------------------------------
 
 (defn field-ref->key
   "A standard and repeatable way to address a column. Names can collide and sometimes are not unique. Field refs should

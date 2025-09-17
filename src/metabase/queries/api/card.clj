@@ -99,7 +99,7 @@
                                :where [:and [:= :m.id model-id] [:not :c.archived]]
                                :order-by [[[:lower :c.name] :asc]]})
        ;; now check if model-id really occurs as a card ID
-       (filter (fn [card] (some #{model-id} (-> card :dataset_query query/collect-card-ids))))))
+       (filter (fn [card] (some #{model-id} (-> card :dataset_query lib/all-source-card-ids))))))
 
 (defn- cards-for-segment-or-metric
   [model-type model-id]

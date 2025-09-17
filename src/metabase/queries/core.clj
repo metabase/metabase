@@ -38,7 +38,7 @@
  [metabase.queries.models.parameter-card]
  [metabase.queries.models.query
   average-execution-time-ms
-  query->database-and-table-ids
+  query->database-and-table-id
   save-query-and-update-average-execution-time!])
 
 #_{:clj-kondo/ignore [:missing-docstring]}

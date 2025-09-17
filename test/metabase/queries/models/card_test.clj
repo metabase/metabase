@@ -864,9 +864,11 @@
             (is (false? (mi/can-read? card)))
             (is (false? (mi/can-write? card)))))))))
 
-(deftest ^:parallel breakouts-->identifier->action-fn-test
-  (are [b1 b2 expected-identifier->action] (= expected-identifier->action
-                                              (#'card/breakouts-->identifier->action b1 b2))
+(deftest ^:parallel breakouts->identifier->action-fn-test
+  (are [b1 b2 expected-identifier->action] (=? expected-identifier->action
+                                               (#'card/breakouts->identifier->action
+                                                (lib/->pMBQL b1)
+                                                (lib/->pMBQL b2)))
     [[:field 10 {:temporal-unit :day}]]
     nil
     nil
@@ -877,7 +879,7 @@
 
     [[:expression "x" {:temporal-unit :day}]]
     [[:expression "x" {:temporal-unit :month}]]
-    {[:expression "x"] [:update [:expression "x" {:temporal-unit :month}]]}
+    {[:expression "x"] [:update [:expression {:temporal-unit :month} "x"]]}
 
     [[:expression "x" {:temporal-unit :day}]]
     [[:expression "x" {:temporal-unit :day}]]
@@ -885,7 +887,7 @@
 
     [[:field 10 {:temporal-unit :day}] [:expression "x" {:temporal-unit :day}]]
     [[:expression "x" {:temporal-unit :day}] [:field 10 {:temporal-unit :month}]]
-    {[:field 10] [:update [:field 10 {:temporal-unit :month}]]}
+    {[:field 10] [:update [:field {:temporal-unit :month} 10]]}
 
     [[:field 10 {:temporal-unit :year}] [:field 10 {:temporal-unit :day-of-week}]]
     [[:field 10 {:temporal-unit :year}]]

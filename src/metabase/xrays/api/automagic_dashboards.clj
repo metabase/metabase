@@ -114,7 +114,7 @@
   "Wrap query map into a Query object (mostly to facilitate type dispatch)."
   [query :- :map]
   (mi/instance :model/Query
-               (merge (queries/query->database-and-table-ids query)
+               (merge (queries/query->database-and-table-id query)
                       {:dataset_query (mi/maybe-normalize-query :out query)})))
 
 (defmethod ->entity :adhoc

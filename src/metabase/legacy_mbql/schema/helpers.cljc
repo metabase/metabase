@@ -10,7 +10,10 @@
 ;;; --------------------------------------------------- defclause ----------------------------------------------------
 
 (defn mbql-clause?
-  "True if `x` is an MBQL clause (a sequence with a keyword as its first arg)."
+  "True if `x` is an MBQL clause (a sequence with a keyword as its first arg).
+
+  DEPRECATED: use [[metabase.lib.core/clause?]] instead."
+  {:deprecated "0.57.0"}
   [x]
   (and (sequential? x)
        (not (map-entry? x))
@@ -20,7 +23,10 @@
   "If `x` is an MBQL clause, and an instance of clauses defined by keyword(s) `k-or-ks`?
 
     (is-clause? :count [:count 10])        ; -> true
-    (is-clause? #{:+ :- :* :/} [:+ 10 20]) ; -> true"
+    (is-clause? #{:+ :- :* :/} [:+ 10 20]) ; -> true
+
+  DEPRECATED: use [[metabase.lib.core/clause-of-type?]] instead."
+  {:deprecated "0.57.0"}
   [k-or-ks x]
   (and
    (mbql-clause? x)
@@ -33,7 +39,10 @@
 
     (check-clause :count [:count 10]) ; => [:count 10]
     (check-clause? #{:+ :- :* :/} [:+ 10 20]) ; -> [:+ 10 20]
-    (check-clause :sum [:count 10]) ; => nil"
+    (check-clause :sum [:count 10]) ; => nil
+
+  DEPRECATED: use [[metabase.lib.core/clause-of-type?]] instead."
+  {:deprecated "0.57.0"}
   [k-or-ks x]
   (when (is-clause? k-or-ks x)
     x))

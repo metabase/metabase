@@ -13,14 +13,17 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.app-db.core :as app-db]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   ;; existing legacy usage, don't use legacy MBQL utils going forward. Mostly needed because parameters still use
+   ;; legacy MBQL syntax for targets.
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
@@ -29,9 +32,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
-   [metabase.lib.walk :as lib.walk]
-   [metabase.lib.schema :as lib.schema]))
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     SHARED                                                     |
@@ -69,11 +70,11 @@
   [[_ tag] card]
   (get-in card [:dataset_query :native :template-tags (u/qualified-name tag) :dimension]))
 
-(mu/defn param-target->field-clause :- [:maybe mbql.s/Field]
+(mu/defn param-target->field-clause :- [:maybe ::lib.schema.parameter/target.legacy-field-ref]
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
   [target card]
-  (let [target (mbql.normalize/normalize target)]
+  (let [target (lib/normalize ::lib.schema.parameter/target target)]
     (when (mbql.u/is-clause? :dimension target)
       (let [[_ dimension] target
             field-form    (if (mbql.u/is-clause? :template-tag dimension)
@@ -151,7 +152,7 @@
   "Get the Fields (as a map of Parameter ID -> Fields) that should be returned for hydrated `:param_fields` for a Card
   or Dashboard. These only contain the minimal amount of information necessary needed to power public or embedded
   parameter widgets."
-  [param-id->field-ids :- [:map-of ms/NonBlankString [:set ::lib.schema.id/field]]]
+  [param-id->field-ids :- [:map-of ::lib.schema.parameter/id [:set ::lib.schema.id/field]]]
   (let [field-ids       (into #{} cat (vals param-id->field-ids))
         field-id->field (when (seq field-ids)
                           (m/index-by :id (-> (t2/select Field:params-columns-only :id [:in field-ids])
@@ -161,7 +162,7 @@
     (->> param-id->field-ids
          (m/map-vals #(into [] (keep field-id->field) %)))))
 
-(defmulti ^:private ^{:hydrate :param_fields} param-fields
+(defmulti ^:private param-fields
   "Add a `:param_fields` map (Field ID -> Field) for all of the Fields referenced by the parameters of a Card or
   Dashboard. Implementations are below in respective sections."
   {:arglists '([instance])}
@@ -215,12 +216,16 @@
         card-id            (or (get-in param-dashcard-info [:param-mapping :card_id])
                                (get-in param-dashcard-info [:dashcard :card :id]))
         filterable-columns (get-in ctx [:card-id->filterable-columns card-id stage-number])
-        [_ dimension]      (->> (mbql.normalize/normalize-tokens param-target :ignore-path)
-                                (mbql.u/check-clause :dimension))]
+        [_ dimension]      (let [target (lib/normalize ::lib.schema.parameter/target param-target)]
+                             ;; `:dimension` is currently not a "real" clause so we can't use `lib/clause-of-type?` on
+                             ;; it
+                             (when (mbql.u/is-clause? :dimension target)
+                               target))]
+    ;; parameters currently still use legacy Field refs for dimension targets for whatever reason.
     (if-some [field-id (lib.util.match/match-one dimension
                          ;; TODO it's basically a workaround for ignoring non-dimension parameter targets such as SQL variables
                          ;; TODO code is misleading; let's check for :dimension and drop the match call here
-                         [:field (field-name :guard string?) _]
+                         [:field (field-name :guard string?) _opts]
                          (->> filterable-columns
                               (lib/find-matching-column (lib/->pMBQL dimension))
                               :id))]
@@ -374,5 +379,10 @@
   "Returns a set of all Field IDs referenced by template tags on this card.
 
   To get these IDs broken out by the Param ID that references them, use [[card->template-tag-param-id->field-ids]]."
-  [card]
+  [card :- [:map
+            [:dataset_query {:optional true} [:or
+                                              ::lib.schema/query
+                                              [:and
+                                               :map
+                                               [:fn {:error/message "empty map"} empty?]]]]]]
   (not-empty (into #{} cat (vals (card->template-tag-param-id->field-ids card)))))

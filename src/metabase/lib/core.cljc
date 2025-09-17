@@ -438,6 +438,7 @@
   clause?
   clause-of-type?
   fresh-uuids
+  mbql-stage?
   native-stage?
   normalized-query-type
   normalized-mbql-version
