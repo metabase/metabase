@@ -18,13 +18,9 @@ import {
   getMetabotSuggestedTransform,
   setSuggestedTransform,
 } from "metabase-enterprise/metabot/state";
-import { PythonTransformEditor } from "metabase-enterprise/transforms/components/PythonTransformEditor";
-import type {
-  DatasetQuery,
-  PythonTransformSource,
-  Transform,
-} from "metabase-types/api";
+import type { Transform, TransformSource } from "metabase-types/api";
 
+import { PythonTransformEditor } from "../../components/PythonTransformEditor";
 import { QueryEditor } from "../../components/QueryEditor";
 import { getTransformUrl } from "../../urls";
 
@@ -68,21 +64,39 @@ export function TransformQueryPageBody({
 
   const metabot = useMetabotAgent();
 
-  const initialQuery = transform.source.query;
-  const [latestQuery, setLatestQuery] = useState<DatasetQuery>(initialQuery);
+  const initialSource = transform.source;
+  const [latestSource, setLatestSource] =
+    useState<TransformSource>(initialSource);
 
   const suggestedTransform = useSelector(
     (state) => getMetabotSuggestedTransform(state, transform.id) as any,
   ) as ReturnType<typeof getMetabotSuggestedTransform>;
-  const proposedQuery = suggestedTransform?.source.query;
+  const proposedSource =
+    suggestedTransform?.source.type === "query"
+      ? suggestedTransform?.source
+      : undefined;
 
   useRegisterMetabotContextProvider(async () => {
     const viewedTransform = suggestedTransform ?? {
       ...transform,
-      source: { ...transform.source, query: latestQuery },
+      source: latestSource,
     };
     return { user_is_viewing: [{ type: "transform", ...viewedTransform }] };
-  }, [transform, latestQuery, suggestedTransform]);
+  }, [transform, latestSource, suggestedTransform]);
+
+  const handleSourceSave = async (source: TransformSource) => {
+    const { error } = await updateTransform({
+      id: transform.id,
+      source,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update transform query`);
+    } else {
+      sendSuccessToast(t`Transform query updated`);
+      dispatch(push(getTransformUrl(transform.id)));
+    }
+  };
 
   const onRejectProposed = () => {
     dispatch(setSuggestedTransform(undefined));
@@ -94,8 +108,9 @@ export function TransformQueryPageBody({
       userMessage: "❌ You rejected the change",
     });
   };
-  const onAcceptProposed = async (query: DatasetQuery) => {
-    await handleDatasetSave(query);
+
+  const onAcceptProposed = async (source: TransformSource) => {
+    await handleSourceSave(source);
     dispatch(setSuggestedTransform(undefined));
     metabot.submitInput({
       type: "action",
@@ -104,37 +119,6 @@ export function TransformQueryPageBody({
       // @ts-expect-error -- TODO
       userMessage: "✅ You accepted the change",
     });
-  };
-
-  const handleDatasetSave = async (query: DatasetQuery) => {
-    const { error } = await updateTransform({
-      id: transform.id,
-      source: {
-        type: "query",
-        query,
-      },
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update transform query`);
-    } else {
-      sendSuccessToast(t`Transform query updated`);
-      dispatch(push(getTransformUrl(transform.id)));
-    }
-  };
-
-  const handlePythonSave = async (source: PythonTransformSource) => {
-    const { error } = await updateTransform({
-      id: transform.id,
-      source: source,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update transform query`);
-    } else {
-      sendSuccessToast(t`Transform query updated`);
-      dispatch(push(getTransformUrl(transform.id)));
-    }
   };
 
   const handleCancel = () => {
@@ -147,22 +131,22 @@ export function TransformQueryPageBody({
         initialSource={transform.source}
         isNew={false}
         isSaving={isLoading}
-        onSave={handlePythonSave}
+        onSave={handleSourceSave}
         onCancel={handleCancel}
       />
     );
   }
   return (
-    <AdminSettingsLayout fullWidthContent key={transform.id}>
+    <AdminSettingsLayout fullWidth key={transform.id}>
       <QueryEditor
-        initialQuery={initialQuery}
+        initialSource={transform.source}
         transform={transform}
         isNew={false}
         isSaving={isLoading}
-        onSave={handleDatasetSave}
-        onChange={setLatestQuery}
+        onSave={handleSourceSave}
+        onChange={setLatestSource}
         onCancel={handleCancel}
-        proposedQuery={proposedQuery}
+        proposedSource={proposedSource}
         onRejectProposed={onRejectProposed}
         onAcceptProposed={onAcceptProposed}
       />

@@ -2,17 +2,17 @@ import { useMemo } from "react";
 
 import { DataGrid, useDataGridInstance } from "metabase/data-grid";
 
-import { parseCSV } from "./utils";
+import { type Row, parseOutput } from "./utils";
 
 export function ExecutionOutputTable({ output }: { output?: string }) {
-  const { headers, rows } = useMemo(() => parseCSV(output || ""), [output]);
+  const { headers, rows } = useMemo(() => parseOutput(output ?? ""), [output]);
 
-  const tableProps = useDataGridInstance<string[], unknown>({
+  const tableProps = useDataGridInstance<Row, unknown>({
     data: rows,
-    columnsOptions: headers.map((header, index) => ({
+    columnsOptions: headers.map((header) => ({
       id: header,
       name: header,
-      accessorFn: (row) => row[index],
+      accessorFn: (row) => row[header],
     })),
     minGridWidth: 100,
   });

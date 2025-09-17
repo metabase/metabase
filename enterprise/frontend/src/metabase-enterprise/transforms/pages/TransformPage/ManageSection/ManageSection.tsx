@@ -6,6 +6,7 @@ import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Card, Group, Icon } from "metabase/ui";
+import { PythonEditor } from "metabase-enterprise/transforms/components/PythonEditor";
 import type { Transform } from "metabase-types/api";
 
 import { QueryView } from "../../../components/QueryView";
@@ -20,7 +21,7 @@ type ManageSectionProps = {
 
 export function ManageSection({ transform }: ManageSectionProps) {
   const sectionLabel =
-    transform.source.type === "python" ? t`Python Script` : t`Query`;
+    transform.source.type === "python" ? t`Python script` : t`Query`;
 
   return (
     <TitleSection
@@ -37,9 +38,7 @@ export function ManageSection({ transform }: ManageSectionProps) {
           <QueryView query={transform.source.query} />
         )}
         {transform.source.type === "python" && (
-          <div style={{ padding: "1rem" }}>
-            <pre>{transform.source.body}</pre>
-          </div>
+          <PythonEditor value={transform.source.body} readOnly />
         )}
       </Card>
     </TitleSection>

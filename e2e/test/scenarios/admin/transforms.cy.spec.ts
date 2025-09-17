@@ -1,5 +1,7 @@
 const { H } = cy;
 
+import dedent from "ts-dedent";
+
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type {
@@ -106,6 +108,48 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         cy.findByLabelText("Table name").type(TARGET_TABLE);
         cy.button("Save").click();
         cy.wait("@createTransform");
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_created",
+      });
+
+      cy.log("run the transform and make sure its table can be queried");
+      runTransformAndWaitForSuccess();
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_trigger_manual_run",
+        triggered_from: "transform-page",
+      });
+
+      getTableLink().click();
+      H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
+      H.assertQueryBuilderRowCount(3);
+    });
+
+    it("should be able to create and run a Python transform", () => {
+      cy.log("create a new transform");
+      visitTransformListPage();
+      getTransformListPage().button("Create a transform").click();
+      H.popover().findByText("Python script").click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_create",
+        event_detail: "python",
+        triggered_from: "transform-page-create-menu",
+      });
+
+      cy.findByTestId("python-data-picker")
+        .findByPlaceholderText("Select a table")
+        .click();
+
+      H.popover().findByText("Orders").click();
+
+      getQueryEditor().button("Save").click();
+
+      H.modal().within(() => {
+        cy.findByLabelText("Name").clear().type("Python transform");
+        cy.findByLabelText("Table name").clear().type("python_transform");
+        cy.button("Save").click();
       });
 
       H.expectUnstructuredSnowplowEvent({
@@ -1145,6 +1189,93 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       H.main().findByText("Dependencies").should("not.exist");
     });
   });
+
+  describe("python > common library", () => {
+    it("should be possible to edit and save the common library", () => {
+      visitCommonLibrary();
+
+      cy.log("updating the library should be possible");
+      H.PythonEditor.clear().type(
+        dedent`
+          def useful_calculation(a, b):
+          return a + b
+        `,
+      );
+      getLibraryEditorHeader().findByText("Save").click();
+
+      cy.log("the contents should be saved properly");
+      visitCommonLibrary();
+      H.PythonEditor.value().should(
+        "eq",
+        dedent`
+          def useful_calculation(a, b):
+              return a + b
+          `,
+      );
+
+      cy.log("reverting the changes should be possible");
+      H.PythonEditor.clear().type("# oops");
+      getLibraryEditorHeader().findByText("Revert").click();
+      H.PythonEditor.value().should(
+        "eq",
+        dedent`
+          def useful_calculation(a, b):
+              return a + b
+          `,
+      );
+    });
+
+    it("should be possible to use the common library", () => {
+      visitCommonLibrary();
+
+      cy.log("updating the library should be possible");
+      H.PythonEditor.clear().type(
+        dedent`
+          def useful_calculation(a, b):
+          return a + b
+      `,
+      );
+      getLibraryEditorHeader().findByText("Save").click();
+
+      visitTransformListPage();
+      getTransformListPage().button("Create a transform").click();
+      H.popover().findByText("Python script").click();
+
+      H.PythonEditor.clear().type(
+        dedent`
+          import pandas as pd
+
+          def transform():
+          return pd.DataFrame({"foo": common.useful_calculation(1, 2)})
+        `,
+      );
+
+      getQueryEditor().findByText("Import common library").click();
+      H.PythonEditor.value().should("contain", "import common");
+
+      cy.findByTestId("python-data-picker")
+        .findByPlaceholderText("Select a table")
+        .click();
+
+      H.popover().findByText("Orders").click();
+
+      getQueryEditor().button("Save").click();
+
+      H.modal().within(() => {
+        cy.findByLabelText("Name").clear().type("Python transform");
+        cy.findByLabelText("Table name").clear().type("python_transform");
+        cy.button("Save").click();
+      });
+    });
+
+    function visitCommonLibrary(path = "common.py") {
+      cy.visit(`/admin/transforms/library/${path}`);
+    }
+
+    function getLibraryEditorHeader() {
+      return cy.findByTestId("library-editor-header");
+    }
+  });
 });
 
 describe("scenarios > admin > transforms > databases without :schemas", () => {
@@ -2144,6 +2275,7 @@ function createMbqlTransform({
           },
         },
         target: {
+          database: WRITABLE_DB_ID,
           type: "table",
           name: targetTable,
           schema: targetSchema,
@@ -2182,6 +2314,7 @@ function createSqlTransform({
         },
       },
       target: {
+        database: WRITABLE_DB_ID,
         type: "table",
         name: targetTable,
         schema: targetSchema,

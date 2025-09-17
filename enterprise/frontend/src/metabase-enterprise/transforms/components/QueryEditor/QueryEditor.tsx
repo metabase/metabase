@@ -4,7 +4,7 @@ import { useListDatabasesQuery } from "metabase/api";
 import { Center, Flex, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { DatasetQuery, Transform } from "metabase-types/api";
+import type { QueryTransformSource, Transform } from "metabase-types/api";
 
 import { useQueryMetadata } from "../../hooks/use-query-metadata";
 import { useQueryResults } from "../../hooks/use-query-results";
@@ -17,21 +17,21 @@ import S from "./QueryEditor.module.css";
 
 type QueryEditorProps = {
   transform?: Transform;
-  initialQuery: DatasetQuery;
-  proposedQuery?: DatasetQuery;
+  initialSource: QueryTransformSource;
+  proposedSource?: QueryTransformSource;
   isNew?: boolean;
   isSaving?: boolean;
-  onSave: (newQuery: DatasetQuery) => void;
-  onChange?: (newQuery: DatasetQuery) => void;
+  onSave: (source: QueryTransformSource) => void;
+  onChange?: (newQuery: QueryTransformSource) => void;
   onCancel: () => void;
   onRejectProposed?: () => void;
-  onAcceptProposed?: (query: DatasetQuery) => void;
+  onAcceptProposed?: (query: QueryTransformSource) => void;
 };
 
 export function QueryEditor({
-  initialQuery,
-  proposedQuery,
   transform,
+  initialSource,
+  proposedSource,
   isNew = true,
   isSaving = false,
   onSave,
@@ -41,7 +41,8 @@ export function QueryEditor({
   onAcceptProposed,
 }: QueryEditorProps) {
   const { question, proposedQuestion, isQueryDirty, setQuestion } =
-    useQueryState(initialQuery, proposedQuery);
+    useQueryState(initialSource.query, proposedSource?.query);
+
   const { isInitiallyLoaded } = useQueryMetadata(question);
   const {
     result,
@@ -57,11 +58,11 @@ export function QueryEditor({
 
   const handleChange = async (newQuestion: Question) => {
     setQuestion(newQuestion);
-    onChange?.(newQuestion.datasetQuery());
+    onChange?.({ type: "query", query: newQuestion.datasetQuery() });
   };
 
   const handleSave = () => {
-    onSave(question.datasetQuery());
+    onSave({ type: "query", query: question.datasetQuery() });
   };
 
   const handleCmdEnter = () => {
@@ -115,7 +116,10 @@ export function QueryEditor({
         onCancelQuery={cancelQuery}
         databases={databases?.data ?? []}
         onRejectProposed={onRejectProposed}
-        onAcceptProposed={onAcceptProposed}
+        onAcceptProposed={() =>
+          // TODO: circle back and make this better
+          proposedSource && onAcceptProposed?.(proposedSource)
+        }
       />
       <EditorVisualization
         question={question}

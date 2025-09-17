@@ -12,10 +12,17 @@ import {
   setSuggestedTransform,
 } from "metabase-enterprise/metabot/state";
 import Question from "metabase-lib/v1/Question";
-import type { Card, CardId, DatasetQuery, Transform } from "metabase-types/api";
+import type {
+  Card,
+  CardId,
+  DatasetQuery,
+  QueryTransformSource,
+  Transform,
+} from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
 import { getTransformListUrl, getTransformUrl } from "../../urls";
+import { NewPythonTransformPage } from "../NewPythonTransformPage";
 
 import { CreateTransformModal } from "./CreateTransformModal";
 
@@ -25,7 +32,7 @@ type NewTransformQueryPageParams = {
 };
 
 type NewTransformQueryPageParsedParams = {
-  type?: DatasetQuery["type"];
+  type?: DatasetQuery["type"] | "python";
   cardId?: CardId;
 };
 
@@ -35,6 +42,20 @@ type NewTransformQueryPageProps = {
 
 export function NewTransformQueryPage({ params }: NewTransformQueryPageProps) {
   const { type, cardId } = getParsedParams(params);
+  if (type === "python") {
+    return <NewPythonTransformPage />;
+  }
+
+  return <NewQueryTransformQueryPage type={type} cardId={cardId} />;
+}
+
+function NewQueryTransformQueryPage({
+  type,
+  cardId,
+}: {
+  type?: DatasetQuery["type"];
+  cardId?: CardId;
+}) {
   const {
     data: card,
     isLoading,
@@ -44,25 +65,28 @@ export function NewTransformQueryPage({ params }: NewTransformQueryPageProps) {
   const suggestedTransform = useSelector(
     getMetabotSuggestedTransform as any,
   ) as ReturnType<typeof getMetabotSuggestedTransform>;
-  const suggestedQuery = suggestedTransform?.source.query;
+  const suggestedSource =
+    suggestedTransform?.source.type === "query"
+      ? suggestedTransform?.source
+      : undefined;
 
-  const [initialSuggestedQuery] = useState(suggestedQuery);
-
-  const initialQuery = initialSuggestedQuery || getInitialQuery(card, type);
+  const [initialSuggestedSource] = useState(suggestedSource);
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  return <NewTransformPageBody initialQuery={initialQuery} />;
+  const initialSource = initialSuggestedSource || getInitialSource(card, type);
+
+  return <NewTransformPageBody initialSource={initialSource} />;
 }
 
 type NewTransformPageBodyProps = {
-  initialQuery: DatasetQuery;
+  initialSource: QueryTransformSource;
 };
 
-function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
-  const [query, setQuery] = useState(initialQuery);
+function NewTransformPageBody({ initialSource }: NewTransformPageBodyProps) {
+  const [source, setSource] = useState(initialSource);
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const dispatch = useDispatch();
@@ -71,8 +95,8 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
     dispatch(push(getTransformUrl(transform.id)));
   };
 
-  const handleSaveClick = (newQuery: DatasetQuery) => {
-    setQuery(newQuery);
+  const handleSave = (newSource: QueryTransformSource) => {
+    setSource(newSource);
     openModal();
   };
 
@@ -85,23 +109,24 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
   ) as ReturnType<typeof getMetabotSuggestedTransform>;
 
   const onRejectProposed = () => dispatch(setSuggestedTransform(undefined));
-  const onAcceptProposed = (query: DatasetQuery) => {
-    handleSaveClick(query);
-  };
 
-  const suggestedQuery = suggestedTransform?.source.query;
+  const suggestedSource =
+    suggestedTransform?.source.type === "query"
+      ? suggestedTransform?.source
+      : undefined;
 
-  const initQuery =
-    initialQuery.type === "native" && initialQuery.native.query.length > 0
-      ? initialQuery
-      : (suggestedQuery ?? initialQuery);
+  const initSource =
+    initialSource.query.type === "native" &&
+    initialSource.query.native.query.length > 0
+      ? initialSource
+      : (suggestedSource ?? initialSource);
 
-  const proposedQuery =
-    suggestedQuery?.type === "native" &&
-    initQuery.type === "native" &&
-    suggestedQuery.native.query === initQuery.native.query
+  const proposedSource =
+    suggestedSource?.query.type === "native" &&
+    initSource.query.type === "native" &&
+    suggestedSource.query.native.query === suggestedSource.query.native.query
       ? undefined
-      : suggestedQuery;
+      : suggestedSource;
 
   const createTransformInitValues = useMemo(
     () =>
@@ -118,19 +143,19 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
   );
 
   return (
-    <AdminSettingsLayout fullWidthContent>
+    <AdminSettingsLayout fullWidth>
       <QueryEditor
-        initialQuery={initQuery}
+        initialSource={initSource}
         isNew
-        onSave={handleSaveClick}
+        onSave={handleSave}
         onCancel={handleCancelClick}
-        proposedQuery={proposedQuery}
+        proposedSource={proposedSource}
         onRejectProposed={onRejectProposed}
-        onAcceptProposed={onAcceptProposed}
+        onAcceptProposed={handleSave}
       />
       {isModalOpened && (
         <CreateTransformModal
-          query={query}
+          source={source}
           initValues={createTransformInitValues}
           onCreate={handleCreate}
           onClose={closeModal}
@@ -144,17 +169,24 @@ function getParsedParams({
   type,
   cardId,
 }: NewTransformQueryPageParams): NewTransformQueryPageParsedParams {
+  if (type === "python") {
+    return { type: "python" };
+  }
+
   return {
-    type: type === "native" ? "native" : type === "python" ? "query" : "query",
+    type: type === "native" ? "native" : "query",
     cardId: cardId != null ? Urls.extractEntityId(cardId) : undefined,
   };
 }
 
-function getInitialQuery(
+function getInitialSource(
   card: Card | undefined,
   type: DatasetQuery["type"] | undefined,
 ) {
-  return card != null
-    ? card.dataset_query
-    : Question.create({ type }).datasetQuery();
+  const query =
+    card != null
+      ? card.dataset_query
+      : Question.create({ type }).datasetQuery();
+
+  return { type: "query" as const, query };
 }
