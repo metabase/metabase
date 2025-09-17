@@ -5,7 +5,7 @@ import type {
 } from "embedding-sdk-bundle/types/refresh-token";
 import { isJWT } from "metabase/lib/utils";
 
-export const getResolvedEntityIdForStaticLikeEntity = async ({
+export const resolveTokenForMaybeStaticEntity = async ({
   entityType,
   entityId,
   isStaticEmbedding,
@@ -14,19 +14,33 @@ export const getResolvedEntityIdForStaticLikeEntity = async ({
   entityId: MetabaseFetchStaticTokenFnData["entityId"] | null | undefined;
   isStaticEmbedding: boolean;
   customFetchStaticTokenFn: MetabaseFetchStaticTokenFn | null | undefined;
-}): Promise<SdkDashboardId | SdkQuestionId | null | undefined> => {
+}): Promise<{
+  entityId: SdkDashboardId | SdkQuestionId | null | undefined;
+  isToken: boolean;
+}> => {
   if (entityId === null || entityId === undefined || !isStaticEmbedding) {
-    return entityId;
+    return {
+      entityId,
+      isToken: false,
+    };
   }
 
   if (isJWT(entityId)) {
-    return entityId;
+    return {
+      entityId,
+      isToken: true,
+    };
   }
 
-  const fetchedStaticToken = await customFetchStaticTokenFn?.({
-    entityType,
-    entityId,
-  });
+  const fetchedStaticToken = (
+    await customFetchStaticTokenFn?.({
+      entityType,
+      entityId,
+    })
+  )?.jwt;
 
-  return fetchedStaticToken?.jwt ?? null;
+  return {
+    entityId: fetchedStaticToken,
+    isToken: !!fetchedStaticToken,
+  };
 };

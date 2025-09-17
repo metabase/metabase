@@ -49,6 +49,7 @@ export const QuestionVisualization = ({
     onNavigateBack,
     updateQuestion,
     originalId,
+    token,
   } = useSdkQuestionContext();
   const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
 
@@ -91,6 +92,7 @@ export const QuestionVisualization = ({
         result={result}
         noHeader
         mode={mode}
+        token={token}
         navigateToNewCardInsideQB={navigateToNewCard}
         onNavigateBack={onNavigateBack}
         onUpdateQuestion={(question: Question) =>

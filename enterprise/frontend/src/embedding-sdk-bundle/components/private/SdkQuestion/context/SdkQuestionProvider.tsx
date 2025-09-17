@@ -97,6 +97,7 @@ export const SdkQuestionProvider = ({
   const {
     question,
     originalQuestion,
+    token,
 
     queryResults,
 
@@ -139,6 +140,7 @@ export const SdkQuestionProvider = ({
 
   const questionContext: SdkQuestionContextType = {
     originalId: questionId,
+    token,
     isQuestionLoading,
     isQueryRunning,
     resetQuestion: loadAndQueryQuestion,
