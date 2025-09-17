@@ -88,7 +88,7 @@
           (driver/execute-reducible-query driver query {:canceled-chan cancel-chan} respond))))))
 
 (defn root-type
-  "Supported type for rountrip/insertion"
+  "Supported type for roundtrip/insertion"
   [base-type]
   (when base-type
     (some #(when (isa? base-type %) %)
