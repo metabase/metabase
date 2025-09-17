@@ -5,6 +5,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
+   [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -893,3 +894,17 @@
   [driver conn-spec schema]
   (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS \"%s\";" schema)]]]
     (driver/execute-raw-queries! driver conn-spec sql)))
+
+(defmethod driver/rename-tables!* :snowflake
+  [driver db-id sorted-rename-map]
+  (let [sqls (mapv (fn [[from-table to-table]]
+                     (first (sql/format {:alter-table (keyword from-table)
+                                         :rename-table (keyword (name to-table))}
+                                        :quoted true
+                                        :dialect (sql.qp/quote-style driver))))
+                   sorted-rename-map)]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+      (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
+        (doseq [sql sqls]
+          (.addBatch stmt ^String sql))
+        (.executeBatch stmt)))))
