@@ -25,6 +25,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "transform-run",
   "git-tree",
   "git-file-content",
+  "synced-collections",
 ] as const;
 
 export type EnterpriseTagType = (typeof ENTERPRISE_TAG_TYPES)[number];

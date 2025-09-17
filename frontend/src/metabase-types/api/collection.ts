@@ -83,6 +83,8 @@ export interface Collection {
   here?: CollectionContentModel[];
   below?: CollectionContentModel[];
 
+  git_sync_enabled?: boolean;
+
   // Assigned on FE
   originalName?: string;
   path?: CollectionId[];
