@@ -3,6 +3,8 @@ import { t } from "ttag";
 import { Button, Icon, Tooltip } from "metabase/ui";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
+import { trackMetabotChatOpened } from "../analytics";
+
 interface MetabotToggleButtonProps {
   className?: string;
 }
@@ -11,6 +13,10 @@ export function MetabotToggleButton({ className }: MetabotToggleButtonProps) {
   const metabot = useMetabotAgent();
 
   const handleClick = () => {
+    if (!metabot.visible) {
+      trackMetabotChatOpened("native_editor");
+    }
+
     metabot.setVisible(!metabot.visible);
   };
 
