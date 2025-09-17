@@ -127,14 +127,6 @@ export const transformApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("transform")]),
     }),
-    cancelTransform: builder.mutation<void, TransformId>({
-      query: (id) => ({
-        method: "POST",
-        url: `/api/ee/transform/${id}/cancel`,
-      }),
-      invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [idTag("transform", id)]),
-    }),
     deleteTransformTarget: builder.mutation<void, TransformId>({
       query: (id) => ({
         method: "DELETE",
