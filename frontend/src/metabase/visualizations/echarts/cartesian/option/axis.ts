@@ -400,7 +400,7 @@ export const buildMetricAxis = (
     splitLine: settings["graph.y_axis.axis_enabled"]
       ? {
           lineStyle: {
-            type: 5,
+            type: "solid",
             opacity: hasSplitLine ? 1 : 0,
             ...renderingContext.theme.cartesian.splitLine.lineStyle,
           },
