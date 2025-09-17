@@ -31,9 +31,8 @@ title: Driver interface changelog
   (`:rows` or `:jsonl-file`). It allows drivers to optimize based on the data source type and returns the number
   of rows inserted. Default implementations are provided for both `:rows` and `:jsonl-file` source types.
 
-- Added `metabase.driver/string->val` multimethod to parse string values for insertion based on driver and column definition.
-  Drivers should implement this when their insertion mechanism cannot handle string values directly and needs them converted
-  to proper types.
+- Added `metabase.driver/insert-col->val` multimethod to parse values for insertion based on driver, data source type
+  and column definition. Drivers should implement this when their insertion mechanism needs values converted to proper types.
 
 - `metabase.driver/humanize-connection-error-message` now takes a list of all messages in the exception chain,
   instead of just the top-level message as a string.

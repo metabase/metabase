@@ -938,11 +938,11 @@
         (finally
           (.delete temp-file))))))
 
-(defmethod driver/string->val :mysql
-  [_driver column-def val]
-  (if (isa? (:type column-def) :type/DateTimeWithTZ)
-    (t/offset-date-time val)
-    val))
+(defmethod driver/insert-col->val [:mysql :jsonl-file]
+  [_driver _ column-def v]
+  (if (and (string? v) (isa? (:type column-def) :type/DateTimeWithTZ))
+    (t/offset-date-time v)
+    v))
 
 (defn- parse-grant
   "Parses the contents of a row from the output of a `SHOW GRANTS` statement, to extract the data needed
