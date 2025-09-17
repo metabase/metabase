@@ -422,6 +422,71 @@ describe("admin > database > add", () => {
   });
 });
 
+describe("database page > side panel", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
+    cy.visit("/admin/databases/create");
+  });
+
+  it("should show side panel with help content when 'Help is here' is clicked", () => {
+    cy.findByRole("button", { name: /Help is here/ }).click();
+    cy.findByTestId("database-help-side-panel").within(() => {
+      cy.findByText("Add PostgreSQL").should("be.visible");
+      cy.findByRole("link", { name: /Read the full docs/ }).should(
+        "be.visible",
+      );
+      cy.findByRole("link", { name: /Talk to an expert/ }).should("be.visible");
+      cy.findByRole("button", { name: /Invite a teammate to help you/ }).should(
+        "be.visible",
+      );
+    });
+  });
+
+  it("should update the side panel content when the engine is changed", () => {
+    const enginesMap = [
+      { name: "Amazon Athena", file: "athena" },
+      { name: "BigQuery", file: "bigquery" },
+      { name: "Amazon Redshift", file: "redshift" },
+      { name: "ClickHouse", file: "clickhouse" },
+      { name: "Databricks", file: "databricks" },
+      { name: "Druid", file: "druid" },
+      { name: "MongoDB", file: "mongo" },
+      { name: "MySQL", file: "mysql" },
+      { name: "PostgreSQL", file: "postgresql" },
+      { name: "Presto", file: "presto" },
+      { name: "SQL Server", file: "sql-server" },
+      { name: "Snowflake", file: "snowflake" },
+      { name: "Spark SQL", file: "sparksql" },
+      { name: "Starburst (Trino)", file: "starburst" },
+    ];
+
+    for (const engineSpec of enginesMap) {
+      cy.findByTestId("database-form").within(() => {
+        cy.findByLabelText("Database type").click();
+      });
+      H.popover().contains(engineSpec.name).click();
+      cy.findByRole("button", { name: /Help is here/ }).click();
+      cy.findByTestId("database-help-side-panel").within(() => {
+        cy.findByText("Add " + engineSpec.name).should("be.visible");
+        cy.findByRole("link", { name: /Read the full docs/ })
+          .should("have.attr", "href")
+          .and("contain", engineSpec.file);
+
+        // Check we don't have an error when loading the doc contents
+        cy.findByRole("alert").should("not.exist");
+        cy.contains("Failed to load detailed documentation").should(
+          "not.exist",
+        );
+      });
+
+      cy.findByRole("button", { name: /Close panel/ }).click();
+      cy.findByTestId("database-help-side-panel").should("not.exist");
+    }
+  });
+});
+
 describe("scenarios > admin > databases > exceptions", () => {
   beforeEach(() => {
     H.restore();
