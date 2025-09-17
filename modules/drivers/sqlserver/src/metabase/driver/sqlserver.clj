@@ -3,6 +3,7 @@
   (:require
    [clojure.data.xml :as xml]
    [clojure.java.io :as io]
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [honey.sql :as sql]
@@ -1011,7 +1012,7 @@
 (defmethod driver/rename-tables!* :sqlserver
   [_driver db-id sorted-rename-map]
   ;; TODO: QUE-2474. not atomic, use locks
-  (let [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
     (with-open [stmt (.createStatement ^java.sql.Connection (:connection conn))]
       (doseq [[old-table-name new-table-name] sorted-rename-map]
         (let [sql (format "EXEC sp_rename '%s', '%s';" (name old-table-name) (name new-table-name))]
