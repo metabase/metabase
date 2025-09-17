@@ -57,7 +57,7 @@
 (mr/def ::collection
   [:and
    {:description "Optional collection path for organizing the card"}
-   :string])
+   any?])
 
 ;;; ------------------------------------ Main Schema ------------------------------------
 
