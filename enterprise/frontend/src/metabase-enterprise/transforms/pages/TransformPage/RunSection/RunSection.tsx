@@ -12,9 +12,8 @@ import {
 import { trackTranformTriggerManualRun } from "metabase-enterprise/transforms/analytics";
 import type { Transform, TransformTagId } from "metabase-types/api";
 
-import { LogOutput } from "../../../components/LogOutput";
 import { RunButton } from "../../../components/RunButton";
-import { RunErrorInfo } from "../../../components/RunErrorInfo";
+import { RunInfo } from "../../../components/RunInfo";
 import { SplitSection } from "../../../components/SplitSection";
 import { TagMultiSelect } from "../../../components/TagMultiSelect";
 import { getRunListUrl } from "../../../urls";
@@ -35,10 +34,6 @@ export function RunSection({ transform }: RunSectionProps) {
           <RunStatusSection transform={transform} />
           <RunButtonSection transform={transform} />
         </Group>
-        {transform?.last_run?.message &&
-          ["started", "succeeded"].some(
-            (s) => transform?.last_run?.status === s,
-          ) && <LogOutput content={transform.last_run.message} />}
       </Stack>
       <Divider />
       <Group p="lg" gap="lg">
@@ -86,13 +81,14 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
     </Anchor>
   );
 
-  const errorInfo =
-    message != null ? (
-      <RunErrorInfo
+  const info =
+    message == null ? null : (
+      <RunInfo
+        status={status}
         message={message}
         endTime={endTime ? endTime.toDate() : null}
       />
-    ) : null;
+    );
 
   switch (status) {
     case "started":
@@ -118,24 +114,24 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
       return (
         <Group gap={0}>
           <Icon c="error" name="warning" mr="sm" />
-          <Box mr={errorInfo ? "xs" : "sm"}>
+          <Box mr={info ? "xs" : "sm"}>
             {endTimeText
               ? t`Last run failed ${endTimeText}.`
               : t`Last run failed.`}
           </Box>
-          {errorInfo ?? runsInfo}
+          {info ?? runsInfo}
         </Group>
       );
     case "timeout":
       return (
         <Group gap={0}>
           <Icon c="error" name="warning" mr="sm" />
-          <Box mr={errorInfo ? "xs" : "sm"}>
+          <Box mr={info ? "xs" : "sm"}>
             {endTimeText
               ? t`Last run timed out ${endTimeText}.`
               : t`Last run timed out.`}
           </Box>
-          {errorInfo ?? runsInfo}
+          {info ?? runsInfo}
         </Group>
       );
     default:

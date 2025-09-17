@@ -2,7 +2,7 @@ import { Box, Group } from "metabase/ui";
 import type { TransformRunStatus } from "metabase-types/api";
 
 import { formatStatus } from "../../utils";
-import { RunErrorInfo } from "../RunErrorInfo";
+import { RunInfo } from "../RunInfo";
 
 type RunStatusInfoProps = {
   status: TransformRunStatus;
@@ -21,7 +21,7 @@ export function RunStatusInfo({
     <Group gap="xs" wrap="nowrap">
       <Box c={isError ? "error" : undefined}>{formatStatus(status)}</Box>
       {isError && message != null && (
-        <RunErrorInfo message={message} endTime={endTime} />
+        <RunInfo status={status} message={message} endTime={endTime} />
       )}
     </Group>
   );
