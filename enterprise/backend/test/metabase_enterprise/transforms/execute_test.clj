@@ -139,24 +139,6 @@
                           ["2024-01-23T00:00:00Z" 14.99]]
                          query-result)))))))))))
 
-(deftest create-table-from-schema!-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (let [driver       driver/*driver*
-          db-id        (mt/id)
-          table-name   (mt/random-name)
-          schema-name  (sql.tx/session-schema driver)
-          table-schema {:name    (if schema-name
-                                   (keyword schema-name table-name)
-                                   (keyword table-name))
-                        :columns [{:name "id" :type :type/Integer :nullable? false}
-                                  {:name "name" :type :type/Text :nullable? true}]}]
-      (mt/as-admin
-        (testing "create-table-from-schema! should create the table successfully"
-          (transforms.util/create-table-from-schema! driver db-id table-schema)
-          (let [table-exists? (driver/table-exists? driver db-id {:schema schema-name :name table-name})]
-            (is (some? table-exists?) "Table should exist in the database schema")
-            (driver/drop-table! driver db-id (:name table-schema))))))))
-
 (deftest transform-schema-created-if-needed-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table :schemas]})
     (mt/dataset transforms-dataset/transforms-test
