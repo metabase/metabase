@@ -22,10 +22,14 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
 
   it("uses the embedding-simple client request header", () => {
     H.loadSdkIframeEmbedTestPage({
-      element: "metabase-dashboard",
-      attributes: {
-        dashboardId: ORDERS_DASHBOARD_ID,
-      },
+      elements: [
+        {
+          component: "metabase-dashboard",
+          attributes: {
+            dashboardId: ORDERS_DASHBOARD_ID,
+          },
+        },
+      ],
     });
 
     cy.wait("@getDashCardQuery").then(({ request }) => {
@@ -37,10 +41,14 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
 
   it("displays a dashboard", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-dashboard",
-      attributes: {
-        dashboardId: ORDERS_DASHBOARD_ID,
-      },
+      elements: [
+        {
+          component: "metabase-dashboard",
+          attributes: {
+            dashboardId: ORDERS_DASHBOARD_ID,
+          },
+        },
+      ],
     });
 
     cy.wait("@getDashCardQuery");
@@ -54,10 +62,14 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
 
   it("displays a question", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-question",
-      attributes: {
-        questionId: ORDERS_QUESTION_ID,
-      },
+      elements: [
+        {
+          component: "metabase-question",
+          attributes: {
+            questionId: ORDERS_QUESTION_ID,
+          },
+        },
+      ],
     });
 
     cy.wait("@getCardQuery");
@@ -69,10 +81,14 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
 
   it("displays a dashboard using entity id", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-dashboard",
-      attributes: {
-        dashboardId: ORDERS_DASHBOARD_ENTITY_ID,
-      },
+      elements: [
+        {
+          component: "metabase-dashboard",
+          attributes: {
+            dashboardId: ORDERS_DASHBOARD_ENTITY_ID,
+          },
+        },
+      ],
     });
 
     cy.wait("@getDashCardQuery");
@@ -86,10 +102,14 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
 
   it("displays a question using entity id", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-question",
-      attributes: {
-        questionId: ORDERS_QUESTION_ENTITY_ID,
-      },
+      elements: [
+        {
+          component: "metabase-question",
+          attributes: {
+            questionId: ORDERS_QUESTION_ENTITY_ID,
+          },
+        },
+      ],
     });
 
     cy.wait("@getCardQuery");
@@ -101,10 +121,14 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
 
   it("displays the exploration template", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-question",
-      attributes: {
-        questionId: "new",
-      },
+      elements: [
+        {
+          component: "metabase-question",
+          attributes: {
+            questionId: "new",
+          },
+        },
+      ],
     });
 
     frame.within(() => {
@@ -117,10 +141,14 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
 
   it("applies the provided locale", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-dashboard",
-      attributes: {
-        dashboardId: ORDERS_DASHBOARD_ID,
-      },
+      elements: [
+        {
+          component: "metabase-dashboard",
+          attributes: {
+            dashboardId: ORDERS_DASHBOARD_ID,
+          },
+        },
+      ],
       metabaseConfig: {
         locale: "de",
       },
@@ -133,10 +161,14 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
 
   it("updates the question id with embed.setAttribute", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-question",
-      attributes: {
-        questionId: ORDERS_QUESTION_ID,
-      },
+      elements: [
+        {
+          component: "metabase-question",
+          attributes: {
+            questionId: ORDERS_QUESTION_ID,
+          },
+        },
+      ],
     });
 
     cy.wait("@getCardQuery");
@@ -168,10 +200,14 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
 
   it("fires ready event after iframe is loaded", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-question",
-      attributes: {
-        questionId: ORDERS_QUESTION_ID,
-      },
+      elements: [
+        {
+          component: "metabase-question",
+          attributes: {
+            questionId: ORDERS_QUESTION_ID,
+          },
+        },
+      ],
       onVisitPage: () => {
         cy.window().then((win) => {
           const element = win.document!.querySelector("metabase-question")!;
@@ -206,11 +242,15 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
 
   it("shows dashboard title when updateSettings({ withTitle: true }) is called", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-dashboard",
-      attributes: {
-        dashboardId: ORDERS_DASHBOARD_ID,
-        withTitle: false,
-      },
+      elements: [
+        {
+          component: "metabase-dashboard",
+          attributes: {
+            dashboardId: ORDERS_DASHBOARD_ID,
+            withTitle: false,
+          },
+        },
+      ],
     });
 
     cy.wait("@getDashCardQuery");
@@ -233,10 +273,14 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
 
   it("CSP nonces are set for custom expression styles (EMB-707)", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-question",
-      attributes: {
-        questionId: "new",
-      },
+      elements: [
+        {
+          component: "metabase-question",
+          attributes: {
+            questionId: "new",
+          },
+        },
+      ],
     });
 
     frame.within(() => {
