@@ -1,21 +1,9 @@
 import { useDisclosure, useHotkeys, useToggle } from "@mantine/hooks";
 import { useState } from "react";
-import { ResizableBox } from "react-resizable";
-import { useWindowSize } from "react-use";
-import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import type { SelectionRange } from "metabase/query_builder/components/NativeQueryEditor/types";
-import { ControlledNotebookNativePreview } from "metabase/querying/notebook/components/NotebookNativePreview/NotebookNativePreview";
-import {
-  ActionIcon,
-  Center,
-  Flex,
-  Icon,
-  Loader,
-  Stack,
-  Tooltip,
-} from "metabase/ui";
+import { Center, Flex, Loader, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetQuery, NativeQuerySnippet } from "metabase-types/api";
@@ -28,8 +16,11 @@ import { EditorBody } from "./EditorBody";
 import { EditorHeader } from "./EditorHeader";
 import { EditorSidebar } from "./EditorSidebar";
 import { EditorVisualization } from "./EditorVisualization";
+import {
+  NativeQuerySidebar,
+  NativeQuerySidebarToggle,
+} from "./NativeQuerySidebar";
 import S from "./QueryEditor.module.css";
-import { ResizeHandle } from "./ResizeHandle";
 import { useInsertSnippetHandler, useSelectedText } from "./util";
 
 type QueryEditorProps = {
@@ -115,8 +106,6 @@ export function QueryEditor({
     include_analytics: true,
   });
 
-  const { width: windowWidth } = useWindowSize();
-
   if (!isInitiallyLoaded || isLoading) {
     return (
       <Center>
@@ -124,10 +113,6 @@ export function QueryEditor({
       </Center>
     );
   }
-
-  const minSidebarWidth = 428;
-  const minNotebookWidth = 640;
-  const maxSidebarWidth = windowWidth - minNotebookWidth;
 
   return (
     <Stack
@@ -178,46 +163,24 @@ export function QueryEditor({
             onCancelQuery={() => undefined}
           />
 
-          {!isNative && (
-            <Tooltip
-              label={isShowingNativeQueryPreview ? t`Hide SQL` : t`View SQL`}
-            >
-              <ActionIcon
-                key="view-sql"
-                onClick={() => toggleNativeQueryPreview()}
-                size="lg"
-                className={S.nativeSidebarToggle}
-                color="text"
-                variant="subtle"
-              >
-                <Icon name="sql" color="text" />
-              </ActionIcon>
-            </Tooltip>
-          )}
+          <NativeQuerySidebarToggle
+            canConvertToNative={!isNative}
+            isShowingNativeQueryPreview={isShowingNativeQueryPreview}
+            onToggleNativeQueryPreview={toggleNativeQueryPreview}
+          />
         </Stack>
 
-        {isShowingNativeQueryPreview && !isNative && (
-          <ResizableBox
-            width={minSidebarWidth}
-            minConstraints={[minSidebarWidth, 0]}
-            maxConstraints={[maxSidebarWidth, 0]}
-            axis="x"
-            resizeHandles={["w"]}
-            handle={<ResizeHandle />}
-            style={{
-              borderLeft: "1px solid var(--mb-color-border)",
-              marginInlineStart: "0.25rem",
+        {isShowingNativeQueryPreview && (
+          <NativeQuerySidebar
+            canConvertToNative={!isNative}
+            question={question}
+            onConvertToSQLClick={(newQuestion) => {
+              toggleNativeQueryPreview(false);
+              setQuestion(newQuestion);
             }}
-          >
-            <ControlledNotebookNativePreview
-              question={question}
-              onConvertClick={(newQuestion) => {
-                toggleNativeQueryPreview();
-                setQuestion(newQuestion);
-              }}
-            />
-          </ResizableBox>
+          />
         )}
+
         <EditorSidebar
           question={question}
           isNative={isNative}
