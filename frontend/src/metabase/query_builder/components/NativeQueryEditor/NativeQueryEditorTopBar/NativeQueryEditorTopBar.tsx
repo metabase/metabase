@@ -30,7 +30,6 @@ interface NativeQueryEditorTopBarProps {
   isShowingDataReference: boolean;
   isShowingTemplateTagsEditor: boolean;
   isNativeEditorOpen: boolean;
-  nativeEditorSelectedText?: string;
   canChangeDatabase: boolean;
   hasParametersList?: boolean;
   hasEditingSidebar: boolean;
@@ -48,7 +47,6 @@ interface NativeQueryEditorTopBarProps {
   onFormatQuery?: () => void;
   onSetDatabaseId?: (id: DatabaseId) => void;
   onOpenModal?: (modalType: QueryModalType) => void;
-  onChange: (queryText: string) => void;
   setParameterValue?: (parameterId: ParameterId, value: string) => void;
   focus: () => void;
   setDatasetQuery: (query: NativeQuery) => Promise<Question>;
@@ -59,7 +57,6 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
   const {
     query,
     question,
-    onChange,
     canChangeDatabase,
     isNativeEditorOpen,
     readOnly,
@@ -78,7 +75,6 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
     isShowingSnippetSidebar,
     onFormatQuery,
     onOpenModal,
-    nativeEditorSelectedText,
     setIsNativeEditorOpen,
     toggleEditor,
     toggleDataReference,
@@ -152,9 +148,7 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
           <NativeQueryEditorActionButtons
             features={sidebarFeatures}
             onFormatQuery={onFormatQuery}
-            onGenerateQuery={onChange}
             question={question}
-            nativeEditorSelectedText={nativeEditorSelectedText}
             snippetCollections={snippetCollections}
             snippets={snippets}
             isRunnable={isRunnable}

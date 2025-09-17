@@ -5,7 +5,6 @@ import { useSetting } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Anchor, Box, Divider, Group, Icon, Stack } from "metabase/ui";
 import {
-  useLazyGetTransformQuery,
   useRunTransformMutation,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
@@ -141,8 +140,7 @@ type RunButtonSectionProps = {
 };
 
 function RunButtonSection({ transform }: RunButtonSectionProps) {
-  const [fetchTransform, { isFetching }] = useLazyGetTransformQuery();
-  const [runTransform, { isLoading: isRunning }] = useRunTransformMutation();
+  const [runTransform] = useRunTransformMutation();
   const { sendErrorToast } = useMetadataToasts();
 
   const handleRun = async () => {
@@ -154,20 +152,11 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
     const { error } = await runTransform(transform.id);
     if (error) {
       sendErrorToast(t`Failed to run transform`);
-    } else {
-      // fetch the transform to get the correct `last_run` info
-      fetchTransform(transform.id);
     }
     return { error };
   };
 
-  return (
-    <RunButton
-      run={transform.last_run}
-      isLoading={isFetching || isRunning}
-      onRun={handleRun}
-    />
-  );
+  return <RunButton run={transform.last_run} onRun={handleRun} />;
 }
 
 type TagSectionProps = {

@@ -25,13 +25,14 @@
 
 (defenterprise metabot-stats
   "Calculate total Metabot token usage over a window of the the previous UTC day 00:00-23:59"
-  :feature :metabot-v3
+  :feature :none
   []
   (let [yesterday-utc (-> (t/offset-date-time (t/zone-offset "+00"))
                           (t/minus (t/days 1)))]
-    {:metabot-tokens     (t2/select-one-fn :sum
-                                           [:model/MetabotMessage [:%sum.total_tokens :sum]]
-                                           {:where [:= [:cast :created_at :date] [:cast yesterday-utc :date]]})
+    {:metabot-tokens     (or (t2/select-one-fn :sum
+                                               [:model/MetabotMessage [:%sum.total_tokens :sum]]
+                                               {:where [:= [:cast :created_at :date] [:cast yesterday-utc :date]]})
+                             0)
      :metabot-queries    (t2/select-one-fn :cnt
                                            [:model/MetabotMessage [:%count.id :cnt]]
                                            ;; there are requests from users and responses from ai-service, in theory

@@ -14,6 +14,7 @@ import { Metabot } from "./components/Metabot";
 import { MetabotAdminPage } from "./components/MetabotAdmin/MetabotAdminPage";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { MetabotSearchButton } from "./components/MetabotSearchButton";
+import { MetabotToggleButton } from "./components/MetabotToggleButton";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
 import { useMetabotAgent } from "./hooks";
 import { getMetabotVisible, metabotReducer } from "./state";
@@ -69,6 +70,7 @@ if (hasPremiumFeature("metabot_v3")) {
   };
 
   PLUGIN_METABOT.SearchButton = MetabotSearchButton;
+  PLUGIN_METABOT.MetabotToggleButton = MetabotToggleButton;
 
   PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
 } else if (hasPremiumFeature("offer_metabase_ai")) {
