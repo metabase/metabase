@@ -23,9 +23,14 @@ import {
 
 import { JobList } from "./JobList";
 
+type TransformListInfo = {
+  data: Transform[];
+  error?: unknown;
+};
+
 type SetupOpts = {
   jobs?: TransformJob[];
-  jobTransforms?: Map<TransformJobId, Transform[] | null>;
+  jobTransforms?: Map<TransformJobId, TransformListInfo>;
   tags?: TransformTag[];
   params?: JobListParams;
 };
@@ -39,11 +44,11 @@ function setup({
   setupListTransformJobsEndpoint(jobs);
   setupListTransformTagsEndpoint(tags);
 
-  jobTransforms.forEach((transforms, jobId) => {
-    if (transforms != null) {
-      setupListTransformJobTransformsEndpoint(jobId, transforms);
+  jobTransforms.forEach(({ data, error }, jobId) => {
+    if (error != null) {
+      setupListTransformJobTransformsEndpointWithError(jobId, error);
     } else {
-      setupListTransformJobTransformsEndpointWithError(jobId);
+      setupListTransformJobTransformsEndpoint(jobId, data);
     }
   });
 
@@ -66,8 +71,8 @@ describe("JobList", () => {
         createMockTransformJob({ id: job2Id, name: "Job2" }),
       ],
       jobTransforms: new Map([
-        [job1Id, [createMockTransform(), createMockTransform()]],
-        [job2Id, [createMockTransform()]],
+        [job1Id, { data: [createMockTransform(), createMockTransform()] }],
+        [job2Id, { data: [createMockTransform()] }],
       ]),
     });
 
@@ -77,17 +82,24 @@ describe("JobList", () => {
     expect(await within(job2Row).findByText("1")).toBeInTheDocument();
   });
 
-  it("should show errors when loading transforms", async () => {
-    const job1Id = 1;
+  it("should show BE errors when loading transforms", async () => {
+    const jobId = 1;
+    const errorMessage = "Custom error";
+
     setup({
-      jobs: [createMockTransformJob({ id: job1Id, name: "Job1" })],
-      jobTransforms: new Map([[job1Id, null]]),
+      jobs: [createMockTransformJob({ id: jobId, name: "Job1" })],
+      jobTransforms: new Map([
+        [
+          jobId,
+          { data: [createMockTransform()], error: { message: errorMessage } },
+        ],
+      ]),
     });
 
     const jobRow = await screen.findByRole("row", { name: /Job1/ });
     const warningIcon = await within(jobRow).findByLabelText("warning icon");
     await userEvent.hover(warningIcon);
 
-    expect(await screen.findByText("Something went wrong")).toBeInTheDocument();
+    expect(await screen.findByText(errorMessage)).toBeInTheDocument();
   });
 });
