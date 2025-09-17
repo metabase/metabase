@@ -68,9 +68,9 @@ export function TransformList() {
             className={S.row}
             onClick={() => handleRowClick(transform)}
           >
-            <td className={S.cell}>{transform.name}</td>
-            <td className={S.cell}>{transform.target.name}</td>
-            <td className={S.cell}>
+            <td className={S.wrapAnywhere}>{transform.name}</td>
+            <td className={S.wrapAnywhere}>{transform.target.name}</td>
+            <td className={S.wrapBreakWord}>
               {transform.last_run?.end_time
                 ? parseTimestampWithTimezone(
                     transform.last_run.end_time,
@@ -78,7 +78,7 @@ export function TransformList() {
                   ).format("lll")
                 : null}
             </td>
-            <td className={S.cell}>
+            <td className={S.wrapBreakWord}>
               {transform.last_run != null ? (
                 <RunStatusInfo
                   status={transform.last_run.status}
@@ -94,7 +94,7 @@ export function TransformList() {
                 />
               ) : null}
             </td>
-            <td className={S.cell}>
+            <td className={S.wrapBreakWord}>
               <TagList tags={tags} tagIds={transform.tag_ids ?? []} />
             </td>
           </tr>

@@ -2,6 +2,10 @@
   cursor: pointer;
 }
 
-.cell {
+.wrapAnywhere {
+  overflow-wrap: anywhere;
+}
+
+.wrapBreakWord {
   overflow-wrap: break-word;
 }
