@@ -1012,7 +1012,8 @@
 
 (defmethod driver/rename-tables!* :sqlserver
   [_driver db-id sorted-rename-map]
-  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+  ;; TODO: QUE-2474
+  (let [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
     (with-open [stmt (.createStatement ^java.sql.Connection (:connection conn))]
       (doseq [[old-table-name new-table-name] sorted-rename-map]
         (let [sql (format "EXEC sp_rename '%s', '%s';" (name old-table-name) (name new-table-name))]

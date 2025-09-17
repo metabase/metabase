@@ -876,6 +876,7 @@
 
 (defmethod driver/rename-tables!* :bigquery-cloud-sdk
   [driver db-id sorted-rename-map]
+  ;; TODO: QUE-2474
   (let [database (t2/select-one :model/Database db-id)]
     (doseq [[old-table-name new-table-name] sorted-rename-map]
       (let [old-table-str (get-table-str old-table-name)
@@ -948,7 +949,8 @@
         client (database-details->client details)
         project-id (get-project-id details)
 
-        [dataset-id table-name] [(namespace table-name) (name table-name)]
+        dataset-id (namespace table-name)
+        table-name (name table-name)
 
         table-id (.getTableId (get-table client project-id dataset-id table-name))
 

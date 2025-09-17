@@ -1275,22 +1275,3 @@
                {:name "Scaleway" :pattern "\\.scw\\.cloud$"}
                {:name "Supabase" :pattern "(pooler\\.supabase\\.com|\\.supabase\\.co)$"}
                {:name "Timescale" :pattern "(\\.tsdb\\.cloud|\\.timescale\\.com)$"}]})
-
-(defn- coll-to-pg-array
-  [coll]
-  (str "{"
-       (str/join ","
-                 (map #(cond
-                         (nil? %) "NULL"
-                         (string? %) (str "\"" % "\"")
-                         (coll? %) (coll-to-pg-array %)
-                         :else (str %))
-                      coll))
-       "}"))
-
-(defmethod driver/string->val :postgres
-  [_driver column-def string-val]
-  (if (or (some-> (:database-type column-def) (str/starts-with? "_"))
-          (some-> (:database-type column-def) (str/ends-with? "[]")))
-    (coll-to-pg-array (json/decode string-val))
-    string-val))
