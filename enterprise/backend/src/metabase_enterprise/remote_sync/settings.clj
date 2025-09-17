@@ -47,8 +47,16 @@
   :encryption :no
   :default "import")
 
+(defsetting remote-sync-auto-import
+  (deferred-tru "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is 'import'.")
+  :type :boolean
+  :visibility :authenticated
+  :export? false
+  :encryption :no
+  :default false)
+
 (defsetting remote-sync-auto-import-rate
-  (deferred-tru "If remote-sync-type is 'import', the rate (in minutes) at which to check for updates to import. Defaults to 5. Set to 0 to disable automatic import.")
+  (deferred-tru "If remote-sync-type is 'import' and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5.")
   :type :integer
   :visibility :authenticated
   :export? false
