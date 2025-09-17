@@ -300,10 +300,10 @@
 
 (defn- assert-valid-remote-synced-parent
   "Check that if this Collection is remote-synced, its parent is either remote-synced or the root collection."
-  [{:keys [location type] :as collection}]
+  [{:keys [location type]}]
   (when (and location (= type remote-synced-collection-type))
-    (when-let [parent-id #p (location-path->parent-id location)]
-      (let [parent-type #p (t2/select-one-fn :type :model/Collection :id parent-id)]
+    (when-let [parent-id (location-path->parent-id location)]
+      (let [parent-type (t2/select-one-fn :type :model/Collection :id parent-id)]
         (when-not (= parent-type remote-synced-collection-type)
           (let [msg (tru "A remote-synced Collection can only be placed in another remote-synced Collection or the root Collection.")]
             (throw (ex-info msg {:status-code 400, :errors {:location msg}}))))))))
