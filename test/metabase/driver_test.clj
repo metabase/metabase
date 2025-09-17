@@ -400,4 +400,5 @@
       (is (get-method driver/rename-tables!* driver))
       (is (get-method driver/create-table! driver))
       (is (get-method driver/drop-table! driver))
+      (is (get-method driver/type->database-type [driver :type/Text]))
       (is (get-method driver/insert-from-source! [driver :jsonl-file])))))
