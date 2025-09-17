@@ -47,6 +47,14 @@
   :encryption :no
   :default "import")
 
+(defsetting remote-sync-auto-import-rate
+  (deferred-tru "If remote-sync-type is 'import', the rate (in minutes) at which to check for updates to import. Defaults to 5. Set to 0 to disable automatic import.")
+  :type :integer
+  :visibility :authenticated
+  :export? false
+  :encryption :no
+  :default 5)
+
 (defsetting remote-sync-allow-edit
   (deferred-tru "Whether library content can be edited on this instance")
   :type :boolean

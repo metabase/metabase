@@ -20,9 +20,10 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- reload-from-git!
-  "Reloads the Metabase entities from the "
+(defn reload-from-git!
+  "Reloads the Metabase entities from the remote source"
   [branch]
+  (log/info "Reloading remote entities from the remote source")
   (if-let [source (source/source-from-settings)]
     (let [remote-sync-collection (t2/select-one :model/Collection :entity_id collection/library-entity-id)]
       (try
@@ -279,6 +280,8 @@
   (api/check-superuser)
   (try
     (settings/check-and-update-remote-settings! settings)
+    (when (= "import" (settings/remote-sync-type))
+      (reload-from-git! (settings/remote-sync-branch)))
     (catch Exception e
       (throw (ex-info "Invalid git settings"
                       {:error (.getMessage e)
