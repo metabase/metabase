@@ -1,7 +1,11 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useListCollectionsTreeQuery, useUpdateCollectionMutation } from "metabase/api";
+import {
+  useListCollectionItemsQuery,
+  useListCollectionsTreeQuery,
+  useUpdateCollectionMutation,
+} from "metabase/api";
 import {
   isInstanceAnalyticsCollection,
   isRootCollection,
@@ -28,15 +32,19 @@ export const CollectionSyncManager = () => {
     "exclude-other-user-collections": true,
   });
 
-  const { data: syncedCollections = [], isLoading: isSyncedLoading } =
-    useListCollectionsTreeQuery({
-      "exclude-archived": true,
-      "exclude-other-user-collections": true,
+  const { data: syncedCollectionsResponse, isLoading: isSyncedLoading } =
+    useListCollectionItemsQuery({
+      id: "root",
+      models: ["collection"],
       collection_type: "remote-synced",
     });
 
-  const [updateCollection] = useUpdateCollectionMutation();
+  const syncedCollections = useMemo(
+    () => syncedCollectionsResponse?.data || [],
+    [syncedCollectionsResponse],
+  );
 
+  const [updateCollection] = useUpdateCollectionMutation();
 
   // Filter to get only top-level collections
   const topLevelCollections = useMemo(

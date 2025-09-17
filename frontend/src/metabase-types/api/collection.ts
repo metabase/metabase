@@ -176,6 +176,7 @@ export type ListCollectionItemsRequest = {
   archived?: boolean;
   pinned_state?: "all" | "is_pinned" | "is_not_pinned";
   namespace?: "snippets";
+  collection_type?: CollectionType;
 } & PaginationRequest &
   Partial<SortingOptions<ListCollectionItemsSortColumn>>;
 
