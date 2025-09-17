@@ -107,7 +107,10 @@
   (let [card-data (representation->card-data representation)
         ;; For POC, use ref directly as entity_id
         entity-id (when-let [ref (:ref representation)]
-                    (u/generate-nano-id))
+                    (u/generate-nano-id (str
+                                         (hash (str (:collection_id representation)
+                                                    "/"
+                                                    (:ref representation))))))
         existing (when entity-id
                    (t2/select-one :model/Card :entity_id entity-id))]
     (if existing
