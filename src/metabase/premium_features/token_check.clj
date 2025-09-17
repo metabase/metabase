@@ -12,6 +12,7 @@
    [diehard.circuit-breaker :as dh.cb]
    [diehard.core :as dh]
    [environ.core :refer [env]]
+   [java-time.api :as t]
    [metabase.config.core :as config]
    [metabase.internal-stats.core :as internal-stats]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
@@ -97,21 +98,34 @@
    :enabled-embedding-sdk         false
    :enabled-embedding-simple      false})
 
+(defenterprise metabot-stats
+  "Stats for Metabot"
+  metabase-enterprise.metabot-v3.core
+  []
+  {:metabot-tokens     0
+   :metabot-queries    0
+   :metabot-users      0
+   :metabot-usage-date (-> (t/offset-date-time (t/zone-offset "+00"))
+                           (t/minus (t/days 1))
+                           t/local-date
+                           str)})
+
 (defn- stats-for-token-request
   []
-  (let [users (premium-features.settings/active-users-count)
-        ext-users (internal-stats/external-users-count)
+  (let [users                     (premium-features.settings/active-users-count)
+        ext-users                 (internal-stats/external-users-count)
         embedding-dashboard-count (internal-stats/embedding-dashboard-count)
-        embedding-question-count (internal-stats/embedding-question-count)
-        stats (merge (internal-stats/query-execution-last-utc-day)
-                     (embedding-settings embedding-dashboard-count embedding-question-count)
-                     {:users users
-                      :embedding-dashboard-count embedding-dashboard-count
-                      :embedding-question-count embedding-question-count
-                      :external-users ext-users
-                      :internal-users (- users ext-users)
-                      :domains (internal-stats/email-domain-count)})]
-    (log/info "Reporting embedding stats:" stats)
+        embedding-question-count  (internal-stats/embedding-question-count)
+        stats                     (merge (internal-stats/query-execution-last-utc-day)
+                                         (embedding-settings embedding-dashboard-count embedding-question-count)
+                                         #_(metabot-stats)
+                                         {:users                     users
+                                          :embedding-dashboard-count embedding-dashboard-count
+                                          :embedding-question-count  embedding-question-count
+                                          :external-users            ext-users
+                                          :internal-users            (- users ext-users)
+                                          :domains                   (internal-stats/email-domain-count)})]
+    (log/info "Reporting Metabase stats:" stats)
     stats))
 
 (defn- token-status-url [token base-url]

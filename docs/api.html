@@ -13570,6 +13570,25 @@ redirect_from:
         "tags" : [ "/api/ee/email" ]
       }
     },
+    "/api/ee/embedding-hub/checklist" : {
+      "get" : {
+        "summary" : "GET /api/ee/embedding-hub/checklist",
+        "description" : "Get the embedding hub checklist status, indicating which setup steps have been completed.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/embedding-hub" ]
+      }
+    },
     "/api/ee/gsheets/connection" : {
       "post" : {
         "summary" : "POST /api/ee/gsheets/connection",

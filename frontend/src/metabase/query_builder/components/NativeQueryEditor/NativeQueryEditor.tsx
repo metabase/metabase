@@ -295,6 +295,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             isNativeEditorOpen={this.props.isNativeEditorOpen}
             toggleEditor={this.props.toggleEditor}
             toggleDataReference={this.props.toggleDataReference}
+            toggleSnippetSidebar={this.props.toggleSnippetSidebar}
             setParameterValue={this.props.setParameterValue}
             setDatasetQuery={this.props.setDatasetQuery}
             onFormatQuery={canFormatQuery ? this.handleFormatQuery : undefined}
