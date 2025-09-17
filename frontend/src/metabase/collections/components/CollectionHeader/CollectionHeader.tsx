@@ -82,7 +82,9 @@ const CollectionHeader = ({
             collection={collection}
             onUpdateCollection={onUpdateCollection}
           />
-          {collection.git_sync && <PLUGIN_GIT_SYNC.LibrarySyncControl />}
+          {/* {collection.type === "remote-synced" && (
+            <PLUGIN_GIT_SYNC.LibrarySyncControl />
+          )} */}
           {!isInstanceAnalytics && (
             <CollectionMenu
               collection={collection}

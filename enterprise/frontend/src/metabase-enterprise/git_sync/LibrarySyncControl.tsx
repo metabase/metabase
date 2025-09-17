@@ -53,15 +53,13 @@ export function LibrarySyncControl() {
     reject: (reason?: any) => void;
   } | null>(null);
 
-  const defaultPullBranch = useSetting("remote-sync-branch");
-  const defaultPushBranch = useSetting("remote-sync-branch");
-  const allowEdit = useSetting("remote-sync-allow-edit");
+  const remoteSyncBranch = useSetting("remote-sync-branch");
 
   const [pullBranch, setPullBranch] = useState<string>(
-    defaultPullBranch ?? "main",
+    remoteSyncBranch ?? "main",
   );
   const [pushBranch, setPushBranch] = useState<string>(
-    defaultPushBranch ?? "main",
+    remoteSyncBranch ?? "main",
   );
   const gitSyncConfigured = useSetting("remote-sync-configured");
 
@@ -93,7 +91,7 @@ export function LibrarySyncControl() {
     } else {
       return importGit({
         branch: pullBranch,
-        collectionIds: collections?.map((c) => c.git_sync) || [], // FIXME: use whatever the backend provides
+        collectionIds: [], // FIXME: use whatever the backend provides
       }).unwrap();
     }
   };
@@ -165,13 +163,13 @@ export function LibrarySyncControl() {
           <Stack gap="md" align="stretch" p="lg" miw="20rem">
             <Flex gap="md" align="end">
               <Autocomplete
-                name="remote-sync-import-branch"
+                name="git-sync-import-branch"
                 // eslint-disable-next-line
                 description={t`Metabase will pull in library content from this branch`}
                 title={t`Import branch`}
                 value={pullBranch ?? ""}
                 onChange={setPullBranch}
-                defaultValue={defaultPullBranch ?? "main"}
+                defaultValue={"main"}
                 w="20rem"
                 data={SAMPLE_BRANCHES}
                 disabled
@@ -192,10 +190,10 @@ export function LibrarySyncControl() {
                 </Group>
               </ActionButton>
             </Flex>
-            {allowEdit && (
+            {/* {allowEdit && (
               <Flex gap="md" align="end">
                 <Autocomplete
-                  name="remote-sync-export-branch"
+                  name="git-sync-export-branch"
                   // eslint-disable-next-line
                   description={t`Metabase will save library content to this branch`}
                   title={t`Export branch`}
@@ -222,7 +220,7 @@ export function LibrarySyncControl() {
                   </Group>
                 </ActionButton>
               </Flex>
-            )}
+            )} */}
             <Box>
               <Link to="/admin/settings/library/sync">
                 <Text c="brand" component="span">

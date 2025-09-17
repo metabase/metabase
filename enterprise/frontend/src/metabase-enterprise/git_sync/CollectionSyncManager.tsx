@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useListCollectionsTreeQuery } from "metabase/api";
+import { useListCollectionsTreeQuery, useUpdateCollectionMutation } from "metabase/api";
 import {
   isInstanceAnalyticsCollection,
   isRootCollection,
@@ -21,11 +21,6 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import {
-  useAddSyncedCollectionMutation,
-  useGetSyncedCollectionsQuery,
-  useRemoveSyncedCollectionMutation,
-} from "metabase-enterprise/api/git-sync";
 
 export const CollectionSyncManager = () => {
   const { data: allCollections = [], isLoading } = useListCollectionsTreeQuery({
@@ -33,16 +28,15 @@ export const CollectionSyncManager = () => {
     "exclude-other-user-collections": true,
   });
 
-  const { data: syncedCollectionsData, isLoading: isSyncedLoading } =
-    useGetSyncedCollectionsQuery();
+  const { data: syncedCollections = [], isLoading: isSyncedLoading } =
+    useListCollectionsTreeQuery({
+      "exclude-archived": true,
+      "exclude-other-user-collections": true,
+      collection_type: "remote-synced",
+    });
 
-  const [addSyncedCollection] = useAddSyncedCollectionMutation();
-  const [removeSyncedCollection] = useRemoveSyncedCollectionMutation();
+  const [updateCollection] = useUpdateCollectionMutation();
 
-  const syncedCollections = useMemo(
-    () => syncedCollectionsData?.collections || [],
-    [syncedCollectionsData],
-  );
 
   // Filter to get only top-level collections
   const topLevelCollections = useMemo(
@@ -69,23 +63,23 @@ export const CollectionSyncManager = () => {
   const handleAddCollection = useCallback(
     (collectionId: string | null) => {
       if (collectionId) {
-        const collection = topLevelCollections.find(
-          (c) => String(c.id) === collectionId,
-        );
-        addSyncedCollection({
-          collectionId,
-          collection,
+        updateCollection({
+          id: Number(collectionId),
+          type: "remote-synced",
         });
       }
     },
-    [addSyncedCollection, topLevelCollections],
+    [updateCollection],
   );
 
   const handleRemoveCollection = useCallback(
     (collectionId: number | string) => {
-      removeSyncedCollection({ collectionId });
+      updateCollection({
+        id: Number(collectionId),
+        type: null,
+      });
     },
-    [removeSyncedCollection],
+    [updateCollection],
   );
 
   const selectData = availableCollections.map((collection) => ({
