@@ -35,7 +35,7 @@ describe("scenarios > visualizations > combo", () => {
         "graph.show_values": true,
       },
     });
-    // First value label on the chart
+    // 2nd value label on the chart
     cy.findAllByText("390.99");
   });
 

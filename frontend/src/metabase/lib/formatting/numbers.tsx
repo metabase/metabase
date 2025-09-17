@@ -265,12 +265,18 @@ function _formatNumberCompact(
     const isDefaultDecimalCount =
       options.maximumFractionDigits ===
       DEFAULT_NUMBER_OPTIONS.maximumFractionDigits;
-    const decimals =
-      options.maximumFractionDigits == null
-        ? 1
-        : isDefaultDecimalCount
+
+    let decimals: number | null =
+      typeof options.decimals === "number" && isFinite(options.decimals)
+        ? options.decimals
+        : null;
+
+    if (decimals == null) {
+      decimals =
+        options.maximumFractionDigits == null || isDefaultDecimalCount
           ? 1
           : options.maximumFractionDigits;
+    }
 
     formatted = compactNumber(value, decimals);
   } else {
