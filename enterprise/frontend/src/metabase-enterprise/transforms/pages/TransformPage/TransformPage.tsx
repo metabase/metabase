@@ -67,7 +67,7 @@ export function TransformPage({ params }: TransformPageProps) {
   );
 }
 
-export function getParsedParams({
+function getParsedParams({
   transformId,
 }: TransformPageParams): TransformPageParsedParams {
   return {
@@ -75,7 +75,7 @@ export function getParsedParams({
   };
 }
 
-export function isPollingNeeded(transform?: Transform) {
+function isPollingNeeded(transform?: Transform) {
   const lastRun = transform?.last_run;
 
   if (transform == null || lastRun == null) {
