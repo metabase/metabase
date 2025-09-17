@@ -110,17 +110,60 @@ describe("scenarios - embedding hub", () => {
         .should("be.visible");
     });
 
-    it('"Create models" link should navigate correctly', () => {
+    it('"Create models" step should be marked as done after creating a model', () => {
+      cy.intercept("GET", "/api/ee/embedding-hub/checklist").as("getChecklist");
+      cy.intercept("POST", "/api/dataset").as("dataset");
+      cy.intercept("POST", "/api/card").as("createModel");
+
+      H.addSqliteDatabase("Test Database");
+
       cy.visit("/admin/embedding/setup-guide");
 
-      cy.log("Find and click on 'Create models' link");
+      cy.log("'Create models' should not be marked as done initially");
+      cy.findByTestId("admin-layout-content")
+        .findByText("Create models")
+        .closest("button")
+        .findByText("Done")
+        .should("not.exist");
+
       cy.findByTestId("admin-layout-content")
         .findByText("Create models")
         .first()
         .click();
 
-      cy.log("Should navigate to model creation page");
       cy.url().should("include", "/model/new");
+
+      cy.log("Create a native query model");
+      cy.findByTestId("new-model-options")
+        .findByText("Use a native query")
+        .click();
+
+      cy.log("Use the test database");
+      H.popover().findByText("Test Database").click();
+
+      H.NativeEditor.focus().type("SELECT 1 as t");
+      cy.findByTestId("native-query-editor-container").icon("play").click();
+      cy.wait("@dataset");
+
+      cy.findByTestId("dataset-edit-bar").button("Save").click();
+      cy.findByTestId("save-question-modal").within(() => {
+        cy.findByLabelText("Name").type("Test Model");
+        cy.button("Save").click();
+      });
+
+      cy.wait("@createModel");
+
+      cy.log("Navigate back to embedding setup guide");
+      cy.visit("/admin/embedding/setup-guide");
+      cy.wait("@getChecklist");
+
+      cy.log("'Create models' should now be marked as done");
+      cy.findByTestId("admin-layout-content")
+        .findByText("Create models")
+        .closest("button")
+        .scrollIntoView()
+        .findByText("Done")
+        .should("be.visible");
     });
 
     it('"Embed in your code" card should take you to the embed flow', () => {
