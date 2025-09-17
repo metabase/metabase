@@ -16,6 +16,7 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -1678,9 +1679,7 @@
                                    [:field field-id nil]]}))))))))
 
 (deftest ^:parallel space-names-test
-  (mt/test-drivers (set/intersection
-                    (mt/normal-drivers-with-feature :identifiers-with-spaces)
-                    (mt/normal-drivers-with-feature :left-join))
+  (mt/test-drivers (mt/normal-drivers-with-feature :identifiers-with-spaces :left-join)
     (mt/dataset
       crazy-names
       (let [mp (mt/metadata-provider)
@@ -1693,8 +1692,7 @@
                                                                  (lib/with-join-alias (lib.metadata/field mp (mt/id "space table" "space column"))
                                                                                       "Space Table Alias"))])))
 
-                    (lib/breakout $q (m/find-first (every-pred (comp #{"Space Column"} :display-name) :source-alias)
-                                                   (lib/breakoutable-columns $q)))
+                    (lib/breakout $q (lib.tu.notebook/find-col-with-spec $q (lib/breakoutable-columns $q) {} {:display-name "Space Column"}))
                     (lib/append-stage $q)
                     (lib/breakout $q (first (lib/breakoutable-columns $q)))
                     (lib/aggregate $q (lib/max (first (lib/visible-columns $q)))))]
@@ -1702,9 +1700,7 @@
                                   [int int] (qp/process-query query))))))))
 
 (deftest ^:parallel space-names-question-test
-  (mt/test-drivers (set/intersection
-                    (mt/normal-drivers-with-feature :identifiers-with-spaces)
-                    (mt/normal-drivers-with-feature :left-join))
+  (mt/test-drivers (mt/normal-drivers-with-feature :identifiers-with-spaces :left-join)
     (let [mp              (mt/metadata-provider)
           card-query      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                               (lib/order-by (lib.metadata/field mp (mt/id :orders :created_at)))

@@ -50,7 +50,7 @@
   ;; Can't use [[normal-drivers-with-feature]] during test initialization, because it means we end up having to load
   ;; plugins and a bunch of other nonsense.
   (mb.hawk.init/assert-tests-are-not-initializing (pr-str (list* 'normal-drivers-with-feature feature more-features)))
-  (let [features (set (cons feature more-features))]
+  (let [features (into #{feature} more-features)]
     (set (for [driver (normal-drivers)
                :let   [driver (tx/the-driver-with-test-extensions driver)]
                :when  (driver/with-driver driver

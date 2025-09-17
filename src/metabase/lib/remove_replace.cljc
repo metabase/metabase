@@ -91,7 +91,7 @@
      #(lib.util.match/replace
         %
         :field
-        (let [old-matching-column (lib.equality/find-matching-column &match old-columns)]
+        (let [old-matching-column (lib.equality/find-matching-column query-original stage-number &match old-columns)]
           (if-let [new-column (some-> old-matching-column :lib/source-uuid source-uuid->new-column)]
             (assoc &match 2 ((some-fn :lib/source-column-alias :name) new-column))
             (do

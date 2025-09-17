@@ -404,7 +404,9 @@
 
 (mu/defn selected-aggregation-operators :- [:maybe [:sequential SelectedOperatorWithColumns]]
   "Mark the operator and the column (if any) in `agg-operators` selected by `agg-clause`."
-  [agg-operators :- [:maybe [:sequential OperatorWithColumns]]
+  [query
+   stage-number
+   agg-operators :- [:maybe [:sequential OperatorWithColumns]]
    agg-clause]
   (when (seq agg-operators)
     (let [[op _ agg-col] agg-clause
@@ -418,6 +420,8 @@
                      (fn [cols]
                        (if (lib.util/ref-clause? agg-col)
                          (let [cols (lib.equality/mark-selected-columns
+                                     query
+                                     stage-number
                                      cols
                                      [(lib.options/update-options agg-col dissoc :temporal-unit)])]
                            (mapv (fn [c]

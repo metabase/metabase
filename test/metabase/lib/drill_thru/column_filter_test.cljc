@@ -1,12 +1,14 @@
 (ns metabase.lib.drill-thru.column-filter-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
+   [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
 
@@ -327,13 +329,17 @@
                                                            (meta/field-metadata :products :id))])))
           columns   (lib/returned-columns query)
           category  (-> (m/find-first #(= (:name %) "CATEGORY") columns)
-                        (dissoc :join-alias :metabase.lib.join/join-alias :lib/source))
+                        (set/rename-keys {:metabase.lib.join/join-alias :source-alias})
+                        (dissoc :lib/source :join-alias :metabase.lib.join/join-alias)
+                        (->> (lib/normalize ::lib.schema.metadata/column)))
           context   {:column     category
                      :column-ref (lib/ref category)
                      :value      nil}
           drills    (lib/available-drill-thrus query -1 context)
           colfilter (m/find-first #(= (:type %) :drill-thru/column-filter) drills)]
-      (is (= "Products" (:source-alias category)))
+      (testing "Normalization should rename :source-alias to :metabase.lib.join/join-alias"
+        (is (= "Products"
+               (:metabase.lib.join/join-alias category))))
       (is (= "Products" (-> context :column-ref second :join-alias)))
       (is (some? (:column colfilter))))))
 

@@ -123,7 +123,7 @@ function setup({
 
   const baseOperators = Lib.availableAggregationOperators(query, stageIndex);
   const operators = clause
-    ? Lib.selectedAggregationOperators(baseOperators, clause)
+    ? Lib.selectedAggregationOperators(query, stageIndex, baseOperators, clause)
     : baseOperators;
 
   const onQueryChange = jest.fn();

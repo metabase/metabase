@@ -555,7 +555,7 @@
     legacy-ref   :- some?]
    (let [a-ref   (lib.convert/legacy-ref->pMBQL query stage-number legacy-ref)
          columns (filterable-columns query stage-number)]
-     (lib.equality/find-matching-column a-ref columns))))
+     (lib.equality/find-matching-column query stage-number a-ref columns))))
 
 (def ^:private FilterParts
   [:map

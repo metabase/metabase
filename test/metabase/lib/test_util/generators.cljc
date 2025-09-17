@@ -166,8 +166,7 @@
 (add-step {:kind :breakout})
 
 (defn- breakout-exists? [query stage-number column]
-  (boolean (lib.breakout/breakout-column? query stage-number column {:same-binning-strategy? true
-                                                                     :same-temporal-bucket?  true})))
+  (boolean (lib.breakout/breakout-column? query stage-number column {:find-matching-column/ignore-binning-and-bucketing? false})))
 
 (defmethod next-steps* :breakout [query _breakout]
   (let [stage-number (choose-stage query)

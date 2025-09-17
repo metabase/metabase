@@ -27,7 +27,6 @@
   "Calls `ensure-audit-db-installed!` before and after `body` to ensure that the audit DB is installed and then
   restored if necessary. Also disables audit content loading if it is already loaded."
   `(let [audit-collection-exists?# (t2/exists? :model/Collection :type "instance-analytics")]
-     (clojure.pprint/print-table (t2/select [:model/Database :id :name]))
      (mt/with-temp-env-var-value! [mb-load-analytics-content (not audit-collection-exists?#)]
        (mbc/ensure-audit-db-installed!)
        (try

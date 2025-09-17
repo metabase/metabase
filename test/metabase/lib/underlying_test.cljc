@@ -111,30 +111,35 @@
                       (lib/breakout (-> (meta/field-metadata :orders :created-at)
                                         (lib/with-temporal-bucket :month)))
                       (lib/breakout (-> (meta/field-metadata :orders :quantity)
-                                        (lib/with-binning {:strategy :num-bins, :num-bins 10}))))
+                                        (lib/with-binning {:strategy :num-bins, :num-bins 10})))
+                      lib/append-stage)
             temporal-col (m/find-first #(= (:name %) "CREATED_AT")
                                        (lib/returned-columns query))
-            _          (is (some? temporal-col))
-            binned-col (m/find-first #(= (:name %) "QUANTITY")
-                                     (lib/returned-columns query))
-            _          (is (some? binned-col))
-            query      (lib/append-stage query)]
-
-        (doseq [[col key-name] [[temporal-col "temporal-unit"]
-                                [binned-col "binning"]]
-                rename?        [true false]]
-          (let [orig-key      (keyword "metabase.lib.field" key-name)
-                renamed-key   (keyword "metabase.lib.underlying" key-name)
-                top-level-col (lib.underlying/top-level-column query col :rename-superflous-options? rename?)]
+            _            (is (some? temporal-col))
+            binned-col   (m/find-first #(= (:name %) "QUANTITY")
+                                       (lib/returned-columns query))
+            _            (is (some? binned-col))]
+        (doseq [[col orig-key renamed-key expected] [[temporal-col
+                                                      :metabase.lib.field/temporal-unit
+                                                      :metabase.lib.underlying/temporal-unit
+                                                      :month]
+                                                     [binned-col
+                                                      :metabase.lib.field/binning
+                                                      :metabase.lib.underlying/binning
+                                                      {:strategy :num-bins, :num-bins 10}]]
+                rename?                             [true false]]
+          (let [top-level-col (lib.underlying/top-level-column query col :rename-superflous-options? rename?)]
             (testing (str "\nrename? " rename?
                           "\norig-key " orig-key
                           "\nrenamed-key " renamed-key
-                          "\ntop-level-col " top-level-col)
-              (if rename?
-                (do (is (= (orig-key col) (renamed-key top-level-col)))
-                    (is (= nil (orig-key top-level-col))))
-                (do (is (= (orig-key col) (orig-key top-level-col)))
-                    (is (= nil (renamed-key top-level-col))))))))))))
+                          "\ntop-level-col " top-level-col
+                          "\n")
+              (is (=? (if rename?
+                        {renamed-key expected
+                         orig-key    (symbol "nil #_\"key is not present.\"")}
+                        {renamed-key (symbol "nil #_\"key is not present.\"")
+                         orig-key    expected})
+                      top-level-col)))))))))
 
 (deftest ^:parallel top-level-stage-number-test
   (testing `lib.underlying/top-level-stage-number

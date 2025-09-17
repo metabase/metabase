@@ -50,6 +50,7 @@
                     :values          [["American"] ["Artisan"] ["Asian"]]}
                    (custom-values/values-from-card
                     card
+                    ;; This is referring to CATEGORIES.NAME (from the breakout)
                     [:field "NAME" {:base-type :type/Text}]))))
           (testing "get values from aggregation column"
             (is (= {:has_more_values true
@@ -70,8 +71,9 @@
                    (custom-values/values-from-card
                     card
                     [:field "NAME" {:base-type :type/Text}]
-                    {:query-string "bakery"}))))))))
+                    {:query-string "bakery"})))))))))
 
+(deftest ^:parallel with-mbql-card-test-2b
   (testing "source card is a question" ; Questions are transparent, so this can drop the aggregations and filter the original.
     (binding [custom-values/*max-rows* 3]
       (testing "has aggregation column"
