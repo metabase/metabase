@@ -11,7 +11,11 @@ import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/ut
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { Database as ApiDatabase, RecentItem } from "metabase-types/api";
+import type {
+  Database as ApiDatabase,
+  DatasetQuery,
+  RecentItem,
+} from "metabase-types/api";
 
 import S from "./EditorBody.module.css";
 import { ResizableBoxHandle } from "./ResizableBoxHandle";

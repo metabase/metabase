@@ -16,14 +16,14 @@ import type {
   MetabotAgentRequest,
   MetabotAgentResponse,
   MetabotChatContext,
-  MetabotReaction,
 } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
 import { METABOT_ERR_MSG } from "../constants";
-import { notifyUnknownReaction, reactionHandlers } from "../reactions";
 
 import {
+  type MetabotAgentEditSuggestionChatMessage,
+  type MetabotAgentTodoListChatMessage,
   type MetabotErrorMessage,
   type MetabotUserChatMessage,
   metabot,
@@ -43,7 +43,6 @@ import { createMessageId, parseSlashCommand } from "./utils";
 export const {
   addAgentTextDelta,
   addAgentMessage,
-  addAgentEditSuggestionMessage,
   addAgentErrorMessage,
   addUserMessage,
   resetConversationId,
@@ -238,6 +237,17 @@ export const sendAgentRequest = createAsyncThunk<
             match(part)
               // only update the convo state if the request is successful
               .with({ type: "state" }, (part) => (state = part.value))
+              .with({ type: "todo_list" }, (part) => {
+                const message: Omit<
+                  MetabotAgentTodoListChatMessage,
+                  "id" | "role"
+                > = {
+                  type: "todo_list",
+                  payload: part.value,
+                };
+
+                dispatch(addAgentMessage(message));
+              })
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.value));
 
@@ -249,20 +259,21 @@ export const sendAgentRequest = createAsyncThunk<
                 { type: "transform_suggestion" },
                 ({ value: transform }) => {
                   dispatch(setSuggestedTransform(transform));
-                  dispatch(
-                    addAgentEditSuggestionMessage({
-                      type: "edit_suggestion",
-                      model: "transform",
-                      payload: transform,
-                    }),
-                  );
+                  const message: Omit<
+                    MetabotAgentEditSuggestionChatMessage,
+                    "id" | "role"
+                  > = {
+                    type: "edit_suggestion",
+                    model: "transform",
+                    payload: transform,
+                  };
+
+                  dispatch(addAgentMessage(message));
                 },
               )
               .exhaustive();
           },
-          onTextPart: (part) => {
-            dispatch(addAgentTextDelta(String(part)));
-          },
+          onTextPart: (part) => dispatch(addAgentTextDelta(String(part))),
           onToolCallPart: (part) => dispatch(toolCallStart(part)),
           onToolResultPart: (part) => dispatch(toolCallEnd(part)),
           onError: (part) => (error = part),
@@ -347,37 +358,6 @@ export const resetConversation = createAsyncThunk(
     dispatch(EnterpriseApi.util.invalidateTags(["metabot-prompt-suggestions"]));
 
     dispatch(metabot.actions.resetConversation());
-  },
-);
-
-export const processMetabotReactions = createAsyncThunk(
-  "metabase-enterprise/metabot/processMetabotReactions",
-  async (reactions: MetabotReaction[], { dispatch, getState }) => {
-    dispatch(setIsProcessing(true));
-
-    for (const reaction of reactions) {
-      try {
-        const reactionHandler =
-          reactionHandlers[reaction.type] ?? notifyUnknownReaction;
-        // TS isn't smart enough to know the reaction matches the handler
-        await reactionHandler(reaction as any)({ dispatch, getState });
-      } catch (error: any) {
-        console.error("Halting processing of reactions.", error);
-        dispatch(stopProcessingAndNotify());
-        break;
-      }
-
-      // TODO: make an EnterpriseStore
-      const isProcessing = getIsProcessing(getState() as any);
-      if (!isProcessing) {
-        console.warn(
-          "A handler has stopped further procesing of metabot reactions",
-        );
-        break;
-      }
-    }
-
-    dispatch(setIsProcessing(false));
   },
 );
 

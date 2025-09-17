@@ -68,8 +68,8 @@ export const MetabotChat = ({
         <Box ref={headerRef} className={Styles.header}>
           <Flex align-items="center">
             <Text lh={1} fz="sm" c="text-secondary">
-              {metabot.profile
-                ? t`Using profile: ${metabot.profile}`
+              {metabot.profileOverride
+                ? t`Using profile: ${metabot.profileOverride}`
                 : t`Metabot isn't perfect. Double-check results.`}
             </Text>
           </Flex>
