@@ -359,13 +359,12 @@ describe("Database connection strings", () => {
   });
 });
 
-describe("Database connection strings events", () => {
+H.describeWithSnowplow("Database connection strings events", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();
     H.enableTracking();
-    cy.visit("/admin/databases/create");
-    chooseDatabase("MySQL");
+    cy.visit("/admin/databases/create?engine=mysql");
   });
 
   it("should track success events correctly", () => {
