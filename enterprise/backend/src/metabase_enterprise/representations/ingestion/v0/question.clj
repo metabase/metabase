@@ -128,7 +128,7 @@
   (do ; make the sample_database
     (require '[toucan2.core :as t2])
     (require '[metabase.test :as mt])
-    (t2/insert-returning-instance! :model/Database {:name "sample_database" :engine :h2 :details {:db "mem:sample"} :is_sample true}))
+    (t2/insert-returning-instance! :model/Database {:name "Sample Database" :engine :h2 :details {:db "mem:sample"} :is_sample true}))
   (do ; load a sample question
     (require '[metabase-enterprise.representations.ingestion.core :as ing-core])
     (representation->question-data
