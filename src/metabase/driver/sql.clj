@@ -205,15 +205,26 @@
 (defmethod resolve-field :single-column
   [driver metadata-provider col-spec]
   [(or (->> (:source-columns col-spec)
-            (mapcat (partial resolve-field driver metadata-provider))
-            (some #(when (= (:name %) (:column col-spec))
-                     %)))
+            (some (fn [source-col-set]
+                    ;; in cases like `select (select blah from ...) from ...`, if blah refers to a
+                    ;; column in both the inner query and the outer query, the column from the inner
+                    ;; query will be preferred.  However, if blah doesn't refer to something in the
+                    ;; inner query, it can also refer to something in the outer query.
+                    ;; sql.references/field-references organizes source-cols into a list of lists
+                    ;; to account for this.
+                    (->> (mapcat (partial resolve-field driver metadata-provider) source-col-set)
+                         (some #(when (= (:name %) (:column col-spec))
+                                  %))))))
        (assoc col-spec ::bad-reference true))])
 
 (defmethod resolve-field :custom-field
   [_driver _metadata-provider col-spec]
   [{:type :type/*
     :name (:alias col-spec)}])
+
+(defmethod resolve-field :invalid-table-wildcard
+  [_driver _metadata-provider col-spec]
+  [(assoc col-spec ::bad-reference true)])
 
 (defmethod driver/native-result-metadata :sql
   [driver metadata-provider native-query]
@@ -224,13 +235,15 @@
 
 (defmethod driver/validate-native-query-fields :sql
   [driver metadata-provider native-query]
-  (let [{:keys [used-fields]} (->> (macaw/parsed-query native-query)
-                                   macaw/->ast
-                                   (sql.references/field-references driver))]
-    (every? (fn [col-spec]
-              (->> (resolve-field driver metadata-provider col-spec)
-                   (every? (comp not ::bad-reference))))
-            used-fields)))
+  (let [{:keys [used-fields returned-fields]} (->> (macaw/parsed-query native-query)
+                                                   macaw/->ast
+                                                   (sql.references/field-references driver))
+        check-fields #(every? (fn [col-spec]
+                                (->> (resolve-field driver metadata-provider col-spec)
+                                     (every? (comp not ::bad-reference))))
+                              %)]
+    (and (check-fields used-fields)
+         (check-fields returned-fields))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Convenience Imports                                               |

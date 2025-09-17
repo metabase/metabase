@@ -24,164 +24,232 @@
               m))
 
 (defn- col-fields [driver m]
-  (->> (select-keys m [:type :column :table :schema :database])
+  (->> (select-keys m [:type :column :table :schema :database :alias])
        (normalize-fields driver)))
-
-(defmulti find-used-fields
-  (fn [driver expr]
-    [(driver/dispatch-on-initialized-driver driver) (:type expr)])
-  :hierarchy #'driver/hierarchy)
-
-(defmethod find-used-fields :default
-  [_driver _expr]
-  nil)
-
-(defmethod find-used-fields [:sql :macaw.ast/select]
-  [driver expr]
-  (let [rec (partial find-used-fields driver)]
-    (into #{}
-          (concat (mapcat rec (:select expr))
-                  (rec (:where expr))
-                  (mapcat rec (:join expr))
-                  (mapcat rec (:group-by expr))
-                  (mapcat rec (:order-by expr))))))
-
-(defmethod find-used-fields [:sql :macaw.ast/column]
-  [driver expr]
-  [(col-fields driver expr)])
-
-(defmethod find-used-fields [:sql :macaw.ast/unary-expression]
-  [driver expr]
-  (find-used-fields driver (:expression expr)))
-
-(defmethod find-used-fields [:sql :macaw.ast/binary-expression]
-  [driver expr]
-  (concat (find-used-fields driver (:left expr))
-          (find-used-fields driver (:right expr))))
-
-(defmethod find-used-fields [:sql :macaw.ast/expression-list]
-  [driver expr]
-  (mapcat (partial find-used-fields driver) (:expressions expr)))
-
-(defmethod find-used-fields [:sql :macaw.ast/join]
-  [driver expr]
-  (mapcat (partial find-used-fields driver) (:condition expr)))
-
-(defmethod find-used-fields [:sql :macaw.ast/function]
-  [driver expr]
-  (mapcat (partial find-used-fields driver) (:params expr)))
-
-(defmulti find-returned-fields
-  (fn [driver expr]
-    [(driver/dispatch-on-initialized-driver driver) (:type expr)])
-  :hierarchy #'driver/hierarchy)
-
-(defmethod find-returned-fields :default
-  [driver {:keys [alias] :as expr}]
-  [{:alias (sql.normalize/normalize-name driver (or alias (str (gensym "anon-field"))))
-    :type :custom-field
-    :used-fields (find-used-fields driver expr)}])
-
-(defmethod find-returned-fields [:sql :macaw.ast/select]
-  [driver expr]
-  (mapcat (partial find-returned-fields driver) (:select expr)))
-
-(defmethod find-returned-fields [:sql :macaw.ast/column]
-  [driver expr]
-  [(col-fields driver expr)])
-
-(defmethod find-returned-fields [:sql :macaw.ast/wildcard]
-  [driver expr]
-  [{:type :macaw.ast/wildcard}])
-
-(defmethod find-returned-fields [:sql :macaw.ast/table-wildcard]
-  [driver expr]
-  [(col-fields driver expr)])
-
-(defmulti field-references-impl
-  (fn [driver expr]
-    [(driver/dispatch-on-initialized-driver driver) (:type expr)])
-  :hierarchy #'driver/hierarchy)
-
-(defmethod field-references-impl [:sql :macaw.ast/table]
-  [driver expr]
-  {:used-fields #{}
-   :returned-fields [{:type :all-columns
-                      :table (normalize-fields driver expr)}]
-   :names (normalize-fields driver expr)})
 
 (defn- table-matches? [search table]
   (or (when (and (not (:schema search))
                  (not (:database search)))
-        (= (:table search) (:alias table)))
+        (= (:table search) (:table-alias table)))
       (->> (select-keys search [:table :schema :database])
            keys
-           (every? #(= (search %) (table %))))))
+           (every? #(= (% search) (% table))))))
 
 (defn- find-source [search sources]
-  (some #(when (table-matches? search (:names %))
-           %)
+  (some (fn [sublist]
+          (some #(when (table-matches? search (:names %))
+                   %)
+                sublist))
         sources))
 
-(defmulti match-field (fn [expr _sources]
-                        (:type expr)))
+(defn- get-column [driver sources raw-col]
+  (if-let [literal (and
+                    (nil? (:table raw-col))
+                    (nil? (:schema raw-col))
+                    (nil? (:database raw-col))
+                    (sql.normalize/reserved-literal driver (:column raw-col)))]
+    []
+    (let [{:keys [alias column table] :as expr} (col-fields driver raw-col)
+          valid-sources (if table
+                          [[(find-source expr sources)]]
+                          sources)
+          source-columns (into []
+                               (map #(into []
+                                           (mapcat :returned-fields)
+                                           %))
+                               valid-sources)
+          source-column (some (fn [columns]
+                                (some #(when (= column (or (:alias %) (:column %)))
+                                         %)
+                                      columns))
+                              source-columns)]
+      [(if source-column
+         (cond-> source-column
+           alias (assoc :alias alias))
+         (-> {:column column
+              :alias alias
+              :type :single-column}
+             (assoc :source-columns source-columns)))])))
 
-(defmethod match-field :macaw.ast/wildcard
-  [_expr sources]
+(defmulti find-used-fields
+  (fn [driver sources withs expr]
+    [(driver/dispatch-on-initialized-driver driver) (:type expr)])
+  :hierarchy #'driver/hierarchy)
+
+(defmethod find-used-fields :default
+  [_driver _sources _withs _expr]
+  nil)
+
+(defmethod find-used-fields [:sql :macaw.ast/column]
+  [driver sources _withs expr]
+  (get-column driver sources expr))
+
+(defmethod find-used-fields [:sql :macaw.ast/unary-expression]
+  [driver sources withs expr]
+  (find-used-fields driver sources withs (:expression expr)))
+
+(defmethod find-used-fields [:sql :macaw.ast/binary-expression]
+  [driver sources withs expr]
+  (concat (find-used-fields driver sources withs (:left expr))
+          (find-used-fields driver sources withs (:right expr))))
+
+(defmethod find-used-fields [:sql :macaw.ast/expression-list]
+  [driver sources withs expr]
+  (mapcat (partial find-used-fields driver sources withs) (:expressions expr)))
+
+(defmethod find-used-fields [:sql :macaw.ast/join]
+  [driver sources withs expr]
+  (mapcat (partial find-used-fields driver sources withs) (:condition expr)))
+
+(defmethod find-used-fields [:sql :macaw.ast/function]
+  [driver sources withs expr]
+  (mapcat (partial find-used-fields driver sources withs) (:params expr)))
+
+(defmethod find-used-fields [:sql :macaw.ast/case]
+  [driver sources withs expr]
+  (concat (find-used-fields driver sources withs (:switch expr))
+          (find-used-fields driver sources withs (:else expr))
+          (mapcat (fn [{when-clause :when then-clause :then}]
+                    (concat (find-used-fields driver sources withs when-clause)
+                            (find-used-fields driver sources withs then-clause)))
+                  (:when-clauses expr))))
+
+(defmethod find-used-fields [:sql :macaw.ast/between]
+  [driver sources withs expr]
+  (concat (find-used-fields driver sources withs (:expression expr))
+          (find-used-fields driver sources withs (:start expr))
+          (find-used-fields driver sources withs (:end expr))))
+
+(defmethod find-used-fields [:sql :macaw.ast/set-operation]
+  [driver sources withs expr]
+  (mapcat (partial find-used-fields driver sources withs)
+          (:selects expr)))
+
+(defmethod find-used-fields [:sql :macaw.ast/analytic-expression]
+  [driver sources withs expr]
+  (let [rec (partial find-used-fields driver sources withs)]
+    (concat (rec (:expression expr))
+            (rec (:offset expr))
+            (rec (:window expr))
+            (mapcat rec (:partition-by expr))
+            (mapcat rec (:order-by expr)))))
+
+(defmulti find-returned-fields
+  (fn [driver _sources _withs expr]
+    [(driver/dispatch-on-initialized-driver driver) (:type expr)])
+  :hierarchy #'driver/hierarchy)
+
+(defmethod find-returned-fields :default
+  [driver sources withs {:keys [alias] :as expr}]
+  [{:alias (when alias
+             (sql.normalize/normalize-name driver alias))
+    :type :custom-field
+    :used-fields (into #{} (find-used-fields driver sources withs expr))}])
+
+(defmethod find-returned-fields [:sql :macaw.ast/column]
+  [driver sources _withs expr]
+  (get-column driver sources expr))
+
+(defmethod find-returned-fields [:sql :macaw.ast/wildcard]
+  [driver sources _withs expr]
   (into []
         (mapcat :returned-fields)
-        sources))
+        (first sources)))
 
-(defmethod match-field :macaw.ast/table-wildcard
-  [expr sources]
-  (some-> (find-source expr sources)
-          :returned-fields))
+(defmethod find-returned-fields [:sql :macaw.ast/table-wildcard]
+  [driver sources _withs expr]
+  (or (some-> (find-source (col-fields driver expr) sources)
+              :returned-fields)
+      [(assoc expr
+              :type :invalid-table-wildcard)]))
 
-(defmethod match-field :macaw.ast/column
-  [{:keys [alias] :as expr} sources]
-  (let [valid-sources (if (:table expr)
-                        [(find-source expr sources)]
-                        sources)
-        source-columns (into []
-                             (mapcat :returned-fields)
-                             valid-sources)
-        source-column (some #(when (= (:column expr) (or (:alias %) (:column %)))
-                               %) source-columns)]
-    [(if source-column
-       (cond-> source-column
-         alias (assoc :alias alias))
-       (-> {:column (:column expr)
-            :alias (:alias expr)
-            :type :single-column}
-           (assoc :source-columns source-columns)))]))
+(defmethod find-returned-fields [:sql :macaw.ast/set-operation]
+  [driver sources withs expr]
+  (->> (map (partial find-returned-fields driver sources withs)
+            (:selects expr))
+       (apply map (fn [& fields]
+                    {:alias (or (:alias (first fields))
+                                (:column (first fields)))
+                     :type :composite-field
+                     :member-fields (into [] fields)}))))
 
-(defmethod match-field :custom-field
-  [expr sources]
-  [(update expr :used-fields (fn [fields]
-                               (into #{}
-                                     (mapcat #(match-field % sources))
-                                     fields)))])
+(defmulti field-references-impl
+  (fn [driver _outside-sources _withs expr]
+    [(driver/dispatch-on-initialized-driver driver) (:type expr)])
+  :hierarchy #'driver/hierarchy)
+
+(defmethod field-references-impl [:sql :macaw.ast/table]
+  [driver _outside-sources withs expr]
+  (or (when-let [source (find-source expr [withs])]
+        (update source :names assoc :table-alias (:table-alias expr)))
+      {:used-fields #{}
+       :returned-fields [{:type :all-columns
+                          :table (normalize-fields driver expr)}]
+       :names (normalize-fields driver expr)}))
+
+(defn- get-select-sources
+  [driver outside-sources withs expr]
+  (cond-> (mapv (partial field-references-impl driver outside-sources withs) (:join expr))
+    (:from expr) (conj (field-references-impl driver outside-sources withs (:from expr)))))
+
+(defmethod find-used-fields [:sql :macaw.ast/select]
+  [driver outside-sources withs expr]
+  (let [local-sources (get-select-sources driver outside-sources withs expr)
+        sources (cons local-sources outside-sources)
+        rec (partial find-used-fields driver sources withs)]
+    (-> (into #{}
+              (mapcat rec)
+              (:select expr))
+        (into (rec (:where expr)))
+        (into (mapcat rec)
+              (:join expr))
+        (into (mapcat rec)
+              (:group-by expr))
+        (into (mapcat rec)
+              (:order-by expr))
+        (into (mapcat :used-fields)
+              local-sources))))
+
+(defmethod find-returned-fields [:sql :macaw.ast/select]
+  [driver outside-sources withs expr]
+  (let [sources (cons (get-select-sources driver outside-sources withs expr)
+                      outside-sources)
+        returned-fields (mapcat (partial find-returned-fields driver sources withs) (:select expr))]
+    (if (:alias expr)
+      ;; :alias is a column alias, so this is presumably something like `select (select * from ...)`
+      ;; there should only be one field returned, and that field should have the appropriate alias
+      (do (assert (= 1 (count returned-fields)))
+          (map #(assoc % :alias (sql.normalize/normalize-name driver (:alias expr)))
+               returned-fields))
+      returned-fields)))
 
 (defmethod field-references-impl [:sql :macaw.ast/select]
-  [driver expr]
-  (let [sources (conj (mapv (partial field-references-impl driver) (:join expr))
-                      (field-references-impl driver (:from expr)))]
-    {:used-fields (-> (into #{}
-                            (mapcat #(match-field % sources))
-                            (find-used-fields driver expr))
-                      (into (mapcat :used-fields)
-                            sources))
+  [driver outside-sources outside-withs expr]
+  (let [local-withs (map (partial field-references-impl driver outside-sources outside-withs)
+                         (:with expr))
+        withs (into outside-withs local-withs)]
+    {:used-fields (into (find-used-fields driver outside-sources withs expr)
+                        (mapcat :used-fields)
+                        local-withs)
      :returned-fields (into []
-                            (mapcat #(match-field % sources))
-                            (find-returned-fields driver expr))
-     :names (when-let [alias (:alias expr)]
-              {:alias (sql.normalize/normalize-name driver alias)})}))
+                            (find-returned-fields driver outside-sources withs expr))
+     :names (when-let [alias (:table-alias expr)]
+              {:table-alias (sql.normalize/normalize-name driver alias)})}))
 
 (defmethod field-references-impl [:sql :macaw.ast/join]
-  [driver expr]
-  (field-references-impl driver (:source expr)))
+  [driver outside-sources withs expr]
+  (field-references-impl driver outside-sources withs (:source expr)))
+
+(defmethod field-references-impl [:sql :macaw.ast/set-operation]
+  [driver outside-sources withs expr]
+  {:used-fields (->> (find-used-fields driver outside-sources withs expr)
+                     (into #{}))
+   :returned-fields (->> (find-returned-fields driver outside-sources withs expr)
+                         (into []))
+   :names (when-let [alias (:table-alias expr)]
+            {:table-alias (sql.normalize/normalize-name driver alias)})})
 
 (defn field-references
   [driver expr]
-  (-> (field-references-impl driver expr)
+  (-> (field-references-impl driver nil #{} expr)
       (dissoc :names)))

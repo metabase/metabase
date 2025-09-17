@@ -29,3 +29,20 @@
             (subs 1 (dec (count name-str)))
             (str/replace quote-quote quote)))
       (normalize-unquoted-name driver name-str))))
+
+(defmulti reserved-literal
+  (fn [driver name]
+    [(driver/dispatch-on-initialized-driver driver) name])
+  :hierarchy #'driver/hierarchy)
+
+(defmethod reserved-literal :default
+  [_driver _name]
+  nil)
+
+(defmethod reserved-literal [:sql "true"]
+  [_driver _name]
+  {:value true})
+
+(defmethod reserved-literal [:sql "false"]
+  [_driver _name]
+  {:value false})
