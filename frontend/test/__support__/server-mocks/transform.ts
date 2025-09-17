@@ -10,6 +10,17 @@ export function setupListTransformTagsEndpoint(tags: TransformTag[]) {
   fetchMock.get(`path:/api/ee/transform-tag`, tags);
 }
 
+export function setupListTransformJobsEndpoint(jobs: TransformJob[]) {
+  fetchMock.get(`path:/api/ee/transform-job`, jobs);
+}
+
+export function setupListTransformJobTransformsEndpoint(
+  jobId: TransformJobId,
+  transforms: Transform[],
+) {
+  fetchMock.get(`path:/api/ee/transform-job/${jobId}/transforms`, transforms);
+}
+
 export function setupGetTransformJobEndpoint(job: TransformJob) {
   fetchMock.get(`path:/api/ee/transform-job/${job.id}`, job);
 }
