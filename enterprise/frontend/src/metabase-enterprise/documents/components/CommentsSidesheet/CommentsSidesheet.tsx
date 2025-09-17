@@ -8,7 +8,17 @@ import noResultsSource from "assets/img/no_results.svg";
 import { useToast } from "metabase/common/hooks";
 import Animation from "metabase/css/core/animation.module.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Box, Flex, Image, Modal, Tabs, Text, rem } from "metabase/ui";
+import {
+  Box,
+  Flex,
+  Icon,
+  Image,
+  Modal,
+  Tabs,
+  Text,
+  Title,
+  rem,
+} from "metabase/ui";
 import {
   useCreateCommentMutation,
   useListCommentsQuery,
@@ -183,6 +193,107 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
   if (!childTargetId || !document) {
     return null;
   }
+
+  return (
+    <Box
+      component="aside"
+      pos="relative"
+      h="100dvh"
+      w="30rem"
+      style={{
+        borderLeft: "1px solid var(--mb-color-border)",
+      }}
+    >
+      {/* <Modal.Title> */}
+      <Title
+        order={3}
+        p="xl"
+        pb="sm"
+        display="flex"
+        style={{ justifyContent: "space-between" }}
+      >
+        <Box>
+          {childTargetId === "all" ? t`All comments` : t`Comments about this`}
+        </Box>
+        <Icon
+          cursor="pointer"
+          name="close"
+          ta="right"
+          onClick={closeSidebar}
+          size={20}
+          c="var(--mb-color-text-tertiary)"
+        />
+      </Title>
+
+      {/* </Modal.Title> */}
+      {/* <Modal.CloseButton onClick={closeSidebar} /> */}
+      <Tabs
+        value={activeTab}
+        onChange={(value) => {
+          setActiveTab(value as SidesheetTab);
+        }}
+      >
+        {availableTabs.length > 0 && (
+          <Tabs.List px="1.625rem" className={S.tabsList}>
+            <Tabs.Tab value="open" data-testid="comments-open-tab">
+              {t`Open`}
+            </Tabs.Tab>
+            <Tabs.Tab value="resolved" data-testid="comments-resolved-tab">
+              {t`Resolved (${resolvedCommentsCount})`}
+            </Tabs.Tab>
+          </Tabs.List>
+        )}
+
+        <Tabs.Panel value="open">
+          {activeComments.length > 0 && (
+            <Discussions
+              childTargetId={childTargetId === "all" ? null : childTargetId}
+              comments={activeComments}
+              enableHoverHighlight={childTargetId === "all"}
+              targetId={document.id}
+              targetType="document"
+            />
+          )}
+
+          {activeComments.length === 0 && childTargetId === "all" && (
+            <Flex
+              p="xl"
+              pt="5rem"
+              align="center"
+              color="muted"
+              direction="column"
+              gap="md"
+            >
+              <Image w={120} h={120} src={noResultsSource} />
+
+              <Text fw="700" c="text-light">{t`No comments`}</Text>
+            </Flex>
+          )}
+
+          {childTargetId !== "all" && (
+            <Box px="lg" py={activeComments.length === 0 ? "lg" : "xs"}>
+              <CommentEditor
+                autoFocus={shouldAutoOpenNewComment}
+                data-testid="new-thread-editor"
+                placeholder={t`Add a comment…`}
+                onChange={(document) => setNewComment(document)}
+                onSubmit={handleSubmit}
+              />
+            </Box>
+          )}
+        </Tabs.Panel>
+
+        <Tabs.Panel value="resolved">
+          <Discussions
+            childTargetId={childTargetId === "all" ? null : childTargetId}
+            comments={resolvedComments}
+            targetId={document.id}
+            targetType="document"
+          />
+        </Tabs.Panel>
+      </Tabs>
+    </Box>
+  );
 
   return (
     <Modal.Root
