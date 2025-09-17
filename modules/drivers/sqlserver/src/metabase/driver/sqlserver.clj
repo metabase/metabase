@@ -3,8 +3,6 @@
   (:require
    [clojure.data.xml :as xml]
    [clojure.java.io :as io]
-
-   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [honey.sql :as sql]
