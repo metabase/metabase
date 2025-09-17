@@ -1520,7 +1520,9 @@
 
 (defn non-remote-synced-dependencies
   "Find dependencies of a model -- that are possible to contain in the remote-synced collection -- that are not contained the in Remote-synced
-  collection or in subcollections of the Remote-synced collection. Uses serdes/descendants to list dependencies of a model.
+  collection or in subcollections of the Remote-synced collection to model is being moved to.
+
+  Uses serdes/descendants to list dependencies of a model.
 
   Args:
     model: the model to check dependencies for
@@ -1528,12 +1530,18 @@
   Returns:
     sequence of models pairs for depedendencies of the given model that are not in the Remote-synced collection"
   [{:keys [id] :as model}]
-  (let [all-descendants (u/traverse [[(name (t2/model model)) id]] #(serdes/descendants (first %) (second %)))
-        {cards "Card"} (->> all-descendants keys (u/group-by first second))]
-    (set/difference (set cards) (t2/select-pks-set :model/Card {:inner-join [[:collection :c]
-                                                                             [:and
-                                                                              [:= :c.id :collection_id]
-                                                                              [:= :c.type [:inline remote-synced-collection-type]]]]}))))
+  (if-let [collection (t2/select-one :model/Collection :id (if (= (t2/model model) :model/Collection) (:id model) (:collection_id model)))]
+    (let [root-collection-id (or (-> collection :location location-path->ids first)
+                                 (:id collection))
+          all-descendants (u/traverse [[(name (t2/model model)) id]] #(serdes/descendants (first %) (second %)))
+          {cards "Card"} (->> all-descendants keys (u/group-by first second))]
+      (set/difference (set cards) (t2/select-pks-set :model/Card {:inner-join [[:collection :c]
+                                                                               [:and
+                                                                                [:= :c.id :collection_id]
+                                                                                [:or [:= :c.id root-collection-id]
+                                                                                 [:like :c.location (str "/" root-collection-id "/%")]]
+                                                                                [:= :c.type [:inline remote-synced-collection-type]]]]})))
+    #{}))
 
 (defn check-non-remote-synced-dependencies
   "Throws if a model has non-remote-synced-dependencies.
@@ -1614,17 +1622,17 @@
   [old-collection-id new-collection-id]
   (boolean
    (and (not (nil? old-collection-id))
-        (when-let [old-parent-location #p (t2/select-one-fn :location [:model/Collection :location]
-                                                            {:where [:and [:= :id old-collection-id]
-                                                                     [:= :type remote-synced-collection-type]]})]
+        (when-let [old-parent-location (t2/select-one-fn :location [:model/Collection :location]
+                                                         {:where [:and [:= :id old-collection-id]
+                                                                  [:= :type remote-synced-collection-type]]})]
           (or (nil? new-collection-id)
-              (if-let [new-parent-location #p (t2/select-one-fn :location [:model/Collection :location]
-                                                                {:where [:and [:= :id new-collection-id]
-                                                                         [:= :type remote-synced-collection-type]]})]
-                #p (locations-do-not-share-top-level-parent old-parent-location
-                                                            old-collection-id
-                                                            new-parent-location
-                                                            new-collection-id)
+              (if-let [new-parent-location (t2/select-one-fn :location [:model/Collection :location]
+                                                             {:where [:and [:= :id new-collection-id]
+                                                                      [:= :type remote-synced-collection-type]]})]
+                (locations-do-not-share-top-level-parent old-parent-location
+                                                         old-collection-id
+                                                         new-parent-location
+                                                         new-collection-id)
                 true))))))
 
 ;;; -------------------------------------------------- IModel Impl ---------------------------------------------------

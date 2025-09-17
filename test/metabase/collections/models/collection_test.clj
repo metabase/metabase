@@ -2130,8 +2130,8 @@
 
 (deftest move-collection!-dependency-checking-success-test
   (testing "move-collection! with into-remote-synced? true succeeds when all dependencies are in remote-synced collection"
-    (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced" :location "/" :type "remote-synced"}
-                   :model/Collection {parent-id :id} {:name "Parent" :location "/" :type "remote-synced"}
+    (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent" :location "/" :type "remote-synced"}
+                   :model/Collection {remote-synced-id :id} {:name "Remote-Synced" :location (str "/" parent-id "/") :type "remote-synced"}
                    :model/Collection {coll-id :id :as coll} {:name "Collection to Move"
                                                              :location "/"
                                                              :type nil}
