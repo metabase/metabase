@@ -8,6 +8,7 @@ import { type ReactNode, useContext, useMemo } from "react";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 
 import { getThemeOverrides } from "../../../theme";
+import { ColorSchemeProvider, useColorScheme } from "../ColorSchemeProvider";
 import { DatesProvider } from "../DatesProvider";
 
 import { ThemeProviderContext } from "./context";
@@ -23,10 +24,12 @@ interface ThemeProviderProps {
   theme?: MantineThemeOverride;
 }
 
-export const ThemeProvider = (props: ThemeProviderProps) => {
+const ThemeProviderInner = (props: ThemeProviderProps) => {
+  const { resolvedColorScheme } = useColorScheme();
+
   // Merge default theme overrides with user-provided theme overrides
   const theme = useMemo(() => {
-    const theme = merge(getThemeOverrides(), props.theme) as MantineTheme;
+    const theme = merge(getThemeOverrides(resolvedColorScheme), props.theme) as MantineTheme;
 
     return {
       ...theme,
@@ -65,7 +68,7 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
         },
       },
     } as MantineTheme;
-  }, [props.theme]);
+  }, [props.theme, resolvedColorScheme]);
 
   const { withCssVariables, withGlobalClasses } =
     useContext(ThemeProviderContext);
@@ -84,5 +87,13 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
         <DatesProvider>{props.children}</DatesProvider>
       </_CompatibilityEmotionThemeProvider>
     </MantineProvider>
+  );
+};
+
+export const ThemeProvider = (props: ThemeProviderProps) => {
+  return (
+    <ColorSchemeProvider>
+      <ThemeProviderInner {...props} />
+    </ColorSchemeProvider>
   );
 };

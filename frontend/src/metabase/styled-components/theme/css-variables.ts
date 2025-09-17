@@ -6,20 +6,27 @@ import { CSS_VARIABLES_TO_SDK_THEME_MAP } from "metabase/embedding-sdk/theme/css
 import { getDynamicCssVariables } from "metabase/embedding-sdk/theme/dynamic-css-vars";
 import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import type { MantineTheme } from "metabase/ui";
+import { SEMANTIC_COLOR_SCHEMES } from "metabase/ui/utils/color-schemes";
 
 /**
  * Defines the CSS variables used across Metabase.
  */
 export function getMetabaseCssVariables(theme: MantineTheme) {
+  const colorScheme = theme.other?.colorScheme || "light";
+
   return css`
     :root {
       --mb-default-font-family: "${theme.fontFamily}";
       --mb-default-monospace-font-family: ${theme.fontFamilyMonospace};
 
-      /* Semantic colors */
-      --mb-color-brand: ${theme.colors.brand[0]};
-      --mb-color-summarize: ${theme.colors.summarize[0]};
-      --mb-color-filter: ${theme.colors.filter[0]};
+      /* Semantic colors - theme aware */
+      ${Object.entries(SEMANTIC_COLOR_SCHEMES)
+        .map(([colorName, colors]) => {
+          const colorValue = (colors as any)[colorScheme] || colors.light;
+          return `--mb-color-${colorName}: ${colorValue};`;
+        })
+        .join('\n      ')}
+
       ${getThemeSpecificCssVariables(theme)}
       ${getDynamicCssVariables(theme)}
     }
