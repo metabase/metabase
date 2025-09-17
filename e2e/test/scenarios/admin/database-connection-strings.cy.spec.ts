@@ -369,6 +369,11 @@ describe("Database connection strings events", () => {
   });
 
   it("should track success events correctly", () => {
+    const successEvent = {
+      event: "connection_string_parsed_success",
+      triggered_from: "full-page",
+    };
+
     cy.findByLabelText("Connection string (optional)")
       .focus()
       .paste("jdbc:mysql://testuser:testpass@host:3306/dbname?ssl=true")
@@ -380,13 +385,13 @@ describe("Database connection strings events", () => {
 
     cy.findByLabelText("Display name").click();
 
-    H.expectUnstructuredSnowplowEvent(
-      {
-        event: "connection_string_parsed_success",
-        triggered_from: "full-page",
-      },
-      1,
-    );
+    H.expectUnstructuredSnowplowEvent(successEvent, 1);
+
+    cy.findByLabelText("Connection string (optional)").click();
+    cy.findByLabelText("Display name").click();
+
+    // Should not track the same event again
+    H.expectUnstructuredSnowplowEvent(successEvent, 1);
   });
 
   it("should track failure events correctly", () => {

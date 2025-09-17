@@ -113,6 +113,8 @@ export function DatabaseConnectionStringField({
         return;
       })
       .exhaustive();
+
+    lastClearedStatusRef.current = null;
   }
 
   if (!isEngineKey(engineKey)) {
