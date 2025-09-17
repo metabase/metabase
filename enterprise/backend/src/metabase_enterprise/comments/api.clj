@@ -31,11 +31,6 @@
   (case (t2/model entity)
     :model/Document (str "/document/" (:id entity))))
 
-(defn- content->str [content]
-  (when content
-    (or (:text content)
-        (pr-str content))))
-
 ;;; schemas
 
 (def CommentContent
@@ -83,7 +78,6 @@
                                                          {:emoji emoji
                                                           :count (count users)
                                                           :users (take 10 users)})))))]
-    ;; ensure we never include :content_html in responses
     (into [] (comp (map #(dissoc % :content_html))
                    (map render-reactions)
                    (keep delete-comment))
@@ -131,10 +125,9 @@
                     :document_href  (urlpath-for entity)
                     :created_at     (:created_at comment)
                     :author         (:common_name (:creator comment))
-                    :comment        (content->str (:content comment))
-                    :comment_html   (:content_html comment)
+                    :comment        (:content_html comment)
                     :parent_author  (:common_name (:creator parent))
-                    :parent_comment (content->str (:content parent))}]
+                    :parent_comment (:content_html parent)}]
     (doseq [email recipients]
       (events/publish-event! :event/comment-created (assoc payload :email email)))))
 
@@ -196,13 +189,13 @@
       ;; Anyone with write permission to target entity can resolve/unresolve
       (api/write-check entity))
 
-    (let [updates (u/remove-nils {:content content :is_resolved is_resolved})]
-      (when (seq updates)
-        (t2/update! :model/Comment comment-id updates))
+    (when-let [updates (-> {:content content :is_resolved is_resolved}
+                           u/remove-nils
+                           not-empty)]
+      (t2/update! :model/Comment comment-id updates))
 
-      (cond-> (t2/select-one :model/Comment :id comment-id)
-        true               (t2/hydrate :creator :reactions)
-        (:content updates) (u/prog1 (notify-comment! <> {:entity entity}))))))
+    (-> (t2/select-one :model/Comment :id comment-id)
+        (t2/hydrate :creator :reactions))))
 
 (api.macros/defendpoint :delete "/:comment-id"
   "Soft delete a comment"

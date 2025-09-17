@@ -215,11 +215,7 @@ export const CommentEditor = ({
 function stripInternalIds(html: string): string {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, "text/html");
-  const elements = doc.body.querySelectorAll("*");
-  elements.forEach((el) => {
-    if (el.hasAttribute("_id")) {
-      el.removeAttribute("_id");
-    }
-  });
+  const elements = doc.body.querySelectorAll("[_id]");
+  elements.forEach((el) => el.removeAttribute("_id"));
   return doc.body.innerHTML;
 }
