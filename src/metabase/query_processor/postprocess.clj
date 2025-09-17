@@ -34,14 +34,14 @@
    [::mbql5  #'results-metadata/record-and-return-metadata!]
    [::mbql5  #'limit/limit-result-rows]
    [::mbql5  #'qp.middleware.enterprise/limit-download-result-rows]
-   [::legacy #'qp.add-rows-truncated/add-rows-truncated]
+   [::mbql5  #'qp.add-rows-truncated/add-rows-truncated]
    [::mbql5  #'qp.add-timezone-info/add-timezone-info]
    [::mbql5  #'qp.middleware.enterprise/merge-sandboxing-metadata]
    [::mbql5  #'qp.add-remaps/remap-results]
    [::mbql5  #'pivot-export/add-data-for-pivot-export]
    [::mbql5  #'large-int/convert-large-int-to-string]
-   [::legacy #'viz-settings/update-viz-settings]
-   [::legacy #'qp.cumulative-aggregations/sum-cumulative-aggregation-columns]
+   [::mbql5  #'viz-settings/update-viz-settings]
+   [::mbql5  #'qp.cumulative-aggregations/sum-cumulative-aggregation-columns]
    [::mbql5  #'annotate/add-column-info]
    [::mbql5  #'fetch-source-query/add-dataset-info]])
 ;; ↑↑↑ POST-PROCESSING ↑↑↑ happens from BOTTOM TO TOP

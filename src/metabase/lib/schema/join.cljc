@@ -113,9 +113,6 @@
    [:map
     {:default {}, :decode/normalize normalize-join}
     [:lib/type    [:= {:default :mbql/join, :decode/normalize common/normalize-keyword} :mbql/join]]
-    ;; TODO (Cam 7/23/25) -- why would a join need an options map? If we need to add extra keys we can just add them
-    ;; to the join itself.
-    [:lib/options ::common/options]
     [:stages      [:ref :metabase.lib.schema/stages]]
     [:conditions  ::conditions]
     [:alias       ::alias]

@@ -1721,7 +1721,6 @@
            settings
            util}}
 
-
   enterprise/embedding-hub
   {:team "Embedding"
    :api  #{metabase-enterprise.embedding-hub.api}
@@ -1969,8 +1968,10 @@
   {:team "Querying"
    :api  #{metabase-enterprise.transforms.api
            metabase-enterprise.transforms.core
-           metabase-enterprise.transforms.init}
-   :uses #{api
+           metabase-enterprise.transforms.init
+           metabase-enterprise.transforms.util}
+   :uses #{analytics
+           api
            app-db
            config
            driver
@@ -1986,7 +1987,24 @@
            sync
            task
            task-history
-           util}}
+           upload
+           util
+           enterprise/transforms-python}}
+
+  enterprise/transforms-python
+  {:team "Querying"
+   :api  #{metabase-enterprise.transforms-python.api
+           metabase-enterprise.transforms-python.init
+           metabase-enterprise.transforms-python.settings}
+   :uses #{api
+           app-db
+           config
+           driver
+           models
+           query-processor
+           settings
+           util
+           enterprise/transforms}}
 
   enterprise/upload-management
   {:team "UX West"
