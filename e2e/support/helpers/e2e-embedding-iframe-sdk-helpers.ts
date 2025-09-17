@@ -146,7 +146,7 @@ function getSdkIframeEmbedHtml({
         <${component} ${convertPropertiesToEmbedTagAttributes(attributes)} />
       `,
         )
-        .join("\n")}}
+        .join("\n")}
 
       ${insertHtml?.afterEmbed ?? ""}
     </body>
