@@ -54,6 +54,7 @@
    [:target_id   ms/PositiveInt]
    [:content     CommentContent]
    [:child_target_id {:optional true} [:maybe :string]]
+   [:html {:optional true} [:maybe :string]]
    [:parent_comment_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (def UpdateComment
@@ -82,7 +83,11 @@
                                                          {:emoji emoji
                                                           :count (count users)
                                                           :users (take 10 users)})))))]
-    (into [] (comp (map render-reactions) (keep delete-comment)) comments)))
+    ;; ensure we never include :content_html in responses
+    (into [] (comp (map #(dissoc % :content_html))
+                   (map render-reactions)
+                   (keep delete-comment))
+          comments)))
 
 (api.macros/defendpoint :get "/"
   "Get comments for an entity"
@@ -103,7 +108,7 @@
   "Create a new comment"
   [_route-params
    _query-params
-   {:keys [target_type target_id child_target_id parent_comment_id content]} :- CreateComment]
+   {:keys [target_type target_id child_target_id parent_comment_id content html]} :- CreateComment]
   (let [entity     (-> (api/read-check (TYPE->MODEL target_type) target_id)
                        (u/prog1 (api/check-400 (not (entity-archived? <>))
                                                "Cannot comment on archived entities")))
@@ -121,6 +126,7 @@
                                                        :child_target_id   child_target_id
                                                        :parent_comment_id parent_comment_id
                                                        :content           content
+                                                       :content_html      html
                                                        :creator_id        api/*current-user-id*})
                        (t2/hydrate :creator)
                        ;; New comments always have empty reactions map
@@ -145,6 +151,7 @@
                     :created_at     (:created_at comment)
                     :author         (:common_name (:creator comment))
                     :comment        (content->str (:content comment))
+                    :comment_html   (:content_html comment)
                     :parent_author  (:common_name (:creator parent))
                     :parent_comment (content->str (:content parent))}]
     (doseq [email recipients]

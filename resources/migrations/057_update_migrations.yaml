@@ -1353,6 +1353,27 @@ databaseChangeLog:
                   name: comment_id
       rollback: # will be removed along the table
 
+  - changeSet:
+      id: v57.2025-09-16T12:55:00
+      author: kulyk
+      comment: Add content_html column to comment table for storing HTML-rendered content
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: comment
+                columnName: content_html
+      changes:
+        - addColumn:
+            tableName: comment
+            columns:
+              - column:
+                  name: content_html
+                  type: ${text.type}
+                  remarks: HTML-rendered version of the comment content
+                  constraints:
+                    nullable: true
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
