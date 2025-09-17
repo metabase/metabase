@@ -6,12 +6,14 @@ import { useSetting } from "metabase/common/hooks";
 import { formatCronExpressionForUI } from "metabase/lib/cron";
 import { timezoneToUTCOffset } from "metabase/lib/time-dayjs";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Divider, Group, Icon, Stack, Tooltip } from "metabase/ui";
+import { Box, Divider, Group, Icon, Stack, Tooltip } from "metabase/ui";
 import { useRunTransformJobMutation } from "metabase-enterprise/api";
 import { trackTranformJobTriggerManualRun } from "metabase-enterprise/transforms/analytics";
 
 import { RunButton } from "../../../components/RunButton";
+import { RunErrorInfo } from "../../../components/RunErrorInfo";
 import { SplitSection } from "../../../components/SplitSection";
+import { parseTimestampWithTimezone } from "../../../utils";
 import type { TransformJobInfo } from "../types";
 
 type ScheduleSectionProps = {
@@ -38,7 +40,8 @@ export function ScheduleSection({
       />
 
       <Divider />
-      <Group px="xl" py="md" justify="end">
+      <Group px="xl" py="md" justify="space-between">
+        <RunStatusSection job={job} />
         <RunButtonSection job={job} />
       </Group>
     </SplitSection>
@@ -114,4 +117,84 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
       />
     </Tooltip>
   );
+}
+
+type RunStatusSectionProps = {
+  job: TransformJobInfo;
+};
+
+function RunStatusSection({ job }: RunStatusSectionProps) {
+  const { last_run } = job;
+  const systemTimezone = useSetting("system-timezone");
+
+  if (last_run == null) {
+    return (
+      <Group gap="sm">
+        <Icon c="text-secondary" name="calendar" />
+        <Box>{t`This job hasn’t been run before.`}</Box>
+      </Group>
+    );
+  }
+
+  const { status, end_time, message } = last_run;
+  const endTime =
+    end_time != null
+      ? parseTimestampWithTimezone(end_time, systemTimezone)
+      : null;
+  const endTimeText = endTime != null ? endTime.fromNow() : null;
+
+  const errorInfo =
+    message != null ? (
+      <RunErrorInfo
+        message={message}
+        endTime={endTime ? endTime.toDate() : null}
+      />
+    ) : null;
+
+  switch (status) {
+    case "started":
+      return (
+        <Group gap="sm">
+          <Icon c="text-primary" name="sync" />
+          <Box>{t`Run in progress…`}</Box>
+        </Group>
+      );
+    case "succeeded":
+      return (
+        <Group gap="sm">
+          <Icon c="success" name="check_filled" />
+          <Box>
+            {endTimeText
+              ? t`Last ran ${endTimeText} successfully.`
+              : t`Last ran successfully.`}
+          </Box>
+        </Group>
+      );
+    case "failed":
+      return (
+        <Group gap={0}>
+          <Icon c="error" name="warning" mr="sm" />
+          <Box mr={errorInfo ? "xs" : "sm"}>
+            {endTimeText
+              ? t`Last run failed ${endTimeText}.`
+              : t`Last run failed.`}
+          </Box>
+          {errorInfo}
+        </Group>
+      );
+    case "timeout":
+      return (
+        <Group gap={0}>
+          <Icon c="error" name="warning" mr="sm" />
+          <Box mr={errorInfo ? "xs" : "sm"}>
+            {endTimeText
+              ? t`Last run timed out ${endTimeText}.`
+              : t`Last run timed out.`}
+          </Box>
+          {errorInfo}
+        </Group>
+      );
+    default:
+      return null;
+  }
 }
