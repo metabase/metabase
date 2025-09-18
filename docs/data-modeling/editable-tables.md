@@ -1,9 +1,9 @@
 ---
-title: Editable table data
+title: Editable tables 
 summary: Admins can create, update, and delete data in tables right in Metabase.
 ---
 
-# Editable table data
+# Editable tables
 
 {% plans-blockquote.html feature="Editable table data"  %}
 
@@ -11,7 +11,7 @@ Admins can enable editable table data in Metabase.
 
 ![Edit table](./images/edit-table.png)
 
-## Setting up editable table data
+## Setting up editable tables
 
 _Currently, editable table data is only available for PostgreSQL and MySQL._
 
@@ -34,7 +34,7 @@ To update or delete records in a table:
 3. Hover over the table you want to edit and click the **Pencil** icon.
 4. Edit rows in the table just like you would in a spreadsheet.
 
-Depending on the data in the column, Metabase may show a list of values to choose from. If you need to add an option to that list, simply type out the option and add it.
+Depending on the data in the column, Metabase may show a list of values to choose from. If you need to add an option to that list, simply type out the option and add it (you may need to refresh the browser for the new option to show up in the list).
 
 ![Add option](./images/add-option.png)
 
@@ -52,7 +52,7 @@ To delete a record, check the box next to the record you want to delete and clic
 
 You can also select multiple rows and delete them all at once (nervous sweating).
 
-If you try to delete a row that has foreign key references from other tables, your database may prevent the deletion to maintain referential integrity. You'll see an error message like "Other rows refer to this row so it cannot be deleted." To delete these rows, you'll first need to remove the referencing rows, or handle the foreign key constraints in your database appropriately.
+If you try to delete a row that has foreign key references from other tables, your database may prevent the deletion to maintain referential integrity. You'll see an error message like "Other rows refer to this row so it cannot be deleted." To delete these rows, you'll either need to remove the referencing rows first, or change the foreign key constraints in your database.
 
 ## Metabase enforces type constraints
 
