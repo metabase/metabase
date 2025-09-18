@@ -4,6 +4,7 @@
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
    [honey.sql :as sql]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.util :as semantic.util]
@@ -80,7 +81,8 @@
 
 (defmethod task/init! ::SemanticMetricCollector
   [_]
-  (when (premium-features/has-feature? :semantic-search)
+  (when (and (string? (not-empty semantic.db.datasource/db-url))
+             (premium-features/has-feature? :semantic-search))
     (let [job (jobs/build
                (jobs/of-type SemanticMetricCollector)
                (jobs/with-identity collector-job-key))
