@@ -249,6 +249,13 @@
    :names (when-let [alias (:table-alias expr)]
             {:table-alias (sql.normalize/normalize-name driver alias)})})
 
+(defmethod field-references-impl :default
+  [_driver _outside-sources _outside-withs expr]
+  {:used-fields []
+   :returned-fields []
+   :names nil
+   :bad-sql true})
+
 (defn field-references
   [driver expr]
   (-> (field-references-impl driver nil #{} expr)

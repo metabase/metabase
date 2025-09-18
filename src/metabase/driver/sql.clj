@@ -260,14 +260,15 @@
 
 (defmethod driver/validate-native-query-fields :sql
   [driver metadata-provider native-query]
-  (let [{:keys [used-fields returned-fields]} (->> (macaw/parsed-query native-query)
-                                                   macaw/->ast
-                                                   (sql.references/field-references driver))
+  (let [{:keys [used-fields returned-fields bad-sql]} (->> (macaw/parsed-query native-query)
+                                                           macaw/->ast
+                                                           (sql.references/field-references driver))
         check-fields #(every? (fn [col-spec]
                                 (->> (resolve-field driver metadata-provider col-spec)
                                      (every? (comp not ::bad-reference))))
                               %)]
-    (and (check-fields used-fields)
+    (and (not bad-sql)
+         (check-fields used-fields)
          (check-fields returned-fields))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

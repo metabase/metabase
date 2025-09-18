@@ -7,6 +7,13 @@
 (defn- ->references [query]
   (->> query macaw/parsed-query macaw/->ast (sql.references/field-references :sql)))
 
+(deftest garbage-test
+  (is (= {:used-fields []
+          :returned-fields []
+          :names nil
+          :bad-sql true}
+         (->references "nothing"))))
+
 (deftest basic-select-test
   (is (= {:used-fields
           #{{:column "a",
