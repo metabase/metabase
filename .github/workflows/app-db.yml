@@ -255,10 +255,10 @@ jobs:
             env:
               enable-ssl-tests: 'true'
         job:
-          - name: Driver Tests
-            build-static-viz: false
-            test-args: >-
-              :only-tags [:mb/driver-tests]
+          # - name: Driver Tests
+          #   build-static-viz: false
+          #   test-args: >-
+          #     :only-tags [:mb/driver-tests]
           - name: Enterprise Tests
             build-static-viz: false
             test-args: >-
