@@ -1094,7 +1094,8 @@ export function formatDateTimeWithUnit(
     const date = dayjs().day(dayIndex);
 
     if (date.isValid()) {
-      return date.format("dddd");
+      const dayFormat = getDayFormat(options);
+      return date.format(dayFormat);
     }
   }
 
