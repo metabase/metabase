@@ -93,9 +93,9 @@
             run-id 100
             logged-warnings (atom [])]
         ;; Mock the log/warnf function to capture warnings
-        (with-redefs [log/warnf (fn [msg & args]
-                                  (swap! logged-warnings conj (apply format msg args)))
-                      transform-run/running-run-for-transform-id (constantly nil)]
+        (mt/with-dynamic-fn-redefs [log/warnf (fn [msg & args]
+                                                (swap! logged-warnings conj (apply format msg args)))
+                                    transform-run/running-run-for-transform-id (constantly nil)]
           (#'jobs/run-transform! run-id :scheduled query-transform)
           (is (= 1 (count @logged-warnings))
               "Should log exactly one warning")
@@ -110,9 +110,9 @@
                               :name "Test Python Transform"}
             run-id 101
             logged-warnings (atom [])]
-        (with-redefs [log/warnf (fn [msg & args]
-                                  (swap! logged-warnings conj (apply format msg args)))
-                      transform-run/running-run-for-transform-id (constantly nil)]
+        (mt/with-dynamic-fn-redefs [log/warnf (fn [msg & args]
+                                                (swap! logged-warnings conj (apply format msg args)))
+                                    transform-run/running-run-for-transform-id (constantly nil)]
           (#'jobs/run-transform! run-id :scheduled python-transform)
           (is (= 1 (count @logged-warnings))
               "Should log exactly one warning")
@@ -128,11 +128,11 @@
             run-id 102
             logged-warnings (atom [])
             run-called? (atom false)]
-        (with-redefs [log/warnf (fn [msg & args]
-                                  (swap! logged-warnings conj (apply format msg args)))
-                      transform-run/running-run-for-transform-id (constantly nil)
-                      transforms.execute/run-mbql-transform! (fn [_ _]
-                                                               (reset! run-called? true))]
+        (mt/with-dynamic-fn-redefs [log/warnf (fn [msg & args]
+                                                (swap! logged-warnings conj (apply format msg args)))
+                                    transform-run/running-run-for-transform-id (constantly nil)
+                                    transforms.execute/run-mbql-transform! (fn [_ _]
+                                                                             (reset! run-called? true))]
           (#'jobs/run-transform! run-id :scheduled query-transform)
           (is (empty? @logged-warnings)
               "Should not log warnings when feature is enabled")
