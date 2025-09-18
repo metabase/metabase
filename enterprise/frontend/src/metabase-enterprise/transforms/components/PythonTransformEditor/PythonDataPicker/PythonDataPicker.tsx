@@ -29,7 +29,7 @@ import type {
 
 import S from "./PythonDataPicker.module.css";
 import { TableSelector } from "./TableSelector";
-import type { TableOption, TableSelection } from "./types";
+import type { TableSelection } from "./types";
 import {
   getInitialTableSelections,
   selectionsToTableAliases,
@@ -93,13 +93,9 @@ export function PythonDataPicker({
     return <LoadingAndErrorWrapper loading />;
   }
 
-  const availableTables: TableOption[] = (tablesData || [])
-    .filter((tbl: Table) => tbl.db_id === database && tbl.active)
-    .map((tbl: Table) => ({
-      value: tbl.id.toString(),
-      label: tbl.display_name || tbl.name,
-      table: tbl,
-    }));
+  const availableTables = (tablesData || []).filter(
+    (tbl: Table) => tbl.db_id === database && tbl.active,
+  );
 
   const selectedTableIds = new Set(tableSelections.map((s) => s.tableId));
   const usedAliases = new Set(tableSelections.map((s) => s.alias));
@@ -226,16 +222,14 @@ function SelectionInput({
 }: {
   database: DatabaseId | undefined;
   selection: TableSelection;
-  availableTables: TableOption[];
+  availableTables: Table[];
   usedAliases: Set<string>;
   onChange: (selection: TableSelection) => void;
   onRemove: () => void;
   selectedTableIds: Set<TableId | undefined>;
   disabled?: boolean;
 }) {
-  const table = availableTables.find(
-    (t) => t.value === selection.tableId?.toString(),
-  )?.table;
+  const table = availableTables.find((table) => table.id === selection.tableId);
 
   function handleAliasChange(newAlias: string) {
     const newSelection = {
@@ -256,8 +250,8 @@ function SelectionInput({
     }
 
     const oldTable = availableTables.find(
-      (t) => t.table.id === selection?.tableId,
-    )?.table;
+      (table) => table.id === selection?.tableId,
+    );
 
     const wasOldAliasManuallySet =
       selection.alias !== "" &&
