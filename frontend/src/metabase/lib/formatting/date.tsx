@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
+import { SCHEDULE_DAY, isScheduleDay } from "metabase-types/api";
 import type { DatetimeUnit } from "metabase-types/api/query";
 
 import { parseTimestamp } from "../time-dayjs";
@@ -1070,10 +1071,28 @@ export function formatDateTimeWithUnit(
   unit: DatetimeUnit,
   options: OptionsType = {},
 ) {
-  if (options.isExclude && unit === "hour-of-day") {
-    return dayjs.utc(value).format("h A");
-  } else if (options.isExclude && unit === "day-of-week") {
-    const date = dayjs.utc(value);
+  if (options.isExclude) {
+    if (unit === "hour-of-day") {
+      return dayjs.utc(value).format("h A");
+    }
+
+    if (unit === "day-of-week") {
+      const date = dayjs.utc(value);
+
+      if (date.isValid()) {
+        return date.format("dddd");
+      }
+    }
+  }
+
+  if (
+    unit === "day-of-week" &&
+    typeof value === "string" &&
+    isScheduleDay(value)
+  ) {
+    const dayIndex = SCHEDULE_DAY.indexOf(value);
+    const date = dayjs().day(dayIndex);
+
     if (date.isValid()) {
       return date.format("dddd");
     }
