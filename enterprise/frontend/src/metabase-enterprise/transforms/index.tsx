@@ -13,7 +13,7 @@ import { NewTransformQueryPage } from "./pages/NewTransformQueryPage";
 import { RunListPage } from "./pages/RunListPage";
 import { TransformListPage } from "./pages/TransformListPage";
 import { TransformPage } from "./pages/TransformPage";
-import { ItemPageLayout, ListPageLayout } from "./pages/TransformPageLayout";
+import { DetailsPageLayout, ListPageLayout } from "./pages/TransformPageLayout";
 import { TransformQueryPage } from "./pages/TransformQueryPage";
 
 if (hasPremiumFeature("transforms")) {
@@ -29,7 +29,7 @@ if (hasPremiumFeature("transforms")) {
           <Route path="jobs" component={JobListPage} />
           <Route path="runs" component={RunListPage} />
         </Route>
-        <Route component={ItemPageLayout}>
+        <Route component={DetailsPageLayout}>
           <Route path="jobs/new" component={NewJobPage} />
           <Route path="jobs/:jobId" component={JobPage} />
           <Route path=":transformId" component={TransformPage} />

@@ -33,7 +33,10 @@ export function ListPageLayout({ params, children }: TransformPageLayoutProps) {
   );
 }
 
-export function ItemPageLayout({ params, children }: TransformPageLayoutProps) {
+export function DetailsPageLayout({
+  params,
+  children,
+}: TransformPageLayoutProps) {
   return (
     <TransformPageLayout params={params} maw="60rem">
       {children}
