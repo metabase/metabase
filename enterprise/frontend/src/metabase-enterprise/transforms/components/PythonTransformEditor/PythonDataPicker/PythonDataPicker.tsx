@@ -8,6 +8,11 @@ import {
   useListTablesQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
+import {
+  type DataPickerItem,
+  DataPickerModal,
+} from "metabase/common/components/Pickers/DataPicker";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
 import {
   ActionIcon,
@@ -15,7 +20,6 @@ import {
   Button,
   Group,
   Icon,
-  Select,
   Stack,
   Text,
   TextInput,
@@ -24,6 +28,7 @@ import type {
   Database,
   DatabaseId,
   PythonTransformTableAliases,
+  RecentItem,
   Table,
   TableId,
 } from "metabase-types/api";
@@ -162,7 +167,7 @@ export function PythonDataPicker({
         </Text>
 
         <DatabaseDataSelector
-          className={S.dataSelector}
+          className={S.databaseSelector}
           selectedDatabaseId={database}
           setDatabaseFn={handleDatabaseChange}
           databases={databases?.data ?? []}
@@ -187,6 +192,7 @@ export function PythonDataPicker({
               <SelectionInput
                 key={index}
                 selection={selection}
+                database={database}
                 usedAliases={usedAliases}
                 availableTables={availableTables}
                 onChange={(selection) =>
@@ -214,6 +220,7 @@ export function PythonDataPicker({
 }
 
 function SelectionInput({
+  database,
   selection,
   availableTables,
   usedAliases,
@@ -222,6 +229,7 @@ function SelectionInput({
   selectedTableIds,
   disabled,
 }: {
+  database: DatabaseId | undefined;
   selection: TableSelection;
   availableTables: TableOption[];
   usedAliases: Set<string>;
@@ -276,6 +284,7 @@ function SelectionInput({
   return (
     <Group gap="xs" align="center" wrap="nowrap">
       <TableInput
+        database={database}
         table={table}
         onChange={handleTableChange}
         availableTables={availableTables}
@@ -299,44 +308,78 @@ function SelectionInput({
 }
 
 function TableInput({
+  database,
   availableTables,
   selectedTableIds,
   disabled,
   onChange,
   table,
 }: {
+  database: DatabaseId | undefined;
   table: Table | undefined;
   availableTables: TableOption[];
   selectedTableIds: Set<TableId | undefined>;
   disabled?: boolean;
   onChange: (table: Table | undefined) => void;
 }) {
-  // Filter available tables to exclude already selected ones (except current selection)
-  const tableOptions = availableTables.filter(
-    (tableOption) =>
-      !selectedTableIds.has(tableOption.table?.id) ||
-      tableOption.value === table?.id?.toString(),
-  );
-
-  function handleChange(value: string | null) {
-    const table = tableOptions.find((t) => t.value === value)?.table;
+  function handleChange(tableId: TableId | undefined) {
+    const table = availableTables.find(
+      (table) => table.table?.id === tableId,
+    )?.table;
     if (!table) {
       return;
     }
     onChange(table);
   }
 
+  function shouldDisableItem(
+    item: DataPickerItem | CollectionPickerItem | RecentItem,
+  ) {
+    if (item.model === "table") {
+      // Filter available tables to exclude already selected ones (except current selection)
+      return selectedTableIds.has(item.id);
+    }
+    if (item.model === "database") {
+      return item.id !== database;
+    }
+    return true;
+  }
+
+  const [isOpened, setIsOpened] = useState(false);
+
+  const value = table
+    ? {
+        model: "table" as const,
+        id: table.id,
+        name: table.display_name,
+        db_id: table.db_id,
+        schema: table.schema,
+      }
+    : undefined;
+
   return (
-    <Select
-      flex="0 1 50%"
-      data={tableOptions}
-      value={table?.id?.toString() ?? null}
-      onChange={handleChange}
-      onClear={() => onChange(undefined)}
-      placeholder={t`Select a table`}
-      clearable
-      disabled={disabled}
-    />
+    <>
+      <Button
+        className={S.tableSelector}
+        onClick={() => setIsOpened(true)}
+        flex="0 1 50%"
+        disabled={disabled}
+        fw="normal"
+        classNames={{ inner: S.tableSelectorInner }}
+      >
+        {table?.display_name ?? t`Select a table…`}
+      </Button>
+      {isOpened && (
+        <DataPickerModal
+          title={t`Pick a table`}
+          value={value}
+          databaseId={database}
+          onChange={handleChange}
+          onClose={() => setIsOpened(false)}
+          shouldDisableItem={shouldDisableItem}
+        />
+      )}
+    </>
   );
 }
 
