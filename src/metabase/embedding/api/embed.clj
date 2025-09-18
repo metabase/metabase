@@ -25,9 +25,11 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.request.core :as request]
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
@@ -327,12 +329,13 @@
    :- [:map
        [:parameters {:optional true} ms/JSONString]]]
   (let [unsigned   (unsign-and-translate-ids token)
-        card-id    (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:resource :question])
+        card-id    (api.embed.common/unsigned-token->card-id unsigned)
         parameters (json/decode+kw parameters)
         lat-field    (json/decode+kw lat-field)
         lon-field    (json/decode+kw lon-field)]
     (api.embed.common/check-embedding-enabled-for-card card-id)
-    (api.tiles/process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field)))
+    (request/as-admin
+      (api.tiles/process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field))))
 
 (api.macros/defendpoint :get "/tiles/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
   "Generates a single tile image for a Card on an embedded Dashboard using the map visualization."
@@ -347,8 +350,10 @@
    :- [:map
        [:parameters {:optional true} ms/JSONString]]]
   (let [unsigned     (unsign-and-translate-ids token)
-        dashboard-id (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:resource :dashboard])
+        dashboard-id    (api.embed.common/unsigned-token->dashboard-id unsigned)
         parameters   (json/decode+kw parameters)
         lat-field    (json/decode+kw lat-field)
         lon-field    (json/decode+kw lon-field)]
-    (api.tiles/process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field)))
+    (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
+    (request/as-admin
+      (api.tiles/process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field))))
