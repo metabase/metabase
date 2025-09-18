@@ -1,7 +1,7 @@
 import L from "leaflet";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import api from "metabase/lib/api";
+import { GET } from "metabase/lib/api";
 
 import { getTileUrl } from "../lib/map";
 
@@ -98,7 +98,7 @@ export default class LeafletTilePinMap extends LeafletMap {
       } catch {}
     };
 
-    tileLayerInstance.on("abortloading", onTileUnload);
+    tileLayerInstance.on("tileabort", onTileUnload);
     tileLayerInstance.on("tileunload", onTileUnload);
 
     tileLayerInstance.createTile = function (coords, done) {
@@ -108,33 +108,20 @@ export default class LeafletTilePinMap extends LeafletMap {
       tile.alt = "";
 
       if (!tileUrl) {
+        done?.(null, tile);
+
         return tile;
       }
 
       const controller = new AbortController();
       tile._fetchCtrl = controller;
 
-      const init = {
-        method: "GET",
-        mode: "cors",
+      GET(tileUrl, {
+        fetch: true,
         signal: controller.signal,
-        headers: api.getClientHeaders(),
-        referrerPolicy: this?.options?.referrerPolicy,
-      };
-
-      fetch(tileUrl, init)
-        .then((response) => {
-          if (!response.ok) {
-            const err = new Error(
-              `Tile fetch failed: ${response.status} ${response.statusText}`,
-            );
-
-            err.status = response.status;
-
-            throw err;
-          }
-          return response.blob();
-        })
+        transformResponse: ({ response }) => response,
+      })()
+        .then((response) => response.blob())
         .then(async (blob) => {
           const reader = new FileReader();
 

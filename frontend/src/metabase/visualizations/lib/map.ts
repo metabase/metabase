@@ -1,4 +1,3 @@
-import api from "metabase/lib/api";
 import { isUuid } from "metabase/lib/uuid";
 import type { DashboardId, Dataset, JsonQuery } from "metabase-types/api";
 
@@ -140,7 +139,7 @@ function adhocQueryTileUrl(
   lonField: string,
   datasetQuery: any,
 ): string {
-  return `${api.basename}/api/tiles/${zoom}/${coord.x}/${coord.y}/${latField}/${lonField}?query=${encodeURIComponent(
+  return `/api/tiles/${zoom}/${coord.x}/${coord.y}/${latField}/${lonField}?query=${encodeURIComponent(
     JSON.stringify(datasetQuery),
   )}`;
 }
@@ -153,7 +152,7 @@ function savedQuestionTileUrl(
   lonField: string,
   parameters?: unknown[],
 ): string {
-  let url = `${api.basename}/api/tiles/${cardId}/${zoom}/${coord.x}/${coord.y}/${latField}/${lonField}`;
+  let url = `/api/tiles/${cardId}/${zoom}/${coord.x}/${coord.y}/${latField}/${lonField}`;
   if (parameters && parameters.length > 0) {
     url += `?parameters=${encodeURIComponent(JSON.stringify(parameters))}`;
   }
@@ -170,7 +169,7 @@ function dashboardTileUrl(
   lonField: string,
   parameters?: unknown[],
 ): string {
-  let url = `${api.basename}/api/tiles/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/${zoom}/${coord.x}/${coord.y}/${latField}/${lonField}`;
+  let url = `/api/tiles/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/${zoom}/${coord.x}/${coord.y}/${latField}/${lonField}`;
   if (parameters && parameters.length > 0) {
     url += `?parameters=${encodeURIComponent(JSON.stringify(parameters))}`;
   }
