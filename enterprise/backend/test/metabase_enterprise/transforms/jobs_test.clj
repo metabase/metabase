@@ -1,12 +1,12 @@
 (ns metabase-enterprise.transforms.jobs-test
+  #_{:clj-kondo/ignore [:discouraged-namespace]}
   (:require
    [clojure.test :refer :all]
-   [clojure.tools.logging :as log*]
+   [clojure.tools.logging :as log]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.jobs :as jobs]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
-   [metabase.test :as mt]
-   [metabase.util.log :as log]))
+   [metabase.test :as mt]))
 
 (deftest basic-deps-test
   (let [ordering {1 #{2 3}
@@ -92,8 +92,8 @@
                              :name "Test Query Transform"}
             run-id 100
             logged-messages (atom [])]
-        (with-redefs [log*/log* (fn [_ level _ message]
-                                  (swap! logged-messages conj {:level level :message message}))
+        (with-redefs [log/log* (fn [_ level _ message]
+                                 (swap! logged-messages conj {:level level :message message}))
                       transform-run/running-run-for-transform-id (constantly nil)]
           (#'jobs/run-transform! run-id :scheduled query-transform)
           (is (= 1 (count @logged-messages))
@@ -111,8 +111,8 @@
                               :name "Test Python Transform"}
             run-id 101
             logged-messages (atom [])]
-        (with-redefs [log*/log* (fn [_ level _ message]
-                                  (swap! logged-messages conj {:level level :message message}))
+        (with-redefs [log/log* (fn [_ level _ message]
+                                 (swap! logged-messages conj {:level level :message message}))
                       transform-run/running-run-for-transform-id (constantly nil)]
           (#'jobs/run-transform! run-id :scheduled python-transform)
           (is (= 1 (count @logged-messages))
@@ -131,8 +131,8 @@
             run-id 102
             logged-messages (atom [])
             run-called? (atom false)]
-        (with-redefs [log*/log* (fn [_ level _ message]
-                                  (swap! logged-messages conj {:level level :message message}))
+        (with-redefs [log/log* (fn [_ level _ message]
+                                 (swap! logged-messages conj {:level level :message message}))
                       transform-run/running-run-for-transform-id (constantly nil)
                       transforms.execute/run-mbql-transform! (fn [_ _]
                                                                (reset! run-called? true))]
