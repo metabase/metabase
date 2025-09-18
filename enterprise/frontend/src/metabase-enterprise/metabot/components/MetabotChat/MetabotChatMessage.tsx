@@ -1,9 +1,10 @@
-import { useClipboard } from "@mantine/hooks";
+import { useClipboard, useDisclosure } from "@mantine/hooks";
 import type { UnknownAction } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { useCallback, useState } from "react";
 import { push } from "react-router-redux";
 import { useLocation } from "react-use";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
@@ -12,24 +13,27 @@ import { useDispatch } from "metabase/lib/redux";
 import {
   ActionIcon,
   Button,
+  Collapse,
   Flex,
   type FlexProps,
+  Group,
   Icon,
   type IconName,
+  Paper,
   Stack,
   Text,
 } from "metabase/ui";
+import { RingProgress } from "metabase/ui";
 import {
   type MetabotAgentChatMessage,
   type MetabotAgentEditSuggestionChatMessage,
   type MetabotAgentTextChatMessage,
-  type MetabotAgentTodoListChatMessage,
   type MetabotChatMessage,
   type MetabotErrorMessage,
   type MetabotUserChatMessage,
   setSuggestedTransform,
 } from "metabase-enterprise/metabot/state";
-import type { MetabotFeedback } from "metabase-types/api";
+import type { MetabotFeedback, MetabotTodoItem } from "metabase-types/api";
 
 import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
 
@@ -170,44 +174,138 @@ const AgentSuggestionMessage = ({
   );
 };
 
-const AgentTodoListMessage = ({
-  list,
-}: {
-  list: MetabotAgentTodoListChatMessage["payload"];
-}) => {
-  const statusConfig = {
-    completed: { icon: "check", color: "success" },
-    in_progress: { icon: "play", color: "brand" },
-    cancelled: { icon: "close", color: "text-light" },
-    pending: { icon: "circle" as IconName, color: "text-medium" },
-  } as const;
+type TodoStatusConfig = {
+  icon: IconName;
+  iconColor: string;
+  color: string;
+  td?: string;
+};
+
+const todoStatusConfig: Record<MetabotTodoItem["status"], TodoStatusConfig> = {
+  completed: { icon: "check", iconColor: "success", color: "text-secondary" },
+  in_progress: { icon: "play", iconColor: "brand", color: "text-primary" },
+  cancelled: {
+    icon: "close",
+    iconColor: "text-light",
+    td: "line-through",
+    color: "text-secondary",
+  },
+  // TODO: Fix circle
+  pending: {
+    icon: "circle" as IconName,
+    iconColor: "text-medium",
+    color: "text-primary",
+  },
+};
+
+const AgentTodoListMessage = ({ todos }: { todos: MetabotTodoItem[] }) => {
+  const [opened, { toggle }] = useDisclosure(true);
 
   return (
-    <Stack gap="sm" w="100%">
-      <Text fw="bold">{t`Todo List`}</Text>
-      {list.map((item) => (
-        <Flex
-          key={item.id}
-          style={{ borderRadius: "2px" }}
-          gap="sm"
-          align="center"
-        >
+    <Paper
+      shadow="none"
+      radius="md"
+      // eslint-disable-next-line no-color-literals
+      bg="rgba(5, 114, 210, 0.07)"
+      // eslint-disable-next-line no-color-literals
+      style={{ border: `1px solid rgba(5, 114, 210, 0.69)` }}
+      py="md"
+      px="1.25rem"
+    >
+      <Group align="center" justify="space-between" onClick={toggle}>
+        {/* eslint-disable-next-line no-color-literals */}
+        <Text fw="bold" c="rgba(5, 114, 210, 0.69)">{t`Todos`}</Text>
+        <Flex align="center" justify="center" h="md" w="md">
           <Icon
-            name={statusConfig[item.status].icon}
-            size="1rem"
-            c={statusConfig[item.status].color}
-            mt="2px"
+            name={opened ? "chevrondown" : "chevronup"}
+            size=".75rem"
+            // eslint-disable-next-line no-color-literals
+            c="rgba(5, 114, 210, 0.69)"
           />
-          <Text
-            size="md"
-            td={item.status === "completed" ? "line-through" : undefined}
-            c={item.status === "cancelled" ? "text-light" : undefined}
-          >
-            {item.content}
-          </Text>
         </Flex>
-      ))}
-    </Stack>
+      </Group>
+
+      <Collapse in={opened} pt="md" pb="sm">
+        <Stack gap="md" w="100%">
+          {todos.map((todo) => {
+            const config = todoStatusConfig[todo.status];
+
+            return (
+              <Flex
+                key={todo.id}
+                style={{ borderRadius: "2px" }}
+                align="flex-start"
+              >
+                {match(todo.status)
+                  .with("pending", () => (
+                    <RingProgress
+                      size={28}
+                      ml="-2px"
+                      mr=".25rem"
+                      thickness={1.5}
+                      sections={[{ value: 0, color: "white" }]}
+                      // eslint-disable-next-line no-color-literals
+                      rootColor="rgba(5, 114, 210, 0.45)"
+                    />
+                  ))
+                  .with("completed", () => (
+                    <Flex
+                      h="1.5rem"
+                      w="1.5rem"
+                      // eslint-disable-next-line no-color-literals
+                      bg="rgba(5, 114, 210, 0.69)"
+                      style={{ borderRadius: "50%", flexShrink: 0 }}
+                      align="center"
+                      justify="center"
+                      mr=".4rem"
+                    >
+                      <Icon name="check" size="1rem" c="white" />
+                    </Flex>
+                  ))
+                  .with("in_progress", () => (
+                    <RingProgress
+                      size={30}
+                      ml="-3px"
+                      mr="xs"
+                      thickness={3}
+                      sections={[
+                        // eslint-disable-next-line no-color-literals
+                        { value: 70, color: "rgba(5, 114, 210, 0.82)" },
+                      ]}
+                      // eslint-disable-next-line no-color-literals
+                      rootColor="rgba(5, 114, 210, 0.45)"
+                    />
+                  ))
+                  .with("cancelled", () => (
+                    <Flex
+                      h="1.5rem"
+                      w="1.5rem"
+                      // eslint-disable-next-line no-color-literals
+                      bg="rgba(5, 114, 210, 0.69)"
+                      style={{ borderRadius: "50%", flexShrink: 0 }}
+                      align="center"
+                      justify="center"
+                      mr="sm"
+                    >
+                      <Icon name="close" size="1rem" c="white" />
+                    </Flex>
+                  ))
+                  .exhaustive()}
+                <Text
+                  lh={1.2}
+                  size="md"
+                  mt=".4rem"
+                  td={config.td}
+                  c={config.color}
+                >
+                  {todo.content}
+                </Text>
+              </Flex>
+            );
+          })}
+        </Stack>
+      </Collapse>
+    </Paper>
   );
 };
 
@@ -239,7 +337,7 @@ export const AgentMessage = ({
       )}
 
       {message.type === "todo_list" && (
-        <AgentTodoListMessage list={message.payload} />
+        <AgentTodoListMessage todos={message.payload} />
       )}
       <Flex className={Styles.messageActions}>
         {!hideActions && (
