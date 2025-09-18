@@ -1,7 +1,7 @@
 (ns metabase-enterprise.representations.ingestion.v0.question
   "Ingestion logic for v0 question representations.
    Converts validated representation maps into Metabase Card entities (Questions).
-   
+
    This is a POC implementation focusing on simple SQL queries."
   (:require
    [metabase-enterprise.representations.ingestion.common :as ing-com]
@@ -14,10 +14,10 @@
 
 (defn representation->question-data
   "Convert a validated v0 question representation into data suitable for creating/updating a Card (Question).
-   
+
    Returns a map with keys matching the Card model fields.
    Does NOT insert into the database - just transforms the data.
-   
+
    For POC: Focuses on the minimal fields needed."
   [{question-name :name
     :keys [type ref description database collection] :as representation}
@@ -29,27 +29,26 @@
                     (u/generate-nano-id (str
                                          (hash (str (:collection_id representation)
                                                     "/"
-                                                    (:ref representation))))))]
+                                                    (:ref representation))))))
+        query (ing-com/representation->dataset-query representation)]
     (when-not database-id
       (throw (ex-info (str "Database not found: " database)
                       {:database database})))
     (merge
-     {;; :id
+     { ;; :id
       ;; :created_at
       ;; :updated_at
       :entity_id entity-id
       :creator_id creator-id
       :name question-name
       :description (or description "")
-      :display :table ; Default display type
-      :dataset_query (ing-com/representation->dataset-query representation)
+      :display :table                   ; Default display type
+      :dataset_query query
       :visualization_settings {}
       ;; :creator_id
       :database_id database-id
       ;; :table_id
-      :query_type (if (contains? representation :query)
-                    :native
-                    :query)
+      :query_type (:type query)
       ;; :archived
       ;; :collection_id ; SKIP! Set later
       ;; :public_uuid
