@@ -6,6 +6,11 @@ export function isTransformRunning(transform: Transform) {
   return lastRun?.status === "started";
 }
 
+export function isTransformCanceling(transform: Transform) {
+  const lastRun = transform.last_run;
+  return lastRun?.status === "canceling";
+}
+
 export function isTransformSyncing(transform: Transform) {
   const lastRun = transform.last_run;
 

@@ -102,6 +102,7 @@ function RunTable({ runs }: RunTableProps) {
             </td>
             <td className={S.wrap}>
               <RunStatusInfo
+                transform={run.transform}
                 status={run.status}
                 message={run.message}
                 endTime={

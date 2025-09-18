@@ -11,7 +11,7 @@ import { timezoneToUTCOffset } from "metabase/lib/time-dayjs";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Divider, Group, Icon, Tooltip } from "metabase/ui";
 import { useRunTransformJobMutation } from "metabase-enterprise/api";
-import { trackTranformJobTriggerManualRun } from "metabase-enterprise/transforms/analytics";
+import { trackTransformJobTriggerManualRun } from "metabase-enterprise/transforms/analytics";
 
 import { RunButton } from "../../../components/RunButton";
 import { SplitSection } from "../../../components/SplitSection";
@@ -100,7 +100,7 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
       return;
     }
 
-    trackTranformJobTriggerManualRun({
+    trackTransformJobTriggerManualRun({
       jobId: job.id,
       triggeredFrom: "job-page",
     });
