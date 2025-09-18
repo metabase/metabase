@@ -2,6 +2,7 @@ import L from "leaflet";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { GET } from "metabase/lib/api";
+import { isWithinIframe } from "metabase/lib/dom";
 
 import { getTileUrl } from "../lib/map";
 
@@ -24,7 +25,8 @@ export default class LeafletTilePinMap extends LeafletMap {
 
     this.pinTileLayer = L.tileLayer("", {}).addTo(this.map);
 
-    if (isEmbeddingSdk()) {
+    // Override only for SDK and not for cases when SDK is used under the hood for other embed types (Embed JS)
+    if (isEmbeddingSdk() && !isWithinIframe()) {
       this._overrideCreateTileToUseFetch(this.pinTileLayer);
     }
 
