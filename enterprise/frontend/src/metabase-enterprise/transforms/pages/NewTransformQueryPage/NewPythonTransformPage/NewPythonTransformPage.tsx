@@ -8,9 +8,9 @@ import type { PythonTransformSource, Transform } from "metabase-types/api";
 import {
   PythonTransformEditor,
   type PythonTransformSourceDraft,
-} from "../../components/PythonTransformEditor";
-import { getTransformListUrl, getTransformUrl } from "../../urls";
-import { CreateTransformModal } from "../NewTransformQueryPage/CreateTransformModal";
+} from "../../../components/PythonTransformEditor";
+import { getTransformListUrl, getTransformUrl } from "../../../urls";
+import { CreateTransformModal } from "../CreateTransformModal";
 
 const DEFAULT_PYTHON_SOURCE: PythonTransformSourceDraft = {
   type: "python",
