@@ -1,14 +1,19 @@
+import { useDisclosure } from "@mantine/hooks";
 import { Link } from "react-router";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useSetting } from "metabase/common/hooks";
+import { isResourceNotFoundError } from "metabase/lib/errors";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Anchor, Box, Divider, Group, Icon, Stack } from "metabase/ui";
 import {
+  useCancelCurrentTransformRunMutation,
   useRunTransformMutation,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import { trackTranformTriggerManualRun } from "metabase-enterprise/transforms/analytics";
+import { trackTransformTriggerManualRun } from "metabase-enterprise/transforms/analytics";
 import { LogOutput } from "metabase-enterprise/transforms/components/LogOutput";
 import type { Transform, TransformTagId } from "metabase-types/api";
 
@@ -28,6 +33,7 @@ export function RunSection({ transform }: RunSectionProps) {
     <SplitSection
       label={t`Run this transform`}
       description={t`This transform will be run whenever the jobs it belongs to are scheduled.`}
+      data-testid="run-section"
     >
       <Stack>
         <Group p="lg" justify="space-between">
@@ -56,9 +62,11 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
   const { id, last_run } = transform;
   const systemTimezone = useSetting("system-timezone");
 
+  const previousStatus = usePrevious(last_run?.status);
+
   if (last_run == null) {
     return (
-      <Group gap="sm">
+      <Group gap="sm" data-testid="run-status">
         <Icon c="text-secondary" name="calendar" />
         <Box>{t`This transform hasn’t been run before.`}</Box>
       </Group>
@@ -94,26 +102,34 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
   switch (status) {
     case "started":
       return (
-        <Group gap="sm">
+        <Group gap="sm" data-testid="run-status">
           <Icon c="text-primary" name="sync" />
           <Box>{t`Run in progress…`}</Box>
         </Group>
       );
     case "succeeded":
       return (
-        <Group gap="sm">
-          <Icon c="success" name="check_filled" />
-          <Box>
-            {endTimeText
-              ? t`Last ran ${endTimeText} successfully.`
-              : t`Last ran successfully.`}
-          </Box>
-          {runsInfo}
-        </Group>
+        <Stack gap={0} data-testid="run-status">
+          <Group gap="sm">
+            <Icon c="success" name="check_filled" />
+            <Box>
+              {endTimeText
+                ? t`Last ran ${endTimeText} successfully.`
+                : t`Last ran successfully.`}
+            </Box>
+            {runsInfo}
+          </Group>
+          {previousStatus === "canceling" && (
+            <Box
+              c="text-light"
+              ml="lg"
+            >{t`This run succeeded before it had a chance to cancel.`}</Box>
+          )}
+        </Stack>
       );
     case "failed":
       return (
-        <Group gap={0}>
+        <Group gap={0} data-testid="run-status">
           <Icon c="error" name="warning" mr="sm" />
           <Box mr={info ? "xs" : "sm"}>
             {endTimeText
@@ -125,7 +141,7 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
       );
     case "timeout":
       return (
-        <Group gap={0}>
+        <Group gap={0} data-testid="run-status">
           <Icon c="error" name="warning" mr="sm" />
           <Box mr={info ? "xs" : "sm"}>
             {endTimeText
@@ -133,6 +149,25 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
               : t`Last run timed out.`}
           </Box>
           {info ?? runsInfo}
+        </Group>
+      );
+    case "canceling":
+      return (
+        <Group gap="sm" data-testid="run-status">
+          <Icon c="text-secondary" name="close" />
+          <Box>{t`Canceling…`}</Box>
+        </Group>
+      );
+    case "canceled":
+      return (
+        <Group gap="sm" data-testid="run-status">
+          <Icon c="text-secondary" name="close" />
+          <Box>
+            {endTimeText
+              ? t`Last run was canceled ${endTimeText}.`
+              : t`Last run was canceled.`}
+          </Box>
+          {runsInfo}
         </Group>
       );
     default:
@@ -146,22 +181,51 @@ type RunButtonSectionProps = {
 
 function RunButtonSection({ transform }: RunButtonSectionProps) {
   const [runTransform] = useRunTransformMutation();
+  const [cancelTransform] = useCancelCurrentTransformRunMutation();
   const { sendErrorToast } = useMetadataToasts();
+  const [
+    isConfirmCancellationModalOpen,
+    { close: closeConfirmModal, open: openConfirmModal },
+  ] = useDisclosure(false);
 
   const handleRun = async () => {
-    trackTranformTriggerManualRun({
+    trackTransformTriggerManualRun({
       transformId: transform.id,
       triggeredFrom: "transform-page",
     });
-
     const { error } = await runTransform(transform.id);
     if (error) {
       sendErrorToast(t`Failed to run transform`);
     }
-    return { error };
   };
 
-  return <RunButton run={transform.last_run} onRun={handleRun} />;
+  const handleCancel = async () => {
+    const { error } = await cancelTransform(transform.id);
+    if (error && !isResourceNotFoundError(error)) {
+      sendErrorToast(t`Failed to cancel transform`);
+    }
+  };
+
+  return (
+    <>
+      <RunButton
+        allowCancellation
+        run={transform.last_run}
+        onRun={handleRun}
+        onCancel={openConfirmModal}
+      />
+      <ConfirmModal
+        title={t`Cancel this run?`}
+        opened={isConfirmCancellationModalOpen}
+        onClose={closeConfirmModal}
+        onConfirm={() => {
+          void handleCancel();
+          closeConfirmModal();
+        }}
+        closeButtonText={t`No`}
+      />
+    </>
+  );
 }
 
 function RunOutputSection({ transform }: RunSectionProps) {

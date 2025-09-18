@@ -17,7 +17,11 @@ import { NameSection } from "./NameSection";
 import { RunSection } from "./RunSection";
 import { SourceSection } from "./SourceSection";
 import { TargetSection } from "./TargetSection";
-import { isTransformRunning, isTransformSyncing } from "./utils";
+import {
+  isTransformCanceling,
+  isTransformRunning,
+  isTransformSyncing,
+} from "./utils";
 
 type TransformPageParams = {
   transformId: string;
@@ -43,7 +47,7 @@ export function TransformPage({ params }: TransformPageProps) {
   });
 
   if (isPolling !== isPollingNeeded(transform)) {
-    setIsPolling(!isPolling);
+    setIsPolling(isPollingNeeded(transform));
   }
 
   if (isLoading || error != null) {
@@ -80,6 +84,8 @@ function getParsedParams({
 function isPollingNeeded(transform?: Transform) {
   return (
     transform != null &&
-    (isTransformRunning(transform) || isTransformSyncing(transform))
+    (isTransformRunning(transform) ||
+      isTransformSyncing(transform) ||
+      isTransformCanceling(transform))
   );
 }

@@ -11,13 +11,23 @@
 
 (defn mark-cancel-started-run!
   "Mark a started run for cancelation."
-  ([run-id]
-   (mark-cancel-started-run! run-id {}))
-  ([run-id properties]
-   (when (t2/exists? :transform_run :id run-id :is_active true)
-     (t2/insert! :model/TransformRunCancelation
-                 (assoc properties
-                        :run_id run-id)))))
+  [run-id]
+  (t2/query-one
+   [(str "INSERT INTO transform_run_cancelation (run_id) "
+         "SELECT ? "
+         "WHERE "
+         "      EXISTS (SELECT 1 "
+         "              FROM transform_run "
+         "              WHERE (transform_run.id = ?) "
+         "                AND transform_run.is_active)"
+         "      AND NOT EXISTS (SELECT 1 "
+         "                      FROM transform_run_cancelation "
+         "                      WHERE run_id = ?)")
+    run-id run-id run-id])
+  (t2/update! :model/TransformRun
+              :id run-id
+              {:status "canceling"})
+  nil)
 
 (defn reducible-canceled-local-runs
   "Return a reducible sequence of local canceled runs."

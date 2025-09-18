@@ -58,7 +58,13 @@ export type TransformRun = {
   transform?: Transform;
 };
 
-export type TransformRunStatus = "started" | "succeeded" | "failed" | "timeout";
+export type TransformRunStatus =
+  | "started"
+  | "succeeded"
+  | "failed"
+  | "timeout"
+  | "canceling"
+  | "canceled";
 
 export type TransformRunMethod = "manual" | "cron";
 
@@ -122,6 +128,11 @@ export type CreateTransformTagRequest = {
 export type UpdateTransformTagRequest = {
   id: TransformJobId;
   name?: string;
+};
+
+export type RunTransformResponse = {
+  run_id: TransformRunId;
+  message?: string;
 };
 
 export type ListTransformJobsRequest = {
