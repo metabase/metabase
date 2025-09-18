@@ -384,6 +384,42 @@ export type TableEditingEvent =
   | TableEditButtonClickedEvent
   | TableEditingRecordModifiedEvent;
 
+export type MetabotChatOpenedEvent = ValidateEvent<{
+  event: "metabot_chat_opened";
+  triggered_from:
+    | "search"
+    | "command_palette"
+    | "keyboard_shortcut"
+    | "native_editor";
+}>;
+
+export type MetabotRequestSentEvent = ValidateEvent<{
+  event: "metabot_request_sent";
+}>;
+
+export type MetabotFixQueryClickedEvent = ValidateEvent<{
+  event: "metabot_fix_query_clicked";
+}>;
+
+export type MetabotExplainChartClickedEvent = ValidateEvent<{
+  event: "metabot_explain_chart_clicked";
+}>;
+
+export type MetabotEvent =
+  | MetabotChatOpenedEvent
+  | MetabotRequestSentEvent
+  | MetabotFixQueryClickedEvent
+  | MetabotExplainChartClickedEvent;
+
+export type RevertVersionEvent = ValidateEvent<{
+  event: "revert_version_clicked";
+  event_detail: "card" | "dashboard";
+}>;
+
+export type LearnAboutDataClickedEvent = ValidateEvent<{
+  event: "learn_about_our_data_clicked";
+}>;
+
 export type SimpleEvent =
   | CustomSMTPSetupClickedEvent
   | CustomSMTPSetupSuccessEvent
@@ -429,4 +465,7 @@ export type SimpleEvent =
   | DocumentUpdatedEvent
   | DocumentPrintEvent
   | DatabaseHelpClickedEvent
-  | XRayEvent;
+  | XRayEvent
+  | MetabotEvent
+  | RevertVersionEvent
+  | LearnAboutDataClickedEvent;

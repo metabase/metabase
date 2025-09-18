@@ -12,7 +12,6 @@
    [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
-
    [metabase.util :as u]
    [metabase.util.currency :as currency]
    [metabase.util.date-2 :as u.date]
@@ -673,10 +672,9 @@
         (let [pivot-spec       (when (and pivot? pivot-export-options (qp.settings/enable-pivoted-exports))
                                  (pivot-opts->pivot-spec (merge {:pivot-cols []
                                                                  :pivot-rows []}
-                                                                pivot-export-options) ordered-cols))
+                                                                (m/filter-vals some? pivot-export-options)) ordered-cols))
               non-pivot-cols (pivot/columns-without-pivot-group ordered-cols)]
           (vreset! pivot-grouping-index (qp.pivot.postprocess/pivot-grouping-index (mapv :display_name ordered-cols)))
-          (def pivot-spec pivot-spec)
           (if pivot-spec
             ;; If we're generating a pivot table, just initialize the `pivot-data` volatile but not the workbook, yet
             (vreset! pivot-data
@@ -710,7 +708,7 @@
           (if @pivot-data
             (vswap! pivot-data update-in [:data :rows] conj! ordered-row)
             (when (or (not group)
-                      (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group)))
+                      (= qp.pivot.postprocess/non-pivot-row-group (int group)))
               (let [{:keys [cell-styles typed-cell-styles]} @styles]
                 (add-row! @workbook-sheet (inc row-num) row' ordered-cols' viz-settings cell-styles typed-cell-styles)
                 (when (= (inc row-num) *auto-sizing-threshold*)

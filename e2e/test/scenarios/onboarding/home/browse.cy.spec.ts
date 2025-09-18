@@ -171,6 +171,10 @@ H.describeWithSnowplow("scenarios > browse", () => {
     H.browseDatabases().click();
     cy.findByRole("link", { name: /Learn about our data/ }).click();
     cy.location("pathname").should("eq", "/reference/databases");
+    H.expectNoBadSnowplowEvents();
+    H.expectUnstructuredSnowplowEvent({
+      event: "learn_about_our_data_clicked",
+    });
     cy.go("back");
     cy.findByRole("heading", { name: "Sample Database" }).click();
     cy.findByRole("heading", { name: "Products" }).click();
