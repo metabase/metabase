@@ -54,7 +54,7 @@ export type CollectionAuthorityLevelConfig = {
 
 export type CollectionInstanceAnaltyicsConfig = {
   type: CollectionType;
-  name: string;
+  name?: string;
   icon: IconName;
   color?: string;
   tooltips?: Record<string, string>;

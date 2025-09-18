@@ -13,6 +13,11 @@ export const REGULAR_COLLECTION: CollectionAuthorityLevelConfig = {
   icon: "folder",
 };
 
+export const REMOTE_SYNC_COLLECTION: CollectionInstanceAnaltyicsConfig = {
+  type: "remote-synced",
+  icon: "folder",
+};
+
 export const OFFICIAL_COLLECTION: CollectionAuthorityLevelConfig = {
   type: "official",
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -48,6 +53,7 @@ export const COLLECTION_TYPES: Record<
   [String(OFFICIAL_COLLECTION.type)]: OFFICIAL_COLLECTION,
   [String(REGULAR_COLLECTION.type)]: REGULAR_COLLECTION,
   [String(INSTANCE_ANALYTICS_COLLECTION.type)]: INSTANCE_ANALYTICS_COLLECTION,
+  [String(REMOTE_SYNC_COLLECTION.type)]: REMOTE_SYNC_COLLECTION,
 };
 
 export const CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID =

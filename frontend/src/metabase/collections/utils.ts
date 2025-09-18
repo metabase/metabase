@@ -73,6 +73,10 @@ export function isInstanceAnalyticsCustomCollection(
   );
 }
 
+export function isSyncedCollection(collection: Partial<Collection>): boolean {
+  return PLUGIN_COLLECTIONS.isSyncedCollection(collection);
+}
+
 export function isExamplesCollection(collection: Collection): boolean {
   return !!collection.is_sample && collection.name === "Examples";
 }

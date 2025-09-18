@@ -24,6 +24,7 @@ import {
   getCollectionType,
   getIcon,
   isRegularCollection,
+  isSyncedCollection,
 } from "./utils";
 
 if (hasPremiumFeature("official_collections")) {
@@ -34,6 +35,8 @@ if (hasPremiumFeature("official_collections")) {
   PLUGIN_COLLECTIONS.AUTHORITY_LEVEL = AUTHORITY_LEVELS;
 
   PLUGIN_COLLECTIONS.getIcon = getIcon;
+
+  PLUGIN_COLLECTIONS.isSyncedCollection = isSyncedCollection;
 
   PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems = (
     collection: Collection,
