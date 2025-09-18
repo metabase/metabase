@@ -27,7 +27,7 @@ export function TableSelector({
   database: DatabaseId | undefined;
   table: Table | undefined;
   availableTables: Table[];
-  selectedTableIds: Set<TableId | undefined>;
+  selectedTableIds: TableId[];
   disabled?: boolean;
   onChange: (table: Table | undefined) => void;
 }) {
@@ -45,7 +45,7 @@ export function TableSelector({
   ) {
     if (item.model === "table") {
       // Filter available tables to exclude already selected ones (except current selection)
-      return selectedTableIds.has(item.id);
+      return selectedTableIds.includes(item.id);
     }
     if (item.model === "database") {
       return item.id !== database;

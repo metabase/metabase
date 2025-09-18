@@ -24,7 +24,6 @@ import type {
   DatabaseId,
   PythonTransformTableAliases,
   Table,
-  TableId,
 } from "metabase-types/api";
 
 import S from "./PythonDataPicker.module.css";
@@ -38,7 +37,7 @@ import {
 
 type PythonDataPickerProps = {
   database?: DatabaseId;
-  tables?: PythonTransformTableAliases;
+  tables: PythonTransformTableAliases;
   onChange: (
     database: number,
     tables: PythonTransformTableAliases,
@@ -97,7 +96,6 @@ export function PythonDataPicker({
     (tbl: Table) => tbl.db_id === database && tbl.active,
   );
 
-  const selectedTableIds = new Set(tableSelections.map((s) => s.tableId));
   const usedAliases = new Set(tableSelections.map((s) => s.alias));
 
   const handleDatabaseChange = (value: string | null) => {
@@ -184,13 +182,13 @@ export function PythonDataPicker({
                 key={index}
                 selection={selection}
                 database={database}
+                tables={tables}
                 usedAliases={usedAliases}
                 availableTables={availableTables}
                 onChange={(selection) =>
                   handleSelectionChange(index, selection)
                 }
                 onRemove={() => handleRemoveTable(index)}
-                selectedTableIds={selectedTableIds}
                 disabled={isLoadingTables}
               />
             ))}
@@ -212,21 +210,21 @@ export function PythonDataPicker({
 
 function SelectionInput({
   database,
+  tables,
   selection,
   availableTables,
   usedAliases,
   onChange,
   onRemove,
-  selectedTableIds,
   disabled,
 }: {
   database: DatabaseId | undefined;
+  tables: PythonTransformTableAliases;
   selection: TableSelection;
   availableTables: Table[];
   usedAliases: Set<string>;
   onChange: (selection: TableSelection) => void;
   onRemove: () => void;
-  selectedTableIds: Set<TableId | undefined>;
   disabled?: boolean;
 }) {
   const table = availableTables.find((table) => table.id === selection.tableId);
@@ -275,9 +273,9 @@ function SelectionInput({
       <TableSelector
         database={database}
         table={table}
+        selectedTableIds={Object.values(tables)}
         onChange={handleTableChange}
         availableTables={availableTables}
-        selectedTableIds={selectedTableIds}
         disabled={disabled}
       />
 
