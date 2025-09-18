@@ -1,4 +1,5 @@
 import { Node, mergeAttributes } from "@tiptap/core";
+import { Fragment, Slice } from "@tiptap/pm/model";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import {
   type NodeViewProps,
@@ -191,6 +192,35 @@ export const CardEmbed: Node<{
               view.draggingNode = node;
               return false;
             },
+          },
+          transformPasted: (slice, view) => {
+            const { content } = slice.content;
+            const isPastingCardEmbed =
+              content.length === 1 && content[0]?.type.name === "cardEmbed";
+
+            if (!isPastingCardEmbed) {
+              return slice;
+            }
+
+            const { state } = view;
+            const resolvedPos = state.doc.resolve(state.selection.from);
+            const isTopLevelParagraph =
+              resolvedPos.parent.type.name === "paragraph" &&
+              resolvedPos.depth === 1;
+
+            if (!isTopLevelParagraph) {
+              return slice;
+            }
+
+            const transformedContent = slice.content.content.map((node) => {
+              return state.schema.nodes.resizeNode.create({}, [node]);
+            });
+
+            return new Slice(
+              Fragment.fromArray(transformedContent),
+              slice.openStart,
+              slice.openEnd,
+            );
           },
         },
       }),
