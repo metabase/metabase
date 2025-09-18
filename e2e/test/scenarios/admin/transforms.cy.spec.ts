@@ -441,6 +441,40 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       testCardSource({ type: "question", label: "Questions" });
       testCardSource({ type: "model", label: "Models" });
     });
+
+    it("should not auto-pivot query results for MBQL transforms", () => {
+      cy.log("create a new transform");
+      visitTransformListPage();
+      getTransformListPage().button("Create a transform").click();
+      H.popover().findByText("Query builder").click();
+
+      cy.log("build a query with 1 aggregation and 2 breakouts");
+      H.entityPickerModal().within(() => {
+        cy.findByText(DB_NAME).click();
+        cy.findByText(SOURCE_TABLE).click();
+      });
+      H.getNotebookStep("summarize")
+        .findByText("Pick a function or metric")
+        .click();
+      H.popover().findByText("Count of rows").click();
+      H.getNotebookStep("summarize")
+        .findByText("Pick a column to group by")
+        .click();
+      H.popover().findByText("Name").click();
+      H.getNotebookStep("summarize")
+        .findByTestId("breakout-step")
+        .icon("add")
+        .click();
+      H.popover().findByText("Score").click();
+      H.runButtonOverlay().click();
+
+      cy.log("verify that no pivoting is applied");
+      H.tableInteractiveHeader().within(() => {
+        cy.findByText("Name").should("be.visible");
+        cy.findByText(/Score/).should("be.visible");
+        cy.findByText("Count").should("be.visible");
+      });
+    });
   });
 
   describe("name and description", () => {
