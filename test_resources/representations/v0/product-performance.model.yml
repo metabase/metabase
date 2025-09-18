@@ -3,9 +3,6 @@ ref: product-performance
 name: Product Performance Model
 description: Product analytics model showing sales performance, inventory metrics, and ratings
 database: Sample Database
-
-# SQL query that defines the model's data
-# Note: This example demonstrates various data type scenarios using the Sample Database
 query: |
   SELECT 
     p.ID AS product_id,
@@ -42,9 +39,6 @@ query: |
   FROM PRODUCTS p
   LEFT JOIN ORDERS o ON p.ID = o.PRODUCT_ID
   GROUP BY p.ID, p.TITLE, p.CATEGORY, p.EAN, p.VENDOR, p.PRICE, p.RATING, p.CREATED_AT
-
-# Column metadata for better usability
-# Note: Models CANNOT use coercion_strategy - that's only for database fields
 columns:
   - name: product_id
     display_name: Product ID
