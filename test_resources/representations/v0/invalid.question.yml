@@ -1,0 +1,9 @@
+type: question
+ref: invalid-question
+name: 12
+description: 10
+query: |
+  SELECT
+    *
+  FROM orders
+database: Sample Database
