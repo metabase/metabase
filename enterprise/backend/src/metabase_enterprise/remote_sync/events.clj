@@ -39,6 +39,7 @@
                :target_branch target-branch
                :model_type (when collection-id "Collection")
                :model_entity_id collection-id
+               :most_recent true
                :status status
                :message message}))
 
