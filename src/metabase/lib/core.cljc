@@ -154,6 +154,7 @@
  [lib.convert
   ->legacy-MBQL
   ->pMBQL
+  legacy-default-join-alias
   without-cleaning]
  [metabase.lib.convert.metadata-to-legacy
   lib-metadata-column->legacy-metadata-column
@@ -444,6 +445,8 @@
   source-table-id
   update-query-stage]
  [metabase.lib.walk.util
+  all-field-ids
   all-source-card-ids
   all-source-table-ids
-  all-template-tags])
+  all-template-tags
+  any-native-stage?])

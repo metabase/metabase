@@ -73,9 +73,11 @@
 
 (defn- opts-distinct-key [opts]
   ;; Using reduce-kv to remove namespaced keys and some other keys to perform the comparison. This is allegedly faster.
-  (reduce-kv (fn [acc k _v]
+  (reduce-kv (fn [acc k v]
                (if (or (qualified-keyword? k)
-                       (#{:base-type :effective-type} k))
+                       (#{:base-type :effective-type} k)
+                       (and (#{:temporal-unit :inherited-temporal-unit} k)
+                            (= v :default)))
                  (dissoc acc k)
                  acc))
              opts
