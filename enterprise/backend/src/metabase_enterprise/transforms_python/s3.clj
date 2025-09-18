@@ -60,7 +60,7 @@
   (-> (DeleteObjectRequest/builder) (.bucket bucket-name) (.key key) .build))
 
 (defmacro ^:private maybe-with-credentials*
-  "Use macro to avoid reflection, as their is no shared interface between S3ClientBuilder and S3Presigner$Builder"
+  "Use macro to avoid reflection, as there is no shared interface between S3ClientBuilder and S3Presigner$Builder"
   [builder]
   `(let [access-key# (transforms-python.settings/python-storage-s-3-access-key)
          secret-key# (transforms-python.settings/python-storage-s-3-secret-key)]
