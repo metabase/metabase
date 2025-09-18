@@ -74,14 +74,14 @@
         (mt/dataset transforms-dataset/transforms-test
           (let [query  (make-query "Gadget")
                 schema (get-test-schema)
-                response (mt/user-http-request :crowberto :post "ee/transform"
+                response (mt/user-http-request :crowberto :post 402 "ee/transform"
                                                {:name   "Test Transform"
                                                 :source {:type  "query"
                                                          :query query}
                                                 :target {:type   "table"
                                                          :schema schema
                                                          :name   "test_transform"}})]
-            (is (= 403 (:status response)))))))
+            (is (= "error-premium-feature-not-available" (:status response)))))))
 
     (testing "Creating a query transform with :transforms feature succeeds"
       (mt/with-premium-features #{:transforms}
