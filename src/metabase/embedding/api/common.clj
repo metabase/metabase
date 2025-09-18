@@ -315,6 +315,7 @@
               options)))
 
 (defn unsigned-token->card-id
+  "Get the Card ID from an unsigned token."
   [unsigned-token]
   (->> (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
        (eid-translation/->id :model/Card)))
@@ -485,6 +486,7 @@
           (throw e))))))
 
 (defn unsigned-token->dashboard-id
+  "Get the Dashboard ID from an unsigned token."
   [unsigned-token]
   (->> (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
        (eid-translation/->id :model/Dashboard)))
