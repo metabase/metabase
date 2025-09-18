@@ -215,37 +215,48 @@
                                   %))))))
        (assoc col-spec ::bad-reference true))])
 
+(defn- get-name [m]
+  (or (:alias m) (str (gensym "new-col"))))
+
+(defn- get-display-name [m]
+  (get-name m))
+
 (defmethod resolve-field :custom-field
   [_driver _metadata-provider col-spec]
   [{:base-type :type/*
-    :name (:alias col-spec)}])
+    :name (get-name col-spec)
+    :display-name (get-display-name col-spec)
+    :effective-type :type/*
+    :semantic-type :Semantic/*}])
 
 (defmethod resolve-field :invalid-table-wildcard
   [_driver _metadata-provider col-spec]
   [(assoc col-spec ::bad-reference true)])
 
-(defn- lca [& types]
+(defn- lca [default-type & types]
   (let [common-ancestors (->> (map #(conj (ancestors %) %)
                                    types)
                               (apply set/intersection))]
     (if (seq common-ancestors)
       (apply (partial max-key (comp count ancestors)) common-ancestors)
-      :type/*)))
+      default-type)))
 
 (defmethod resolve-field :composite-field
   [driver metadata-provider col-spec]
   (let [member-fields (mapcat (partial resolve-field driver metadata-provider)
                               (:member-fields col-spec))]
-    [{:name (:alias col-spec)
-      :base-type (apply lca (map :base-type member-fields))
-      :semantic-type (apply lca (map :semantic-type member-fields))}]))
+    [{:name (get-name col-spec)
+      :display-name (get-display-name col-spec)
+      :base-type (apply lca :type/* (map :base-type member-fields))
+      :effective-type (apply lca :type/* (map :effective-type member-fields))
+      :semantic-type (apply lca :Semantic/* (map :semantic-type member-fields))}]))
 
 (defmethod driver/native-result-metadata :sql
   [driver metadata-provider native-query]
   (let [{:keys [returned-fields]} (->> (macaw/parsed-query native-query)
                                        macaw/->ast
                                        (sql.references/field-references driver))]
-    (map (partial resolve-field driver metadata-provider) returned-fields)))
+    (mapcat (partial resolve-field driver metadata-provider) returned-fields)))
 
 (defmethod driver/validate-native-query-fields :sql
   [driver metadata-provider native-query]

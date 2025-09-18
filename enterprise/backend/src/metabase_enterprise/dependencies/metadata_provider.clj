@@ -118,8 +118,8 @@
     (if (= (:lib/type (lib/query-stage query 0))
            :mbql.stage/mbql)
       (lib/returned-columns query)
-      (deps.native/native-query-deps (:engine (lib.metadata/database mp))
-                                     mp query))))
+      (deps.native/native-result-metadata (:engine (lib.metadata/database mp))
+                                          mp query))))
 
 (defmethod add-override :card [^OverridingMetadataProvider mp _entity-type id updates]
   (with-overrides mp

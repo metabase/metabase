@@ -10,6 +10,13 @@
                      :query)]
     (driver/validate-native-query-fields driver metadata-provider compiled)))
 
+(defn native-result-metadata
+  "Compiles a (native) query and calculates its result metadata"
+  [driver metadata-provider query]
+  (let [compiled (-> (qp/compile-query-with-metadata-provider metadata-provider query)
+                     :query)]
+    (driver/native-result-metadata driver metadata-provider compiled)))
+
 (defn native-query-deps
   "Returns the upstream dependencies of a native query, as a set of `{:kind id}` pairs."
   [driver metadata-provider query]
