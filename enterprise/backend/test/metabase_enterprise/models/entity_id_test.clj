@@ -92,7 +92,6 @@
     :model/TransformJobTransformTag
     :model/TransformTag
     :model/TransformTransformTag
-    :model/PythonLibrary
     :model/Undo
     :model/User
     :model/UserParameterValue

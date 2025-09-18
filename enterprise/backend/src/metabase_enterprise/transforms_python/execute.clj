@@ -122,10 +122,11 @@
   (let [table-schema {:name (if (keyword? table-name) table-name (keyword table-name))
                       :columns (mapv (fn [{:keys [name base_type #_database_type]}]
                                        {:name name
-                                        :type (if-let [base-type (keyword "type" base_type)]
-                                                (if (python-runner/root-type base-type)
-                                                  base-type
-                                                  :type/Text)
+                                        :type (if base_type
+                                                (let [base-type-kw (keyword "type" base_type)]
+                                                  (if (python-runner/root-type base-type-kw)
+                                                    base-type-kw
+                                                    :type/Text))
                                                 :type/Text)
                                         ;; :database-type database_type
                                         :nullable? true})
