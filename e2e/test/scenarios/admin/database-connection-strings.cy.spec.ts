@@ -43,7 +43,6 @@ const databaseTestCases = [
     expectedFields: [
       { label: "Host", value: "localhost" },
       { label: "Port", value: "8443" },
-      { label: "Databases", value: "testdb" },
       { label: "Display name", value: "testdb" },
       { label: "Username", value: "testuser" },
       { label: "Additional JDBC connection string options", value: "ssl=true" },
@@ -374,7 +373,7 @@ H.describeWithSnowplow("Database connection strings events", () => {
   it("should track success events correctly", () => {
     const successEvent = {
       event: "connection_string_parsed_success",
-      triggered_from: "full-page",
+      triggered_from: "admin",
     };
 
     cy.findByLabelText("Connection string (optional)")
@@ -412,7 +411,7 @@ H.describeWithSnowplow("Database connection strings events", () => {
     H.expectUnstructuredSnowplowEvent(
       {
         event: "connection_string_parsed_failed",
-        triggered_from: "full-page",
+        triggered_from: "admin",
       },
       1,
     );
