@@ -49,7 +49,7 @@
 
 (defn ^:private exists-select
   [_k]
-  [1])
+  [[:inline 1]])
 
 (def ^:private items-select
   {:collection [:collection.id
