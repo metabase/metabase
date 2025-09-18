@@ -151,6 +151,11 @@ const SdkIframeEmbedView = ({
         dashboardId: P.nonNullable,
         drills: false,
       },
+      {
+        componentName: "metabase-dashboard",
+        dashboardId: P.nonNullable,
+        isStatic: true,
+      },
       (settings) => (
         <StaticDashboard
           dashboardId={settings.dashboardId}
@@ -166,6 +171,7 @@ const SdkIframeEmbedView = ({
       {
         componentName: "metabase-dashboard",
         dashboardId: P.nonNullable,
+        isStatic: P.optional(false),
         drills: P.optional(true),
       },
       (settings) => (
@@ -194,6 +200,10 @@ const SdkIframeEmbedView = ({
           initialSqlParameters: settings.initialSqlParameters,
           title: settings.withTitle ?? true, // defaulting title to true even if in the sdk it defaults to false for static
         };
+
+        if (settings.isStatic) {
+          return <StaticQuestion {...commonProps} key={rerenderKey} />;
+        }
 
         // note: to create a new question we need to render InteractiveQuestion
         if (settings.drills === false && settings.questionId !== "new") {
