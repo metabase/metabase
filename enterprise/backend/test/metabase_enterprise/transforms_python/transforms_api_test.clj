@@ -282,7 +282,8 @@
                       (is (str/starts-with? message "Executing Python transform"))
                       (testing "all observed values of message reflect a prefix of the final message (ordering consistent)"
                         (doseq [observed-message observed-messages]
-                          (is (str/starts-with? observed-message message))))
+                          ;; hmmm, sometimes the order seems flipped
+                          (is (str/starts-with? message observed-message))))
                       (when expect-early-feedback
                         (testing "scenario takes time, we should see partial messages for immediate feedback"
                           (is (< 1 (count observed-messages)))))
