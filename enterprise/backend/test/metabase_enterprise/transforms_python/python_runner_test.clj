@@ -399,8 +399,12 @@
                 (transforms.schedule/update-job! job-id "* * * * * ? *")
                 (is (true? (u/poll {:thunk   (fn [] (driver/table-exists? driver/*driver* (mt/db) target))
                                     :done?   true?
-                                    :timeout 30000})))
-                (is (true? (t2/exists? :model/Table :name (:name target))))))))))))
+                                    :timeout-ms 20000
+                                    :interval-ms 1000})))
+                (is (true? (u/poll {:thunk   (fn [] (t2/exists? :model/Table :name (:name target)))
+                                    :done?   true?
+                                    :timeout-ms 10000
+                                    :interval-ms 1000})))))))))))
 
 (deftest transform-function-with-library-test
   (testing "transform function can use libraries"
