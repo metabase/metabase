@@ -1,15 +1,16 @@
 import { useRef, useState } from "react";
 import { t } from "ttag";
 
-import {
-  type ExecutePythonResponse,
-  useExecutePythonMutation,
-} from "metabase-enterprise/api/transform-python";
-import type { PythonTransformSource } from "metabase-types/api";
+import { useExecutePythonMutation } from "metabase-enterprise/api/transform-python";
+import type {
+  ExecutePythonTransformResponse,
+  PythonTransformSource,
+  PythonTransformTableAliases,
+} from "metabase-types/api";
 
 export function updateTransformSignature(
   script: string,
-  tables: Record<string, { id: number; name: string }>,
+  tables: PythonTransformTableAliases,
 ): string {
   const tableAliases = Object.keys(tables);
 
@@ -155,9 +156,8 @@ export function useTestPythonTransform(
   const [executePython, { isLoading: isRunning, originalArgs }] =
     useExecutePythonMutation();
   const abort = useRef<(() => void) | null>(null);
-  const [executionResult, setData] = useState<ExecutePythonResponse | null>(
-    null,
-  );
+  const [executionResult, setData] =
+    useState<ExecutePythonTransformResponse | null>(null);
 
   const isDirty = originalArgs?.code !== source.body;
 
