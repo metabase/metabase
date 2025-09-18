@@ -15,7 +15,7 @@
   (derive :model/Transform trait))
 
 (t2/deftransforms :model/Transform
-  {:source      mi/transform-json
+  {:source      mi/transform-metabase-query
    :target      mi/transform-json
    :run_trigger mi/transform-keyword})
 

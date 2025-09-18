@@ -732,6 +732,9 @@
     ;; Does this driver support transforms with a table as the target?
     :transforms/table
 
+    ;; Does this driver support calculating dependencies of native queries?
+    :dependencies/native
+
     ;; Does this driver properly support the table-exists? method for checking table existence?
     :metadata/table-existence-check
 
@@ -1179,7 +1182,18 @@
   "Gets the table dependencies of a given sql string (or equivalent).
 
   Drivers that support any of the `:transforms/...` features must implement this method."
-  {:added "0.57.0" :arglists '([driver query])}
+  {:added "0.57.0" :arglists '([driver query] [driver query metadata-provider transforms])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti native-result-metadata
+  "Gets the result-metadata for a native query using static analysis (i.e., without actually
+  going to the database)."
+  {:added "0.57.0" :arglists '([driver metadata-provider native-query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti validate-native-query-fields
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

@@ -42,8 +42,8 @@
       (or (not (:card-id spec))
           (#{:metadata/metric} (:lib/type spec))))]
    [:fn
-    {:error/message "All metadata types except for :metadata/table must include at least one filter"}
-    (some-fn :id :name :table-id :card-id #(= (:lib/type %) :metadata/table))]])
+    {:error/message "All metadata types except for :metadata/table and :metadata/transform must include at least one filter"}
+    (some-fn :id :name :table-id :card-id #(= (:lib/type %) :metadata/table) #(= (:lib/type %) :metadata/transform))]])
 
 (mu/defn default-spec-filter-xform
   "Create a `filter` transducer to a sequence of objects according to `metadata-spec`. Assumes objects are all the
@@ -159,6 +159,12 @@
    {:error/message "Valid MetadataProvider, or a map with a MetadataProvider in the key :lib/metadata (i.e. a query)"}
    #'metadata-providerable?])
 
+(mr/def ::metadata-type-excluding-database
+  "Database metadata is stored separately/in a special way. These are the types of metadata that are stored with the
+  other non-Database methods."
+  [:enum :metadata/table :metadata/column :metadata/card :metadata/segment :metadata/native-query-snippet
+   :metadata/transform])
+
 (mr/def ::metadata
   [:map
    [:lib/type ::metadata-type-excluding-database]
@@ -233,6 +239,18 @@
   [metadata-provider :- ::metadata-provider
    card-id           :- ::lib.schema.id/card]
   (metadata-by-id metadata-provider :metadata/card card-id))
+
+;; TODO: Better schemas for transforms.
+(mu/defn transform :- [:maybe [:map]]
+  "Return information about a specific Transform. Nil if it does not exist."
+  [metadata-provider :- ::metadata-provider
+   card-id           :- ::lib.schema.id/card]
+  (metadata-by-id metadata-provider :metadata/transform card-id))
+
+(mu/defn transforms :- [:maybe [:sequential [:map]]]
+  "Return information about all Transforms."
+  [metadata-provider :- ::metadata-provider]
+  (metadatas metadata-provider {:lib/type :metadata/transform}))
 
 (mu/defn native-query-snippet :- [:maybe ::lib.schema.metadata/native-query-snippet]
   "Get metadata for a NativeQuerySnippet with `snippet-id` if it can be found."
