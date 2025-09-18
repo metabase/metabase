@@ -5,8 +5,6 @@ import {
 } from "@codemirror/autocomplete";
 import { pythonLanguage } from "@codemirror/lang-python";
 
-// This is the closest you can get to "loading pandas definitions"
-
 const pandasDefinitions: Record<string, Completion[]> = {
   pd: [
     {
