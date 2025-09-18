@@ -113,7 +113,7 @@ export function PythonTransformEditor({
     }
     if (isRunning) {
       cancel();
-    } else if (isRunnable) {
+    } else if (isRunnable && isPythonTransformSource(source)) {
       run();
     }
   };
@@ -150,7 +150,7 @@ export function PythonTransformEditor({
         />
         <Stack w="100%" h="100%" gap={0}>
           <PythonEditorBody
-            isRunnable={isRunnable}
+            isRunnable={isRunnable && isPythonTransformSource(source)}
             isRunning={isRunning}
             isDirty={isDirty}
             onRun={run}
