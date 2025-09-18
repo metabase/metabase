@@ -161,7 +161,8 @@
                                                               :query query}
                                                      :target target-table}]
             (transforms.execute/run-mbql-transform! transform {:run-method :manual})
-            (let [table-result      (transforms.tu/wait-for-table (:name target-table) 10000)
+            (let [_            (transforms.tu/wait-for-table (:name target-table) 10000)
+                  table-result (lib.metadata/table mp (mt/id (keyword (:name target-table))))
                   query-result (->> (lib/query mp table-result)
                                     (qp/process-query)
                                     (mt/formatted-rows [int str str 2.0 str])
