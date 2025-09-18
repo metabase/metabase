@@ -591,9 +591,9 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       cy.log("modify the transform before running");
       getTransformPage().button("Change target").click();
       H.modal().within(() => {
-        cy.findByLabelText("Table name").should("have.value", TARGET_TABLE);
+        cy.findByLabelText("New table name").should("have.value", TARGET_TABLE);
         cy.findByLabelText("Schema").should("have.value", TARGET_SCHEMA);
-        cy.findByLabelText("Table name").clear().type(TARGET_TABLE_2);
+        cy.findByLabelText("New table name").clear().type(TARGET_TABLE_2);
         cy.findByLabelText("Schema").click();
       });
       H.popover().findByText(TARGET_SCHEMA_2).click();
@@ -632,9 +632,9 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       cy.log("modify the transform before running");
       getTransformPage().button("Change target").click();
       H.modal().within(() => {
-        cy.findByLabelText("Table name").should("have.value", TARGET_TABLE);
+        cy.findByLabelText("New table name").should("have.value", TARGET_TABLE);
         cy.findByLabelText("Schema").should("have.value", TARGET_SCHEMA);
-        cy.findByLabelText("Table name").clear().type(TARGET_TABLE_2);
+        cy.findByLabelText("New table name").clear().type(TARGET_TABLE_2);
         cy.findByLabelText("Schema").clear().type(CUSTOM_SCHEMA);
       });
       H.popover().findByText("Create new schema").click();
@@ -674,10 +674,10 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       cy.log("modify the transform after running");
       getTransformPage().button("Change target").click();
       H.modal().within(() => {
-        cy.findByLabelText("Table name").should("have.value", TARGET_TABLE);
+        cy.findByLabelText("New table name").should("have.value", TARGET_TABLE);
         cy.findByLabelText("Schema").should("have.value", TARGET_SCHEMA);
         cy.findByLabelText("Keep transform_table").should("be.checked");
-        cy.findByLabelText("Table name").clear().type(TARGET_TABLE_2);
+        cy.findByLabelText("New table name").clear().type(TARGET_TABLE_2);
         cy.button("Change target").click();
         cy.wait("@updateTransform");
       });
@@ -718,11 +718,11 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       cy.log("modify the transform after running");
       getTransformPage().button("Change target").click();
       H.modal().within(() => {
-        cy.findByLabelText("Table name").should("have.value", TARGET_TABLE);
+        cy.findByLabelText("New table name").should("have.value", TARGET_TABLE);
         cy.findByLabelText("Schema").should("have.value", TARGET_SCHEMA);
-        cy.findByLabelText("Table name").clear().type(TARGET_TABLE_2);
+        cy.findByLabelText("New table name").clear().type(TARGET_TABLE_2);
         cy.findByLabelText("Delete transform_table").click();
-        cy.button("Change target and delete the old one").click();
+        cy.button("Change target and delete old table").click();
         cy.wait("@deleteTransformTable");
         cy.wait("@updateTransform");
       });
@@ -764,9 +764,9 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       cy.log("delete the old target without creating the new one");
       getTransformPage().button("Change target").click();
       H.modal().within(() => {
-        cy.findByLabelText("Table name").clear().type(TARGET_TABLE_2);
+        cy.findByLabelText("New table name").clear().type(TARGET_TABLE_2);
         cy.findByLabelText("Delete transform_table").click();
-        cy.button("Change target and delete the old one").click();
+        cy.button("Change target and delete old table").click();
         cy.wait("@deleteTransformTable");
         cy.wait("@updateTransform");
       });
@@ -774,7 +774,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       cy.log("change the target back to the original one");
       getTransformPage().button("Change target").click();
       H.modal().within(() => {
-        cy.findByLabelText("Table name").clear().type(TARGET_TABLE);
+        cy.findByLabelText("New table name").clear().type(TARGET_TABLE);
         cy.button("Change target").click();
         cy.wait("@updateTransform");
       });
@@ -794,7 +794,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       cy.log("change the target to an existing table");
       getTransformPage().button("Change target").click();
       H.modal().within(() => {
-        cy.findByLabelText("Table name").clear().type(SOURCE_TABLE);
+        cy.findByLabelText("New table name").clear().type(SOURCE_TABLE);
         cy.button("Change target").click();
         cy.wait("@updateTransform");
         cy.findByText("A table with that name already exists.").should(
@@ -1191,6 +1191,96 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       cy.log("make sure the table is deleted");
       visitTableQuestion();
       assertTableDoesNotExistError();
+    });
+  });
+
+  describe("cancelation", () => {
+    function createSlowTransform(seconds: number = 100) {
+      H.createTransform(
+        {
+          name: "Slow transform",
+          source: {
+            type: "query",
+            query: {
+              database: WRITABLE_DB_ID,
+              type: "native",
+              native: {
+                query: `SELECT name, cast(pg_sleep(${seconds}) as text) as slow FROM "Schema A"."Animals" LIMIT 1`,
+              },
+            },
+          },
+          target: {
+            type: "table",
+            name: TARGET_TABLE,
+            schema: TARGET_SCHEMA,
+          },
+          tag_ids: [],
+        },
+        { visitTransform: true },
+      );
+    }
+
+    it("should be possible to cancel a transform from the transform page", () => {
+      createSlowTransform();
+      getRunButton().click();
+      getRunButton().should("have.text", "Running now…");
+      getRunStatus().should("have.text", "Run in progress…");
+
+      getCancelButton().click();
+      H.modal().button("Yes").click();
+
+      getRunButton().should("have.text", "Canceling…");
+      getRunStatus().should("have.text", "Canceling…");
+
+      // We need to pass a timeout here since canceling a transform can
+      // take a while on the back end
+      getRunButton({ timeout: 40_000 }).should("have.text", "Canceled");
+      getRunStatus().should("contain", "Last run was canceled");
+    });
+
+    it("should be possible to cancel a transform from the runs page", () => {
+      createSlowTransform();
+      getRunButton().click();
+      getRunButton().should("have.text", "Running now…");
+      getRunStatus().should("have.text", "Run in progress…");
+
+      getNavSidebar().findByText("Runs").click();
+      getContentTable().within(() => {
+        cy.findByText("In-progress").should("be.visible");
+        cy.findByLabelText("Cancel run").click();
+      });
+
+      H.modal().button("Yes").click();
+
+      getContentTable().findByText("Canceling").should("be.visible");
+      getContentTable()
+        .findByText("Canceled", { timeout: 30_000 })
+        .should("be.visible");
+    });
+
+    it("should show a message when the run finished before it cancels", () => {
+      createSlowTransform(1);
+      getRunButton().click();
+      getRunButton().should("have.text", "Running now…");
+      getRunStatus().should("have.text", "Run in progress…");
+
+      getCancelButton().click();
+      H.modal().button("Yes").click();
+
+      getRunButton().should("have.text", "Canceling…");
+      getRunStatus().should("have.text", "Canceling…");
+
+      // We need to pass a timeout here since canceling a transform can
+      // take a while on the back end
+      getRunButton({ timeout: 40_000 }).should("have.text", "Ran successfully");
+      getRunStatus().should(
+        "contain",
+        "Last ran a few seconds ago successfully.",
+      );
+      getRunStatus().should(
+        "contain",
+        "This run succeeded before it had a chance to cancel.",
+      );
     });
   });
 
@@ -2063,8 +2153,16 @@ function getQueryEditor() {
   return cy.findByTestId("transform-query-editor");
 }
 
-function getRunButton() {
-  return cy.findByTestId("run-button");
+function getRunButton(options: { timeout?: number } = {}) {
+  return cy.findByTestId("run-button", options);
+}
+
+function getCancelButton() {
+  return cy.findByTestId("cancel-button");
+}
+
+function getRunStatus() {
+  return cy.findByTestId("run-status");
 }
 
 function getRunListLink() {
