@@ -29,7 +29,7 @@
   "Execute a Python transform with the given code and tables"
   [{:keys [code tables]}]
   (with-open [shared-storage-ref (python-runner/open-s3-shared-storage! (or tables {}))]
-    (let [server-url (transforms-python.settings/python-execution-server-url)
+    (let [server-url (transforms-python.settings/python-runner-url)
           cancel-chan (a/promise-chan)
           table-name->id (or tables {})
           _ (python-runner/copy-tables-to-s3! {:run-id test-id

@@ -6,7 +6,7 @@
 
 (def ^:private is-not-prod? (or config/is-dev? config/is-test?))
 
-(setting/defsetting python-execution-server-url
+(setting/defsetting python-runner-url
   (deferred-tru "URL for the Python execution server that runs transform functions.")
   :type :string
   :visibility :admin
@@ -16,6 +16,17 @@
   :export? false
   :encryption :no
   :audit :getter)
+
+(setting/defsetting python-runner-api-token
+  (deferred-tru "API token for authorizing with the python-runner service.")
+  :type       :string
+  :visibility :internal
+  :default    (when is-not-prod? "dev-token-12345")
+  :feature    :transforms
+  :doc        false
+  :export?    false
+  :encryption :when-encryption-key-set
+  :audit      :never)
 
 (setting/defsetting python-storage-s-3-endpoint
   (deferred-tru "S3 endpoint URL for storing Python execution artifacts.")
@@ -104,14 +115,3 @@
   :export? false
   :encryption :no
   :audit :getter)
-
-(setting/defsetting python-runner-api-token
-  (deferred-tru "API token for authorizing with the python-runner service.")
-  :type       :string
-  :visibility :internal
-  :default    (when is-not-prod? "dev-token-12345")
-  :feature    :transforms
-  :doc        false
-  :export?    false
-  :encryption :when-encryption-key-set
-  :audit      :never)

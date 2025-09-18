@@ -345,7 +345,7 @@
 (defn get-logs
   "Return the logs of the current running python process"
   [run-id]
-  (let [server-url (transforms-python.settings/python-execution-server-url)]
+  (let [server-url (transforms-python.settings/python-runner-url)]
     (python-runner-request server-url :get "/logs" {:query-params {:request_id run-id}})))
 
 (defn- s3-shared-storage [table-name->id]

@@ -165,7 +165,7 @@
   (with-open [log-future-ref     (open-python-message-update-future! run-id message-log)
               shared-storage-ref (python-runner/open-s3-shared-storage! (:source-tables source))]
     (let [driver     (:engine db)
-          server-url (transforms-python.settings/python-execution-server-url)
+          server-url (transforms-python.settings/python-runner-url)
           _          (python-runner/copy-tables-to-s3! {:run-id         run-id
                                                         :shared-storage @shared-storage-ref
                                                         :table-name->id (:source-tables source)
