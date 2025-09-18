@@ -130,7 +130,7 @@ export function QueryEditor({
         onSave={handleSave}
         onCancel={onCancel}
       />
-      <Flex h="100%" w="100%">
+      <Flex h="100%" w="100%" mih="0">
         <Stack flex="2 1 100%" pos="relative">
           <EditorBody
             question={question}
