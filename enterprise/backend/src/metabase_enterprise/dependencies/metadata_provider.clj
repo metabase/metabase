@@ -56,7 +56,7 @@
       (and (empty? metadata-keys)
            (#{:metadata/table :metadata/transform} metadata-type))
       (as-> (vals type-overrides) entities
-        (into [] entities)
+        (into [] (map force) entities)
         (into entities (lib.metadata.protocols/metadatas delegate metadata-spec))
         (m/distinct-by :id entities))
 
