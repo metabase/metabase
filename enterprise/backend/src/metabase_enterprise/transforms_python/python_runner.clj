@@ -262,9 +262,9 @@
   "Temporary function that strings/jsons stuff in S3 and returns it for compatibility."
   [{:keys [s3-client bucket-name objects]}]
   (let [{:keys [output output-manifest events]} objects
-        output-content          (s3/read-from-s3 s3-client bucket-name (:path output) nil)
-        output-manifest-content (s3/read-from-s3 s3-client bucket-name (:path output-manifest) "{}")
-        events-content          (s3/read-from-s3 s3-client bucket-name (:path events))]
+        output-content          (s3/read-to-string s3-client bucket-name (:path output) nil)
+        output-manifest-content (s3/read-to-string s3-client bucket-name (:path output-manifest) "{}")
+        events-content          (s3/read-to-string s3-client bucket-name (:path events))]
     {:output          output-content
      :output-manifest (json/decode+kw output-manifest-content)
      :events          (mapv json/decode+kw (str/split-lines events-content))}))
@@ -302,8 +302,8 @@
 
             ;; Upload both files to S3
             (transforms.instrumentation/with-stage-timing [run-id :data-transfer :file-to-s3]
-              (s3/upload-file-to-s3 s3-client bucket-name data-path temp-file)
-              (s3/upload-file-to-s3 s3-client bucket-name manifest-path manifest-file))
+              (s3/upload-file s3-client bucket-name data-path temp-file)
+              (s3/upload-file s3-client bucket-name manifest-path manifest-file))
 
             (transforms.instrumentation/record-data-transfer! run-id :file-to-s3 (+ file-size manifest-size) nil)))
         (finally

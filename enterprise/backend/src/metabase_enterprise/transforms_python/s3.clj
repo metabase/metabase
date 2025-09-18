@@ -19,9 +19,19 @@
 
 (set! *warn-on-reflection* true)
 
+;; TODO We should make these durations configurable in future.
+
 ;; Longer duration for inputs than for outputs, to compensate for the duration of the code execution itself.
 (def ^:private ^Duration presigned-get-duration (Duration/ofMinutes 30))
 (def ^:private ^Duration presigned-put-duration (Duration/ofHours 5))
+
+;; We should consider namespacing these paths, for example, using the run id to simplify cleanup.
+;; Another idea is to have deterministic paths, so that it's easier to resume incomplete runs.
+(defn- working-dir-for-run
+  "The path within the target bucket within which to store all the files for this run."
+  []
+  (let [shared-prefix (some-> (transforms-python.settings/python-storage-s-3-prefix) (str "/"))]
+    (str shared-prefix "run-" (System/nanoTime) "-" (rand-int 10000))))
 
 (defmacro ^:private maybe-with-endpoint* [builder endpoint]
   `(do (when-let [region# (transforms-python.settings/python-storage-s-3-region)]
@@ -35,9 +45,7 @@
 (defn- maybe-with-endpoint-s3-presigner [^S3Presigner$Builder builder endpoint]
   (maybe-with-endpoint* builder endpoint))
 
-(defn- s3-configuration
-  "Create S3Configuration with path-style access setting"
-  ^S3Configuration []
+(defn- s3-configuration ^S3Configuration []
   (-> (S3Configuration/builder)
       (.pathStyleAccessEnabled (transforms-python.settings/python-storage-s-3-path-style-access))
       (.build)))
@@ -74,8 +82,8 @@
   (maybe-with-credentials* builder))
 
 ;; We just recreate the client every time, to keep things simple if config is changed.
-(defn- create-s3-client
-  "Create S3 client for host operations (uploads, reads)"
+(defn create-s3-client
+  "Create S3 client for transferring table data and manifests."
   ^S3Client []
   (.build
    (doto (S3Client/builder)
@@ -93,12 +101,6 @@
        (maybe-with-endpoint-s3-presigner endpoint)
        maybe-with-credentials-s3-presigner
        (.serviceConfiguration (s3-configuration))))))
-
-(defn upload-file-to-s3
-  "Upload the given file to s3"
-  [^S3Client s3-client ^String bucket-name ^String key ^File file]
-  (let [^PutObjectRequest request (put-object-request bucket-name key)]
-    (.putObject s3-client request (RequestBody/fromFile file))))
 
 (defn- generate-presigned-get-url
   "Generate GET URL using container presigner"
@@ -118,34 +120,8 @@
                     (.build))]
     (.toString (.url (.presignPutObject presigner request)))))
 
-(defn- delete-s3-object [^S3Client s3-client ^String bucket-name ^String key]
-  (try
-    (.deleteObject s3-client (delete-object-request bucket-name key))
-    (catch Exception e
-      (log/debugf e "Error deleting s3 object %s" key)
-      ;; Ignore deletion errors - object might not exist, or we might not have permissions
-      ;; NOTE: we plan to put general retention on the bucket so that objects will eventually be deleted
-      nil)))
-
-(defn- cleanup-s3-objects [^S3Client s3-client bucket-name s3-keys]
-  (run! (partial delete-s3-object s3-client bucket-name) s3-keys))
-
-(defn read-from-s3
-  "Get back the contents of the given key as a string."
-  ([s3-client bucket-name key] (read-from-s3 s3-client bucket-name key ::throw))
-  ([^S3Client s3-client ^String bucket-name ^String key not-found]
-   (try
-     (let [^GetObjectRequest request (get-object-request bucket-name key)
-           response                  (.getObject s3-client request)]
-       (slurp response))
-     (catch NoSuchKeyException e
-       (if (identical? ::throw not-found)
-         (throw e)
-         not-found)))))
-
 (defn- s3-shared-storage [table-name->id]
-  (let [prefix              (some-> (transforms-python.settings/python-storage-s-3-prefix) (str "/"))
-        work-dir-name       (str prefix "run-" (System/nanoTime) "-" (rand-int 10000))
+  (let [work-dir-name       (working-dir-for-run)
         container-presigner (create-s3-presigner-for-container)
         bucket-name         (transforms-python.settings/python-storage-s-3-bucket)
         ref                 (fn [method relative-path]
@@ -155,7 +131,7 @@
                                  :url    (case method
                                            :put (generate-presigned-put-url container-presigner bucket-name path)
                                            :get (generate-presigned-get-url container-presigner bucket-name path))}))]
-    ;; a smell to be mixing interactive things with descriptions, but its damn convenient to have it here for now
+    ;; It feels dirty mixing the S3 client object with the other pure values, but it is convenient for the caller
     {:s3-client   (create-s3-client)
      :bucket-name bucket-name
      :objects
@@ -167,14 +143,74 @@
         {[:table id :manifest] (ref :get (str "table-" (name table-name) "-" id ".manifest.json"))
          [:table id :data]     (ref :get (str "table-" (name table-name) "-" id ".jsonl"))}))}))
 
-(defn open-s3-shared-storage!
-  "Returns a deref'able shared storage value, (.close) will optimistically delete any s3 objects named in storage (data files for tables, metadata files etc).
-  The intention is the bucket specifies a generic object retention policy to ensure objects are eventually deleted (e.g. because the process dies during writing and .close never gets called)"
+(declare delete-many)
+
+;; TODO this feels like it's a hair's width from abstracting away s3 versus other transfer mechanisms - go all the way
+(defn open-shared-storage!
+  "Returns a map wrapped in a deref-able auto-closable, to be used in a with-open.
+
+  The map contains:
+  - :s3-client   - an S3Client that can be used to upload/download files
+  - :bucket-name - the S3 bucket name
+  - :objects     - a map of keys to {:path :method :url} maps, where:
+    - :path   is the S3 key
+    - :method is either :get or :put, indicating whether the python-runner should fetch or upload the file.
+    - :url    is the presigned URL to be used by the python-runner to fetch or upload the file.
+
+  The objects are broken into the following transform inputs:
+
+  - [:table id :manifest] - for each input table, the manifest JSON file
+  - [:table id :data]     - for each input table, the data file, in format specified by the manifest.
+
+  And the following transform outputs:
+  - :output-manifest - the output manifest JSON file
+  - :output          - the output data file, in format specified by the output manifest.
+  - :events          - a JSONL file containing the events logged during python execution.
+
+  When the value is closed, all the relevant keys will be deleted, but this is best-effort only.
+  We rely on the bucket retention policy to ensure any stragglers are eventually deleted."
   ^Closeable [table-name->id]
   (let [shared-storage (s3-shared-storage table-name->id)]
     (reify IDeref
       (deref [_] shared-storage)
       Closeable
-      (close [_] (cleanup-s3-objects (:s3-client shared-storage)
-                                     (:bucket-name shared-storage)
-                                     (map :path (vals (:objects shared-storage))))))))
+      (close [_] (delete-many (:s3-client shared-storage)
+                              (:bucket-name shared-storage)
+                              (map :path (vals (:objects shared-storage))))))))
+
+(defn upload-file
+  "Upload the given file to s3"
+  [^S3Client s3-client ^String bucket-name ^String key ^File file]
+  (let [^PutObjectRequest request (put-object-request bucket-name key)]
+    (.putObject s3-client request (RequestBody/fromFile file))))
+
+;; TODO optimize our ingestion to stream the data. reading a string will not work in any case for binary files.
+(defn read-to-string
+  "Get back the contents of the given key as a string."
+  ([s3-client bucket-name key] (read-to-string s3-client bucket-name key ::throw))
+  ([^S3Client s3-client ^String bucket-name ^String key not-found]
+   (try
+     (let [^GetObjectRequest request (get-object-request bucket-name key)
+           response                  (.getObject s3-client request)]
+       (slurp response))
+     (catch NoSuchKeyException e
+       (if (identical? ::throw not-found)
+         (throw e)
+         not-found)))))
+
+(defn delete
+  ;; TODO better error handling
+  "Delete the given key from s3, ignoring any errors for now"
+  [^S3Client s3-client ^String bucket-name ^String key]
+  (try
+    (.deleteObject s3-client (delete-object-request bucket-name key))
+    (catch Exception e
+      (log/debugf e "Error deleting s3 object %s" key)
+      ;; Ignore deletion errors - object might not exist, or we might not have permissions
+      ;; NOTE: we plan to put general retention on the bucket so that objects will eventually be deleted
+      nil)))
+
+(defn delete-many
+  "Best effort delete the given s3 keys"
+  [^S3Client s3-client bucket-name s3-keys]
+  (run! (partial delete s3-client bucket-name) s3-keys))

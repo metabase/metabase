@@ -29,7 +29,7 @@
 (defn- execute!
   "Execute a Python transform with the given code and tables"
   [{:keys [code tables]}]
-  (with-open [shared-storage-ref (s3/open-s3-shared-storage! (or tables {}))]
+  (with-open [shared-storage-ref (s3/open-shared-storage! (or tables {}))]
     (let [server-url (transforms-python.settings/python-runner-url)
           cancel-chan (a/promise-chan)
           table-name->id (or tables {})
