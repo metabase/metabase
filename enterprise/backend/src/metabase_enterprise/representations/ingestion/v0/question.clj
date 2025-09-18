@@ -86,9 +86,9 @@
     (require '[metabase-enterprise.representations.ingestion.core :as ing-core])
     (representation->question-data
      (ing-core/ingest-representation
-      (ing-core/parse-representation "test_resources/representations/v0/monthly-revenue.question.yml"))))
+      (ing-core/load-representation-yaml "test_resources/representations/v0/monthly-revenue.question.yml"))))
   (do ; load AND WRITE a sample question
     (require '[metabase-enterprise.representations.ingestion.core :as ing-core])
     (ingest!
      (ing-core/ingest-representation
-      (ing-core/parse-representation "test_resources/representations/v0/monthly-revenue.question.yml")))))
+      (ing-core/load-representation-yaml "test_resources/representations/v0/monthly-revenue.question.yml")))))

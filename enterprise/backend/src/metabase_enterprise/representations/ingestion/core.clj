@@ -14,7 +14,7 @@
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]))
 
-(defn parse-representation
+(defn load-representation-yaml
   "Parse a YAML representation file and return the data structure.
    Returns nil if the file cannot be parsed."
   [file]

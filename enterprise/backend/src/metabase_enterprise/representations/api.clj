@@ -61,6 +61,21 @@
         (log/error e "Does not validate.")))
     (yaml/generate-string rep)))
 
+(api.macros/defendpoint :post "/validate"
+  "Validate a YAML representation string and return validation errors if any.
+   Returns an empty string if validation succeeds, or the ex-data as a string if it fails."
+  [_path-params
+   _query-params
+   _body-params
+   request]
+  (try
+    (let [yaml-string (slurp (:body request))
+          representation (yaml/parse-string yaml-string)]
+      (schema/validate-representation representation)
+      "") ; Return empty string on success
+    (catch Exception e
+      (str (ex-data e)))))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/representations` routes."
   (handlers/routes
