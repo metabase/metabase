@@ -5,37 +5,37 @@ description: Product analytics model showing sales performance, inventory metric
 database: Sample Database
 query: |
   SELECT 
-    p.ID AS product_id,
-    p.TITLE AS product_name,
-    p.CATEGORY,
-    p.EAN AS product_code,
-    p.VENDOR,
-    p.PRICE,
-    p.RATING,
-    p.CREATED_AT AS product_created,
-    COUNT(DISTINCT o.ID) AS order_count,
-    COUNT(DISTINCT o.USER_ID) AS unique_buyers,
-    SUM(o.QUANTITY) AS total_units_sold,
-    SUM(o.SUBTOTAL) AS gross_revenue,
-    SUM(o.TOTAL) AS net_revenue,
-    AVG(o.DISCOUNT) AS avg_discount,
-    AVG(o.TAX) AS avg_tax,
-    MAX(o.CREATED_AT) AS last_order_date,
-    MIN(o.CREATED_AT) AS first_order_date,
+    p.ID AS "product_id",
+    p.TITLE AS "product_name",
+    p.CATEGORY AS "category",
+    p.EAN AS "product_code",
+    p.VENDOR AS "vendor",
+    p.PRICE AS "price",
+    p.RATING AS "rating",
+    p.CREATED_AT AS "product_created",
+    COUNT(DISTINCT o.ID) AS "order_count",
+    COUNT(DISTINCT o.USER_ID) AS "unique_buyers",
+    SUM(o.QUANTITY) AS "total_units_sold",
+    SUM(o.SUBTOTAL) AS "gross_revenue",
+    SUM(o.TOTAL) AS "net_revenue",
+    AVG(o.DISCOUNT) AS "avg_discount",
+    AVG(o.TAX) AS "avg_tax",
+    MAX(o.CREATED_AT) AS "last_order_date",
+    MIN(o.CREATED_AT) AS "first_order_date",
     CASE 
       WHEN SUM(o.SUBTOTAL) > 10000 THEN 'Star Product'
       WHEN SUM(o.SUBTOTAL) > 5000 THEN 'High Performer'
       WHEN SUM(o.SUBTOTAL) > 1000 THEN 'Standard'
       WHEN SUM(o.SUBTOTAL) > 0 THEN 'Low Performer'
       ELSE 'No Sales'
-    END AS performance_tier,
+    END AS "performance_tier",
     CASE
       WHEN p.RATING >= 4.5 THEN 'Excellent'
       WHEN p.RATING >= 4.0 THEN 'Good'
       WHEN p.RATING >= 3.0 THEN 'Average'
       WHEN p.RATING IS NOT NULL THEN 'Poor'
       ELSE 'Not Rated'
-    END AS rating_category
+    END AS "rating_category"
   FROM PRODUCTS p
   LEFT JOIN ORDERS o ON p.ID = o.PRODUCT_ID
   GROUP BY p.ID, p.TITLE, p.CATEGORY, p.EAN, p.VENDOR, p.PRICE, p.RATING, p.CREATED_AT
