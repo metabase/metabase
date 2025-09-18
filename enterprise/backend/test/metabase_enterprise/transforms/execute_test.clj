@@ -111,11 +111,7 @@
               (doseq [transform [transform-no-limit transform-limit]]
                 (transforms.execute/run-mbql-transform! transform {:run-method :manual})
                 (let [table-name (-> transform :target :name)
-<<<<<<< HEAD
                       _            (transforms.tu/wait-for-table table-name 10000)
-=======
-                      _            (wait-for-table table-name 10000)
->>>>>>> master
                       table-result (lib.metadata/table mp (mt/id (keyword table-name)))
                       query-result (->> (lib/query mp table-result)
                                         (qp/process-query)
@@ -213,11 +209,7 @@
                                                                         :query query}
                                                                :target target-table}]
                       (transforms.execute/run-mbql-transform! transform {:run-method :manual})
-<<<<<<< HEAD
                       (let [_            (transforms.tu/wait-for-table (:name target-table) 10000)
-=======
-                      (let [_            (wait-for-table (:name target-table) 10000)
->>>>>>> master
                             table-result (lib.metadata/table mp (mt/id (keyword (:name target-table))))
                             query-result (->> (lib/query mp table-result)
                                               (qp/process-query)
