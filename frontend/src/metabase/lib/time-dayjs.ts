@@ -27,24 +27,8 @@ export function getDaylightSavingsChangeTolerance(unit: string) {
     : 0;
 }
 
-// Map 3-letter day abbreviations to day numbers (0 = Sunday, 6 = Saturday)
-const DAY_MAP: Record<string, number> = {
-  sun: 0,
-  mon: 1,
-  tue: 2,
-  wed: 3,
-  thu: 4,
-  fri: 5,
-  sat: 6,
-};
-
 const TEXT_UNIT_FORMATS = {
   "day-of-week": (value: string) => {
-    const dayNumber = DAY_MAP[value.toLowerCase()];
-    if (dayNumber !== undefined) {
-      return dayjs().weekday(dayNumber).startOf("day");
-    }
-
     const day = dayjs(value, "ddd").startOf("day");
     return day.isValid() ? day : dayjs(value).startOf("day");
   },

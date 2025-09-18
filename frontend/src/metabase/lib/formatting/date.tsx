@@ -863,15 +863,17 @@ export function formatDateTimeRangeWithUnit(
 
     // Fix for day-of-year formatting: replace DDD and DDDo with custom formatting
     // because dayjs DDD format token doesn't work like moment's DDD
-    // if (processedFormat.includes("DDDo")) {
-    //   const dayOfYear = date.dayOfYear();
-    //   const ordinal = dayjs().localeData().ordinal(dayOfYear);
-    //   // Replace only the DDDo token
-    //   processedFormat = processedFormat.replace(/DDDo/g, ordinal);
-    //   // Remove brackets from literal text since we're not using dayjs formatting
-    //   processedFormat = processedFormat.replace(/\[([^\]]+)\]/g, "$1");
-    //   return processedFormat;
-    // }
+    if (processedFormat.includes("DDDo")) {
+      const dayOfYear = date.dayOfYear();
+      const ordinal = dayjs().localeData().ordinal(dayOfYear);
+      const formattedDate = processedFormat
+        // Replace DDDo token
+        .replace(/DDDo/g, ordinal)
+        // Remove brackets from literal text since we're not using dayjs formatting
+        .replace(/\[([^\]]+)\]/g, "$1");
+
+      return formattedDate;
+    }
 
     return date.format(processedFormat);
   };
