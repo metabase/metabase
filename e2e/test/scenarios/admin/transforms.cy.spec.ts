@@ -262,7 +262,7 @@ LIMIT
       H.sidebar().should("be.visible");
       H.NativeEditor.value().should("eq", EXPECTED_QUERY);
 
-      H.sidebar().findByText("Convert this question to SQL").click();
+      H.sidebar().findByText("Convert this transform to SQL").click();
       H.sidebar().should("be.visible");
 
       H.NativeEditor.value().should("eq", EXPECTED_QUERY);

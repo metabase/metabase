@@ -73,6 +73,7 @@ export function NativeQuerySidebar({
       <ControlledNotebookNativePreview
         question={question}
         onConvertClick={onConvertToSQLClick}
+        buttonTitle={t`Convert this transform to SQL`}
       />
     </ResizableBox>
   );

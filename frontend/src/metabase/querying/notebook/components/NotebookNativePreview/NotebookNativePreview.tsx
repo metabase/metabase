@@ -59,9 +59,11 @@ export const NotebookNativePreview = () => {
 export const ControlledNotebookNativePreview = ({
   question,
   onConvertClick,
+  buttonTitle,
 }: {
   question: Question;
   onConvertClick: (newQuestion: Question) => void;
+  buttonTitle?: string;
 }) => {
   const database = question.database();
   const engine = database?.engine;
@@ -139,7 +141,7 @@ export const ControlledNotebookNativePreview = ({
           onClick={handleConvertClick}
           disabled={!showQuery}
         >
-          {BUTTON_TITLE[engineType]}
+          {buttonTitle ?? BUTTON_TITLE[engineType]}
         </Button>
       </Box>
     </Box>
