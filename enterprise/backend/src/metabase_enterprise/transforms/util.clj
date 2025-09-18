@@ -14,13 +14,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn qualified-table-name
-  "Return the name of the target table of a transform as a possibly qualified symbol."
-  [_driver {:keys [schema name]}]
-  (if schema
-    (keyword schema name)
-    (keyword name)))
-
 (defn target-table-exists?
   "Test if the target table of a transform already exists."
   [{:keys [source target] :as _transform}]

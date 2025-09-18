@@ -871,3 +871,10 @@
   [driver conn-spec schema]
   (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS \"%s\";" schema)]]]
     (driver/execute-raw-queries! driver conn-spec sql)))
+
+(defmethod driver/compile-rename-table :snowflake
+  [driver old-name new-name]
+  (let [schema (namespace old-name)
+        new-table (cond->> new-name
+                    schema (keyword schema))]
+    (sql.qp/format-honeysql driver {:alter-table [(keyword old-name) {:rename-table (keyword new-table)}]})))
