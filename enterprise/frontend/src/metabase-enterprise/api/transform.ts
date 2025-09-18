@@ -1,3 +1,4 @@
+import { isResourceNotFoundError } from "metabase/lib/errors";
 import type {
   CreateTransformRequest,
   ListTransformRunsRequest,
@@ -115,8 +116,21 @@ export const transformApi = EnterpriseApi.injectEndpoints({
 
         try {
           await queryFulfilled;
-        } catch {
-          patchResult.undo();
+        } catch (error) {
+          if (
+            typeof error === "object" &&
+            error !== null &&
+            "error" in error &&
+            !isResourceNotFoundError(error.error)
+          ) {
+            // Avoid undoing the patch when the error is 404
+            // as this will confuse the transform pages by setting the
+            // status back to started even though we know the run must've
+            // completed (in either succeeded, failed, timeout or canceled state).
+            // We just don't know which state it is, so we leave it in canceling
+            // state until the FE requests the state again.t
+            patchResult.undo();
+          }
         }
       },
     }),
