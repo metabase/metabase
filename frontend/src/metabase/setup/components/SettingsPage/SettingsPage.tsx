@@ -63,7 +63,7 @@ export const SettingsPage = (): JSX.Element => {
                     w={TOOLTIP_WIDTH}
                     ta="center"
                   >
-                    <Icon name="info_filled" aria-label={tooltipText} />
+                    <Icon name="info" aria-label={tooltipText} />
                   </Tooltip>
                 </div>
               </Flex>
