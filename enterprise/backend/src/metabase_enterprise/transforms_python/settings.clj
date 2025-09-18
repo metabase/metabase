@@ -6,7 +6,7 @@
 
 (def ^:private is-not-prod? (or config/is-dev? config/is-test?))
 
-(setting/defsetting python-runner-url
+(setting/defsetting python-execution-server-url
   (deferred-tru "URL for the Python execution server that runs transform functions.")
   :type :string
   :visibility :admin
@@ -54,7 +54,7 @@
   (deferred-tru "S3 bucket name for storing Python execution artifacts.")
   :type :string
   :visibility :admin
-  :default (if is-not-prod? "metabase-python-runner" "metabase-cloud-python-runner-staging")
+  :default (when is-not-prod? "metabase-python-runner")
   :feature :transforms
   :doc false
   :export? false
@@ -66,7 +66,7 @@
   :type :string
   :visibility :admin
   :feature :transforms
-  :default (if is-not-prod? "test-prefix" "hosting-4b9351bb22b84791")
+  :default (when is-not-prod? "test-prefix")
   :doc false
   :export? false
   :encryption :no
