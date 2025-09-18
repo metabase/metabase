@@ -1,5 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { Link } from "react-router";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
@@ -57,6 +58,8 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
   const { id, last_run } = transform;
   const systemTimezone = useSetting("system-timezone");
 
+  const previousStatus = usePrevious(last_run?.status);
+
   if (last_run == null) {
     return (
       <Group gap="sm" data-testid="run-status">
@@ -101,15 +104,23 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
       );
     case "succeeded":
       return (
-        <Group gap="sm" data-testid="run-status">
-          <Icon c="success" name="check_filled" />
-          <Box>
-            {endTimeText
-              ? t`Last ran ${endTimeText} successfully.`
-              : t`Last ran successfully.`}
-          </Box>
-          {runsInfo}
-        </Group>
+        <Stack gap={0}>
+          <Group gap="sm" data-testid="run-status">
+            <Icon c="success" name="check_filled" />
+            <Box>
+              {endTimeText
+                ? t`Last ran ${endTimeText} successfully.`
+                : t`Last ran successfully.`}
+            </Box>
+            {runsInfo}
+          </Group>
+          {previousStatus === "canceling" && (
+            <Box
+              c="text-light"
+              ml="lg"
+            >{t`This run succeeded before it had a chance to cancel.`}</Box>
+          )}
+        </Stack>
       );
     case "failed":
       return (
