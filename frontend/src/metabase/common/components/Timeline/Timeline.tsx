@@ -60,7 +60,7 @@ export function Timeline({
                   </Tooltip>
                 )}
               </EventHeader>
-              <Tooltip label={getFormattedTime(timestamp)}>
+              <Tooltip position="bottom" label={getFormattedTime(timestamp)}>
                 <Timestamp dateTime={timestamp}>
                   {getRelativeTime(timestamp)}
                 </Timestamp>
