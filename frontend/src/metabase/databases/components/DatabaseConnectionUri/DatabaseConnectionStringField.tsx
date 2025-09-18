@@ -133,11 +133,6 @@ export function DatabaseConnectionStringField({
       onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => {
         setConnectionString(event.target.value);
       }}
-      onPaste={(event: React.ClipboardEvent<HTMLTextAreaElement>) => {
-        event.preventDefault();
-        const clipboardData = event.clipboardData.getData("Text");
-        setConnectionString(clipboardData);
-      }}
       mb="md"
       placeholder={placeholder}
       name="connection-string"
