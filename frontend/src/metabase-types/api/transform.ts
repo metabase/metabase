@@ -168,3 +168,17 @@ export type ExecutePythonTransformResponse = {
   exit_code?: number;
   timeout?: boolean;
 };
+
+export type PythonLibrary = {
+  path: string;
+  source: string;
+};
+
+export type GetPythonLibraryRequest = {
+  path: string;
+};
+
+export type UpdatePythonLibraryRequest = {
+  path: string;
+  source: string;
+};
