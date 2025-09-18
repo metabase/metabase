@@ -20,8 +20,16 @@
    
    For POC: Focuses on the minimal fields needed."
   [{question-name :name
-    :keys [type ref description database collection] :as representation}]
-  (let [database-id (ing-com/find-database-id database)]
+    :keys [type ref description database collection] :as representation}
+   & {:keys [creator-id]
+      :or {creator-id config/internal-mb-user-id}}]
+  (let [database-id (ing-com/find-database-id database)
+        ;; Ugliness within ugliness:
+        entity-id (when-let [ref (:ref representation)]
+                    (u/generate-nano-id (str
+                                         (hash (str (:collection_id representation)
+                                                    "/"
+                                                    (:ref representation))))))]
     (when-not database-id
       (throw (ex-info (str "Database not found: " database)
                       {:database database})))
@@ -29,6 +37,8 @@
      {;; :id
       ;; :created_at
       ;; :updated_at
+      :entity_id entity-id
+      :creator_id creator-id
       :name question-name
       :description (or description "")
       :display :table ; Default display type
@@ -56,13 +66,8 @@
    Returns the created/updated Card."
   [representation & {:keys [creator-id]
                      :or {creator-id config/internal-mb-user-id}}]
-  (let [question-data (representation->question-data representation)
-        ;; Ugliness within ugliness:
-        entity-id (when-let [ref (:ref representation)]
-                    (u/generate-nano-id (str
-                                         (hash (str (:collection_id representation)
-                                                    "/"
-                                                    (:ref representation))))))
+  (let [question-data (representation->question-data representation :creator-id creator-id)
+        entity-id (:entity_id question-data)
         existing (when entity-id
                    (t2/select-one :model/Card :entity_id entity-id))]
     (if existing
@@ -72,10 +77,7 @@
         (t2/select-one :model/Card :id (:id existing)))
       (do
         (log/info "Creating new question" (:name question-data))
-        (let [question-data-with-creator (-> question-data
-                                             (assoc :creator_id creator-id)
-                                             (assoc :entity_id entity-id))]
-          (first (t2/insert-returning-instances! :model/Card question-data-with-creator)))))))
+        (first (t2/insert-returning-instances! :model/Card question-data))))))
 
 (comment
   (do ; make the sample_database
