@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { hasFeature } from "metabase/admin/databases/utils";
 import { useListDatabasesQuery, useListTablesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { slugify } from "metabase/lib/formatting";
 import {
   ActionIcon,
   Box,
@@ -34,15 +35,6 @@ type PythonDataPickerProps = {
     tables: Record<string, { id: number; name: string }>,
   ) => void;
 };
-
-// Helper function to slugify table names
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, "") // Remove non-word chars
-    .replace(/[\s_-]+/g, "_") // Replace spaces, underscores, hyphens with single underscore
-    .replace(/^_+|_+$/g, ""); // Remove leading/trailing underscores
-}
 
 export function PythonDataPicker({
   database,
