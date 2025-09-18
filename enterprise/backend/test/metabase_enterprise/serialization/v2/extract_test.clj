@@ -1303,7 +1303,7 @@
                                                                                                     :dimension dimension}}}}})}}}]
 
       (testing "selecting a collection includes settings metabot and data model by default"
-        (is (= #{"Card" "Collection" "Dashboard" "Database" "Setting"}
+        (is (= #{"Card" "Collection" "Dashboard" "Database" "Setting" "TransformTag"}
                (->> {:targets [["Collection" coll1-id]]}
                     extract/extract
                     (map (comp :model first serdes/path))
@@ -1314,7 +1314,7 @@
           (is (= #{[{:model "Dashboard" :id dash1-eid :label "dashboard_1"}]
                    [{:model "Card"      :id c1-1-eid  :label "question_1_1"}]
                    [{:model "Card"      :id c1-2-eid  :label "question_1_2"}]}
-                 (->> (extract/extract {:targets [["Dashboard" dash1-id]] :no-settings true :no-data-model true})
+                 (->> (extract/extract {:targets [["Dashboard" dash1-id]] :no-settings true :no-data-model true :no-transforms true})
                       (map serdes/path)
                       set))))
 
@@ -1322,7 +1322,7 @@
           (is (= #{[{:model "Dashboard" :id dash2-eid :label "dashboard_2"}]
                    [{:model "Card"      :id c2-1-eid  :label "question_2_1"}]
                    [{:model "Card"      :id c2-2-eid  :label "question_2_2"}]}
-                 (->> (extract/extract {:targets [["Dashboard" dash2-id]] :no-settings true :no-data-model true})
+                 (->> (extract/extract {:targets [["Dashboard" dash2-id]] :no-settings true :no-data-model true :no-transforms true})
                       (map serdes/path)
                       set))))
 
@@ -1330,7 +1330,7 @@
           (is (= #{[{:model "Dashboard" :id dash3-eid :label "dashboard_3"}]
                    [{:model "Card"      :id c3-1-eid  :label "question_3_1"}]
                    [{:model "Card"      :id c3-2-eid  :label "question_3_2"}]}
-                 (->> (extract/extract {:targets [["Dashboard" dash3-id]] :no-settings true :no-data-model true})
+                 (->> (extract/extract {:targets [["Dashboard" dash3-id]] :no-settings true :no-data-model true :no-transforms true})
                       (map serdes/path)
                       set))))
 
@@ -1341,7 +1341,7 @@
                     [{:model "Card"          :id c1-1-eid  :label "question_1_1"}]
                     ;; card that the card on dashboard linked to
                     [{:model "Card"          :id c1-2-eid  :label "question_1_2"}]}
-                  (->> (extract/extract {:targets [["Dashboard" dash4-id]] :no-settings true :no-data-model true})
+                  (->> (extract/extract {:targets [["Dashboard" dash4-id]] :no-settings true :no-data-model true :no-transforms true})
                        (map serdes/path)
                        set)))))
 
@@ -1353,7 +1353,7 @@
                   [{:model "Card"            :id c4-eid        :label "question_4_1"}]    ; Transitive via dash4
                   [{:model "Card"            :id c1-1-eid      :label "question_1_1"}]    ; Linked by c4
                   [{:model "Card"            :id c1-2-eid      :label "question_1_2"}]}   ; Linked by dash4
-                (->> (extract/extract {:targets [["Dashboard" clickdash-id]] :no-settings true :no-data-model true})
+                (->> (extract/extract {:targets [["Dashboard" clickdash-id]] :no-settings true :no-data-model true :no-transforms true})
                      (map serdes/path)
                      set))))
 
@@ -1378,23 +1378,23 @@
                                   [{:model "Card"          :id c1-3-eid  :label "question_1_3"}]}]
           (testing "grandchild collection has all its own contents"
             (is (= grandchild-paths ; Includes the third card not found in the collection
-                   (->> (extract/extract {:targets [["Collection" coll3-id]] :no-settings true :no-data-model true})
+                   (->> (extract/extract {:targets [["Collection" coll3-id]] :no-settings true :no-data-model true :no-transforms true})
                         (map serdes/path)
                         set))))
           (testing "middle collection has all its own plus the grandchild and its contents"
             (is (= (set/union middle-paths grandchild-paths)
-                   (->> (extract/extract {:targets [["Collection" coll2-id]] :no-settings true :no-data-model true})
+                   (->> (extract/extract {:targets [["Collection" coll2-id]] :no-settings true :no-data-model true :no-transforms true})
                         (map serdes/path)
                         set))))
           (testing "grandparent collection has all its own plus the grandchild and middle collections with contents"
             (is (= (set/union grandparent-paths middle-paths grandchild-paths)
-                   (->> (extract/extract {:targets [["Collection" coll1-id]] :no-settings true :no-data-model true})
+                   (->> (extract/extract {:targets [["Collection" coll1-id]] :no-settings true :no-data-model true :no-transforms true})
                         (map serdes/path)
                         set))))
 
           (testing "depending on data from personal collections results in errors"
             (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
-              (extract/extract {:targets [["Collection" coll4-id]] :no-settings true :no-data-model true})
+              (extract/extract {:targets [["Collection" coll4-id]] :no-settings true :no-data-model true :no-transforms true})
               (let [msgs (into #{}
                                (map :message)
                                (messages))]
@@ -1463,7 +1463,7 @@
                  [{:model "Collection" :id coll-eid :label "some_collection"}]
                  [{:model "Card" :id card-eid :label "a_normal_question"}]}
                (->> {:targets [["Collection" coll-id]]
-                     :no-settings true :no-data-model true}
+                     :no-settings true :no-data-model true :no-transforms true}
                     extract/extract
                     (map serdes/path)
                     (into #{})))))
@@ -1472,7 +1472,7 @@
                  {:column_settings {"[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Other Field\"],null]]" {}
                                     "[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Field To Click 2\"],null]]" {}}}}
                (->> {:targets [["Collection" coll-id]]
-                     :no-settings true :no-data-model true}
+                     :no-settings true :no-data-model true :no-transforms true}
                     extract/extract
                     (filter #(= (:entity_id %) clickdash-eid))
                     first
@@ -1944,3 +1944,133 @@
         (is (=? {:serdes/meta [{:model "Glossary" :id "foobar"}]
                  :term        "foobar"}
                 ser))))))
+
+(deftest transforms-and-tags-test
+  (mt/with-premium-features #{:transforms}
+    (mt/with-empty-h2-app-db!
+      ;; Delete the existing built-in transform tags
+      (t2/delete! :model/TransformTag)
+      (ts/with-temp-dpc [:model/Database
+                         {db-id :id}
+                         {:name "My Database"}
+
+                         :model/Table
+                         {table-id :id}
+                         {:name "Schemaless Table" :db_id db-id}
+
+                         :model/Field
+                         {field-id :id}
+                         {:name "Some Field" :table_id table-id}
+
+                         ;; Create built-in tags
+                         :model/TransformTag
+                         {hourly-tag-id :id
+                          hourly-tag-eid :entity_id}
+                         {:name "hourly" :built_in_type "hourly"}
+
+                         :model/TransformTag
+                         {daily-tag-id :id
+                          daily-tag-eid :entity_id}
+                         {:name "daily" :built_in_type "daily"}
+
+                         ;; Create custom tag
+                         :model/TransformTag
+                         {custom-tag-id :id
+                          custom-tag-eid :entity_id}
+                         {:name "custom-etl"}
+
+                         ;; Create Transform
+                         :model/Transform
+                         {transform-id :id
+                          transform-eid :entity_id}
+                         {:name "Test Transform"
+                          :description "A test transform for serialization"
+                          :source {:database db-id
+                                   :type "query"
+                                   :query {:source-table table-id}}
+                          :target {:database db-id
+                                   :type "table"
+                                   :schema "public"
+                                   :name "target_table"}}
+
+                         ;; Create tag associations with specific positions
+                         :model/TransformTransformTag
+                         {}
+                         {:transform_id transform-id
+                          :tag_id hourly-tag-id
+                          :position 0}
+
+                         :model/TransformTransformTag
+                         {}
+                         {:transform_id transform-id
+                          :tag_id custom-tag-id
+                          :position 1}
+
+                         :model/TransformTransformTag
+                         {}
+                         {:transform_id transform-id
+                          :tag_id daily-tag-id
+                          :position 2}]
+
+        (testing "TransformTag extraction"
+          (testing "built-in tags extract correctly"
+            (let [ser (serdes/extract-one "TransformTag" {} (t2/hydrate (t2/select-one :model/TransformTag :id hourly-tag-id) :tags))]
+              (is (=? {:serdes/meta [{:model "TransformTag"
+                                      :id hourly-tag-eid}]
+                       :name "hourly"
+                       :built_in_type "hourly"
+                       :created_at string?
+                       :updated_at string?}
+                      ser))
+              (is (not (contains? ser :id)))
+              (is (empty? (serdes/dependencies ser)))))
+
+          (testing "custom tags extract correctly"
+            (let [ser (serdes/extract-one "TransformTag" {} (t2/hydrate (t2/select-one :model/TransformTag :id custom-tag-id) :tags))]
+              (is (=? {:serdes/meta [{:model "TransformTag"
+                                      :id custom-tag-eid}]
+                       :name "custom-etl"
+                       :built_in_type nil
+                       :created_at string?
+                       :updated_at string?}
+                      ser))
+              (is (not (contains? ser :id)))
+              (is (empty? (serdes/dependencies ser))))))
+
+        (testing "Transform extraction"
+          (let [ser (serdes/extract-one "Transform" {} (t2/hydrate (t2/select-one :model/Transform :id transform-id) :tags))]
+            (testing "basic Transform structure"
+              (is (=? {:serdes/meta [{:model "Transform"
+                                      :id transform-eid}]
+                       :name "Test Transform"
+                       :description "A test transform for serialization"
+                       :created_at string?
+                       :updated_at string?}
+                      ser))
+              (is (not (contains? ser :id))))
+
+            (testing "source and target MBQL export"
+              (is (=? {:source {:database "My Database" :type "query" :query {:source-table ["My Database" nil "Schemaless Table"]}}
+                       :target {:database "My Database" :type "table" :schema "public" :name "target_table"}}
+                      (select-keys ser [:source :target]))))
+
+            (testing "tag associations with preserved order"
+              (is (= 3 (count (:tags ser))))
+              (let [tag-ids (map :tag_id (:tags ser))
+                    positions (map :position (:tags ser))]
+                (is (= [hourly-tag-eid custom-tag-eid daily-tag-eid] tag-ids))
+                (is (= [0 1 2] positions))))
+
+            (testing "dependencies include source table and tags"
+              (let [deps (set (serdes/dependencies ser))]
+                (is (contains? deps [{:model "Database" :id "My Database"}
+                                     {:model "Table" :id "Schemaless Table"}]))
+                (is (contains? deps [{:model "TransformTag" :id hourly-tag-eid}]))
+                (is (contains? deps [{:model "TransformTag" :id custom-tag-eid}]))
+                (is (contains? deps [{:model "TransformTag" :id daily-tag-eid}]))))))
+
+        (testing "extraction counts"
+          (is (= #{transform-eid}
+                 (ids-by-model "Transform" (extract/extract nil))))
+          (is (= #{hourly-tag-eid daily-tag-eid custom-tag-eid}
+                 (ids-by-model "TransformTag" (extract/extract nil)))))))))

@@ -159,6 +159,14 @@
                                   :points_of_interest
                                   :caveats
                                   :serdes/meta]
+ :Transform                      []
+ ;; TODO(johnswanson) Why is this necessary here, not for e.g. `:dataset_query`?
+ [:Transform :source]            []
+ [:Transform :target]            []
+ [:Transform :source :query]     []
+ [:Transform :source :query :native] []
+ [:Transform :source :query :native :template-tags] []
+ :TransformTag                   []
  :Metabot                        [:name
                                   :description
                                   :created_at
