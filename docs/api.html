@@ -242,19 +242,22 @@ redirect_from:
             "type" : "string"
           },
           "tool_calls" : {
-            "type" : "object",
-            "properties" : {
-              "arguments" : {
-                "type" : "string"
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : {
+                "arguments" : {
+                  "type" : "string"
+                },
+                "id" : {
+                  "type" : "string"
+                },
+                "name" : {
+                  "type" : "string"
+                }
               },
-              "id" : {
-                "type" : "string"
-              },
-              "name" : {
-                "type" : "string"
-              }
-            },
-            "required" : [ "id", "name", "arguments" ]
+              "required" : [ "id", "name", "arguments" ]
+            }
           }
         },
         "required" : [ "role" ]
