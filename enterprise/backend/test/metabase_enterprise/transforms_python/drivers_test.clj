@@ -266,7 +266,7 @@
           (testing (str "Exotic types for " driver-key)
             (let [{:keys [metadata]} validation
                   type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                             [name (keyword "type" base_type)])]
+                             [name (transforms.execute/restricted-insert-type base_type)])]
 
               (is (isa? :type/Integer (type-map "id")))
 
@@ -296,57 +296,6 @@
                              (is (isa? (type-map "datetimeoffset_field") :type/Text #_:type/DateTimeWithTZ)))))))
         validation))))
 
-#_(defn- test-exotic-edge-cases-for-driver!
-    "Helper to test exotic edge cases for a specific driver with custom schema and transform code generator."
-    [driver edge-schema transform-code-fn validation-fn]
-    (with-test-table [table-id table-name] [edge-schema (:data edge-schema)]
-      (let [transform-code (if (fn? transform-code-fn)
-                             (transform-code-fn table-name)
-                             transform-code-fn)
-            result (execute! {:code transform-code
-                              :tables {table-name table-id}})]
-
-        (testing (str driver " exotic transform succeeded")
-          (is (some? result) "Transform should succeed")
-          (is (contains? result :output) "Should have output")
-          (is (contains? result :output-manifest) "Should have output manifest"))
-
-        (when result
-          (let [lines (str/split-lines (:output result))
-                rows (map json/decode lines)
-                metadata (:output-manifest result)
-                headers (map :name (:fields metadata))]
-
-          ;; Call the custom validation function
-            (when validation-fn
-              (validation-fn rows metadata headers))
-
-          ;; Test the additional table creation and cleanup pattern
-            (let [additional-table-name (mt/random-name)
-                  additional-table (when (:output-manifest result)
-                                     (let [temp-file (java.io.File/createTempFile "test-output" ".jsonl")]
-                                       (try
-                                         (spit temp-file (:output result))
-                                         (#'transforms.execute/create-table-and-insert-data!
-                                          driver/*driver*
-                                          (mt/id)
-                                          (cond->> additional-table-name
-                                            (= driver :bigquery-cloud-sdk)
-                                            (keyword (sql.tx/session-schema driver)))
-                                          (:output-manifest result)
-                                          {:type :jsonl-file
-                                           :file temp-file})
-                                         (sync/sync-database! (mt/db) {:scan :schema})
-                                         (wait-for-table additional-table-name)
-                                         (finally
-                                           (.delete temp-file)))))]
-              (testing "Additional table creation and cleanup works"
-                (is (some? additional-table) "Additional table should be created successfully"))
-              (when additional-table
-                (cleanup-table! (:id additional-table))))))
-
-        result)))
-
 (deftest create-table-test
   (testing "Test we can create base table"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
@@ -368,7 +317,7 @@
               (let [{:keys [metadata]} validation]
                 (testing "Base type preservation"
                   (let [type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                                   [name (keyword "type" base_type)])]
+                                   [name (transforms.execute/restricted-insert-type base_type)])]
                     (is (isa? (type-map "id") (if (= driver/*driver* :snowflake) :type/Number :type/Integer)))
                     (is (isa? (type-map "name") :type/Text))
                     (is (isa? (type-map "price") :type/Float))
@@ -422,7 +371,7 @@
               (when validation
                 (let [{:keys [rows metadata]} validation
                       type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                                 [name (keyword "type" base_type)])]
+                                 [name (transforms.execute/restricted-insert-type base_type)])]
 
                   (testing "Original columns preserved"
                     (is (isa? (type-map "id") (if (= driver/*driver* :snowflake) :type/Number :type/Integer)))
@@ -487,7 +436,7 @@
                   (testing "Computed columns are added correctly"
                     (let [{:keys [metadata]} validation
                           type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                                     [name (keyword "type" base_type)])]
+                                     [name (transforms.execute/restricted-insert-type base_type)])]
                       (is (= :type/Float (type-map "computed_field")))
                       (is (= :type/Text (type-map "name_upper"))))))))))))))
 
@@ -578,6 +527,57 @@
                   (when exotic-table-id
                     (cleanup-table! exotic-table-id)))))))))))
 
+#_(defn- test-exotic-edge-cases-for-driver!
+    "Helper to test exotic edge cases for a specific driver with custom schema and transform code generator."
+    [driver edge-schema transform-code-fn validation-fn]
+    (with-test-table [table-id table-name] [edge-schema (:data edge-schema)]
+      (let [transform-code (if (fn? transform-code-fn)
+                             (transform-code-fn table-name)
+                             transform-code-fn)
+            result (execute! {:code transform-code
+                              :tables {table-name table-id}})]
+
+        (testing (str driver " exotic transform succeeded")
+          (is (some? result) "Transform should succeed")
+          (is (contains? result :output) "Should have output")
+          (is (contains? result :output-manifest) "Should have output manifest"))
+
+        (when result
+          (let [lines (str/split-lines (:output result))
+                rows (map json/decode lines)
+                metadata (:output-manifest result)
+                headers (map :name (:fields metadata))]
+
+          ;; Call the custom validation function
+            (when validation-fn
+              (validation-fn rows metadata headers))
+
+          ;; Test the additional table creation and cleanup pattern
+            (let [additional-table-name (mt/random-name)
+                  additional-table (when (:output-manifest result)
+                                     (let [temp-file (java.io.File/createTempFile "test-output" ".jsonl")]
+                                       (try
+                                         (spit temp-file (:output result))
+                                         (#'transforms.execute/create-table-and-insert-data!
+                                          driver/*driver*
+                                          (mt/id)
+                                          (cond->> additional-table-name
+                                            (= driver :bigquery-cloud-sdk)
+                                            (keyword (sql.tx/session-schema driver)))
+                                          (:output-manifest result)
+                                          {:type :jsonl-file
+                                           :file temp-file})
+                                         (sync/sync-database! (mt/db) {:scan :schema})
+                                         (wait-for-table additional-table-name)
+                                         (finally
+                                           (.delete temp-file)))))]
+              (testing "Additional table creation and cleanup works"
+                (is (some? additional-table) "Additional table should be created successfully"))
+              (when additional-table
+                (cleanup-table! (:id additional-table))))))
+
+        result)))
+
 #_(deftest exotic-edge-cases-python-transform-postgres-test
     (testing "PostgreSQL exotic edge cases"
       (mt/test-driver :postgres
@@ -647,7 +647,7 @@
 
                                       (testing "Type preservation for exotic types"
                                         (let [type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                                                         [name (keyword "type" base_type)])]
+                                                         [name (transforms.execute/restricted-insert-type base_type)])]
                                           (is (isa? (type-map "inet_field") :type/IPAddress))
                                           (is (isa? (type-map "money_field") :type/Float))
                                           (is (isa? (type-map "int_array") :type/Array))
@@ -738,7 +738,7 @@
 
                                    (testing "Type preservation for MySQL exotic types"
                                      (let [type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                                                      [name (keyword "type" base_type)])]
+                                                      [name (transforms.execute/restricted-insert-type base_type)])]
                                        (is (isa? (type-map "json_field") (if (mysql/mariadb? (mt/db)) :type/Text :type/JSON)))
                                        (is (isa? (type-map "year_field") :type/Integer))
                                        (is (isa? (type-map "enum_field") :type/Text))
@@ -844,7 +844,7 @@
 
                                       (testing "Type preservation for BigQuery exotic types"
                                         (let [type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                                                         [name (keyword "type" base_type)])]
+                                                         [name (transforms.execute/restricted-insert-type base_type)])]
                                          ;; we're lossy
                                           (is (isa? (type-map "struct_field") :type/JSON))
                                           (is (isa? (type-map "numeric_precise") :type/Decimal))

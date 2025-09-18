@@ -118,18 +118,23 @@
     (reify Closeable
       (close [_] (cleanup fut)))))
 
+(defn restricted-insert-type
+  "Type for insertion restricted to supported"
+  [base_type]
+  (if base_type
+    (let [base-type-kw (keyword "type" base_type)]
+      (if (python-runner/root-type base-type-kw)
+        base-type-kw
+        :type/Text))
+    :type/Text))
+
 (defn- create-table-and-insert-data!
   "Create a table from metadata and insert data from source."
   [driver db-id table-name metadata data-source]
   (let [table-schema {:name (if (keyword? table-name) table-name (keyword table-name))
                       :columns (mapv (fn [{:keys [name base_type #_database_type]}]
                                        {:name name
-                                        :type (if base_type
-                                                (let [base-type-kw (keyword "type" base_type)]
-                                                  (if (python-runner/root-type base-type-kw)
-                                                    base-type-kw
-                                                    :type/Text))
-                                                :type/Text)
+                                        :type (restricted-insert-type base_type)
                                         ;; :database-type database_type
                                         :nullable? true})
                                      (:fields metadata))}
