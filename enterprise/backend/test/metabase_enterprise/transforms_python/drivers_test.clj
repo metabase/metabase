@@ -253,7 +253,7 @@
 (defn- test-exotic-types-for-driver!
   "Helper to test exotic types for the current driver."
   [driver-key]
-  (when-let [exotic-config (get driver-exotic-types driver-key)]
+  (when-let [exotic-config (get driver-exotic-types (if (mysql/mariadb? (mt/db)) :mariadb driver-key))]
     (with-test-table [table-id table-name] [exotic-config (:data exotic-config)]
       (let [transform-code (simple-identity-transform-code table-name)
             expected-columns (map :name (:columns exotic-config))
@@ -293,7 +293,7 @@
 
                 :sqlserver (do
                              (is (isa? (type-map "uuid_field") :type/Text #_:type/UUID))
-                             (is (isa? (type-map "datetimeoffset_field") :type/Text #_:type/DateTimeWithTZ)))))))
+                             (is (isa? (type-map "datetimeoffset_field") :type/DateTimeWithTZ)))))))
         validation))))
 
 (deftest create-table-test
