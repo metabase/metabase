@@ -137,9 +137,6 @@
     :else
     v))
 
-(defn- preprocess-fields-meta [_driver fields-meta]
-  (->> fields-meta))
-
 (defn- write-table-data-to-file! [{:keys [db-id driver table-id fields-meta temp-file cancel-chan]}]
   (let [query    {:source-table table-id}]
     (execute-mbql-query driver db-id query
