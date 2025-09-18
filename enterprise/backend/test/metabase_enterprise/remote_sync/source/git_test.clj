@@ -135,64 +135,69 @@
 (deftest write-files
   (mt/with-temp-dir [remote-dir nil]
     (let [[source remote] (init-source! remote-dir
-                                        :files {"master.txt"      "File in master"
-                                                "subdir/path.txt" "File in subdir"}
+                                        :files {"master.txt"         "File in master"
+                                                "master2.txt"        "File 2 in master"
+                                                "subdir/path.txt"    "File in subdir"
+                                                "subdir/path2.txt"   "File 2 in subdir"
+                                                "otherdir/path.txt"  "File in otherdir"
+                                                "otherdir/path2.txt" "File 2 in otherdir"
+                                                "thirddir/path.txt"  "File in third dir"
+                                                "thirddir/path2.txt" "File 2 in third dir"}
                                         :branches ["branch-1" "branch-2"])]
-      (testing "Updating existing file on master"
-        (source.p/write-files! source "master" "Update existing file" [{:path "master.txt" :content "Updated master content"}])
+      (testing "Files in a subdir are replaced, other subdirs and root are unchanged"
+        (source.p/write-files! source "master" "Update 1" [{:path "master.txt" :content "Updated master content"}
+                                                           {:path "subdir/path.txt" :content "Updated subdir content"}
+                                                           {:path "subdir/path3.txt" :content "Updated subdir content 3"}
+                                                           {:path "thirddir/path.txt" :content "Updated third dir content"}
+                                                           {:path "thirddir/path3.txt" :content "Updated third dir content 3"}])
+        (is (= ["Update 1" "Initial commit"] (map :message (git/log source "master"))))
+        (is (= ["master.txt" "master2.txt" "otherdir/path.txt" "otherdir/path2.txt" "subdir/path.txt" "subdir/path3.txt" "thirddir/path.txt" "thirddir/path3.txt"]
+               (source.p/list-files source "master")))
+
         (is (= "Updated master content" (source.p/read-file source "master" "master.txt")))
-        (is (= ["master.txt"] (source.p/list-files source "master")))
-        (is (= ["Update existing file" "Initial commit"] (map :message (git/log source "master"))))
+        (is (= "File 2 in master" (source.p/read-file source "master" "master2.txt")))
+        (is (= "File 2 in otherdir" (source.p/read-file source "master" "otherdir/path2.txt")))
+        (is (= "Updated subdir content" (source.p/read-file source "master" "subdir/path.txt")))
+        (is (= "Updated subdir content 3" (source.p/read-file source "master" "subdir/path3.txt")))
 
         (testing "Check remote repo directly"
           (is (= "Updated master content" (git/read-file remote "master" "master.txt")))
-          (is (= ["master.txt"] (git/list-files remote "master")))
-          (is (= ["Update existing file" "Initial commit"] (map :message (git/log remote "master"))))))
+          (is (= ["master.txt" "master2.txt" "otherdir/path.txt" "otherdir/path2.txt" "subdir/path.txt" "subdir/path3.txt" "thirddir/path.txt" "thirddir/path3.txt"]
+                 (git/list-files remote "master")))
+          (is (= ["Update 1" "Initial commit"] (map :message (git/log remote "master"))))))
 
-      (testing "Writing a new file to master"
-        (source.p/write-files! source "master" "Add new file" [{:path "new-file.txt" :content "New file content"}])
-        (is (= "New file content" (source.p/read-file source "master" "new-file.txt")))
-        (is (= ["new-file.txt"] (source.p/list-files source "master")))
-        (is (nil? (source.p/read-file source "master" "master.txt")))
-        (is (= ["Add new file" "Update existing file" "Initial commit"] (map :message (git/log source "master"))))
+      (testing "If no root fils are touched, they all stay as-is"
+        (source.p/write-files! source "master" "Update 2" [{:path "thirddir/path.txt" :content "Only third dir content"}])
+        (is (= ["master.txt" "master2.txt" "otherdir/path.txt" "otherdir/path2.txt" "subdir/path.txt" "subdir/path3.txt" "thirddir/path.txt"]
+               (git/list-files remote "master"))))
 
-        (testing "Check remote repo directly"
-          (is (= "New file content" (git/read-file remote "master" "new-file.txt")))
-          (is (= ["new-file.txt"] (git/list-files remote "master")))
-          (is (= ["Add new file" "Update existing file" "Initial commit"] (map :message (git/log remote "master"))))))
-
-      (testing "Writing multiple files"
-        (source.p/write-files! source "master" "Multi-file" [{:path "subdir/sub-file.txt" :content "File newly added"}
-                                                             {:path "new-file.txt" :content "Updated new file"}])
-
-        (is (= "File newly added" (source.p/read-file source "master" "subdir/sub-file.txt")))
-        (is (= "Updated new file" (source.p/read-file source "master" "new-file.txt")))
-        (is (= ["new-file.txt" "subdir/sub-file.txt"] (source.p/list-files source "master")))
-        (is (= ["Multi-file" "Add new file" "Update existing file" "Initial commit"] (map :message (git/log remote "master")))))
-
-      (testing "Writing to a new branch"
+      (testing "Writing a a new branch"
         (source.p/write-files! source "new-branch" "New Branch" [{:path "branched/branched-file.txt" :content "File added to branch"}
+                                                                 {:path "branched/branched-file2.txt" :content "File 2 added to branch"}
+                                                                 {:path "otherdir/path.txt" :content "Updated otherdir/path in branch"}
+                                                                 {:path "otherdir/path3.txt" :content "Updated otherdir/path in branch"}
                                                                  {:path "new-file.txt" :content "Updated file in branch"}])
 
         (is (= "File added to branch" (source.p/read-file source "new-branch" "branched/branched-file.txt")))
         (is (= "Updated file in branch" (source.p/read-file source "new-branch" "new-file.txt")))
-        (is (= ["branched/branched-file.txt" "new-file.txt"] (source.p/list-files source "new-branch")))
-        (is (= ["New Branch" "Multi-file" "Add new file" "Update existing file" "Initial commit"] (map :message (git/log source "new-branch"))))
+        (is (= ["branched/branched-file.txt" "branched/branched-file2.txt" "master.txt" "master2.txt" "new-file.txt" "otherdir/path.txt" "otherdir/path3.txt" "subdir/path.txt" "subdir/path3.txt" "thirddir/path.txt"] (source.p/list-files source "new-branch")))
+        (is (= ["New Branch" "Update 2" "Update 1" "Initial commit"] (map :message (git/log source "new-branch"))))
 
         (testing "Check remote repo"
-          (is (= ["New Branch" "Multi-file" "Add new file" "Update existing file" "Initial commit"] (map :message (git/log remote "new-branch"))))))
+          (is (= ["New Branch" "Update 2" "Update 1" "Initial commit"] (map :message (git/log remote "new-branch"))))))
 
       (testing "Updating a branch"
         (source.p/write-files! source "new-branch" "Updating Branch" [{:path "branched/branched-file.txt" :content "File updated in branch"}
+                                                                      {:path "branched/branched-file3.txt" :content "File 3 updated in branch"}
                                                                       {:path "another-file.txt" :content "Added in 2nd commit"}])
 
         (is (= "File updated in branch" (source.p/read-file source "new-branch" "branched/branched-file.txt")))
         (is (= "Added in 2nd commit" (source.p/read-file source "new-branch" "another-file.txt")))
-        (is (= ["another-file.txt" "branched/branched-file.txt"] (source.p/list-files source "new-branch")))
-        (is (= ["Updating Branch" "New Branch" "Multi-file" "Add new file" "Update existing file" "Initial commit"] (map :message (git/log source "new-branch"))))
+        (is (= ["another-file.txt" "branched/branched-file.txt" "branched/branched-file3.txt" "master.txt" "master2.txt" "new-file.txt" "otherdir/path.txt" "otherdir/path3.txt" "subdir/path.txt" "subdir/path3.txt" "thirddir/path.txt"] (source.p/list-files source "new-branch")))
+        (is (= ["Updating Branch" "New Branch" "Update 2" "Update 1" "Initial commit"] (map :message (git/log source "new-branch"))))
 
         (testing "Check remote repo"
-          (is (= ["Updating Branch" "New Branch" "Multi-file" "Add new file" "Update existing file" "Initial commit"] (map :message (git/log remote "new-branch")))))))))
+          (is (= ["Updating Branch" "New Branch" "Update 2" "Update 1" "Initial commit"] (map :message (git/log remote "new-branch")))))))))
 
 (deftest concurrent-access
   (mt/with-temp-dir [remote-dir nil]
@@ -230,7 +235,7 @@
 
         (testing "Remote has the new commit with just the files committed, but only version is in history"
           (is (= ["Added to source" "Only on remote" "Added additional file" "Initial commit"] (map :message (git/log remote "master"))))
-          (is (= ["initially-source.txt"] (git/list-files remote "master")))
+          (is (= ["additional-file.txt" "initially-source.txt" "master.txt" "only-on-remote.txt" "subdir/path.txt"] (git/list-files remote "master")))
           (is (= "Initially on source" (git/read-file remote "master" "initially-source.txt"))))
 
         (testing "Source has the same history"

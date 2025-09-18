@@ -118,6 +118,12 @@
       (throw (ex-info (str "Failed to push branch " branch-name " to remote") {:failures failures})))
     push-response))
 
+(defn- path-prefix [path]
+  (first (str/split path #"/")))
+
+(defn- matches-prefix [path prefixes]
+  (some #(or (= % path) (str/starts-with? path (str % "/"))) prefixes))
+
 (defn write-files!
   "Write a seq of files to the repo. `files` should be maps of :path and :content, with path relative to the root of the repository.
   Replaces all files in the branch with the given files, does not preserve files not in the list."
@@ -131,15 +137,29 @@
 
     (with-open [inserter (.newObjectInserter repo)]
       (let [index (DirCache/newInCore)
-            builder (.builder index)]
+            builder (.builder index)
+            updated-prefixes  (into #{} (map (fn [{:keys [path content]}]
+                                               (let [blob-id (.insert inserter Constants/OBJ_BLOB (.getBytes ^String content "UTF-8"))
+                                                     entry (doto (DirCacheEntry. ^String path)
+                                                             (.setFileMode FileMode/REGULAR_FILE)
+                                                             (.setObjectId blob-id))]
+                                                 (.add builder entry))
+                                               (path-prefix path)) files))]
 
-        (doseq [{:keys [path content]} files]
-          (let [blob-id (.insert inserter Constants/OBJ_BLOB (.getBytes ^String content "UTF-8"))
-                entry (doto (DirCacheEntry. ^String path)
-                        (.setFileMode FileMode/REGULAR_FILE)
-                        (.setObjectId blob-id))]
-            (.add builder entry))
-          path)
+        ;; Copy existing tree entries, excluding the file we're updating
+        (when parent-id
+          (with-open [rev-walk (RevWalk. repo)
+                      tree-walk (TreeWalk. repo)]
+            (let [commit (.parseCommit rev-walk parent-id)]
+              (.addTree tree-walk (.getTree commit))
+              (.setRecursive tree-walk true)
+              (while (.next tree-walk)
+                (when-not (matches-prefix (.getPathString tree-walk) updated-prefixes)
+                  (let [entry (doto (DirCacheEntry. (.getPathString tree-walk))
+                                (.setFileMode (.getFileMode tree-walk 0))
+                                (.setObjectId (.getObjectId tree-walk 0)))]
+                    (.add builder entry)))))))
+
         (.finish builder)
 
         ;; Create commit
