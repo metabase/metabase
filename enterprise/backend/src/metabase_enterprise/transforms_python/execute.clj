@@ -14,6 +14,7 @@
    [toucan2.core :as t2])
   (:import
    (java.io Closeable File)
+   (java.net SocketException)
    (java.time Duration)))
 
 (set! *warn-on-reflection* true)
@@ -101,6 +102,7 @@
                 (do
                   (log/warnf "Unexpected status polling for logs %s %s, run-id: %s" status body run-id)
                   (log/debug "Exiting due to poll error")))))))
+    (catch SocketException se (when-not (= "Closed by interrupt" (ex-message se)) (throw se)))
     (catch InterruptedException _)
     (catch Throwable e
       (log/errorf e "An exception was caught during msg update loop, run-id: %s" run-id))))
