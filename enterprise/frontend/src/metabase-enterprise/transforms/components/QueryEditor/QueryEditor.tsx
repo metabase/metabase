@@ -20,7 +20,7 @@ import S from "./QueryEditor.module.css";
 import { useInsertSnippetHandler, useSelectedText } from "./util";
 
 type QueryEditorProps = {
-  transform?: Transform;
+  transform?: Pick<Transform, "name">;
   initialQuery: DatasetQuery;
   proposedQuery?: DatasetQuery;
   isNew?: boolean;
