@@ -7,6 +7,7 @@
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.events.core :as events]
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.util.log :as log]
@@ -49,6 +50,7 @@
       (canceling/chan-start-run! run-id qp.pipeline/*canceled-chan*)
       (driver/run-transform! driver transform-details opts))
     (transform-run/succeed-started-run! run-id)
+    (events/publish-event! :event/transform-run-complete {:object transform-details})
     (catch Throwable t
       (transform-run/fail-started-run! run-id {:message (.getMessage t)})
       (throw t))
@@ -68,6 +70,7 @@
            {driver :engine :as database} (t2/select-one :model/Database db)
            feature (transforms.util/required-database-feature transform)
            transform-details {:db-id db
+                              :transform-id   id
                               :transform-type (keyword (:type target))
                               :conn-spec (driver/connection-spec driver database)
                               :query (transforms.util/compile-source source)

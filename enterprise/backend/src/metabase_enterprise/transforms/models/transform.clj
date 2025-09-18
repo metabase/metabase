@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -58,6 +59,15 @@
                                         tag-associations)]
       (for [transform transforms]
         (assoc transform :tag_ids (vec (get transform-id->tag-ids (:id transform) [])))))))
+
+(t2/define-after-insert :model/Transform [transform]
+  (events/publish-event! :event/create-transform {:object transform}))
+
+(t2/define-after-update :model/Transform [transform]
+  (events/publish-event! :event/update-transform {:object transform}))
+
+(t2/define-before-delete :model/Transform [transform]
+  (events/publish-event! :event/delete-transform {:id (:id transform)}))
 
 (defn update-transform-tags!
   "Update the tags associated with a transform using smart diff logic.

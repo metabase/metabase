@@ -2,6 +2,7 @@
   (:require
    [clojure.core.cache.wrapped :as cache.wrapped]
    [clojure.set :as set]
+   [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -308,6 +309,79 @@
   (when (premium-features/has-feature? :dependencies)
     (t2/delete! :model/Dependency :from_entity_type :snippet :from_entity_id (:id object))))
 
+(derive ::transform-deps :metabase/event)
+(derive :event/create-transform ::transform-deps)
+(derive :event/update-transform ::transform-deps)
+
+;; On *saving* a transform, the upstream deps of its query are computed and saved.
+(defn- drop-outdated-target-dep! [{:keys [id source target] :as _transform}]
+  (let [db-id                (some-> source :query :database)
+        downstream-table-ids (t2/select-fn-set :from_entity_id :model/Dependency
+                                               :from_entity_type :table
+                                               :to_entity_type   :transform
+                                               :to_entity_id     id)
+        downstream-tables    (when (seq downstream-table-ids)
+                               (t2/select :model/Table :id [:in downstream-table-ids]))
+        outdated-tables      (remove (fn [table]
+                                       (and (= (:schema table) (:schema target))
+                                            (= (:name   table) (:name   target))
+                                            (or (not db-id)
+                                                (= db-id (:db_id table)))))
+                                     downstream-tables)
+        not-found-table-ids  (remove (into #{} (map :id) downstream-tables)
+                                     downstream-table-ids)]
+    (when-let [outdated-downstream-table-ids (u/prog1 (seq (into (set not-found-table-ids)
+                                                                 (map :id) outdated-tables))
+                                               (tap> ['drop-outdated-target-dep!
+                                                      'db-id db-id
+                                                      'downstream-table-ids downstream-table-ids
+                                                      'downstream-tables    (map #(into {} %) downstream-tables)
+                                                      'outdated-tables      (map #(into {} %) outdated-tables)
+                                                      'not-found-table-ids  not-found-table-ids
+                                                      '=>
+                                                      'outdated-downstream-table-ids <>]))]
+      (t2/delete! :model/Dependency
+                  :from_entity_type :table
+                  :from_entity_id   [:in outdated-downstream-table-ids]
+                  :to_entity_type   :transform
+                  :to_entity_id     id))))
+
+(methodical/defmethod events/publish-event! ::transform-deps
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (tap> [`transform-deps (into {} object)])
+    (replace-dependencies :transform (:id object) (deps.calculation/upstream-deps:transform object))
+    (drop-outdated-target-dep! object)))
+
+(comment)
+
+(derive ::transform-delete :metabase/event)
+(derive :event/delete-transform ::transform-delete)
+
+(methodical/defmethod events/publish-event! ::transform-delete
+  [_ {:keys [id]}]
+  (when (premium-features/has-feature? :dependencies)
+    ;; TODO: (Braden 09/18/2025) Shouldn't we be deleting the downstream deps for dead edges as well as upstream?
+    (t2/delete! :model/Dependency :from_entity_type :transform :from_entity_id id)))
+
+;; On *executing* a transform, its (freshly synced) output table is made to depend on the transform.
+;; (And if the target has changed, the old table's dep on the transform is dropped.)
+(derive ::transform-run :metabase/event)
+(derive :event/transform-run-complete ::transform-run)
+
+(defn- transform-table-deps [{:keys [db-id output-schema output-table transform-id] :as details}]
+  (let [;; output-table is a keyword like :my_schema/my_table
+        table-name (name output-table)]
+    (tap> ['transform-table-deps (into {} details) table-name])
+    (when-let [table-id (t2/select-one-fn :id :model/Table :db_id db-id :schema output-schema :name table-name)]
+      (tap> ['transform-table-deps/found-table table-id])
+      (replace-dependencies :table table-id {:transform #{transform-id}}))))
+
+(methodical/defmethod events/publish-event! ::transform-run
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (replace-dependencies :transform (:transform-id object) (transform-table-deps object))))
+
 (comment
   (set/difference #{3} nil)
   (def card-ids (t2/select-fn-set :id :model/Card))
@@ -320,6 +394,16 @@
   (upsert-generic-dependency :table 155 :transform 1)
   (t2/select :model/Dependency :from_entity_type :transform :from_entity_id 1)
   (t2/select :model/Dependency :to_entity_type   :transform :to_entity_id   1)
+  *e
+
+  (t2/select-one :model/Transform :id 1)
+
+  (t2/update! :model/Dependency 49 {:from_entity_id 255})
+  (t2/delete! :model/Dependency :to_entity_type   :transform :to_entity_id   1
+              :from_entity_type :table :from_entity_id 155)
+  (t2/insert! :model/Dependency
+              :from_entity_type :table     :from_entity_id 136 ; Existing but wrong table
+              :to_entity_type   :transform :to_entity_id   1)
 
   (u/group-by first second (key-dependents [[:transform 1]]))
 

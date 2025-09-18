@@ -208,10 +208,11 @@
   (when (seq updates)
     (throw (ex-info "Updating a table directly is not supported" {:table-id id, :edited updates})))
   (with-overrides mp
-    {[:metadata/table id] (delay (throw (ex-info "Can't happen: Table deps should be replaced by transforms"
-                                                 {:table-id id})))
-     [::table-columns id] (delay (throw (ex-info "Can't happen: Table columns deps should be replaced by transforms"
-                                                 {:table-id id})))}))
+    {[:metadata/table id] (delay (log/warnf "Can't happen: Table %d dep should be replaced by its transform" id)
+                                 (lib.metadata/table (inner-mp mp) id))
+     [::table-columns id] (delay
+                            (log/warnf "Can't happen: Table %d ::table-columns should be replaced by its transform" id)
+                            (lib.metadata/fields (inner-mp mp) id))}))
 
 (defmethod add-override :snippet [^OverridingMetadataProvider mp _entity-type id updates]
   (with-overrides mp
