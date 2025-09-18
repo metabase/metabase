@@ -15,7 +15,7 @@
   [driver metadata-provider query]
   (let [compiled (-> (qp/compile-query-with-metadata-provider metadata-provider query)
                      :query)]
-    (into (driver/native-query-deps driver compiled metadata-provider #{})
+    (into (driver/native-query-deps driver compiled metadata-provider)
           (keep #(case (:type %)
                    "snippet" {:snippet (:snippet-id %)}
                    :snippet  {:snippet (:snippet-id %)}

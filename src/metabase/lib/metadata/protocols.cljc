@@ -42,8 +42,8 @@
       (or (not (:card-id spec))
           (#{:metadata/metric} (:lib/type spec))))]
    [:fn
-    {:error/message "All metadata types except for :metadata/table must include at least one filter"}
-    (some-fn :id :name :table-id :card-id #(= (:lib/type %) :metadata/table))]])
+    {:error/message "All metadata types except for :metadata/table and :metadata/transform must include at least one filter"}
+    (some-fn :id :name :table-id :card-id #(= (:lib/type %) :metadata/table) #(= (:lib/type %) :metadata/transform))]])
 
 (mu/defn default-spec-filter-xform
   "Create a `filter` transducer to a sequence of objects according to `metadata-spec`. Assumes objects are all the
