@@ -312,4 +312,3 @@
           (safe-delete manifest-file))))))
 
 #_(remove-ns (ns-name *ns*))
-
