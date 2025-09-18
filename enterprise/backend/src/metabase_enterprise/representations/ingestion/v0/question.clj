@@ -47,7 +47,9 @@
       ;; :creator_id
       :database_id database-id
       ;; :table_id
-      :query_type :native ; TODO
+      :query_type (if (contains? representation :query)
+                    :native
+                    :query)
       ;; :archived
       ;; :collection_id ; SKIP! Set later
       ;; :public_uuid
