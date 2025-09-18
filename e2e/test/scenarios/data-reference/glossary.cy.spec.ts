@@ -1,11 +1,7 @@
-// e2e/test/scenarios/data-reference/glossary.cy.spec.ts
-// Tests for Data Reference > Glossary feature: fetch, create, update, delete
-
 const { H } = cy;
 
 describe("data reference > glossary", () => {
   beforeEach(() => {
-    // Reset state and sign in
     H.restore();
     cy.signInAsAdmin();
   });

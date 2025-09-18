@@ -122,23 +122,18 @@ function useFocusOnMount(autoFocusField: "term" | "definition") {
   useEffect(() => {
     if (autoFocusField === "term" && termRef.current) {
       const el = termRef.current;
-      // defer to ensure value is rendered before setting selection (helps Safari)
-      setTimeout(() => {
-        el.focus();
-        const len = el.value.length;
-        el.setSelectionRange(len, len);
-      }, 0);
+      el.focus();
+      const len = el.value.length;
+      el.setSelectionRange(len, len);
     }
   }, [autoFocusField]);
 
   useEffect(() => {
     if (autoFocusField === "definition" && definitionRef.current) {
       const el = definitionRef.current;
-      setTimeout(() => {
-        el.focus();
-        const len = el.value.length;
-        el.setSelectionRange(len, len);
-      }, 0);
+      el.focus();
+      const len = el.value.length;
+      el.setSelectionRange(len, len);
     }
   }, [autoFocusField]);
 

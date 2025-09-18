@@ -55,6 +55,7 @@ import FieldListContainer from "metabase/reference/databases/FieldListContainer"
 import TableDetailContainer from "metabase/reference/databases/TableDetailContainer";
 import TableListContainer from "metabase/reference/databases/TableListContainer";
 import TableQuestionsContainer from "metabase/reference/databases/TableQuestionsContainer";
+import { GlossaryContainer } from "metabase/reference/glossary/GlossaryContainer";
 import SegmentDetailContainer from "metabase/reference/segments/SegmentDetailContainer";
 import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer";
 import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer";
@@ -66,7 +67,6 @@ import { EmbeddingSetup } from "metabase/setup/components/EmbeddingSetup/Embeddi
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
-import { GlossaryListContainer } from "./reference/glossary/GlossaryListContainer";
 import {
   CanAccessOnboarding,
   CanAccessSettings,
@@ -380,7 +380,7 @@ export const getRoutes = (store) => {
               path="databases/:databaseId/tables/:tableId/questions"
               component={TableQuestionsContainer}
             />
-            <Route path="glossary" component={GlossaryListContainer} />
+            <Route path="glossary" component={GlossaryContainer} />
           </Route>
 
           {/* ACCOUNT */}

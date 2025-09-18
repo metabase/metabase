@@ -42,13 +42,15 @@ export function GlossaryTable({
   onEdit,
   onDelete,
 }: GlossaryTableProps) {
-  const [creating, setCreating] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingField, setEditingField] = useState<
     "term" | "definition" | null
   >(null);
   const [deletingItem, setDeletingItem] = useState<GlossaryItem | null>(null);
-  const [sortColumnName, setSortColumnName] = useState<string | null>(null);
+  const [sortColumnName, setSortColumnName] = useState<
+    keyof GlossaryItem | null
+  >(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(
     SortDirection.Asc,
   );
@@ -58,21 +60,21 @@ export function GlossaryTable({
   const sortedRows = useMemo(() => {
     if (!sortColumnName) {
       return [
-        ...(creating ? [{ id: "__create__", kind: "create" as const }] : []),
+        ...(isCreating ? [{ id: -1, kind: "create" as const }] : []),
         ...glossary,
       ];
     }
     const data = glossary.toSorted((a, b) => {
-      const ak = (a as any)[sortColumnName] ?? "";
-      const bk = (b as any)[sortColumnName] ?? "";
+      const ak = a[sortColumnName] ?? "";
+      const bk = b[sortColumnName] ?? "";
       const cmp = String(ak).localeCompare(String(bk));
       return sortDirection === SortDirection.Asc ? cmp : -cmp;
     });
     return [
-      ...(creating ? [{ id: "__create__", kind: "create" as const }] : []),
+      ...(isCreating ? [{ id: -1, kind: "create" as const }] : []),
       ...data,
     ];
-  }, [creating, glossary, sortColumnName, sortDirection]);
+  }, [isCreating, glossary, sortColumnName, sortDirection]);
 
   return (
     <>
@@ -86,7 +88,13 @@ export function GlossaryTable({
           variant="default"
           size="sm"
           leftSection={<Icon name="add" />}
-          onClick={() => setCreating(true)}
+          onClick={() => {
+            if (editingId) {
+              setEditingId(null);
+              setEditingField(null);
+            }
+            setIsCreating(true);
+          }}
         >
           {t`New term`}
         </Button>
@@ -117,20 +125,20 @@ export function GlossaryTable({
         sortColumnName={sortColumnName}
         sortDirection={sortDirection}
         onSort={(column, dir) => {
-          setSortColumnName(column);
+          setSortColumnName(column as keyof GlossaryItem);
           setSortDirection(dir);
         }}
         rowRenderer={(row) => {
           // Create row
-          if ((row as any).kind === "create") {
+          if ("kind" in row && row.kind === "create") {
             return (
               <tr className={cx(S.row, S.rowEditor)}>
                 <GlossaryRowEditor
                   item={{ term: "", definition: "" }}
-                  onCancel={() => setCreating(false)}
+                  onCancel={() => setIsCreating(false)}
                   onSave={async (term, definition) => {
                     await onCreate(term, definition);
-                    setCreating(false);
+                    setIsCreating(false);
                   }}
                 />
               </tr>
@@ -159,6 +167,10 @@ export function GlossaryTable({
                     component="td"
                     valign="top"
                     onClick={() => {
+                      if (isCreating) {
+                        setIsCreating(false);
+                      }
+
                       setEditingId(item.id);
                       setEditingField("term");
                     }}
@@ -172,6 +184,9 @@ export function GlossaryTable({
                     valign="top"
                     style={{ wordBreak: "break-word", whiteSpace: "pre-wrap" }}
                     onClick={() => {
+                      if (isCreating) {
+                        setIsCreating(false);
+                      }
                       setEditingId(item.id);
                       setEditingField("definition");
                     }}
