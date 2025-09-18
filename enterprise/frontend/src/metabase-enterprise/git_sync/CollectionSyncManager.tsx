@@ -16,6 +16,7 @@ import * as Urls from "metabase/lib/urls";
 import {
   ActionIcon,
   Anchor,
+  Box,
   Flex,
   Group,
   Icon,
@@ -26,7 +27,11 @@ import {
   Text,
 } from "metabase/ui";
 
-export const CollectionSyncManager = () => {
+interface CollectionSyncManagerProps {
+  mode: "import" | "export";
+}
+
+export const CollectionSyncManager = ({ mode }: CollectionSyncManagerProps) => {
   const { data: allCollections = [], isLoading } = useListCollectionsTreeQuery({
     "exclude-archived": true,
     "exclude-other-user-collections": true,
@@ -105,57 +110,54 @@ export const CollectionSyncManager = () => {
 
   return (
     <Stack gap="md">
-      <Select
-        placeholder={t`Select a top-level collection`}
-        data={selectData}
-        value={null}
-        onChange={handleAddCollection}
-        searchable
-        clearable
-        w={320}
-        h={40}
-        leftSection={<Icon name="folder" />}
-        renderOption={({ option }) => {
-          const collection = availableCollections.find(
-            (c) => String(c.id) === option.value,
-          );
-          return (
-            <Group justify="space-between" wrap="nowrap" w="100%" p="sm">
-              <Group gap="xs" wrap="nowrap" flex={1} miw={0}>
-                <Icon name="folder" c="brand" />
-                <Text truncate>{option.label}</Text>
+      {mode === "export" ? (
+        <Select
+          placeholder={t`Select a top-level collection`}
+          data={selectData}
+          value={null}
+          onChange={handleAddCollection}
+          searchable
+          clearable
+          w={320}
+          h={40}
+          leftSection={<Icon name="folder" />}
+          renderOption={({ option }) => {
+            const collection = availableCollections.find(
+              (c) => String(c.id) === option.value,
+            );
+            return (
+              <Group justify="space-between" wrap="nowrap" w="100%" p="sm">
+                <Group gap="xs" wrap="nowrap" flex={1} miw={0}>
+                  <Icon name="folder" c="brand" />
+                  <Text truncate>{option.label}</Text>
+                </Group>
+                {collection && (
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.open(Urls.collection(collection), "_blank");
+                    }}
+                  >
+                    <Icon name="external" />
+                  </ActionIcon>
+                )}
               </Group>
-              {collection && (
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    window.open(Urls.collection(collection), "_blank");
-                  }}
-                >
-                  <Icon name="external" />
-                </ActionIcon>
-              )}
-            </Group>
-          );
-        }}
-      />
-
+            );
+          }}
+        />
+      ) : null}
       {syncedCollections.length > 0 && (
         <Paper withBorder p="md" radius="md">
           <Stack gap="xs">
             <Text fw={600} mb="sm">
-              {t`Synced Collections`}
+              {mode === "export"
+                ? t`Exported Collections`
+                : t`Imported Collections`}
             </Text>
             {syncedCollections.map((collection) => (
-              <Paper
-                key={collection.id}
-                withBorder
-                p="sm"
-                radius="sm"
-                bg="bg-light"
-              >
+              <Box key={collection.id} p="sm">
                 <Group justify="space-between">
                   <Group gap="sm">
                     <Icon name="folder" c="brand" />
@@ -173,15 +175,16 @@ export const CollectionSyncManager = () => {
                     c="text-medium"
                     onClick={() => handleRemoveCollection(collection.id)}
                   >
-                    <Icon name="close" />
+                    {mode === "export" ? (
+                      <Icon name="close" tooltip={t`Stop exporting`} />
+                    ) : null}
                   </ActionIcon>
                 </Group>
-              </Paper>
+              </Box>
             ))}
           </Stack>
         </Paper>
       )}
-
       {syncedCollections.length === 0 && (
         <Text c="text-medium" fs="italic">
           {t`No collections are currently synced with Git`}

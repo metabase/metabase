@@ -89,7 +89,6 @@ export const GitSyncSettings = (): JSX.Element => {
   const isGitSyncConfigured = useSetting("remote-sync-configured");
 
   const handleDeactivate = useCallback(async () => {
-    // Clear all git sync settings
     await updateSettings({
       "remote-sync-url": null,
       "remote-sync-token": null,
@@ -99,6 +98,8 @@ export const GitSyncSettings = (): JSX.Element => {
     } as Partial<EnterpriseSettings>);
     setIsDeactivateModalOpen(false);
   }, [updateSettings]);
+
+  const syncMode = settingValues?.[TYPE_KEY];
 
   return (
     <SettingsPageWrapper title={t`Remote sync configuration`}>
@@ -198,14 +199,18 @@ export const GitSyncSettings = (): JSX.Element => {
         </FormProvider>
       </SettingsSection>
 
-      {isGitSyncConfigured && settingValues?.[TYPE_KEY] === "export" && (
+      {isGitSyncConfigured && syncMode != null ? (
         <SettingsSection
           title={t`Collections`}
-          description={t`Select top-level collections to sync with Git`}
+          description={
+            syncMode === "export"
+              ? t`Select top-level collections to export to Git`
+              : t`Top-level collections imported from Git`
+          }
         >
-          <CollectionSyncManager />
+          <CollectionSyncManager mode={syncMode} />
         </SettingsSection>
-      )}
+      ) : null}
 
       <ConfirmModal
         opened={isDeactivateModalOpen}
