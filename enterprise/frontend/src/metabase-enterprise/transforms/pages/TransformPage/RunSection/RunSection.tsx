@@ -5,7 +5,6 @@ import { useSetting } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Anchor, Box, Divider, Group, Icon, Stack } from "metabase/ui";
 import {
-  useLazyGetTransformQuery,
   useRunTransformMutation,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";

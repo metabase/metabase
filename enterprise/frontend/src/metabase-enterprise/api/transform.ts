@@ -145,7 +145,6 @@ export const {
   useGetTransformQuery,
   useLazyGetTransformQuery,
   useRunTransformMutation,
-  useCancelTransformMutation,
   useCreateTransformMutation,
   useUpdateTransformMutation,
   useDeleteTransformMutation,
