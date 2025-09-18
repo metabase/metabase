@@ -196,10 +196,68 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       });
 
       cy.findByTestId("python-data-picker")
-        .findByPlaceholderText("Select a table")
+        .findByText("Select a database")
         .click();
 
-      H.popover().findByText("Orders").click();
+      cy.log("Unsupported databases should be disabled");
+      H.popover()
+        .findByRole("option", { name: "Sample Database" })
+        .should("have.attr", "aria-disabled", "true");
+
+      cy.log("Select database");
+      H.popover().findByText(DB_NAME).click();
+
+      getPythonDataPicker().button("Select a table…").click();
+      H.entityPickerModal().findByText("Animals").click();
+
+      getPythonDataPicker().within(() => {
+        cy.button("Animals").should("be.visible");
+        cy.findByPlaceholderText("Enter alias").should("have.value", "animals");
+        cy.findByPlaceholderText("Enter alias").clear().type("foo bar").blur();
+        cy.findByPlaceholderText("Enter alias").should("have.value", "foo_bar");
+      });
+
+      H.PythonEditor.value()
+        .should("contain", "def transform(foo_bar):")
+        .should(
+          "contain",
+          'foo_bar: DataFrame containing the data from the "Writable Postgres12.Schema A.Animals" table',
+        );
+
+      getPythonDataPicker().within(() => {
+        cy.findByText("Add another table").click();
+        cy.button("Select a table…").click();
+      });
+
+      H.entityPickerModal().within(() => {
+        cy.log("Selecting the same table should not be possible");
+        cy.findByText("Animals")
+          .parent()
+          .parent()
+          .parent()
+          .should("have.attr", "data-disabled", "true");
+
+        cy.findByText("Schema B").click();
+        cy.findByText("Animals").click();
+      });
+
+      getPythonDataPicker().within(() => {
+        cy.icon("refresh").click();
+        cy.findAllByPlaceholderText("Enter alias")
+          .first()
+          .should("have.value", "animals_1")
+          .clear()
+          .type("foo bar")
+          .blur()
+          .should("have.value", "foo_bart s");
+        cy.findAllByPlaceholderText("Enter alias")
+          .eq(1)
+          .should("have.value", "animals")
+          .clear()
+          .type("foo bar")
+          .blur()
+          .should("have.value", "foo_bar_1");
+      });
 
       getQueryEditor().button("Save").click();
 
@@ -2443,4 +2501,8 @@ function assertOptionNotSelected(name: string) {
 
 function editorSidebar() {
   return cy.findByTestId("editor-sidebar");
+}
+
+function getPythonDataPicker() {
+  return cy.findByTestId("python-data-picker");
 }
