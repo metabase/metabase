@@ -46,6 +46,19 @@
                         {:error-type :configuration-error}))
         {}))))
 
+(defn- python-runner-request
+  "Helper function for making HTTP requests to the python runner service."
+  [server-url method endpoint & [request-options]]
+  (let [base-options {:content-type     :json
+                      :accept           :json
+                      :throw-exceptions false
+                      :as               :json
+                      :headers          (authorization-headers)}]
+    (http/request (merge base-options
+                         request-options
+                         {:method method
+                          :url    (str server-url "/v1" endpoint)}))))
+
 ;; Longer duration for inputs than for outputs, to compensate for the duration of the code execution itself.
 (def ^:private ^Duration presigned-get-duration (Duration/ofMinutes 30))
 (def ^:private ^Duration presigned-put-duration (Duration/ofHours 5))
@@ -115,7 +128,9 @@
 (defn- generate-manifest
   "Generate a metadata manifest for the table columns."
   [table-id cols-meta]
-  {:version        "0.1.0"
+  {:schema_version 1
+   :data_format    "jsonl"
+   :data_version   1
    :fields         (mapv (fn [col-meta]
                            {:name           (:name col-meta)
                             :base_type      (some-> (:base_type col-meta) name)
@@ -331,13 +346,7 @@
   "Return the logs of the current running python process"
   [run-id]
   (let [server-url (transforms-python.settings/python-execution-server-url)]
-    (http/get (str server-url "/logs")
-              {:content-type     :json
-               :accept           :json
-               :throw-exceptions false
-               :as               :json
-               :query-params     {:request_id run-id}
-               :headers          (authorization-headers)})))
+    (python-runner-request server-url :get "/logs" {:query-params {:request_id run-id}})))
 
 (defn- s3-shared-storage [table-name->id]
   (let [prefix              (some-> (transforms-python.settings/python-storage-s-3-prefix) (str "/"))
@@ -433,13 +442,7 @@
                                   :manifest_mapping    table-name->manifest-url}
 
         response                 (transforms.instrumentation/with-python-api-timing [run-id]
-                                   (http/post (str server-url "/execute")
-                                              {:content-type     :json
-                                               :accept           :json
-                                               :body             (json/encode payload)
-                                               :throw-exceptions false
-                                               :as               :json
-                                               :headers          (authorization-headers)}))]
+                                   (python-runner-request server-url :post "/execute" {:body (json/encode payload)}))]
     ;; when a 500 is returned we observe a string in the body (despite the python returning json)
     ;; always try to parse the returned string as json before yielding (could tighten this up at some point)
     (update response :body (fn [string-if-error]
@@ -451,13 +454,10 @@
                                string-if-error)))))
 
 (defn- cancel-python-code-http-call! [server-url run-id]
-  (http/post (str server-url "/cancel")
-             {:content-type :json
-              :body         (json/encode {:request_id run-id})
-              :async?       true
-              :headers      (authorization-headers)}
-             #_success #(log/debug %)
-             #_failure #(log/error %)))
+  (python-runner-request server-url :post "/cancel" {:body   (json/encode {:request_id run-id})
+                                                     :async? true}
+                         #_success #(log/debug %)
+                         #_failure #(log/error %)))
 
 (defn open-cancellation-process!
   "Starts a core.async process that optimistically sends a cancellation request to the python executor if cancel-chan receives a value.

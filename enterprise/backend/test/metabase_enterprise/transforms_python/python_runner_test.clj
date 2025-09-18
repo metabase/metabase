@@ -177,7 +177,7 @@
                                   "\n"
                                   "def transform(students):\n"
                                   "    return students")
-              result         (execute! {:code  transform-code
+              result         (execute! {:code   transform-code
                                         :tables {"students" (mt/id :students)}})]
 
           (is (=? {:output          (jsonl-output [{:id 1 :name "Alice" :score 85}
@@ -221,8 +221,12 @@
                                                                          :root_type      "Integer",
                                                                          :semantic_type  "Score"}],
                                                        :table_metadata {:table_id (mt/malli=? int?)},
-                                                       :version        "0.1.0"},
-                                     :version         "0.1.0"}
+                                                       :schema_version 1
+                                                       :data_format    "jsonl"
+                                                       :data_version   1}
+                                     :schema_version  1
+                                     :data_format     "jsonl"
+                                     :data_version    1}
                    :stdout          (str "Successfully saved 4 rows to S3\n"
                                          "Successfully saved output manifest with 3 fields")
                    :stderr          (str "Parsed id as Integer\n"
