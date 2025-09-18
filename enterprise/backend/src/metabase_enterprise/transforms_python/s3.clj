@@ -8,7 +8,7 @@
    (java.net URI)
    (java.time Duration)
    (software.amazon.awssdk.auth.credentials AwsBasicCredentials StaticCredentialsProvider)
-   (software.amazon.awssdk.auth.credentials DefaultCredentialsProvider)
+   (software.amazon.awssdk.auth.credentials AwsCredentialsProvider DefaultCredentialsProvider)
    (software.amazon.awssdk.core.sync RequestBody)
    (software.amazon.awssdk.regions Region)
    (software.amazon.awssdk.services.s3 S3Client S3ClientBuilder S3Configuration)
@@ -34,10 +34,10 @@
 
 (defmacro ^:private maybe-with-endpoint* [builder endpoint]
   `(let [builder# ~builder]
-      (when-let [region# (transforms-python.settings/python-storage-s-3-region)]
-         (.region builder# (Region/of region#)))
-       (when ~endpoint (.endpointOverride builder# (URI/create ~endpoint)))
-       builder#))
+     (when-let [region# (transforms-python.settings/python-storage-s-3-region)]
+       (.region builder# (Region/of region#)))
+     (when ~endpoint (.endpointOverride builder# (URI/create ~endpoint)))
+     builder#))
 
 (defn- maybe-with-endpoint-s3-client [^S3ClientBuilder builder endpoint]
   (maybe-with-endpoint* builder endpoint))
@@ -62,23 +62,23 @@
 (defn- maybe-with-credentials*
   [credentials-provider]
   (let [access-key (transforms-python.settings/python-storage-s-3-access-key)
-         secret-key (transforms-python.settings/python-storage-s-3-secret-key)]
-     (if (or access-key secret-key)
-       (if-not (and access-key secret-key)
-         (do (log/warnf "Ignoring %s because %s is not defined"
-                        (if access-key "access-key" "secret-key")
-                        (if (not access-key) "access-key" "secret-key"))
-             (credentials-provider (DefaultCredentialsProvider/create)))
-         (credentials-provider
-                               (StaticCredentialsProvider/create
-                                (AwsBasicCredentials/create access-key secret-key))))
-       (credentials-provider (DefaultCredentialsProvider/create)))))
+        secret-key (transforms-python.settings/python-storage-s-3-secret-key)]
+    (if (or access-key secret-key)
+      (if-not (and access-key secret-key)
+        (do (log/warnf "Ignoring %s because %s is not defined"
+                       (if access-key "access-key" "secret-key")
+                       (if (not access-key) "access-key" "secret-key"))
+            (credentials-provider (DefaultCredentialsProvider/create)))
+        (credentials-provider
+         (StaticCredentialsProvider/create
+          (AwsBasicCredentials/create access-key secret-key))))
+      (credentials-provider (DefaultCredentialsProvider/create)))))
 
 (defn- maybe-with-credentials-s3-client [^S3ClientBuilder builder]
-  (maybe-with-credentials* #(.credentialsProvider builder %)))
+  (maybe-with-credentials* #(.credentialsProvider builder ^AwsCredentialsProvider %)))
 
 (defn- maybe-with-credentials-s3-presigner [^S3Presigner$Builder builder]
-  (maybe-with-credentials* #(.credentialsProvider builder %))
+  (maybe-with-credentials* #(.credentialsProvider builder ^AwsCredentialsProvider %)))
 
 ;; We just recreate the client every time, to keep things simple if config is changed.
 (defn create-s3-client
