@@ -637,7 +637,7 @@ export const CardEmbedComponent = memo(
                             commentsPath && dispatch(push(commentsPath));
                           }}
                           disabled={!commentsPath}
-                          leftSection={<Icon name="add_message" size={14} />}
+                          leftSection={<Icon name="add_comment" size={14} />}
                         >
                           {t`Comment`}
                         </Menu.Item>

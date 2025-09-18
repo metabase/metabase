@@ -60,7 +60,7 @@ export const useCommentsButton = ({
       : {}),
     disabled,
     leftSection: (
-      <Icon name={hasUnresolvedComments ? "message" : "add_message"} />
+      <Icon name={hasUnresolvedComments ? "comment" : "add_comment"} />
     ),
     px: "sm",
     size: "xs",
