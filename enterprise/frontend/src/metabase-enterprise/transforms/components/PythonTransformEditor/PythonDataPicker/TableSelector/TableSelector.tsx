@@ -14,8 +14,6 @@ import type {
   TableId,
 } from "metabase-types/api";
 
-import type { TableOption } from "../types";
-
 import S from "./TableSelector.module.css";
 
 export function TableSelector({
@@ -28,7 +26,7 @@ export function TableSelector({
 }: {
   database: DatabaseId | undefined;
   table: Table | undefined;
-  availableTables: TableOption[];
+  availableTables: Table[];
   selectedTableIds: Set<TableId | undefined>;
   disabled?: boolean;
   onChange: (table: Table | undefined) => void;
@@ -36,13 +34,10 @@ export function TableSelector({
   const [isOpened, { open, close }] = useDisclosure();
 
   function handleChange(tableId: TableId | undefined) {
-    const table = availableTables.find(
-      (table) => table.table?.id === tableId,
-    )?.table;
-    if (!table) {
-      return;
+    const table = availableTables.find((table) => table.id === tableId);
+    if (table) {
+      onChange(table);
     }
-    onChange(table);
   }
 
   function shouldDisableItem(
