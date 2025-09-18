@@ -1,3 +1,4 @@
+import type { Editor as TiptapEditor } from "@tiptap/react";
 import dayjs from "dayjs";
 import type React from "react";
 import { createContext, useCallback, useRef, useState } from "react";
@@ -33,7 +34,7 @@ export const MetabotProvider = ({
 }) => {
   /* Metabot input */
   const [prompt, setPrompt] = useState("");
-  const promptInputRef = useRef<HTMLTextAreaElement>(null);
+  const promptInputRef = useRef<HTMLTextAreaElement | TiptapEditor>(null);
 
   /* Metabot context */
   const providerFnsRef = useRef<Set<ChatContextProviderFn>>(new Set());

@@ -1,0 +1,1 @@
+export { MetabotTipTapInput } from "./MetabotTipTapInput";

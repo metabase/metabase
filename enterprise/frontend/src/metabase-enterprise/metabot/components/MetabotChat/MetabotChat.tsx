@@ -1,5 +1,6 @@
+import type { Editor as TiptapEditor } from "@tiptap/react";
 import cx from "classnames";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -14,13 +15,13 @@ import {
   Paper,
   Stack,
   Text,
-  Textarea,
   Tooltip,
 } from "metabase/ui";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 import { MetabotResetLongChatButton } from "metabase-enterprise/metabot/components/MetabotChat/MetabotResetLongChatButton";
 
 import { useMetabotAgent, useMetabotChatHandlers } from "../../hooks";
+import { MetabotTipTapInput } from "../MetabotTipTapInput";
 
 import Styles from "./MetabotChat.module.css";
 import { Messages } from "./MetabotChatMessage";
@@ -35,6 +36,9 @@ export const MetabotChat = ({
   const metabot = useMetabotAgent();
   const { handleSubmitInput, handleRetryMessage, handleResetInput } =
     useMetabotChatHandlers();
+
+  // Add ref for TipTap editor
+  const editorRef = useRef<TiptapEditor | null>(null);
 
   const hasMessages =
     metabot.messages.length > 0 || metabot.errorMessages.length > 0;
@@ -175,40 +179,16 @@ export const MetabotChat = ({
               metabot.isDoingScience && Styles.inputContainerLoading,
             )}
           >
-            <Textarea
-              id="metabot-chat-input"
-              data-testid="metabot-chat-input"
-              w="100%"
-              leftSection={
-                <Box h="100%" pt="11px">
-                  <Icon name="metabot" c="brand" />
-                </Box>
-              }
-              autosize
-              minRows={1}
-              maxRows={10}
-              ref={metabot.promptInputRef}
-              autoFocus
+            <MetabotTipTapInput
               value={metabot.prompt}
-              className={cx(
-                Styles.textarea,
-                metabot.isDoingScience && Styles.textareaLoading,
-              )}
-              placeholder={t`Tell me to do something, or ask a question`}
-              onChange={(e) => metabot.setPrompt(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.nativeEvent.isComposing) {
-                  return;
-                }
-                const isModifiedKeyPress =
-                  e.shiftKey || e.ctrlKey || e.metaKey || e.altKey;
-                if (e.key === "Enter" && !isModifiedKeyPress) {
-                  // prevent event from inserting new line + interacting with other content
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleSubmitInput(metabot.prompt);
-                }
+              onChange={(value) => metabot.setPrompt(value)}
+              onSubmit={(value) => {
+                handleSubmitInput(value);
+                // Clear prompt after submit
+                metabot.setPrompt("");
               }}
+              isLoading={metabot.isDoingScience}
+              inputRef={editorRef}
             />
           </Paper>
         </Box>

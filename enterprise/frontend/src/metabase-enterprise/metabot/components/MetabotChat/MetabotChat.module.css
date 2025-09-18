@@ -98,6 +98,20 @@
   line-height: 1.4 !important;
 }
 
+/* SmartLink styles in messages */
+.message :global(.metabot-user-smart-link) {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 0.25rem;
+  background: var(--mb-color-background-hover);
+  border-radius: 0.25rem;
+  color: var(--mb-color-brand);
+  text-decoration: none;
+  font-weight: 500;
+  vertical-align: baseline;
+}
+
 .messageUser {
   padding: 0.5rem 1rem;
   border-radius: 1rem;
