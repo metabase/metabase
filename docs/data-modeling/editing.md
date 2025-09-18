@@ -29,7 +29,7 @@ For this to work, Metabase's connection to your database must support writing ba
 
 To update or delete records in a table:
 
-1. Navigate to the left sidebar.
+1. Open the left sidebar.
 2. In the Data section, click **Databases**.
 3. Hover over the table you want to edit and click the **Pencil** icon.
 4. Edit rows in the table just like you would in a spreadsheet.

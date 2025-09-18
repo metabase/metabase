@@ -191,7 +191,7 @@ Turn this setting **ON** to enable editing of table data directly within Metabas
 
 Your database connection will need Write permissions to enable this feature. Meaning: the database user account that you use to connect Metabase to your database must have appropriate privileges to modify data in the tables you want to make editable.
 
-See [privileges](../users-roles-privileges.md)
+See [privileges](../users-roles-privileges.md).
 
 ## Database routing
 
