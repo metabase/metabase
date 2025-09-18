@@ -61,7 +61,9 @@
          (when start-promise
            (deliver start-promise [:started run-id]))
          (log/info "Executing transform" id "with target" (pr-str target))
-         (transforms.util/run-cancelable-transform! run-id driver transform-details (fn [_cancel-chan] (driver/run-transform! driver transform-details opts)))
+         (transforms.util/run-cancelable-transform!
+          run-id driver transform-details
+          (fn [_cancel-chan] (driver/run-transform! driver transform-details opts)))
          (transforms.instrumentation/with-stage-timing [run-id :sync :table-sync]
            (transforms.util/sync-target! target database run-id))))
      (catch Throwable t
