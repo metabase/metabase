@@ -26,22 +26,22 @@
             key    (str "test-object-" (random-uuid) ".txt")
             body   (str "Hello, S3! My secret is:" (random-uuid))]
 
-        (is (thrown? NoSuchKeyException (s3/read-from-s3 s3-client bucket key)))
-        (is (= :default (s3/read-from-s3 s3-client bucket key :default)))
+        (is (thrown? NoSuchKeyException (s3/read-to-string s3-client bucket key)))
+        (is (= :default (s3/read-to-string s3-client bucket key :default)))
 
         (let [tmp-file (Files/createTempFile "s3-test" ".txt" (into-array FileAttribute []))]
           (try
             (spit (.toFile tmp-file) body)
 
-            (is (s3/upload-file-to-s3 s3-client bucket key (.toFile tmp-file)))
+            (is (s3/upload-file s3-client bucket key (.toFile tmp-file)))
 
-            (is (= body (s3/read-from-s3 s3-client bucket key)))
-            (is (= body (s3/read-from-s3 s3-client bucket key :default)))
+            (is (= body (s3/read-to-string s3-client bucket key)))
+            (is (= body (s3/read-to-string s3-client bucket key :default)))
 
-            (s3/delete-s3-object s3-client bucket key)
+            (s3/delete s3-client bucket key)
 
-            (is (thrown? NoSuchKeyException (s3/read-from-s3 s3-client bucket key)))
-            (is (= :default (s3/read-from-s3 s3-client bucket key :default)))
+            (is (thrown? NoSuchKeyException (s3/read-to-string s3-client bucket key)))
+            (is (= :default (s3/read-to-string s3-client bucket key :default)))
 
             (finally
               (Files/deleteIfExists tmp-file))))))))
@@ -50,31 +50,31 @@
   (testing "open-s3-shared-storage! returns closeable derefable"
     (mt/with-premium-features #{:transforms-python}
       (let [table-name->id {"users" 1}
-            storage-ref    (s3/open-s3-shared-storage! table-name->id)
+            storage-ref    (s3/open-shared-storage! table-name->id)
             {:keys [s3-client bucket-name objects]} @storage-ref]
         (testing "can be dereferenced"
           (doseq [[k {:keys [method path url]}] objects
                   :let [url (str/replace url "localstack" "localhost")]]
             (testing (format "%s (%s)" k method)
-              (is (= :not-created (s3/read-from-s3 s3-client bucket-name path :not-created)))
+              (is (= :not-created (s3/read-to-string s3-client bucket-name path :not-created)))
               (let [content  (str (random-uuid))]
                 (case method
                   ;; Files that we should write, and python-runner should fetch
                   :get (let [tmp-file (Files/createTempFile "s3-test" ".txt" (into-array FileAttribute []))]
                          (try
                            (spit (.toFile tmp-file) content)
-                           (is (s3/upload-file-to-s3 s3-client bucket-name path (.toFile tmp-file)))
+                           (is (s3/upload-file s3-client bucket-name path (.toFile tmp-file)))
                            (finally
                              (Files/deleteIfExists tmp-file)))
-                         (is (= content (s3/read-from-s3 s3-client bucket-name path :not-created)))
+                         (is (= content (s3/read-to-string s3-client bucket-name path :not-created)))
                          (is (= content (:body (http/get url)))))
                   ;; Files that python-runner should post, and we should fetch
                   :put (do
                          (is (http/put url {:body content}))
-                         (is (= content (s3/read-from-s3 s3-client bucket-name path :not-created)))))))))
+                         (is (= content (s3/read-to-string s3-client bucket-name path :not-created)))))))))
 
         (testing "closing the ref deletes the files"
           (.close storage-ref)
           (doseq [[k {:keys [path]}] objects]
             (testing (str k)
-              (is (= :not-created (s3/read-from-s3 s3-client bucket-name path :not-created))))))))))
+              (is (= :not-created (s3/read-to-string s3-client bucket-name path :not-created))))))))))
