@@ -85,14 +85,14 @@ function RunTable({ runs }: RunTableProps) {
             className={S.row}
             onClick={() => handleRowClick(run)}
           >
-            <td className={S.wrapAnywhere}>{run.transform?.name}</td>
-            <td className={S.wrapBreakWord}>
+            <td className={S.wrap}>{run.transform?.name}</td>
+            <td className={S.nowrap}>
               {parseTimestampWithTimezone(
                 run.start_time,
                 systemTimezone,
               ).format("lll")}
             </td>
-            <td className={S.wrapBreakWord}>
+            <td className={S.nowrap}>
               {run.end_time
                 ? parseTimestampWithTimezone(
                     run.end_time,
@@ -100,7 +100,7 @@ function RunTable({ runs }: RunTableProps) {
                   ).format("lll")
                 : null}
             </td>
-            <td className={S.wrapBreakWord}>
+            <td className={S.wrap}>
               <RunStatusInfo
                 status={run.status}
                 message={run.message}
@@ -114,9 +114,7 @@ function RunTable({ runs }: RunTableProps) {
                 }
               />
             </td>
-            <td className={S.wrapBreakWord}>
-              {formatRunMethod(run.run_method)}
-            </td>
+            <td className={S.wrap}>{formatRunMethod(run.run_method)}</td>
           </tr>
         ))}
       </AdminContentTable>

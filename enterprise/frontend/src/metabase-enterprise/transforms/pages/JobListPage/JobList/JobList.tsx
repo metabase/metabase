@@ -75,8 +75,8 @@ export function JobList({ params }: { params: JobListParams }) {
             className={S.row}
             onClick={() => handleRowClick(job)}
           >
-            <td className={S.wrapAnywhere}>{job.name}</td>
-            <td className={S.wrapBreakWord}>
+            <td className={S.wrap}>{job.name}</td>
+            <td className={S.nowrap}>
               {job.last_run?.start_time
                 ? parseTimestampWithTimezone(
                     job.last_run?.start_time,
@@ -84,7 +84,7 @@ export function JobList({ params }: { params: JobListParams }) {
                   ).format("lll")
                 : null}
             </td>
-            <td className={S.wrapBreakWord}>
+            <td className={S.nowrap}>
               {job.next_run?.start_time
                 ? parseTimestampWithTimezone(
                     job.next_run?.start_time,
@@ -92,7 +92,7 @@ export function JobList({ params }: { params: JobListParams }) {
                   ).format("lll")
                 : null}
             </td>
-            <td className={S.wrapBreakWord}>
+            <td className={S.wrap}>
               <TagList tags={tags} tagIds={job.tag_ids ?? []} />
             </td>
           </tr>

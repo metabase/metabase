@@ -2,12 +2,8 @@
   cursor: pointer;
 }
 
-.wrapAnywhere {
+.wrap {
   overflow-wrap: anywhere;
-}
-
-.wrapBreakWord {
-  overflow-wrap: break-word;
 }
 
 .nowrap {
