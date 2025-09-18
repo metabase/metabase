@@ -74,7 +74,7 @@
         (recur))))
 
   (log/info "Executing job transform" (pr-str transform-id))
-  (transforms.instrumentation/with-stage-timing [run-id :computation :mbql-query]
+  (transforms.instrumentation/with-stage-timing [run-id :mbql-query]
     (transforms.execute/run-mbql-transform! transform {:run-method run-method}))
 
   (transforms.job-run/add-run-activity! run-id))
