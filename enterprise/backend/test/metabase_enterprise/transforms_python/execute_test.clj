@@ -20,7 +20,7 @@
           (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
             (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
                                                                      :schema schema
-                                                                     :name   "atomic_python_swap"}]
+                                                                     :name   "swap_tbl"}]
               (let [initial-transform {:name   "Python Transform Initial"
                                        :source {:type  "python"
                                                 :source-tables {}
