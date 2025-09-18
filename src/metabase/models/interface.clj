@@ -892,7 +892,8 @@
   [_model k models]
   (instances-with-hydrated-data
    models k
-   #(->> (map (juxt :id can-write?) #p (t2/hydrate models :collection))
-         (into {}))
+   #(into {}
+          (map (juxt :id can-write?))
+          (t2/hydrate (remove nil? models) :collection))
    :id
    {:default false}))
