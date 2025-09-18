@@ -60,12 +60,11 @@ export function Timeline({
                   </Tooltip>
                 )}
               </EventHeader>
-              <Timestamp
-                dateTime={timestamp}
-                title={getFormattedTime(timestamp)}
-              >
-                {getRelativeTime(timestamp)}
-              </Timestamp>
+              <Tooltip label={getFormattedTime(timestamp)}>
+                <Timestamp dateTime={timestamp}>
+                  {getRelativeTime(timestamp)}
+                </Timestamp>
+              </Tooltip>
               {revision?.has_multiple_changes && <div>{description}</div>}
             </EventBody>
           </TimelineEvent>
