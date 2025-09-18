@@ -67,22 +67,23 @@
         (map transforms-by-id complete)))))
 
 (defn- run-transform! [run-id run-method {transform-id :id :as transform}]
-  (when
-   (transform-run/running-run-for-transform-id transform-id)
-    (log/warn "Transform" (pr-str transform-id) "already running, waiting")
-    (loop []
-      (Thread/sleep 2000)
-      (when (transform-run/running-run-for-transform-id transform-id)
-        (recur))))
-
-  (log/info "Executing job transform" (pr-str transform-id))
-  (if (transforms.util/python-transform? transform)
-    (transforms.instrumentation/with-stage-timing [run-id :computation :python-execution]
-      (transforms-python.execute/execute-python-transform! transform {:run-method run-method}))
-    (transforms.instrumentation/with-stage-timing [run-id :computation :mbql-query]
-      (transforms.execute/run-mbql-transform! transform {:run-method run-method})))
-
-  (transforms.job-run/add-run-activity! run-id))
+  (if-not (transforms.execute/check-feature-enabled transform)
+    (log/warnf "Skip running transform %d due to lacking premium features" transform-id)
+    (do
+      (when
+       (transform-run/running-run-for-transform-id transform-id)
+        (log/warn "Transform" (pr-str transform-id) "already running, waiting")
+        (loop []
+          (Thread/sleep 2000)
+          (when (transform-run/running-run-for-transform-id transform-id)
+            (recur))))
+      (log/info "Executing job transform" (pr-str transform-id))
+      (if (transforms.util/python-transform? transform)
+        (transforms.instrumentation/with-stage-timing [run-id :computation :python-execution]
+          (transforms-python.execute/execute-python-transform! transform {:run-method run-method}))
+        (transforms.instrumentation/with-stage-timing [run-id :computation :mbql-query]
+          (transforms.execute/run-mbql-transform! transform {:run-method run-method})))
+      (transforms.job-run/add-run-activity! run-id))))
 
 (defn run-transforms!
   "Run a series of transforms and their dependencies.

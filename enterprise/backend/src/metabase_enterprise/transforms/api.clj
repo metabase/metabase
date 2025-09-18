@@ -87,6 +87,11 @@
     (api/check-400 (not (transforms.util/db-routing-enabled? database))
                    (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
 
+(defn- check-feature-enabled!
+  [transform]
+  (api/check (transforms.execute/check-feature-enabled transform)
+             [402 (deferred-tru "Premium features required for this transform type are not enabled.")]))
+
 (api.macros/defendpoint :get "/"
   "Get a list of transforms."
   [_route-params
@@ -109,6 +114,7 @@
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (api/check-superuser)
   (check-database-feature body)
+  (check-feature-enabled! body)
   (api/check (not (transforms.util/target-table-exists? body))
              403
              (deferred-tru "A table with that name already exists."))
@@ -181,6 +187,7 @@
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "put transform" id)
   (api/check-superuser)
+  (check-feature-enabled! body)
   (t2/with-transaction [_]
     ;; Cycle detection should occur within the transaction to avoid race
     (let [old (t2/select-one :model/Transform id)
@@ -240,6 +247,7 @@
   (log/info "run transform" id)
   (api/check-superuser)
   (let [transform (api/check-404 (t2/select-one :model/Transform id))
+        _         (check-feature-enabled! transform)
         start-promise (promise)]
     (if (transforms.util/python-transform? transform)
       (u.jvm/in-virtual-thread*
