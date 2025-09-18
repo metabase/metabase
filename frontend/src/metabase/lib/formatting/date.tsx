@@ -856,22 +856,22 @@ export function formatDateTimeRangeWithUnit(
 
   const formatDate = (date: Dayjs, formatStr: string) => {
     // month format is configurable, so we need to insert it after lookup
-    let processedFormat = formatStr.replace(
+    const processedFormat = formatStr.replace(
       DATE_RANGE_MONTH_PLACEHOLDER,
       monthFormat,
     );
 
     // Fix for day-of-year formatting: replace DDD and DDDo with custom formatting
     // because dayjs DDD format token doesn't work like moment's DDD
-    if (processedFormat.includes("DDDo")) {
-      const dayOfYear = date.dayOfYear();
-      const ordinal = dayjs().localeData().ordinal(dayOfYear);
-      // Replace only the DDDo token
-      processedFormat = processedFormat.replace(/DDDo/g, ordinal);
-      // Remove brackets from literal text since we're not using dayjs formatting
-      processedFormat = processedFormat.replace(/\[([^\]]+)\]/g, "$1");
-      return processedFormat;
-    }
+    // if (processedFormat.includes("DDDo")) {
+    //   const dayOfYear = date.dayOfYear();
+    //   const ordinal = dayjs().localeData().ordinal(dayOfYear);
+    //   // Replace only the DDDo token
+    //   processedFormat = processedFormat.replace(/DDDo/g, ordinal);
+    //   // Remove brackets from literal text since we're not using dayjs formatting
+    //   processedFormat = processedFormat.replace(/\[([^\]]+)\]/g, "$1");
+    //   return processedFormat;
+    // }
 
     return date.format(processedFormat);
   };
@@ -1082,9 +1082,10 @@ export function formatDateTimeWithUnit(
     return String(value);
   }
 
-  // if (unit === "day-of-year") {
-  //   return m.dayOfYear();
-  // }
+  // dayjs can't format DDD to day of year, handle manually
+  if (unit === "day-of-year") {
+    return m.dayOfYear();
+  }
 
   if (unit === "week-of-year") {
     return dayjs().localeData().ordinal(m.isoWeek()).slice(1, -1);
