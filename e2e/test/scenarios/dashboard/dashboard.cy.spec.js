@@ -1503,6 +1503,32 @@ H.describeWithSnowplow("scenarios > dashboard", () => {
       full_width: false,
     });
   });
+
+  it("should track reverting to an old version", () => {
+    H.createDashboard({ name: "Foo" }).then(({ body: { id } }) => {
+      cy.request("PUT", `/api/dashboard/${id}`, { name: "Bar" });
+      H.visitDashboard(id);
+
+      cy.intercept("GET", "/api/revision*").as("revisionHistory");
+
+      cy.findByTestId("dashboard-header")
+        .findByLabelText("More info")
+        .should("be.visible")
+        .click();
+
+      H.sidesheet().within(() => {
+        cy.findByRole("tab", { name: "History" }).click();
+        cy.wait("@revisionHistory");
+        cy.findByTestId("dashboard-history-list").should("be.visible");
+        cy.findByTestId("question-revert-button").click();
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "revert_version_clicked",
+        event_detail: "dashboard",
+      });
+    });
+  });
 });
 
 function checkOptionsForFilter(filter) {

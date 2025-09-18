@@ -59,10 +59,12 @@ export function JobList({ params }: { params: JobListParams }) {
         columnTitles={[
           t`Job`,
           <Flex align="center" gap="xs" key="last-run-at">
-            {t`Last run at`} <TimezoneIndicator />
+            <span className={S.nowrap}>{t`Last run at`}</span>{" "}
+            <TimezoneIndicator />
           </Flex>,
           <Flex align="center" gap="xs" key="next-run">
-            {t`Next run`} <TimezoneIndicator />
+            <span className={S.nowrap}>{t`Next run`}</span>{" "}
+            <TimezoneIndicator />
           </Flex>,
           t`Tags`,
         ]}
@@ -73,8 +75,8 @@ export function JobList({ params }: { params: JobListParams }) {
             className={S.row}
             onClick={() => handleRowClick(job)}
           >
-            <td className={S.cell}>{job.name}</td>
-            <td className={S.cell}>
+            <td className={S.wrap}>{job.name}</td>
+            <td className={S.nowrap}>
               {job.last_run?.start_time
                 ? parseTimestampWithTimezone(
                     job.last_run?.start_time,
@@ -82,7 +84,7 @@ export function JobList({ params }: { params: JobListParams }) {
                   ).format("lll")
                 : null}
             </td>
-            <td className={S.cell}>
+            <td className={S.nowrap}>
               {job.next_run?.start_time
                 ? parseTimestampWithTimezone(
                     job.next_run?.start_time,
@@ -90,7 +92,7 @@ export function JobList({ params }: { params: JobListParams }) {
                   ).format("lll")
                 : null}
             </td>
-            <td className={S.cell}>
+            <td className={S.wrap}>
               <TagList tags={tags} tagIds={job.tag_ids ?? []} />
             </td>
           </tr>

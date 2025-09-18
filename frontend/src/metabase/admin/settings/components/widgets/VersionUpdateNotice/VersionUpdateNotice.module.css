@@ -10,3 +10,11 @@
   border-radius: 0.5rem;
   background-color: var(--mb-color-brand);
 }
+
+.iframe {
+  width: 100%;
+  height: 600px;
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.5rem;
+  margin-top: 1rem;
+}

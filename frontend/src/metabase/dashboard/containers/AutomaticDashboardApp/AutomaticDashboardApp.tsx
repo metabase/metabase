@@ -30,6 +30,7 @@ import { XrayIcon } from "../XrayIcon";
 
 import S from "./AutomaticDashboardApp.module.css";
 import { SuggestionsSidebar } from "./SuggestionsSidebar";
+import { trackXRaySaved } from "./analytics";
 
 const SIDEBAR_W = 346;
 
@@ -132,7 +133,10 @@ const AutomaticDashboardAppInner = () => {
                         className={cx(CS.mlAuto, CS.textNoWrap)}
                         success
                         borderless
-                        actionFn={save}
+                        actionFn={() => {
+                          trackXRaySaved();
+                          return save();
+                        }}
                       >
                         {t`Save this`}
                       </ActionButton>
