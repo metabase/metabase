@@ -70,7 +70,7 @@
           (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
             (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
                                                                      :schema schema
-                                                                     :name   "python_cleanup_test"}]
+                                                                     :name   "cleanup_"}]
               (let [transform-def {:name   "Python Transform Cleanup"
                                    :source {:type  "python"
                                             :source-tables {}
