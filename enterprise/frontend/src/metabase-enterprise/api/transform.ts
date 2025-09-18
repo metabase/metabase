@@ -123,13 +123,18 @@ export const transformApi = EnterpriseApi.injectEndpoints({
             "error" in error &&
             !isResourceNotFoundError(error.error)
           ) {
+            // When the error is not a 404, undo the patch as something is wrong
+            patchResult.undo();
+          } else {
             // Avoid undoing the patch when the error is 404
             // as this will confuse the transform pages by setting the
             // status back to started even though we know the run must've
             // completed (in either succeeded, failed, timeout or canceled state).
             // We just don't know which state it is, so we leave it in canceling
-            // state until the FE requests the state again.t
-            patchResult.undo();
+            // state and trigger a re-fetch of the transform to get the latest state.
+            dispatch(
+              EnterpriseApi.util.invalidateTags([idTag("transform", id)]),
+            );
           }
         }
       },
