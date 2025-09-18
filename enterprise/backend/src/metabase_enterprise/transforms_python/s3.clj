@@ -139,8 +139,28 @@
 (declare cleanup-s3-objects)
 
 (defn open-s3-shared-storage!
-  "Returns a deref'able shared storage value, (.close) will optimistically delete any s3 objects named in storage (data files for tables, metadata files etc).
-  The intention is the bucket specifies a generic object retention policy to ensure objects are eventually deleted (e.g. because the process dies during writing and .close never gets called)"
+  "Returns a map wrapped in a deref-able auto-closable, to be used in a with-open.
+
+  The map contains:
+  - :s3-client   - an S3Client that can be used to upload/download files
+  - :bucket-name - the S3 bucket name
+  - :objects     - a map of keys to {:path :method :url} maps, where:
+    - :path   is the S3 key
+    - :method is either :get or :put, indicating whether the python-runner should fetch or upload the file.
+    - :url    is the presigned URL to be used by the python-runner to fetch or upload the file.
+
+  The objects are broken into the following transform inputs:
+
+  - [:table id :manifest] - for each input table, the manifest JSON file
+  - [:table id :data]     - for each input table, the data file, in format specified by the manifest.
+
+  And the following transform outputs:
+  - :output-manifest - the output manifest JSON file
+  - :output          - the output data file, in format specified by the output manifest.
+  - :events          - a JSONL file containing the events logged during python execution.
+
+  When the value is closed, all the relevant keys will be deleted, but this is best-effort only.
+  We rely on the bucket retention policy to ensure any stragglers are eventually deleted."
   ^Closeable [table-name->id]
   (let [shared-storage (s3-shared-storage table-name->id)]
     (reify IDeref
