@@ -230,7 +230,7 @@
         (log! message-log "Executing Python transform")
         (log/info "Executing Python transform" transform-id "with target" (pr-str target))
         (let [start-ms          (u/start-timer)
-              transform-details {:db             db
+              transform-details {:db-id          (:id db)
                                  :transform-type (keyword (:type target))
                                  :conn-spec      (driver/connection-spec driver db)
                                  :output-schema  (:schema target)

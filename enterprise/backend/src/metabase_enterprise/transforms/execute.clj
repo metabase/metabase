@@ -34,7 +34,7 @@
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
            feature (transforms.util/required-database-feature transform)
-           transform-details {:db database
+           transform-details {:db-id db
                               :transform-type (keyword (:type target))
                               :conn-spec (driver/connection-spec driver database)
                               :query (transforms.util/compile-source source)

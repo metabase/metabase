@@ -42,7 +42,7 @@
   (= :python (-> transform :source :type keyword)))
 
 (defn try-start-unless-already-running
-  "Helper"
+  "Start a transform run, throwing an informative error if already running."
   [id run-method]
   (try
     (transform-run/start-run! id {:run_method run-method})
@@ -55,13 +55,12 @@
         (throw e)))))
 
 (defn run-cancelable-transform!
-  "Run a compiled transform"
-  [run-id driver {:keys [db conn-spec output-schema]} run-transform!]
+  "Execute a transform with cancellation support and proper error handling."
+  [run-id driver {:keys [db-id conn-spec output-schema]} run-transform!]
   ;; local run is responsible for status, using canceling lifecycle
   (try
-    (when (driver.u/supports? driver :schemas db)
-      (when-not (driver/schema-exists? driver (:id db) output-schema)
-        (driver/create-schema-if-needed! driver conn-spec output-schema)))
+    (when-not (driver/schema-exists? driver db-id output-schema)
+      (driver/create-schema-if-needed! driver conn-spec output-schema))
     (canceling/chan-start-timeout-vthread! run-id (transforms.settings/transform-timeout))
     (let [cancel-chan (a/promise-chan)
           ret (binding [qp.pipeline/*canceled-chan* cancel-chan]
