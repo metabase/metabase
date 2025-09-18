@@ -3,13 +3,12 @@ import type { TagDescription } from "@reduxjs/toolkit/query";
 import { TAG_TYPES, provideUserTags } from "metabase/api/tags";
 import type {
   Comment,
+  PythonLibrary,
   Transform,
   TransformJob,
   TransformRun,
   TransformTag,
 } from "metabase-types/api";
-
-import type { PythonLibrary } from "./python-transform-library";
 
 export const ENTERPRISE_TAG_TYPES = [
   ...TAG_TYPES,
