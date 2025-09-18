@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.transforms-python.execute :as transforms.execute]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
@@ -81,6 +82,11 @@
               :stdout          (->> events (filter #(= "stdout" (:stream %))) (map :message) (str/join "\n"))
               :stderr          (->> events (filter #(= "stderr" (:stream %))) (map :message) (str/join "\n"))}))))
 
+(defn ok-stdout [num-rows num-cols]
+  (format (str "Successfully saved %d rows to S3\n"
+               "Successfully saved output manifest with %d fields to S3")
+          num-rows num-cols))
+
 (deftest ^:parallel transform-function-basic-test
   (testing "executes transform function and returns CSV output"
     (let [transform-code (str "import pandas as pd\n"
@@ -90,8 +96,7 @@
           result         (execute! {:code transform-code})]
       (is (=? {:output (jsonl-output [{:name "Alice", :age 25}
                                       {:name "Bob", :age 30}])
-               :stdout "Successfully saved 2 rows to S3\nSuccessfully saved output manifest with 2 fields"
-               #_#_:stderr ""}
+               :stdout (ok-stdout 2 2)}
               result)))))
 
 (deftest ^:parallel transform-function-missing-test
@@ -143,8 +148,7 @@
       (is (=? {:output (jsonl-output [{:x 1, :y 10, :z "a"}
                                       {:x 2, :y 20, :z "b"}
                                       {:x 3, :y 30, :z "c"}])
-               #_#_:stdout "Successfully saved 3 rows to S3\nSuccessfully saved output manifest with 3 fields"
-               #_#_:stderr ""}
+               :stdout (ok-stdout 3 3)}
               result)))))
 
 (deftest ^:parallel transform-function-with-db-parameter-test
@@ -158,8 +162,7 @@
             result         (execute! {:code transform-code})]
         (is (=? {:output (jsonl-output [{:name "Charlie", :score 85}
                                         {:name "Dana", :score 92}])
-                 :stdout "Successfully saved 2 rows to S3\nSuccessfully saved output manifest with 2 fields"
-                 #_#_:stderr ""}
+                 :stdout (ok-stdout 2 2)}
                 result))))))
 
 (deftest transform-function-with-pass-thru
@@ -188,7 +191,7 @@
                                                         :database_type  "int4",
                                                         :effective_type "Integer",
                                                         :name           "id",
-                                                        :root_type      "Integer",
+                                                        :root_type      "Number",
                                                         :semantic_type  "PK"}
                                                        {:base_type      "Text",
                                                         :database_type  "varchar",
@@ -200,13 +203,13 @@
                                                         :database_type  "int4",
                                                         :effective_type "Integer",
                                                         :name           "score",
-                                                        :root_type      "Integer",
+                                                        :root_type      "Number",
                                                         :semantic_type  "Score"}],
                                      :source_metadata {:fields         [{:base_type      "Integer",
                                                                          :database_type  "int4",
                                                                          :effective_type "Integer",
                                                                          :name           "id",
-                                                                         :root_type      "Integer",
+                                                                         :root_type      "Number",
                                                                          :semantic_type  "PK"}
                                                                         {:base_type      "Text",
                                                                          :database_type  "varchar",
@@ -218,7 +221,7 @@
                                                                          :database_type  "int4",
                                                                          :effective_type "Integer",
                                                                          :name           "score",
-                                                                         :root_type      "Integer",
+                                                                         :root_type      "Number",
                                                                          :semantic_type  "Score"}],
                                                        :table_metadata {:table_id (mt/malli=? int?)},
                                                        :schema_version 1
@@ -227,11 +230,7 @@
                                      :schema_version  1
                                      :data_format     "jsonl"
                                      :data_version    1}
-                   :stdout          (str "Successfully saved 4 rows to S3\n"
-                                         "Successfully saved output manifest with 3 fields")
-                   :stderr          (str "Parsed id as Integer\n"
-                                         "Parsed name as Text\n"
-                                         "Parsed score as Integer")}
+                   :stdout          (ok-stdout 4 3)}
                   result)))))))
 
 (deftest transform-function-with-empty-table-test
@@ -263,11 +262,7 @@
                                      :data_version   1
                                      :fields         [{:name "student_count", :base_type "Integer"}
                                                       {:name "average_score", :base_type "Float"}]}
-                   :stdout          (str "Successfully saved 1 rows to S3\n"
-                                         "Successfully saved output manifest with 2 fields to S3")
-                   :stderr          (str "Parsed id as Number\n"
-                                         "Parsed name as Text\n"
-                                         "Parsed score as Number")}
+                   :stdout          (ok-stdout 1 2)}
                   result)))))))
 
 (deftest transform-function-with-working-database-test
@@ -300,11 +295,7 @@
                                      :data_version   1
                                      :fields         [{:name "student_count", :base_type "Integer"}
                                                       {:name "average_score", :base_type "Float"}]}
-                   :stdout          (str "Successfully saved 1 rows to S3\n"
-                                         "Successfully saved output manifest with 2 fields to S3")
-                   :stderr          (str "Parsed id as Integer\n"
-                                         "Parsed name as Text\n"
-                                         "Parsed score as Integer")}
+                   :stdout          (ok-stdout 1 2)}
                   result)))))))
 
 (defn- datetime-equal?
@@ -376,10 +367,9 @@
                   ;; Our hack works
                   "created_date"  :type/Date
                   "updated_at"    :type/DateTime
-                  ;; TODO I think this might be a regression?
                   "scheduled_for" :type/DateTimeWithLocalTZ}
                  (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                   [name (keyword "type" base_type)]))))))))
+                   [name (transforms.execute/restricted-insert-type base_type)]))))))))
 
 (deftest python-transform-scheduled-job-test
   (mt/test-helpers-set-global-values!
@@ -432,7 +422,7 @@
               result         (execute! {:code transform-code})]
           (is (=? {:output (jsonl-output [{:radius 5,  :area 78.5398163397, :price "$78.54"}
                                           {:radius 10, :area 314.159265359, :price "$314.16"}])
-                   :stdout "Successfully saved 2 rows to S3\nSuccessfully saved output manifest with 3 fields"
+                   :stdout (ok-stdout 2 3)
                    #_#_:stderr ""}
                   result)))))))
 
@@ -450,8 +440,7 @@
                                   "    return pd.DataFrame({'status': ['ok']})")
               result         (execute! {:code transform-code})]
           (is (=? {:output (jsonl-output [{:status "ok"}])
-                   :stdout "Successfully saved 1 rows to S3\nSuccessfully saved output manifest with 1 fields"
-                   #_#_:stderr ""}
+                   :stdout (ok-stdout 1 1)}
                   result)))))))
 
 (deftest transform-function-library-import-error-test
@@ -531,7 +520,7 @@
                   "created_date" :type/Date
                   "description"  :type/Text}
                  (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                   [name (keyword "type" base_type)]))))
+                   [name (transforms.execute/restricted-insert-type base_type)]))))
 
         ;; cleanup
         (driver/drop-table! driver db-id qualified-table-name)))))
