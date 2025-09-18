@@ -40,17 +40,15 @@
 (defn- python-runner-request
   "Helper function for making HTTP requests to the python runner service."
   [server-url method endpoint & [request-options]]
-  (let [base-options {:content-type     :json
+  (let [url          (str server-url "/v1" endpoint)
+        base-options {:content-type     :json
                       :accept           :json
                       :throw-exceptions false
                       :as               :json
                       :headers          (authorization-headers)}]
-    (http/request (merge base-options
-                         request-options
-                         {:method method
-                          :url    (str server-url "/v1" endpoint)}))))
+    (http/request (merge base-options request-options {:method method, :url url}))))
 
-(defn- write-to-stream! [^OutputStream os col-names reducible-rows]
+(defn- write-jsonl-to-stream! [^OutputStream os col-names reducible-rows]
   (let [none? (volatile! true)
         writer (-> os
                    (OutputStreamWriter. StandardCharsets/UTF_8)
@@ -108,24 +106,21 @@
   (or semantic_type (closest-ancestor (or effective_type base_type) #(isa? % :Semantic/*))))
 
 (defn- generate-manifest
-  "Generate a metadata manifest for the table columns."
+  "Generate a manifest to communicate schema and metadata information around the table."
   [table-id cols-meta]
   {:schema_version 1
    :data_format    "jsonl"
    :data_version   1
+   :table_metadata {:table_id table-id}
    :fields         (mapv (fn [col-meta]
                            {:name           (:name col-meta)
                             :base_type      (some-> (:base_type col-meta) name)
                             :database_type  (some-> (:database_type col-meta) name)
                             :root_type      (some-> (root-type (:base_type col-meta)) name)
-                            ;; replace nil values with values indicating how they behave in practice.
-                            ;; there may be better ways of doing this already, but i worry it's just implicit in QP
                             :semantic_type  (some-> (effective-semantic-type-i-think col-meta) name)
                             :effective_type (some-> (or (:effective_type col-meta) (:database_type col-meta)) name)
-                            ;; TODO get this passed through
                             :field_id       (:id col-meta)})
-                         cols-meta)
-   :table_metadata {:table_id table-id}})
+                         cols-meta)})
 
 (defn- maybe-fixup-value [col v]
   (cond
@@ -143,51 +138,10 @@
     v))
 
 (defn- preprocess-fields-meta [_driver fields-meta]
-  (->> fields-meta
-       ;; we are only interested in the parent objects, so we filter out any nested values
-       (filter #(and (nil? (:parent_id %)) (nil? (:nfc_path %))))
+  (->> fields-meta))
 
-       #_(map (fn [meta]
-                ;; TODO move this into driver method
-                (cond
-
-                  (= driver :bigquery-cloud-sdk)
-                  (case (:database_type meta)
-                    ;; the bigquery driver returns a lossy database-type
-                    ;; so we must translate to a valid one, even if it may be lossy
-                    ("ARRAY" "RECORD") (assoc meta :database_type "JSON" :base_type :type/JSON)
-                    "FLOAT" (assoc meta :database_type "FLOAT64")
-                    meta)
-
-                  (= driver :postgres)
-                  (if (str/starts-with? (:database_type meta) "_")
-                    (assoc meta :base_type :type/Array)
-                    meta)
-
-                  (= driver :mysql)
-                  (case (:database_type meta)
-                    ("ENUM" "VARCHAR" "SET")
-                    (dissoc meta :database_type)
-
-                    "VARBINARY"
-                    (assoc meta :database_type "BINARY")
-
-                    meta)
-
-                  :else
-                  meta)))))
-
-(defn- write-table-data-to-file! [id temp-file cancel-chan]
-  (let [db-id       (t2/select-one-fn :db_id (t2/table-name :model/Table) :id id)
-        driver      (t2/select-one-fn :engine :model/Database db-id)
-        fields-meta (->> (t2/select [:model/Field :id :name :base_type :effective_type :semantic_type :database_type :database_position :nfc_path :parent_id]
-                                    :table_id id
-                                    :active true
-                                    {:order-by [[:database_position :asc]]})
-                         (preprocess-fields-meta driver))
-
-        query    {:source-table id}
-        manifest (generate-manifest id fields-meta)]
+(defn- write-table-data-to-file! [{:keys [db-id driver table-id fields-meta temp-file cancel-chan]}]
+  (let [query    {:source-table table-id}]
     (execute-mbql-query driver db-id query
                         (fn [{cols-meta :cols} reducible-rows]
                           (with-open [os (io/output-stream temp-file)]
@@ -201,9 +155,8 @@
                                                                       (map (fn [[n v]]
                                                                              (maybe-fixup-value (filtered-col-meta n) v))))))
                                                               reducible-rows)]
-                              (write-to-stream! os (filter filtered-col-meta col-names) filtered-rows))))
-                        cancel-chan)
-    manifest))
+                              (write-jsonl-to-stream! os (filter filtered-col-meta col-names) filtered-rows))))
+                        cancel-chan)))
 
 (defn get-logs
   "Return the logs of the current running python process"
@@ -274,6 +227,47 @@
   [^File file]
   (try (.delete file) (catch Exception _)))
 
+(defn- fields-metadata [_driver table-id]
+  (->> (t2/select [:model/Field :id :name :base_type :effective_type :semantic_type :database_type :database_position :nfc_path :parent_id]
+                  :table_id table-id
+                  :active true
+                  ;; we are only interested in top-level objects, so filter out nested fields (parent or path)
+                  :parent_id nil
+                  :nfc_path nil
+                  {:order-by [[:database_position :asc]]})
+
+       ;; adjust metadata where necessary. disabled for now as we've restricted ourselves only to basic types for v1.
+       ;; TODO introduce a multimethod once we do this in anger
+       identity
+       #_(map (fn [meta]
+                (case driver
+
+                  :bigquery-cloud-sdk
+                  (case (:database_type meta)
+                    ;; the bigquery driver returns a lossy database-type
+                    ;; so we must translate to a valid one, even if it may be lossy
+                    ("ARRAY" "RECORD") (assoc meta :database_type "JSON" :base_type :type/JSON)
+                    "FLOAT" (assoc meta :database_type "FLOAT64")
+                    meta)
+
+                  :postgres
+                  (if (str/starts-with? (:database_type meta) "_")
+                    (assoc meta :base_type :type/Array)
+                    meta)
+
+                  :mysql
+                  (case (:database_type meta)
+                    ("ENUM" "VARCHAR" "SET")
+                    (dissoc meta :database_type)
+
+                    "VARBINARY"
+                    (assoc meta :database_type "BINARY")
+
+                    meta)
+
+                  ;; else
+                  meta)))))
+
 ;; TODO break this up such that s3 can be swapped out for other transfer mechanisms.
 (defn copy-tables-to-s3!
   "Writes table content to their corresponding objects named in shared-storage, see (open-shared-storage!).
@@ -283,30 +277,38 @@
            table-name->id
            cancel-chan]}]
   ;; TODO there's scope for some parallelism here, in particular across different databases
-  (doseq [id (vals table-name->id)
+  (doseq [table-id (vals table-name->id)
           :let [{:keys [s3-client bucket-name objects]} shared-storage
-                {data-path :path}                       (get objects [:table id :data])
-                {manifest-path :path}                   (get objects [:table id :manifest])]]
-    (let [temp-file     (File/createTempFile data-path "")
-          manifest-file (File/createTempFile manifest-path "")]
+                {data-path :path}                       (get objects [:table table-id :data])
+                {manifest-path :path}                   (get objects [:table table-id :manifest])]]
+    (let [tmp-data-file (File/createTempFile data-path "")
+          tmp-meta-file (File/createTempFile manifest-path "")]
       (try
-        ;; Write table data to temporary file and get manifest
-        (let [manifest (transforms.instrumentation/with-stage-timing [run-id :dwh-to-file]
-                         (write-table-data-to-file! id temp-file cancel-chan))]
-          ;; Write manifest to file
-          (with-open [writer (io/writer manifest-file)]
+        (let [db-id       (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table-id)
+              driver      (t2/select-one-fn :engine :model/Database db-id)
+              fields-meta (fields-metadata driver table-id)
+              manifest    (generate-manifest table-id fields-meta)]
+
+          (transforms.instrumentation/with-stage-timing [run-id :dwh-to-file]
+            (write-table-data-to-file!
+             {:db-id       db-id
+              :driver      driver
+              :table-id    table-id
+              :fields-meta fields-meta
+              :temp-file   tmp-data-file
+              :cancel-chan cancel-chan}))
+
+          (with-open [writer (io/writer tmp-meta-file)]
             (json/encode-to manifest writer {}))
-          (let [file-size     (.length temp-file)
-                manifest-size (.length manifest-file)]
-            (transforms.instrumentation/record-data-transfer! run-id :dwh-to-file file-size nil)
+          (let [data-size (.length tmp-data-file)
+                meta-size (.length tmp-meta-file)]
+            (transforms.instrumentation/record-data-transfer! run-id :dwh-to-file data-size nil)
 
-            ;; Upload both files to S3
             (transforms.instrumentation/with-stage-timing [run-id :file-to-s3]
-              (s3/upload-file s3-client bucket-name data-path temp-file)
-              (s3/upload-file s3-client bucket-name manifest-path manifest-file))
+              (s3/upload-file s3-client bucket-name data-path tmp-data-file)
+              (s3/upload-file s3-client bucket-name manifest-path tmp-meta-file))
 
-            (transforms.instrumentation/record-data-transfer! run-id :file-to-s3 (+ file-size manifest-size) nil)))
+            (transforms.instrumentation/record-data-transfer! run-id :file-to-s3 (+ data-size meta-size) nil)))
         (finally
-          ;; Clean up temporary files
-          (safe-delete temp-file)
-          (safe-delete manifest-file))))))
+          (safe-delete tmp-data-file)
+          (safe-delete tmp-meta-file))))))
