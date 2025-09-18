@@ -15,10 +15,10 @@
 (defn check-feature-enabled
   "Checking whether we have proper feature flags for using a given transform."
   [transform]
-  (case (-> transform :source :type keyword)
-    :query  (premium-features/has-feature? :transforms)
-    :python (and (premium-features/has-feature? :transforms)
-                 (premium-features/has-feature? :transforms-python))))
+  (if (transforms.util/python-transform? transform)
+    (and (premium-features/has-feature? :transforms)
+         (premium-features/has-feature? :transforms-python))
+    (premium-features/has-feature? :transforms)))
 
 (mr/def ::transform-details
   [:map
