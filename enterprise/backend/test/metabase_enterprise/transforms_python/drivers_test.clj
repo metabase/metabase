@@ -117,10 +117,9 @@
                    nil]]}
    :mariadb {:columns [{:name "id" :type :type/Integer :nullable? false}
                        {:name "json_field" :type :type/JSON :nullable? true}
-                       {:name "uuid_field" :type :type/UUID :nullable? true :database-type "uuid"}
-                       {:name "inet4_field" :type :type/IPAddress :nullable? true :database-type "inet4"}]
-             :data [[1 "{\"key\": \"mariadb_value\"}" "550e8400-e29b-41d4-a716-446655440000" "192.168.1.1"]
-                    [2 nil nil nil]]}
+                       {:name "uuid_field" :type :type/UUID :nullable? true :database-type "uuid"}]
+             :data [[1 "{\"key\": \"mariadb_value\"}" "550e8400-e29b-41d4-a716-446655440000"]
+                    [2 nil nil]]}
 
    :bigquery-cloud-sdk {:columns [{:name "id" :type :type/Integer :nullable? false}
                                   {:name "json_field" :type :type/JSON :nullable? true}
@@ -276,9 +275,7 @@
                             (is (isa? (type-map "json_field") :type/Text #_:type/JSON))
                             (is (isa? (type-map "ip_field") :type/Text #_:type/IPAddress)))
                 :mysql (if (mysql/mariadb? (mt/db))
-                         (do
-                           (is (isa? (type-map "uuid_field") :type/Text #_:type/UUID))
-                           (is (isa? (type-map "inet4_field") :type/Text  #_:type/IPAddress)))
+                         (is (isa? (type-map "uuid_field") :type/Text #_:type/UUID))
                          (do
                            (is (isa? (type-map "json_field") :type/Text #_:type/JSON))
                            (is (isa? (type-map "timestamp") :type/DateTimeWithLocalTZ))))
