@@ -81,8 +81,6 @@ const DataSectionBase = ({ field }: Props) => {
       coercion_strategy: coercionStrategy,
     });
 
-    trackMetadataChange("type_casting");
-
     if (error) {
       sendErrorToast(
         field.coercion_strategy == null
@@ -90,6 +88,8 @@ const DataSectionBase = ({ field }: Props) => {
           : t`Failed to update casting for ${field.display_name}`,
       );
     } else {
+      trackMetadataChange("type_casting");
+
       sendSuccessToast(
         field.coercion_strategy == null
           ? t`Casting enabled for ${field.display_name}`

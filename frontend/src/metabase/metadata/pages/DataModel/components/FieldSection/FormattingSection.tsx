@@ -34,11 +34,11 @@ const FormattingSectionBase = ({ field }: Props) => {
   const handleChange = async (settings: FieldSettings) => {
     const { error } = await updateField({ id, settings });
 
-    trackMetadataChange("formatting");
-
     if (error) {
       sendErrorToast(t`Failed to update formatting of ${field.display_name}`);
     } else {
+      trackMetadataChange("formatting");
+
       sendSuccessToast(
         t`Formatting of ${field.display_name} updated`,
         async () => {

@@ -42,13 +42,13 @@ const MetadataSectionBase = ({ databaseId, field, table }: Props) => {
   const handleChange = async (patch: Patch) => {
     const { error } = await updateField({ id, ...patch });
 
-    trackMetadataChange("semantic_type_change");
-
     if (error) {
       sendErrorToast(
         t`Failed to update semantic type of ${field.display_name}`,
       );
     } else {
+      trackMetadataChange("semantic_type_change");
+
       sendSuccessToast(
         t`Semantic type of ${field.display_name} updated`,
         async () => {

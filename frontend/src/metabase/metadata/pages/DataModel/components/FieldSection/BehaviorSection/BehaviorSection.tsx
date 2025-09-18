@@ -99,8 +99,6 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
       json_unfolding: jsonUnfolding,
     });
 
-    trackMetadataChange("json_unfolding");
-
     if (error) {
       sendErrorToast(
         jsonUnfolding
@@ -108,6 +106,8 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
           : t`Failed to disable JSON unfolding for ${field.display_name}`,
       );
     } else {
+      trackMetadataChange("json_unfolding");
+
       sendSuccessToast(
         jsonUnfolding
           ? t`JSON unfolding enabled for ${field.display_name}`
