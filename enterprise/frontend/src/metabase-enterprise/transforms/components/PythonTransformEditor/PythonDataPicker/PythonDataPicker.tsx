@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { hasFeature } from "metabase/admin/databases/utils";
@@ -9,16 +9,7 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
-import {
-  ActionIcon,
-  Box,
-  Button,
-  Group,
-  Icon,
-  Stack,
-  Text,
-  TextInput,
-} from "metabase/ui";
+import { ActionIcon, Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
 import type {
   Database,
   DatabaseId,
@@ -26,6 +17,7 @@ import type {
   Table,
 } from "metabase-types/api";
 
+import { AliasInput } from "./AliasInput";
 import S from "./PythonDataPicker.module.css";
 import { TableSelector } from "./TableSelector";
 import type { TableSelection } from "./types";
@@ -74,7 +66,7 @@ export function PythonDataPicker({
       : skipToken,
   );
 
-  const notifyParentOfChange = (
+  const handleChange = (
     database: DatabaseId | undefined,
     selections: TableSelection[],
   ) => {
@@ -109,7 +101,7 @@ export function PythonDataPicker({
       },
     ];
     setTableSelections(newSelections);
-    notifyParentOfChange(newDatabase, newSelections);
+    handleChange(newDatabase, newSelections);
   };
 
   const handleSelectionChange = (
@@ -119,7 +111,7 @@ export function PythonDataPicker({
     const newSelections = Array.from(tableSelections);
     newSelections[selectionIndex] = selection;
     setTableSelections(newSelections);
-    notifyParentOfChange(database, newSelections);
+    handleChange(database, newSelections);
   };
 
   const handleAddTable = () => {
@@ -136,7 +128,7 @@ export function PythonDataPicker({
     const newSelections = Array.from(tableSelections);
     newSelections.splice(selectionIndex, 1);
     setTableSelections(newSelections);
-    notifyParentOfChange(database, newSelections);
+    handleChange(database, newSelections);
   };
 
   return (
@@ -278,7 +270,6 @@ function SelectionInput({
         availableTables={availableTables}
         disabled={disabled}
       />
-
       <AliasInput
         selection={selection}
         table={table}
@@ -286,59 +277,9 @@ function SelectionInput({
         usedAliases={usedAliases}
         disabled={disabled}
       />
-
       <ActionIcon onClick={onRemove} aria-label={t`Remove table`}>
         <Icon name="trash" />
       </ActionIcon>
     </Group>
-  );
-}
-
-function AliasInput({
-  table,
-  selection,
-  onChange,
-  usedAliases,
-  disabled,
-}: {
-  selection: TableSelection;
-  table?: Table;
-  onChange: (value: string) => void;
-  usedAliases: Set<string>;
-  disabled?: boolean;
-}) {
-  const [value, setValue] = useState(selection.alias);
-
-  useEffect(() => {
-    setValue(selection.alias);
-  }, [selection.alias]);
-
-  const defaultAlias = table
-    ? slugify(table.name, usedAliases, selection.alias)
-    : "";
-  const isManualAlias = selection.alias !== defaultAlias;
-  const showReset = table && isManualAlias;
-
-  return (
-    <TextInput
-      flex="0 1 50%"
-      value={value}
-      onChange={(event) => setValue(event.target.value)}
-      onBlur={() => onChange(value)}
-      placeholder={t`Enter alias`}
-      rightSection={
-        showReset ? (
-          <ActionIcon
-            onClick={() => onChange(defaultAlias)}
-            aria-label={t`Reset alias to default`}
-            color="gray"
-            variant="subtle"
-          >
-            <Icon name="refresh" size={12} />
-          </ActionIcon>
-        ) : null
-      }
-      disabled={disabled}
-    />
   );
 }
