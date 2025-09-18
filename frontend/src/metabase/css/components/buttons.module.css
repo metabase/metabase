@@ -8,7 +8,7 @@
   text-decoration: none;
   padding: 0.5rem 0.75rem;
   background: transparent;
-  border: 1px solid color-mix(in srgb, var(--mb-color-border), black 5%);
+  border: 1px solid var(--mb-color-border);
   color: var(--mb-color-text-primary);
   cursor: pointer;
   font-weight: bold;
@@ -20,7 +20,7 @@
 
 .Button:hover {
   color: var(--mb-color-text-brand);
-  border-color: color-mix(in srgb, var(--mb-color-border), black 12%);
+  border-color: var(--mb-color-border);
   background: var(--mb-color-bg-light);
 }
 
