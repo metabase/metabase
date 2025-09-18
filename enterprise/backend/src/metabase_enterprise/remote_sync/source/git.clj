@@ -131,7 +131,7 @@
       :else path)))
 
 (defn- matches-prefix [path prefixes]
-  (some #(or (= % path) (str/starts-with? path (str % "_"))) prefixes))
+  (some #(or (= % path) (str/starts-with? path %)) prefixes))
 
 (defn write-files!
   "Write a seq of files to the repo. `files` should be maps of :path and :content, with path relative to the root of the repository.
@@ -147,13 +147,13 @@
     (with-open [inserter (.newObjectInserter repo)]
       (let [index (DirCache/newInCore)
             builder (.builder index)
-            updated-prefixes  (into #{} (map (fn [{:keys [path content]}]
-                                               (let [blob-id (.insert inserter Constants/OBJ_BLOB (.getBytes ^String content "UTF-8"))
-                                                     entry (doto (DirCacheEntry. ^String path)
-                                                             (.setFileMode FileMode/REGULAR_FILE)
-                                                             (.setObjectId blob-id))]
-                                                 (.add builder entry))
-                                               (path-prefix path)) files))]
+            updated-prefixes (into #{} (map (fn [{:keys [path content]}]
+                                              (let [blob-id (.insert inserter Constants/OBJ_BLOB (.getBytes ^String content "UTF-8"))
+                                                    entry (doto (DirCacheEntry. ^String path)
+                                                            (.setFileMode FileMode/REGULAR_FILE)
+                                                            (.setObjectId blob-id))]
+                                                (.add builder entry))
+                                              (path-prefix path)) files))]
 
         ;; Copy existing tree entries, excluding the file we're updating
         (when parent-id
