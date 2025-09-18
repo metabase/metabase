@@ -4,6 +4,8 @@
    [medley.core :as m]
    [metabase-enterprise.transforms.models.job-run :as transforms.job-run]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -118,10 +120,49 @@
     (merge job (translated-name-and-description job))))
 
 (t2/define-before-update :model/TransformJob [job]
-  (if (nil? (:built_in_type job))
+  (if (or mi/*deserializing?* (nil? (:built_in_type job)))
     job
     (-> (merge (translated-name-and-description job) ;; default translations
                {:built_in_type nil}                  ;; never translate again
                (t2/changes job))                     ;; user edits
         (update :name        str) ;; convert deferred to strings
         (update :description str))))
+
+;;; ------------------------------------------------- Serialization ------------------------------------------------
+
+(mi/define-batched-hydration-method job-tags
+  :job_tags
+  "Fetch tags for job"
+  [jobs]
+  (when (seq jobs)
+    (let [job-ids      (into #{} (map u/the-id) jobs)
+          tag-mappings (group-by :job_id
+                                 (t2/select :model/TransformJobTransformTag
+                                            :job_id [:in job-ids]
+                                            {:order-by [[:position :asc]]}))]
+      (for [job jobs]
+        (assoc job :job_tags (get tag-mappings (u/the-id job) []))))))
+
+(defmethod serdes/hash-fields :model/TransformJob
+  [_job]
+  [:name :built_in_type])
+
+(defmethod serdes/make-spec "TransformJob"
+  [_model-name opts]
+  {:copy [:entity_id :built_in_type :schedule]
+   :skip []
+   :transform {:name {:export str :import identity}
+               :description {:export str :import identity}
+               :created_at (serdes/date)
+               :updated_at (serdes/date)
+               :job_tags (serdes/nested :model/TransformJobTransformTag :job_id opts)}})
+
+(defmethod serdes/dependencies "TransformJob"
+  [{:keys [job_tags]}]
+  (set
+   (for [{tag-id :tag_id} job_tags]
+     [{:model "TransformTag" :id tag-id}])))
+
+(defmethod serdes/storage-path "TransformJob" [job _ctx]
+  (let [{:keys [id label]} (-> job serdes/path last)]
+    ["transforms" "transform_jobs" (serdes/storage-leaf-file-name id label)]))
