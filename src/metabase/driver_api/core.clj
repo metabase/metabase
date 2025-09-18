@@ -106,6 +106,7 @@
  lib.metadata/fields
  lib.metadata/table
  lib.metadata/tables
+ lib.metadata/transforms
  lib.schema.common/instance-of-class
  lib.schema.temporal-bucketing/date-bucketing-units
  lib.types.isa/temporal?

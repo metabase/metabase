@@ -16,9 +16,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [potemkin :as p]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]))
+   [potemkin :as p]))
 
 (comment sql.params.substitution/keep-me) ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
 
@@ -173,16 +171,16 @@
 (defmethod driver/native-query-deps :sql
   ([driver query]
    (driver/native-query-deps driver query
-                             (driver-api/metadata-provider)
-                             (t2/select [:model/Transform :id :target])))
-  ([driver query metadata-provider transforms]
-   (let [db-tables (driver-api/tables metadata-provider)]
+                             (driver-api/metadata-provider)))
+  ([driver query metadata-provider]
+   (let [db-tables (driver-api/tables metadata-provider)
+         db-transforms (driver-api/transforms metadata-provider)]
      (->> query
           macaw/parsed-query
           macaw/query->components
           :tables
           (map :component)
-          (into #{} (keep #(find-table-or-transform driver db-tables transforms %)))))))
+          (into #{} (keep #(find-table-or-transform driver db-tables db-transforms %)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Dependencies                                                      |
@@ -197,7 +195,7 @@
 (defmethod resolve-field :all-columns
   [driver metadata-provider col-spec]
   (or (some->> (:table col-spec)
-               (find-table-or-transform driver (driver-api/tables metadata-provider) [])
+               (find-table-or-transform driver (driver-api/tables metadata-provider) (driver-api/transforms metadata-provider))
                :table
                (driver-api/fields metadata-provider))
       [(assoc col-spec ::bad-reference true)]))

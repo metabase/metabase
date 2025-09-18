@@ -247,6 +247,11 @@
    card-id           :- ::lib.schema.id/card]
   (metadata-by-id metadata-provider :metadata/transform card-id))
 
+(mu/defn transforms :- [:maybe [:sequential [:map]]]
+  "Return information about all Transforms."
+  [metadata-provider :- ::metadata-provider]
+  (metadatas metadata-provider {:lib/type :metadata/transform}))
+
 (mu/defn native-query-snippet :- [:maybe ::lib.schema.metadata/native-query-snippet]
   "Get metadata for a NativeQuerySnippet with `snippet-id` if it can be found."
   [metadata-provider :- ::metadata-provider

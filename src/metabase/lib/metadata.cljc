@@ -91,6 +91,11 @@
    transform-id          :- :int]
   (lib.metadata.protocols/transform (->metadata-provider metadata-providerable) transform-id))
 
+(mu/defn transforms :- [:maybe [:sequential [:map]]]
+  "Gets all Transforms"
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable]
+  (lib.metadata.protocols/transforms (->metadata-provider metadata-providerable)))
+
 (mu/defn setting :- any?
   "Get the value of a Metabase setting for the instance we're querying."
   ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
