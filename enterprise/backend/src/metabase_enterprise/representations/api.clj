@@ -80,7 +80,8 @@
     (yaml/generate-string rep)))
 
 (defn- model->url [model]
-  (format "/api/ee/representation/%s/%s" (name (:model model)) (:id model)))
+  (let [modelname (get {:dataset :model} (keyword (:model model)) (:model model))]
+    (format "/api/ee/representation/%s/%s" (name modelname) (:id model))))
 
 (api.macros/defendpoint :get "/collection/:id"
   "Download a yaml representation of a collection."
