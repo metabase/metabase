@@ -8,6 +8,7 @@ import {
   useListTablesQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
 import {
   ActionIcon,
   Box,
@@ -55,7 +56,7 @@ export function PythonDataPicker({
   );
 
   const {
-    data: databasesResponse,
+    data: databases,
     isLoading: isLoadingDatabases,
     error: databaseError,
   } = useListDatabasesQuery();
@@ -91,13 +92,6 @@ export function PythonDataPicker({
   if (isLoadingDatabases) {
     return <LoadingAndErrorWrapper loading />;
   }
-
-  const availableDatabases = (databasesResponse?.data ?? [])
-    .filter((db: Database) => hasFeature(db, "transforms/python"))
-    .map((db: Database) => ({
-      value: db.id.toString(),
-      label: db.name,
-    }));
 
   const availableTables: TableOption[] = (tablesData || [])
     .filter((tbl: Table) => tbl.db_id === database && tbl.active)
@@ -166,12 +160,15 @@ export function PythonDataPicker({
         <Text size="sm" c="text-light" mb="sm">
           {t`Select the database that contains your source data`}
         </Text>
-        <Select
-          data={availableDatabases}
-          value={database?.toString() ?? null}
-          onChange={handleDatabaseChange}
-          placeholder={t`Select a database`}
-          clearable
+
+        <DatabaseDataSelector
+          className={S.dataSelector}
+          selectedDatabaseId={database}
+          setDatabaseFn={handleDatabaseChange}
+          databases={databases?.data ?? []}
+          databaseIsDisabled={(database: Database) =>
+            !hasFeature(database, "transforms/python")
+          }
         />
       </Box>
       {database && (
