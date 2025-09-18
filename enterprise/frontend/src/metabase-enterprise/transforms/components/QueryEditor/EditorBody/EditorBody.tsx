@@ -18,7 +18,6 @@ import type {
   NativeQuerySnippet,
   PythonTransformSource,
   RecentItem,
-  RecentItem,
 } from "metabase-types/api";
 
 import S from "./EditorBody.module.css";
