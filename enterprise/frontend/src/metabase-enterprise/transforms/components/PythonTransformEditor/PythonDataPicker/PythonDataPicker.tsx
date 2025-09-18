@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { hasFeature } from "metabase/admin/databases/utils";
-import { useListDatabasesQuery, useListTablesQuery } from "metabase/api";
+import {
+  skipToken,
+  useListDatabasesQuery,
+  useListTablesQuery,
+} from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { slugify } from "metabase/lib/formatting";
 import {
   ActionIcon,
   Box,
@@ -16,23 +19,29 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
-import type { Database, Table } from "metabase-types/api";
+import type {
+  Database,
+  DatabaseId,
+  PythonTransformTableAliases,
+  Table,
+  TableId,
+} from "metabase-types/api";
 
 import S from "./PythonDataPicker.module.css";
-
-type TableSelection = {
-  id: string; // unique ID for this selection row
-  tableId: number | undefined;
-  alias: string;
-  aliasManuallySet?: boolean; // Track if user manually edited the alias
-};
+import type { TableOption, TableSelection } from "./types";
+import {
+  getInitialTableSelections,
+  selectionsToTableAliases,
+  slugify,
+} from "./utils";
 
 type PythonDataPickerProps = {
-  database?: number;
-  tables?: Record<string, number>; // alias -> table-id mapping
+  database?: DatabaseId;
+  tables?: PythonTransformTableAliases;
   onChange: (
     database: number,
-    tables: Record<string, { id: number; name: string }>,
+    tables: PythonTransformTableAliases,
+    tableInfo: Table[],
   ) => void;
 };
 
@@ -41,33 +50,8 @@ export function PythonDataPicker({
   tables,
   onChange,
 }: PythonDataPickerProps) {
-  const [selectedDatabaseId, setSelectedDatabaseId] = useState<
-    number | undefined
-  >(database);
-
-  // Initialize table selections from props
-  const initializeTableSelections = (): TableSelection[] => {
-    if (tables && Object.keys(tables).length > 0) {
-      return Object.entries(tables).map(([alias, tableId], index) => ({
-        id: `table-${index}-${Date.now()}`,
-        tableId,
-        alias,
-        aliasManuallySet: true, // Existing aliases are considered manually set
-      }));
-    }
-    // Start with one empty row by default
-    return [
-      {
-        id: `table-0-${Date.now()}`,
-        tableId: undefined,
-        alias: "",
-        aliasManuallySet: false,
-      },
-    ];
-  };
-
   const [tableSelections, setTableSelections] = useState<TableSelection[]>(
-    initializeTableSelections,
+    getInitialTableSelections(tables),
   );
 
   const {
@@ -81,38 +65,22 @@ export function PythonDataPicker({
     isLoading: isLoadingTables,
     error: tablesError,
   } = useListTablesQuery(
-    selectedDatabaseId
+    database
       ? {
-          dbId: selectedDatabaseId,
+          dbId: database,
           include_hidden: false,
           include_editable_data_model: true,
         }
-      : undefined,
-    {
-      skip: !selectedDatabaseId,
-    },
+      : skipToken,
   );
 
   const notifyParentOfChange = (
-    dbId: number | undefined,
+    database: DatabaseId | undefined,
     selections: TableSelection[],
-    tableIdToName?: Map<number, string>,
   ) => {
-    if (dbId) {
-      const tablesMap: Record<string, { id: number; name: string }> = {};
-
-      selections.forEach((selection) => {
-        if (selection.tableId && selection.alias) {
-          const tableName =
-            tableIdToName?.get(selection.tableId) ||
-            `Table ${selection.tableId}`;
-          tablesMap[selection.alias] = {
-            id: selection.tableId,
-            name: tableName,
-          };
-        }
-      });
-      onChange(dbId, tablesMap);
+    if (database) {
+      const tableAliases = selectionsToTableAliases(selections);
+      onChange(database, tableAliases, tablesData ?? []);
     }
   };
 
@@ -124,124 +92,104 @@ export function PythonDataPicker({
     return <LoadingAndErrorWrapper loading />;
   }
 
-  const databases = (databasesResponse?.data ?? [])
+  const availableDatabases = (databasesResponse?.data ?? [])
     .filter((db: Database) => hasFeature(db, "transforms/python"))
     .map((db: Database) => ({
       value: db.id.toString(),
       label: db.name,
     }));
 
-  const availableTables = (tablesData || [])
-    .filter((tbl: Table) => tbl.db_id === selectedDatabaseId && tbl.active)
+  const availableTables: TableOption[] = (tablesData || [])
+    .filter((tbl: Table) => tbl.db_id === database && tbl.active)
     .map((tbl: Table) => ({
       value: tbl.id.toString(),
       label: tbl.display_name || tbl.name,
       table: tbl,
     }));
 
-  const tableIdToNameMap = new Map<number, string>(
-    availableTables.map((t) => [parseInt(t.value), t.table.name]),
-  );
+  const selectedTableIds = new Set(tableSelections.map((s) => s.tableId));
+  const usedAliases = new Set(tableSelections.map((s) => s.alias));
 
   const handleDatabaseChange = (value: string | null) => {
-    const dbId = value ? parseInt(value) : undefined;
-    setSelectedDatabaseId(dbId);
+    const newDatabase = value ? parseInt(value) : undefined;
     const newSelections = [
       {
-        id: `table-0-${Date.now()}`,
         tableId: undefined,
         alias: "",
-        aliasManuallySet: false,
       },
     ];
     setTableSelections(newSelections);
-    notifyParentOfChange(dbId, newSelections);
+    notifyParentOfChange(newDatabase, newSelections);
   };
 
-  const handleTableChange = (selectionId: string, value: string | null) => {
-    const newSelections = tableSelections.map((selection) => {
-      if (selection.id === selectionId) {
-        const tableId = value ? parseInt(value) : undefined;
-        const table = availableTables.find((t) => t.value === value)?.table;
+  const handleTableChange = (
+    selectionIndex: number,
+    table: Table | undefined,
+  ) => {
+    if (!table) {
+      const newSelections = Array.from(tableSelections);
+      newSelections[selectionIndex] = {
+        ...newSelections[selectionIndex],
+        tableId: undefined,
+      };
+      setTableSelections(newSelections);
+      notifyParentOfChange(database, newSelections);
+      return;
+    }
 
-        const newAlias = table ? slugify(table.name) : "";
+    const oldSelection = tableSelections[selectionIndex];
+    const oldTable = availableTables.find(
+      (t) => t.table.id === oldSelection?.tableId,
+    )?.table;
+    const wasOldAliasManuallySet =
+      oldSelection.alias !== "" &&
+      (!oldTable || oldSelection.alias !== slugify(oldTable.name, usedAliases));
+    const newAlias = wasOldAliasManuallySet
+      ? oldSelection.alias
+      : slugify(table.name, usedAliases);
 
-        return {
-          ...selection,
-          tableId,
-          alias: selection.aliasManuallySet ? selection.alias : newAlias,
-          aliasManuallySet: selection.aliasManuallySet || false,
-        };
-      }
-      return selection;
-    });
+    const newSelections = Array.from(tableSelections);
+    newSelections[selectionIndex] = {
+      ...oldSelection,
+      tableId: table.id,
+      alias: newAlias,
+    };
+
     setTableSelections(newSelections);
-    notifyParentOfChange(selectedDatabaseId, newSelections, tableIdToNameMap);
+    notifyParentOfChange(database, newSelections);
   };
 
-  const handleAliasChange = (selectionId: string, alias: string) => {
-    // Only allow valid Python identifier characters (letters, numbers, underscores)
-    // and ensure it doesn't start with a number
-    const validAlias = alias
-      .replace(/[^a-zA-Z0-9_]/g, "")
-      .replace(/^(\d)/, "_$1");
+  const handleAliasChange = (selectionIndex: number, alias: string) => {
+    const newSelections = Array.from(tableSelections);
 
-    const newSelections = tableSelections.map((selection) =>
-      selection.id === selectionId
-        ? { ...selection, alias: validAlias, aliasManuallySet: true }
-        : selection,
-    );
-    setTableSelections(newSelections);
-    notifyParentOfChange(selectedDatabaseId, newSelections, tableIdToNameMap);
-  };
+    const oldSelection = tableSelections[selectionIndex];
+    const usedAliasesWithoutThisAlias = new Set(usedAliases);
+    usedAliasesWithoutThisAlias.delete(oldSelection.alias);
 
-  const handleResetAlias = (selectionId: string) => {
-    const newSelections = tableSelections.map((selection) => {
-      if (selection.id === selectionId && selection.tableId) {
-        const table = availableTables.find(
-          (t) => t.value === selection.tableId!.toString(),
-        )?.table;
-        if (table) {
-          return {
-            ...selection,
-            alias: slugify(table.name),
-            aliasManuallySet: false,
-          };
-        }
-      }
-      return selection;
-    });
+    newSelections[selectionIndex] = {
+      ...oldSelection,
+      alias: slugify(alias, usedAliasesWithoutThisAlias),
+    };
     setTableSelections(newSelections);
-    notifyParentOfChange(selectedDatabaseId, newSelections, tableIdToNameMap);
+    notifyParentOfChange(database, newSelections);
   };
 
   const handleAddTable = () => {
-    const newSelections = [
+    setTableSelections([
       ...tableSelections,
       {
-        id: `table-${tableSelections.length}-${Date.now()}`,
         tableId: undefined,
         alias: "",
-        aliasManuallySet: false,
       },
-    ];
-    setTableSelections(newSelections);
-    // Don't notify parent for adding empty row
+    ]);
   };
 
-  const handleRemoveTable = (selectionId: string) => {
-    const newSelections = tableSelections.filter(
-      (selection) => selection.id !== selectionId,
-    );
+  const handleRemoveTable = (selectionIndex: number) => {
+    const newSelections = Array.from(tableSelections);
+    newSelections.splice(selectionIndex, 1);
     setTableSelections(newSelections);
-    notifyParentOfChange(selectedDatabaseId, newSelections, tableIdToNameMap);
+    notifyParentOfChange(database, newSelections);
   };
-
-  const selectedTableIds = new Set(
-    tableSelections
-      .filter((s) => s.tableId !== undefined)
-      .map((s) => s.tableId?.toString()),
-  );
 
   return (
     <Stack
@@ -259,14 +207,14 @@ export function PythonDataPicker({
           {t`Select the database that contains your source data`}
         </Text>
         <Select
-          data={databases}
-          value={selectedDatabaseId?.toString() || null}
+          data={availableDatabases}
+          value={database?.toString() ?? null}
           onChange={handleDatabaseChange}
           placeholder={t`Select a database`}
           clearable
         />
       </Box>
-      {selectedDatabaseId && (
+      {database && (
         <Box>
           <Text fw="bold">{t`Source tables`}</Text>
           <Text size="sm" c="text-light" mb="sm">
@@ -278,57 +226,30 @@ export function PythonDataPicker({
               <Text fw="bold" size="sm">{t`Alias`}</Text>
             </Group>
 
-            {tableSelections.map((selection) => {
-              // Filter available tables to exclude already selected ones (except current selection)
-              const filteredTables = availableTables.filter(
-                (table) =>
-                  !selectedTableIds.has(table.value) ||
-                  table.value === selection.tableId?.toString(),
-              );
-
+            {tableSelections.map((selection, index) => {
               const table = availableTables.find(
                 (t) => t.value === selection.tableId?.toString(),
               )?.table;
-              const defaultAlias = table ? slugify(table.name) : "";
-              const showReset =
-                selection.aliasManuallySet &&
-                selection.alias !== defaultAlias &&
-                table;
 
               return (
-                <Group key={selection.id} gap="xs" align="center" wrap="nowrap">
-                  <Select
-                    flex="0 1 50%"
-                    data={filteredTables}
-                    value={selection.tableId?.toString() || null}
-                    onChange={(value) => handleTableChange(selection.id, value)}
-                    placeholder={t`Select a table`}
-                    clearable
+                <Group key={index} gap="xs" align="center" wrap="nowrap">
+                  <TableInput
+                    table={table}
+                    onChange={(table) => handleTableChange(index, table)}
+                    availableTables={availableTables}
+                    selectedTableIds={selectedTableIds}
                     disabled={isLoadingTables}
                   />
-                  <TextInput
-                    flex="0 1 50%"
-                    value={selection.alias}
-                    onChange={(e) =>
-                      handleAliasChange(selection.id, e.target.value)
-                    }
-                    placeholder={t`Enter alias`}
-                    rightSection={
-                      showReset ? (
-                        <ActionIcon
-                          onClick={() => handleResetAlias(selection.id)}
-                          aria-label={t`Reset alias to default`}
-                          color="gray"
-                          variant="subtle"
-                        >
-                          <Icon name="refresh" size={12} />
-                        </ActionIcon>
-                      ) : null
-                    }
+
+                  <AliasInput
+                    selection={selection}
+                    table={table}
+                    onChange={(newAlias) => handleAliasChange(index, newAlias)}
+                    usedAliases={usedAliases}
                   />
 
                   <ActionIcon
-                    onClick={() => handleRemoveTable(selection.id)}
+                    onClick={() => handleRemoveTable(index)}
                     aria-label={t`Remove table`}
                   >
                     <Icon name="trash" />
@@ -349,5 +270,96 @@ export function PythonDataPicker({
         </Box>
       )}
     </Stack>
+  );
+}
+
+function TableInput({
+  availableTables,
+  selectedTableIds,
+  disabled,
+  onChange,
+  table,
+}: {
+  table: Table | undefined;
+  availableTables: TableOption[];
+  selectedTableIds: Set<TableId | undefined>;
+  disabled?: boolean;
+  onChange: (table: Table | undefined) => void;
+}) {
+  // Filter available tables to exclude already selected ones (except current selection)
+  const tableOptions = availableTables.filter(
+    (tableOption) =>
+      !selectedTableIds.has(tableOption.table?.id) ||
+      tableOption.value === table?.id?.toString(),
+  );
+
+  function handleChange(value: string | null) {
+    const table = tableOptions.find((t) => t.value === value)?.table;
+    if (!table) {
+      return;
+    }
+    onChange(table);
+  }
+
+  return (
+    <Select
+      flex="0 1 50%"
+      data={tableOptions}
+      value={table?.id?.toString() ?? null}
+      onChange={handleChange}
+      onClear={() => onChange(undefined)}
+      placeholder={t`Select a table`}
+      clearable
+      disabled={disabled}
+    />
+  );
+}
+
+function AliasInput({
+  table,
+  selection,
+  onChange,
+  usedAliases,
+}: {
+  selection: TableSelection;
+  table?: Table;
+  onChange: (value: string) => void;
+  usedAliases: Set<string>;
+}) {
+  const [value, setValue] = useState(selection.alias);
+
+  useEffect(() => {
+    setValue(selection.alias);
+  }, [selection.alias]);
+
+  const usedAliasesWithoutThisAlias = new Set(usedAliases);
+  usedAliasesWithoutThisAlias.delete(selection.alias);
+
+  const defaultAlias = table
+    ? slugify(table.name, usedAliasesWithoutThisAlias)
+    : "";
+  const isManualAlias = selection.alias !== defaultAlias;
+  const showReset = table && isManualAlias;
+
+  return (
+    <TextInput
+      flex="0 1 50%"
+      value={value}
+      onChange={(event) => setValue(event.target.value)}
+      onBlur={() => onChange(value)}
+      placeholder={t`Enter alias`}
+      rightSection={
+        showReset ? (
+          <ActionIcon
+            onClick={() => onChange(defaultAlias)}
+            aria-label={t`Reset alias to default`}
+            color="gray"
+            variant="subtle"
+          >
+            <Icon name="refresh" size={12} />
+          </ActionIcon>
+        ) : null
+      }
+    />
   );
 }

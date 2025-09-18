@@ -2,7 +2,11 @@ import { useHotkeys } from "@mantine/hooks";
 import { useState } from "react";
 
 import { Flex, Stack } from "metabase/ui";
-import type { PythonTransformSource } from "metabase-types/api";
+import type {
+  PythonTransformSource,
+  PythonTransformTableAliases,
+  Table,
+} from "metabase-types/api";
 
 import { EditorHeader } from "../QueryEditor/EditorHeader";
 
@@ -45,14 +49,14 @@ export function PythonTransformEditor({
 
   const handleDataChange = (
     database: number,
-    tables: Record<string, { id: number; name: string }>,
+    sourceTables: PythonTransformTableAliases,
+    tableInfo: Table[],
   ) => {
-    const updatedScript = updateTransformSignature(source.body, tables);
-
-    const sourceTables: Record<string, number> = {};
-    Object.entries(tables).forEach(([alias, tableInfo]) => {
-      sourceTables[alias] = tableInfo.id;
-    });
+    const updatedScript = updateTransformSignature(
+      source.body,
+      sourceTables,
+      tableInfo,
+    );
 
     const newSource = {
       ...source,

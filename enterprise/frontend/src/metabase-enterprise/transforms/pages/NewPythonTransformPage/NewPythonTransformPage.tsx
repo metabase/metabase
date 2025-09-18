@@ -9,9 +9,8 @@ import { PythonTransformEditor } from "../../components/PythonTransformEditor";
 import { getTransformListUrl, getTransformUrl } from "../../urls";
 import { CreateTransformModal } from "../NewTransformQueryPage/CreateTransformModal";
 
-const DEFAULT_PYTHON_SOURCE: PythonTransformSource = {
+const DEFAULT_PYTHON_SOURCE: Partial<PythonTransformSource> = {
   type: "python",
-  "source-database": 1, // Default to first database, will be updated by user
   "source-tables": {}, // Will be populated when user selects tables
   body: `# Write your Python transformation script here
 import pandas as pd
@@ -30,7 +29,7 @@ def transform():
 };
 
 export function NewPythonTransformPage() {
-  const [source, setSource] = useState<PythonTransformSource>(
+  const [source, setSource] = useState<Partial<PythonTransformSource>>(
     DEFAULT_PYTHON_SOURCE,
   );
   const [isModalOpened, { open: openModal, close: closeModal }] =

@@ -6,11 +6,14 @@ import type {
   ExecutePythonTransformResponse,
   PythonTransformSource,
   PythonTransformTableAliases,
+  Table,
+  TableId,
 } from "metabase-types/api";
 
 export function updateTransformSignature(
   script: string,
   tables: PythonTransformTableAliases,
+  tableInfo: Table[],
 ): string {
   const tableAliases = Object.keys(tables);
 
@@ -21,6 +24,14 @@ export function updateTransformSignature(
     signatureOneLine.length > 80 && tableAliases.length > 0
       ? `def transform(\n${tableAliases.map((alias) => `    ${alias}`).join(",\n")},\n):`
       : signatureOneLine;
+
+  function getTableName(tableId: TableId) {
+    const table = tableInfo.find((t) => t.id === tableId);
+    if (!table) {
+      return undefined;
+    }
+    return [table.db?.name, table.schema, table.name].filter(Boolean).join(".");
+  }
 
   if (transformRegex.test(script)) {
     // Capture the existing indentation after the colon
@@ -41,11 +52,9 @@ export function updateTransformSignature(
       const newArgsSection = tableAliases
         .map((alias) => {
           const padding = " ".repeat(maxAliasLength - alias.length);
-          const tableName = tables[alias].name;
-          if (alias === tableName) {
-            return `        ${alias}:${padding} DataFrame containing the data from the corresponding table`;
-          }
-          return `        ${alias}:${padding} DataFrame containing the data from table "${tableName}"`;
+          const tableId = tables[alias];
+          const tableName = getTableName(tableId);
+          return `        ${alias}:${padding} DataFrame containing the data from the "${tableName}" table`;
         })
         .join("\n");
 
@@ -115,7 +124,8 @@ ${newSignature}
 ${tableAliases
   .map((alias) => {
     const padding = " ".repeat(maxAliasLength - alias.length);
-    const tableName = tables[alias].name;
+    const tableId = tables[alias];
+    const tableName = getTableName(tableId);
     if (alias === tableName) {
       return `        ${alias}:${padding} DataFrame containing the data from the corresponding table`;
     }
