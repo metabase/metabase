@@ -183,7 +183,7 @@
         sync-type (if (:archived object)
                     "delete"
                     (case topic
-                      :event/collection-touch-event "update"))]
+                      :event/collection-touch "update"))]
     (when (collections/remote-synced-collection? object)
       (log/infof "Creating remote sync change log entry for collection touch %s" (:id object))
       (create-remote-sync-change-log-entry! "Collection" (:entity_id object) sync-type user-id))))
