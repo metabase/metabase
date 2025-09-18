@@ -35,12 +35,19 @@ export function selectionsToTableAliases(
   return tableAliases;
 }
 
-export function slugify(name: string, usedNames: Set<string> = new Set()) {
+export function slugify(
+  name: string,
+  usedNames: Set<string> = new Set(),
+  allowThisAliasIfItExists?: string,
+) {
   if (name === "") {
     return "";
   }
 
   const plain = toSlug(name).replace(/\./, "_");
+  if (plain === allowThisAliasIfItExists) {
+    return plain;
+  }
   if (!usedNames.has(plain)) {
     return plain;
   }
