@@ -151,7 +151,7 @@
                     {:status-code 400})))
   (let [result (impl/export! (or branch (settings/remote-sync-branch))
                              (or message "Exported from Metabase")
-                             (if (some? collection) #p [(t2/select-one-fn :entity_id [:model/Collection :entity_id] collection)] nil))]
+                             (if (some? collection) [(t2/select-one-fn :entity_id [:model/Collection :entity_id] collection)] nil))]
     (case (:status result)
       :success "Success"
 
