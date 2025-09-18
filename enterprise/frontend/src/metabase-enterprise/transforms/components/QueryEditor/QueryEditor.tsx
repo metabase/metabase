@@ -33,7 +33,7 @@ import {
 } from "./utils";
 
 type QueryEditorProps = {
-  transform?: Transform;
+  transform?: Pick<Transform, "name">;
   initialQuery: DatasetQuery;
   proposedQuery?: DatasetQuery;
   isNew?: boolean;
