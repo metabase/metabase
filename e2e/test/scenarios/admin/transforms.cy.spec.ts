@@ -508,7 +508,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
   });
 
   describe("tags", () => {
-    it("should be able to add and remove tags", { tags: "@flaky" }, () => {
+    it("should be able to add and remove tags", () => {
       createMbqlTransform({ visitTransform: true });
       getTagsInput().click();
 
@@ -1377,22 +1377,18 @@ describe("scenarios > admin > transforms > databases without :schemas", () => {
     cy.intercept("DELETE", "/api/ee/transform-tag/*").as("deleteTag");
   });
 
-  it(
-    "should be not be possible to create a new schema when updating a transform target",
-    { tags: "@flaky" },
-    () => {
-      createMbqlTransform({
-        databaseId: WRITABLE_DB_ID,
-        sourceTable: "ORDERS",
-        visitTransform: true,
-        targetSchema: null,
-      });
+  it("should be not be possible to create a new schema when updating a transform target", () => {
+    createMbqlTransform({
+      databaseId: WRITABLE_DB_ID,
+      sourceTable: "ORDERS",
+      visitTransform: true,
+      targetSchema: null,
+    });
 
-      getTransformPage().button("Change target").click();
+    getTransformPage().button("Change target").click();
 
-      H.modal().findByLabelText("Schema").should("not.exist");
-    },
-  );
+    H.modal().findByLabelText("Schema").should("not.exist");
+  });
 
   it("should be not be possible to create a new schema when the database does not support schemas", () => {
     cy.log("create a new transform");
@@ -1540,8 +1536,7 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("tags", () => {
-    // skipped because it's flaking so often
-    it("should be able to add and remove tags", { tags: "@skip" }, () => {
+    it("should be able to add and remove tags", () => {
       H.createTransformJob({ name: "New job" }, { visitTransformJob: true });
       getTagsInput().click();
 
@@ -1640,7 +1635,7 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("filtering", () => {
-    it("should be able to filter jobs ", { tags: "@flaky" }, () => {
+    it("should be able to filter jobs ", () => {
       cy.log("run hourly job so know that was recently run");
       visitJobListPage();
 
