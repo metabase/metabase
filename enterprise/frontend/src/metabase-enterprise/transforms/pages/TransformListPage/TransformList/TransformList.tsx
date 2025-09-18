@@ -56,9 +56,12 @@ export function TransformList() {
           t`Transform`,
           t`Target`,
           <Flex key="last-run-at" component="span" align="center" gap="xs">
-            {t`Last run at`} <TimezoneIndicator />
+            <span className={S.nowrap}>{t`Last run at`}</span>{" "}
+            <TimezoneIndicator />
           </Flex>,
-          t`Last run status`,
+          <span key="last-run-status" className={S.nowrap}>
+            {t`Last run status`}
+          </span>,
           t`Tags`,
         ]}
       >

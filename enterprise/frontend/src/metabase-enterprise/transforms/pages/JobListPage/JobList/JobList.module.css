@@ -9,3 +9,7 @@
 .wrapBreakWord {
   overflow-wrap: break-word;
 }
+
+.nowrap {
+  white-space: nowrap;
+}
