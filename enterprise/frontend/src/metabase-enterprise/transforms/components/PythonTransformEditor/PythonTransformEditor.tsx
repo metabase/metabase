@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { Flex, Stack } from "metabase/ui";
 import type {
+  DatabaseId,
   PythonTransformSource,
   PythonTransformTableAliases,
   Table,
@@ -13,10 +14,20 @@ import { EditorHeader } from "../QueryEditor/EditorHeader";
 import { PythonDataPicker } from "./PythonDataPicker";
 import { PythonEditorBody } from "./PythonEditorBody";
 import { PythonEditorResults } from "./PythonEditorResults";
-import { updateTransformSignature, useTestPythonTransform } from "./utils";
+import {
+  isPythonTransformSource,
+  updateTransformSignature,
+  useTestPythonTransform,
+} from "./utils";
+
+export type PythonTransformSourceDraft = {
+  type: "python";
+  body: string;
+  "source-database": DatabaseId | undefined;
+  "source-tables": PythonTransformTableAliases;
+};
 
 type PythonTransformEditorProps = {
-  initialSource: PythonTransformSource;
   isNew?: boolean;
   isSaving?: boolean;
   isRunnable?: boolean;
@@ -24,15 +35,34 @@ type PythonTransformEditorProps = {
   onCancel: () => void;
 };
 
+const DEFAULT_PYTHON_SOURCE: PythonTransformSourceDraft = {
+  type: "python",
+  "source-database": undefined,
+  "source-tables": {},
+  body: `# Write your Python transformation script here
+import pandas as pd
+
+def transform():
+    """
+    Your transformation function.
+
+    Select tables above to add them as function parameters.
+
+    Returns:
+        DataFrame to write to the destination table
+    """
+    # Your transformation logic here
+    return pd.DataFrame([{"message": "Hello from Python transform!"}])`,
+};
+
 export function PythonTransformEditor({
-  initialSource,
   isNew = true,
   isSaving = false,
   isRunnable = true,
   onSave,
   onCancel,
 }: PythonTransformEditorProps) {
-  const [source, setSource] = useState(initialSource);
+  const [source, setSource] = useState(DEFAULT_PYTHON_SOURCE);
   const [isSourceDirty, setIsSourceDirty] = useState(false);
 
   const { isRunning, isDirty, cancel, run, executionResult } =
@@ -69,7 +99,9 @@ export function PythonTransformEditor({
   };
 
   const handleSave = () => {
-    onSave(source);
+    if (isPythonTransformSource(source)) {
+      onSave(source);
+    }
   };
 
   const showDebugger =

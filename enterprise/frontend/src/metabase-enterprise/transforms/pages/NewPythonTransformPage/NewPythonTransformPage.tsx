@@ -9,29 +9,8 @@ import { PythonTransformEditor } from "../../components/PythonTransformEditor";
 import { getTransformListUrl, getTransformUrl } from "../../urls";
 import { CreateTransformModal } from "../NewTransformQueryPage/CreateTransformModal";
 
-const DEFAULT_PYTHON_SOURCE: Partial<PythonTransformSource> = {
-  type: "python",
-  "source-tables": {}, // Will be populated when user selects tables
-  body: `# Write your Python transformation script here
-import pandas as pd
-
-def transform():
-    """
-    Your transformation function.
-
-    Select tables above to add them as function parameters.
-
-    Returns:
-        DataFrame to write to the destination table
-    """
-    # Your transformation logic here
-    return pd.DataFrame([{"message": "Hello from Python transform!"}])`,
-};
-
 export function NewPythonTransformPage() {
-  const [source, setSource] = useState<Partial<PythonTransformSource>>(
-    DEFAULT_PYTHON_SOURCE,
-  );
+  const [source, setSource] = useState<PythonTransformSource | null>(null);
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const dispatch = useDispatch();
@@ -52,12 +31,11 @@ export function NewPythonTransformPage() {
   return (
     <>
       <PythonTransformEditor
-        initialSource={DEFAULT_PYTHON_SOURCE}
         isNew
         onSave={handleSaveClick}
         onCancel={handleCancelClick}
       />
-      {isModalOpened && (
+      {isModalOpened && source && (
         <CreateTransformModal
           source={source}
           onCreate={handleCreate}

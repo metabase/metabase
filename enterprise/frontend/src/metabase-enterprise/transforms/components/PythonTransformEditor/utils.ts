@@ -10,6 +10,8 @@ import type {
   TableId,
 } from "metabase-types/api";
 
+import type { PythonTransformSourceDraft } from "./PythonTransformEditor";
+
 export function updateTransformSignature(
   script: string,
   tables: PythonTransformTableAliases,
@@ -161,7 +163,7 @@ type TestPythonScriptState = {
 };
 
 export function useTestPythonTransform(
-  source: PythonTransformSource,
+  source: PythonTransformSourceDraft,
 ): TestPythonScriptState {
   const [executePython, { isLoading: isRunning, originalArgs }] =
     useExecutePythonMutation();
@@ -172,6 +174,9 @@ export function useTestPythonTransform(
   const isDirty = originalArgs?.code !== source.body;
 
   const run = async () => {
+    if (source["source-database"] === undefined) {
+      return null;
+    }
     const request = executePython({
       code: source.body,
       tables: source["source-tables"],
@@ -220,4 +225,10 @@ export function useTestPythonTransform(
     run,
     executionResult,
   };
+}
+
+export function isPythonTransformSource(
+  source: PythonTransformSourceDraft,
+): source is PythonTransformSource {
+  return source["source-database"] !== undefined;
 }
