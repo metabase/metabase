@@ -104,8 +104,8 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
       );
     case "succeeded":
       return (
-        <Stack gap={0}>
-          <Group gap="sm" data-testid="run-status">
+        <Stack gap={0} data-testid="run-status">
+          <Group gap="sm">
             <Icon c="success" name="check_filled" />
             <Box>
               {endTimeText

@@ -1195,7 +1195,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
   });
 
   describe("cancelation", () => {
-    beforeEach(() => {
+    function createSlowTransform(seconds: number = 100) {
       H.createTransform(
         {
           name: "Slow transform",
@@ -1205,8 +1205,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
               database: WRITABLE_DB_ID,
               type: "native",
               native: {
-                query:
-                  'SELECT name, cast(pg_sleep(10) as text) as slow FROM "Schema A"."Animals"',
+                query: `SELECT name, cast(pg_sleep(${seconds}) as text) as slow FROM "Schema A"."Animals" LIMIT 1`,
               },
             },
           },
@@ -1219,9 +1218,10 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         },
         { visitTransform: true },
       );
-    });
+    }
 
     it("should be possible to cancel a transform from the transform page", () => {
+      createSlowTransform();
       getRunButton().click();
       getRunButton().should("have.text", "Running now…");
       getRunStatus().should("have.text", "Run in progress…");
@@ -1239,6 +1239,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
     });
 
     it("should be possible to cancel a transform from the runs page", () => {
+      createSlowTransform();
       getRunButton().click();
       getRunButton().should("have.text", "Running now…");
       getRunStatus().should("have.text", "Run in progress…");
@@ -1255,6 +1256,31 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       getContentTable()
         .findByText("Canceled", { timeout: 30_000 })
         .should("be.visible");
+    });
+
+    it("should show a message when the run finished before it cancels", () => {
+      createSlowTransform(1);
+      getRunButton().click();
+      getRunButton().should("have.text", "Running now…");
+      getRunStatus().should("have.text", "Run in progress…");
+
+      getCancelButton().click();
+      H.modal().button("Yes").click();
+
+      getRunButton().should("have.text", "Canceling…");
+      getRunStatus().should("have.text", "Canceling…");
+
+      // We need to pass a timeout here since canceling a transform can
+      // take a while on the back end
+      getRunButton({ timeout: 40_000 }).should("have.text", "Ran successfully");
+      getRunStatus().should(
+        "contain",
+        "Last ran a few seconds ago successfully.",
+      );
+      getRunStatus().should(
+        "contain",
+        "This run succeeded before it had a chance to cancel.",
+      );
     });
   });
 
