@@ -177,6 +177,10 @@
                   :else
                   meta)))))
 
+(defn- throw-if-cancelled [cancel-chan]
+  (when (a/poll! cancel-chan)
+    (throw (ex-info "Run cancelled" {:error-type :cancelled}))))
+
 (defn- write-table-data-to-file! [id temp-file cancel-chan]
   (let [db-id       (t2/select-one-fn :db_id (t2/table-name :model/Table) :id id)
         driver      (t2/select-one-fn :engine :model/Database db-id)
@@ -203,6 +207,9 @@
                                                               reducible-rows)]
                               (write-to-stream! os (filter filtered-col-meta col-names) filtered-rows))))
                         cancel-chan)
+    ;; Important: If we do not throw here, partial or empty files might be sent to the runner due to the cancellation behaviour of
+    ;; reducible-rows (i.e. on cancellation the reduce returns the accumulator early, it does not throw)
+    (throw-if-cancelled cancel-chan)
     manifest))
 
 (defn get-logs
