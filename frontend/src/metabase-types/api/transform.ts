@@ -31,7 +31,7 @@ export type TransformSource =
       type: "python";
       body: string;
       "source-database": number;
-      "source-table"?: number;
+      "source-tables": Record<string, number>; // alias -> table-id mapping
     };
 
 export type TransformTargetType = "table";

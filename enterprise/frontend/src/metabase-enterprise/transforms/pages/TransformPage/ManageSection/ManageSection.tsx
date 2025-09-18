@@ -39,10 +39,6 @@ export function ManageSection({ transform }: ManageSectionProps) {
         )}
         {transform.source.type === "python" && (
           <div style={{ padding: "1rem" }}>
-            <p>
-              <strong>{t`Database ID`}:</strong>{" "}
-              {transform.source["source-database"]}
-            </p>
             <pre>{transform.source.body}</pre>
           </div>
         )}

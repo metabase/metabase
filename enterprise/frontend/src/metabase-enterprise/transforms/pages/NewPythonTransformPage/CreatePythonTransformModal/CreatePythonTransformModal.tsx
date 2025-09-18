@@ -11,7 +11,7 @@ type PythonTransformApiSource = {
   body: string;
   "target-database": number;
   "source-database": number;
-  "source-table"?: number;
+  "source-tables": Record<string, number>;
 };
 
 type CreatePythonTransformModalProps = {
@@ -56,7 +56,7 @@ export function CreatePythonTransformModal({
         body: source.body,
         "target-database": source["source-database"], // for now the same
         "source-database": source["source-database"],
-        "source-table": source["source-table"],
+        "source-tables": source["source-tables"] || {},
       };
 
       const transform = await createTransform({
