@@ -28,6 +28,9 @@
    _query
    {:keys [branch]} :- [:map [:branch {:optional true} ms/NonBlankString]]]
   (api/check-superuser)
+  (when-not (settings/remote-sync-enabled)
+    (throw (ex-info "Git sync is paused. Please resume it to perform import operations."
+                    {:status-code 400})))
   (let [result (impl/import! branch)]
     (case (:status result)
       :success
@@ -142,6 +145,9 @@
                                             [:branch {:optional true} ms/NonBlankString]
                                             [:collection {:optional true} ms/NonBlankString]]
   (api/check-superuser)
+  (when-not (settings/remote-sync-enabled)
+    (throw (ex-info "Git sync is paused. Please resume it to perform export operations."
+                    {:status-code 400})))
   (let [result (impl/export! (or branch (settings/remote-sync-branch))
                              (or message "Exported from Metabase")
                              (if (some? collection) (t2/select :entity-id collection) nil))]
@@ -164,6 +170,7 @@
    settings
    :- [:map
        [:remote-sync-configured {:optional true} [:maybe :boolean]]
+       [:remote-sync-enabled {:optional true} [:maybe :boolean]]
        [:remote-sync-url {:optional true} [:maybe :string]]
        [:remote-sync-token {:optional true} [:maybe :string]]
        [:remote-sync-type {:optional true} [:maybe [:enum "import" "export"]]]
@@ -171,7 +178,8 @@
   (api/check-superuser)
   (try
     (settings/check-and-update-remote-settings! settings)
-    (when (= "import" (settings/remote-sync-type))
+    (when (and (settings/remote-sync-enabled)
+               (= "import" (settings/remote-sync-type)))
       (impl/import! (settings/remote-sync-branch)))
     (catch Exception e
       (throw (ex-info "Invalid git settings"

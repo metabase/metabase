@@ -46,6 +46,7 @@ const BRANCH_KEY = "remote-sync-branch";
 
 type GitSyncSettingsType = Pick<
   EnterpriseSettings,
+  | "remote-sync-enabled"
   | "remote-sync-url"
   | "remote-sync-token"
   | "remote-sync-type"
@@ -87,9 +88,11 @@ export const GitSyncSettings = (): JSX.Element => {
   );
 
   const isGitSyncConfigured = useSetting("remote-sync-configured");
+  const isGitSyncEnabled = useSetting("remote-sync-enabled");
 
   const handleDeactivate = useCallback(async () => {
     await updateSettings({
+      "remote-sync-enabled": null,
       "remote-sync-url": null,
       "remote-sync-token": null,
       "remote-sync-type": null,
@@ -99,13 +102,19 @@ export const GitSyncSettings = (): JSX.Element => {
     setIsDeactivateModalOpen(false);
   }, [updateSettings]);
 
+  const handlePauseResume = useCallback(async () => {
+    await updateSettings({
+      "remote-sync-enabled": !isGitSyncEnabled,
+    } as Partial<EnterpriseSettings>);
+  }, [isGitSyncEnabled, updateSettings]);
+
   const syncMode = settingValues?.[TYPE_KEY];
 
   return (
     <SettingsPageWrapper title={t`Remote sync configuration`}>
       <SettingsSection>
         {isGitSyncConfigured && (
-          <Flex justify="space-between" align="center" mb="md">
+          <Flex justify="space-between" align="center">
             <GitSyncStatus />
             <Menu position="bottom-end">
               <Menu.Target>
@@ -114,6 +123,14 @@ export const GitSyncSettings = (): JSX.Element => {
                 </ActionIcon>
               </Menu.Target>
               <Menu.Dropdown>
+                <Menu.Item
+                  leftSection={
+                    <Icon name={isGitSyncEnabled ? "pause" : "play"} />
+                  }
+                  onClick={handlePauseResume}
+                >
+                  {isGitSyncEnabled ? t`Pause` : t`Resume`}
+                </Menu.Item>
                 <Menu.Item
                   leftSection={<Icon name="close" />}
                   onClick={() => setIsDeactivateModalOpen(true)}
@@ -225,12 +242,22 @@ export const GitSyncSettings = (): JSX.Element => {
 };
 
 const GitSyncStatus = () => {
-  const syncStatus = useSetting("remote-sync-configured");
+  const isConfigured = useSetting("remote-sync-configured");
+  const isEnabled = useSetting("remote-sync-enabled");
 
-  const color = syncStatus ? "success" : "error";
-  const message = syncStatus
-    ? t`Git sync is configured.`
-    : t`Git sync is not configured.`;
+  let color: string;
+  let message: string;
+
+  if (!isConfigured) {
+    color = "error";
+    message = t`Git sync is not configured.`;
+  } else if (isEnabled) {
+    color = "success";
+    message = t`Git sync is active.`;
+  } else {
+    color = "warning";
+    message = t`Git sync is paused.`;
+  }
 
   return (
     <Flex align={"center"}>

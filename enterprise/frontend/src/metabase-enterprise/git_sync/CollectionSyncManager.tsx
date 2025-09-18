@@ -149,7 +149,7 @@ export const CollectionSyncManager = ({ mode }: CollectionSyncManagerProps) => {
         />
       ) : null}
       {syncedCollections.length > 0 && (
-        <Paper withBorder p="md" radius="md">
+        <Paper withBorder p="md" radius="md" shadow="none">
           <Stack gap="xs">
             <Text fw={600} mb="sm">
               {mode === "export"

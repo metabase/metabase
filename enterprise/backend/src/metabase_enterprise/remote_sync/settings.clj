@@ -15,6 +15,25 @@
   :encryption :no
   :default    false)
 
+(defsetting remote-sync-enabled
+  (deferred-tru "Is Git sync currently enabled?")
+  :type       :boolean
+  :visibility :authenticated
+  :export?    false
+  :encryption :no
+  :default    true
+  :getter     (fn []
+                (if-some [value (setting/get-value-of-type :boolean :remote-sync-enabled)]
+                  value
+                  (boolean (remote-sync-configured))))
+  :setter     (fn [new-value]
+                (if-let [new-value (boolean new-value)]
+                  (if-not (remote-sync-configured)
+                    (throw (ex-info "Git sync is not configured. Please configure it first."
+                                    {:status-code 400}))
+                    (setting/set-value-of-type! :boolean :remote-sync-enabled new-value))
+                  (setting/set-value-of-type! :boolean :remote-sync-enabled new-value))))
+
 (defsetting remote-sync-branch
   (deferred-tru "The remote branch to sync with, e.g. `main`")
   :type :string
@@ -76,6 +95,6 @@
   [settings]
   (check-git-settings settings)
   (t2/with-transaction [_conn]
-    (doseq [key [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-configured]]
+    (doseq [key [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-configured :remote-sync-enabled]]
       (when (contains? settings :remote-sync-url)
         (setting/set! key (settings key))))))

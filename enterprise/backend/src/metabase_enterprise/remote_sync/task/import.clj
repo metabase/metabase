@@ -12,7 +12,9 @@
 
 (defn- auto-import!
   []
-  (when (and (= "import" (settings/remote-sync-type)) (settings/remote-sync-auto-import))
+  (when (and (settings/remote-sync-enabled)
+             (= "import" (settings/remote-sync-type))
+             (settings/remote-sync-auto-import))
     (impl/import! (settings/remote-sync-branch))))
 
 (task/defjob ^{:doc "Auto-imports any remote collections."} AutoImport [_]
