@@ -114,41 +114,51 @@
   (is (=? {:lib/type     :mbql.stage/mbql
            :source-table 1}
           (lib.util/query-stage {:database 1
-                                 :type     :query
-                                 :query    {:source-table 1}}
-                                0)))
+                                 :lib/type :mbql/query
+                                 :stages   [{:lib/type     :mbql.stage/mbql
+                                             :source-table 1}]}
+                                0))))
+
+(deftest ^:parallel query-stage-test-2
   (are [index expected] (=? expected
                             (lib.util/query-stage {:database 1
-                                                   :type     :query
-                                                   :query    {:source-query {:source-table 1}}}
+                                                   :lib/type :mbql/query
+                                                   :stages   [{:lib/type     :mbql.stage/mbql
+                                                               :source-table 1}
+                                                              {:lib/type     :mbql.stage/mbql}]}
                                                   index))
     0 {:lib/type     :mbql.stage/mbql
        :source-table 1}
-    1 {:lib/type :mbql.stage/mbql})
+    1 {:lib/type :mbql.stage/mbql}))
+
+(deftest ^:parallel query-stage-test-3
   (testing "negative index"
     (are [index expected] (=? expected
                               (lib.util/query-stage {:database 1
-                                                     :type     :query
-                                                     :query    {:source-query {:source-table 1}}}
+                                                     :lib/type :mbql/query
+                                                     :stages   [{:lib/type     :mbql.stage/mbql
+                                                                 :source-table 1}
+                                                                {:lib/type     :mbql.stage/mbql}]}
                                                     index))
       -1 {:lib/type :mbql.stage/mbql}
       -2 {:lib/type     :mbql.stage/mbql
-          :source-table 1}))
+          :source-table 1})))
+
+(deftest ^:parallel query-stage-test-4
   (testing "Out of bounds"
-    (is (thrown-with-msg?
-         #?(:clj Throwable :cljs js/Error)
-         #"Stage 2 does not exist"
-         (lib.util/query-stage {:database 1
-                                :type     :query
-                                :query    {:source-query {:source-table 1}}}
-                               2)))
-    (is (thrown-with-msg?
-         #?(:clj Throwable :cljs js/Error)
-         #"Stage -3 does not exist"
-         (lib.util/query-stage {:database 1
-                                :type     :query
-                                :query    {:source-query {:source-table 1}}}
-                               -3)))))
+    (let [query {:database 1
+                 :lib/type :mbql/query
+                 :stages   [{:lib/type     :mbql.stage/mbql
+                             :source-table 1}
+                            {:lib/type     :mbql.stage/mbql}]}]
+      (is (thrown-with-msg?
+           #?(:clj Throwable :cljs js/Error)
+           #"Stage 2 does not exist"
+           (lib.util/query-stage query 2)))
+      (is (thrown-with-msg?
+           #?(:clj Throwable :cljs js/Error)
+           #"Stage -3 does not exist"
+           (lib.util/query-stage query -3))))))
 
 (deftest ^:parallel update-query-stage-test
   (is (=? {:database 1

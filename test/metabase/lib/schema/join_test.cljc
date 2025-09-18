@@ -20,7 +20,6 @@
   (is (=? {:lib/type "missing required key"
            :stages [{:joins [{:stages [[{:lib/type "missing required key"}
                                         "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"]]
-                              :lib/options "missing required key"
                               :conditions  "should have at least 1 elements"}]}]}
           (mu.humanize/humanize (mr/explain ::lib.schema/query {:stages [{:lib/type :mbql.stage/mbql
                                                                           :joins    [{:lib/type :mbql/join

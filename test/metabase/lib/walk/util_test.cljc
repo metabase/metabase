@@ -4,7 +4,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.lib.walk.util :as lib.walk.util]))
+   [metabase.lib.walk.util :as lib.walk.util]
+   [metabase.util.malli :as mu]))
 
 (deftest ^:parallel all-source-table-ids-test
   (testing (str "make sure that `all-table-ids` can properly find all Tables in the query, even in cases where a map "
@@ -31,3 +32,15 @@
                               :condition    [:=
                                              $checkins.user-id
                                              &U.users.id]}]}))))))
+
+(deftest ^:parallel all-field-ids-test
+  (mu/disable-enforcement
+    (is (= #{1 2}
+           (lib/all-field-ids
+            {:lib/type :mbql/query
+             :database 1
+             :stages   [{:lib/type     :mbql.stage/mbql
+                         :fields       [[:field {} 1]
+                                        [:field {} 2]
+                                        [:field {} "wow"]]
+                         :source-table 1}]})))))
