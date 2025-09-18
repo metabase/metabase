@@ -47,17 +47,6 @@
               :stdout (->> events (filter #(= "stdout" (:stream %))) (map :message) (str/join "\n"))
               :stderr (->> events (filter #(= "stderr" (:stream %))) (map :message) (str/join "\n"))}))))
 
-(defn- wait-for-table
-  "Wait for a table to be created and synced, with timeout."
-  [table-name]
-  (loop [runs 0]
-    (if-let [table (t2/select-one :model/Table :name table-name :db_id (mt/id))]
-      table
-      (if (< runs 100)
-        (do (Thread/sleep 100)
-            (recur (inc runs)))
-        (throw (ex-info "Timeout waiting for table" {:table-name table-name}))))))
-
 (defn- execute-e2e-transform!
   "Execute an e2e Python transform test using execute-python-transform!"
   [table-name transform-code source-tables]
@@ -75,7 +64,7 @@
     (with-transform-cleanup! [_target target]
       (mt/with-temp [:model/Transform transform transform-def]
         (transforms.execute/execute-python-transform! transform {:run-method :manual})
-        (let [table (wait-for-table table-name)
+        (let [table (transforms.tu/wait-for-table table-name 10000)
               columns (t2/select :model/Field :table_id (:id table) {:order-by [:position]})
               column-names (mapv :name columns)
               rows (transforms.tu/table-rows table-name)]
