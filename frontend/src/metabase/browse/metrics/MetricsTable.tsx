@@ -45,6 +45,7 @@ import {
   TableRow,
 } from "../components/BrowseTable.styled";
 
+import { trackMetricBookmarked } from "./analytics";
 import type { MetricResult, SortColumn } from "./types";
 import { getMetricDescription, sortMetrics } from "./utils";
 
@@ -360,6 +361,8 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
             id: metric.id,
             type: "card",
           });
+
+          trackMetricBookmarked();
           dispatch(Bookmarks.actions.invalidateLists());
         },
       });
