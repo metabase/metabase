@@ -1,19 +1,11 @@
+import type {
+  GetPythonLibraryRequest,
+  PythonLibrary,
+  UpdatePythonLibraryRequest,
+} from "metabase-types/api";
+
 import { EnterpriseApi } from "./api";
 import { idTag, invalidateTags, providePythonLibraryTags } from "./tags";
-
-export type PythonLibrary = {
-  path: string;
-  source: string;
-};
-
-export type GetPythonLibraryRequest = {
-  path: string;
-};
-
-export type UpdatePythonLibraryRequest = {
-  path: string;
-  source: string;
-};
 
 export const pythonLibraryApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
