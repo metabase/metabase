@@ -61,10 +61,14 @@
                           :collection_id [:in (cons (u/the-id remote-sync-collection) affected-collection-ids)]
                           :entity_id (if (seq entity-ids)
                                        [:not-in entity-ids]
-                                       :entity_id)))))
-        (lib.events/publish-remote-sync! "import" nil api/*current-user-id*
-                                         {:source-branch branch
-                                          :status "success"})
+                                       :entity_id))))
+          (let [collection-entity-ids (get imported-entities "Collection")
+                root-collections (t2/select :model/Collection :entity_id [:in collection-entity-ids] :location "/")]
+            (doseq [{:keys [entity_id]} root-collections]
+              (lib.events/publish-remote-sync! "import" nil api/*current-user-id*
+                                               {:source-branch branch
+                                                :collection-id entity_id
+                                                :status "success"}))))
         (log/info "Successfully reloaded entities from git repository")
         {:status  :success
          :message "Successfully reloaded from git repository"}

@@ -1,7 +1,9 @@
 (ns metabase-enterprise.remote-sync.api
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase-enterprise.remote-sync.impl :as impl]
+   [metabase-enterprise.remote-sync.models.remote-sync-change-log :as change-log]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
@@ -46,86 +48,21 @@
        :body {:status "error"
               :message "Unexpected error occurred during reload"}})))
 
-(api.macros/defendpoint :get "/unsynced-changes"
-  "Does this Metabase Remote Sync collection contain unsynced changes?"
-  []
+(api.macros/defendpoint :get "/:collection-id/is-dirty"
+  "Check if this instance or a specific collection has remote sync changes that are not saved."
+  [{:keys [collection-id]} :- [:map
+                               [:collection-id {:optional true} pos-int?]]]
   (api/check-superuser)
-  (if-let [remote-sync-collection (t2/select-one :model/Collection :entity_id collection/library-entity-id)]
-    (let [most-recent-sync (t2/select-one [:model/RemoteSyncChangeLog :created_at]
-                                          :sync_type "import"
-                                          :status "success"
-                                          {:order-by [[:created_at :desc]]})
-          last-sync-time (:created_at most-recent-sync)
-          remote-sync-collection-ids (collection/collection->descendant-ids remote-sync-collection)
-          all-remote-sync-collection-ids (cons (u/the-id remote-sync-collection) remote-sync-collection-ids)]
-      (if last-sync-time
-        (let [unsynced-collections (t2/select [:model/Collection :id :name :created_at :authority_level]
-                                              {:where
-                                               [:and
-                                                [:in :id all-remote-sync-collection-ids]
-                                                [:> :created_at last-sync-time]]})
-              unsynced-cards (t2/select [:model/Card :id :name :description :created_at :updated_at :collection_id :display :query_type]
-                                        {:where
-                                         [:and
-                                          [:in :collection_id all-remote-sync-collection-ids]
-                                          [:or
-                                           [:> :created_at last-sync-time]
-                                           [:> :updated_at last-sync-time]]]})
-              unsynced-dashboards (t2/select [:model/Dashboard :id :name :description :created_at :updated_at :collection_id]
-                                             {:where
-                                              [:and
-                                               [:in :collection_id all-remote-sync-collection-ids]
-                                               [:or
-                                                [:> :created_at last-sync-time]
-                                                [:> :updated_at last-sync-time]]]})
-              unsynced-snippets (t2/select [:model/NativeQuerySnippet :id :name :created_at :updated_at :collection_id]
-                                           {:where
-                                            [:and
-                                             [:in :collection_id all-remote-sync-collection-ids]
-                                             [:or
-                                              [:> :created_at last-sync-time]
-                                              [:> :updated_at last-sync-time]]]})
-              unsynced-timelines (t2/select [:model/Timeline :id :name :created_at :updated_at :collection_id]
-                                            {:where
-                                             [:and
-                                              [:in :collection_id all-remote-sync-collection-ids]
-                                              [:or
-                                               [:> :created_at last-sync-time]
-                                               [:> :updated_at last-sync-time]]]})
-              unsynced-documents (t2/select [:model/Document :id :name :created_at :updated_at :collection_id]
-                                            {:where
-                                             [:and
-                                              [:in :collection_id all-remote-sync-collection-ids]
-                                              [:or
-                                               [:> :created_at last-sync-time]
-                                               [:> :updated_at last-sync-time]]]})
-              enriched-collections (map #(assoc % :model "collection" :updated_at nil :description nil) unsynced-collections)
-              enriched-cards (map #(assoc % :model "card") unsynced-cards)
-              enriched-dashboards (map #(assoc % :model "dashboard") unsynced-dashboards)
-              enriched-snippets (map #(assoc % :model "snippet" :description nil) unsynced-snippets)
-              enriched-timelines (map #(assoc % :model "timeline" :description nil) unsynced-timelines)
-              enriched-documents (map #(assoc % :model "document" :description nil) unsynced-documents)
-              all-entities (concat enriched-collections enriched-cards enriched-dashboards
-                                   enriched-snippets enriched-timelines enriched-documents)
-              sorted-entities (sort-by #(or (:updated_at %) (:created_at %)) #(compare %2 %1) all-entities)
-              total-unsynced (count all-entities)]
-          {:has_unsynced_changes (> total-unsynced 0)
-           :last_sync_at last-sync-time
-           :unsynced_counts {:collections (count unsynced-collections)
-                             :cards (count unsynced-cards)
-                             :dashboards (count unsynced-dashboards)
-                             :snippets (count unsynced-snippets)
-                             :timelines (count unsynced-timelines)
-                             :documents (count unsynced-documents)
-                             :total total-unsynced}
-           :entities sorted-entities})
-        ;; No successful sync found - everything is unsynced
-        {:has_unsynced_changes true
-         :last_sync_at nil
-         :message "No successful sync found - all remote sync content is unsynced"}))
-    ;; No library collection found
-    {:has_unsynced_changes false
-     :message "Remote Sync collection not found"}))
+  {:is_dirty (change-log/dirty-collection? collection-id)})
+
+(api.macros/defendpoint :get "/:collection-id/dirty"
+  "Return dirty models from a given collection"
+  [{:keys [collection-id]} :- [:map
+                               [:collection-id {:optional true} pos-int?]]]
+  (api/check-superuser)
+  {:dirty (into []
+                (m/distinct-by (juxt :id :model))
+                (change-log/dirty-for-collection collection-id))})
 
 (api.macros/defendpoint :post "/export"
   "Export the current state of the Remote Sync collection to a Source
