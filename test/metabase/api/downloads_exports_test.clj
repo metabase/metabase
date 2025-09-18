@@ -8,7 +8,9 @@
   - Shared Question downloads
   - Static Embedding Dashboard/dashcard downloads
   - Dashboard Subscription Attachments
-  - Alert attachments"
+  - Alert attachments
+
+  TODO (Cam 9/17/25) -- these tests need to get moved into appropriate module(s)."
   (:require
    [clojure.data :as data]
    [clojure.data.csv :as csv]

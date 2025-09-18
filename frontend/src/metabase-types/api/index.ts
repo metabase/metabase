@@ -2,7 +2,6 @@ export * from "./actions";
 export * from "./activity";
 export * from "./admin";
 export * from "./ai-sql-fixer";
-export * from "./ai-sql-generation";
 export * from "./ai-entity-analysis";
 export * from "./alert";
 export * from "./autocomplete";

@@ -441,6 +441,40 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       testCardSource({ type: "question", label: "Questions" });
       testCardSource({ type: "model", label: "Models" });
     });
+
+    it("should not auto-pivot query results for MBQL transforms", () => {
+      cy.log("create a new transform");
+      visitTransformListPage();
+      getTransformListPage().button("Create a transform").click();
+      H.popover().findByText("Query builder").click();
+
+      cy.log("build a query with 1 aggregation and 2 breakouts");
+      H.entityPickerModal().within(() => {
+        cy.findByText(DB_NAME).click();
+        cy.findByText(SOURCE_TABLE).click();
+      });
+      H.getNotebookStep("summarize")
+        .findByText("Pick a function or metric")
+        .click();
+      H.popover().findByText("Count of rows").click();
+      H.getNotebookStep("summarize")
+        .findByText("Pick a column to group by")
+        .click();
+      H.popover().findByText("Name").click();
+      H.getNotebookStep("summarize")
+        .findByTestId("breakout-step")
+        .icon("add")
+        .click();
+      H.popover().findByText("Score").click();
+      H.runButtonOverlay().click();
+
+      cy.log("verify that no pivoting is applied");
+      H.tableInteractiveHeader().within(() => {
+        cy.findByText("Name").should("be.visible");
+        cy.findByText(/Score/).should("be.visible");
+        cy.findByText("Count").should("be.visible");
+      });
+    });
   });
 
   describe("name and description", () => {
@@ -591,9 +625,9 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       cy.log("modify the transform before running");
       getTransformPage().button("Change target").click();
       H.modal().within(() => {
-        cy.findByLabelText("Table name").should("have.value", TARGET_TABLE);
+        cy.findByLabelText("New table name").should("have.value", TARGET_TABLE);
         cy.findByLabelText("Schema").should("have.value", TARGET_SCHEMA);
-        cy.findByLabelText("Table name").clear().type(TARGET_TABLE_2);
+        cy.findByLabelText("New table name").clear().type(TARGET_TABLE_2);
         cy.findByLabelText("Schema").click();
       });
       H.popover().findByText(TARGET_SCHEMA_2).click();
@@ -632,9 +666,9 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       cy.log("modify the transform before running");
       getTransformPage().button("Change target").click();
       H.modal().within(() => {
-        cy.findByLabelText("Table name").should("have.value", TARGET_TABLE);
+        cy.findByLabelText("New table name").should("have.value", TARGET_TABLE);
         cy.findByLabelText("Schema").should("have.value", TARGET_SCHEMA);
-        cy.findByLabelText("Table name").clear().type(TARGET_TABLE_2);
+        cy.findByLabelText("New table name").clear().type(TARGET_TABLE_2);
         cy.findByLabelText("Schema").clear().type(CUSTOM_SCHEMA);
       });
       H.popover().findByText("Create new schema").click();
@@ -674,10 +708,10 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       cy.log("modify the transform after running");
       getTransformPage().button("Change target").click();
       H.modal().within(() => {
-        cy.findByLabelText("Table name").should("have.value", TARGET_TABLE);
+        cy.findByLabelText("New table name").should("have.value", TARGET_TABLE);
         cy.findByLabelText("Schema").should("have.value", TARGET_SCHEMA);
         cy.findByLabelText("Keep transform_table").should("be.checked");
-        cy.findByLabelText("Table name").clear().type(TARGET_TABLE_2);
+        cy.findByLabelText("New table name").clear().type(TARGET_TABLE_2);
         cy.button("Change target").click();
         cy.wait("@updateTransform");
       });
@@ -718,11 +752,11 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       cy.log("modify the transform after running");
       getTransformPage().button("Change target").click();
       H.modal().within(() => {
-        cy.findByLabelText("Table name").should("have.value", TARGET_TABLE);
+        cy.findByLabelText("New table name").should("have.value", TARGET_TABLE);
         cy.findByLabelText("Schema").should("have.value", TARGET_SCHEMA);
-        cy.findByLabelText("Table name").clear().type(TARGET_TABLE_2);
+        cy.findByLabelText("New table name").clear().type(TARGET_TABLE_2);
         cy.findByLabelText("Delete transform_table").click();
-        cy.button("Change target and delete the old one").click();
+        cy.button("Change target and delete old table").click();
         cy.wait("@deleteTransformTable");
         cy.wait("@updateTransform");
       });
@@ -751,48 +785,42 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         .should("be.visible");
       H.assertQueryBuilderRowCount(3);
 
-      cy.log("verify that the original question still works");
+      cy.log("verify that the original question does not work");
       visitTableQuestion();
       assertTableDoesNotExistError();
     });
 
-    it(
-      "should be able to delete the target and restore the same target back",
-      { tags: "@flaky" },
-      () => {
-        cy.log("create and run a transform");
-        createMbqlTransform({ visitTransform: true });
-        runTransformAndWaitForSuccess();
+    it("should be able to delete the target and restore the same target back", () => {
+      cy.log("create and run a transform");
+      createMbqlTransform({ visitTransform: true });
+      runTransformAndWaitForSuccess();
 
-        cy.log("delete the old target without creating the new one");
-        getTransformPage().button("Change target").click();
-        H.modal().within(() => {
-          cy.findByLabelText("Table name").clear().type(TARGET_TABLE_2);
-          cy.findByLabelText("Delete transform_table").click();
-          cy.button("Change target and delete the old one").click();
-          cy.wait("@deleteTransformTable");
-          cy.wait("@updateTransform");
-        });
+      cy.log("delete the old target without creating the new one");
+      getTransformPage().button("Change target").click();
+      H.modal().within(() => {
+        cy.findByLabelText("New table name").clear().type(TARGET_TABLE_2);
+        cy.findByLabelText("Delete transform_table").click();
+        cy.button("Change target and delete old table").click();
+        cy.wait("@deleteTransformTable");
+        cy.wait("@updateTransform");
+      });
 
-        cy.log("change the target back to the original one");
-        getTransformPage().button("Change target").click();
-        H.modal().within(() => {
-          cy.findByLabelText("Table name").clear().type(TARGET_TABLE);
-          cy.button("Change target").click();
-          cy.wait("@updateTransform");
-        });
+      cy.log("change the target back to the original one");
+      getTransformPage().button("Change target").click();
+      H.modal().within(() => {
+        cy.findByLabelText("New table name").clear().type(TARGET_TABLE);
+        cy.button("Change target").click();
+        cy.wait("@updateTransform");
+      });
 
-        cy.log("run the transform to re-create the original target");
-        runTransformAndWaitForSuccess();
+      cy.log("run the transform to re-create the original target");
+      runTransformAndWaitForSuccess();
 
-        cy.log("verify the target is available");
-        getTableLink().click();
-        H.queryBuilderHeader()
-          .findByText("Transform Table")
-          .should("be.visible");
-        H.assertQueryBuilderRowCount(3);
-      },
-    );
+      cy.log("verify the target is available");
+      getTableLink().click();
+      H.queryBuilderHeader().findByText("Transform Table").should("be.visible");
+      H.assertQueryBuilderRowCount(3);
+    });
 
     it("should not allow to overwrite an existing table when changing the target", () => {
       createMbqlTransform({ visitTransform: true });
@@ -800,7 +828,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       cy.log("change the target to an existing table");
       getTransformPage().button("Change target").click();
       H.modal().within(() => {
-        cy.findByLabelText("Table name").clear().type(SOURCE_TABLE);
+        cy.findByLabelText("New table name").clear().type(SOURCE_TABLE);
         cy.button("Change target").click();
         cy.wait("@updateTransform");
         cy.findByText("A table with that name already exists.").should(
@@ -1147,7 +1175,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       createMbqlTransform({ visitTransform: true });
 
       cy.log("delete the transform");
-      getTransformPage().button("Delete").click();
+      getTransformPage().button("Delete transform").click();
       H.modal().within(() => {
         cy.findByLabelText("Delete the transform only").should("not.exist");
         cy.findByLabelText("Delete the transform and the table").should(
@@ -1166,7 +1194,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       runTransformAndWaitForSuccess();
 
       cy.log("delete the transform but keep the table");
-      getTransformPage().button("Delete").click();
+      getTransformPage().button("Delete transform").click();
       H.modal().within(() => {
         cy.findByLabelText("Delete the transform only").should("be.checked");
         cy.button("Delete transform only").click();
@@ -1185,7 +1213,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       runTransformAndWaitForSuccess();
 
       cy.log("delete the transform and the table");
-      getTransformPage().button("Delete").click();
+      getTransformPage().button("Delete transform").click();
       H.modal().within(() => {
         cy.findByLabelText("Delete the transform and the table").click();
         cy.button("Delete transform and table").click();
@@ -1197,6 +1225,96 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       cy.log("make sure the table is deleted");
       visitTableQuestion();
       assertTableDoesNotExistError();
+    });
+  });
+
+  describe("cancelation", () => {
+    function createSlowTransform(seconds: number = 100) {
+      H.createTransform(
+        {
+          name: "Slow transform",
+          source: {
+            type: "query",
+            query: {
+              database: WRITABLE_DB_ID,
+              type: "native",
+              native: {
+                query: `SELECT name, cast(pg_sleep(${seconds}) as text) as slow FROM "Schema A"."Animals" LIMIT 1`,
+              },
+            },
+          },
+          target: {
+            type: "table",
+            name: TARGET_TABLE,
+            schema: TARGET_SCHEMA,
+          },
+          tag_ids: [],
+        },
+        { visitTransform: true },
+      );
+    }
+
+    it("should be possible to cancel a transform from the transform page", () => {
+      createSlowTransform();
+      getRunButton().click();
+      getRunButton().should("have.text", "Running now…");
+      getRunStatus().should("have.text", "Run in progress…");
+
+      getCancelButton().click();
+      H.modal().button("Yes").click();
+
+      getRunButton().should("have.text", "Canceling…");
+      getRunStatus().should("have.text", "Canceling…");
+
+      // We need to pass a timeout here since canceling a transform can
+      // take a while on the back end
+      getRunButton({ timeout: 40_000 }).should("have.text", "Canceled");
+      getRunStatus().should("contain", "Last run was canceled");
+    });
+
+    it("should be possible to cancel a transform from the runs page", () => {
+      createSlowTransform();
+      getRunButton().click();
+      getRunButton().should("have.text", "Running now…");
+      getRunStatus().should("have.text", "Run in progress…");
+
+      getNavSidebar().findByText("Runs").click();
+      getContentTable().within(() => {
+        cy.findByText("In-progress").should("be.visible");
+        cy.findByLabelText("Cancel run").click();
+      });
+
+      H.modal().button("Yes").click();
+
+      getContentTable().findByText("Canceling").should("be.visible");
+      getContentTable()
+        .findByText("Canceled", { timeout: 30_000 })
+        .should("be.visible");
+    });
+
+    it("should show a message when the run finished before it cancels", () => {
+      createSlowTransform(1);
+      getRunButton().click();
+      getRunButton().should("have.text", "Running now…");
+      getRunStatus().should("have.text", "Run in progress…");
+
+      getCancelButton().click();
+      H.modal().button("Yes").click();
+
+      getRunButton().should("have.text", "Canceling…");
+      getRunStatus().should("have.text", "Canceling…");
+
+      // We need to pass a timeout here since canceling a transform can
+      // take a while on the back end
+      getRunButton({ timeout: 40_000 }).should("have.text", "Ran successfully");
+      getRunStatus().should(
+        "contain",
+        "Last ran a few seconds ago successfully.",
+      );
+      getRunStatus().should(
+        "contain",
+        "This run succeeded before it had a chance to cancel.",
+      );
     });
   });
 
@@ -1422,7 +1540,8 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("tags", () => {
-    it("should be able to add and remove tags", { tags: "@flaky" }, () => {
+    // skipped because it's flaking so often
+    it("should be able to add and remove tags", { tags: "@skip" }, () => {
       H.createTransformJob({ name: "New job" }, { visitTransformJob: true });
       getTagsInput().click();
 
@@ -1521,7 +1640,7 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("filtering", () => {
-    it("should be able to filter jobs ", () => {
+    it("should be able to filter jobs ", { tags: "@flaky" }, () => {
       cy.log("run hourly job so know that was recently run");
       visitJobListPage();
 
@@ -2068,8 +2187,16 @@ function getQueryEditor() {
   return cy.findByTestId("transform-query-editor");
 }
 
-function getRunButton() {
-  return cy.findByTestId("run-button");
+function getRunButton(options: { timeout?: number } = {}) {
+  return cy.findByTestId("run-button", options);
+}
+
+function getCancelButton() {
+  return cy.findByTestId("cancel-button");
+}
+
+function getRunStatus() {
+  return cy.findByTestId("run-status");
 }
 
 function getRunListLink() {

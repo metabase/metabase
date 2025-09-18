@@ -112,7 +112,9 @@
     :model/NotificationSubscription
     :model/NotificationHandler
     :model/NotificationRecipient
-    :model/NotificationCard]
+    :model/NotificationCard
+    ;; 57+
+    :model/Glossary]
    (when config/ee-available?
      [:model/Sandbox
       :model/ConnectionImpersonation
