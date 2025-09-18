@@ -32,11 +32,17 @@ export const ResizeNode: Node<{
     return {
       height: {
         default: RESIZE_NODE_DEFAULT_HEIGHT,
-        parseHTML: (element) => element.getAttribute("data-height"),
+        parseHTML: (element) => {
+          const rawValue = element.getAttribute("data-height");
+          return (rawValue && parseInt(rawValue, 10)) || null;
+        },
       },
       minHeight: {
         default: RESIZE_NODE_MIN_HEIGHT,
-        parseHTML: (element) => element.getAttribute("data-min-height"),
+        parseHTML: (element) => {
+          const rawValue = element.getAttribute("data-min-height");
+          return (rawValue && parseInt(rawValue, 10)) || null;
+        },
       },
     };
   },
