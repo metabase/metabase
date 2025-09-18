@@ -95,12 +95,11 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
         data={getOptions(tags, searchValue)}
         placeholder={t`Add tags`}
         searchValue={searchValue}
-        hidePickedOptions={false}
         searchable
         rightSection={
           isLoading || isCreating ? <Loader size="sm" /> : undefined
         }
-        nothingFoundMessage={t`No tags found.`}
+        nothingFoundMessage={getNotFoundMessage(tags, tagIds, searchValue)}
         renderOption={(item) =>
           item.option.value === NEW_VALUE ? (
             <NewTagSelectItem
@@ -245,4 +244,21 @@ function getTagById(
   tags: TransformTag[],
 ): Record<TransformTagId, TransformTag> {
   return Object.fromEntries(tags.map((tag) => [tag.id, tag]));
+}
+
+function getNotFoundMessage(
+  tags: TransformTag[],
+  tagIds: TransformTagId[],
+  searchValue: string,
+) {
+  if (tags.length === 0) {
+    return t`No tags yet`;
+  }
+  if (tags.length === tagIds.length) {
+    return t`All tags selected`;
+  }
+  if (tags.some((tag) => tag.name === searchValue)) {
+    return t`A tag with that name already exists.`;
+  }
+  return t`No tags found`;
 }
