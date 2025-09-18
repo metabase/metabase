@@ -5,6 +5,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
    [metabase.config.core :as config]
@@ -18,19 +19,9 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (clojure.lang IDeref PersistentQueue)
-   (java.io BufferedWriter Closeable File OutputStream OutputStreamWriter)
-   (java.net URI)
-   (java.nio.charset StandardCharsets)
-   (java.time Duration)
-   (software.amazon.awssdk.auth.credentials AwsBasicCredentials StaticCredentialsProvider)
-   (software.amazon.awssdk.auth.credentials DefaultCredentialsProvider)
-   (software.amazon.awssdk.core.sync RequestBody)
-   (software.amazon.awssdk.regions Region)
-   (software.amazon.awssdk.services.s3 S3Client S3ClientBuilder S3Configuration)
-   (software.amazon.awssdk.services.s3.model DeleteObjectRequest GetObjectRequest NoSuchKeyException PutObjectRequest)
-   (software.amazon.awssdk.services.s3.presigner S3Presigner S3Presigner$Builder)
-   (software.amazon.awssdk.services.s3.presigner.model GetObjectPresignRequest PutObjectPresignRequest)))
+   (clojure.lang PersistentQueue)
+   (java.io BufferedWriter File OutputStream OutputStreamWriter)
+   (java.nio.charset StandardCharsets)))
 
 (set! *warn-on-reflection* true)
 
@@ -58,15 +49,6 @@
                          request-options
                          {:method method
                           :url    (str server-url "/v1" endpoint)}))))
-
-;; Longer duration for inputs than for outputs, to compensate for the duration of the code execution itself.
-(def ^:private ^Duration presigned-get-duration (Duration/ofMinutes 30))
-(def ^:private ^Duration presigned-put-duration (Duration/ofHours 5))
-
-(defn- safe-delete
-  "Safely delete a file."
-  [^File file]
-  (try (.delete file) (catch Exception _)))
 
 (defn- write-to-stream! [^OutputStream os col-names reducible-rows]
   (let [none? (volatile! true)
@@ -223,202 +205,11 @@
                         cancel-chan)
     manifest))
 
-(defmacro ^:private maybe-with-endpoint* [builder endpoint]
-  `(do (when-let [region# (transforms-python.settings/python-storage-s-3-region)]
-         (.region ~builder (Region/of region#)))
-       (when ~endpoint (.endpointOverride ~builder (URI/create ~endpoint)))
-       ~builder))
-
-(defn- maybe-with-endpoint-s3-client [^S3ClientBuilder builder endpoint]
-  (maybe-with-endpoint* builder endpoint))
-
-(defn- maybe-with-endpoint-s3-presigner [^S3Presigner$Builder builder endpoint]
-  (maybe-with-endpoint* builder endpoint))
-
-(defn- s3-configuration
-  "Create S3Configuration with path-style access setting"
-  ^S3Configuration []
-  (-> (S3Configuration/builder)
-      (.pathStyleAccessEnabled (transforms-python.settings/python-storage-s-3-path-style-access))
-      (.build)))
-
-(defn- put-object-request ^PutObjectRequest [^String bucket-name ^String key]
-  (-> (PutObjectRequest/builder) (.bucket bucket-name) (.key key) .build))
-
-(defn- get-object-request ^GetObjectRequest [^String bucket-name ^String key]
-  (-> (GetObjectRequest/builder) (.bucket bucket-name) (.key key) .build))
-
-(defn- delete-object-request ^DeleteObjectRequest [^String bucket-name ^String key]
-  (-> (DeleteObjectRequest/builder) (.bucket bucket-name) (.key key) .build))
-
-(defmacro ^:private maybe-with-credentials*
-  "Use macro to avoid reflection, as their is no shared interface between S3ClientBuilder and S3Presigner$Builder"
-  [builder]
-  `(let [access-key# (transforms-python.settings/python-storage-s-3-access-key)
-         secret-key# (transforms-python.settings/python-storage-s-3-secret-key)]
-     (if (or access-key# secret-key#)
-       (if-not (and access-key# secret-key#)
-         (do (log/warnf "Ignoring %s because %s is not defined"
-                        (if access-key# "access-key" "secret-key")
-                        (if (not access-key#) "access-key" "secret-key"))
-             (.credentialsProvider ~builder (DefaultCredentialsProvider/create)))
-         (.credentialsProvider ~builder
-                               (StaticCredentialsProvider/create
-                                (AwsBasicCredentials/create access-key# secret-key#))))
-       (.credentialsProvider ~builder (DefaultCredentialsProvider/create)))))
-
-(defn- maybe-with-credentials-s3-client [^S3ClientBuilder builder]
-  (maybe-with-credentials* builder))
-
-(defn- maybe-with-credentials-s3-presigner [^S3Presigner$Builder builder]
-  (maybe-with-credentials* builder))
-
-;; We just recreate the client every time, to keep things simple if config is changed.
-(defn- create-s3-client
-  "Create S3 client for host operations (uploads, reads)"
-  ^S3Client []
-  (.build
-   (doto (S3Client/builder)
-     (maybe-with-endpoint-s3-client (transforms-python.settings/python-storage-s-3-endpoint))
-     maybe-with-credentials-s3-client
-     (.serviceConfiguration (s3-configuration)))))
-
-(defn- create-s3-presigner-for-container
-  "Create S3 presigner for container operations (presigned URLs). Uses distinct container-endpoint if relevant."
-  ^S3Presigner []
-  (let [container-endpoint (transforms-python.settings/python-storage-s-3-container-endpoint)
-        endpoint           (or container-endpoint (transforms-python.settings/python-storage-s-3-endpoint))]
-    (.build
-     (doto (S3Presigner/builder)
-       (maybe-with-endpoint-s3-presigner endpoint)
-       maybe-with-credentials-s3-presigner
-       (.serviceConfiguration (s3-configuration))))))
-
-(defn- upload-file-to-s3
-  "Upload file using host client"
-  [^S3Client s3-client ^String bucket-name ^String key ^File file]
-  (let [^PutObjectRequest request (put-object-request bucket-name key)]
-    (.putObject s3-client request (RequestBody/fromFile file))))
-
-(defn- generate-presigned-get-url
-  "Generate GET URL using container presigner"
-  [^S3Presigner presigner ^String bucket-name ^String key]
-  (let [request (-> (GetObjectPresignRequest/builder)
-                    (.signatureDuration presigned-get-duration)
-                    (.getObjectRequest (get-object-request bucket-name key))
-                    (.build))]
-    (.toString (.url (.presignGetObject presigner request)))))
-
-(defn- generate-presigned-put-url
-  "Generate PUT URL using container presigner"
-  [^S3Presigner presigner ^String bucket-name ^String key]
-  (let [request (-> (PutObjectPresignRequest/builder)
-                    (.signatureDuration presigned-put-duration)
-                    (.putObjectRequest (put-object-request bucket-name key))
-                    (.build))]
-    (.toString (.url (.presignPutObject presigner request)))))
-
-(defn- delete-s3-object [^S3Client s3-client ^String bucket-name ^String key]
-  (try
-    (.deleteObject s3-client (delete-object-request bucket-name key))
-    (catch Exception e
-      (log/debugf e "Error deleting s3 object %s" key)
-      ;; Ignore deletion errors - object might not exist, or we might not have permissions
-      ;; NOTE: we plan to put general retention on the bucket so that objects will eventually be deleted
-      nil)))
-
-(defn- cleanup-s3-objects [^S3Client s3-client bucket-name s3-keys]
-  (run! (partial delete-s3-object s3-client bucket-name) s3-keys))
-
-(defn- read-from-s3
-  ([s3-client bucket-name key] (read-from-s3 s3-client bucket-name key ::throw))
-  ([^S3Client s3-client ^String bucket-name ^String key not-found]
-   (try
-     (let [^GetObjectRequest request (get-object-request bucket-name key)
-           response                  (.getObject s3-client request)]
-       (slurp response))
-     (catch NoSuchKeyException e
-       (if (identical? ::throw not-found)
-         (throw e)
-         not-found)))))
-
 (defn get-logs
   "Return the logs of the current running python process"
   [run-id]
   (let [server-url (transforms-python.settings/python-runner-url)]
     (python-runner-request server-url :get "/logs" {:query-params {:request_id run-id}})))
-
-(defn- s3-shared-storage [table-name->id]
-  (let [prefix              (some-> (transforms-python.settings/python-storage-s-3-prefix) (str "/"))
-        work-dir-name       (str prefix "run-" (System/nanoTime) "-" (rand-int 10000))
-        container-presigner (create-s3-presigner-for-container)
-        bucket-name         (transforms-python.settings/python-storage-s-3-bucket)
-        ref                 (fn [method relative-path]
-                              (let [path (str work-dir-name "/" relative-path)]
-                                {:path   path
-                                 :method method
-                                 :url    (case method
-                                           :put (generate-presigned-put-url container-presigner bucket-name path)
-                                           :get (generate-presigned-get-url container-presigner bucket-name path))}))]
-    ;; a smell to be mixing interactive things with descriptions, but its damn convenient to have it here for now
-    {:s3-client   (create-s3-client)
-     :bucket-name bucket-name
-     :objects
-     (into
-      {:output          (ref :put "output.csv")
-       :output-manifest (ref :put "output-manifest.json")
-       :events          (ref :put "events.jsonl")}
-      (for [[table-name id] table-name->id]
-        {[:table id :manifest] (ref :get (str "table-" (name table-name) "-" id ".manifest.json"))
-         [:table id :data]     (ref :get (str "table-" (name table-name) "-" id ".jsonl"))}))}))
-
-(defn open-s3-shared-storage!
-  "Returns a deref'able shared storage value, (.close) will optimistically delete any s3 objects named in storage (data files for tables, metadata files etc).
-  The intention is the bucket specifies a generic object retention policy to ensure objects are eventually deleted (e.g. because the process dies during writing and .close never gets called)"
-  ^Closeable [table-name->id]
-  (let [shared-storage (s3-shared-storage table-name->id)]
-    (reify IDeref
-      (deref [_] shared-storage)
-      Closeable
-      (close [_] (cleanup-s3-objects (:s3-client shared-storage)
-                                     (:bucket-name shared-storage)
-                                     (map :path (vals (:objects shared-storage))))))))
-
-(defn copy-tables-to-s3!
-  "Writes table content to their corresponding objects named in shared-storage, see (open-shared-storage!).
-  Blocks until all tables are fully written and committed to shared storage."
-  [{:keys [run-id
-           shared-storage
-           table-name->id
-           cancel-chan]}]
-  ;; TODO there's scope for some parallelism here, in particular across different databases
-  (doseq [id (vals table-name->id)
-          :let [{:keys [s3-client bucket-name objects]} shared-storage
-                {data-path :path} (get objects [:table id :data])
-                {manifest-path :path} (get objects [:table id :manifest])]]
-    (let [temp-file     (File/createTempFile data-path "")
-          manifest-file (File/createTempFile manifest-path "")]
-      (try
-        ;; Write table data to temporary file and get manifest
-        (let [manifest (transforms.instrumentation/with-stage-timing [run-id :data-transfer :dwh-to-file]
-                         (write-table-data-to-file! id temp-file cancel-chan))]
-          ;; Write manifest to file
-          (with-open [writer (io/writer manifest-file)]
-            (json/encode-to manifest writer {}))
-          (let [file-size     (.length temp-file)
-                manifest-size (.length manifest-file)]
-            (transforms.instrumentation/record-data-transfer! run-id :dwh-to-file file-size nil)
-
-            ;; Upload both files to S3
-            (transforms.instrumentation/with-stage-timing [run-id :data-transfer :file-to-s3]
-              (upload-file-to-s3 s3-client bucket-name data-path temp-file)
-              (upload-file-to-s3 s3-client bucket-name manifest-path manifest-file))
-
-            (transforms.instrumentation/record-data-transfer! run-id :file-to-s3 (+ file-size manifest-size) nil)))
-        (finally
-          ;; Clean up temporary files
-          (safe-delete temp-file)
-          (safe-delete manifest-file))))))
 
 (defn execute-python-code-http-call!
   "Calls the /execute endpoint of the python runner. Blocks until the run either succeeds or fails and returns
@@ -471,9 +262,54 @@
   "Temporary function that strings/jsons stuff in S3 and returns it for compatibility."
   [{:keys [s3-client bucket-name objects]}]
   (let [{:keys [output output-manifest events]} objects
-        output-content          (read-from-s3 s3-client bucket-name (:path output) nil)
-        output-manifest-content (read-from-s3 s3-client bucket-name (:path output-manifest) "{}")
-        events-content          (read-from-s3 s3-client bucket-name (:path events))]
+        output-content          (s3/read-from-s3 s3-client bucket-name (:path output) nil)
+        output-manifest-content (s3/read-from-s3 s3-client bucket-name (:path output-manifest) "{}")
+        events-content          (s3/read-from-s3 s3-client bucket-name (:path events))]
     {:output          output-content
      :output-manifest (json/decode+kw output-manifest-content)
      :events          (mapv json/decode+kw (str/split-lines events-content))}))
+
+(defn- safe-delete
+  "Safely delete a file."
+  [^File file]
+  (try (.delete file) (catch Exception _)))
+
+;; TODO break this up such that s3 can be swapped out for other transfer mechanisms.
+(defn copy-tables-to-s3!
+  "Writes table content to their corresponding objects named in shared-storage, see (open-shared-storage!).
+  Blocks until all tables are fully written and committed to shared storage."
+  [{:keys [run-id
+           shared-storage
+           table-name->id
+           cancel-chan]}]
+  ;; TODO there's scope for some parallelism here, in particular across different databases
+  (doseq [id (vals table-name->id)
+          :let [{:keys [s3-client bucket-name objects]} shared-storage
+                {data-path :path}                       (get objects [:table id :data])
+                {manifest-path :path}                   (get objects [:table id :manifest])]]
+    (let [temp-file     (File/createTempFile data-path "")
+          manifest-file (File/createTempFile manifest-path "")]
+      (try
+        ;; Write table data to temporary file and get manifest
+        (let [manifest (transforms.instrumentation/with-stage-timing [run-id :data-transfer :dwh-to-file]
+                         (write-table-data-to-file! id temp-file cancel-chan))]
+          ;; Write manifest to file
+          (with-open [writer (io/writer manifest-file)]
+            (json/encode-to manifest writer {}))
+          (let [file-size     (.length temp-file)
+                manifest-size (.length manifest-file)]
+            (transforms.instrumentation/record-data-transfer! run-id :dwh-to-file file-size nil)
+
+            ;; Upload both files to S3
+            (transforms.instrumentation/with-stage-timing [run-id :data-transfer :file-to-s3]
+              (s3/upload-file-to-s3 s3-client bucket-name data-path temp-file)
+              (s3/upload-file-to-s3 s3-client bucket-name manifest-path manifest-file))
+
+            (transforms.instrumentation/record-data-transfer! run-id :file-to-s3 (+ file-size manifest-size) nil)))
+        (finally
+          ;; Clean up temporary files
+          (safe-delete temp-file)
+          (safe-delete manifest-file))))))
+
+#_(remove-ns (ns-name *ns*))
+

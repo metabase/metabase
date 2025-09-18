@@ -3,6 +3,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
+   [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
    [metabase-enterprise.transforms.util :as transforms.util]
@@ -162,8 +163,9 @@
         (create-table-and-insert-data! driver (:id db) table-name metadata data-source)))))
 
 (defn- run-python-transform! [{:keys [source] :as transform} db run-id cancel-chan message-log]
+  ;; TODO restructure things such that s3 can we swapped out for other transfer mechanisms
   (with-open [log-future-ref     (open-python-message-update-future! run-id message-log)
-              shared-storage-ref (python-runner/open-s3-shared-storage! (:source-tables source))]
+              shared-storage-ref (s3/open-s3-shared-storage! (:source-tables source))]
     (let [driver     (:engine db)
           server-url (transforms-python.settings/python-runner-url)
           _          (python-runner/copy-tables-to-s3! {:run-id         run-id
