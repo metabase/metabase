@@ -64,7 +64,6 @@ export function JobList({ params }: { params: JobListParams }) {
           <Flex align="center" gap="xs" key="next-run">
             {t`Next run`} <TimezoneIndicator />
           </Flex>,
-          t`Transforms`,
           t`Tags`,
         ]}
       >
@@ -74,8 +73,8 @@ export function JobList({ params }: { params: JobListParams }) {
             className={S.row}
             onClick={() => handleRowClick(job)}
           >
-            <td>{job.name}</td>
-            <td className={S.nowrap}>
+            <td className={S.cell}>{job.name}</td>
+            <td className={S.cell}>
               {job.last_run?.start_time
                 ? parseTimestampWithTimezone(
                     job.last_run?.start_time,
@@ -83,7 +82,7 @@ export function JobList({ params }: { params: JobListParams }) {
                   ).format("lll")
                 : null}
             </td>
-            <td className={S.nowrap}>
+            <td className={S.cell}>
               {job.next_run?.start_time
                 ? parseTimestampWithTimezone(
                     job.next_run?.start_time,
@@ -91,8 +90,7 @@ export function JobList({ params }: { params: JobListParams }) {
                   ).format("lll")
                 : null}
             </td>
-            <td className={S.nowrap}></td>
-            <td>
+            <td className={S.cell}>
               <TagList tags={tags} tagIds={job.tag_ids ?? []} />
             </td>
           </tr>

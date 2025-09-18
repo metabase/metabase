@@ -68,10 +68,10 @@ function RunTable({ runs }: RunTableProps) {
       <AdminContentTable
         columnTitles={[
           t`Transform`,
-          <Flex align="center" gap="xs" key="started-at">
+          <Flex key="started-at" align="center" gap="xs">
             {t`Started at`} <TimezoneIndicator />
           </Flex>,
-          <Flex align="center" gap="xs" key="end-at">
+          <Flex key="end-at" align="center" gap="xs">
             {t`End at`} <TimezoneIndicator />
           </Flex>,
           t`Status`,
@@ -84,14 +84,14 @@ function RunTable({ runs }: RunTableProps) {
             className={S.row}
             onClick={() => handleRowClick(run)}
           >
-            <td>{run.transform?.name}</td>
-            <td className={S.nowrap}>
+            <td className={S.cell}>{run.transform?.name}</td>
+            <td className={S.cell}>
               {parseTimestampWithTimezone(
                 run.start_time,
                 systemTimezone,
               ).format("lll")}
             </td>
-            <td className={S.nowrap}>
+            <td className={S.cell}>
               {run.end_time
                 ? parseTimestampWithTimezone(
                     run.end_time,
@@ -99,7 +99,7 @@ function RunTable({ runs }: RunTableProps) {
                   ).format("lll")
                 : null}
             </td>
-            <td>
+            <td className={S.cell}>
               <RunStatusInfo
                 status={run.status}
                 message={run.message}
@@ -113,7 +113,7 @@ function RunTable({ runs }: RunTableProps) {
                 }
               />
             </td>
-            <td>{formatRunMethod(run.run_method)}</td>
+            <td className={S.cell}>{formatRunMethod(run.run_method)}</td>
           </tr>
         ))}
       </AdminContentTable>
