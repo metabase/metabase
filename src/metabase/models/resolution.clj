@@ -50,7 +50,6 @@
     :model/LoginHistory                      metabase.login-history.models.login-history
     :model/Metabot                           metabase-enterprise.metabot-v3.models.metabot
     :model/MetabotConversation               metabase-enterprise.metabot-v3.models.metabot-conversation
-    :model/MetabotEntity                     metabase-enterprise.metabot-v3.models.metabot-entity
     :model/MetabotMessage                    metabase-enterprise.metabot-v3.models.metabot-message
     :model/MetabotPrompt                     metabase-enterprise.metabot-v3.models.metabot-prompt
     :model/ModelIndex                        metabase.indexed-entities.models.model-index
