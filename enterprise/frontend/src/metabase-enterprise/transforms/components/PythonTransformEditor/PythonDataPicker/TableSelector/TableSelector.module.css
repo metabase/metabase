@@ -1,0 +1,8 @@
+.tableSelector {
+  text-align: start !important;
+  border-radius: var(--mantine-radius-xs);
+}
+
+.tableSelectorInner {
+  justify-content: start;
+}
