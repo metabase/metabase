@@ -291,7 +291,7 @@
           manifest-file (File/createTempFile manifest-path "")]
       (try
         ;; Write table data to temporary file and get manifest
-        (let [manifest (transforms.instrumentation/with-stage-timing [run-id :data-transfer :dwh-to-file]
+        (let [manifest (transforms.instrumentation/with-stage-timing [run-id :dwh-to-file]
                          (write-table-data-to-file! id temp-file cancel-chan))]
           ;; Write manifest to file
           (with-open [writer (io/writer manifest-file)]
@@ -301,7 +301,7 @@
             (transforms.instrumentation/record-data-transfer! run-id :dwh-to-file file-size nil)
 
             ;; Upload both files to S3
-            (transforms.instrumentation/with-stage-timing [run-id :data-transfer :file-to-s3]
+            (transforms.instrumentation/with-stage-timing [run-id :file-to-s3]
               (s3/upload-file s3-client bucket-name data-path temp-file)
               (s3/upload-file s3-client bucket-name manifest-path manifest-file))
 
