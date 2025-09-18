@@ -174,9 +174,9 @@
     (reify IDeref
       (deref [_] shared-storage)
       Closeable
-      (close [_] (delete-objects (:s3-client shared-storage)
-                                 (:bucket-name shared-storage)
-                                 (map :path (vals (:objects shared-storage))))))))
+      (close [_] (delete-many (:s3-client shared-storage)
+                              (:bucket-name shared-storage)
+                              (map :path (vals (:objects shared-storage))))))))
 
 (defn upload-file
   "Upload the given file to s3"
