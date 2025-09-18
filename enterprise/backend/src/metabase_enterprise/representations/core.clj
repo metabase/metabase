@@ -11,6 +11,17 @@
 
 (set! *warn-on-reflection* true)
 
+(defn export-question [question]
+  (let [query (serdes/export-mbql (:dataset_query question))]
+    (cond-> {:name (:name question)
+             ;;:version "question-v0"
+             :type "question"
+             :ref (format "question-%s" (:id question))
+             :description (:description question)}
+      (= :native (:type query))
+      (assoc :query (-> query :native :query)
+             :database (:database query)))))
+
 (defn- write-em
   "Writes representations to a directory `dir`. Will take a collection-id and serialize the whole collection, creating a folder named <collection-name> there. Example, supposing a collection id of 8 with name \"custom\",
 
@@ -57,7 +68,7 @@
             id->ref (into {} (map (juxt :id :ref)) cards)
             cards (map (fn [card] (update card :dataset_query
                                           (fn [q] (walk/postwalk (fn [x]
-                                                                   (or (some-> x nanos->id id->ref )
+                                                                   (or (some-> x nanos->id id->ref)
                                                                        x))
                                                                  q))))
                        cards)]
