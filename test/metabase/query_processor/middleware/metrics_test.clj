@@ -39,7 +39,7 @@
   [metadata-provider]
   (loop []
     (let [id (swap! counter inc)]
-      (if (seq (lib.metadata.protocols/metadatas metadata-provider :metadata/card #{id}))
+      (if (seq (lib.metadata.protocols/metadatas metadata-provider {:lib/type :metadata/card, :id #{id}}))
         (recur)
         id))))
 

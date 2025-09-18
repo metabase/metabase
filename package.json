@@ -39,6 +39,7 @@
     "@tiptap/core": "^3.2.0",
     "@tiptap/extension-bubble-menu": "^3.2.0",
     "@tiptap/extension-image": "^3.2.0",
+    "@tiptap/extension-mention": "^3.3.0",
     "@tiptap/extension-placeholder": "^3.2.0",
     "@tiptap/pm": "^3.2.0",
     "@tiptap/react": "^3.2.0",
@@ -74,6 +75,7 @@
     "echarts": "^5.5.1-rc.1",
     "fast-text-encoding": "^1.0.6",
     "formik": "^2.4.5",
+    "frimousse": "^0.3.0",
     "hast-util-from-html": "^2.0.1",
     "hast-util-to-html": "^9.0.0",
     "history": "3",
@@ -147,8 +149,7 @@
     "ttag": "1.7.21",
     "typescript": "^5.4.5",
     "underscore": "~1.13.3",
-    "yup": "^0.32.11",
-    "zod": "^4.1.5"
+    "yup": "^0.32.11"
   },
   "devDependencies": {
     "@babel/cli": "^7.23.0",

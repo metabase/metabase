@@ -9,6 +9,7 @@ import { DatabasePage } from "metabase/admin/databases/containers/DatabasePage";
 import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
 import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
 import SegmentListApp from "metabase/admin/datamodel/containers/SegmentListApp";
+import { AdminEmbeddingApp } from "metabase/admin/embedding/containers/AdminEmbeddingApp";
 import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
 import { GroupDetailApp } from "metabase/admin/people/containers/GroupDetailApp";
@@ -20,6 +21,10 @@ import { UserPasswordResetModal } from "metabase/admin/people/containers/UserPas
 import { UserSuccessModal } from "metabase/admin/people/containers/UserSuccessModal";
 import { PerformanceApp } from "metabase/admin/performance/components/PerformanceApp";
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
+import {
+  EmbeddingSdkSettings,
+  StaticEmbeddingSettings,
+} from "metabase/admin/settings/components/EmbeddingSettings";
 import { Help } from "metabase/admin/tools/components/Help";
 import { JobInfoApp } from "metabase/admin/tools/components/JobInfoApp";
 import { JobTriggersModal } from "metabase/admin/tools/components/JobTriggersModal";
@@ -32,10 +37,12 @@ import {
 import { TaskModal } from "metabase/admin/tools/components/TaskModal";
 import { TasksApp } from "metabase/admin/tools/components/TasksApp";
 import { ToolsApp } from "metabase/admin/tools/components/ToolsApp";
+import { EmbeddingHub } from "metabase/embedding/embedding-hub";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import { DataModel } from "metabase/metadata/pages/DataModel";
 import {
+  PLUGIN_ADMIN_SETTINGS,
   PLUGIN_ADMIN_TOOLS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_CACHING,
@@ -47,6 +54,7 @@ import {
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
 import { StrategyEditorForDatabases } from "./performance/components/StrategyEditorForDatabases";
 import { PerformanceTabId } from "./performance/types";
+import { InteractiveEmbeddingUpsellPage } from "./settings/components/EmbeddingSettings/InteractiveEmbeddingUpsellPage";
 import { getSettingsRoutes } from "./settingsRoutes";
 import { ToolsUpsell } from "./tools/components/ToolsUpsell";
 import { RedirectToAllowedSettings, createAdminRouteGuard } from "./utils";
@@ -134,6 +142,58 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           </Route>
         </Route>
       </Route>
+
+      {/* EMBEDDING */}
+      <Route path="embedding" component={createAdminRouteGuard("embedding")}>
+        <Route title={t`Embedding`} component={AdminEmbeddingApp}>
+          <IndexRedirect to="modular" />
+          <Route
+            path="setup-guide"
+            title={t`Setup guide`}
+            component={EmbeddingHub}
+          />
+          <Route
+            path="modular"
+            title={t`Modular`}
+            component={EmbeddingSdkSettings}
+          />
+          <Route
+            path="interactive"
+            title={t`Interactive`}
+            component={() => {
+              if (PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingSettings) {
+                return <PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingSettings />;
+              }
+
+              return <InteractiveEmbeddingUpsellPage />;
+            }}
+          />
+          <Route
+            path="static"
+            title={t`Static`}
+            component={StaticEmbeddingSettings}
+          />
+        </Route>
+      </Route>
+
+      {/* Backwards compatibility for embedding settings */}
+      <Redirect
+        from="/admin/settings/embedding-in-other-applications"
+        to="/admin/embedding/modular"
+      />
+      <Redirect
+        from="/admin/settings/embedding-in-other-applications/full-app"
+        to="/admin/embedding/interactive"
+      />
+      <Redirect
+        from="/admin/settings/embedding-in-other-applications/standalone"
+        to="/admin/embedding/static"
+      />
+      <Redirect
+        from="/admin/settings/embedding-in-other-applications/sdk"
+        to="/admin/embedding/modular"
+      />
+
       {/* SETTINGS */}
       <Route path="settings" component={createAdminRouteGuard("settings")}>
         {getSettingsRoutes()}

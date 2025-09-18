@@ -33,6 +33,10 @@ export function formatStatus(status: TransformRunStatus) {
       return `Failed`;
     case "timeout":
       return t`Timeout`;
+    case "canceling":
+      return t`Canceling`;
+    case "canceled":
+      return t`Canceled`;
   }
 }
 
@@ -53,6 +57,8 @@ export function doesDatabaseSupportTransforms(database?: Database): boolean {
   return (
     !database.is_sample &&
     !database.is_audit &&
+    !database.router_user_attribute &&
+    !database.router_database_id &&
     hasFeature(database, "transforms/table")
   );
 }

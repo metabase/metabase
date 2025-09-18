@@ -21,3 +21,9 @@ export function grantClipboardPermissions() {
     },
   });
 }
+
+export function readClipboard() {
+  return cy.window().then((win) => {
+    return win.navigator.clipboard.readText();
+  });
+}

@@ -16,7 +16,11 @@
   (are [x] (not (me/humanize (mr/explain ::lib.schema.parameter/parameter x)))
     {:type   :category
      :target [:variable [:field 71725 nil]]
-     :value  50}))
+     :value  50}
+    {:type   :date/range
+     :name   "created_at"
+     :target [:dimension [:template-tag "date_range"]]
+     :value  "past1weeks"}))
 
 (deftest ^:parallel normalize-dimension-test
   (are [x expected] (= expected

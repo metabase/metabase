@@ -246,6 +246,8 @@
           (is (= [{:name         "NAME"
                    :display_name "Name"
                    :base_type    :type/Text}]
+                 ;; existing usage -- don't use going forward
+                 #_{:clj-kondo/ignore [:deprecated-var]}
                  (qp.store/miscellaneous-value [::qp.results-metadata/card-stored-metadata]))))))))
 
 ;;; adapted from [[metabase.queries.api.card-test/model-card-test-2]]
@@ -266,7 +268,7 @@
                        :semantic_type (base-type->semantic-type (:base_type col)))))]
       ;; use a MetadataProvider to build cards and populate metadata, but we have to use `with-temp` before
       ;; calling [[run-query-for-card]] since the Card QP code does not currently fully support metadata providers.
-      (let [mp (as-> (mt/application-database-metadata-provider (mt/id)) mp
+      (let [mp (as-> (mt/metadata-provider) mp
                  (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
                   mp
                   [{:database (mt/id)

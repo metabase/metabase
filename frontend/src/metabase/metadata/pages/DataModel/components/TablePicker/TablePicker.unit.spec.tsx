@@ -380,6 +380,18 @@ describe("TablePicker", () => {
         tableId: FOO_RESULT.id,
       });
     });
+
+    it("should not crash when pressing Enter with no item selected (metabase#63350)", async () => {
+      const { onChange } = setup({
+        searchResults: SEARCH_RESULTS,
+      });
+
+      await userEvent.type(searchInput(), "search");
+
+      await userEvent.type(searchInput(), "{Enter}");
+
+      expect(onChange).not.toHaveBeenCalled();
+    });
   });
 });
 
