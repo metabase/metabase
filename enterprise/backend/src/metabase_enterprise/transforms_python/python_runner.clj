@@ -310,5 +310,3 @@
           ;; Clean up temporary files
           (safe-delete temp-file)
           (safe-delete manifest-file))))))
-
-#_(remove-ns (ns-name *ns*))

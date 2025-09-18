@@ -18,9 +18,6 @@
 
 (set! *warn-on-reflection* true)
 
-(comment
-  (remove-ns (ns-name *ns*)))
-
 (deftest s3-read-write-test
   (testing "We can open an s3 connection, and read and write things"
     (with-open [s3-client (s3/create-s3-client)]
