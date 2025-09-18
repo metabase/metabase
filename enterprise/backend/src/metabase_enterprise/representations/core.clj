@@ -38,6 +38,13 @@
       :always
       remove-nils)))
 
+(defn export-collection [collection]
+  (-> {:type "collection"
+       :ref (format "%s-%s" "collection" (:id collection))
+       :name (:name collection)
+       :description (:description collection)}
+      remove-nils))
+
 (defn- write-em
   "Writes representations to a directory `dir`. Will take a collection-id and serialize the whole collection, creating a folder named <collection-name> there. Example, supposing a collection id of 8 with name \"custom\",
 

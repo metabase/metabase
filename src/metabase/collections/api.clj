@@ -987,7 +987,7 @@
       res
       limit-res)))
 
-(mu/defn- collection-children
+(mu/defn collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]

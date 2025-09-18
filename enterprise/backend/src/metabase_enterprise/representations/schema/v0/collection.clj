@@ -38,5 +38,5 @@
                   Every representations directory MUST have a collection.yml file."}
    [:type ::type]
    [:ref ::ref]
-   [:name ::name]
-   [:description {:optional true} ::description]])
+   [:name {:optional true} [:maybe ::name]]
+   [:description {:optional true} [:maybe ::description]]])
