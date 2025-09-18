@@ -17,9 +17,9 @@ import type {
 
 import { QueryEditor } from "../../components/QueryEditor";
 import { getTransformListUrl, getTransformUrl } from "../../urls";
-import { NewPythonTransformPage } from "../NewPythonTransformPage";
 
 import { CreateTransformModal } from "./CreateTransformModal";
+import { NewPythonTransformPage } from "./NewPythonTransformPage";
 
 type NewTransformQueryPageParams = {
   type?: string;
