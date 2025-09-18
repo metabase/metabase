@@ -213,7 +213,7 @@
                                   col-names         (map :name cols-meta)
                                   filtered-rows     (eduction (map (fn [row]
                                                                      (->>
-                                                                      (zipmap col-names row)
+                                                                      (map vector col-names row)
                                                                       (filter (fn [[n _]]
                                                                                 (contains? filtered-col-meta n)))
                                                                       (map (fn [[n v]]
