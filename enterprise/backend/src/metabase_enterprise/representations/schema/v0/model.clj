@@ -7,10 +7,44 @@
 
    Note: v0 is a theoretical work-in-progress and subject to change."
   (:require
+   [clojure.string :as str]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.types.core :as types]
    [metabase.util.malli.registry :as mr]))
 
 ;;; ------------------------------------ Column Schema Definitions ------------------------------------
+
+;;; ------------------------------------ Helper Functions ------------------------------------
+
+(defn- normalize-type-string
+  "Convert type strings to internal keyword format.
+   Expects strings like 'type/Text' or 'type/PK' and converts to :type/Text, :type/PK.
+   Also handles already-keywordized values."
+  [type-str]
+  (when type-str
+    (cond
+      ;; Already a keyword, return as-is
+      (keyword? type-str) type-str
+
+      ;; String in format "type/Foo" or ":type/Foo"
+      (string? type-str)
+      (let [trimmed (str/trim type-str)]
+        (cond
+          ;; Handle ":type/Foo" format
+          (str/starts-with? trimmed ":")
+          (keyword (subs trimmed 1))
+
+          ;; Handle "type/Foo" format - most common case
+          (str/includes? trimmed "/")
+          (keyword trimmed)
+
+          ;; Fallback: treat as "type/X" if no slash present
+          ;; This handles cases like just "Text" -> :type/Text
+          :else
+          (keyword "type" trimmed)))
+
+      ;; Unknown type, return nil
+      :else nil)))
 
 (mr/def ::column-name
   [:and
@@ -31,18 +65,56 @@
 
 (mr/def ::base-type
   [:and
-   {:description "The actual data type of the column (e.g., Text, Integer, DateTime)"}
-   ::lib.schema.common/non-blank-string])
+   {:description "The actual data type of the column (e.g., Text, Integer, DateTime)"
+    :decode/json normalize-type-string}
+   [:or
+    :string
+    :keyword]
+   [:fn
+    {:error/message "Must be a valid base type (not a semantic type)"
+     :error/fn (fn [{:keys [value]} _]
+                 (str "Not a valid base type: " (pr-str value)))}
+    (fn [x]
+      (let [type-kw (if (keyword? x) x (normalize-type-string x))]
+        (and type-kw
+             (isa? type-kw :type/*))))]])
 
 (mr/def ::effective-type
   [:and
-   {:description "How Metabase should treat this column (can override base_type)"}
-   ::lib.schema.common/non-blank-string])
+   {:description "How Metabase should treat this column (can override base_type)"
+    :decode/json normalize-type-string}
+   [:or
+    :string
+    :keyword]
+   [:fn
+    {:error/message "Must be a valid effective type"
+     :error/fn (fn [{:keys [value]} _]
+                 (str "Not a valid effective type: " (pr-str value)))}
+    (fn [x]
+      (let [type-kw (if (keyword? x) x (normalize-type-string x))]
+        (and type-kw
+             ;; Effective type can be a base type OR a semantic type
+             (isa? type-kw :type/*))))]])
 
 (mr/def ::semantic-type
   [:and
-   {:description "Semantic meaning of the column (e.g., Email, Currency, Entity Key)"}
-   ::lib.schema.common/non-blank-string])
+   {:description "Semantic meaning of the column (e.g., Email, Currency, Entity Key)"
+    :decode/json normalize-type-string}
+   [:or
+    :string
+    :keyword]
+   [:fn
+    {:error/message "Must be a valid semantic type"
+     :error/fn (fn [{:keys [value]} _]
+                 (let [normalized (normalize-type-string value)]
+                   (str "Not a recognized semantic type: " (pr-str value)
+                        ". Got: " normalized
+                        " which is not a :Semantic/* or :Relation/* type.")))}
+    (fn [x]
+      (let [type-kw (if (keyword? x) x (normalize-type-string x))]
+        (when type-kw
+          (or (isa? type-kw :Semantic/*)
+              (isa? type-kw :Relation/*)))))]])
 
 (mr/def ::visibility
   [:enum
@@ -75,8 +147,8 @@
 
 (mr/def ::type
   [:enum {:decode/json keyword
-          :description "Type must be 'model' or 'vX/model'"}
-   :model :v0/model])
+          :description "Type must be 'model' or 'v0/model'"}
+   :model :v0/model "model" "v0/model"])
 
 (mr/def ::ref
   [:and
