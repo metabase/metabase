@@ -325,10 +325,7 @@
 ;; If you extend the size of the tables / run time then any behaviour this test exposes should also be possible for delayed signals.
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]} ; todo factor to maybe some private helpers or share test impl for multiple top-level tests
 (deftest python-cancellation-test
-  (letfn [(get-last-run [transform-id]
-            (:last_run (mt/user-http-request :crowberto :get 200 (format "ee/transform/%d" transform-id))))
-
-          (create-transform [{:keys [desc program]} target]
+  (letfn [(create-transform [{:keys [desc program]} target]
             (mt/user-http-request :crowberto :post 200 "ee/transform"
                                   {:name   (format "Python cancellation test: %s" desc)
                                    :source {:type            "python"
