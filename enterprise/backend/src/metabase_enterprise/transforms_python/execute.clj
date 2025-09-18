@@ -213,7 +213,7 @@
               (with-open [writer (io/writer temp-file)]
                 (.write writer ^String output))
               (let [file-size (.length temp-file)]
-                (transforms.instrumentation/with-stage-timing [run-id :data-transfer :file-to-dwh]
+                (transforms.instrumentation/with-stage-timing [run-id :file-to-dwh]
                   (transfer-file-to-db driver db transform output-manifest temp-file))
                 (transforms.instrumentation/record-data-transfer! run-id :file-to-dwh file-size nil))
               (finally
@@ -247,7 +247,7 @@
                                  :output-table   (transforms.util/qualified-table-name driver target)}
               run-fn            (fn [cancel-chan] (run-python-transform! transform db run-id cancel-chan message-log))
               result            (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn)]
-          (transforms.instrumentation/with-stage-timing [run-id :sync :table-sync]
+          (transforms.instrumentation/with-stage-timing [run-id :table-sync]
             (transforms.util/sync-target! target db run-id))
           (log! message-log (format "Python execution finished successfully in %s" (Duration/ofMillis (u/since-ms start-ms))))
           (save-log-to-transform-run-message! run-id message-log)
