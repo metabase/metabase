@@ -6,6 +6,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [flatland.ordered.set :as ordered-set]
    [metabase-enterprise.transforms.execute :as transforms.execute]
+   [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
    [metabase-enterprise.transforms.models.job-run :as transforms.job-run]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.ordering :as transforms.ordering]
@@ -73,7 +74,8 @@
         (recur))))
 
   (log/info "Executing job transform" (pr-str transform-id))
-  (transforms.execute/run-mbql-transform! transform {:run-method run-method})
+  (transforms.instrumentation/with-stage-timing [run-id :computation :mbql-query]
+    (transforms.execute/run-mbql-transform! transform {:run-method run-method}))
 
   (transforms.job-run/add-run-activity! run-id))
 
@@ -113,12 +115,13 @@
     (let [transforms (job-transform-ids job-id)]
       (log/info "Executing transform job" (pr-str job-id) "with transforms" (pr-str transforms))
       (let [{run-id :id} (transforms.job-run/start-run! job-id run-method)]
-        (try
-          (run-transforms! run-id transforms opts)
-          (transforms.job-run/succeed-started-run! run-id)
-          (catch Throwable t
-            (transforms.job-run/fail-started-run! run-id {:message (.getMessage t)})
-            (throw t)))))))
+        (transforms.instrumentation/with-job-timing [job-id run-method]
+          (try
+            (run-transforms! run-id transforms opts)
+            (transforms.job-run/succeed-started-run! run-id)
+            (catch Throwable t
+              (transforms.job-run/fail-started-run! run-id {:message (.getMessage t)})
+              (throw t))))))))
 
 (def ^:private job-key "metabase-enterprise.transforms.jobs.timeout-job")
 
