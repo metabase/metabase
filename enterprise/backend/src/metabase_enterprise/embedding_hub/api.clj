@@ -44,7 +44,11 @@
   (t2/exists? :model/Card {:where [:and
                                    [:= :type "model"]
                                    [:= :archived false]
-                                   [:not-in :database_id (t2/select-pks :model/Database :is_sample true)]]}))
+                                   [:or
+                                    [:not-in :collection_id [(:id (audit/default-audit-collection)) {:select :id
+                                                                                                     :from   [(t2/table-name :model/Collection)]
+                                                                                                     :where  [:= :is_sample true]}]]
+                                    [:is :collection_id nil]]]}))
 
 (defn- embedding-hub-checklist []
   {"add-data"                      (has-user-added-database?)
