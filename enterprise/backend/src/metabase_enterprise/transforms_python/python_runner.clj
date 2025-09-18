@@ -198,7 +198,6 @@
                             (let [filtered-col-meta (m/index-by :name fields-meta)
                                   col-names         (map :name cols-meta)
                                   filtered-rows     (eduction (map (fn [row]
-                                                                     (throw-if-cancelled cancel-chan)
                                                                      (->>
                                                                       (map vector col-names row)
                                                                       (filter (fn [[n _]]
