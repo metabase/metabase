@@ -454,11 +454,10 @@ jobs:
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
       - uses: actions/checkout@v4
-      - name: Clone and start python-runner
-        run: |
-          git clone https://${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}@github.com/metabase/python-runner-container.git python-runner
-          cd python-runner
-          make run
+      - name: Setup python-runner
+        env:
+          METABASE_AUTOMATION_USER_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        run: ./.github/scripts/setup-python-runner.sh
       - name: Test ${{ matrix.version.name }}
         uses: ./.github/actions/test-driver
         with:
@@ -766,11 +765,10 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
       - uses: actions/checkout@v4
-      - name: Clone and start python-runner
-        run: |
-          git clone https://${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}@github.com/metabase/python-runner-container.git python-runner
-          cd python-runner
-          make run
+      - name: Setup python-runner
+        env:
+          METABASE_AUTOMATION_USER_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        run: ./.github/scripts/setup-python-runner.sh
       - name: Test ${{ matrix.version.name }} (${{ matrix.job.name }})
         uses: ./.github/actions/test-driver
         with:
