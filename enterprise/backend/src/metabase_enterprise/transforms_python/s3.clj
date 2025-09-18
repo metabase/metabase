@@ -214,4 +214,3 @@
   "Best effort delete the given s3 keys"
   [^S3Client s3-client bucket-name s3-keys]
   (run! (partial delete s3-client bucket-name) s3-keys))
-
