@@ -9,10 +9,17 @@
    - Managing references between entities"
   (:require
    [clojure.java.io :as io]
+   [metabase-enterprise.representations.ingestion.v0.model :as v0-model-ingest]
    [metabase-enterprise.representations.ingestion.v0.question :as v0-question-ingest]
    [metabase-enterprise.representations.schema.core :as schema]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]))
+
+(defn- ingest*
+  [valid-representation]
+  (case (:type valid-representation)
+    :v0/question (v0-question-ingest/ingest! valid-representation)
+    :v0/model (v0-model-ingest/ingest! valid-representation)))
 
 (defn load-representation-yaml
   "Parse a YAML representation file and return the data structure.
@@ -36,8 +43,7 @@
    Returns the created/updated entity or nil on failure."
   [representation]
   (when-let [validated (validate-representation representation)]
-    (v0-question-ingest/ingest! validated)
-    validated))
+    (ingest* validated)))
 
 ;; TOTALLY UNTESTED
 (defn ingest-directory

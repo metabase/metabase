@@ -6,7 +6,6 @@
   (:require
    [metabase-enterprise.representations.ingestion.common :as ing-com]
    [metabase.config.core :as config]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -25,17 +24,13 @@
       :or {creator-id config/internal-mb-user-id}}]
   (let [database-id (ing-com/find-database-id database)
         ;; Ugliness within ugliness:
-        entity-id (when-let [ref (:ref representation)]
-                    (u/generate-nano-id (str
-                                         (hash (str (:collection_id representation)
-                                                    "/"
-                                                    (:ref representation))))))
+        entity-id (ing-com/generate-entity-id representation)
         query (ing-com/representation->dataset-query representation)]
     (when-not database-id
       (throw (ex-info (str "Database not found: " database)
                       {:database database})))
     (merge
-     { ;; :id
+     {;; :id
       ;; :created_at
       ;; :updated_at
       :entity_id entity-id

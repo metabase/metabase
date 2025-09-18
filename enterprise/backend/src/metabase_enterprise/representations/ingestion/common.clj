@@ -1,7 +1,16 @@
 (ns metabase-enterprise.representations.ingestion.common
   (:require
    [metabase.models.serialization :as serdes]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(defn generate-entity-id
+  [representation]
+  ;; Behold the beauty of this mechanism:
+  (-> (str (:collection representation) "/" (:ref representation))
+      hash
+      str
+      u/generate-nano-id))
 
 (defn find-database-id
   "Find database ID by name or ref. Returns nil if not found."

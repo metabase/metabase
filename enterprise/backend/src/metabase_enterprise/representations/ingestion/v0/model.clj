@@ -8,7 +8,6 @@
    [clojure.string :as str]
    [metabase-enterprise.representations.ingestion.common :as ing-com]
    [metabase.config.core :as config]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -20,36 +19,14 @@
    Also handles already-keywordized values."
   [type-str]
   (when type-str
-    (cond
-      ;; Already a keyword, return as-is
-      (keyword? type-str) type-str
-
-      ;; String in format "type/Foo" or ":type/Foo"
-      (string? type-str)
-      (let [trimmed (str/trim type-str)]
-        (cond
-          ;; Handle ":type/Foo" format
-          (str/starts-with? trimmed ":")
-          (keyword (subs trimmed 1))
-
-          ;; Handle "type/Foo" format - most common case
-          (str/includes? trimmed "/")
-          (keyword trimmed)
-
-          ;; Fallback: treat as "type/X" if no slash present
-          ;; This handles cases like just "Text" -> :type/Text
-          :else
-          (keyword "type" trimmed)))
-
-      ;; Unknown type, return nil
-      :else nil)))
+    (keyword (str/trim type-str))))
 
 (defn- process-column-metadata
   "Process column definitions from the representation into result_metadata format."
   [columns]
   (when (seq columns)
     (mapv (fn [{:keys [name display_name description base_type effective_type
-                       semantic_type visibility currency] :as col}]
+                       semantic_type visibility currency] :as _col}]
             (let [normalized-base (normalize-type-name base_type)
                   normalized-eff (normalize-type-name effective_type)
                   normalized-sem (normalize-type-name semantic_type)
@@ -123,11 +100,7 @@
                      :or {creator-id config/internal-mb-user-id}}]
   (let [model-data (representation->model-data representation)
         ;; Generate stable entity_id from ref and collection
-        entity-id (when-let [ref (:ref representation)]
-                    (u/generate-nano-id (str
-                                         (hash (str (:collection_id model-data)
-                                                    "/"
-                                                    ref)))))
+        entity-id (ing-com/generate-entity-id representation)
         existing (when entity-id
                    (t2/select-one :model/Card :entity_id entity-id))]
     (if existing
@@ -164,5 +137,5 @@
   ;; Actually ingest a model
   (do
     (require '[metabase-enterprise.representations.ingestion.core :as ing-core])
-    (ingest!
+    (ing-core/ingest-representation
      (ing-core/load-representation-yaml "test_resources/representations/v0/product-performance.model.yml"))))
