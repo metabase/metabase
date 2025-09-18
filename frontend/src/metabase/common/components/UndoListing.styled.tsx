@@ -70,6 +70,7 @@ export const UndoButton = styled(Link)`
   padding: 4px 12px;
   margin-left: ${space(1)};
   border-radius: 8px;
+  white-space: nowrap; /* Prevents button from truncating message */
 
   :hover {
     background-color: ${() => alpha(color("bg-white"), 0.3)};
