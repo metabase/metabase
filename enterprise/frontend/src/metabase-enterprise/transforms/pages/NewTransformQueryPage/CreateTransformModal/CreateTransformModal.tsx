@@ -188,7 +188,7 @@ function getCreateRequest(
     target: {
       type: "table",
       name: targetName,
-      schema: targetSchema,
+      schema: targetSchema ?? null,
     },
   };
 }

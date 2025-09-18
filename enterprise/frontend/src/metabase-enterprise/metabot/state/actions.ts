@@ -16,6 +16,7 @@ import type {
   MetabotAgentRequest,
   MetabotAgentResponse,
   MetabotChatContext,
+  MetabotTransformInfo,
 } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
@@ -265,7 +266,13 @@ export const sendAgentRequest = createAsyncThunk<
                   > = {
                     type: "edit_suggestion",
                     model: "transform",
-                    payload: transform,
+                    payload: {
+                      editorTransform: req.context.user_is_viewing.find(
+                        (x) => x.type === "transform" && x.id === transform.id,
+                        // TODO: BLEH - find a better way
+                      ) as MetabotTransformInfo | undefined,
+                      suggestedTransform: transform,
+                    },
                   };
 
                   dispatch(addAgentMessage(message));
