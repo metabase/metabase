@@ -1,5 +1,6 @@
 (ns metabase-enterprise.representations.api
   (:require
+   [clojure.pprint :refer [pprint]]
    [metabase-enterprise.representations.core :as rep]
    [metabase-enterprise.representations.ingestion.core :as ingest]
    [metabase-enterprise.representations.schema.core :as schema]
@@ -118,7 +119,9 @@
       (schema/validate representation)
       "")                               ; Return empty string on success
     (catch Exception e
-      (str (ex-data e)))))
+      (with-out-str
+        (println (ex-message e))
+        (pprint (ex-data e))))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/representations` routes."
