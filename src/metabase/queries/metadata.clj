@@ -2,6 +2,10 @@
   (:require
    [clojure.set :as set]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
@@ -9,11 +13,7 @@
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.field :as schema.field]
    [metabase.warehouse-schema.table :as schema.table]
-   [toucan2.core :as t2]
-   [metabase.lib.core :as lib]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema :as lib.schema]))
+   [toucan2.core :as t2]))
 
 (defn- get-databases
   [ids]
@@ -98,7 +98,7 @@
         database-ids           (into query-database-ids
                                      (keep :db_id)
                                      tables)]
-    { ;; TODO: This is naive and issues multiple queries currently. That's probably okay for most dashboards,
+    {;; TODO: This is naive and issues multiple queries currently. That's probably okay for most dashboards,
      ;; since they tend to query only a handful of databases at most.
      :databases (sort-by :id (get-databases database-ids))
      ;; apparently some of these tables come back with normal integer IDs and some come back with string IDs... not sure

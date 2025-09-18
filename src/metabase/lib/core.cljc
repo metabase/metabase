@@ -45,8 +45,8 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema.util]
-   [metabase.lib.serialize]
    [metabase.lib.segment :as lib.segment]
+   [metabase.lib.serialize]
    [metabase.lib.serialize]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.swap :as lib.swap]
@@ -455,5 +455,6 @@
   all-template-tag-field-ids
   all-template-tag-snippet-ids
   all-template-tags
+  all-template-tags-map
   all-template-tags-id->field-ids
   any-native-stage?])

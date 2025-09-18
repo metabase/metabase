@@ -1078,7 +1078,7 @@
   by [[updates-for-dashcards]]. Updates are then executed."
   [card-before card-after]
   (let [card->breakouts  (fn [{query :dataset_query, :as _card}]
-                          (lib/breakouts query -1))
+                           (lib/breakouts query -1))
         breakouts-before (card->breakouts card-before)
         breakouts-after  (card->breakouts card-after)]
     (when-some [identifier->action (breakouts->identifier->action breakouts-before breakouts-after)]

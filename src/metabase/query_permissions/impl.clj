@@ -12,13 +12,13 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.error-type :as qp.error-type]
-   ;; legacy usage -- don't do things like this going forward
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -264,13 +264,7 @@
   [query & {:as perms-opts}]
   (if (empty? query)
     {}
-    (let [query-type (lib/normalized-query-type query)]
-      (case query-type
-        :native     (native-query-perms query)
-        :query      (legacy-mbql-required-perms query perms-opts)
-        :mbql/query (mbql5-required-perms query perms-opts)
-        (throw (ex-info (tru "Invalid query type: {0}" query-type)
-                        {:query query}))))))
+    (mbql5-required-perms query perms-opts)))
 
 (defn- has-perm-for-db?
   "Checks that the current user has at least `required-perm` for the entire DB specified by `db-id`."
@@ -405,11 +399,9 @@
   (try
     (let [required-perms (required-perms-for-query query)]
       (check-data-perms query required-perms)
-
       ;; Check card read permissions for any cards referenced in subqueries!
       (doseq [card-id (:card-ids required-perms)]
         (check-card-read-perms database-id card-id))
-
       true)
     (catch clojure.lang.ExceptionInfo _e
       false)))
@@ -425,7 +417,9 @@
 (mu/defn check-run-permissions-for-query
   "Make sure the Current User has the appropriate permissions to run `query`. We don't want Users saving Cards with
   queries they wouldn't be allowed to run!"
-  [query :- :map]
+  [query :- [:or
+             ::lib.schema/query
+             [:= {:description "empty map"} {}]]]
   {:pre [(map? query)]}
   (when-not (can-run-query? query)
     (let [required-perms (try

@@ -10,40 +10,57 @@
    [metabase.util.malli :as mu]))
 
 (defn- transduce-stages
-  ([query rf]
-   (transduce-stages query (rf) rf))
+  ([rf query]
+   (transduce-stages rf (rf) query))
 
-  ([query init rf]
+  ([rf init query]
    (let [acc (volatile! init)]
      (lib.walk/walk-stages
       query
       (fn [_query _path stage]
         (vswap! acc rf stage)
         nil))
-     (rf @acc))))
+     (rf @acc)))
+
+  ([xform rf init query]
+   (transduce-stages (xform rf) init query)))
 
 (defn- stage-values-set [query xform]
   (not-empty
-   (transduce-stages query (transient #{}) (-> conj!
-                                               xform
-                                               (completing persistent!)))))
+   (transduce-stages
+    xform
+    (completing conj! persistent!)
+    (transient #{})
+    query)))
 
 (mu/defn all-source-table-ids :- [:maybe [:set {:min 1} ::lib.schema.id/table]]
   "Return a set of all `:source-table` Table IDs referenced anywhere in the query."
   [query :- ::lib.schema/query]
   (stage-values-set query (keep :source-table)))
 
-(mu/defn all-template-tags :- [:maybe [:set {:min 1} ::lib.schema.template-tag/template-tag]]
-  "Return a map of Param IDs to sets of Field IDs referenced by each template tag parameter in this `card`.
-
-  Mostly used for determining Fields referenced by Cards for purposes other than processing queries. Filters out
-  `:field` clauses which use names."
+(mu/defn all-template-tags-map :- [:maybe ::lib.schema.template-tag/template-tag-map]
+  "Return a combined template tags map for all native stages of a `query`."
   [query :- ::lib.schema/query]
-  (stage-values-set query (comp (filter (fn [stage]
-                                          (= (:lib/type stage) :mbql.stage/native)))
-                                (mapcat :template-tags)
-                                (map (fn [[template-tag-name template-tag]]
-                                       (assoc template-tag :lib.walk/template-tag-name template-tag-name))))))
+  (transduce-stages
+   (comp (filter (fn [stage]
+                   (= (:lib/type stage) :mbql.stage/native)))
+         (mapcat :template-tags))
+   (fn rf
+     ([m]
+      (not-empty (persistent! m)))
+     ([m [template-tag-name template-tag]]
+      (assoc! m template-tag-name template-tag)))
+   (transient {})
+   query))
+
+(mu/defn all-template-tags :- [:maybe [:set {:min 1} ::lib.schema.template-tag/template-tag]]
+  "Return a set of all template tags in native stages of a `query`."
+  [query :- ::lib.schema/query]
+  (not-empty
+   (into #{}
+         (map (fn [[template-tag-name template-tag]]
+                (assoc template-tag :lib.walk/template-tag-name template-tag-name)))
+         (all-template-tags-map query))))
 
 (mu/defn all-source-card-ids :- [:maybe [:set {:min 1} ::lib.schema.id/card]]
   "Return a set of all `:source-card` Card IDs anywhere in the query, as well as all `:card-id`s in template tags."

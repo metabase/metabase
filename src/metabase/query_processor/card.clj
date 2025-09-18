@@ -11,10 +11,15 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.queries.core :as queries]
@@ -33,12 +38,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]
-   [metabase.lib.core :as lib]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.util :as lib.util]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -155,7 +155,7 @@
     (into
      {}
      (comp
-      (map (fn [{param-name :lib.walk/template-tag-name, widget-type :widget-type, tag-type :type}]
+      (map (fn [[param-name {widget-type :widget-type, tag-type :type}]]
              (assert (string? param-name))
              ;; Field Filter parameters have a `:type` of `:dimension` and the widget type that should be used is
              ;; specified by `:widget-type`. Non-Field-filter parameters just have `:type`. So prefer
@@ -169,7 +169,7 @@
                    (= tag-type :temporal-unit))
                [param-name tag-type])))
       (filter some?))
-     (lib/all-template-tags query))))
+     (lib/all-template-tags-map query))))
 
 (defn- allowed-parameter-type-for-template-tag-widget-type? [parameter-type widget-type]
   (when-let [allowed-template-tag-types (get-in lib.schema.parameter/types [parameter-type :allowed-for])]

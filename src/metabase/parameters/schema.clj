@@ -13,10 +13,12 @@
 
 (mr/def ::legacy-field-or-expression-reference
   "Schema for a valid legacy `:field` or `:expression` reference (possibly not yet normalized)."
-  [:fn
-   (fn [k]
-     ((comp (mr/validator mbql.s/Field)
-            mbql.normalize/normalize-tokens) k))])
+  [:ref ::mbql.s/field-or-expression-ref]
+  ;; NOCOMMIT
+  #_[:fn
+     (fn [k]
+       ((comp (mr/validator mbql.s/FieldOrExpressionRef)
+              mbql.normalize/normalize-tokens) k))])
 
 (mr/def ::values-source-config
   "Schema for valid source_options within a Parameter"
@@ -76,3 +78,27 @@
    [:parameter_id ::lib.schema.common/non-blank-string]
    [:target       :any]
    [:card_id      {:optional true} ::lib.schema.id/card]])
+
+(mr/def ::remapped-field-value
+  "Has two components:
+    1. <value-of-field>          (can be anything)
+    2. <value-of-remapped-field> (must be a string)"
+  [:tuple :any :string])
+
+(mr/def ::non-remapped-field-value
+  "Has one component: <value-of-field>"
+  [:tuple :any])
+
+(mr/def ::field-values-list
+  "Schema for a valid list of values for a field, in contexts where the field can have a remapped field."
+  [:sequential
+   [:or
+    [:ref ::remapped-field-value]
+    [:ref ::non-remapped-field-value]]])
+
+(mr/def ::field-values-result
+  "Schema for a value result of fetching the values for a field, in contexts where the field can have a remapped field."
+  [:map
+   [:has_more_values :boolean]
+   [:values          [:ref ::field-values-list]]
+   [:field_id        {:optional true} ::lib.schema.id/field]])

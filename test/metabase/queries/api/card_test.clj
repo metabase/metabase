@@ -341,7 +341,7 @@
                                                        :dataset_query {:database (mt/id)
                                                                        :type :query
                                                                        :query {:source-table (mt/id :venues)
-                                                                                           :filter [:= [:field 1 nil] "1"]}}}
+                                                                               :filter [:= [:field 1 nil] "1"]}}}
                  ;; matching question
                  :model/Card card-1 {:name "Card 1"
                                      :dataset_query {:query {:source-table (str "card__" model-id)
@@ -1894,15 +1894,15 @@
             (testing "\nadmin"
               (testing "*should* be allowed to update query"
                 (is (=? {:id            card-id
-                         :dataset_query (mt/obj->json->obj (mt/mbql-query checkins))}
+                         :dataset_query {:lib/type "mbql/query"
+                                         :stages   [{:lib/type "mbql.stage/mbql", :source-table pos-int?}]
+                                         :database pos-int?}}
                         (update-card! :crowberto 200 {:dataset_query (mt/mbql-query checkins)})))))
-
             (testing "\nnon-admin"
               (testing "should be allowed to update fields besides query"
                 (is (=? {:id   card-id
                          :name "Updated name"}
                         (update-card! :rasta 200 {:name "Updated name"}))))
-
               (testing "should *not* be allowed to update query"
                 (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
                   (is (malli= [:map
@@ -1913,9 +1913,11 @@
                                [:trace          [:sequential :any]]]
                               (update-card! :rasta 403 {:dataset_query (mt/mbql-query users)}))))
                 (testing "make sure query hasn't changed in the DB"
-                  (is (= (mt/mbql-query checkins)
-                         (t2/select-one-fn :dataset_query :model/Card :id card-id)))))
-
+                  (is (= {:lib/type :mbql/query
+                          :stages [{:lib/type :mbql.stage/mbql, :source-table (mt/id :checkins)}]
+                          :database (mt/id)}
+                         (-> (t2/select-one-fn :dataset_query :model/Card :id card-id)
+                             (dissoc :lib/metadata))))))
               (testing "should be allowed to update other fields if query is passed in but hasn't changed (##11719)"
                 (is (=? {:id            card-id
                          :name          "Another new name"
@@ -2644,7 +2646,7 @@
       (testing "Changing core attributes un-verifies the card"
         (with-card :verified
           (is (verified? card))
-          (update-card card (update-in card [:dataset_query :query :source-table] inc))
+          (update-card card (update-in card [:dataset_query :stages 0 :source-table] inc))
           (is (not (verified? card)))
           (testing "The unverification edit has explanatory text"
             (is (= "Unverified due to edit"
@@ -3697,7 +3699,7 @@
 
 (deftest ^:parallel query-metadata-test
   (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query products)
-                                              :database_id (mt/id)}]
+                                            :database_id (mt/id)}]
     (testing "Simple card"
       (is (=?
            {:fields empty?

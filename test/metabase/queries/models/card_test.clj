@@ -7,11 +7,11 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.queries.models.card :as card]
    [metabase.queries.models.parameter-card :as parameter-card]
-   [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]
@@ -942,7 +942,7 @@
                                          :dashboard_id dash-id))))
       (testing "You can't insert a card with a type other than `:question` as a dashboard-internal card"
         (testing "invalid"
-          (doseq [invalid-type (disj queries.schema/card-types :question)]
+          (doseq [invalid-type (disj @#'lib.schema.metadata/card-types :question)]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
                                   (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card)
                                                                  :dashboard_id dash-id
@@ -1042,7 +1042,7 @@
         ;; Verify the query was normalized (field-id -> field)
         (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id card-id)]
           (is (=? [:= {} [:field {} (mt/id :venues :name)] "Test"]
-                 (get-in updated-query [:stages 0 :filters 0]))))))))
+                  (get-in updated-query [:stages 0 :filters 0]))))))))
 
 (deftest before-update-query-fields-population-test
   (testing "populate-query-fields is called"

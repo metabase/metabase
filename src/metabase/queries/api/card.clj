@@ -12,6 +12,8 @@
    [metabase.events.core :as events]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
@@ -21,7 +23,6 @@
    [metabase.queries.metadata :as queries.metadata]
    [metabase.queries.models.card :as card]
    [metabase.queries.models.card.metadata :as card.metadata]
-   [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.card :as qp.card]
@@ -35,6 +36,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
    [steffan-westcott.clj-otel.api.trace.span :as span]
@@ -252,12 +254,12 @@
       (api/write-check dashboard))
     (map #(dissoc % :collection_id :description :archived) dashboards)))
 
-(defn- dataset-query->query
+(defn- ->mbql5-query
   "Convert the `dataset_query` column of a Card to a MLv2 pMBQL query."
   ([dataset-query]
    (some-> (:database dataset-query)
            lib.metadata.jvm/application-database-metadata-provider
-           (dataset-query->query dataset-query)))
+           (->mbql5-query dataset-query)))
   ([metadata-provider dataset-query]
    (some->> dataset-query card.metadata/normalize-dataset-query (lib/query metadata-provider))))
 
@@ -278,7 +280,7 @@
                                                          ::breakouts    :graph.dimensions
                                                          ::aggregations :graph.metrics)])]
     (cols->kebab-case (card-columns-from-names card names))
-    (->> (dataset-query->query (get database-id->metadata-provider (:database_id card)) (:dataset_query card))
+    (->> (->mbql5-query (get database-id->metadata-provider (:database_id card)) (:dataset_query card))
          lib/returned-columns
          (filter (case source
                    ::breakouts    :lib/breakout?
@@ -453,10 +455,11 @@
 
 ;;; ------------------------------------------------- Creating Cards -------------------------------------------------
 
-(defn- check-if-card-can-be-saved
-  [dataset-query card-type]
-  (when (and dataset-query (= card-type :metric))
-    (when-not (lib/can-save (dataset-query->query dataset-query) card-type)
+(mu/defn- check-if-card-can-be-saved
+  [query     :- ::lib.schema/query
+   card-type :- ::lib.schema.metadata/card.type]
+  (when (and query (= card-type :metric))
+    (when-not (lib/can-save query card-type)
       (throw (ex-info (tru "Card of type {0} is invalid, cannot be saved." (name card-type))
                       {:type        card-type
                        :status-code 400})))))
@@ -492,7 +495,7 @@
   "Schema for creating a new card"
   [:map
    [:name                   ms/NonBlankString]
-   [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
+   [:type                   {:optional true} [:maybe ::lib.schema.metadata/card.type]]
    [:dataset_query          ms/Map]
                             ;; TODO: Make entity_id a NanoID regex schema?
    [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
@@ -515,22 +518,24 @@
    {query         :dataset_query
     card-type     :type
     :as           body} :- CardCreateSchema]
-  (check-if-card-can-be-saved query card-type)
-  ;; check that we have permissions to run the query that we're trying to save
-  (query-perms/check-run-permissions-for-query query)
-  ;; check that we have permissions for the collection we're trying to save this card to, if applicable.
-  ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
-  (collection/check-write-perms-for-collection
-   (actual-collection-id body))
-  (try
-    (lib/check-card-overwrite ::no-id (dataset-query->query query))
-    (catch clojure.lang.ExceptionInfo e
-      (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400)))))
-  (let [body (cond-> body
-               (string? (:type body)) (update :type keyword))]
-    (-> (card/create-card! body @api/*current-user*)
-        hydrate-card-details
-        (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
+  (let [query (when query
+                (->mbql5-query query))]
+    (check-if-card-can-be-saved query card-type)
+    ;; check that we have permissions to run the query that we're trying to save
+    (query-perms/check-run-permissions-for-query query)
+    ;; check that we have permissions for the collection we're trying to save this card to, if applicable.
+    ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
+    (collection/check-write-perms-for-collection
+     (actual-collection-id body))
+    (try
+      (lib/check-card-overwrite ::no-id (->mbql5-query query))
+      (catch clojure.lang.ExceptionInfo e
+        (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400)))))
+    (let [body (cond-> body
+                 (string? (:type body)) (update :type keyword))]
+      (-> (card/create-card! body @api/*current-user*)
+          hydrate-card-details
+          (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*))))))
 
 (api.macros/defendpoint :post "/:id/copy"
   "Copy a `Card`, with the new name 'Copy of _name_'"
@@ -573,12 +578,12 @@
           result-metadata (:result_metadata card-updates)]
       (query-perms/check-result-metadata-data-perms database-id result-metadata))))
 
-(def ^:private CardUpdateSchema
+(mr/def ::card-updates
   [:map
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
    [:parameters             {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
-   [:dataset_query          {:optional true} [:maybe ms/Map]]
-   [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
+   [:dataset_query          {:optional true} [:maybe ::lib.schema/query]]
+   [:type                   {:optional true} [:maybe ::lib.schema.metadata/card.type]]
    [:display                {:optional true} [:maybe ms/NonBlankString]]
    [:description            {:optional true} [:maybe :string]]
    [:visualization_settings {:optional true} [:maybe ms/Map]]
@@ -611,10 +616,10 @@
   [id :- ms/PositiveInt
    {:keys [dataset_query
            result_metadata
-           type] :as card-updates} :- CardUpdateSchema
+           type] :as card-updates} :- ::card-updates
    delete-old-dashcards? :- :boolean]
   (check-if-card-can-be-saved dataset_query type)
-  (when-some [query (dataset-query->query dataset_query)]
+  (when-some [query (->mbql5-query dataset_query)]
     (try
       (lib/check-card-overwrite id query)
       (catch clojure.lang.ExceptionInfo e
@@ -687,7 +692,7 @@
                     [:id ms/PositiveInt]]
    {delete-old-dashcards? :delete_old_dashcards} :- [:map
                                                      [:delete_old_dashcards {:optional true} [:maybe :boolean]]]
-   body :- CardUpdateSchema]
+   body :- ::card-updates]
   (update-card! id body (boolean delete-old-dashcards?)))
 
 (api.macros/defendpoint :get "/:id/query_metadata"

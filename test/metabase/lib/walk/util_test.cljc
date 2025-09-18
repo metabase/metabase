@@ -2,12 +2,12 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.walk.util :as lib.walk.util]
-   [metabase.util.malli :as mu]
-   [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.metadata :as lib.metadata]))
+   [metabase.util.malli :as mu]))
 
 (deftest ^:parallel all-source-table-ids-test
   (testing (str "make sure that `all-table-ids` can properly find all Tables in the query, even in cases where a map "
@@ -82,8 +82,8 @@
 
 (deftest ^:parallel all-source-card-ids-source-card-test
   (let [mp      (lib.tu/metadata-provider-with-cards-for-queries
-                                meta/metadata-provider
-                                [(lib/query meta/metadata-provider (lib.metadata/table meta/metadata-provider (meta/id :venues)))])
+                 meta/metadata-provider
+                 [(lib/query meta/metadata-provider (lib.metadata/table meta/metadata-provider (meta/id :venues)))])
         query-with-source-card (lib/query mp (lib.metadata/card mp 1))]
     (is (= #{1}
            (lib/all-source-card-ids query-with-source-card)))))

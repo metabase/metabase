@@ -13,10 +13,10 @@
   [query        :- ::lib.schema/query
    stage-number :- :int]
   (-> (lib.util/query-stage query stage-number)
-        (dissoc :source-table :source-card)
-        (->> (m/filter-keys simple-keyword?))
-        not-empty
-        boolean))
+      (dissoc :source-table :source-card)
+      (->> (m/filter-keys simple-keyword?))
+      not-empty
+      boolean))
 
 (mu/defn append-stage :- ::lib.schema/query
   "Adds a new blank stage to the end of the pipeline."
