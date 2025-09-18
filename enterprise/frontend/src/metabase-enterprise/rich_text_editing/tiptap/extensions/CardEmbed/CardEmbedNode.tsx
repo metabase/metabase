@@ -1,6 +1,4 @@
 import { Node, mergeAttributes } from "@tiptap/core";
-import { Fragment, Slice } from "@tiptap/pm/model";
-import { Plugin, PluginKey } from "@tiptap/pm/state";
 import {
   type NodeViewProps,
   NodeViewWrapper,
@@ -52,10 +50,6 @@ import {
   getHoveredChildTargetId,
 } from "metabase-enterprise/documents/selectors";
 import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
-import {
-  RESIZE_NODE_DEFAULT_HEIGHT,
-  RESIZE_NODE_MIN_HEIGHT,
-} from "metabase-enterprise/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode";
 import Question from "metabase-lib/v1/Question";
 import { getUrl } from "metabase-lib/v1/urls";
 import type { Card, CardDisplayType, Dataset } from "metabase-types/api";
@@ -176,55 +170,7 @@ export const CardEmbed: Node<{
   },
 
   addProseMirrorPlugins() {
-    return [
-      createProseMirrorPlugin("cardEmbed"),
-      new Plugin({
-        key: new PluginKey("simp"),
-        props: {
-          handleDOMEvents: {
-            dragstart: (view, event) => {
-              const { pos } = view.posAtCoords({
-                left: event.clientX,
-                top: event.clientY,
-              });
-              const node = view.state.doc.nodeAt(pos);
-
-              view.draggingNode = node;
-              return false;
-            },
-          },
-          transformPasted: (slice, view) => {
-            const { content } = slice.content;
-            const isPastingCardEmbed =
-              content.length === 1 && content[0]?.type.name === "cardEmbed";
-
-            if (!isPastingCardEmbed) {
-              return slice;
-            }
-
-            const { state } = view;
-            const resolvedPos = state.doc.resolve(state.selection.from);
-            const isTopLevelParagraph =
-              resolvedPos.parent.type.name === "paragraph" &&
-              resolvedPos.depth === 1;
-
-            if (!isTopLevelParagraph) {
-              return slice;
-            }
-
-            const transformedContent = slice.content.content.map((node) => {
-              return state.schema.nodes.resizeNode.create({}, [node]);
-            });
-
-            return new Slice(
-              Fragment.fromArray(transformedContent),
-              slice.openStart,
-              slice.openEnd,
-            );
-          },
-        },
-      }),
-    ];
+    return [createProseMirrorPlugin("cardEmbed")];
   },
 
   renderText({ node }) {
@@ -443,7 +389,37 @@ export const CardEmbedComponent = memo(
         e.preventDefault();
 
         const draggingNode = editor.view.draggingNode;
-        if (draggingNode.type.name === "cardEmbed" && cardEmbedRef.current) {
+        if (
+          draggingNode &&
+          draggingNode.type.name === "cardEmbed" &&
+          cardEmbedRef.current
+        ) {
+          // Check if this cardEmbed is in a flexContainer that already has 3 children
+          const pos = getPos();
+          if (pos) {
+            const resolvedPos = editor.state.doc.resolve(pos);
+            const { parent } = resolvedPos;
+
+            if (
+              parent.type.name === "flexContainer" &&
+              parent.content.childCount >= 3
+            ) {
+              let containsDraggedNode = false;
+
+              for (let i = 0; i < parent.content.childCount; i++) {
+                const child = parent.child(i);
+                containsDraggedNode =
+                  containsDraggedNode || child === draggingNode;
+              }
+
+              if (!containsDraggedNode) {
+                // Don't show drop zones if flexContainer is already at max capacity
+                setDragState({ isDraggedOver: false, side: null });
+                return;
+              }
+            }
+          }
+
           const rect = cardEmbedRef.current.getBoundingClientRect();
           const relativeX = e.clientX - rect.left;
           const nodeWidth = rect.width;
@@ -467,7 +443,7 @@ export const CardEmbedComponent = memo(
           }, 300);
         }
       },
-      [editor.view.draggingNode],
+      [editor.view.draggingNode, getPos, editor.state.doc],
     );
 
     if (isLoading && !card) {
@@ -542,259 +518,7 @@ export const CardEmbedComponent = memo(
           data-testid="document-card-embed"
           data-drag-handle
           onDragOver={handleDragOver}
-          onDrop={(_e) => {
-            const target = node;
-            const dropped = editor.view.draggingNode;
-            const pos = getPos();
-
-            setDragState({ isDraggedOver: false, side: null });
-
-            if (!pos || target === dropped) {
-              return;
-            }
-
-            const resolvedPos = editor.state.doc.resolve(pos);
-            const { parent } = resolvedPos;
-
-            // Helper function to extract cardEmbed from resizeNode wrapper
-            const extractCardEmbed = (node: any) => {
-              if (node.type.name === "cardEmbed") {
-                return node;
-              }
-              if (
-                node.type.name === "resizeNode" &&
-                node.content.childCount === 1
-              ) {
-                const child = node.content.child(0);
-                if (child.type.name === "cardEmbed") {
-                  return child;
-                }
-              }
-              return null;
-            };
-
-            // Helper function to find position and parent of a node, handling resizeNode wrappers
-            const findNodePositionAndParent = (searchNode: any) => {
-              let foundPos: number | null = null;
-              let foundParent: any = null;
-              let foundNode: any = null;
-
-              editor.state.doc.descendants((node, nodePos, nodeParent) => {
-                if (node === searchNode) {
-                  foundPos = nodePos;
-                  foundParent = nodeParent;
-                  foundNode = node;
-                  return false;
-                }
-                // Also check if this node wraps the search node
-                if (
-                  node.type.name === "resizeNode" &&
-                  node.content.childCount === 1
-                ) {
-                  const child = node.content.child(0);
-                  if (child === searchNode) {
-                    foundPos = nodePos;
-                    foundParent = nodeParent;
-                    foundNode = node; // Return the wrapper node for position tracking
-                    return false;
-                  }
-                }
-              });
-
-              return {
-                pos: foundPos,
-                parent: foundParent,
-                wrapperNode: foundNode,
-              };
-            };
-
-            const droppedCardEmbed = extractCardEmbed(dropped);
-            if (!droppedCardEmbed) {
-              return; // Not a cardEmbed, ignore
-            }
-
-            const targetCardEmbed = extractCardEmbed(target);
-            if (!targetCardEmbed) {
-              return; // Target is not a cardEmbed, ignore
-            }
-
-            // Find the position of the dropped node (could be wrapped)
-            const { pos: droppedPos, wrapperNode: droppedWrapper } =
-              findNodePositionAndParent(dropped);
-
-            if (droppedPos === null) {
-              return;
-            }
-
-            if (parent.type.name === "flexContainer") {
-              // Handle dropping on a cardEmbed that is already in a flexContainer
-              const flexContainer = parent;
-              const targetIndexInFlex = resolvedPos.index();
-
-              // Get all current children as cardEmbeds
-              const currentChildren: any[] = [];
-              for (let i = 0; i < flexContainer.content.childCount; i++) {
-                const child = flexContainer.content.child(i);
-                const cardEmbed = extractCardEmbed(child);
-                if (cardEmbed) {
-                  currentChildren.push(cardEmbed);
-                }
-              }
-
-              // Create new children array with the dropped card inserted
-              const newChildren = [...currentChildren];
-              const insertIndex =
-                dragState.side === "left"
-                  ? targetIndexInFlex
-                  : targetIndexInFlex + 1;
-
-              newChildren.splice(insertIndex, 0, droppedCardEmbed.copy());
-
-              // Limit to maximum 3 children as per flexContainer content spec
-              if (newChildren.length > 3) {
-                return; // Don't allow more than 3 cards in flexContainer
-              }
-
-              // Find the position of the flexContainer (it should be wrapped in resizeNode)
-              let flexContainerPos: number | null = null;
-              let flexContainerWrapper: any = null;
-
-              editor.state.doc.descendants((node, nodePos) => {
-                if (node === flexContainer) {
-                  flexContainerPos = nodePos;
-                  return false;
-                }
-                // Check if this resizeNode wraps our flexContainer
-                if (
-                  node.type.name === "resizeNode" &&
-                  node.content.childCount === 1
-                ) {
-                  const child = node.content.child(0);
-                  if (child === flexContainer) {
-                    flexContainerPos = nodePos;
-                    flexContainerWrapper = node;
-                    return false;
-                  }
-                }
-              });
-
-              if (flexContainerPos === null) {
-                return;
-              }
-
-              // Create transaction
-              const tr = editor.state.tr;
-
-              // First, replace the flexContainer with the new one containing the inserted card
-              const newFlexContainer =
-                editor.state.schema.nodes.flexContainer.create(
-                  flexContainer.attrs,
-                  newChildren,
-                );
-
-              if (flexContainerWrapper) {
-                // Replace the entire resizeNode wrapper
-                const newWrapper = editor.state.schema.nodes.resizeNode.create(
-                  flexContainerWrapper.attrs,
-                  [newFlexContainer],
-                );
-                tr.replaceWith(
-                  flexContainerPos,
-                  flexContainerPos + flexContainerWrapper.nodeSize,
-                  newWrapper,
-                );
-              } else {
-                // Replace just the flexContainer
-                tr.replaceWith(
-                  flexContainerPos,
-                  flexContainerPos + flexContainer.nodeSize,
-                  newFlexContainer,
-                );
-              }
-
-              // Now remove the dropped node from its original position
-              // We need to find it again in the updated document
-              const nodeToRemove = droppedWrapper || dropped;
-              const updatedDoc = tr.doc;
-              let nodeFound = false;
-
-              updatedDoc.descendants((node, nodePos) => {
-                if (node === nodeToRemove && !nodeFound) {
-                  tr.delete(nodePos, nodePos + node.nodeSize);
-                  nodeFound = true;
-                  return false;
-                }
-              });
-
-              editor.view.dispatch(tr);
-              return true;
-            } else if (
-              parent.type.name === "doc" ||
-              parent.type.name === "resizeNode"
-            ) {
-              // Create new FlexContainer when dropping on a standalone CardEmbed
-              const children =
-                dragState.side === "left"
-                  ? [droppedCardEmbed.copy(), targetCardEmbed.copy()]
-                  : [targetCardEmbed.copy(), droppedCardEmbed.copy()];
-
-              const flexContainer =
-                editor.state.schema.nodes.flexContainer.create({}, children);
-
-              // Wrap the flexContainer in a resizeNode
-              const wrapper = editor.state.schema.nodes.resizeNode.create(
-                {
-                  height: RESIZE_NODE_DEFAULT_HEIGHT,
-                  minHeight: RESIZE_NODE_MIN_HEIGHT,
-                },
-                [flexContainer],
-              );
-
-              // Determine what to replace - if target is wrapped in resizeNode, replace the wrapper
-              let replacePos = pos;
-              let replaceSize = targetCardEmbed.nodeSize;
-              if (parent.type.name === "resizeNode") {
-                // Target is wrapped, replace the entire resizeNode
-                replacePos = resolvedPos.before();
-                replaceSize = parent.nodeSize;
-              }
-
-              // Create a single transaction for both operations to avoid position shifting
-              const tr = editor.state.tr;
-
-              // First, find and remove the dropped node from its original position
-              const nodeToRemove = droppedWrapper || dropped;
-              let removalHandled = false;
-              editor.state.doc.descendants((node, nodePos) => {
-                if (node === nodeToRemove && !removalHandled) {
-                  tr.delete(nodePos, nodePos + node.nodeSize);
-                  removalHandled = true;
-                  return false;
-                }
-              });
-
-              // Then replace the target with the new FlexContainer
-              // Need to recalculate positions after the removal
-              let adjustedReplacePos = replacePos;
-              if (
-                removalHandled &&
-                droppedPos !== null &&
-                droppedPos < replacePos
-              ) {
-                // If we removed something before the replace position, adjust it
-                const removedSize = nodeToRemove.nodeSize;
-                adjustedReplacePos = replacePos - removedSize;
-              }
-
-              tr.replaceWith(
-                adjustedReplacePos,
-                adjustedReplacePos + replaceSize,
-                wrapper,
-              );
-
-              editor.view.dispatch(tr);
-            }
-          }}
+          onDrop={() => setDragState({ isDraggedOver: false, side: null })}
         >
           {canWrite && id && (
             <>
