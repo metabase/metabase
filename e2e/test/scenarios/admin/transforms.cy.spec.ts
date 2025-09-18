@@ -1296,6 +1296,96 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
     });
   });
 
+  describe("cancelation", () => {
+    function createSlowTransform(seconds: number = 100) {
+      H.createTransform(
+        {
+          name: "Slow transform",
+          source: {
+            type: "query",
+            query: {
+              database: WRITABLE_DB_ID,
+              type: "native",
+              native: {
+                query: `SELECT name, cast(pg_sleep(${seconds}) as text) as slow FROM "Schema A"."Animals" LIMIT 1`,
+              },
+            },
+          },
+          target: {
+            type: "table",
+            name: TARGET_TABLE,
+            schema: TARGET_SCHEMA,
+          },
+          tag_ids: [],
+        },
+        { visitTransform: true },
+      );
+    }
+
+    it("should be possible to cancel a transform from the transform page", () => {
+      createSlowTransform();
+      getRunButton().click();
+      getRunButton().should("have.text", "Running now…");
+      getRunStatus().should("have.text", "Run in progress…");
+
+      getCancelButton().click();
+      H.modal().button("Yes").click();
+
+      getRunButton().should("have.text", "Canceling…");
+      getRunStatus().should("have.text", "Canceling…");
+
+      // We need to pass a timeout here since canceling a transform can
+      // take a while on the back end
+      getRunButton({ timeout: 40_000 }).should("have.text", "Canceled");
+      getRunStatus().should("contain", "Last run was canceled");
+    });
+
+    it("should be possible to cancel a transform from the runs page", () => {
+      createSlowTransform();
+      getRunButton().click();
+      getRunButton().should("have.text", "Running now…");
+      getRunStatus().should("have.text", "Run in progress…");
+
+      getNavSidebar().findByText("Runs").click();
+      getContentTable().within(() => {
+        cy.findByText("In-progress").should("be.visible");
+        cy.findByLabelText("Cancel run").click();
+      });
+
+      H.modal().button("Yes").click();
+
+      getContentTable().findByText("Canceling").should("be.visible");
+      getContentTable()
+        .findByText("Canceled", { timeout: 30_000 })
+        .should("be.visible");
+    });
+
+    it("should show a message when the run finished before it cancels", () => {
+      createSlowTransform(1);
+      getRunButton().click();
+      getRunButton().should("have.text", "Running now…");
+      getRunStatus().should("have.text", "Run in progress…");
+
+      getCancelButton().click();
+      H.modal().button("Yes").click();
+
+      getRunButton().should("have.text", "Canceling…");
+      getRunStatus().should("have.text", "Canceling…");
+
+      // We need to pass a timeout here since canceling a transform can
+      // take a while on the back end
+      getRunButton({ timeout: 40_000 }).should("have.text", "Ran successfully");
+      getRunStatus().should(
+        "contain",
+        "Last ran a few seconds ago successfully.",
+      );
+      getRunStatus().should(
+        "contain",
+        "This run succeeded before it had a chance to cancel.",
+      );
+    });
+  });
+
   describe("dependencies", () => {
     it("should render a table of dependencies", () => {
       createMbqlTransform({
@@ -2252,8 +2342,16 @@ function getQueryEditor() {
   return cy.findByTestId("transform-query-editor");
 }
 
-function getRunButton() {
-  return cy.findByTestId("run-button");
+function getRunButton(options: { timeout?: number } = {}) {
+  return cy.findByTestId("run-button", options);
+}
+
+function getCancelButton() {
+  return cy.findByTestId("cancel-button");
+}
+
+function getRunStatus() {
+  return cy.findByTestId("run-status");
 }
 
 function getRunListLink() {
