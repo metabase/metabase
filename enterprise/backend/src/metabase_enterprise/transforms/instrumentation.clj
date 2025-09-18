@@ -107,10 +107,15 @@
    stage-label :- ::stage-label
    bytes :- [:maybe int?]
    rows :- [:maybe int?]]
-  (log/infof "Data transfer recorded: run-id=%d stage=%s%s%s"
-             job-run-id (name stage-label)
-             (if bytes (str " bytes=" bytes) "")
-             (if rows (str " rows=" rows) ""))
+  (if (and (nil? bytes) (nil? rows))
+    (log/warnf "Data transfer recorded: run-id=%d stage=%s but no bytes or rows provided"
+               job-run-id
+               (name stage-label))
+    (log/infof "Data transfer recorded: run-id=%d stage=%s%s%s"
+               job-run-id
+               (name stage-label)
+               (if bytes (str " bytes=" bytes) "")
+               (if rows (str " rows=" rows) "")))
   (let [labels {:job-run-id (str job-run-id)
                 :stage-label (name stage-label)}]
     (when bytes
