@@ -1,11 +1,12 @@
 (ns metabase.parameters.schema
   (:require
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2]))
 
 (mr/def ::human-readable-remapping-map
   "Schema for the map of actual value -> human-readable value. Cannot be empty."
@@ -13,7 +14,7 @@
 
 (mr/def ::legacy-field-or-expression-reference
   "Schema for a valid legacy `:field` or `:expression` reference (possibly not yet normalized)."
-  [:ref ::mbql.s/field-or-expression-ref]
+  [:ref ::lib.schema.parameter/dimension.target]
   ;; NOCOMMIT
   #_[:fn
      (fn [k]
@@ -51,6 +52,38 @@
    :keyword
    ::lib.schema.common/non-blank-string])
 
+(mr/def ::card
+  [:and
+   [:map
+    [:id            {:optional true} ::lib.schema.id/card]
+    [:dataset_query [:ref ::lib.schema/query]]]
+   ;; we will allow maps without a Toucan model, but we won't allow ones with a DIFFERENT Toucan model.
+   [:fn
+    {:error/message "Instance of a Card"}
+    #(contains? #{:model/Card nil} (t2/model %))]])
+
+(mr/def ::dashcard
+  [:and
+   [:map
+    [:id                 {:optional true} ::lib.schema.id/dashcard]
+    [:card               {:optional true} [:maybe [:ref ::card]]]
+    [:series             {:optional true} [:maybe [:ref ::card]]]
+    [:parameter_mappings {:optional true} [:maybe [:sequential [:ref ::parameter-mapping]]]]]
+   [:fn
+    {:error/message "Instance of a DashboardCard"}
+    #(contains? #{:model/DashboardCard nil} (t2/model %))]])
+
+(mr/def ::parameter-mapping
+  "Schema for a parameter mapping as it would appear in the DashboardCard `:parameter_mappings` column."
+  [:and
+   [:map
+    {:description "parameter_mapping must be a map with :parameter_id and :target keys"}
+    [:parameter_id ::lib.schema.parameter/id]
+    [:target       ::lib.schema.parameter/target]
+    [:card_id      {:optional true} ::lib.schema.id/card]
+    [:dashcard     {:optional true} [:ref ::dashcard]]]
+   [:map-of :keyword :any]])
+
 (mr/def ::parameter
   "Schema for a valid Parameter. We're not using [[metabase.legacy-mbql.schema/Parameter]] here because this Parameter
   is meant to be used for Parameters we store on dashboard/card, and it has some difference with Parameter in MBQL."
@@ -65,19 +98,10 @@
    [:slug                 {:optional true} :string]
    [:name                 {:optional true} :string]
    [:default              {:optional true} :any]
+   ;; TODO (Cam 9/18/25) -- why are we mixing `camelCase` and `snake_case` here? Is this to make me sad?
    [:sectionId            {:optional true} ::lib.schema.common/non-blank-string]
-   [:temporal_units       {:optional true} [:sequential ::lib.schema.temporal-bucketing/unit]]
-   ;; TODO FIXME -- I've seen this key used in [[metabase.parameters.params/dashboard-param->field-ids]] but no idea
-   ;; what the expected shape is supposed to be. Please fixx
-   [:mappings             {:optional true} :any]])
-
-(mr/def ::parameter-mapping
-  "Schema for a valid Parameter Mapping"
-  [:map
-   {:description "parameter_mapping must be a map with :parameter_id and :target keys"}
-   [:parameter_id ::lib.schema.common/non-blank-string]
-   [:target       :any]
-   [:card_id      {:optional true} ::lib.schema.id/card]])
+   [:temporal_units       {:optional true} [:maybe [:sequential ::lib.schema.temporal-bucketing/unit]]]
+   [:mappings             {:optional true} [:maybe [:sequential ::parameter-mapping]]]])
 
 (mr/def ::remapped-field-value
   "Has two components:

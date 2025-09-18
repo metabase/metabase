@@ -99,7 +99,7 @@
 (def Constraint
   "Schema for a constraint on a field."
   [:map
-   [:field-id ms/PositiveInt]
+   [:field-id ::lib.schema.id/field]
    [:op :keyword]
    [:value :any]
    [:options {:optional true} [:maybe map?]]])

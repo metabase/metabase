@@ -47,7 +47,6 @@
    [metabase.lib.schema.util]
    [metabase.lib.segment :as lib.segment]
    [metabase.lib.serialize]
-   [metabase.lib.serialize]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.swap :as lib.swap]
    [metabase.lib.table :as lib.table]

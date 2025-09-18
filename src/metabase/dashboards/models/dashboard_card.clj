@@ -10,7 +10,9 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.parameters.schema :as parameters.schema]
+   [metabase.lib.schema.id :as lib.schema.id]))
 
 (methodical/defmethod t2/table-name :model/DashboardCard [_model] :report_dashboardcard)
 
@@ -190,22 +192,12 @@
         (update-dashboard-cards-series! {dashcard-id series}))
       nil)))
 
-(def ParamMapping
-  "Schema for a parameter mapping as it would appear in the DashboardCard `:parameter_mappings` column."
-  [:and
-   [:map-of :keyword :any]
-   [:map
-    ;; TODO -- validate `:target` as well... breaks a few tests tho so those will have to be fixed (#40021)
-    [:parameter_id ms/NonBlankString]
-    #_[:target       :any]]])
-
 (def ^:private NewDashboardCard
   ;; TODO - make the rest of the options explicit instead of just allowing whatever for other keys (#40021)
   [:map
-   [:dashboard_id                            ms/PositiveInt]
-   [:action_id              {:optional true} [:maybe ms/PositiveInt]]
-   ;; TODO - use ParamMapping. Breaks too many tests right now tho (#40021)
-   [:parameter_mappings     {:optional true} [:maybe [:sequential map?]]]
+   [:dashboard_id                            ::lib.schema.id/dashboard]
+   [:action_id              {:optional true} [:maybe ::lib.schema.id/action]]
+   [:parameter_mappings     {:optional true} [:maybe [:sequential ::parameters.schema/parameter-mapping]]]
    [:visualization_settings {:optional true} [:maybe map?]]
    [:inline_parameters      {:optional true} [:maybe [:sequential ms/NonBlankString]]]
    [:series                 {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
@@ -302,11 +294,11 @@
     (second column-or-aliased)
     column-or-aliased))
 
-(defn- select-clause-for-link-card-model
+(mu/defn- select-clause-for-link-card-model
   "The search query uses a `union-all` which requires that there be the same number of columns in each of the segments
   of the query. This function will take the columns for `model` and will inject constant `nil` values for any column
   missing from `entity-columns` but found in `all-card-info-columns`."
-  [model]
+  [model :- (into [:enum] (keys link-card-columns-for-model))]
   (let [model-cols                       (link-card-columns-for-model model)
         model-col-alias->honeysql-clause (m/index-by ->column-alias model-cols)]
     (for [[col col-type] all-card-info-columns

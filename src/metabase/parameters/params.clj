@@ -19,9 +19,9 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
@@ -29,7 +29,9 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]
+   [toucan2.tools.hydrate :as t2.hydrate]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     SHARED                                                     |
@@ -65,8 +67,7 @@
 
     (template-tag->field-id [:template-tag :company] some-dashcard) ; -> 100"
   [[_ tag] :- ::lib.schema.parameter/template-tag
-   card    :- [:map
-               [:dataset_query ::lib.schema/query]]]
+   card    :- ::parameters.schema/card]
   (lib.util.match/match-one (get-in (lib/all-template-tags-map (:dataset_query card)) [tag :dimension])
     [:field _opts (id :guard pos-int?)]
     id))
@@ -75,8 +76,7 @@
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
   [target :- ::lib.schema.parameter/target
-   card   :- [:map
-              [:dataset_query ::lib.schema/query]]]
+   card   :- ::parameters.schema/card]
   (let [target (lib/normalize ::lib.schema.parameter/target target)]
     (when (mbql.u/is-clause? :dimension target)
       (let [[_ dimension] target
@@ -86,11 +86,11 @@
                           ;; 5 (for whatever reason), I would assume we're going to fix that sometime soon so handle
                           ;; either case for now.
                           (lib.util.match/match-one dimension
-                            [:field (_opts :guard map?) (id :guard pos-int?)] id
-                            [:field (id :guard pos-int?) (_opts :guard map?)] id))]
+                            [:field _opts (id :guard pos-int?)] id
+                            [:field (id :guard pos-int?) _opts] id))]
         (or field-id
             (do
-              (log/errorf "Could not find matching field ID for target: %s" (pr-str target))
+              (log/errorf "Could not extract field ID from target: %s" (pr-str target))
               nil))))))
 
 (defn- pk-fields
@@ -152,7 +152,7 @@
   (for [field fields]
     (update field :dimensions (partial map remove-dimension-nonpublic-columns))))
 
-(mu/defn- param-field-ids->fields
+(mu/defn- param-field-ids->fields :- [:map-of ::lib.schema.parameter/id [:sequential (ms/InstanceOf :model/Field)]]
   "Get the Fields (as a map of Parameter ID -> Fields) that should be returned for hydrated `:param_fields` for a Card
   or Dashboard. These only contain the minimal amount of information necessary needed to power public or embedded
   parameter widgets."
@@ -165,19 +165,6 @@
                                               remove-dimensions-nonpublic-columns)))]
     (->> param-id->field-ids
          (m/map-vals #(into [] (keep field-id->field) %)))))
-
-(defmulti ^:private param-fields
-  "Add a `:param_fields` map (Field ID -> Field) for all of the Fields referenced by the parameters of a Card or
-  Dashboard. Implementations are below in respective sections."
-  {:arglists '([instance])}
-  t2/model)
-
-#_{:clj-kondo/ignore [:unused-private-var]}
-(mi/define-simple-hydration-method ^:private hydrate-param-fields
-  :param_fields
-  "Hydration method for `:param_fields`."
-  [instance]
-  (param-fields instance))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               DASHBOARD-SPECIFIC                                               |
@@ -252,9 +239,10 @@
 
 (mr/def ::param-dashcard-info
   [:map
-   [:dashcard              (ms/InstanceOf :model/DashboardCard)]
+   {:closed true}
+   [:dashcard              ::parameters.schema/dashcard]
    [:param-mapping         ::parameters.schema/parameter-mapping]
-   [:param-target-field-id ::lib.schema.id/field]])
+   [:param-target-field-id [:maybe ::lib.schema.id/field]]])
 
 (mu/defn- field-id-into-context-rf
   "Reducing function that generates _field id_ corresponding to `:parameter` of `param-dashcard-info` if possible,
@@ -279,8 +267,8 @@
    (:param-id->field-ids ctx))
 
   ([ctx
-    {:keys [param-mapping param-target-field] :as param-dashcard-info} :- ::param-dashcard-info]
-   (if-not param-target-field
+    {:keys [param-mapping param-target-field-id] :as param-dashcard-info} :- ::param-dashcard-info]
+   (if-not param-target-field-id
      ctx
      (let [card-id (:card_id param-mapping)
            card (if card-id
@@ -292,8 +280,8 @@
            stage-number (get-in param-mapping [:target 2 :stage-number] -1)]
        ;; Get the field id from the field-clause if it contains it. This is the common case
        ;; for mbql queries.
-       (if-some [field-id (lib.util.match/match-one param-target-field [:field _opts (id :guard pos-int?)] id)]
-         (update-in ctx [:param-id->field-ids param-id] (fnil conj #{}) field-id)
+       (if param-target-field-id
+         (update-in ctx [:param-id->field-ids param-id] (fnil conj #{}) param-target-field-id)
          ;; In case the card doesn't have the same result_metadata columns as filterable columns (a question that
          ;; aggregates a native query model with a field that was mapped to a db field), we need to load metadata in
          ;; [[ensure-filterable-columns-for-card]] to find the originating field. (#42829)
@@ -301,28 +289,31 @@
              (ensure-filterable-columns-for-card card stage-number)
              (field-id-from-dashcards-filterable-columns param-dashcard-info stage-number)))))))
 
+(mu/defn- dashcard->param-dashcard-info :- [:sequential ::param-dashcard-info]
+  [dashcard :- ::parameters.schema/dashcard]
+  (for [mapping (:parameter_mappings dashcard)]
+    {:dashcard              dashcard
+     :param-mapping         mapping
+     :param-target-field-id (param-target->field-id (:target mapping) (:card dashcard))}))
+
 (mu/defn dashcards->param-id->field-ids* :- [:map-of ::lib.schema.parameter/id [:set ::lib.schema.id/field]]
   "Return map of parameter ids to mapped field ids."
-  [dashcards :- [:sequential (ms/InstanceOf :model/DashboardCard)]]
-  (letfn [(dashcard->param-dashcard-info [dashcard]
-            (for [mapping (:parameter_mappings dashcard)]
-              {:dashcard              dashcard
-               :param-mapping         mapping
-               :param-target-field-id (param-target->field-id (:target mapping) (:card dashcard))}))]
-    (transduce (mapcat dashcard->param-dashcard-info)
-               field-id-into-context-rf
-               dashcards)))
+  [dashcards :- [:sequential ::parameters.schema/dashcard]]
+  (transduce (mapcat dashcard->param-dashcard-info)
+             field-id-into-context-rf
+             dashcards))
 
 (declare card->template-tag-param-id->field-ids)
 
-(mu/defn- dashcards->param-id->field-ids :- [:map-of ms/NonBlankString [:set ::lib.schema.id/field]]
+(mu/defn- dashcards->param-id->field-ids :- [:map-of ::lib.schema.parameter/id [:set ::lib.schema.id/field]]
   "Return a map of Parameter ID to the set of Field IDs referenced by parameters in the Cards on the given `dashcards`,
   or `nil` if none are referenced. `dashcards` must be hydrated with :card."
-  [dashcards]
-  (transduce (map card->template-tag-param-id->field-ids)
-             (completing #(merge-with set/union %1 %2))
+  [dashcards :- [:sequential ::parameters.schema/dashcard]]
+  (transduce (comp (map :card)
+                   (map card->template-tag-param-id->field-ids))
+             (partial merge-with set/union)
              (dashcards->param-id->field-ids* dashcards)
-             (map :card dashcards)))
+             dashcards))
 
 (mu/defn dashcards->param-field-ids :- [:set ::lib.schema.id/field]
   "Return a set of Field IDs referenced by parameters in Cards in the given `dashcards`, or `nil` if
@@ -343,25 +334,29 @@
                                        mappings)]
     (into #{} cat (vals param-id->field-ids))))
 
-(defn get-linked-field-ids
+(mu/defn get-linked-field-ids :- [:set ::lib.schema.id/field]
   "Retrieve a map relating paramater ids to field ids."
-  [dashcards]
+  [dashcards :- [:sequential ::parameters.schema/dashcard]]
   (letfn [(targets [params card]
             (into {}
                   (for [param params
-                        :let  [id (param-target->field-id (:target param)
-                                                          card)]
+                        :let  [id (param-target->field-id (:target param) card)]
                         :when id]
                     [(:parameter_id param) #{id}])))]
     (->> dashcards
-         (mapv (fn [{params :parameter_mappings card :card}] (targets params card)))
+         (mapv (fn [{params :parameter_mappings card :card}]
+                 (targets params card)))
          (apply merge-with set/union {}))))
 
-(defmethod param-fields :model/Dashboard [dashboard]
-  (-> (t2/hydrate dashboard [:dashcards :card])
-      :dashcards
-      dashcards->param-id->field-ids
-      param-field-ids->fields))
+(methodical/defmethod t2.hydrate/batched-hydrate [:model/Dashboard :param_fields]
+  "Add a `:param_fields` map (Field ID -> Field) for all of the Fields referenced by the parameters of a Dashboard."
+  [_model k dashboards]
+  (mapv (fn [dashboard]
+          (assoc dashboard k (-> dashboard
+                                 :dashcards
+                                 dashcards->param-id->field-ids
+                                 param-field-ids->fields)))
+        (t2/hydrate dashboards [:dashcards :card])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 CARD-SPECIFIC                                                  |
@@ -369,21 +364,19 @@
 
 (mu/defn- card->template-tag-param-id->field-ids :- [:maybe
                                                      [:map-of
-                                                      ::lib.schema.common/non-blank-string
+                                                      ::lib.schema.template-tag/id
                                                       [:set ::lib.schema.id/field]]]
   "Return a map of Param IDs to sets of Field IDs referenced by each template tag parameter in this `card`.
 
   Mostly used for determining Fields referenced by Cards for purposes other than processing queries. Filters out
   `:field` clauses which use names."
-  [{query :dataset_query, :as _card}]
-  (when query
-    (case (lib/normalized-mbql-version query)
-      :mbql-version/mbql5  (lib/all-template-tags-id->field-ids query)
-      :mbql-version/legacy (throw (ex-info "Only MBQL 5 queries are supported" {:query query}))
-      nil)))
+  [{query :dataset_query, :as _card} :- ::parameters.schema/card]
+  (lib/all-template-tags-id->field-ids query))
 
-(defmethod param-fields :model/Card [card]
-  (-> card card->template-tag-param-id->field-ids param-field-ids->fields))
+(methodical/defmethod t2.hydrate/simple-hydrate [:model/Card :param_fields]
+  "Add a `:param_fields` map (Field ID -> Field) for all of the Fields referenced by the parameters of a Card."
+  [_model k card]
+  (assoc card k (-> card card->template-tag-param-id->field-ids param-field-ids->fields)))
 
 (mu/defn card->template-tag-field-ids :- [:maybe [:set ::lib.schema.id/field]]
   "Returns a set of all Field IDs referenced by template tags on this card.

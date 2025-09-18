@@ -341,7 +341,7 @@
   [:map
    [:id ms/NonBlankString]
    [:name ms/NonBlankString]
-   [:mappings [:maybe [:set dashboard-card/ParamMapping]]]])
+   [:mappings [:maybe [:set [:ref ::parameters.schema/parameter-mapping]]]]])
 
 (mu/defn- dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
   [dashboard :- [:map [:parameters [:maybe [:sequential :map]]]]]

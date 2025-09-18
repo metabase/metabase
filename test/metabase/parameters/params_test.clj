@@ -8,6 +8,7 @@
    [metabase.public-sharing.api-test :as public-test]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel hydrate-name-field-test
@@ -127,7 +128,7 @@
                                                                                              :breakout    [$category]})}
                      :model/DashboardCard _dashcard {:dashboard_id       (u/the-id dashboard)
                                                      :card_id            (u/the-id card)
-                                                     :parameter_mappings [;; p1 - no :stage-number, -1 is implied, id-based ref
+                                                     :parameter_mappings [ ;; p1 - no :stage-number, -1 is implied, id-based ref
                                                                           {:card_id (u/the-id card)
                                                                            :parameter_id "p1"
                                                                            :target  [:dimension
@@ -199,39 +200,45 @@
   (testing "get-linked-field-ids basic test"
     (is (= {"foo" #{256}
             "bar" #{267}}
-           (params/get-linked-field-ids
-            [{:parameter_mappings
-              [{:parameter_id "foo" :target [:dimension [:field 256 nil]]}
-               {:parameter_id "bar" :target [:dimension [:field 267 nil]]}]}])))))
+           (mu/disable-enforcement
+             (params/get-linked-field-ids
+              [{:parameter_mappings
+                [{:parameter_id "foo"
+                  :target       [:dimension [:field 256 nil]]}
+                 {:parameter_id "bar"
+                  :target       [:dimension [:field 267 nil]]}]}]))))))
 
 (deftest ^:parallel get-linked-field-ids-test-2
   (testing "get-linked-field-ids multiple fields to one param test"
     (is (= {"foo" #{256 10}
             "bar" #{267}}
-           (params/get-linked-field-ids
-            [{:parameter_mappings
-              [{:parameter_id "foo" :target [:dimension [:field 256 nil]]}
-               {:parameter_id "bar" :target [:dimension [:field 267 nil]]}]}
-             {:parameter_mappings
-              [{:parameter_id "foo" :target [:dimension [:field 10 nil]]}]}])))))
+           (mu/disable-enforcement
+             (params/get-linked-field-ids
+              [{:parameter_mappings
+                [{:parameter_id "foo" :target [:dimension [:field 256 nil]]}
+                 {:parameter_id "bar" :target [:dimension [:field 267 nil]]}]}
+               {:parameter_mappings
+                [{:parameter_id "foo" :target [:dimension [:field 10 nil]]}]}]))))))
 
 (deftest ^:parallel get-linked-field-ids-test-3
   (testing "get-linked-field-ids-test misc fields"
     (is (= {"1" #{1} "2" #{2} "3" #{3} "4" #{4} "5" #{5}}
-           (params/get-linked-field-ids
-            [{:parameter_mappings
-              [{:parameter_id "1" :target [:dimension [:field 1 {}]]}
-               {:parameter_id "2" :target [:dimension [:field 2 {:x true}]]}
-               {:parameter_id "wow" :target [:dimension [:field "wow" {:base-type :type/Integer}]]}
-               {:parameter_id "3" :target [:dimension [:field 3 {:source-field 1}]]}
-               {:parameter_id "4" :target [:dimension [:field 4 {:binning {:strategy :num-bins, :num-bins 1}}]]}
-               {:parameter_id "5" :target [:dimension [:field 5]]}]}])))))
+           (mu/disable-enforcement
+             (params/get-linked-field-ids
+              [{:parameter_mappings
+                [{:parameter_id "1" :target [:dimension [:field 1 {}]]}
+                 {:parameter_id "2" :target [:dimension [:field 2 {:x true}]]}
+                 {:parameter_id "wow" :target [:dimension [:field "wow" {:base-type :type/Integer}]]}
+                 {:parameter_id "3" :target [:dimension [:field 3 {:source-field 1}]]}
+                 {:parameter_id "4" :target [:dimension [:field 4 {:binning {:strategy :num-bins, :num-bins 1}}]]}
+                 {:parameter_id "5" :target [:dimension [:field 5]]}]}]))))))
 
 (deftest ^:parallel get-linked-field-ids-test-4
   (testing "get-linked-field-ids-test no fields"
     (is (= {}
-           (params/get-linked-field-ids
-            [{:parameter_mappings []}])))))
+           (mu/disable-enforcement
+             (params/get-linked-field-ids
+              [{:parameter_mappings []}]))))))
 
 (deftest ^:parallel duplicate-column-names-test
   (testing "columns with duplicated names get mapped correctly to parameters"

@@ -22,7 +22,6 @@
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.dashboard :as parameters.dashboard]
@@ -53,7 +52,8 @@
    [metabase.xrays.core :as xrays]
    [ring.util.codec :as codec]
    [steffan-westcott.clj-otel.api.trace.span :as span]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.lib.schema.id :as lib.schema.id]))
 
 (set! *warn-on-reflection* true)
 
@@ -623,7 +623,7 @@
 
   This will remove also any questions/models/segments/metrics that use this database."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::lib.schema.id/dashboard]]]
   (let [dashboard (api/write-check :model/Dashboard id)]
     (t2/delete! :model/Dashboard :id id)
     (events/publish-event! :event/dashboard-delete {:object dashboard :user-id api/*current-user-id*}))
@@ -636,7 +636,7 @@
 (mu/defn- check-parameter-mapping-permissions
   "Starting in 0.41.0, you must have *data* permissions in order to add or modify a DashboardCard parameter mapping."
   {:added "0.41.0"}
-  [parameter-mappings :- [:sequential dashboard-card/ParamMapping]]
+  [parameter-mappings :- [:sequential ::parameters.schema/parameter-mapping]]
   (when (seq parameter-mappings)
     ;; calculate a set of all Field IDs referenced by parameter mappings; then from those Field IDs calculate a set of
     ;; all Table IDs to which those Fields belong. This is done in a batched fashion so we can avoid N+1 query issues

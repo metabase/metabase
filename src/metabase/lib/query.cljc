@@ -2,6 +2,8 @@
   (:refer-clojure :exclude [remove])
   (:require
    [medley.core :as m]
+   ;; allowed since this is needed to convert legacy queries to MBQL 5
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]

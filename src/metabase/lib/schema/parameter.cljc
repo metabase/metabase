@@ -188,7 +188,7 @@
    {:decode/normalize normalize-legacy-ref}
    :metabase.legacy-mbql.schema/field])
 
-(mr/def ::legacy-expression-ref
+(mr/def ::target.legacy-expression-ref
   [:ref
    {:decode/normalize normalize-legacy-ref}
    :metabase.legacy-mbql.schema/expression])
@@ -199,7 +199,7 @@
                        (str "Invalid :dimension target: must be a :field, :template-tag, or :expression, got: "
                             (pr-str value)))}
    [:field        [:ref ::target.legacy-field-ref]]
-   [:expression   [:ref ::legacy-expression-ref]]
+   [:expression   [:ref ::target.legacy-expression-ref]]
    [:template-tag [:ref ::template-tag]]])
 
 ;;; TODO (Cam 8/8/25) -- is options supposed to be non-empty? It it supposed to be removed from `:dimension` if it's

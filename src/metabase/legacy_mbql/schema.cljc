@@ -1,5 +1,6 @@
 (ns metabase.legacy-mbql.schema
   "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!"
+  {:clj-kondo/config '{:linters {:deprecated-var {:level :off}}}}
   (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace abs float])
   (:require
    [clojure.core :as core]
