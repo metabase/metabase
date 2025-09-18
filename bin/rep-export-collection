@@ -34,7 +34,7 @@
   
   (doseq [url (:children collection)]
     (let [res (yaml/parse-string (:body (http/get (str host url) {:headers {"X-API-Key" api-key}})))]
-      (if (= :collection (:type res))
+      (if (= "collection" (:type res))
         (do-collection res)
         (spit (fs/file (pwd) (format "%s.%s.yml" (:ref res) (:type res)))
               (yaml/generate-string res)))))
