@@ -6,6 +6,8 @@ import add_component from "./add.svg?component";
 import add_source from "./add.svg?source";
 import add_column_component from "./add_column.svg?component";
 import add_column_source from "./add_column.svg?source";
+import add_comment_component from "./add_comment.svg?component";
+import add_comment_source from "./add_comment.svg?source";
 import add_data_component from "./add_data.svg?component";
 import add_data_source from "./add_data.svg?source";
 import add_folder_component from "./add_folder.svg?component";
@@ -100,6 +102,8 @@ import code_block_component from "./code_block.svg?component";
 import code_block_source from "./code_block.svg?source";
 import combine_component from "./combine.svg?component";
 import combine_source from "./combine.svg?source";
+import comment_component from "./comment.svg?component";
+import comment_source from "./comment.svg?source";
 import company_component from "./company.svg?component";
 import company_source from "./company.svg?source";
 import compare_component from "./compare.svg?component";
@@ -503,6 +507,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: add_to_dash_component,
       source: add_to_dash_source,
     },
+    add_comment: {
+      component: add_comment_component,
+      source: add_comment_source,
+    },
     ai: {
       component: ai_component,
       source: ai_source,
@@ -674,6 +682,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     company: {
       component: company_component,
       source: company_source,
+    },
+    comment: {
+      component: comment_component,
+      source: comment_source,
     },
     connections: {
       component: connections_component,
@@ -1451,6 +1463,7 @@ export type IconName =
   | "add_message"
   | "add_row"
   | "add_to_dash"
+  | "add_comment"
   | "ai"
   | "alert"
   | "alert_filled"
@@ -1494,6 +1507,7 @@ export type IconName =
   | "compare"
   | "combine"
   | "company"
+  | "comment"
   | "currency"
   | "connections"
   | "contract"
