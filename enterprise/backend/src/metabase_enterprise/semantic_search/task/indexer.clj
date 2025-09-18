@@ -3,6 +3,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.indexer :as semantic-search.indexer]
    [metabase.premium-features.core :as premium-features]
@@ -51,7 +52,8 @@
 (def ^:private ^Duration run-frequency (Duration/parse "PT20S"))
 
 (defmethod task/init! ::SemanticSearchIndexer [_]
-  (when (premium-features/has-feature? :semantic-search)
+  (when (and (string? (not-empty semantic.db.datasource/db-url))
+             (premium-features/has-feature? :semantic-search))
     (let [job         (jobs/build
                        (jobs/of-type SemanticSearchIndexer)
                        (jobs/store-durably)
