@@ -28,6 +28,7 @@ export type PythonTransformSourceDraft = {
 };
 
 type PythonTransformEditorProps = {
+  initialSource: PythonTransformSourceDraft;
   isNew?: boolean;
   isSaving?: boolean;
   isRunnable?: boolean;
@@ -35,34 +36,15 @@ type PythonTransformEditorProps = {
   onCancel: () => void;
 };
 
-const DEFAULT_PYTHON_SOURCE: PythonTransformSourceDraft = {
-  type: "python",
-  "source-database": undefined,
-  "source-tables": {},
-  body: `# Write your Python transformation script here
-import pandas as pd
-
-def transform():
-    """
-    Your transformation function.
-
-    Select tables above to add them as function parameters.
-
-    Returns:
-        DataFrame to write to the destination table
-    """
-    # Your transformation logic here
-    return pd.DataFrame([{"message": "Hello from Python transform!"}])`,
-};
-
 export function PythonTransformEditor({
+  initialSource,
   isNew = true,
   isSaving = false,
   isRunnable = true,
   onSave,
   onCancel,
 }: PythonTransformEditorProps) {
-  const [source, setSource] = useState(DEFAULT_PYTHON_SOURCE);
+  const [source, setSource] = useState(initialSource);
   const [isSourceDirty, setIsSourceDirty] = useState(false);
 
   const { isRunning, isDirty, cancel, run, executionResult } =
