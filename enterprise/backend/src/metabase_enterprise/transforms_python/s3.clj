@@ -34,10 +34,11 @@
     (str shared-prefix "run-" (System/nanoTime) "-" (rand-int 10000))))
 
 (defmacro ^:private maybe-with-endpoint* [builder endpoint]
-  `(do (when-let [region# (transforms-python.settings/python-storage-s-3-region)]
-         (.region ~builder (Region/of region#)))
-       (when ~endpoint (.endpointOverride ~builder (URI/create ~endpoint)))
-       ~builder))
+  `(let [builder# ~builder]
+      (when-let [region# (transforms-python.settings/python-storage-s-3-region)]
+         (.region builder# (Region/of region#)))
+       (when ~endpoint (.endpointOverride builder# (URI/create ~endpoint)))
+       builder#))
 
 (defn- maybe-with-endpoint-s3-client [^S3ClientBuilder builder endpoint]
   (maybe-with-endpoint* builder endpoint))
