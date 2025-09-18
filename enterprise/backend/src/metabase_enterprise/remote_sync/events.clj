@@ -30,12 +30,16 @@
            status (str): Status of the sync operation.
            source-branch (str, optional): Source branch name.
            target-branch (str, optional): Target branch name.
+           collection-id (str, optional): Entity id of the collection
            message (str, optional): Optional message or error details."
-  [{:keys [sync-type status source-branch target-branch message]}]
+  [{:keys [sync-type status source-branch target-branch message collection-id]}]
   (t2/insert! :model/RemoteSyncChangeLog
               {:sync_type sync-type
                :source_branch source-branch
                :target_branch target-branch
+               :model_type (when collection-id "Collection")
+               :model_entity_id collection-id
+               :most_recent true
                :status status
                :message message}))
 
@@ -43,8 +47,8 @@
   "Publish a remote sync event with the given sync data.
 
    Args:
-       sync-type (keyword/str): Type of sync (:initial, :incremental, :full, \"import\", \"export\").
-       collection-id (int, optional): ID of the collection being synced. Optional for import/export operations.
+       sync-type (str): Type of sync (\"import\", \"export\").
+       collection-id (string, optional): Entity ID of the collection being synced. Optional for import/export operations.
        user-id (int, optional): ID of the user triggering the sync.
        metadata (map, optional): Additional sync metadata. Can include :branch, :status, :message.
 
@@ -52,8 +56,8 @@
        map: The published event data.
 
    Examples:
-       (publish-remote-sync! \"import\" nil 456 {:branch \"main\" :status \"success\"})
-       (publish-remote-sync! \"export\" nil 456 {:branch \"feature-branch\" :status \"error\" :message \"Network timeout\"})"
+       (publish-remote-sync! \"import\" nil \"entity\" {:branch \"main\" :status \"success\"})
+       (publish-remote-sync! \"export\" nil \"entity\" {:branch \"feature-branch\" :status \"error\" :message \"Network timeout\"})"
   [sync-type collection-id user-id & [metadata]]
   (events/publish-event! :event/remote-sync
                          (merge {:sync-type sync-type
@@ -92,7 +96,7 @@
 
    Args:
        model-type (str): Type of model ('card', 'dashboard', 'document', 'collection').
-       model-entity-id (int): ID of the affected entity.
+       model-entity-id (int): ENTITY ID of the affected entity.
        sync-type (str): Type of change ('create', 'update', 'delete', 'touch').
        user-id (int, optional): ID of the user making the change. Defaults to current user.
 
@@ -106,6 +110,7 @@
                  :sync_type sync-type
                  :source_branch nil
                  :target_branch nil
+                 :most_recent true
                  :status "success"
                  :message (format "%s %s by user %s" (name sync-type) model-type user-id)})))
 
@@ -120,13 +125,15 @@
 (methodical/defmethod events/publish-event! ::card-change-event
   [topic event]
   (let [{:keys [object user-id]} event
-        sync-type (case topic
-                    :event/card-create "create"
-                    :event/card-update "update"
-                    :event/card-delete "delete")]
+        sync-type (if (:archived object)
+                    "delete"
+                    (case topic
+                      :event/card-create "create"
+                      :event/card-update "update"
+                      :event/card-delete "delete"))]
     (when (model-in-remote-synced-collection? object)
       (log/infof "Creating remote sync change log entry for card %s (action: %s)" (:id object) sync-type)
-      (create-remote-sync-change-log-entry! "card" (:id object) sync-type user-id))))
+      (create-remote-sync-change-log-entry! "Card" (:entity_id object) sync-type user-id))))
 
 ;; Dashboard events
 (derive ::dashboard-change-event :metabase/event)
@@ -137,13 +144,15 @@
 (methodical/defmethod events/publish-event! ::dashboard-change-event
   [topic event]
   (let [{:keys [object user-id]} event
-        sync-type (case topic
-                    :event/dashboard-create "create"
-                    :event/dashboard-update "update"
-                    :event/dashboard-delete "delete")]
+        sync-type (if (:archived object)
+                    "delete"
+                    (case topic
+                      :event/dashboard-create "create"
+                      :event/dashboard-update "update"
+                      :event/dashboard-delete "delete"))]
     (when (model-in-remote-synced-collection? object)
       (log/infof "Creating remote sync change log entry for dashboard %s (action: %s)" (:id object) sync-type)
-      (create-remote-sync-change-log-entry! "dashboard" (:id object) sync-type user-id))))
+      (create-remote-sync-change-log-entry! "Dashboard" (:entity_id object) sync-type user-id))))
 
 ;; Document events
 (derive ::document-change-event :metabase/event)
@@ -154,13 +163,15 @@
 (methodical/defmethod events/publish-event! ::document-change-event
   [topic event]
   (let [{:keys [object user-id]} event
-        sync-type (case topic
-                    :event/document-create "create"
-                    :event/document-update "update"
-                    :event/document-delete "delete")]
+        sync-type (if (:archived object)
+                    "delete"
+                    (case topic
+                      :event/document-create "create"
+                      :event/document-update "update"
+                      :event/document-delete "delete"))]
     (when (model-in-remote-synced-collection? object)
       (log/infof "Creating remote sync change log entry for document %s (action: %s)" (:id object) sync-type)
-      (create-remote-sync-change-log-entry! "document" (:id object) sync-type user-id))))
+      (create-remote-sync-change-log-entry! "Document" (:entity_id object) sync-type user-id))))
 
 ;; Collection touch events
 (derive ::collection-touch-event :metabase/event)
@@ -168,7 +179,11 @@
 
 (methodical/defmethod events/publish-event! ::collection-touch-event
   [topic event]
-  (let [{:keys [object user-id]} event]
+  (let [{:keys [object user-id]} event
+        sync-type (if (:archived object)
+                    "delete"
+                    (case topic
+                      :event/collection-touch-event "update"))]
     (when (collections/remote-synced-collection? object)
       (log/infof "Creating remote sync change log entry for collection touch %s" (:id object))
-      (create-remote-sync-change-log-entry! "collection" (:id object) "touch" user-id))))
+      (create-remote-sync-change-log-entry! "Collection" (:entity_id object) sync-type user-id))))

@@ -61,10 +61,14 @@
                           :collection_id [:in (cons (u/the-id remote-sync-collection) affected-collection-ids)]
                           :entity_id (if (seq entity-ids)
                                        [:not-in entity-ids]
-                                       :entity_id)))))
-        (lib.events/publish-remote-sync! "import" nil api/*current-user-id*
-                                         {:source-branch branch
-                                          :status "success"})
+                                       :entity_id))))
+          (let [collection-entity-ids (get imported-entities "Collection")
+                root-collections (t2/select :model/Collection :entity_id [:in collection-entity-ids] :location "/")]
+            (doseq [{:keys [entity_id]} root-collections]
+              (lib.events/publish-remote-sync! "import" nil api/*current-user-id*
+                                               {:source-branch branch
+                                                :collection-id entity_id
+                                                :status "success"}))))
         (log/info "Successfully reloaded entities from git repository")
         {:status  :success
          :message "Successfully reloaded from git repository"}
@@ -86,10 +90,17 @@
 
                             :else
                             (format "Failed to reload from git repository: %s" (ex-message e)))]
-            (lib.events/publish-remote-sync! "import" nil api/*current-user-id*
-                                             {:source-branch branch
-                                              :status  "error"
-                                              :message (ex-message e)})
+            (if (seq collections)
+              (doseq [collection collections]
+                (lib.events/publish-remote-sync! "import" nil api/*current-user-id*
+                                                 {:source-branch branch
+                                                  :collection-id collection
+                                                  :status  "error"
+                                                  :message (ex-message e)}))
+              (lib.events/publish-remote-sync! "import" nil api/*current-user-id*
+                                               {:source-branch branch
+                                                :status  "error"
+                                                :message (ex-message e)}))
             {:status  :error
              :message error-msg
              :details {:error-type (type e)}}))))
@@ -102,7 +113,7 @@
    (export! branch message nil))
   ([branch message collections]
    (if-let [source (source/source-from-settings)]
-     (let [collections (or (seq collections) (t2/select-fn-set :entity_id :model/Collection :type "remote-synced"))]
+     (let [collections (or (seq collections) (t2/select-fn-set :entity_id :model/Collection :type "remote-synced" :location "/"))]
        (try
          (serdes/with-cache
            (-> (v2.extract/extract (cond-> {:targets                  (mapv #(vector "Collection" %) collections)
@@ -113,17 +124,21 @@
                                             :include-database-secrets :false
                                             :continue-on-error        false}))
                (source/store! source branch message)))
-         (lib.events/publish-remote-sync! "export" nil api/*current-user-id*
-                                          {:target-branch  branch
-                                           :status  "success"
-                                           :message message})
+         (doseq [collection collections]
+           (lib.events/publish-remote-sync! "export" nil api/*current-user-id*
+                                            {:target-branch branch
+                                             :collection-id collection
+                                             :status  "success"
+                                             :message message}))
          {:status :success}
 
          (catch Exception e
-           (lib.events/publish-remote-sync! "export" nil api/*current-user-id*
-                                            {:target-branch  branch
-                                             :status  "error"
-                                             :message (ex-message e)})
+           (doseq [collection collections]
+             (lib.events/publish-remote-sync! "export" nil api/*current-user-id*
+                                              {:target-branch  branch
+                                               :collection-id collection
+                                               :status  "error"
+                                               :message (ex-message e)}))
            {:status  :error
             :message (format "Failed to export to git repository: %s" (ex-message e))})))
      {:status  :error

@@ -167,7 +167,7 @@
 (mr/def :event/remote-sync
   [:map
    [:sync-type [:enum :initial :incremental :full "import" "export"]]
-   [:collection-id [:maybe pos-int?]]
+   [:collection-id [:maybe ms/NonBlankString]]
    [:user-id [:maybe pos-int?]]
    [:timestamp [:maybe :any]]
    [:branch {:optional true} [:maybe :string]]

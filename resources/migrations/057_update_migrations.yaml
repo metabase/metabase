@@ -1424,6 +1424,13 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
+              - column:
+                  name: most_recent
+                  type: ${boolean.type}
+                  remarks: tracking if this is the most recent change log entry
+                  defaultValue: false
+                  constraints:
+                    nullable: false
 
   - changeSet:
       id: v57.2025-09-11T16:01:00
