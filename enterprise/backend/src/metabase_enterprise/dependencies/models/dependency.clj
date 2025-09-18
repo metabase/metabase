@@ -215,6 +215,7 @@
   [children-fn start-nodes]
   (let [all-nodes (java.util.LinkedHashSet.)
         new?      #(not (.contains all-nodes %))]
+    (.addAll all-nodes start-nodes)
     (loop [new-nodes start-nodes]
       (if (seq new-nodes)
         (let [new-children (filter new? (children-fn new-nodes))]

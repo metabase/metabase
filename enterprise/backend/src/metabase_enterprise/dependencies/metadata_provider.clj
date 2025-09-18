@@ -11,6 +11,7 @@
   downstream entities in any order."
   (:require
    [medley.core :as m]
+   [metabase-enterprise.dependencies.native-validation :as deps.native]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -27,8 +28,10 @@
         metadata-keys   (set (or id name))]
     (log/tracef "OverridingMetadataProvider request for %s" metadata-spec)
     (cond
-      ;; For tables, cards, snippets and transforms, return overrides if present and delegate if not.
-      (or (#{:metadata/table :metadata/card :metadata/transform :metadata/native-query-snippet} metadata-type)
+      ;; For tables, cards, snippets and transforms, return overrides if present and looking for specific keys and
+      ;; delegate if not.
+      (or (and (#{:metadata/table :metadata/card :metadata/transform :metadata/native-query-snippet} metadata-type)
+               (seq metadata-keys))
           ;; Or for fetching a set of columns/fields by ID.
           (and (= metadata-type :metadata/column)
                (seq id)))
@@ -48,6 +51,14 @@
           (seq missing-keys)
           (concat (lib.metadata.protocols/metadatas delegate {:lib/type    metadata-type
                                                               override-key (set missing-keys)}))))
+
+      ;; if fetching all tables or transforms, get every override and everything from the delegate and then dedupe
+      (and (empty? metadata-keys)
+           (#{:metadata/table :metadata/transform} metadata-type))
+      (as-> (vals type-overrides) entities
+        (into [] entities)
+        (into entities (lib.metadata.protocols/metadatas delegate metadata-spec))
+        (m/distinct-by :id entities))
 
       ;; For columns, return overrides if they're present.
       (= metadata-type :metadata/column)
@@ -102,6 +113,14 @@
                     (assoc-in m ks v))
                   % kvs)))
 
+(defn- get-returned-columns [mp queryable]
+  (let [query (lib/query mp queryable)]
+    (if (= (:lib/type (lib/query-stage query 0))
+           :mbql.stage/mbql)
+      (lib/returned-columns query)
+      (deps.native/native-query-deps (:engine (lib.metadata/database mp))
+                                     mp query))))
+
 (defmethod add-override :card [^OverridingMetadataProvider mp _entity-type id updates]
   (with-overrides mp
     ;; If the `updates` contain `:result-metadata`, we want to use that. However, any `:result-metadata` from the
@@ -112,7 +131,7 @@
                                              (dissoc :result-metadata)))
                                        updates))
      ;; This uses the outer OMP and so the overrides are visible!
-     [::card-columns id] (delay (lib/returned-columns (lib.metadata/card mp id)))}))
+     [::card-columns id] (delay (get-returned-columns mp (lib.metadata/card mp id)))}))
 
 (defonce ^:private last-fake-id (atom 2000000000))
 
@@ -142,8 +161,7 @@
                          (lib.metadata/fields (inner-mp mp) (:id existing-table)))
         output-cols    (delay
                          ;; Note that this will analyze the query with any upstream changes included!
-                         (let [new-cols (-> (lib/query mp (:query source))
-                                            lib/returned-columns)
+                         (let [new-cols (get-returned-columns mp (:query source))
                                by-name  (m/index-by :lib/desired-column-alias existing-cols)]
                            (into [] (for [col new-cols
                                           :let [old-col (by-name (:lib/desired-column-alias col))]]
