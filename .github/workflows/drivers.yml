@@ -119,6 +119,10 @@ jobs:
     name: BigQuery
     steps:
     - uses: actions/checkout@v4
+    - name: Setup python-runner
+      env:
+        METABASE_AUTOMATION_USER_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+      run: ./.github/scripts/setup-python-runner.sh
     - name: Test BigQuery Cloud SDK driver
       uses: ./.github/actions/test-driver
       with:
@@ -151,6 +155,10 @@ jobs:
     name: Clickhouse
     steps:
     - uses: actions/checkout@v4
+    - name: Setup python-runner
+      env:
+        METABASE_AUTOMATION_USER_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+      run: ./.github/scripts/setup-python-runner.sh
     - name: Add ClickHouse TLS instance to /etc/hosts
       run: |
         sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
@@ -338,6 +346,10 @@ jobs:
     name: H2
     steps:
     - uses: actions/checkout@v4
+    - name: Setup python-runner
+      env:
+        METABASE_AUTOMATION_USER_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+      run: ./.github/scripts/setup-python-runner.sh
     - name: Test H2 driver
       uses: ./.github/actions/test-driver
       with:
@@ -442,6 +454,10 @@ jobs:
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
       - uses: actions/checkout@v4
+      - name: Setup python-runner
+        env:
+          METABASE_AUTOMATION_USER_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        run: ./.github/scripts/setup-python-runner.sh
       - name: Test ${{ matrix.version.name }}
         uses: ./.github/actions/test-driver
         with:
@@ -492,6 +508,10 @@ jobs:
     name: ${{ matrix.version.name }}
     steps:
     - uses: actions/checkout@v4
+    - name: Setup python-runner
+      env:
+        METABASE_AUTOMATION_USER_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+      run: ./.github/scripts/setup-python-runner.sh
     - name: Test ${{ matrix.version.name }}
       uses: ./.github/actions/test-driver
       with:
@@ -745,6 +765,10 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
       - uses: actions/checkout@v4
+      - name: Setup python-runner
+        env:
+          METABASE_AUTOMATION_USER_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        run: ./.github/scripts/setup-python-runner.sh
       - name: Test ${{ matrix.version.name }} (${{ matrix.job.name }})
         uses: ./.github/actions/test-driver
         with:
@@ -864,6 +888,10 @@ jobs:
     name: ${{ matrix.job.name }}
     steps:
     - uses: actions/checkout@v4
+    - name: Setup python-runner
+      env:
+        METABASE_AUTOMATION_USER_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+      run: ./.github/scripts/setup-python-runner.sh
     - name: Test ${{ matrix.job.name }}
       if: ${{ !matrix.job.skip }}
       uses: ./.github/actions/test-driver
@@ -908,6 +936,10 @@ jobs:
     name: Snowflake
     steps:
     - uses: actions/checkout@v4
+    - name: Setup python-runner
+      env:
+        METABASE_AUTOMATION_USER_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+      run: ./.github/scripts/setup-python-runner.sh
     - name: Test Snowflake driver
       uses: ./.github/actions/test-driver
       with:
@@ -1022,6 +1054,10 @@ jobs:
     name: ${{ matrix.version.name }}
     steps:
     - uses: actions/checkout@v4
+    - name: Setup python-runner
+      env:
+        METABASE_AUTOMATION_USER_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+      run: ./.github/scripts/setup-python-runner.sh
     - name: Test ${{ matrix.version.name }}
       uses: ./.github/actions/test-driver
       with:
