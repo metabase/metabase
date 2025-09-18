@@ -138,12 +138,11 @@
 (defn record-job-failure!
   "Record the failure of a transform job run."
   [job-id run-method duration-ms]
-  (log/warnf "Transform job failed: job-id=%d run-method=%s duration=%s" job-id (name run-method) (if duration-ms (str duration-ms "ms") "unknown"))
+  (log/warnf "Transform job failed: job-id=%d run-method=%s duration=%dms" job-id (name run-method) duration-ms)
   (let [labels {:job-id (str job-id)
                 :run-method (name run-method)}]
     (prometheus/inc! :metabase-transforms/job-runs-failed labels)
-    (when duration-ms
-      (prometheus/observe! :metabase-transforms/job-run-duration-ms labels duration-ms))))
+    (prometheus/observe! :metabase-transforms/job-run-duration-ms labels duration-ms)))
 
 (defmacro with-job-timing
   "Execute body while timing a transform job run. Automatically records start, completion or failure.
