@@ -722,7 +722,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         cy.findByLabelText("Schema").should("have.value", TARGET_SCHEMA);
         cy.findByLabelText("New table name").clear().type(TARGET_TABLE_2);
         cy.findByLabelText(/Delete/).click();
-        cy.button("Change target and delete the old one").click();
+        cy.button("Change target and delete the old table").click();
         cy.wait("@deleteTransformTable");
         cy.wait("@updateTransform");
       });
@@ -766,7 +766,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       H.modal().within(() => {
         cy.findByLabelText("New table name").clear().type(TARGET_TABLE_2);
         cy.findByLabelText(/Delete/).click();
-        cy.button("Change target and delete the old one").click();
+        cy.button("Change target and delete the old table").click();
         cy.wait("@deleteTransformTable");
         cy.wait("@updateTransform");
       });
