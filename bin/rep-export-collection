@@ -1,0 +1,47 @@
+#!/usr/bin/env bb
+
+(require '[babashka.http-client :as http]
+         '[clj-yaml.core :as yaml]
+         '[babashka.fs :as fs])
+
+(def api-key (System/getenv "METABASE_API_KEY"))
+(def host (System/getenv "MB_HOST"))
+(def collection-id (first *command-line-args*))
+(def output-dir (second *command-line-args*))
+
+(defn ->url [model id]
+  (format "%s/api/ee/representation/%s/%s" host (name model) id))
+
+(def current-directory (atom [output-dir]))
+
+(defn pwd [] (last @current-directory))
+(defn cd  [file] (swap! current-directory conj (fs/file (pwd) file)) nil)
+(defn dpop [] (swap! current-directory pop))
+
+(defn mkdir [dir-name]
+  (let [f (fs/file (pwd) dir-name)]
+    (fs/create-dirs f)))
+
+(def response (http/get (->url :collection collection-id)
+                        {:headers {"X-API-Key" api-key}}))
+
+(def collection (yaml/parse-string (:body response)))
+
+(defn do-collection [collection]
+  (mkdir (:ref collection))
+  (cd (:ref collection))
+  (spit (fs/file (pwd) "config.yml") (yaml/generate-string (dissoc collection :children)))
+  
+  (doseq [url (:children collection)]
+    (let [res (yaml/parse-string (:body (http/get (str host url) {:headers {"X-API-Key" api-key}})))]
+      (if (= :collection (:type res))
+        (do-collection res)
+        (spit (fs/file (pwd) (format "%s.%s.yml" (:ref res) (:type res)))
+              (yaml/generate-string res)))))
+  (dpop))
+
+(do-collection collection)
+
+
+
+
