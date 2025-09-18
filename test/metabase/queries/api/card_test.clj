@@ -54,10 +54,6 @@
 
 (use-fixtures :once (fixtures/initialize :db :web-server))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                              Helper Fns & Macros                                               |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
 (defn- count-base-type []
   (-> (mt/run-mbql-query venues {:aggregation [[:count]]}) :data :cols first :base_type))
 
@@ -103,9 +99,9 @@
     :query    {:source-table (u/the-id table-or-id)
                :aggregation  [[:count]]}}))
 
-(defn pmbql-count-query
+(defn- mbql5-count-query
   ([]
-   (pmbql-count-query (mt/id) (mt/id :venues)))
+   (mbql5-count-query (mt/id) (mt/id :venues)))
 
   ([db-or-id table-or-id]
    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (u/the-id db-or-id))
@@ -236,10 +232,6 @@
                                                              :type   "id",
                                                              :value  nil}]}))))))))))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                           FETCHING CARDS & FILTERING                                           |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
 (defn- card-returned? [model object-or-id card-or-id]
   (contains? (set (for [card (mt/user-http-request :rasta :get 200 "card", :f model, :model_id (u/the-id object-or-id))]
                     (u/the-id card)))
@@ -346,8 +338,10 @@
                  :model/Segment {segment-id :id} {:table_id table-id}
                  :model/Card {model-id :id :as model} {:name "Model"
                                                        :type :model
-                                                       :dataset_query {:query {:source-table (mt/id :venues)
-                                                                               :filter [:= [:field 1 nil] "1"]}}}
+                                                       :dataset_query {:database (mt/id)
+                                                                       :type :query
+                                                                       :query {:source-table (mt/id :venues)
+                                                                                           :filter [:= [:field 1 nil] "1"]}}}
                  ;; matching question
                  :model/Card card-1 {:name "Card 1"
                                      :dataset_query {:query {:source-table (str "card__" model-id)
@@ -410,11 +404,15 @@
                  :model/Database {other-database-id :id} {}
                  ;; database doesn't quite match
                  :model/Card card-6 {:name "Card 6", :database_id other-database-id
-                                     :dataset_query {:query {:source-table (str "card__" model-id)}}}
+                                     :dataset_query {:database (mt/id)
+                                                     :type :query
+                                                     :query {:source-table (str "card__" model-id)}}}
                  ;; same as matching question, but archived
                  :model/Card card-7 {:name "Card 7"
                                      :archived true
-                                     :dataset_query {:query {:source-table (str "card__" model-id)}}}]
+                                     :dataset_query {:database (mt/id)
+                                                     :type :query
+                                                     :query {:source-table (str "card__" model-id)}}}]
     (testing "list cards using a model"
       (with-cards-in-readable-collection! [model card-1 card-3 card-4 card-5 card-6 card-7]
         (is (= #{"Card 1" "Card 3" "Card 4"}
@@ -730,7 +728,7 @@
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             (mt/with-model-cleanup [:model/Card]
               (doseq [[mbql-version query] {"MBQL" (mbql-count-query)
-                                            "pMBQL" (pmbql-count-query)}]
+                                            "pMBQL" (mbql5-count-query)}]
                 (testing mbql-version
                   (let [card (assoc (card-with-name-and-query (mt/random-name) query)
                                     :collection_id (u/the-id collection)
@@ -844,7 +842,7 @@
 
 (deftest create-and-update-metric-card-validation-test
   (testing "POST /api/card"
-    (let [query (pmbql-count-query)
+    (let [query (mbql5-count-query)
           card-name (mt/random-name)
           card (-> (card-with-name-and-query card-name query)
                    (assoc :type :metric))
@@ -3698,17 +3696,18 @@
    :database_id (mt/id)})
 
 (deftest ^:parallel query-metadata-test
-  (mt/with-temp
-    [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)
-                                  :database_id (mt/id)}
-     :model/Card {card-id-2 :id} (native-card-with-template-tags)]
+  (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query products)
+                                              :database_id (mt/id)}]
     (testing "Simple card"
       (is (=?
            {:fields empty?
             :tables (sort-by :id [{:id (mt/id :products)}])
             :databases [{:id (mt/id) :engine string?}]}
-           (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id-1 "/query_metadata"))
-               (api.test-util/select-query-metadata-keys-for-debugging)))))
+           (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id "/query_metadata"))
+               (api.test-util/select-query-metadata-keys-for-debugging)))))))
+
+(deftest ^:parallel query-metadata-test-2
+  (mt/with-temp [:model/Card {card-id :id} (native-card-with-template-tags)]
     (testing "Parameterized native query"
       (is (=?
            {:fields (sort-by :id
@@ -3717,9 +3716,9 @@
                               {:id (mt/id :people :source)}
                               {:id (mt/id :people :name)}])
             :tables (sort-by :id
-                             [{:id (str "card__" card-id-2)}])
+                             [{:id (str "card__" card-id)}])
             :databases [{:id (mt/id) :engine string?}]}
-           (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id-2 "/query_metadata"))
+           (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id "/query_metadata"))
                (api.test-util/select-query-metadata-keys-for-debugging)))))))
 
 (deftest card-query-metadata-with-archived-and-deleted-source-card-test

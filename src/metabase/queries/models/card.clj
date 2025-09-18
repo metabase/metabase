@@ -454,7 +454,6 @@
   (when (and (= (keyword card-type) :model)
              (seq query))
     (let [template-tag-types (->> (lib/all-template-tags query)
-                                  vals
                                   (map (comp keyword :type)))]
       (when (some (complement #{:card :snippet}) template-tag-types)
         (throw (ex-info (tru "A model made from a native SQL question cannot have a variable or field filter.")
@@ -1264,26 +1263,22 @@
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
-(defn- dataset-query->dimensions
+(mu/defn- serialized-query->dimensions
   "Extract dimensions (non-aggregation columns) from a dataset query."
-  [dataset-query-str]
-  (when dataset-query-str
-    ;; In production the :database should be always present and correct. That is not the case for some test mocks.
-    ;; As e.g. in [[metabase-enterprise.semantic-search.test-util/do-with-indexable-documents!]]. Hence the thorough
-    ;; checking.
-    (when-some [dataset-query (not-empty ((:out mi/transform-metabase-query) dataset-query-str))]
-      (when (pos-int? (:database dataset-query))
-        (lib.metadata.jvm/with-metadata-provider-cache
-          (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
-                lib-query         (lib/query metadata-provider dataset-query)
-                columns           (lib/returned-columns lib-query)]
-            ;; Dimensions are columns that are not aggregations
-            (remove (comp #{:source/aggregations} :lib/source) columns)))))))
+  [serialized-query :- :string]
+  ;; In production the :database should be always present and correct. That is not the case for some test mocks.
+  ;; As e.g. in [[metabase-enterprise.semantic-search.test-util/do-with-indexable-documents!]]. Hence the thorough
+  ;; checking.
+  (when-some [query (not-empty ((:out mi/transform-metabase-query) serialized-query))]
+    (when (pos-int? (:database query))
+      (let [columns (lib/returned-columns query)]
+        ;; Dimensions are columns that are not aggregations
+        (remove (comp #{:source/aggregations} :lib/source) columns)))))
 
 (defn extract-non-temporal-dimension-ids
   "Extract list of nontemporal dimension field IDs, stored as JSON string. See PR 60912"
-  [{:keys [dataset_query]}]
-  (let [dimensions (dataset-query->dimensions dataset_query)
+  [{serialized-query :dataset_query, :as _card}]
+  (let [dimensions (serialized-query->dimensions serialized-query)
         dim-ids    (->> dimensions
                         (remove lib.types/temporal?)
                         (keep :id)
@@ -1292,8 +1287,8 @@
 
 (defn has-temporal-dimension?
   "Return true if the query has any temporal dimensions. See PR 60912"
-  [{:keys [dataset_query]}]
-  (let [dimensions (dataset-query->dimensions dataset_query)]
+  [{serialized-query :dataset_query, :as _card}]
+  (let [dimensions (serialized-query->dimensions serialized-query)]
     (boolean (some lib.types/temporal? dimensions))))
 
 (defn ^:private base-search-spec

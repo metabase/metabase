@@ -452,6 +452,8 @@
   all-field-ids
   all-source-card-ids
   all-source-table-ids
+  all-template-tag-field-ids
+  all-template-tag-snippet-ids
   all-template-tags
   all-template-tags-id->field-ids
   any-native-stage?])

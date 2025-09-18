@@ -21,7 +21,6 @@
    [metabase.queries.metadata :as queries.metadata]
    [metabase.queries.models.card :as card]
    [metabase.queries.models.card.metadata :as card.metadata]
-   [metabase.queries.models.query :as query]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
@@ -95,6 +94,7 @@
                                                          [:= :c.database_id :m.database_id]
                                                          [:or
                                                           [:like :c.dataset_query (format "%%card__%s%%" model-id)]
+                                                          ;; TODO (Cam 9/17/25) -- update this to work for MBQL 5 queries
                                                           [:like :c.dataset_query (format "%%#%s%%" model-id)]]]]
                                :where [:and [:= :m.id model-id] [:not :c.archived]]
                                :order-by [[[:lower :c.name] :asc]]})

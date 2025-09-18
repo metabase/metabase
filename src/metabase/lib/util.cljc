@@ -475,7 +475,7 @@
 
 (mu/defn legacy-string-table-id->card-id :- [:maybe ::lib.schema.id/card]
   "If `table-id` is a legacy `card__<id>`-style string, parse the `<id>` part to an integer Card ID. Only for legacy
-  queries! You don't need to use this in pMBQL since this is converted automatically by [[metabase.lib.convert]] to
+  queries! You don't need to use this in MBQL 5 since this is converted automatically by [[metabase.lib.convert]] to
   `:source-card`."
   [table-id]
   (when (string? table-id)
