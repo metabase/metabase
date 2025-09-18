@@ -119,7 +119,10 @@
     push-response))
 
 (defn- path-prefix [path]
-  (first (str/split path #"/")))
+  (let [matcher (re-matcher #"^(collections/[^/]+)/" path)]
+    (if (re-find matcher)
+      (second (re-groups matcher))
+      path)))
 
 (defn- matches-prefix [path prefixes]
   (some #(or (= % path) (str/starts-with? path (str % "/"))) prefixes))
