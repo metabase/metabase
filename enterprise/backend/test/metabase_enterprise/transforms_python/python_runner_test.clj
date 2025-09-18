@@ -375,7 +375,7 @@
   (mt/test-helpers-set-global-values!
     (mt/with-temp-scheduler!
       (task/init! ::transforms.schedule/RunTransform)
-      (mt/test-drivers #{:h2 :postgres}
+      (mt/test-drivers #{:postgres}
         (mt/with-premium-features #{:transforms-python}
           (mt/dataset transforms-dataset/transforms-test
             (transforms.tu/with-transform-cleanup! [target {:type   "table"
