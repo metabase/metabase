@@ -29,7 +29,6 @@
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
