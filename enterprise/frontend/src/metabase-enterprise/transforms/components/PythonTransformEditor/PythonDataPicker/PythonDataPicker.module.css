@@ -2,9 +2,18 @@
   border-right: 1px solid var(--mb-color-border);
 }
 
-.dataSelector {
+.databaseSelector {
   padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
   border: 1px solid var(--mb-color-border);
-  border-radius: var(--mantine-radius-sm);
+  border-radius: var(--mantine-radius-xs);
   cursor: pointer;
+}
+
+.tableSelector {
+  text-align: start !important;
+  border-radius: var(--mantine-radius-xs);
+}
+
+.tableSelectorInner {
+  justify-content: start;
 }
