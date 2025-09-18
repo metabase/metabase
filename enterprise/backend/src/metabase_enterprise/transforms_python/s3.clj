@@ -36,9 +36,8 @@
 (defn- maybe-with-endpoint-s3-presigner [^S3Presigner$Builder builder endpoint]
   (maybe-with-endpoint* builder endpoint))
 
-(defn- s3-configuration
-  "Create S3Configuration with path-style access setting"
-  ^S3Configuration []
+;; This is a method rather than a def, as we made add dynamic configuration to it in future (e.g. path style access)
+(defn- s3-configuration ^S3Configuration []
   (-> (S3Configuration/builder)
       (.pathStyleAccessEnabled (transforms-python.settings/python-storage-s-3-path-style-access))
       (.build)))
@@ -75,8 +74,8 @@
   (maybe-with-credentials* builder))
 
 ;; We just recreate the client every time, to keep things simple if config is changed.
-(defn- create-s3-client
-  "Create S3 client for host operations (uploads, reads)"
+(defn create-s3-client
+  "Create S3 client for transferring table data and manifests."
   ^S3Client []
   (.build
    (doto (S3Client/builder)
@@ -113,17 +112,6 @@
                     (.build))]
     (.toString (.url (.presignPutObject presigner request)))))
 
-(defn- delete-s3-object [^S3Client s3-client ^String bucket-name ^String key]
-  (try
-    (.deleteObject s3-client (delete-object-request bucket-name key))
-    (catch Exception e
-      (log/debugf e "Error deleting s3 object %s" key)
-      ;; Ignore deletion errors - object might not exist, or we might not have permissions
-      ;; NOTE: we plan to put general retention on the bucket so that objects will eventually be deleted
-      nil)))
-
-(defn- cleanup-s3-objects [^S3Client s3-client bucket-name s3-keys]
-  (run! (partial delete-s3-object s3-client bucket-name) s3-keys))
 (defn- s3-shared-storage [table-name->id]
   (let [prefix              (some-> (transforms-python.settings/python-storage-s-3-prefix) (str "/"))
         work-dir-name       (str prefix "run-" (System/nanoTime) "-" (rand-int 10000))
@@ -147,6 +135,8 @@
       (for [[table-name id] table-name->id]
         {[:table id :manifest] (ref :get (str "table-" (name table-name) "-" id ".manifest.json"))
          [:table id :data]     (ref :get (str "table-" (name table-name) "-" id ".jsonl"))}))}))
+
+(declare cleanup-s3-objects)
 
 (defn open-s3-shared-storage!
   "Returns a deref'able shared storage value, (.close) will optimistically delete any s3 objects named in storage (data files for tables, metadata files etc).
@@ -178,3 +168,21 @@
        (if (identical? ::throw not-found)
          (throw e)
          not-found)))))
+
+(defn delete-s3-object
+  ;; TODO better error handling
+  "Delete the given key from s3, ignoring any errors for now"
+  [^S3Client s3-client ^String bucket-name ^String key]
+  (try
+    (.deleteObject s3-client (delete-object-request bucket-name key))
+    (catch Exception e
+      (log/debugf e "Error deleting s3 object %s" key)
+      ;; Ignore deletion errors - object might not exist, or we might not have permissions
+      ;; NOTE: we plan to put general retention on the bucket so that objects will eventually be deleted
+      nil)))
+
+(defn cleanup-s3-objects
+  "Best effort delete the given s3 keys"
+  [^S3Client s3-client bucket-name s3-keys]
+  (run! (partial delete-s3-object s3-client bucket-name) s3-keys))
+
