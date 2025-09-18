@@ -18,8 +18,13 @@
              :type "question"
              :ref (format "question-%s" (:id question))
              :description (:description question)}
+
       (= :native (:type query))
       (assoc :query (-> query :native :query)
+             :database (:database query))
+
+      (= :query (:type query))
+      (assoc :mbql_query (:query query)
              :database (:database query)))))
 
 (defn- write-em

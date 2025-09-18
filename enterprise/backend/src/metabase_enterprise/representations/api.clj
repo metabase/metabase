@@ -2,7 +2,7 @@
   (:require
    [metabase-enterprise.representations.core :as rep]
    [metabase-enterprise.representations.ingestion.core :as ingest]
-   [metabase-enterprise.representations.schema.card.v0 :as schema]
+   [metabase-enterprise.representations.schema.core :as schema]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -24,7 +24,7 @@
   (try
     (let [collection-id (Long/parseLong collection-id)
           rep (yaml/parse-string (slurp (:body request)))]
-      (ingest/validate-representation rep)
+      (schema/validate rep)
       (ingest/ingest-representation (assoc rep :collection collection-id))
       nil)
     (catch Throwable e
@@ -41,7 +41,8 @@
     (let [question-id (Long/parseLong question-id)
           question (api/check-404 (t2/select-one :model/Card :id question-id :type "question"))
           rep (rep/export-question question)]
-      (ingest/validate-representation rep)
+      (clojure.pprint/pprint question)
+      (schema/validate rep)
       (yaml/generate-string rep))
     (catch Throwable e
       (log/error e)

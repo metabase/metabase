@@ -27,7 +27,9 @@
 (mr/def ::description
   [:and
    {:description "Documentation explaining what the card does"}
-   ::lib.schema.common/non-blank-string])
+   [:or
+    :nil
+    :string]])
 
 (mr/def ::query
   [:and
@@ -57,8 +59,8 @@
     {:description "v0 schema for human-writable question representation"}
     [:type ::type]
     [:ref ::ref]
-    [:name ::name]
-    [:description ::description]
+    [:name {:optional true} ::name]
+    [:description {:optional true} ::description]
     [:database ::database]
     [:query {:optional true} ::query]
     [:mbql_query {:optional true} ::mbql-query]
