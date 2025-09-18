@@ -400,4 +400,7 @@
       (is (get-method driver/rename-tables!* driver))
       (is (get-method driver/create-table! driver))
       (is (get-method driver/drop-table! driver))
+      (is (let [should-be-supported-by-all #{:type/Number :type/Text :type/Date :type/DateTime :type/DateTimeWithTZ :type/Boolean}]
+            (and (get-method driver/type->database-type driver)
+                 (every? #(driver/type->database-type driver %) should-be-supported-by-all))))
       (is (get-method driver/insert-from-source! [driver :jsonl-file])))))
