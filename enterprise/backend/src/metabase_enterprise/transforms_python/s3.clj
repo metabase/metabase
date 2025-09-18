@@ -1,7 +1,6 @@
 (ns metabase-enterprise.transforms-python.s3
   (:require
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
-   ;; TODO check that querying team are ok with us accessing this directly, otherwise make another plan
    [metabase.util.log :as log])
   (:import
    (clojure.lang IDeref)
