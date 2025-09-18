@@ -13,7 +13,7 @@ Documents let you tell a story with your data by combining text, charts, and oth
 
 1. Click the **+ New** button in the top right.
 2. Select **Document**.
-3. Do stuff. 
+3. Do stuff.
 4. Click the **Save** button.
 
 ## List commands with `/`
@@ -45,7 +45,7 @@ If Metabot generates a chart, Metabase saves that question to the document itsel
 To edit a chart, click the **three-dot** menu in the chart's upper right. You can:
 
 - Edit visualization
-- Edit query  
+- Edit query
 - Replace the chart with another question or model
 
 Edits only affect the chart in the document. If you added the chart from a collection, Metabase will have created a copy of the chart. Any changes made to the chart in the document won't affect the original question.
@@ -55,7 +55,7 @@ Edits only affect the chart in the document. If you added the chart from a colle
 Documents support Markdown syntax for:
 
 - Headings: `#`
-- Images: Use `![Image text](image link)` or paste images directly into the document.
+- Images: Use Markdown image syntax: `![Image text](image link)`. The image must start its own line in the document, and you may need to type out the closing parenthesis to let Metabase know to render the image. The image link must be a valid URL that your Metabase can access.
 - Blockquotes: `> This is a blockquote`.
 - Code blocks: Wrap with triple backticks (\`\`\`). Syntax highlighting isn't supported yet.
 

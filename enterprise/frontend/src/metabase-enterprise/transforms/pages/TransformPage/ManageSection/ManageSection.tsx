@@ -12,6 +12,7 @@ import type { Transform } from "metabase-types/api";
 import { QueryView } from "../../../components/QueryView";
 import { TitleSection } from "../../../components/TitleSection";
 import { getTransformListUrl, getTransformQueryUrl } from "../../../urls";
+import { isTransformRunning } from "../utils";
 
 import { DeleteTransformModal } from "./DeleteTransformModal";
 
@@ -52,12 +53,14 @@ type EditQueryButtonProps = {
 function EditQueryButton({ transform }: EditQueryButtonProps) {
   const buttonText =
     transform.source.type === "python" ? t`Edit script` : t`Edit query`;
+  const isDisabled = isTransformRunning(transform);
 
   return (
     <Button
-      component={Link}
+      component={isDisabled ? undefined : Link}
       to={getTransformQueryUrl(transform.id)}
       leftSection={<Icon name="pencil_lines" aria-hidden />}
+      disabled={isDisabled}
     >
       {buttonText}
     </Button>
@@ -83,9 +86,10 @@ function DeleteTransformButton({ transform }: DeleteTransformButtonProps) {
     <>
       <Button
         leftSection={<Icon name="trash" aria-hidden />}
+        disabled={isTransformRunning(transform)}
         onClick={openModal}
       >
-        {t`Delete`}
+        {t`Delete transform`}
       </Button>
       {isModalOpened && (
         <DeleteTransformModal

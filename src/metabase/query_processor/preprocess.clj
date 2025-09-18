@@ -1,21 +1,17 @@
 (ns metabase.query-processor.preprocess
   (:require
    [metabase.config.core :as config]
-   ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
-   ;; Lib soon
+   ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This is allowed for now
+   ;; because the QP still returns legacy-style metadata (for now)
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.info :as lib.schema.info]
    [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.add-default-temporal-unit :as qp.add-default-temporal-unit]
    [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
    [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
-   [metabase.query-processor.middleware.add-source-metadata :as qp.add-source-metadata]
    [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.middleware.auto-bucket-datetimes :as qp.auto-bucket-datetimes]
    [metabase.query-processor.middleware.auto-parse-filter-values :as auto-parse-filter-values]
@@ -25,7 +21,6 @@
    [metabase.query-processor.middleware.cumulative-aggregations :as qp.cumulative-aggregations]
    [metabase.query-processor.middleware.desugar :as desugar]
    [metabase.query-processor.middleware.drop-fields-in-summaries :as drop-fields-in-summaries]
-   [metabase.query-processor.middleware.ensure-joins-use-source-query :as ensure-joins-use-source-query]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.query-processor.middleware.expand-aggregations :as expand-aggregations]
    [metabase.query-processor.middleware.expand-macros :as expand-macros]
@@ -48,7 +43,6 @@
    [metabase.query-processor.middleware.validate-temporal-bucketing :as validate-temporal-bucketing]
    [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
    [metabase.query-processor.setup :as qp.setup]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -56,102 +50,57 @@
 
 (set! *warn-on-reflection* true)
 
-;;; the following helper functions are temporary, to aid in the transition from a legacy MBQL QP to a pMBQL QP. Each
-;;; individual middleware function is wrapped in either [[ensure-legacy]] or [[ensure-mbql5]], and will then see the
-;;; flavor of MBQL it is written for.
-
-(mu/defn- ->legacy :- mbql.s/Query
-  [query :- [:map
-             [:database ::lib.schema.id/database]]]
-  (lib/->legacy-MBQL query))
-
-(defn- ^:deprecated ensure-legacy [middleware-fn]
-  (-> (fn [query]
-        (let [query (cond-> query
-                      (:lib/type query) ->legacy)]
-          (vary-meta (middleware-fn query)
-                     assoc :converted-form query)))
-      (with-meta (meta middleware-fn))))
-
-(mu/defn- ->mbql5 :- ::lib.schema/query
-  [query :- [:map
-             [:database ::lib.schema.id/database]
-             ;; sanity check: info should only get added in Clojure-land and shouldn't get transformed back and forth
-             ;; from JSON; make sure it's in the expected shape
-             [:info {:optional true} [:maybe ::lib.schema.info/info]]]]
-  (cond->> query
-    (not (:lib/type query)) (lib/query (qp.store/metadata-provider))))
-
-(defn- ensure-mbql5 [middleware-fn]
-  (-> (fn [query]
-        (let [query (->mbql5 query)]
-          (vary-meta (middleware-fn query)
-                     assoc :converted-form query)))
-      (with-meta (meta middleware-fn))))
-
 (def ^:private middleware
   "Pre-processing middleware. Has the form
 
-    (f query) -> query"
+    (f query) -> query
+
+  All of these middlewares assume MBQL 5."
   ;; ↓↓↓ PRE-PROCESSING ↓↓↓ happens from TOP TO BOTTOM
-  #_{:clj-kondo/ignore [:deprecated-var]}
   [#'normalize/normalize-preprocessing-middleware
-   (ensure-mbql5 #'qp.perms/remove-permissions-key)
-   (ensure-mbql5 #'qp.perms/remove-source-card-keys)
-   (ensure-mbql5 #'qp.perms/remove-sandboxed-table-keys)
-   (ensure-mbql5 #'qp.constraints/maybe-add-default-userland-constraints)
-   (ensure-mbql5 #'validate/validate-query)
-   (ensure-mbql5 #'fetch-source-query/resolve-source-cards)
-   (ensure-mbql5 #'drop-fields-in-summaries/drop-fields-in-summaries)
-   (ensure-mbql5 #'expand-aggregations/expand-aggregations)
-   (ensure-mbql5 #'metrics/adjust)
-   (ensure-mbql5 #'expand-macros/expand-macros)
-   (ensure-mbql5 #'qp.resolve-referenced/resolve-referenced-card-resources)
-   (ensure-mbql5 #'parameters/substitute-parameters)
-   (ensure-mbql5 #'qp.resolve-source-table/resolve-source-tables)
-   (ensure-mbql5 #'qp.auto-bucket-datetimes/auto-bucket-datetimes)
-   ;; TODO (Cam 9/10/25) -- once we convert the [[metabase.query-processor.middleware.resolve-joins/resolve-joins]]
-   ;; middleware to Lib we can remove this middleware entirely
-   (ensure-mbql5 #'ensure-joins-use-source-query/ensure-joins-use-source-query)
-   (ensure-mbql5 #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing)
-   (ensure-legacy #'qp.add-source-metadata/add-source-metadata-for-source-queries)
-   (ensure-mbql5 #'qp.middleware.enterprise/apply-impersonation)
-   (ensure-mbql5 #'qp.middleware.enterprise/attach-destination-db-middleware)
-   (ensure-mbql5 #'qp.middleware.enterprise/apply-sandboxing)
-   (ensure-legacy #'qp.persistence/substitute-persisted-query)
-   (ensure-mbql5 #'qp.add-implicit-clauses/add-implicit-clauses)
+   #'qp.perms/remove-permissions-key
+   #'qp.perms/remove-source-card-keys
+   #'qp.perms/remove-sandboxed-table-keys
+   #'qp.constraints/maybe-add-default-userland-constraints
+   #'validate/validate-query
+   #'fetch-source-query/resolve-source-cards
+   #'drop-fields-in-summaries/drop-fields-in-summaries
+   #'expand-aggregations/expand-aggregations
+   #'metrics/adjust
+   #'expand-macros/expand-macros
+   #'qp.resolve-referenced/resolve-referenced-card-resources
+   #'parameters/substitute-parameters
+   #'qp.resolve-source-table/resolve-source-tables
+   #'qp.auto-bucket-datetimes/auto-bucket-datetimes
+   #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
+   #'qp.middleware.enterprise/apply-impersonation
+   #'qp.middleware.enterprise/attach-destination-db-middleware
+   #'qp.middleware.enterprise/apply-sandboxing
+   #'qp.persistence/substitute-persisted-query
+   #'qp.add-implicit-clauses/add-implicit-clauses ; #61398
    ;; this needs to be done twice, once before adding remaps (since we want to add remaps inside joins) and then again
    ;; after adding any implicit joins. Implicit joins do not need to get remaps since we only use them for fetching
    ;; specific columns.
-   (ensure-legacy #'resolve-joins/resolve-joins)
-   (ensure-mbql5 #'qp.add-remaps/add-remapped-columns)
-   #'qp.resolve-fields/resolve-fields   ; this middleware actually works with either MBQL 5 or legacy
-   (ensure-mbql5 #'binning/update-binning-strategy)
-   (ensure-mbql5 #'desugar/desugar)
-   (ensure-mbql5 #'qp.add-default-temporal-unit/add-default-temporal-unit)
-   (ensure-mbql5 #'qp.add-implicit-joins/add-implicit-joins)
-   (ensure-legacy #'resolve-joins/resolve-joins) ; #61398
-   (ensure-mbql5 #'fix-bad-field-id-refs/fix-bad-field-id-refs)
-   (ensure-mbql5 #'qp.remove-inactive-field-refs/remove-inactive-field-refs)
+   #'resolve-joins/resolve-joins
+   #'qp.add-remaps/add-remapped-columns
+   #'qp.resolve-fields/resolve-fields
+   #'binning/update-binning-strategy
+   #'desugar/desugar
+   #'qp.add-default-temporal-unit/add-default-temporal-unit
+   #'qp.add-implicit-joins/add-implicit-joins
+   #'resolve-joins/resolve-joins
+   #'fix-bad-field-id-refs/fix-bad-field-id-refs
+   #'qp.remove-inactive-field-refs/remove-inactive-field-refs
    ;; yes, this is called a second time, because we need to handle any joins that got added
-   (ensure-mbql5 #'qp.middleware.enterprise/apply-sandboxing)
-   (ensure-legacy #'qp.cumulative-aggregations/rewrite-cumulative-aggregations)
-   (ensure-mbql5 #'qp.wrap-value-literals/wrap-value-literals)
-   (ensure-mbql5 #'auto-parse-filter-values/auto-parse-filter-values)
-   (ensure-mbql5 #'validate-temporal-bucketing/validate-temporal-bucketing)
-   (ensure-mbql5 #'optimize-temporal-filters/optimize-temporal-filters)
-   (ensure-mbql5 #'limit/add-default-limit)
-   (ensure-legacy #'qp.middleware.enterprise/apply-download-limit)
-   (ensure-legacy #'check-features/check-features)
-   ;; return MBQL 5 at the end
-   (ensure-mbql5 identity)])
-
-(defn- middleware-fn-name [middleware-fn]
-  (if-let [fn-name (:name (meta middleware-fn))]
-    (if-let [fn-ns (:ns (meta middleware-fn))]
-      (symbol (format "%s/%s" (ns-name fn-ns) fn-name))
-      fn-name)
-    middleware-fn))
+   #'qp.middleware.enterprise/apply-sandboxing
+   #'qp.cumulative-aggregations/rewrite-cumulative-aggregations
+   #'qp.wrap-value-literals/wrap-value-literals
+   #'auto-parse-filter-values/auto-parse-filter-values
+   #'validate-temporal-bucketing/validate-temporal-bucketing
+   #'optimize-temporal-filters/optimize-temporal-filters
+   #'limit/add-default-limit
+   #'qp.middleware.enterprise/apply-download-limit
+   #'check-features/check-features])
 
 (def ^:private ^Long slow-middleware-warning-threshold-ms
   "Warn about slow middleware if it takes longer than this many milliseconds."
@@ -180,20 +129,18 @@
             (u/prog1 (middleware-fn query)
               (let [duration-ms (u/since-ms start-timer)]
                 (when (> duration-ms slow-middleware-warning-threshold-ms)
-                  (log/warnf "Slow middleware: %s took %s" (middleware-fn-name middleware-fn) (u/format-milliseconds duration-ms))))
+                  (log/warnf "Slow middleware: %s took %s" middleware-fn (u/format-milliseconds duration-ms))))
               (qp.debug/debug>
                 (when-not (= <> query)
-                  (let [middleware-fn-name (middleware-fn-name middleware-fn)]
-                    (list middleware-fn-name '=> <>
-                          ^{:portal.viewer/default :portal.viewer/diff}
-                          [(or (-> <> meta :converted-form) query)
-                           <>]))))
+                  (list middleware-fn '=> <>
+                        ^{:portal.viewer/default :portal.viewer/diff}
+                        [query <>])))
               ;; make sure the middleware returns a valid query... this should be dev-facing only so no need to i18n
               (when-not (map? <>)
                 (throw (ex-info (format "Middleware did not return a valid query.")
-                                {:fn (middleware-fn-name middleware-fn), :query query, :result <>, :type qp.error-type/qp})))))
+                                {:fn middleware-fn, :query query, :result <>, :type qp.error-type/qp})))))
           (catch Throwable e
-            (let [middleware-fn (middleware-fn-name middleware-fn)]
+            (let [middleware-fn middleware-fn]
               (throw (ex-info (i18n/tru "Error preprocessing query in {0}: {1}" middleware-fn ((some-fn ex-message class) e))
                               {:fn middleware-fn, :query query, :type qp.error-type/qp}
                               e)))))))

@@ -17,6 +17,7 @@ import { NameSection } from "./NameSection";
 import { RunSection } from "./RunSection";
 import { SourceSection } from "./SourceSection";
 import { TargetSection } from "./TargetSection";
+import { isTransformRunning, isTransformSyncing } from "./utils";
 
 type TransformPageParams = {
   transformId: string;
@@ -68,7 +69,7 @@ export function TransformPage({ params }: TransformPageProps) {
   );
 }
 
-export function getParsedParams({
+function getParsedParams({
   transformId,
 }: TransformPageParams): TransformPageParsedParams {
   return {
@@ -76,9 +77,9 @@ export function getParsedParams({
   };
 }
 
-export function isPollingNeeded(transform?: Transform) {
+function isPollingNeeded(transform?: Transform) {
   return (
-    transform?.last_run?.status === "started" ||
-    (transform?.last_run?.status === "succeeded" && transform.table == null)
+    transform != null &&
+    (isTransformRunning(transform) || isTransformSyncing(transform))
   );
 }

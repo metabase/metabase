@@ -224,6 +224,12 @@
   white-space: pre;
 }
 
+.Dashboard .DashboardChartLegend {
+  color: var(--mb-color-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
 /*
  * Override d3 styles so the chart axis labels are selectable. See issue #17613
  */

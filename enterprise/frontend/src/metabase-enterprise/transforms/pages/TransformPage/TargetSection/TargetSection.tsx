@@ -27,6 +27,7 @@ import {
   getQueryBuilderUrl,
   getTableMetadataUrl,
 } from "../../../urls";
+import { isTransformRunning } from "../utils";
 
 import { UpdateTargetModal } from "./UpdateTargetModal";
 
@@ -82,7 +83,6 @@ function TargetInfo({ transform }: TargetInfoProps) {
     );
 
   const database = table?.db ?? databaseFromApi;
-
   const isLoading = isDatabaseLoading || isSchemasLoading;
 
   if (isLoading) {
@@ -191,6 +191,7 @@ function EditTargetButton({ transform }: EditTargetButtonProps) {
     <>
       <Button
         leftSection={<Icon name="pencil_lines" aria-hidden />}
+        disabled={isTransformRunning(transform)}
         onClick={openModal}
       >
         {t`Change target`}

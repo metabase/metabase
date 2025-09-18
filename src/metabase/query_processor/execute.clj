@@ -1,7 +1,7 @@
 (ns metabase.query-processor.execute
   (:require
    [metabase.lib.core :as lib]
-   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.cache :as cache]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -12,8 +12,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -24,7 +23,7 @@
               {:pre [(map? metadata)]}
               (rff (cond-> metadata
                      (not (:native_form metadata))
-                     (assoc :native_form ((some-fn :qp/compiled-inline :qp/compiled :native) query)))))]
+                     (assoc :native_form ((some-fn :qp/compiled-inline :qp/compiled) query)))))]
       (qp query rff*))))
 
 (mu/defn- add-preprocessed-query-to-result-metadata-for-userland-query :- ::qp.schema/qp
@@ -46,7 +45,9 @@
 
   e.g.
 
-    (f (f query rff)) -> (f query rff)"
+    (f (f query rff)) -> (f query rff)
+
+  All of these middlewares assume MBQL 5."
   [#'qp.middleware.enterprise/swap-destination-db-middleware
    #'qp.middleware.enterprise/apply-impersonation-postprocessing-middleware
    #'update-used-cards/update-used-cards!
@@ -55,15 +56,20 @@
    #'cache/maybe-return-cached-results
    #'qp.perms/check-query-permissions
    #'qp.middleware.enterprise/check-download-permissions-middleware
+   ;; TODO (Cam 9/11/25) -- update this middleware to use Lib/MBQL 5. Does a [[lib/->legacy]] call under the hood.
    #'qp.middleware.enterprise/maybe-apply-column-level-perms-check-middleware])
 
 (def ^:private execute* nil)
 
-(defn- run [query rff]
+(mu/defn- run [query :- ::qp.schema/any-query
+               rff   :- ::qp.schema/rff]
   ;; if the query has a `:qp/compiled` key (i.e., this query was compiled from MBQL), rename it to `:native`, so the
   ;; driver implementations only need to look for one key. Can't really do this any sooner because it will break schema
   ;; checks in the middleware
   (let [query (cond-> query
+                ;; TODO (Cam 9/15/25) -- update this and downstream code (drivers) to handle MBQL 5
+                (:lib/type query) lib/->legacy-MBQL)
+        query (cond-> query
                 (not (:native query)) (assoc :native (:qp/compiled query)))]
     (qp.pipeline/*run* query rff)))
 
@@ -86,20 +92,10 @@
                              (log/infof "%s changed, rebuilding %s" varr `execute*)
                              (rebuild-execute-fn!))))
 
-(mr/def ::compiled-query
-  [:and
-   [:map
-    [:database ::lib.schema.id/database]]
-   [:fn
-    {:error/message "Query must be compiled -- should have either :native or :qp/compiled."}
-    (some-fn :native :qp/compiled)]])
-
 ;;; TODO -- consider whether this should return an `IReduceInit` that we can reduce as a separate step.
 (mu/defn execute :- some?
   "Execute a compiled query, then reduce the results."
-  [compiled-query :- ::compiled-query
+  [compiled-query :- ::qp.compile/query-with-compiled-query
    rff            :- ::qp.schema/rff]
   (qp.setup/with-qp-setup [compiled-query compiled-query]
-    ;; TODO (Cam 8/20/25) -- all `execute` middleware currently expects legacy MBQL. We need to start updating them to
-    ;; expect MBQL 5
-    (execute* (lib/->legacy-MBQL compiled-query) rff)))
+    (execute* compiled-query rff)))
