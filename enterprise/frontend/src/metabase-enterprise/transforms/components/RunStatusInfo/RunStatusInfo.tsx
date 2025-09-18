@@ -23,7 +23,7 @@ export function RunStatusInfo({
   const isError = status === "failed" || status === "timeout";
 
   return (
-    <Group gap="xs" className={S.runStatusInfo}>
+    <Group gap="xs" className={S.runStatusInfo} wrap="nowrap">
       <Box c={isError ? "error" : undefined}>{formatStatus(status)}</Box>
       {isError && message != null && (
         <RunErrorInfo message={message} endTime={endTime} />

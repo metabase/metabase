@@ -105,7 +105,6 @@ function UpdateTargetForm({
 
   const isLoading = isDatabaseLoading || isSchemasLoading;
   const error = databaseError ?? schemasError;
-
   const supportsSchemas = database && hasFeature(database, "schemas");
 
   if (isLoading || error != null) {

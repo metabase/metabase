@@ -59,7 +59,7 @@
           ;; when a pivot-grouping col exists, we check its group number. When it's zero,
           ;; we keep it, otherwise don't include it in the results as it's a row representing a subtotal of some kind
           (when (or (not group)
-                    (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group)))
+                    (= qp.pivot.postprocess/non-pivot-row-group (int group)))
             (when-not (zero? row-num)
               (.write writer ",\n"))
             (json/encode-to

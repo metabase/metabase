@@ -152,7 +152,7 @@ function JobPageBody({ job }: JobPageBodyProps) {
   );
 }
 
-export function getParsedParams({ jobId }: JobPageParams): JobPageParsedParams {
+function getParsedParams({ jobId }: JobPageParams): JobPageParsedParams {
   return {
     jobId: Urls.extractEntityId(jobId),
   };

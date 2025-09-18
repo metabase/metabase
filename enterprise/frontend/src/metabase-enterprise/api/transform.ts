@@ -185,8 +185,8 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         method: "DELETE",
         url: `/api/ee/transform/${id}/table`,
       }),
-      invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [idTag("transform", id), listTag("table")]),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("transform"), listTag("table")]),
     }),
   }),
 });
