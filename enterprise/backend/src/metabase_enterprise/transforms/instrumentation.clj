@@ -16,7 +16,7 @@
    :file-to-s3       :export
    :file-to-dwh      :import
    :python-execution :computation
-   :mbql-sync        :computation
+   :mbql-query       :computation
    :table-sync       :import})
 
 (mr/def ::stage-label
