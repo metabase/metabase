@@ -85,7 +85,12 @@ function TransformPageSidebar({ params }: TransformPageSidebarProps) {
         icon="play_outlined"
         active={pathname === jobListUrl || jobId != null}
       />
-      <AdminNavItem label={t`Runs`} path={runListUrl} icon="list" />
+      <AdminNavItem
+        label={t`Runs`}
+        path={runListUrl}
+        icon="list"
+        active={pathname === runListUrl}
+      />
     </AdminNavWrapper>
   );
 }
