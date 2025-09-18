@@ -112,6 +112,8 @@ export function PythonDataPicker({
 
   const handleDatabaseChange = (value: string | null) => {
     const newDatabase = value ? parseInt(value) : undefined;
+
+    // Clear selections since they won't make sense
     const newSelections = [
       {
         tableId: undefined,
@@ -122,54 +124,12 @@ export function PythonDataPicker({
     notifyParentOfChange(newDatabase, newSelections);
   };
 
-  const handleTableChange = (
+  const handleSelectionChange = (
     selectionIndex: number,
-    table: Table | undefined,
+    selection: TableSelection,
   ) => {
-    if (!table) {
-      const newSelections = Array.from(tableSelections);
-      newSelections[selectionIndex] = {
-        ...newSelections[selectionIndex],
-        tableId: undefined,
-      };
-      setTableSelections(newSelections);
-      notifyParentOfChange(database, newSelections);
-      return;
-    }
-
-    const oldSelection = tableSelections[selectionIndex];
-    const oldTable = availableTables.find(
-      (t) => t.table.id === oldSelection?.tableId,
-    )?.table;
-    const wasOldAliasManuallySet =
-      oldSelection.alias !== "" &&
-      (!oldTable || oldSelection.alias !== slugify(oldTable.name, usedAliases));
-    const newAlias = wasOldAliasManuallySet
-      ? oldSelection.alias
-      : slugify(table.name, usedAliases);
-
     const newSelections = Array.from(tableSelections);
-    newSelections[selectionIndex] = {
-      ...oldSelection,
-      tableId: table.id,
-      alias: newAlias,
-    };
-
-    setTableSelections(newSelections);
-    notifyParentOfChange(database, newSelections);
-  };
-
-  const handleAliasChange = (selectionIndex: number, alias: string) => {
-    const newSelections = Array.from(tableSelections);
-
-    const oldSelection = tableSelections[selectionIndex];
-    const usedAliasesWithoutThisAlias = new Set(usedAliases);
-    usedAliasesWithoutThisAlias.delete(oldSelection.alias);
-
-    newSelections[selectionIndex] = {
-      ...oldSelection,
-      alias: slugify(alias, usedAliasesWithoutThisAlias),
-    };
+    newSelections[selectionIndex] = selection;
     setTableSelections(newSelections);
     notifyParentOfChange(database, newSelections);
   };
@@ -226,37 +186,20 @@ export function PythonDataPicker({
               <Text fw="bold" size="sm">{t`Alias`}</Text>
             </Group>
 
-            {tableSelections.map((selection, index) => {
-              const table = availableTables.find(
-                (t) => t.value === selection.tableId?.toString(),
-              )?.table;
-
-              return (
-                <Group key={index} gap="xs" align="center" wrap="nowrap">
-                  <TableInput
-                    table={table}
-                    onChange={(table) => handleTableChange(index, table)}
-                    availableTables={availableTables}
-                    selectedTableIds={selectedTableIds}
-                    disabled={isLoadingTables}
-                  />
-
-                  <AliasInput
-                    selection={selection}
-                    table={table}
-                    onChange={(newAlias) => handleAliasChange(index, newAlias)}
-                    usedAliases={usedAliases}
-                  />
-
-                  <ActionIcon
-                    onClick={() => handleRemoveTable(index)}
-                    aria-label={t`Remove table`}
-                  >
-                    <Icon name="trash" />
-                  </ActionIcon>
-                </Group>
-              );
-            })}
+            {tableSelections.map((selection, index) => (
+              <SelectionInput
+                key={index}
+                selection={selection}
+                usedAliases={usedAliases}
+                availableTables={availableTables}
+                onChange={(selection) =>
+                  handleSelectionChange(index, selection)
+                }
+                onRemove={() => handleRemoveTable(index)}
+                selectedTableIds={selectedTableIds}
+                disabled={isLoadingTables}
+              />
+            ))}
 
             <Button
               leftSection={<Icon name="add" />}
@@ -270,6 +213,91 @@ export function PythonDataPicker({
         </Box>
       )}
     </Stack>
+  );
+}
+
+function SelectionInput({
+  selection,
+  availableTables,
+  usedAliases,
+  onChange,
+  onRemove,
+  selectedTableIds,
+  disabled,
+}: {
+  selection: TableSelection;
+  availableTables: TableOption[];
+  usedAliases: Set<string>;
+  onChange: (selection: TableSelection) => void;
+  onRemove: () => void;
+  selectedTableIds: Set<TableId | undefined>;
+  disabled?: boolean;
+}) {
+  const table = availableTables.find(
+    (t) => t.value === selection.tableId?.toString(),
+  )?.table;
+
+  function handleAliasChange(newAlias: string) {
+    const newSelection = {
+      ...selection,
+      alias: slugify(newAlias, usedAliases, selection.alias),
+    };
+
+    onChange(newSelection);
+  }
+
+  function handleTableChange(table: Table | undefined) {
+    if (!table) {
+      onChange({
+        ...selection,
+        tableId: undefined,
+      });
+      return;
+    }
+
+    const oldTable = availableTables.find(
+      (t) => t.table.id === selection?.tableId,
+    )?.table;
+
+    const wasOldAliasManuallySet =
+      selection.alias !== "" &&
+      (!oldTable ||
+        selection.alias !==
+          slugify(oldTable.name, usedAliases, selection.alias));
+
+    const newAlias = wasOldAliasManuallySet
+      ? selection.alias
+      : slugify(table.name, usedAliases);
+
+    onChange({
+      ...selection,
+      tableId: table.id,
+      alias: newAlias,
+    });
+  }
+
+  return (
+    <Group gap="xs" align="center" wrap="nowrap">
+      <TableInput
+        table={table}
+        onChange={handleTableChange}
+        availableTables={availableTables}
+        selectedTableIds={selectedTableIds}
+        disabled={disabled}
+      />
+
+      <AliasInput
+        selection={selection}
+        table={table}
+        onChange={handleAliasChange}
+        usedAliases={usedAliases}
+        disabled={disabled}
+      />
+
+      <ActionIcon onClick={onRemove} aria-label={t`Remove table`}>
+        <Icon name="trash" />
+      </ActionIcon>
+    </Group>
   );
 }
 
@@ -320,11 +348,13 @@ function AliasInput({
   selection,
   onChange,
   usedAliases,
+  disabled,
 }: {
   selection: TableSelection;
   table?: Table;
   onChange: (value: string) => void;
   usedAliases: Set<string>;
+  disabled?: boolean;
 }) {
   const [value, setValue] = useState(selection.alias);
 
@@ -332,11 +362,8 @@ function AliasInput({
     setValue(selection.alias);
   }, [selection.alias]);
 
-  const usedAliasesWithoutThisAlias = new Set(usedAliases);
-  usedAliasesWithoutThisAlias.delete(selection.alias);
-
   const defaultAlias = table
-    ? slugify(table.name, usedAliasesWithoutThisAlias)
+    ? slugify(table.name, usedAliases, selection.alias)
     : "";
   const isManualAlias = selection.alias !== defaultAlias;
   const showReset = table && isManualAlias;
@@ -360,6 +387,7 @@ function AliasInput({
           </ActionIcon>
         ) : null
       }
+      disabled={disabled}
     />
   );
 }
