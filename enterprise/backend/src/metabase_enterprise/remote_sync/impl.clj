@@ -53,7 +53,7 @@
               (when (seq affected-collection-ids)
                 (t2/delete! :model/Collection
                             :id [:in affected-collection-ids]
-                  ;; if we didn't sync any, then delete all collections in the remote sync
+                            ;; if we didn't sync any, then delete all collections in the remote sync
                             :entity_id (if (seq entity-ids)
                                          [:not-in entity-ids]
                                          :entity_id)))
@@ -63,7 +63,7 @@
                                        [:not-in entity-ids]
                                        :entity_id)))))
         (lib.events/publish-remote-sync! "import" nil api/*current-user-id*
-                                         {:branch (or branch (:source-branch source))
+                                         {:source-branch branch
                                           :status "success"})
         (log/info "Successfully reloaded entities from git repository")
         {:status  :success
@@ -75,21 +75,21 @@
                             (instance? java.net.UnknownHostException e)
                             "Network error: Unable to reach git repository host"
 
-                            (str/includes? (.getMessage e) "Authentication failed")
+                            (str/includes? (ex-message e) "Authentication failed")
                             "Authentication failed: Please check your git credentials"
 
-                            (str/includes? (.getMessage e) "Repository not found")
+                            (str/includes? (ex-message e) "Repository not found")
                             "Repository not found: Please check the repository URL"
 
-                            (str/includes? (.getMessage e) "branch")
+                            (str/includes? (ex-message e) "branch")
                             "Branch error: Please check the specified branch exists"
 
                             :else
-                            (format "Failed to reload from git repository: %s" (.getMessage e)))]
+                            (format "Failed to reload from git repository: %s" (ex-message e)))]
             (lib.events/publish-remote-sync! "import" nil api/*current-user-id*
-                                             {:branch  (or branch (:source-branch source))
+                                             {:source-branch branch
                                               :status  "error"
-                                              :message (.getMessage e)})
+                                              :message (ex-message e)})
             {:status  :error
              :message error-msg
              :details {:error-type (type e)}}))))
@@ -114,17 +114,17 @@
                                             :continue-on-error        false}))
                (source/store! source branch message)))
          (lib.events/publish-remote-sync! "export" nil api/*current-user-id*
-                                          {:branch  branch
+                                          {:target-branch  branch
                                            :status  "success"
                                            :message message})
          {:status :success}
 
          (catch Exception e
            (lib.events/publish-remote-sync! "export" nil api/*current-user-id*
-                                            {:branch  branch
+                                            {:target-branch  branch
                                              :status  "error"
                                              :message (ex-message e)})
            {:status  :error
-            :message (format "Failed to export to git repository: %s" (.getMessage e))})))
+            :message (format "Failed to export to git repository: %s" (ex-message e))})))
      {:status  :error
       :message "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."})))
