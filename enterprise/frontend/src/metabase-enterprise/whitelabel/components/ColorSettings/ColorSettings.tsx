@@ -2,13 +2,12 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { Box, Stack } from "metabase/ui";
+import { Box, Stack, Tabs } from "metabase/ui";
 import type { ColorSettings as ColorSettingsType } from "metabase-types/api";
 
 import BrandColorSettings from "../BrandColorSettings";
-import ChartColorTabs from "../ChartColorTabs";
-
-import { SectionContent } from "./ColorSettings.styled";
+import ChartColorPreview from "../ChartColorPreview";
+import ChartColorSettings from "../ChartColorSettings";
 
 export interface ColorSettingsProps {
   initialColors: ColorSettingsType | null;
@@ -55,13 +54,28 @@ export const ColorSettings = ({
           title={t`Chart colors`}
           description={t`Choose up to 24 hex values. We'll auto-generate what you leave blank.`}
         />
-        <SectionContent>
-          <ChartColorTabs
-            colors={colors}
-            colorPalette={colorPalette}
-            onChange={handleChange}
-          />
-        </SectionContent>
+        <Box>
+          <Tabs defaultValue="chart-colors">
+            <Tabs.List>
+              <Tabs.Tab value="chart-colors">{t`Colors`}</Tabs.Tab>
+              <Tabs.Tab value="palette-preview">{t`Preview`}</Tabs.Tab>
+            </Tabs.List>
+
+            <Box mt="lg" bdrs={0}>
+              <Tabs.Panel value="chart-colors">
+                <ChartColorSettings
+                  colors={colors}
+                  colorPalette={colorPalette}
+                  onChange={handleChange}
+                />
+              </Tabs.Panel>
+
+              <Tabs.Panel value="palette-preview">
+                <ChartColorPreview colorPalette={colorPalette} />
+              </Tabs.Panel>
+            </Box>
+          </Tabs>
+        </Box>
       </Box>
     </Stack>
   );
