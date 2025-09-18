@@ -85,7 +85,10 @@ export function TransformQueryPageBody({
     return { user_is_viewing: [{ type: "transform", ...viewedTransform }] };
   }, [transform, latestSource, suggestedTransform]);
 
-  const handleSourceSave = async (source: TransformSource) => {
+  const handleSourceSave = async (
+    source: TransformSource,
+    { leaveEditor } = { leaveEditor: true },
+  ) => {
     const { error } = await updateTransform({
       id: transform.id,
       source,
@@ -95,7 +98,9 @@ export function TransformQueryPageBody({
       sendErrorToast(t`Failed to update transform query`);
     } else {
       sendSuccessToast(t`Transform query updated`);
-      dispatch(push(getTransformUrl(transform.id)));
+      if (leaveEditor) {
+        dispatch(push(getTransformUrl(transform.id)));
+      }
     }
   };
 
@@ -111,7 +116,7 @@ export function TransformQueryPageBody({
   };
 
   const onAcceptProposed = async (source: TransformSource) => {
-    await handleSourceSave(source);
+    await handleSourceSave(source, { leaveEditor: false });
     dispatch(setSuggestedTransform(undefined));
     metabot.submitInput({
       type: "action",

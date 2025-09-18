@@ -24,7 +24,7 @@ const ThoughtProcess = ({ toolCalls }: { toolCalls: MetabotToolCall[] }) => {
   return (
     <Stack gap={0} className={S.toolCalls}>
       {slots.map((_, i) => {
-        const tc = toolCalls[i];
+        const tc: MetabotToolCall | undefined = toolCalls[i];
         return (
           <Transition
             key={i}
@@ -35,9 +35,9 @@ const ThoughtProcess = ({ toolCalls }: { toolCalls: MetabotToolCall[] }) => {
             {(styles) => (
               <Text
                 style={styles}
-                className={cx(tc.status === "started" && S.toolCallStarted)}
+                className={cx(tc?.status === "started" && S.toolCallStarted)}
               >
-                {tc.message}
+                {tc?.message}
               </Text>
             )}
           </Transition>

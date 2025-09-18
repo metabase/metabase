@@ -3,6 +3,7 @@ import type { UnknownAction } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { useCallback, useState } from "react";
 import { push } from "react-router-redux";
+import { useLocation } from "react-use";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -16,11 +17,14 @@ import {
   type FlexProps,
   Icon,
   type IconName,
+  Stack,
   Text,
 } from "metabase/ui";
 import {
   type MetabotAgentChatMessage,
+  type MetabotAgentEditSuggestionChatMessage,
   type MetabotAgentTextChatMessage,
+  type MetabotAgentTodoListChatMessage,
   type MetabotChatMessage,
   type MetabotErrorMessage,
   type MetabotUserChatMessage,
@@ -133,6 +137,89 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   onInternalLinkClick?: (link: string) => void;
 }
 
+const AgentSuggestionMessage = ({
+  message,
+}: {
+  message: MetabotAgentEditSuggestionChatMessage;
+}) => {
+  const dispatch = useDispatch();
+
+  const transform = message.payload;
+
+  const url = useLocation();
+  const disabled = url.pathname?.startsWith(
+    `/admin/transforms/${transform.id}/query`,
+  );
+
+  return (
+    <Flex direction="column" gap="sm">
+      <Button
+        disabled={disabled}
+        onClick={() => {
+          const url = match(transform)
+            .with({ id: P.number }, ({ id }) => `/admin/transforms/${id}/query`)
+            .with(
+              { source: { type: "python" } },
+              () => "/admin/transforms/new/python",
+            )
+            .with(
+              { source: { type: "query" } },
+              () => "/admin/transforms/new/native",
+            )
+            .exhaustive();
+          dispatch(push(url) as UnknownAction);
+          dispatch(setSuggestedTransform(transform));
+        }}
+      >
+        {message.payload.id
+          ? t`Proposed changes to: ${transform.name}`
+          : t`Create Transform: ${transform.name}`}
+      </Button>
+    </Flex>
+  );
+};
+
+const AgentTodoListMessage = ({
+  list,
+}: {
+  list: MetabotAgentTodoListChatMessage["payload"];
+}) => {
+  const statusConfig = {
+    completed: { icon: "check", color: "success" },
+    in_progress: { icon: "play", color: "brand" },
+    cancelled: { icon: "close", color: "text-light" },
+    pending: { icon: "circle" as IconName, color: "text-medium" },
+  } as const;
+
+  return (
+    <Stack gap="sm" w="100%">
+      <Text fw="bold">{t`Todo List`}</Text>
+      {list.map((item) => (
+        <Flex
+          key={item.id}
+          style={{ borderRadius: "2px" }}
+          gap="sm"
+          align="center"
+        >
+          <Icon
+            name={statusConfig[item.status].icon}
+            size="1rem"
+            c={statusConfig[item.status].color}
+            mt="2px"
+          />
+          <Text
+            size="md"
+            td={item.status === "completed" ? "line-through" : undefined}
+            c={item.status === "cancelled" ? "text-light" : undefined}
+          >
+            {item.content}
+          </Text>
+        </Flex>
+      ))}
+    </Stack>
+  );
+};
+
 export const AgentMessage = ({
   message,
   className,
@@ -145,8 +232,6 @@ export const AgentMessage = ({
   hideActions,
   ...props
 }: AgentMessageProps) => {
-  const dispatch = useDispatch();
-
   return (
     <MessageContainer chatRole={message.role} {...props}>
       {message.type === "text" && (
@@ -159,36 +244,12 @@ export const AgentMessage = ({
       )}
 
       {message.type === "edit_suggestion" && (
-        <Flex direction="column" gap="sm">
-          <Button
-            onClick={() => {
-              const transform = message.payload;
-              const url = match(transform)
-                .with(
-                  { id: P.number },
-                  ({ id }) => `/admin/transforms/${id}/query`,
-                )
-                .with(
-                  { source: { type: "python" } },
-                  () => "/admin/transforms/new/python",
-                )
-                .with(
-                  { source: { type: "query" } },
-                  () => "/admin/transforms/new/native",
-                )
-                .exhaustive();
-
-              dispatch(push(url) as UnknownAction);
-              dispatch(setSuggestedTransform(transform));
-            }}
-          >
-            {message.payload.id
-              ? t`Proposed changes to: ${message.payload.name}`
-              : t`Create Transform: ${message.payload.name}`}
-          </Button>
-        </Flex>
+        <AgentSuggestionMessage message={message} />
       )}
 
+      {message.type === "todo_list" && (
+        <AgentTodoListMessage list={message.payload} />
+      )}
       <Flex className={Styles.messageActions}>
         {!hideActions && (
           <>
