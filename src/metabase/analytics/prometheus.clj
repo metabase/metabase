@@ -416,8 +416,8 @@
    (prometheus/histogram :metabase-transforms/job-run-duration-ms
                          {:description "Duration in milliseconds of transform job runs."
                           :labels [:job-id :run-method]
-                          ;; 100ms -> 30 minutes
-                          :buckets [100 500 1000 5000 10000 30000 60000 300000 1800000]})
+                          ;; 100ms -> 6 hours
+                          :buckets [100 500 1000 5000 10000 30000 60000 300000 1800000 7200000 14400000 21600000]})
    (prometheus/counter :metabase-transforms/stage-started
                        {:description "Number of transform stages started."
                         :labels [:job-run-id :stage-type :stage-label]})
@@ -446,8 +446,8 @@
    (prometheus/histogram :metabase-transforms/python-api-call-duration-ms
                          {:description "Duration of Python runner API calls."
                           :labels [:job-run-id]
-                          ;; 100ms -> 30 minutes
-                          :buckets [100 500 1000 5000 10000 30000 60000 300000 1800000]})
+                          ;; 100ms -> 6 hours
+                          :buckets [100 500 1000 5000 10000 30000 60000 300000 1800000 7200000 14400000 21600000]})
    (prometheus/counter :metabase-transforms/python-api-calls-total
                        {:description "Total number of Python runner API calls."
                         :labels [:job-run-id :status]})])
