@@ -88,13 +88,6 @@ export function SettingsNav() {
       </SettingsNavItem>
       <NavDivider />
       <SettingsNavItem path="uploads" label={t`Uploads`} icon="upload" />
-      {hasTransforms && (
-        <SettingsNavItem
-          path="python-runner"
-          label={t`Python Runner`}
-          icon="code"
-        />
-      )}
       <SettingsNavItem
         path="public-sharing"
         label={t`Public sharing`}
