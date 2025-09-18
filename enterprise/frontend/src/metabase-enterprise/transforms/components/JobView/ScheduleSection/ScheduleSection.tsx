@@ -10,10 +10,7 @@ import {
 import { timezoneToUTCOffset } from "metabase/lib/time-dayjs";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Divider, Group, Icon, Tooltip } from "metabase/ui";
-import {
-  useLazyGetTransformJobQuery,
-  useRunTransformJobMutation,
-} from "metabase-enterprise/api";
+import { useRunTransformJobMutation } from "metabase-enterprise/api";
 import { trackTranformJobTriggerManualRun } from "metabase-enterprise/transforms/analytics";
 
 import { RunButton } from "../../../components/RunButton";
@@ -93,8 +90,7 @@ type RunButtonSectionProps = {
 };
 
 function RunButtonSection({ job }: RunButtonSectionProps) {
-  const [fetchJob, { isFetching }] = useLazyGetTransformJobQuery();
-  const [runJob, { isLoading: isRunning }] = useRunTransformJobMutation();
+  const [runJob] = useRunTransformJobMutation();
   const { sendErrorToast } = useMetadataToasts();
   const isSaved = job.id != null;
   const hasTags = job.tag_ids?.length !== 0;
@@ -113,9 +109,6 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
 
     if (error) {
       sendErrorToast(t`Failed to run job`);
-    } else {
-      // fetch the job to get the correct `last_run` info
-      fetchJob(job.id);
     }
   };
 
@@ -123,7 +116,6 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
     <Tooltip label={t`This job doesn't have tags to run.`} disabled={hasTags}>
       <RunButton
         run={job.last_run}
-        isLoading={isFetching || isRunning}
         isDisabled={!isSaved || !hasTags}
         onRun={handleRun}
       />

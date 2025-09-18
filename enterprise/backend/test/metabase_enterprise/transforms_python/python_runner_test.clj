@@ -265,9 +265,9 @@
                                                       {:name "average_score", :base_type "Float"}]}
                    :stdout          (str "Successfully saved 1 rows to S3\n"
                                          "Successfully saved output manifest with 2 fields to S3")
-                   :stderr          (str "Parsed id as Integer\n"
+                   :stderr          (str "Parsed id as Number\n"
                                          "Parsed name as Text\n"
-                                         "Parsed score as Integer")}
+                                         "Parsed score as Number")}
                   result)))))))
 
 (deftest transform-function-with-working-database-test
