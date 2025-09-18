@@ -118,14 +118,20 @@
       (throw (ex-info (str "Failed to push branch " branch-name " to remote") {:failures failures})))
     push-response))
 
-(defn- path-prefix [path]
-  (let [matcher (re-matcher #"^(collections/[^/]+)/" path)]
-    (if (re-find matcher)
-      (second (re-groups matcher))
-      path)))
+(defn- path-prefix
+  "Pulls off the collection prefix from a path, where the prefix is the unique identifier for it, even if the name changes"
+  [path]
+  (let [matcher (re-matcher #"^(collections/[^/]{21})_[^/]+/" path)
+        transform-tags-matcher (re-matcher #"^(collections/transformtags)/" path)
+        transform-jobs-matcher (re-matcher #"^(collections/transformjobs)/" path)]
+    (cond
+      (re-find matcher) (second (re-groups matcher))
+      (re-find transform-tags-matcher) (second (re-groups transform-tags-matcher))
+      (re-find transform-jobs-matcher) (second (re-groups transform-jobs-matcher))
+      :else path)))
 
 (defn- matches-prefix [path prefixes]
-  (some #(or (= % path) (str/starts-with? path (str % "/"))) prefixes))
+  (some #(or (= % path) (str/starts-with? path (str % "_"))) prefixes))
 
 (defn write-files!
   "Write a seq of files to the repo. `files` should be maps of :path and :content, with path relative to the root of the repository.
