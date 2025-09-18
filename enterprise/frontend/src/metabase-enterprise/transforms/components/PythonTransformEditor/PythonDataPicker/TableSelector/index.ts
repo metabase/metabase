@@ -1,1 +1,1 @@
-export * from "./TableSelector.tsx";
+export * from "./TableSelector";
