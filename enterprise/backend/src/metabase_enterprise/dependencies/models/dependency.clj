@@ -229,13 +229,13 @@
   [children-fn start-entities]
   (let [instance-key (juxt entity-type :id)
         start-nodes  (map instance-key start-entities)
-        all-nodes    (bfs-nodes children-fn start-nodes)]
-    (let [other-keys (drop (count start-nodes) all-nodes)
-          key->instance (->> (resolve-keys other-keys)
-                             (group-by instance-key))]
-      (into (vec start-entities)
-            (map key->instance)
-            other-keys))))
+        all-nodes    (bfs-nodes children-fn start-nodes)
+        other-keys (drop (count start-nodes) all-nodes)
+        key->instance (->> (resolve-keys other-keys)
+                           (group-by instance-key))]
+    (into (vec start-entities)
+          (map key->instance)
+          other-keys)))
 
 (defn transitive-dependents
   "Given a map of updated entities `{entity-type [{:id 1, ...} ...]}`, return a map of its transitive dependents
@@ -258,7 +258,6 @@
   "Replace the dependencies of the entity of type `entity-type` with id `entity-id` with
   the ones specified in `dependencies-by-type`. "
   [entity-type entity-id dependencies-by-type]
-  (tap> [`replace-dependencies entity-type entity-id dependencies-by-type])
   (let [current-dependencies (t2/select [:model/Dependency :id :to_entity_type :to_entity_id]
                                         :from_entity_type entity-type
                                         :from_entity_id entity-id)
@@ -274,7 +273,6 @@
                   :from_entity_id   entity-id
                   :to_entity_type   to-entity-type
                   :to_entity_id     to-entity-id})]
-    (tap> [`replace-dependencies current-dependencies 'to-remove to-remove 'to-add to-add])
     (t2/with-transaction [_conn]
       (when (seq to-remove)
         (t2/delete! :model/Dependency :id [:in to-remove]))
