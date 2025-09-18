@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { hasFeature } from "metabase/admin/databases/utils";
 import { useListDatabasesQuery, useListTablesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
@@ -131,11 +132,12 @@ export function PythonDataPicker({
     return <LoadingAndErrorWrapper loading />;
   }
 
-  const databases = databasesResponse?.data || [];
-  const databaseOptions = databases.map((db: Database) => ({
-    value: db.id.toString(),
-    label: db.name,
-  }));
+  const databases = (databasesResponse?.data ?? [])
+    .filter((db: Database) => hasFeature(db, "transforms/python"))
+    .map((db: Database) => ({
+      value: db.id.toString(),
+      label: db.name,
+    }));
 
   const availableTables = (tablesData || [])
     .filter((tbl: Table) => tbl.db_id === selectedDatabaseId && tbl.active)
@@ -265,7 +267,7 @@ export function PythonDataPicker({
           {t`Select the database that contains your source data`}
         </Text>
         <Select
-          data={databaseOptions}
+          data={databases}
           value={selectedDatabaseId?.toString() || null}
           onChange={handleDatabaseChange}
           placeholder={t`Select a database`}
