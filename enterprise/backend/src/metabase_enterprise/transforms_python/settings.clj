@@ -6,7 +6,7 @@
 
 (def ^:private is-not-prod? (or config/is-dev? config/is-test?))
 
-(setting/defsetting python-execution-server-url
+(setting/defsetting python-runner-url
   (deferred-tru "URL for the Python execution server that runs transform functions.")
   :type :string
   :visibility :admin
