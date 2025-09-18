@@ -22,11 +22,13 @@ export type Transform = {
   last_run?: TransformRun | null;
 };
 
+export type PythonTransformTableAliases = Record<string, number>;
+
 export type PythonTransformSource = {
   type: "python";
   body: string;
   "source-database": number;
-  "source-tables": Record<string, number>; // alias -> table-id mapping
+  "source-tables": PythonTransformTableAliases;
 };
 export type QueryTransformSource = {
   type: "query";
