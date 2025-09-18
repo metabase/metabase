@@ -6,6 +6,7 @@ import { uuid } from "metabase/lib/uuid";
 import type {
   MetabotHistory,
   MetabotTodoItem,
+  MetabotTransformInfo,
   SuggestedTransform,
 } from "metabase-types/api";
 
@@ -48,7 +49,10 @@ export type MetabotAgentEditSuggestionChatMessage = {
   role: "agent";
   type: "edit_suggestion";
   model: "transform";
-  payload: SuggestedTransform;
+  payload: {
+    editorTransform: MetabotTransformInfo | undefined;
+    suggestedTransform: SuggestedTransform;
+  };
 };
 
 export type MetabotAgentChatMessage =

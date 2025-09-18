@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import type { LocationDescriptorObject } from "history";
 import { useMemo, useState } from "react";
 import { push } from "react-router-redux";
 
@@ -31,9 +32,14 @@ type NewTransformQueryPageParsedParams = {
 
 type NewTransformQueryPageProps = {
   params: NewTransformQueryPageParams;
+  location: LocationDescriptorObject;
 };
 
-export function NewTransformQueryPage({ params }: NewTransformQueryPageProps) {
+export function NewTransformQueryPage({
+  params,
+  location,
+}: NewTransformQueryPageProps) {
+  const skipToSave = location?.query?.autoSave === "true";
   const { type, cardId } = getParsedParams(params);
   const {
     data: card,
@@ -54,17 +60,23 @@ export function NewTransformQueryPage({ params }: NewTransformQueryPageProps) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  return <NewTransformPageBody initialQuery={initialQuery} />;
+  return (
+    <NewTransformPageBody initialQuery={initialQuery} skipToSave={skipToSave} />
+  );
 }
 
 type NewTransformPageBodyProps = {
   initialQuery: DatasetQuery;
+  skipToSave: boolean;
 };
 
-function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
+function NewTransformPageBody({
+  initialQuery,
+  skipToSave,
+}: NewTransformPageBodyProps) {
   const [query, setQuery] = useState(initialQuery);
   const [isModalOpened, { open: openModal, close: closeModal }] =
-    useDisclosure();
+    useDisclosure(skipToSave);
   const dispatch = useDispatch();
 
   const handleCreate = (transform: Transform) => {
