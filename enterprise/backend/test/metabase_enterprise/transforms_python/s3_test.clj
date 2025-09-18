@@ -46,8 +46,8 @@
             (finally
               (Files/deleteIfExists tmp-file))))))))
 
-(deftest open-shared-storage-test
-  (testing "open-shared-storage! returns closeable derefable"
+(deftest open-s3-shared-storage-test
+  (testing "open-s3-shared-storage! returns closeable derefable"
     (mt/with-premium-features #{:transforms-python}
       (let [table-name->id {"users" 1}
             storage-ref    (s3/open-shared-storage! table-name->id)

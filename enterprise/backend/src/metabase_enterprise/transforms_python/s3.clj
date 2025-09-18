@@ -1,7 +1,6 @@
 (ns metabase-enterprise.transforms-python.s3
   (:require
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
-   ;; TODO check that querying team are ok with us accessing this directly, otherwise make another plan
    [metabase.util.log :as log])
   (:import
    (clojure.lang IDeref)
@@ -9,7 +8,7 @@
    (java.net URI)
    (java.time Duration)
    (software.amazon.awssdk.auth.credentials AwsBasicCredentials StaticCredentialsProvider)
-   (software.amazon.awssdk.auth.credentials DefaultCredentialsProvider)
+   (software.amazon.awssdk.auth.credentials AwsCredentialsProvider DefaultCredentialsProvider)
    (software.amazon.awssdk.core.sync RequestBody)
    (software.amazon.awssdk.regions Region)
    (software.amazon.awssdk.services.s3 S3Client S3ClientBuilder S3Configuration)
@@ -34,10 +33,11 @@
     (str shared-prefix "run-" (System/nanoTime) "-" (rand-int 10000))))
 
 (defmacro ^:private maybe-with-endpoint* [builder endpoint]
-  `(do (when-let [region# (transforms-python.settings/python-storage-s-3-region)]
-         (.region ~builder (Region/of region#)))
-       (when ~endpoint (.endpointOverride ~builder (URI/create ~endpoint)))
-       ~builder))
+  `(let [builder# ~builder]
+     (when-let [region# (transforms-python.settings/python-storage-s-3-region)]
+       (.region builder# (Region/of region#)))
+     (when ~endpoint (.endpointOverride builder# (URI/create ~endpoint)))
+     builder#))
 
 (defn- maybe-with-endpoint-s3-client [^S3ClientBuilder builder endpoint]
   (maybe-with-endpoint* builder endpoint))
@@ -59,27 +59,26 @@
 (defn- delete-object-request ^DeleteObjectRequest [^String bucket-name ^String key]
   (-> (DeleteObjectRequest/builder) (.bucket bucket-name) (.key key) .build))
 
-(defmacro ^:private maybe-with-credentials*
-  "Use macro to avoid reflection, as their is no shared interface between S3ClientBuilder and S3Presigner$Builder"
-  [builder]
-  `(let [access-key# (transforms-python.settings/python-storage-s-3-access-key)
-         secret-key# (transforms-python.settings/python-storage-s-3-secret-key)]
-     (if (or access-key# secret-key#)
-       (if-not (and access-key# secret-key#)
-         (do (log/warnf "Ignoring %s because %s is not defined"
-                        (if access-key# "access-key" "secret-key")
-                        (if (not access-key#) "access-key" "secret-key"))
-             (.credentialsProvider ~builder (DefaultCredentialsProvider/create)))
-         (.credentialsProvider ~builder
-                               (StaticCredentialsProvider/create
-                                (AwsBasicCredentials/create access-key# secret-key#))))
-       (.credentialsProvider ~builder (DefaultCredentialsProvider/create)))))
+(defn- maybe-with-credentials*
+  [credentials-provider]
+  (let [access-key (transforms-python.settings/python-storage-s-3-access-key)
+        secret-key (transforms-python.settings/python-storage-s-3-secret-key)]
+    (if (or access-key secret-key)
+      (if-not (and access-key secret-key)
+        (do (log/warnf "Ignoring %s because %s is not defined"
+                       (if access-key "access-key" "secret-key")
+                       (if (not access-key) "access-key" "secret-key"))
+            (credentials-provider (DefaultCredentialsProvider/create)))
+        (credentials-provider
+         (StaticCredentialsProvider/create
+          (AwsBasicCredentials/create access-key secret-key))))
+      (credentials-provider (DefaultCredentialsProvider/create)))))
 
 (defn- maybe-with-credentials-s3-client [^S3ClientBuilder builder]
-  (maybe-with-credentials* builder))
+  (maybe-with-credentials* #(.credentialsProvider builder ^AwsCredentialsProvider %)))
 
 (defn- maybe-with-credentials-s3-presigner [^S3Presigner$Builder builder]
-  (maybe-with-credentials* builder))
+  (maybe-with-credentials* #(.credentialsProvider builder ^AwsCredentialsProvider %)))
 
 ;; We just recreate the client every time, to keep things simple if config is changed.
 (defn create-s3-client
