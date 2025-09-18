@@ -31,22 +31,35 @@
       (log/error e)
       (throw e))))
 
-(api.macros/defendpoint :get "/question/:question-id"
+(api.macros/defendpoint :get "/question/:id"
   "Download a yaml representation of a question."
-  [{:keys [question-id]}
+  [{:keys [id]}
    _query-params
    _body-params
    _request]
-  (try
-    (let [question-id (Long/parseLong question-id)
-          question (api/check-404 (t2/select-one :model/Card :id question-id :type "question"))
-          rep (rep/export-question question)]
-      (clojure.pprint/pprint question)
+  (let [id (Long/parseLong id)
+        question (api/check-404 (t2/select-one :model/Card :id id :type "question"))
+        rep (rep/export-card "question" question)]
+    (try
       (schema/validate rep)
-      (yaml/generate-string rep))
-    (catch Throwable e
-      (log/error e)
-      (throw e))))
+      (catch Exception e
+        (log/error e "Does not validate.")))
+    (yaml/generate-string rep)))
+
+(api.macros/defendpoint :get "/model/:id"
+  "Download a yaml representation of a model."
+  [{:keys [id]}
+   _query-params
+   _body-params
+   _request]
+  (let [id (Long/parseLong id)
+        question (api/check-404 (t2/select-one :model/Card :id id :type "model"))
+        rep (rep/export-card "model" question)]
+    (try
+      (schema/validate rep)
+      (catch Exception e
+        (log/error e "Does not validate.")))
+    (yaml/generate-string rep)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/representations` routes."

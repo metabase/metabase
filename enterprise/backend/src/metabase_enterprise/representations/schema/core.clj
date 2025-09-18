@@ -6,6 +6,7 @@
    [metabase-enterprise.representations.schema.v0.collection :as v0-coll]
    [metabase-enterprise.representations.schema.v0.database :as v0-db]
    [metabase-enterprise.representations.schema.v0.document :as v0-doc]
+   [metabase-enterprise.representations.schema.v0.model :as v0-model]
    [metabase-enterprise.representations.schema.v0.question :as v0-question]
    [metabase-enterprise.representations.schema.v0.snippet :as v0-snippet]
    [metabase-enterprise.representations.schema.v0.transform :as v0-transform]
@@ -17,7 +18,7 @@
   "Registry mapping type strings to their corresponding schemas.
    Keys are strings like 'v0/question', values are qualified keywords."
   {:v0/question ::v0-question/question
-   ;; :v0/model ::v0-card/model
+   :v0/model ::v0-model/model
    ;; :v0/metric ::v0-card/metric
    :v0/collection ::v0-coll/collection
    :v0/database ::v0-db/database
