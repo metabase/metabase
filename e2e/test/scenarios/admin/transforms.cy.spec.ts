@@ -676,7 +676,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       H.modal().within(() => {
         cy.findByLabelText("New table name").should("have.value", TARGET_TABLE);
         cy.findByLabelText("Schema").should("have.value", TARGET_SCHEMA);
-        cy.findByLabelText(/Keep/).should("be.checked");
+        cy.findByLabelText("Keep transform_table").should("be.checked");
         cy.findByLabelText("New table name").clear().type(TARGET_TABLE_2);
         cy.button("Change target").click();
         cy.wait("@updateTransform");
@@ -721,8 +721,8 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         cy.findByLabelText("New table name").should("have.value", TARGET_TABLE);
         cy.findByLabelText("Schema").should("have.value", TARGET_SCHEMA);
         cy.findByLabelText("New table name").clear().type(TARGET_TABLE_2);
-        cy.findByLabelText(/Delete/).click();
-        cy.button("Change target and delete the old table").click();
+        cy.findByLabelText("Delete transform_table").click();
+        cy.button("Change target and delete old table").click();
         cy.wait("@deleteTransformTable");
         cy.wait("@updateTransform");
       });
@@ -765,8 +765,8 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       getTransformPage().button("Change target").click();
       H.modal().within(() => {
         cy.findByLabelText("New table name").clear().type(TARGET_TABLE_2);
-        cy.findByLabelText(/Delete/).click();
-        cy.button("Change target and delete the old table").click();
+        cy.findByLabelText("Delete transform_table").click();
+        cy.button("Change target and delete old table").click();
         cy.wait("@deleteTransformTable");
         cy.wait("@updateTransform");
       });
