@@ -23,7 +23,11 @@
 (defmethod serdes/entity-id "Glossary" [_ {:keys [term]}]
   term)
 
-(defmethod serdes/hash-fields :model/Database
+(defmethod serdes/load-find-local "Glossary"
+  [path]
+  (t2/select-one :model/Glossary :term (:id (first path))))
+
+(defmethod serdes/hash-fields :model/Glossary
   [_item]
   [:term])
 
