@@ -1416,7 +1416,8 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("tags", () => {
-    it("should be able to add and remove tags", { tags: "@flaky" }, () => {
+    // skipped because it's flaking so often
+    it("should be able to add and remove tags", { tags: "@skip" }, () => {
       H.createTransformJob({ name: "New job" }, { visitTransformJob: true });
       getTagsInput().click();
 
@@ -1515,7 +1516,7 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("filtering", () => {
-    it("should be able to filter jobs ", () => {
+    it("should be able to filter jobs ", { tags: "@flaky" }, () => {
       cy.log("run hourly job so know that was recently run");
       visitJobListPage();
 
