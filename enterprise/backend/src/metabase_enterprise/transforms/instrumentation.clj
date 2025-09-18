@@ -9,7 +9,15 @@
 (set! *warn-on-reflection* true)
 
 (mr/def ::stage-type
-  [:enum :data-transfer :computation :sync])
+  [:enum :export :computation :import])
+
+(def ^:private label-to-stage
+  {:dwh-to-file      :export
+   :file-to-s3       :export
+   :file-to-dwh      :import
+   :python-execution :computation
+   :mbql-sync        :computation
+   :table-sync       :import})
 
 (mr/def ::stage-label
   [:enum
@@ -24,40 +32,40 @@
 (mu/defn record-stage-start!
   "Record the start of a transform stage."
   [job-run-id :- pos-int?
-   stage-type :- ::stage-type
    stage-label :- ::stage-label]
-  (log/infof "Transform stage started: run-id=%d type=%s label=%s" job-run-id (name stage-type) (name stage-label))
-  (prometheus/inc! :metabase-transforms/stage-started
-                   {:job-run-id (str job-run-id)
-                    :stage-type (name stage-type)
-                    :stage-label (name stage-label)}))
+  (let [stage-type (label-to-stage stage-label)]
+    (log/infof "Transform stage started: run-id=%d type=%s label=%s" job-run-id (name stage-type) (name stage-label))
+    (prometheus/inc! :metabase-transforms/stage-started
+                     {:job-run-id (str job-run-id)
+                      :stage-type (name stage-type)
+                      :stage-label (name stage-label)})))
 
 (mu/defn record-stage-completion!
   "Record the successful completion of a transform stage."
   [job-run-id :- pos-int?
-   stage-type :- ::stage-type
    stage-label :- ::stage-label
    duration-ms :- int?]
-  (log/infof "Transform stage completed: run-id=%d type=%s label=%s duration=%dms" job-run-id (name stage-type) (name stage-label) duration-ms)
-  (let [labels {:job-run-id (str job-run-id)
-                :stage-type (name stage-type)
-                :stage-label (name stage-label)}]
-    (prometheus/inc! :metabase-transforms/stage-completed labels)
-    (prometheus/observe! :metabase-transforms/stage-duration-ms labels duration-ms)))
+  (let [stage-type (label-to-stage stage-label)]
+    (log/infof "Transform stage completed: run-id=%d type=%s label=%s duration=%dms" job-run-id (name stage-type) (name stage-label) duration-ms)
+    (let [labels {:job-run-id (str job-run-id)
+                  :stage-type (name stage-type)
+                  :stage-label (name stage-label)}]
+      (prometheus/inc! :metabase-transforms/stage-completed labels)
+      (prometheus/observe! :metabase-transforms/stage-duration-ms labels duration-ms))))
 
 (mu/defn record-stage-failure!
   "Record the failure of a transform stage."
   [job-run-id :- pos-int?
-   stage-type :- ::stage-type
    stage-label :- ::stage-label
-   duration-ms :- [:maybe int?]]
-  (log/warnf "Transform stage failed: run-id=%d type=%s label=%s duration=%s" job-run-id (name stage-type) (name stage-label) (if duration-ms (str duration-ms "ms") "unknown"))
-  (let [labels {:job-run-id (str job-run-id)
-                :stage-type (name stage-type)
-                :stage-label (name stage-label)}]
-    (prometheus/inc! :metabase-transforms/stage-failed labels)
-    (when duration-ms
-      (prometheus/observe! :metabase-transforms/stage-duration-ms labels duration-ms))))
+   duration-ms :- int?]
+  (let [stage-type (label-to-stage stage-label)]
+    (log/warnf "Transform stage failed: run-id=%d type=%s label=%s duration=%s" job-run-id (name stage-type) (name stage-label) (str duration-ms "ms"))
+    (let [labels {:job-run-id (str job-run-id)
+                  :stage-type (name stage-type)
+                  :stage-label (name stage-label)}]
+      (prometheus/inc! :metabase-transforms/stage-failed labels)
+      (when duration-ms
+        (prometheus/observe! :metabase-transforms/stage-duration-ms labels duration-ms)))))
 
 (defn with-timing
   "Generic timing function that executes body while recording metrics.
@@ -68,10 +76,10 @@
    - :error-fn - function to call on error (receives duration-ms as last arg)
 
    Usage:
-   (with-timing {:start-fn #(record-stage-start! %1 %2 %3)
-                 :success-fn #(record-stage-completion! %1 %2 %3 %4)
-                 :error-fn #(record-stage-failure! %1 %2 %3 %4)}
-                [job-run-id stage-type stage-label]
+   (with-timing {:start-fn #(record-stage-start! %1 %3)
+                 :success-fn #(record-stage-completion! %1 %2 %3)
+                 :error-fn #(record-stage-failure! %1 %2 %3)}
+                [job-run-id stage-label]
                 #(do-work)) "
   [callbacks args body-fn]
   (let [start-time (u/start-timer)]
@@ -91,7 +99,7 @@
   "Execute body while timing a transform stage. Automatically records start, completion or failure.
 
    Usage:
-   (with-stage-timing [job-run-id :data-transfer :dwh-to-file]
+   (with-stage-timing [job-run-id :dwh-to-file]
      ;; stage implementation
      result)"
   [args & body]
