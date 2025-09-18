@@ -166,7 +166,7 @@
 (defn- run-python-transform! [{:keys [source] :as transform} db run-id cancel-chan message-log]
   ;; TODO restructure things such that s3 can we swapped out for other transfer mechanisms
   (with-open [log-future-ref     (open-python-message-update-future! run-id message-log)
-              shared-storage-ref (s3/open-s3-shared-storage! (:source-tables source))]
+              shared-storage-ref (s3/open-shared-storage! (:source-tables source))]
     (let [driver     (:engine db)
           server-url (transforms-python.settings/python-runner-url)
           _          (python-runner/copy-tables-to-s3! {:run-id         run-id
