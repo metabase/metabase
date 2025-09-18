@@ -4,58 +4,11 @@
    
    This is a POC implementation focusing on simple SQL queries."
   (:require
+   [metabase-enterprise.representations.ingestion.common :as ing-com]
    [metabase.config.core :as config]
-   [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
-
-;;; ------------------------------------ Helpers ------------------------------------
-
-(defn- find-database-id
-  "Find database ID by name or ref. Returns nil if not found."
-  [database-ref]
-  (when database-ref
-    (or
-     (when (integer? database-ref) database-ref)
-     ;; Try to find by name
-     (t2/select-one-pk :model/Database :name database-ref))))
-
-(defn- find-collection-id
-  "Find collection ID by name or ref. Returns nil if not found."
-  [collection-ref]
-  (when collection-ref
-    (or
-     (when (integer? collection-ref) collection-ref)
-     ;; Try to find by slug or name
-     (t2/select-one-pk :model/Collection :slug collection-ref)
-     (t2/select-one-pk :model/Collection :name collection-ref))))
-
-(defn- representation->dataset-query
-  "Convert the representation's query format into Metabase's dataset_query format.
-   For POC, we're focusing on native SQL queries."
-  [{:keys [query mbql_query database] :as representation}]
-  (let [database-id (find-database-id database)]
-    (cond
-      ;; Native SQL query - simple case for POC
-      query
-      {:type :native
-       :native {:query query}
-       :database database-id}
-
-      ;; MBQL query - use serdes/import-mbql if it's already in MBQL format
-      mbql_query
-      (try
-        (serdes/import-mbql mbql_query)
-        (catch Exception e
-          ;; Fall back to simple structure if import fails
-          (merge {:type :query
-                  :database database-id}
-                 mbql_query)))
-
-      :else
-      (throw (ex-info "Question must have either 'query' or 'mbql_query'"
-                      {:representation representation})))))
 
 ;;; ------------------------------------ Public API ------------------------------------
 
@@ -68,7 +21,7 @@
    For POC: Focuses on the minimal fields needed."
   [{question-name :name
     :keys [type ref description database collection] :as representation}]
-  (let [database-id (find-database-id database)]
+  (let [database-id (ing-com/find-database-id database)]
     (when-not database-id
       (throw (ex-info (str "Database not found: " database)
                       {:database database})))
@@ -79,7 +32,7 @@
       :name question-name
       :description (or description "")
       :display :table ; Default display type
-      :dataset_query (representation->dataset-query representation)
+      :dataset_query (ing-com/representation->dataset-query representation)
       :visualization_settings {}
       ;; :creator_id
       :database_id database-id
@@ -90,7 +43,7 @@
       ;; :public_uuid
       :type :question}
      ;; Optional fields
-     (when-let [coll-id (find-collection-id collection)]
+     (when-let [coll-id (ing-com/find-collection-id collection)]
        {:collection_id coll-id}))))
 
 (defn ingest!
