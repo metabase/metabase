@@ -35,9 +35,11 @@
 
 (mu/defn upstream-deps:card :- ::upstream-deps
   "Given a Toucan `:model/Card`, return its upstream dependencies as a map from the kind to a set of IDs."
-  [metadata-provider                      :- ::lib.schema.metadata/metadata-provider
-   {query :dataset_query :as _toucan-card}]
-  (upstream-deps:query metadata-provider query))
+  ([card] (upstream-deps:card (lib-be.metadata.jvm/application-database-metadata-provider (:database_id card))
+                              card))
+  ([metadata-provider                      :- ::lib.schema.metadata/metadata-provider
+    {query :dataset_query :as _toucan-card}]
+   (upstream-deps:query metadata-provider query)))
 
 (mu/defn upstream-deps:transform :- ::upstream-deps
   "Given a Transform (in Toucan form), return its upstream dependencies."
@@ -50,3 +52,15 @@
                           query)
      (do (log/warnf "Don't know how to analyze the deps of Transform %d with source type '%s'" (:id transform) type)
          {}))))
+
+(mu/defn upstream-deps:snippet :- ::upstream-deps
+  "Given a native query snippet, return its upstream dependencies in the usual `{entity-type #{1 2 3}}` format."
+  [{:keys [template_tags] :as _snippet}]
+  (let [type->id-key {:card :card-id, :snippet :snippet-id}
+        dependencies (keep (fn [tag]
+                             (let [entity-type (:type tag)]
+                               (when-let [id-key (type->id-key entity-type)]
+                                 (when-let [entity-id (id-key tag)]
+                                   [entity-type entity-id]))))
+                           (vals template_tags))]
+    (u/group-by first second conj #{} dependencies)))

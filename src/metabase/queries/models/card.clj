@@ -16,7 +16,6 @@
    [metabase.config.core :as config]
    [metabase.content-verification.core :as moderation]
    [metabase.dashboards.autoplace :as autoplace]
-   [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
@@ -745,8 +744,7 @@
     (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
       (log/info "Card references Fields in params:" field-ids)
       (field-values/update-field-values-for-on-demand-dbs! field-ids))
-    (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))
-    (dependencies/replace-upstream-deps:card! card)))
+    (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
 
 (defn- apply-dashboard-question-updates [card changes]
   (if-let [dashboard-id (:dashboard_id changes)]
@@ -768,12 +766,6 @@
         (card.metadata/populate-result-metadata changes))
       (m/update-existing :result_metadata #(some->> % (lib.normalize/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column])))))
 
-(defn- maybe-update-deps [card changes]
-  (when (and (seq changes)
-             (contains? changes :dataset_query))
-    (dependencies/replace-upstream-deps:card! card))
-  card)
-
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
   (let [changes (t2/changes card)]
@@ -785,8 +777,7 @@
         (populate-result-metadata changes verified-result-metadata?)
         (pre-update changes)
         populate-query-fields
-        maybe-populate-initially-published-at
-        (maybe-update-deps changes))))
+        maybe-populate-initially-published-at)))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
@@ -796,8 +787,7 @@
   ;; delete any ParameterCard linked to this card
   (t2/delete! :model/ParameterCard :card_id id)
   (t2/delete! :model/ModerationReview :moderated_item_type "card", :moderated_item_id id)
-  (t2/delete! :model/Revision :model "Card", :model_id id)
-  (dependencies/delete-deps! :card id))
+  (t2/delete! :model/Revision :model "Card", :model_id id))
 
 (defmethod serdes/hash-fields :model/Card
   [_card]

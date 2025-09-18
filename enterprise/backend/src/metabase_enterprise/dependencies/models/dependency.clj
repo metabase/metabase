@@ -281,18 +281,30 @@
       (when (seq to-add)
         (t2/insert! :model/Dependency to-add)))))
 
-(defn- snippet-dependencies
-  [{:keys [template_tags] :as _snippet}]
-  (let [type->id-key {:card :card-id, :snippet :snippet-id}
-        dependencies (keep (fn [tag]
-                             (let [entity-type (:type tag)]
-                               (when-let [id-key (type->id-key entity-type)]
-                                 (when-let [entity-id (id-key tag)]
-                                   [entity-type entity-id]))))
-                           (vals template_tags))]
-    (-> (group-by first dependencies)
-        (update-vals #(into #{} (map second) %)))))
+;; ## Maintaining the dependency graph
+;; The below listens for inserts, updates and deletes of cards, snippets and transforms in order to keep the
+;; dependency graph up to date. Transform *runs* are also a trigger, since the transform's output table may be created
+;; or changed at that point.
 
+;; ### Cards
+(derive ::card-deps :metabase/event)
+(derive :event/card-create ::card-deps)
+(derive :event/card-update ::card-deps)
+
+(methodical/defmethod events/publish-event! ::card-deps
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (replace-dependencies :card (:id object) (deps.calculation/upstream-deps:card object))))
+
+(derive ::card-delete :metabase/event)
+(derive :event/card-delete ::card-delete)
+
+(methodical/defmethod events/publish-event! ::card-delete
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (t2/delete! :model/Dependency :from_entity_type :card :from_entity_id (:id object))))
+
+;; ### Snippets
 (derive ::snippet-deps :metabase/event)
 (derive :event/snippet-create ::snippet-deps)
 (derive :event/snippet-update ::snippet-deps)
@@ -300,7 +312,7 @@
 (methodical/defmethod events/publish-event! ::snippet-deps
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (replace-dependencies :snippet (:id object) (snippet-dependencies object))))
+    (replace-dependencies :snippet (:id object) (deps.calculation/upstream-deps:snippet object))))
 
 (derive ::snippet-delete :metabase/event)
 (derive :event/snippet-delete ::snippet-delete)
@@ -310,6 +322,7 @@
   (when (premium-features/has-feature? :dependencies)
     (t2/delete! :model/Dependency :from_entity_type :snippet :from_entity_id (:id object))))
 
+;; ### Transforms
 (derive ::transform-deps :metabase/event)
 (derive :event/create-transform ::transform-deps)
 (derive :event/update-transform ::transform-deps)
@@ -331,16 +344,8 @@
                                      downstream-tables)
         not-found-table-ids  (remove (into #{} (map :id) downstream-tables)
                                      downstream-table-ids)]
-    (when-let [outdated-downstream-table-ids (u/prog1 (seq (into (set not-found-table-ids)
-                                                                 (map :id) outdated-tables))
-                                               (tap> ['drop-outdated-target-dep!
-                                                      'db-id db-id
-                                                      'downstream-table-ids downstream-table-ids
-                                                      'downstream-tables    (map #(into {} %) downstream-tables)
-                                                      'outdated-tables      (map #(into {} %) outdated-tables)
-                                                      'not-found-table-ids  not-found-table-ids
-                                                      '=>
-                                                      'outdated-downstream-table-ids <>]))]
+    (when-let [outdated-downstream-table-ids (seq (into (set not-found-table-ids)
+                                                        (map :id) outdated-tables))]
       (t2/delete! :model/Dependency
                   :from_entity_type :table
                   :from_entity_id   [:in outdated-downstream-table-ids]
@@ -350,11 +355,8 @@
 (methodical/defmethod events/publish-event! ::transform-deps
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (tap> [`transform-deps (into {} object)])
     (replace-dependencies :transform (:id object) (deps.calculation/upstream-deps:transform object))
     (drop-outdated-target-dep! object)))
-
-(comment)
 
 (derive ::transform-delete :metabase/event)
 (derive :event/delete-transform ::transform-delete)
@@ -373,9 +375,7 @@
 (defn- transform-table-deps [{:keys [db-id output-schema output-table transform-id] :as details}]
   (let [;; output-table is a keyword like :my_schema/my_table
         table-name (name output-table)]
-    (tap> ['transform-table-deps (into {} details) table-name])
     (when-let [table-id (t2/select-one-fn :id :model/Table :db_id db-id :schema output-schema :name table-name)]
-      (tap> ['transform-table-deps/found-table table-id])
       (replace-dependencies :table table-id {:transform #{transform-id}}))))
 
 (methodical/defmethod events/publish-event! ::transform-run
@@ -393,6 +393,11 @@
   (upsert-generic-dependency :card 31 :table 1)
 
   (upsert-generic-dependency :table 155 :transform 1)
+
+  (t2/select :model/Dependency :from_entity_type :card      :from_entity_id 125)
+
+  (t2/select :model/Dependency :from_entity_type :card      :from_entity_id 124)
+  (t2/select :model/Dependency :from_entity_type :table     :from_entity_id 155)
   (t2/select :model/Dependency :from_entity_type :transform :from_entity_id 1)
   (t2/select :model/Dependency :to_entity_type   :transform :to_entity_id   1)
   *e
@@ -411,4 +416,5 @@
   (bfs-nodes key-dependents [[:transform 1]])
   (bfs-entities key-dependents (t2/select :model/Transform 1))
   (transitive-dependents {:transform [{:id 1}]})
-  (transitive-dependents {:transform [{:id 1}]}))
+  (transitive-dependents {:table [{:id 136}]})
+  (transitive-dependents {:card [{:id 124}]}))

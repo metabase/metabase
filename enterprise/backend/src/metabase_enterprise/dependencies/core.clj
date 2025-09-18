@@ -78,29 +78,6 @@
       (metadata-provider edits)
       check-query-soundness))
 
-;; TODO: Replace this with `events/publish-event!` listeners.
-(defenterprise replace-upstream-deps:card!
-  "Enterprise version.
-
-  Given a Toucan `:model/Card`, compute its upstream dependencies and update the deps graph to reflect it.
-
-  Should be called from post-insert or post-update; the card must already have an ID.
-
-  Returns nil."
-  :feature :dependencies
-  [toucan-card]
-  (log/infof "Updating deps for card %d" (:id toucan-card))
-  (let [metadata-provider (lib-be.metadata.jvm/application-database-metadata-provider (:database_id toucan-card))]
-    (deps.graph/replace-dependencies :card (:id toucan-card)
-                                     (deps.calculation/upstream-deps:card metadata-provider toucan-card))))
-
-(defenterprise delete-deps!
-  "Enterprise version. Deletes all dependencies for the given entity."
-  :feature :dependencies
-  [entity-type id]
-  (log/infof "Deleting deps for deleted %s %d" entity-type id)
-  (deps.graph/replace-dependencies entity-type id {}))
-
 #_{:clj-kondo/ignore [:unresolved-namespace]}
 (comment
   ;; This should work on any fresh-ish Metabase instance; these are the built-in example questions.
