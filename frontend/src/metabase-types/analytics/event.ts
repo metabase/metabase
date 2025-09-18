@@ -411,6 +411,15 @@ export type MetabotEvent =
   | MetabotFixQueryClickedEvent
   | MetabotExplainChartClickedEvent;
 
+export type RevertVersionEvent = ValidateEvent<{
+  event: "revert_version_clicked";
+  event_detail: "card" | "dashboard";
+}>;
+
+export type LearnAboutDataClickedEvent = ValidateEvent<{
+  event: "learn_about_our_data_clicked";
+}>;
+
 export type SimpleEvent =
   | CustomSMTPSetupClickedEvent
   | CustomSMTPSetupSuccessEvent
@@ -457,4 +466,6 @@ export type SimpleEvent =
   | DocumentPrintEvent
   | DatabaseHelpClickedEvent
   | XRayEvent
-  | MetabotEvent;
+  | MetabotEvent
+  | RevertVersionEvent
+  | LearnAboutDataClickedEvent;
