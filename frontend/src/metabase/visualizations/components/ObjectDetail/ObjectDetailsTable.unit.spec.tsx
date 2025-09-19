@@ -97,7 +97,7 @@ describe("ObjectDetailsTable", () => {
   it("renders an object details table", () => {
     render(
       <DetailsTable
-        data={testDataset as any}
+        columns={testDataset.cols}
         zoomedRow={testDataset.rows[1]}
         onVisualizationClick={() => null}
         visualizationIsClickable={() => false}
@@ -117,7 +117,7 @@ describe("ObjectDetailsTable", () => {
     const onVisualizationClickSpy = jest.fn();
     render(
       <DetailsTable
-        data={testDataset as any}
+        columns={testDataset.cols}
         zoomedRow={testDataset.rows[1]}
         onVisualizationClick={() => null}
         visualizationIsClickable={onVisualizationClickSpy}
@@ -137,7 +137,7 @@ describe("ObjectDetailsTable", () => {
     it("should render an image if the column is an image url", () => {
       render(
         <DetailsTable
-          data={objectDetailImageCard.data}
+          columns={objectDetailImageCard.data.cols}
           zoomedRow={objectDetailImageCard.data.rows[1]}
           onVisualizationClick={() => null}
           visualizationIsClickable={() => false}
@@ -155,7 +155,7 @@ describe("ObjectDetailsTable", () => {
     it("should render an image if the column is an avatar image url", () => {
       render(
         <DetailsTable
-          data={objectDetailImageCard.data}
+          columns={objectDetailImageCard.data.cols}
           zoomedRow={objectDetailImageCard.data.rows[1]}
           onVisualizationClick={() => null}
           visualizationIsClickable={() => false}
@@ -175,7 +175,7 @@ describe("ObjectDetailsTable", () => {
     it("should properly display JSON semantic type data as JSON", () => {
       render(
         <DetailsTable
-          data={objectDetailCard.data}
+          columns={objectDetailCard.data.cols}
           zoomedRow={objectDetailCard.data.rows[0]}
           onVisualizationClick={() => null}
           visualizationIsClickable={() => false}
@@ -190,7 +190,7 @@ describe("ObjectDetailsTable", () => {
     it("should not crash rendering invalid JSON", () => {
       render(
         <DetailsTable
-          data={invalidObjectDetailCard.data}
+          columns={invalidObjectDetailCard.data.cols}
           zoomedRow={invalidObjectDetailCard.data.rows[0]}
           onVisualizationClick={() => null}
           visualizationIsClickable={() => false}
