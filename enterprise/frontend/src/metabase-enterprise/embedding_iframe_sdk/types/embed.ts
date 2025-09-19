@@ -1,4 +1,5 @@
 import type { MetabaseError } from "embedding-sdk-bundle/errors";
+import type { MetabaseErrorCode } from "embedding-sdk-bundle/errors/error-code";
 import type { MetabaseAuthMethod } from "embedding-sdk-bundle/types";
 import type { MetabaseEmbeddingSessionToken } from "embedding-sdk-bundle/types/refresh-token";
 import type {
@@ -33,7 +34,7 @@ export type SdkIframeEmbedMessage =
   | {
       type: "metabase.embed.reportAuthenticationError";
       data: {
-        error: MetabaseError<string, unknown>;
+        error: MetabaseError<MetabaseErrorCode, unknown>;
       };
     }
   | {
