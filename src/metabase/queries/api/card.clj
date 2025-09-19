@@ -479,7 +479,8 @@
 
       :else nil)))
 
-(def CardCreateSchema
+;;; TODO (Cam 9/19/25) -- merge with [[metabase.queries.schema/card]]
+(def ^:deprecated CardCreateSchema
   "Schema for creating a new card"
   [:map
    [:name                   ms/NonBlankString]

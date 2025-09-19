@@ -21,7 +21,6 @@
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
@@ -34,7 +33,8 @@
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.tools.hydrate :as t2.hydrate]))
+   [toucan2.tools.hydrate :as t2.hydrate]
+   [metabase.lib.schema :as lib.schema]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     SHARED                                                     |
@@ -70,8 +70,8 @@
 
     (template-tag->field-id [:template-tag :company] some-dashcard) ; -> 100"
   [[_ tag] :- ::lib.schema.parameter/template-tag
-   card    :- ::parameters.schema/card]
-  (lib.util.match/match-one (get-in (lib/all-template-tags-map (:dataset_query card)) [tag :dimension])
+   query    :- ::lib.schema/query]
+  (lib.util.match/match-one (get-in (lib/all-template-tags-map query) [tag :dimension])
     [:field _opts (id :guard pos-int?)]
     id))
 
@@ -79,18 +79,22 @@
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
   [target :- ::lib.schema.parameter/target
-   card   :- ::parameters.schema/card]
+   query  :- [:maybe
+              [:or
+               [:= {:description "empty map"} {}]
+               ::lib.schema/query]]]
   (let [target (lib/normalize ::lib.schema.parameter/target target)]
     (when (mbql.u/is-clause? :dimension target)
       (let [[_ dimension] target
-            field-id    (if (mbql.u/is-clause? :template-tag dimension)
-                          (template-tag->field-id dimension card)
-                          ;; TODO (Cam 9/18/25) -- parameters still use legacy syntax for field refs, even in MBQL
-                          ;; 5 (for whatever reason), I would assume we're going to fix that sometime soon so handle
-                          ;; either case for now.
-                          (lib.util.match/match-one dimension
-                            [:field _opts (id :guard pos-int?)] id
-                            [:field (id :guard pos-int?) _opts] id))]
+            field-id      (if (mbql.u/is-clause? :template-tag dimension)
+                            (when (seq query)
+                              (template-tag->field-id dimension query))
+                            ;; TODO (Cam 9/18/25) -- parameters still use legacy syntax for field refs, even in MBQL
+                            ;; 5 (for whatever reason), I would assume we're going to fix that sometime soon so handle
+                            ;; either case for now.
+                            (lib.util.match/match-one dimension
+                              [:field _opts (id :guard pos-int?)] id
+                              [:field (id :guard pos-int?) _opts] id))]
         (or field-id
             (do
               (log/errorf "Could not extract field ID from target: %s" (pr-str target))
@@ -295,7 +299,7 @@
   (for [mapping (:parameter_mappings dashcard)]
     {:dashcard              dashcard
      :param-mapping         mapping
-     :param-target-field-id (param-target->field-id (:target mapping) (:card dashcard))}))
+     :param-target-field-id (param-target->field-id (:target mapping) (get-in dashcard [:card :dataset_query]))}))
 
 (mu/defn dashcards->param-id->field-ids* :- [:map-of ::lib.schema.parameter/id [:set ::lib.schema.id/field]]
   "Return map of parameter ids to mapped field ids."
@@ -310,7 +314,7 @@
   "Return a map of Parameter ID to the set of Field IDs referenced by parameters in the Cards on the given `dashcards`,
   or `nil` if none are referenced. `dashcards` must be hydrated with :card."
   [dashcards :- [:sequential ::parameters.schema/dashcard]]
-  (transduce (comp (map :card)
+  (transduce (comp (keep :card)
                    (map card->template-tag-param-id->field-ids))
              (partial merge-with set/union)
              (dashcards->param-id->field-ids* dashcards)
@@ -330,7 +334,7 @@
                                                :param-mapping         mapping
                                                :param-target-field-id (param-target->field-id
                                                                        (:target mapping)
-                                                                       (get-in mapping [:dashcard :card]))}))
+                                                                       (get-in mapping [:dashcard :card :dataset_query]))}))
                                        field-id-into-context-rf
                                        mappings)]
     (into #{} cat (vals param-id->field-ids))))
@@ -341,7 +345,7 @@
   (letfn [(targets [params card]
             (into {}
                   (for [param params
-                        :let  [id (param-target->field-id (:target param) card)]
+                        :let  [id (param-target->field-id (:target param) (:dataset_query card))]
                         :when id]
                     [(:parameter_id param) #{id}])))]
     (->> dashcards
@@ -384,10 +388,5 @@
   "Returns a set of all Field IDs referenced by template tags on this card.
 
   To get these IDs broken out by the Param ID that references them, use [[card->template-tag-param-id->field-ids]]."
-  [card :- [:map
-            [:dataset_query {:optional true} [:or
-                                              ::lib.schema/query
-                                              [:and
-                                               :map
-                                               [:fn {:error/message "empty map"} empty?]]]]]]
+  [card :- ::parameters.schema/card]
   (not-empty (into #{} cat (vals (card->template-tag-param-id->field-ids card)))))

@@ -6,6 +6,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.parameters.core :as parameters]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -26,7 +27,7 @@
   #_(derive :hook/search-index))
 
 (t2/deftransforms :model/DashboardCard
-  {:parameter_mappings     mi/transform-parameters-list
+  {:parameter_mappings     parameters/transform-parameter-mappings
    :visualization_settings mi/transform-visualization-settings
    :inline_parameters      mi/transform-json})
 
@@ -75,7 +76,7 @@
   [dashboard-card]
   (t2/instance :model/DashboardCard
                (-> dashboard-card
-                   (m/update-existing :parameter_mappings mi/normalize-parameters-list)
+                   (m/update-existing :parameter_mappings parameters/normalize-parameter-mappings)
                    (m/update-existing :visualization_settings mi/normalize-visualization-settings))))
 
 (defmethod serdes/hash-fields :model/DashboardCard
@@ -387,7 +388,7 @@
 
 (defmethod serdes/generate-path "DashboardCard" [_ dashcard]
   (remove nil?
-          [(serdes/infer-self-path "Dashboard" (t2/select-one 'Dashboard :id (:dashboard_id dashcard)))
+          [(serdes/infer-self-path "Dashboard" (t2/select-one :model/Dashboard :id (:dashboard_id dashcard)))
            (when (:dashboard_tab_id dashcard)
              (serdes/infer-self-path "DashboardTab" (t2/select-one :model/DashboardTab :id (:dashboard_tab_id dashcard))))
            (serdes/infer-self-path "DashboardCard" dashcard)]))

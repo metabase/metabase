@@ -55,3 +55,9 @@
   (testing "Successes"
     (are [v] (mr/validate ::lib.schema.parameter/dimension.target v)
       [:field 3 nil])))
+
+(deftest ^:parallel normalize-mbql-3-refs-test
+  (are [clause expected] (= expected
+                            (lib/normalize ::lib.schema.parameter/dimension clause))
+    [:dimension ["field-id" 76331]] [:dimension [:field 76331 nil]]
+    ["dimension" ["fk->" 23 30]]    [:dimension [:field 30 {:source-field 23}]]))

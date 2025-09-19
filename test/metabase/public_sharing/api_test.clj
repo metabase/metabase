@@ -47,7 +47,7 @@
                                   :slug                 "static_category"
                                   :id                   "_STATIC_CATEGORY_",
                                   :type                 "category",
-                                  :values_source_type   "static-list"
+                                  :values_source_type   :static-list
                                   :values_source_config {:values ["African" "American" "Asian"]}}]})
                  (shared-obj)
                  m)]
@@ -195,7 +195,7 @@
    :parameters       [{:type "date", :name "a", :display_name "a" :id "a" :default "A param"}
                       {:type "date", :name "b", :display_name "b" :id "b" :default "B param"}
                       {:type "date", :name "c", :display_name "c" :id "c" :default "C param"
-                       :values_source_type "static-list" :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
+                       :values_source_type :static-list :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
    :embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}})
 
 (deftest get-card-parameters-should-work-with-legacy-template-tags
@@ -231,7 +231,7 @@
                  ;; order importance: the default from template-tag is in the final result
                  :default              "C TAG",
                  :required             false
-                 :values_source_type   "static-list",
+                 :values_source_type   :static-list,
                  :id                   "c",
                  :target               ["variable" ["template-tag" "c"]],
                  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}
@@ -1248,7 +1248,7 @@
                                                                      {:name                 "Static Category label"
                                                                       :id                   list-param-id
                                                                       :type                 "category"
-                                                                      :values_source_type   "static-list"
+                                                                      :values_source_type   :static-list
                                                                       :values_source_config {:values [["A frican" "Af"]
                                                                                                       ["American" "Am"]
                                                                                                       ["A   sian" "As"]]}}]}
@@ -1329,13 +1329,13 @@
                                                  :slug                 "static_category"
                                                  :id                   param-static-list
                                                  :type                 "category"
-                                                 :values_source_type   "static-list"
+                                                 :values_source_type   :static-list
                                                  :values_source_config {:values ["African" "American" "Asian"]}}
                                                 {:name                 "Static Category label"
                                                  :slug                 "static_category_label"
                                                  :id                   param-static-list-label
                                                  :type                 "category"
-                                                 :values_source_type   "static-list"
+                                                 :values_source_type   :static-list
                                                  :values_source_config {:values [["Af rican" "Af"] ["American" "Am"] ["Asian" "As"]]}}
                                                 {:name                 "Card as source"
                                                  :slug                 "card"

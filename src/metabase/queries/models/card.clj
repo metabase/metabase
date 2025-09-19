@@ -49,7 +49,9 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.tools.hydrate :as t2.hydrate]))
+   [toucan2.tools.hydrate :as t2.hydrate]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.parameters.core :as parameters]))
 
 (set! *warn-on-reflection* true)
 
@@ -97,14 +99,14 @@
     target-schema-version))
 
 (t2/deftransforms :model/Card
-  {:dataset_query          mi/transform-metabase-query
+  {:dataset_query          lib-be/transform-query
    :display                mi/transform-keyword
    :embedding_params       mi/transform-json
    :query_type             mi/transform-keyword
    :result_metadata        mi/transform-result-metadata
    :visualization_settings mi/transform-visualization-settings
-   :parameters             mi/transform-card-parameters-list
-   :parameter_mappings     mi/transform-parameters-list
+   :parameters             parameters/transform-parameters
+   :parameter_mappings     parameters/transform-parameter-mappings
    :type                   mi/transform-keyword})
 
 (doto :model/Card
@@ -599,7 +601,7 @@
       (params/assert-valid-parameter-mappings changes)
       (update-parameters-using-card-as-values-source card changes)
       (when (:parameters changes)
-        (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes)))
+        (parameter-card/upsert-or-delete-from-parameters! :model/Card id (:parameters changes)))
       ;; additional checks (Enterprise Edition only)
       (pre-update-check-sandbox-constraints card changes)
       (assert-valid-type (merge old-card-info changes)))))
@@ -682,20 +684,10 @@
       ;; At this point, the card should be at schema version 20 or higher.
       upgrade-card-schema-to-latest))
 
-(mu/defn- normalize-card :- ::queries.schema/card
-  [card :- :map
-   schema]
-  (try
-    (lib/normalize schema card)
-    (catch Throwable e
-      (throw (ex-info (tru "Invalid Card: {0}" (ex-message e))
-                      {:card card}
-                      e)))))
-
 (t2/define-before-insert :model/Card
   [card]
   (-> card
-      (normalize-card ::queries.schema/card)
+      queries.schema/normalize-card
       (assoc :metabase_version config/mb-version-string
              :card_schema current-schema-version)
       card.metadata/populate-result-metadata
@@ -718,7 +710,7 @@
     (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
       (log/info "Card references Fields in params:" field-ids)
       (field-values/update-field-values-for-on-demand-dbs! field-ids))
-    (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
+    (parameter-card/upsert-or-delete-from-parameters! :model/Card (:id card) (:parameters card))))
 
 (defn- apply-dashboard-question-updates [card changes]
   (if-let [dashboard-id (:dashboard_id changes)]
@@ -740,23 +732,25 @@
 
 (t2/define-before-update :model/Card
   [{::keys [verified-result-metadata?] :as card}]
-  (let [card    (normalize-card card ::queries.schema/card)
-        changes (t2/changes card)
-        changes (normalize-card changes ::queries.schema/card.updates)]
-    (-> card
-        (dissoc ::verified-result-metadata?)
-        (assoc :card_schema current-schema-version)
-        (apply-dashboard-question-updates changes)
-        (populate-result-metadata changes verified-result-metadata?)
-        (pre-update changes)
-        populate-query-fields
-        maybe-populate-initially-published-at)))
+  (let [changes (t2/changes card)]
+    (if (empty? changes)
+      {}
+      (let [card    (queries.schema/normalize-card card)
+            changes (queries.schema/normalize-card changes ::queries.schema/card.updates)]
+        (-> card
+            (dissoc ::verified-result-metadata?)
+            (assoc :card_schema current-schema-version)
+            (apply-dashboard-question-updates changes)
+            (populate-result-metadata changes verified-result-metadata?)
+            (pre-update changes)
+            populate-query-fields
+            maybe-populate-initially-published-at)))))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
   [{:keys [id] :as _card}]
   ;; delete any ParameterCard that the parameters on this card linked to
-  (parameter-card/delete-all-for-parameterized-object! "card" id)
+  (parameter-card/delete-all-for-parameterized-object! :model/Card id)
   ;; delete any ParameterCard linked to this card
   (t2/delete! :model/ParameterCard :card_id id)
   (t2/delete! :model/ModerationReview :moderated_item_type "card", :moderated_item_id id)
@@ -898,7 +892,7 @@
                                                 (cond-> (nil? type)
                                                   (assoc :type :question))
                                                 ;; TODO -- shouldn't this be happening way sooner?
-                                                (normalize-card ::queries.schema/card))
+                                                queries.schema/normalize-card)
          {:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata
                                              {:query     (:dataset_query card-data)
                                               :metadata  result_metadata
@@ -1235,7 +1229,7 @@
   ;; In production the :database should be always present and correct. That is not the case for some test mocks.
   ;; As e.g. in [[metabase-enterprise.semantic-search.test-util/do-with-indexable-documents!]]. Hence the thorough
   ;; checking.
-  (when-some [query (not-empty ((:out mi/transform-metabase-query) serialized-query))]
+  (when-some [query (not-empty ((:out lib-be/transform-query) serialized-query))]
     (when (pos-int? (:database query))
       (let [columns (lib/returned-columns query)]
         ;; Dimensions are columns that are not aggregations

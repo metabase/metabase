@@ -41,7 +41,7 @@
   (testing "test that a Dashboard's :parameters filterParameters are cleared if the :values_source_type is not nil"
     (doseq [[values_source_type
              keep-filtering-parameters?] {"card"        false
-                                          "static-list" false
+                                          :static-list false
                                           nil           true}]
       (testing (format "\nvalues_source_type=%s" values_source_type)
         (mt/with-temp [:model/Dashboard dashboard {:parameters [(merge

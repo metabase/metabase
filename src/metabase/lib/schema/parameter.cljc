@@ -24,6 +24,7 @@
   (:require
    #?@(:clj
        ([flatland.ordered.map :as ordered-map]))
+   [malli.core :as mc]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli.registry :as mr]))
 
@@ -143,6 +144,7 @@
    :boolean/=               {:type :boolean, :operator :variadic, :allowed-for #{:boolean :boolean/=}}))
 
 (mr/def ::type
+  "Valid parameter :type"
   (into [:enum {:error/message    "valid parameter type"
                 :decode/normalize lib.schema.common/normalize-keyword}]
         (keys types)))
@@ -198,9 +200,10 @@
            :error/fn (fn [{:keys [value]} _]
                        (str "Invalid :dimension target: must be a :field, :template-tag, or :expression, got: "
                             (pr-str value)))}
-   [:field        [:ref ::target.legacy-field-ref]]
    [:expression   [:ref ::target.legacy-expression-ref]]
-   [:template-tag [:ref ::template-tag]]])
+   [:template-tag [:ref ::template-tag]]
+   ;; other stuff like MBQL 3 `:fk->` and `:field-id` need to get converted to MBQL 4 `:field`
+   [::mc/default  [:ref ::target.legacy-field-ref]]])
 
 ;;; TODO (Cam 8/8/25) -- is options supposed to be non-empty? It it supposed to be removed from `:dimension` if it's
 ;;; empty? Unclear. I don't think it matters tho.
@@ -265,9 +268,10 @@
                             (pr-str value)))}
    ;; TODO (Cam 9/12/25) -- the old legacy MBQL schema also said `:expression` refs where allowed here, but I don't
    ;; know if we actually did allow that in practice.
-   [:field     [:ref ::target.legacy-field-ref]]
-   [:dimension [:ref ::dimension]]
-   [:variable  [:ref ::variable]]])
+   [:dimension    [:ref ::dimension]]
+   [:variable     [:ref ::variable]]
+   ;; MBQL 3 refs like `:field-id` should get normalized to `:field`
+   [::mc/default  [:ref ::target.legacy-field-ref]]])
 
 (defn- normalize-parameter
   [param]

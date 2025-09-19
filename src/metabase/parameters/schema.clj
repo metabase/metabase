@@ -1,12 +1,12 @@
 (ns metabase.parameters.schema
   (:require
-   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (mr/def ::human-readable-remapping-map
   "Schema for the map of actual value -> human-readable value. Cannot be empty."
@@ -24,18 +24,18 @@
 #_(def ParameterSource
     (mc/schema
      [:multi {:dispatch :values_source_type}
-      ["card"        [:map
-                      [:values_source_type :string]
-                      [:values_source_config
-                       [:map {:closed true}
-                        [:card_id {:optional true} IntGreaterThanZero]
-                        [:value_field {:optional true} Field]
-                        [:label_field {:optional true} Field]]]]]
-      ["static-list" [:map
-                      [:values_source_type :string]
-                      [:values_source_config
-                       [:map {:closed true}
-                        [:values {:optional true} [:* :any]]]]]]]))
+      [:card        [:map
+                     [:values_source_type :string]
+                     [:values_source_config
+                      [:map {:closed true}
+                       [:card_id {:optional true} IntGreaterThanZero]
+                       [:value_field {:optional true} Field]
+                       [:label_field {:optional true} Field]]]]]
+      [:static-list [:map
+                     [:values_source_type :string]
+                     [:values_source_config
+                      [:map {:closed true}
+                       [:values {:optional true} [:* :any]]]]]]]))
 
 (mr/def ::keyword-or-non-blank-string
   [:or
@@ -44,41 +44,42 @@
    ::lib.schema.common/non-blank-string])
 
 (mr/def ::card
-  [:and
-   [:map
-    [:id            {:optional true} ::lib.schema.id/card]
-    [:dataset_query [:and
-                     :map
-                     [:or
-                      [:ref ::lib.schema/query]
-                      ;; a handful of tests just use empty queries =(
-                      [:= {:description "empty map"} {}]]]]]
-   ;; we will allow maps without a Toucan model, but we won't allow ones with a DIFFERENT Toucan model.
-   [:fn
-    {:error/message "Instance of a Card"}
-    #(contains? #{:model/Card nil} (t2/model %))]])
+  [:ref :metabase.queries.schema/card])
 
 (mr/def ::dashcard
-  [:and
-   [:map
-    [:id                 {:optional true} ::lib.schema.id/dashcard]
-    [:card               {:optional true} [:maybe [:ref ::card]]]
-    [:series             {:optional true} [:maybe [:ref ::card]]]
-    [:parameter_mappings {:optional true} [:maybe [:sequential [:ref ::parameter-mapping]]]]]
-   [:fn
-    {:error/message "Instance of a DashboardCard"}
-    #(contains? #{:model/DashboardCard nil} (t2/model %))]])
+  [:ref :metabase.dashboards.schema/dashcard])
+
+(mr/def ::id
+  [:ref ::lib.schema.parameter/id])
 
 (mr/def ::parameter-mapping
   "Valid parameter mapping for a Card or DashboardCard `parameter_mappings`."
-  [:and
-   [:map
-    {:description "parameter_mapping must be a map with :parameter_id and :target keys"}
-    [:parameter_id ::lib.schema.parameter/id]
-    [:target       [:ref ::lib.schema.parameter/target]]
-    [:card_id      {:optional true} ::lib.schema.id/card]
-    [:dashcard     {:optional true} [:ref ::dashcard]]]
-   [:map-of :keyword :any]])
+  [:map
+   {:description "parameter_mapping must be a map with :parameter_id and :target keys"}
+   [:parameter_id ::id]
+   [:target       [:ref ::lib.schema.parameter/target]]
+   [:card_id      {:optional true} ::lib.schema.id/card]
+   [:dashcard     {:optional true} [:ref ::dashcard]]])
+
+(mu/defn normalize-parameter-mapping :- ::parameter-mapping
+  "Normalize `parameter-mappings` when coming out of the application database or in via an API request."
+  [parameter-mapping]
+  (lib/normalize ::parameter-mapping parameter-mapping))
+
+(mr/def ::parameter-mappings
+  [:sequential [:ref ::parameter-mapping]])
+
+(mu/defn normalize-parameter-mappings :- [:maybe ::parameter-mappings]
+  "Normalize `parameter-mappings` when coming out of the application database or in via an API request."
+  [parameter-mappings :- [:maybe [:sequential :map]]]
+  (when parameter-mappings
+    (lib/normalize ::parameter-mappings parameter-mappings)))
+
+(mr/def ::values-source-type
+  [:enum {:decode/normalize lib.schema.common/normalize-keyword} :static-list :card])
+
+(mr/def ::values-query-type
+  [:enum {:decode/normalize lib.schema.common/normalize-keyword} :none])
 
 (mr/def ::parameter
   "Schema for a valid Parameter. We're not using [[metabase.legacy-mbql.schema/Parameter]] here because this Parameter
@@ -86,21 +87,34 @@
   ;; TODO we could use :multi to dispatch values_source_type to the correct values_source_config
   [:map
    {:description "parameter must be a map with :id and :type keys"}
-   [:id   ::lib.schema.common/non-blank-string]
-   [:type ::keyword-or-non-blank-string]
-   ;; TODO how to merge this with ParameterSource above?
-   [:values_source_type   {:optional true} [:enum "static-list" "card" nil]]
-   [:values_source_config {:optional true} ::values-source-config]
-   [:slug                 {:optional true} :string]
-   [:name                 {:optional true} :string]
+   [:id                   ::id]
    [:default              {:optional true} :any]
+   [:mappings             {:optional true} [:maybe [:or
+                                                    [:ref ::parameter-mappings]
+                                                    [:set [:ref ::parameter-mapping]]]]]
+   [:name                 {:optional true} :string]
    ;; TODO (Cam 9/18/25) -- why are we mixing `camelCase` and `snake_case` here? Is this to make me sad?
    [:sectionId            {:optional true} ::lib.schema.common/non-blank-string]
+   [:slug                 {:optional true} :string]
+   [:target               {:optional true} [:ref ::lib.schema.parameter/target]]
    [:temporal_units       {:optional true} [:maybe [:sequential ::lib.schema.temporal-bucketing/unit]]]
-   [:mappings             {:optional true} [:maybe
-                                            [:or
-                                             [:sequential ::parameter-mapping]
-                                             [:set ::parameter-mapping]]]]])
+   [:type                 [:ref ::lib.schema.parameter/type]]
+   [:values_query_type    {:optional true} ::values-query-type]
+   [:values_source_config {:optional true} ::values-source-config]
+   [:values_source_type   {:optional true} [:maybe ::values-source-type]]])
+
+(defn normalize-parameter
+  "Normalize `parameter` when coming out of the application database or in via an API request."
+  [parameter]
+  (lib/normalize ::parameter parameter))
+
+(mr/def ::parameters
+  [:sequential [:ref ::parameter]])
+
+(defn normalize-parameters
+  "Normalize `parameters` when coming out of the application database or in via an API request."
+  [parameters]
+  (lib/normalize ::parameters parameters))
 
 (mr/def ::remapped-field-value
   "Has two components:

@@ -1,27 +1,23 @@
 (ns metabase.queries.schema
   (:require
    [metabase.analyze.core :as analyze]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.util.i18n :as i18n]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn- normalize-query [query]
-  (cond
-    (empty? query)        {}
-    (:lib/metadata query) query
-    :else                 (lib/query lib.metadata.jvm/application-database-metadata-provider query)))
-
 (mr/def ::query.non-empty
   [:and
    [:map
-    {:decode/normalize #'normalize-query}]
+    {:decode/normalize #'lib-be/normalize-query}]
    [:ref ::lib.schema/query]])
 
 (mr/def ::query
@@ -69,9 +65,6 @@
     [:type                   {:optional true} [:maybe ::lib.schema.metadata/card.type]]
     [:visualization_settings {:optional true} [:maybe ms/Map]]]
    [:fn
-    {:error/message "If Card is a Toucan 2 instance, it must be a :model/Card"}
-    #(contains? #{:model/Card nil} (t2/model %))]
-   [:fn
     {:error/message    "Card database_id must match dataset_query.database"
      :decode/normalize (fn [{{query-database-id :database} :dataset_query, :as card}]
                          (cond-> card
@@ -89,3 +82,15 @@
    [:ref ::card]
    [:map
     [:dataset_query {:optional true} [:ref ::query.non-empty]]]])
+
+(mu/defn normalize-card :- ::card
+  ([card]
+   (normalize-card card ::card))
+  ([card :- :map
+    schema]
+   (try
+     (lib/normalize schema card)
+     (catch Throwable e
+       (throw (ex-info (i18n/tru "Invalid Card: {0}" (ex-message e))
+                       {:card card}
+                       e))))))

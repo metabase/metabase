@@ -21,14 +21,14 @@
   (testing "Successes"
     (are [v] (mr/validate ::parameters.schema/parameter v)
       {:id                   "param-id"
-       :type                 "number"
-       :values_source_type   "card"
+       :type                 :number
+       :values_source_type   :card
        :values_source_config {:card_id     3
                               :value_field [:field 3 nil]
                               :label_field [:field "name" {:base-type :type/Float}]}}
       {:id                   "param-id"
-       :type                 "number"
-       :values_source_type   "static-list"
+       :type                 :number
+       :values_source_type   :static-list
        :values_source_config {:values [[1 2 3]]}})))
 
 (deftest ^:parallel parameter-mapping-test
@@ -43,3 +43,18 @@
       {:parameter_id "param-id"
        :target        [:field 3 nil]
        :card_id       3})))
+
+(deftest ^:parallel normalize-parameters-test
+  (is (= [{:id                 "name_param_id"
+           :type               :string/=
+           :target             [:dimension [:template-tag "NAME"]]
+           :values_source_type :card
+           :name               "Name"
+           :slug               "NAME"}]
+         (parameters.schema/normalize-parameters
+          [{:id                 "name_param_id"
+            :type               "string/="
+            :target             ["dimension" ["template-tag" "NAME"]]
+            :values_source_type "card"
+            :name               "Name"
+            :slug               "NAME"}]))))

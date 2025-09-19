@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
-   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.queries.models.card-test :as card-test]
    [metabase.test :as mt]
@@ -252,22 +251,7 @@
             ;; this is usually 10, but it can be 11 sometimes in CI for some reason
             (is (contains? #{10 11} (call-count)))))))))
 
-(deftest ^:parallel normalize-parameter-mappings-test
-  (testing "DashboardCard parameter mappings should get normalized when coming out of the DB"
-    (mt/with-temp [:model/Dashboard     dashboard {:parameters [{:name "Venue ID"
-                                                                 :slug "venue_id"
-                                                                 :id   "22486e00"
-                                                                 :type "id"}]}
-                   :model/Card          card      {}
-                   :model/DashboardCard dashcard  {:dashboard_id       (u/the-id dashboard)
-                                                   :card_id            (u/the-id card)
-                                                   :parameter_mappings [{:parameter_id "22486e00"
-                                                                         :card_id      (u/the-id card)
-                                                                         :target       [:dimension [:field-id (mt/id :venues :id)]]}]}]
-      (is (= [{:parameter_id "22486e00"
-               :card_id      (u/the-id card)
-               :target       [:dimension [:field (mt/id :venues :id) nil]]}]
-             (t2/select-one-fn :parameter_mappings :model/DashboardCard :id (u/the-id dashcard)))))))
+
 
 (deftest ^:parallel normalize-visualization-settings-test
   (testing "DashboardCard visualization settings should get normalized to use modern MBQL syntax"
@@ -280,38 +264,6 @@
                                                        :visualization_settings original}]
            (is (= expected
                   (t2/select-one-fn :visualization_settings :model/DashboardCard :id (u/the-id dashcard))))))))))
-
-(deftest ^:parallel normalize-parameter-mappings-test-2
-  (testing "make sure parameter mappings correctly normalize things like legacy MBQL clauses"
-    (is (= [{:target [:dimension [:field 30 {:source-field 23}]]}]
-           ((:out mi/transform-parameters-list)
-            (json/encode
-             [{:target [:dimension [:fk-> 23 30]]}]))))
-
-    (testing "...but parameter mappings we should not normalize things like :target"
-      (is (= [{:card-id 123, :hash "abc", :target "foo"}]
-             ((:out mi/transform-parameters-list)
-              (json/encode
-               [{:card-id 123, :hash "abc", :target "foo"}])))))))
-
-(deftest ^:parallel keep-empty-parameter-mappings-empty-test
-  (testing (str "we should keep empty parameter mappings as empty instead of making them nil (if `normalize` removes "
-                "them because they are empty) (I think this is to prevent NPEs on the FE? Not sure why we do this)")
-    (is (= []
-           ((:out mi/transform-parameters-list)
-            (json/encode []))))))
-
-(deftest ^:parallel normalize-card-parameter-mappings-test
-  (doseq [parameters [[]
-                      [{:name "Time grouping"
-                        :slug "time_grouping"
-                        :id "8e366c15"
-                        :type :temporal-unit
-                        :sectionId "temporal-unit"
-                        :temporal_units [:minute :quarter-of-year]}]]]
-    (is (= parameters
-           ((:out mi/transform-card-parameters-list)
-            (json/encode parameters))))))
 
 (deftest ^:parallel identity-hash-test
   (testing "Dashboard card hashes are composed of the card hash, dashboard hash, and visualization settings"

@@ -3047,13 +3047,13 @@
                                                  :slug                 "static_category"
                                                  :id                   "_STATIC_CATEGORY_"
                                                  :type                 "category"
-                                                 :values_source_type   "static-list"
+                                                 :values_source_type   :static-list
                                                  :values_source_config {:values ["African" "American" "Asian"]}}
                                                 {:name                 "Static Category label"
                                                  :slug                 "static_category_label"
                                                  :id                   "_STATIC_CATEGORY_LABEL_"
                                                  :type                 "category"
-                                                 :values_source_type   "static-list"
+                                                 :values_source_type   :static-list
                                                  :values_source_config {:values [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}}
                                                 {:name                 "Card as source"
                                                  :slug                 "card"
@@ -3079,7 +3079,7 @@
   [[binding card-values] & body]
   `(do-with-card-param-values-fixtures ~card-values (fn [~binding] ~@body)))
 
-(deftest parameter-remapping-test
+(deftest ^:parallel parameter-remapping-test
   (with-card-param-values-fixtures [{:keys [card field-filter-card name-mapped-card param-keys]}]
     (letfn [(request [{:keys [id] :as _card} value-source value]
               (mt/user-http-request :crowberto :get 200
@@ -3278,7 +3278,7 @@
                                                       :slug                  "static_category"
                                                       :id                    "_STATIC_CATEGORY_",
                                                       :type                  "category",
-                                                      :values_source_type    "static-list"
+                                                      :values_source_type    :static-list
                                                       :values_source_config {"values" ["BBQ" "Bakery" "Bar"]}}]})]
         (is (= [{:name                  "Static Category",
                  :slug                  "static_category"

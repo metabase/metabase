@@ -408,7 +408,7 @@
     (testing "creating"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Invalid input: \{:parameters \[\"invalid type, got: \{:a :b\}\"\]\}"
+           #"Invalid output: \{:parameters \[\"invalid type, got: \{:a :b\}\"\]\}"
            (mt/with-temp [:model/Card _ {:parameters {:a :b}}])))
       (mt/with-temp [:model/Card card {:parameters [{:id   "valid-id"
                                                      :type "id"}]}]
@@ -420,7 +420,7 @@
       (mt/with-temp [:model/Card {:keys [id]} {:parameters []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Invalid input: \{:parameters \[\{:id \[\"should be a string, got: 100\" \"non-blank string, got: 100\"\], :type \[\"missing required key, got: nil\"\]\}\]\}"
+             #"Invalid output:.*\{:parameters \[\{:id \[\"should be a string, got: 100\" \"non-blank string, got: 100\"\], :type \[\"missing required key, got: nil\"\]\}\]\}"
              (t2/update! :model/Card id {:parameters [{:id 100}]})))
         (is (pos? (t2/update! :model/Card id {:parameters [{:id   "new-valid-id"
                                                             :type "id"}]})))))))
@@ -442,7 +442,7 @@
     (testing "creating"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Invalid input: \{:parameter_mappings \[\"invalid type, got: \{:a :b\}\"\]\}"
+           #"Invalid output: \{:parameter_mappings \[\"invalid type, got: \{:a :b\}\"\]\}"
            (mt/with-temp [:model/Card _ {:parameter_mappings {:a :b}}])))
       (mt/with-temp [:model/Card card {:parameter_mappings [{:parameter_id "valid-id"
                                                              :target       [:field 1000 nil]}]}]
@@ -454,7 +454,7 @@
       (mt/with-temp [:model/Card {:keys [id]} {:parameter_mappings []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Invalid input: \{:parameter_mappings \[\{:parameter_id \[\"should be a string, got: 100\" \"non-blank string, got: 100\"\], :target \[\"missing required key, got: nil\"\]\}\]\}"
+             #"Invalid output:.*\{:parameter_mappings \[\{:parameter_id \[\"should be a string, got: 100\" \"non-blank string, got: 100\"\], :target \[\"missing required key, got: nil\"\]\}\]\}"
              (t2/update! :model/Card id {:parameter_mappings [{:parameter_id 100}]})))
         (is (pos? (t2/update! :model/Card id {:parameter_mappings [{:parameter_id "new-valid-id"
                                                                     :target       [:field 1000 nil]}]})))))))
@@ -470,7 +470,7 @@
                :target       [:dimension [:field 1 nil]]}]
              (t2/select-one-fn :parameter_mappings :model/Card :id card-id))))))
 
-(deftest identity-hash-test
+(deftest ^:parallel identity-hash-test
   (testing "Card hashes are composed of the name and the collection's hash"
     (let [now #t "2022-09-01T12:34:56Z"]
       (mt/with-temp [:model/Collection  coll {:name "field-db" :location "/" :created_at now}
@@ -495,7 +495,6 @@
                   :parameterized_object_id   card-id
                   :parameter_id              "_CATEGORY_NAME_"}]
                 (t2/select :model/ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id)))
-
         (testing "update values_source_config.card_id will update ParameterCard"
           (t2/update! :model/Card card-id {:parameters [(merge default-params
                                                                {:values_source_type    "card"
@@ -505,7 +504,6 @@
                     :parameterized_object_id   card-id
                     :parameter_id              "_CATEGORY_NAME_"}]
                   (t2/select :model/ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id))))
-
         (testing "delete the card will delete ParameterCard"
           (t2/delete! :model/Card :id card-id)
           (is (= []
@@ -538,7 +536,7 @@
         (is (= []
                (t2/select :model/ParameterCard :card_id source-card-id)))))))
 
-(deftest do-not-update-parameter-card-if-it-doesn't-change-test
+(deftest do-not-update-parameter-card-if-it-doesnt-change-test
   (testing "Do not update ParameterCard if updating a Dashboard doesn't change the parameters"
     (mt/with-temp [:model/Card  {source-card-id :id} {}
                    :model/Card  {card-id-1 :id}      {:parameters [{:name       "Category Name"
@@ -587,35 +585,29 @@
                     (mt/card-with-source-metadata-for-query
                      (mt/mbql-query products {:fields [(mt/$ids $products.title)]
                                               :limit 5})))
-
         (testing "ParameterCard for dashboard is removed"
           (is (=? [{:card_id                   source-card-id
                     :parameter_id              "param_1"
                     :parameterized_object_type :card
                     :parameterized_object_id   (:id card)}]
                   (t2/select :model/ParameterCard :card_id source-card-id))))
-
         (testing "update the dashboard parameter and remove values_config of dashboard"
           (is (=? [{:id   "param_2"
                     :name "Param 2"
                     :type :category}]
                   (t2/select-one-fn :parameters :model/Dashboard :id (:id dashboard))))
-
           (testing "but no changes with parameter on card"
             (is (=? [{:name                 "Param 1"
                       :id                   "param_1"
                       :type                 :category
-                      :values_source_type   "card"
+                      :values_source_type   :card
                       :values_source_config {:card_id     source-card-id
                                              :value_field (mt/$ids $products.title)}}]
                     (t2/select-one-fn :parameters :model/Card :id (:id card)))))))
-
       (testing "on archive card"
         (t2/update! :model/Card source-card-id {:archived true})
-
         (testing "ParameterCard for card is removed"
           (is (=? [] (t2/select :model/ParameterCard :card_id source-card-id))))
-
         (testing "update the dashboard parameter and remove values_config of card"
           (is (=? [{:id   "param_1"
                     :name "Param 1"

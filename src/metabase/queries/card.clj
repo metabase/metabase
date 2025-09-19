@@ -26,14 +26,14 @@
                       {:status-code 400})))))
 
 (mu/defn- param->field-id :- [:maybe ::lib.schema.id/field]
-  [card  :- (ms/InstanceOf :model/Card)
+  [card  :- ::parameters.schema/card
    param :- ::parameters.schema/parameter]
-  (params/param-target->field-id (:target param) card))
+  (params/param-target->field-id (:target param) (:dataset_query card)))
 
-(mu/defn mapping->field-values :- [:maybe ::parameters.schema/field-values-result]
+(mu/defn- mapping->field-values :- [:maybe ::parameters.schema/field-values-result]
   "Get param values for the \"old style\" parameters. This mimic's the api/dashboard version except we don't have
   chain-filter issues or dashcards to worry about."
-  [card  :- (ms/InstanceOf :model/Card)
+  [card  :- ::parameters.schema/card
    param :- ::parameters.schema/parameter
    query :- [:maybe ::lib.schema.common/non-blank-string]]
   (when-let [field-id (param->field-id card param)]
@@ -48,26 +48,31 @@
   ([card param-key]
    (card-param-values card param-key nil))
 
-  ([card      :- ms/Map
-    param-key :- ms/NonBlankString
-    query     :- [:maybe ms/NonBlankString]]
+  ([card         :- ::parameters.schema/card
+    param-key    :- ms/NonBlankString
+    query-string :- [:maybe ms/NonBlankString]]
    (let [param (get-param-or-throw card param-key)]
-     (custom-values/parameter->values param query (fn default-case-thunk []
-                                                    (or
-                                                     (mapping->field-values card param query)
-                                                     (do (log/error "mapping->field-values unexpectedly returned nil (maybe this shouldn't have been called?)"
-                                                                    (pr-str {:card card, :param param, :query-string query}))
-                                                         nil)))))))
+     (custom-values/parameter->values
+      param query-string
+      (fn default-case-thunk []
+        (or
+         (mapping->field-values card param query-string)
+         (do (log/error "mapping->field-values unexpectedly returned nil (maybe this shouldn't have been called?)"
+                        (pr-str {:card card, :param param, :query-string query-string}))
+             nil)))))))
 
-(defn card-param-remapped-value
+(mu/defn card-param-remapped-value
   "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of `card`."
-  [card param-key value]
+  [card      :- ::parameters.schema/card
+   param-key :- ms/NonBlankString
+   value]
   (or (let [param (get-param-or-throw card param-key)]
         (custom-values/parameter-remapped-value
          param
          value
-         #(when-let [field-id (param->field-id card param)]
-            (-> (chain-filter/chain-filter field-id [{:field-id field-id, :op :=, :value value}] :limit 1)
-                :values
-                first))))
+         (fn default-case-thunk []
+           (when-let [field-id (param->field-id card param)]
+             (-> (chain-filter/chain-filter field-id [{:field-id field-id, :op :=, :value value}] :limit 1)
+                 :values
+                 first)))))
       [value]))
