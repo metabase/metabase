@@ -148,7 +148,7 @@
 
 (defn delete-target-table!
   "Delete the target table of a transform and sync it from the app db."
-  [{:keys [id target source], :as transform}]
+  [{:keys [id target], :as transform}]
   (when target
     (let [target (update target :type keyword)
           database-id (target-database-id transform)
