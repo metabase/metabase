@@ -177,4 +177,9 @@
         (check-result-metadata
          driver mp
          "select orders.* from products"
+         []))
+      (testing "Using a nonsense query"
+        (check-result-metadata
+         driver mp
+         "this is not a query"
          [])))))
