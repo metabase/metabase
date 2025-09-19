@@ -1,5 +1,3 @@
-import { t } from "ttag";
-
 export const bad_table = (
   errorFilter,
   dbFilter,
