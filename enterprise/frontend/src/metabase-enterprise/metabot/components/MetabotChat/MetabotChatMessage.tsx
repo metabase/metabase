@@ -74,9 +74,9 @@ export const UserMessage = ({
 }: UserMessageProps) => (
   <MessageContainer chatRole={message.role} {...props}>
     {message.type === "text" && (
-      <Text className={cx(Styles.message, Styles.messageUser)}>
+      <AIMarkdown className={cx(Styles.message, Styles.messageUser)}>
         {message.message}
-      </Text>
+      </AIMarkdown>
     )}
 
     {message.type === "action" && (
@@ -486,7 +486,6 @@ export const Messages = ({
             message={message}
             hideActions={isDoingScience && messages.length === index + 1}
             onCopy={() => {
-              // TODO: probably want to make this not show up long-term
               const copyText =
                 message.type === "action"
                   ? `${message.userMessage}: ${message.message}`
