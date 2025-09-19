@@ -1,7 +1,6 @@
 import { useForceUpdate } from "@mantine/hooks";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
-import cx from "classnames";
 import dayjs from "dayjs";
 import type { Location } from "history";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
@@ -397,11 +396,7 @@ export const DocumentPage = ({
   );
 
   return (
-    <Box
-      className={cx(styles.documentPage, {
-        // [styles.commentsOpened]: commentSidebarOpen,
-      })}
-    >
+    <Box className={styles.documentPage}>
       <SetTitle title={documentData?.name || t`New document`} />
       {documentData?.archived && <DocumentArchivedEntityBanner />}
       <Box className={styles.contentArea}>
