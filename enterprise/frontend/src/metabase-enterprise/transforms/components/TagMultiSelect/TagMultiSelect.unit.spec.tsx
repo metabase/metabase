@@ -1,7 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupListTransformTagsEndpoint } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  setupCreateTransformTagEndpoint,
+  setupListTransformTagsEndpoint,
+} from "__support__/server-mocks";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { TransformTag, TransformTagId } from "metabase-types/api";
 import { createMockTransformTag } from "metabase-types/api/mocks";
 
@@ -10,10 +13,14 @@ import { TagMultiSelect } from "./TagMultiSelect";
 type SetupOpts = {
   tags?: TransformTag[];
   tagIds?: TransformTagId[];
+  newTag?: TransformTag;
 };
 
-function setup({ tags = [], tagIds = [] }: SetupOpts) {
+function setup({ tags = [], tagIds = [], newTag }: SetupOpts) {
   setupListTransformTagsEndpoint(tags);
+  if (newTag != null) {
+    setupCreateTransformTagEndpoint(newTag);
+  }
 
   const onChange = jest.fn();
   renderWithProviders(<TagMultiSelect tagIds={tagIds} onChange={onChange} />);
@@ -23,6 +30,16 @@ function setup({ tags = [], tagIds = [] }: SetupOpts) {
 }
 
 describe("TagMultiSelect", () => {
+  it("should clear the input after creating a tag", async () => {
+    const { input } = setup({
+      tags: [],
+      newTag: createMockTransformTag({ name: "foo" }),
+    });
+    await userEvent.type(input, "foo");
+    await userEvent.click(screen.getByText(/Create/));
+    await waitFor(() => expect(input).toHaveValue(""));
+  });
+
   it("should show a message when there are no tags", async () => {
     const { input } = setup({ tags: [] });
     await userEvent.click(input);
