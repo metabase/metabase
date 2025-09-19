@@ -14,6 +14,7 @@
    [metabase.driver.mysql :as mysql]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -218,7 +219,9 @@
 #_:clj-kondo/ignore
 (defmacro with-test-table
   [[table-id table-name] [schema data] & body]
-  `(let [table-name# (mt/random-name)
+  `(let [table-name# (if (= :redshift driver/*driver*)
+                       (tx/db-qualified-table-name (get-in (mt/db) [:settings :database-source-dataset-name]) (mt/random-name))
+                       (mt/random-name))
          table-id# (create-test-table-with-data! table-name# ~schema ~data)]
      (try
        (let [~table-id table-id#
