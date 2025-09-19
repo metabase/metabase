@@ -1,0 +1,26 @@
+name: Representation Tests
+
+on:
+  workflow_call:
+    inputs:
+      skip:
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-backend
+  cancel-in-progress: true
+
+jobs:
+  representation-tests:
+    timeout-minutes: 10
+    name: Representation Tests
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: 'representation-tests'
+      - name: Run test
+        run: clojure -X:dev:ci:test:ee:ee-dev :only '"enterprise/backend/test/metabase_enterprise/represenation/"'
