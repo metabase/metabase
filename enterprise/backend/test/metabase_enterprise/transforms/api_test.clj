@@ -8,7 +8,7 @@
    [metabase-enterprise.transforms.models.transform-transform-tag]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
-   [metabase-enterprise.transforms.test-util :refer [parse-instant with-transform-cleanup! utc-timestamp]]
+   [metabase-enterprise.transforms.test-util :refer [parse-instant with-transform-cleanup! utc-timestamp get-test-schema]]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
