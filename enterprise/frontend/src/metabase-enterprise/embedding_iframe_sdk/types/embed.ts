@@ -72,7 +72,7 @@ export type SdkIframeEmbedReportAnalytics = {
     usageAnalytics: EmbeddedAnalyticsJsEventSchema;
     embedHostUrl: string;
   };
-}
+};
 export type SdkIframeEmbedSetStaticTokenMessage = {
   type: "metabase.embed.fetchStaticTokenResult";
   data: {
