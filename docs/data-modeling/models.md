@@ -149,7 +149,7 @@ You can:
 - **Search for columns** using the "Find a column..." search box
 - **Drag columns** from the available list into either the left (Title + Subtitle) or right columns areas
 - **Reorder columns** by dragging them within their respective areas
-- **Remove columns** by dragging them out of their current position
+- **Remove columns** by clicking on the X on the column.
 
 You can see a preview on the bottom with sample data from your model. 
 
