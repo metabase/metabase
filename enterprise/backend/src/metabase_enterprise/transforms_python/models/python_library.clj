@@ -1,5 +1,6 @@
 (ns metabase-enterprise.transforms-python.models.python-library
   (:require
+   [metabase-enterprise.transforms-python.python-parser :as python-parser]
    [metabase.app-db.core :as app-db]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
@@ -49,6 +50,15 @@
   (let [normalized-path (normalize-path path)]
     (validate-path! normalized-path)
     (t2/select-one :model/PythonLibrary :path normalized-path)))
+
+(defn get-python-library-completions
+  "Get completion information for functions in a Python library by path.
+   Returns a vector of function information maps."
+  [path]
+  (let [library (get-python-library-by-path path)]
+    (if library
+      (python-parser/extract-functions-from-source (:source library))
+      [])))
 
 (defn update-python-library-source!
   "Update the Python library source code. Creates a new record if none exists. Returns the updated library."
