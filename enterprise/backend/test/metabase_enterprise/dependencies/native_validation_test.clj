@@ -55,13 +55,22 @@
                 :dataset-query
                 (deps.native-validation/native-query-deps driver mp))))))
 
-(deftest validate-bad-query-test
+(deftest validate-bad-queries-test
   (testing "validate-native-query handles nonsense queries"
     (let [mp (deps.tu/default-metadata-provider)
           driver (:engine (lib.metadata/database mp))]
-      (is (not (deps.native-validation/validate-native-query
-                driver mp
-                (fake-query mp "this is not a query")))))))
+      (testing "complete nonsense query"
+        (is (not (deps.native-validation/validate-native-query
+                  driver mp
+                  (fake-query mp "this is not a query")))))
+      (testing "bad table wildcard"
+        (is (not (deps.native-validation/validate-native-query
+                  driver mp
+                  (fake-query mp "select products.* from orders")))))
+      (testing "bad col reference"
+        (is (not (deps.native-validation/validate-native-query
+                  driver mp
+                  (fake-query mp "select bad from products"))))))))
 
 (deftest validate-native-query-with-subquery-columns-test
   (testing "validate-native-query should detect invalid columns in subqueries"
@@ -132,6 +141,11 @@
          driver mp
          "select total from orders"
          [(lib.metadata/field mp (meta/id :orders :total))]))
+      (testing "Selecting a nonexistent col"
+        (check-result-metadata
+         driver mp
+         "select bad from orders"
+         []))
       (testing "Selecting a custom col"
         (check-result-metadata
          driver mp
@@ -163,6 +177,4 @@
         (check-result-metadata
          driver mp
          "select orders.* from products"
-         [{:type :invalid-table-wildcard,
-           :table "orders",
-           :metabase.driver.sql/bad-reference true}])))))
+         [])))))

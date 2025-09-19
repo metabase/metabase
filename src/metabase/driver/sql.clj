@@ -260,7 +260,8 @@
   (let [{:keys [returned-fields]} (->> (macaw/parsed-query native-query)
                                        macaw/->ast
                                        (sql.references/field-references driver))]
-    (mapcat (partial resolve-field driver metadata-provider) returned-fields)))
+    (->> (mapcat (partial resolve-field driver metadata-provider) returned-fields)
+         (remove ::bad-reference))))
 
 (defmethod driver/validate-native-query-fields :sql
   [driver metadata-provider native-query]
