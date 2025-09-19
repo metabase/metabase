@@ -26,7 +26,7 @@ To create a progress bar you'll need:
   | --------------- | ---------------- | ------------ |
   | 4910            | 17.32            | 173          |
 
-- A goal value. The goal value can be a positive number or a value from another column in the same query, see [Set progress bar goal](#set-progress-bar-goal).
+- A goal value. The goal value can be a positive number or a value from another column in the same query, see [Set progress bar goal](#set-goal-for-a-progress-bar).
 
   The goal is set in the [chart options](#progress-bar-options).
 
@@ -43,7 +43,7 @@ Once you built the query that returns data in the appropriate shape, you can cre
 2. While viewing a visualization, click the **Visualization** button in the bottom left of the screen and switch visualization to **Progress**.
 
 3. To set the bar's goal and metric, click the **gear** icon in the bottom left to open the settings sidebar.
-4. In the "Display" bar in the settings sidebar, choose the column to use as a metric and the column or number to use as a goal. See [Set a goal](#set-progress-bar-goal).
+4. In the "Display" bar in the settings sidebar, choose the column to use as a metric and the column or number to use as a goal. See [Set a goal](#set-goal-for-a-progress-bar).
 
    If your query only returns one number, you'll only be able to set a constant goal.
 
