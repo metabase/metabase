@@ -1,72 +1,17 @@
 (ns metabase-enterprise.metabot-v3.api.metabot
   "`/api/ee/metabot-v3/metabot` routes"
   (:require
-   [medley.core :as m]
-   [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
-   [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
+   [metabase-enterprise.metabot-v3.suggested-prompts :as metabot-v3.suggested-prompts]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.app-db.core :as mdb]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
-
-(defn- column-input
-  [answer-source-column]
-  (some-> answer-source-column (select-keys [:name :type :description :table-reference])))
-
-(defn- metric-input
-  [{:keys [queryable-dimensions default-time-dimension-field-id] :as answer-source-metric}]
-  (let [default-time-dimension (when default-time-dimension-field-id
-                                 (-> (m/find-first (comp #{default-time-dimension-field-id} :field-id)
-                                                   queryable-dimensions)
-                                     column-input))]
-    (-> answer-source-metric
-        (select-keys [:name :description])
-        (assoc :queryable-dimensions (map column-input queryable-dimensions))
-        (m/assoc-some :default-time-dimension default-time-dimension))))
-
-(defn- model-input
-  [answer-source-model]
-  (-> answer-source-model
-      (select-keys [:name :description :fields])
-      (update :fields #(map column-input %))))
-
-(defn- generate-sample-prompts
-  [metabot-id]
-  (lib.metadata.jvm/with-metadata-provider-cache
-    (let [cards (metabot-v3.tools.u/get-metrics-and-models metabot-id)
-          {metrics :metric, models :model}
-          (->> (for [[[card-type database-id] group-cards] (group-by (juxt :type :database_id) cards)
-                     detail (map (fn [detail card] (assoc detail ::origin card))
-                                 (metabot-v3.dummy-tools/cards-details card-type database-id group-cards nil)
-                                 group-cards)]
-                 detail)
-               (group-by :type))
-          metric-inputs (map metric-input metrics)
-          model-inputs (map model-input models)
-          {:keys [table_questions metric_questions]}
-          (metabot-v3.client/generate-example-questions {:metrics metric-inputs, :tables model-inputs})
-          ->prompt (fn [{:keys [questions]} {::keys [origin]}]
-                     (let [base {:metabot_id metabot-id
-                                 :model      (:type origin)
-                                 :card_id    (:id origin)}]
-                       (map #(assoc base :prompt %) questions)))
-          metric-prompts (mapcat ->prompt metric_questions metrics)
-          model-prompts (mapcat ->prompt table_questions models)]
-      (when (seq metric-prompts)
-        (t2/insert! :model/MetabotPrompt metric-prompts))
-      (when (seq model-prompts)
-        (t2/insert! :model/MetabotPrompt model-prompts)))))
-
-(defn- delete-all-metabot-prompts
-  [metabot-id]
-  (t2/delete! :model/MetabotPrompt {:where [:= :metabot_id metabot-id]}))
 
 ;; TODO: Eventually this should be paged but since we are just going to hardcode two models for now
 ;; lets not
@@ -109,8 +54,8 @@
                                          (:collection_id metabot-updates)))]
       (t2/update! :model/Metabot id metabot-updates)
       (when (or verified-content-changed? collection-changed?)
-        (delete-all-metabot-prompts id)
-        (generate-sample-prompts id))
+        (metabot-v3.suggested-prompts/delete-all-metabot-prompts id)
+        (metabot-v3.suggested-prompts/generate-sample-prompts id))
       (t2/select-one :model/Metabot :id id))))
 
 (api.macros/defendpoint :post "/:id/prompt-suggestions/regenerate"
@@ -119,8 +64,8 @@
   (api/check-superuser)
   (t2/with-transaction [_conn]
     (api/check-404 (t2/exists? :model/Metabot :id id))
-    (delete-all-metabot-prompts id)
-    (generate-sample-prompts id))
+    (metabot-v3.suggested-prompts/delete-all-metabot-prompts id)
+    (metabot-v3.suggested-prompts/generate-sample-prompts id))
   api/generic-204-no-content)
 
 (api.macros/defendpoint :get "/:id/prompt-suggestions"
@@ -170,7 +115,7 @@
   "Delete all prompt suggestions for the metabot instance with `id`."
   [{:keys [id]} :- [:map [:id pos-int?]]]
   (api/check-superuser)
-  (delete-all-metabot-prompts id)
+  (metabot-v3.suggested-prompts/delete-all-metabot-prompts id)
   api/generic-204-no-content)
 
 (api.macros/defendpoint :delete "/:id/prompt-suggestions/:prompt-id"
