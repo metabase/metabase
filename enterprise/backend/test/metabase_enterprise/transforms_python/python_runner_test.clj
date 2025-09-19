@@ -124,7 +124,7 @@
                                                   "    raise ValueError('Something went wrong')")})
           expected-template (str "ERROR: Transform function failed: Something went wrong\n"
                                  "Traceback (most recent call last):\n"
-                                 "  File \"/app/external/src/transform_runner.py\", line ___LINE___, in main\n"
+                                 "  File \"___PATH___/transform_runner.py\", line ___LINE___, in main\n"
                                  "    result = script.transform()\n"
                                  "             ^^^^^^^^^^^^^^^^^^\n"
                                  "  File \"___PATH___/script.py\", line 2, in transform\n"
