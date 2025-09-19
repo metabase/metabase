@@ -110,7 +110,6 @@ jobs:
       skip: ${{ needs.files-changed.outputs.frontend_all != 'true' }}
       skip-lint: ${{ needs.files-changed.outputs.frontend_all != 'true' && needs.files-changed.outputs.e2e_specs != 'true' }}
 
-
   e2e-tests:
     needs: [files-changed, uberjar]
     if: always() && !cancelled()
