@@ -123,6 +123,16 @@ describe("scenarios - embedding hub", () => {
       cy.url().should("include", "/model/new");
     });
 
+    it('"Embed in your code" card should take you to the embed flow', () => {
+      cy.visit("/admin/embedding/setup-guide");
+
+      cy.findByTestId("admin-layout-content")
+        .findByText("Embed in your code")
+        .click();
+
+      cy.url().should("include", "/embed-js?auth_method=user_session");
+    });
+
     it("Embed in production step should be locked until JWT is enabled", () => {
       cy.visit("/admin/embedding/setup-guide");
 
