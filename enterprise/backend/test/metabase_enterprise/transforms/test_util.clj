@@ -68,3 +68,18 @@
   "Parse a local datetime and convert it to a string encoding a ZonedDateTime in the default timezone."
   ^String [timestamp-string]
   (-> timestamp-string parse-instant str))
+
+(defn wait-for-table
+  "Wait for a table to appear in metadata, with timeout."
+  [^String table-name timeout-ms]
+  (let [timer (u/start-timer)]
+    (loop []
+      (let [table (t2/select-one :model/Table :name table-name)
+            fields (t2/select :model/Field :table_id (:id table))]
+        (cond
+          (and table (seq fields)) table
+          (> (u/since-ms timer) timeout-ms)
+          (throw (ex-info (format "Table %s did not appear after %dms" table-name timeout-ms)
+                          {:table-name table-name :timeout-ms timeout-ms}))
+          :else (do (Thread/sleep 100)
+                    (recur)))))))
