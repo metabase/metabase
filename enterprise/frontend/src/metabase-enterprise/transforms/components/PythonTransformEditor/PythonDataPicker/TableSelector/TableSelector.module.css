@@ -2,6 +2,6 @@
   border: 1px solid var(--border-color);
 }
 
-.tableSelectorInner {
+.tableSelectorButtonInner {
   justify-content: start;
 }

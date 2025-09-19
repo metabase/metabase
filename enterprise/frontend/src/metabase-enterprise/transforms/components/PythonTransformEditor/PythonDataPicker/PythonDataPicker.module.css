@@ -1,5 +1,6 @@
 .dataPicker {
   border-right: 1px solid var(--mb-color-border);
+  overflow: auto;
 }
 
 .databaseSelector {

@@ -8,11 +8,11 @@ import {
 } from "metabase/common/components/Pickers/DataPicker";
 import {
   ActionIcon,
+  Box,
   Button,
   Group,
   Icon,
   Stack,
-  Text,
   Tooltip,
 } from "metabase/ui";
 import type {
@@ -65,31 +65,32 @@ export function TableSelector({
 
   return (
     <>
-      <Group w="100%" bdrs="xs" gap="xs" p="sm" className={S.tableSelector}>
+      <Group w="100%" bdrs="xs" gap="xs" className={S.tableSelector}>
         <Button
           flex="1 1 auto"
           onClick={open}
           disabled={disabled}
-          classNames={{ inner: S.tableSelectorInner }}
-          p={0}
+          classNames={{ inner: S.tableSelectorButtonInner }}
+          px="sm"
+          py="lg"
           variant="subtle"
         >
           <Stack gap={0} align="start" justify="center">
             {table ? (
               <>
-                <Text size="sm" c="text-medium" fw="normal">
+                <Box fz="sm" c="text-medium" fw="normal">
                   {table?.db?.name} / {table?.schema}
-                </Text>
-                <Text>{table?.display_name}</Text>
+                </Box>
+                <Box c="text-dark">{table?.display_name}</Box>
               </>
             ) : (
-              <Text>{t`Select a table…`}</Text>
+              <Box c="text-dark">{t`Select a table…`}</Box>
             )}
           </Stack>
         </Button>
 
         <Tooltip label={t`Remove this table`}>
-          <ActionIcon onClick={onRemove}>
+          <ActionIcon onClick={onRemove} pr="sm">
             <Icon name="close" c="text-dark" />
           </ActionIcon>
         </Tooltip>

@@ -93,6 +93,10 @@ export function PythonDataPicker({
   const handleDatabaseChange = (value: string | null) => {
     const newDatabase = value ? parseInt(value) : undefined;
 
+    if (newDatabase === database) {
+      return;
+    }
+
     // Clear selections since they won't make sense
     const newSelections = [
       {
@@ -144,7 +148,7 @@ export function PythonDataPicker({
       <Box>
         <Text fw="bold">{t`Source database`}</Text>
         <Text size="sm" c="text-light" mb="sm">
-          {t`Select the database that contains your source data`}
+          {t`Select the database that contains your source data.`}
         </Text>
 
         <DatabaseDataSelector
@@ -159,37 +163,30 @@ export function PythonDataPicker({
       </Box>
       {database && (
         <Box>
-          <Text fw="bold">{t`Source tables`}</Text>
+          <Text fw="bold">{t`Pick tables and alias them`}</Text>
           <Text size="sm" c="text-light" mb="sm">
-            {t`Select tables to use as data sources and provide aliases for each`}
+            {t`Select tables to use as data sources and provide aliases that can be referenced in your Python script.`}
           </Text>
-          <Stack gap="sm">
-            <Stack gap="lg">
-              {tableSelections.map((selection, index) => (
-                <SelectionInput
-                  key={index}
-                  selection={selection}
-                  database={database}
-                  tables={tables}
-                  usedAliases={usedAliases}
-                  availableTables={availableTables}
-                  onChange={(selection) =>
-                    handleSelectionChange(index, selection)
-                  }
-                  onRemove={() => handleRemoveTable(index)}
-                  disabled={isLoadingTables}
-                />
-              ))}
-            </Stack>
-
-            <Button
-              leftSection={<Icon name="add" />}
-              variant="subtle"
+          <Stack gap="md">
+            {tableSelections.map((selection, index) => (
+              <SelectionInput
+                key={index}
+                selection={selection}
+                database={database}
+                tables={tables}
+                usedAliases={usedAliases}
+                availableTables={availableTables}
+                onChange={(selection) =>
+                  handleSelectionChange(index, selection)
+                }
+                onRemove={() => handleRemoveTable(index)}
+                disabled={isLoadingTables}
+              />
+            ))}
+            <AddTableButton
               onClick={handleAddTable}
               disabled={availableTables.length === 0}
-            >
-              {t`Add another table`}
-            </Button>
+            />
           </Stack>
         </Box>
       )}
@@ -276,5 +273,27 @@ function SelectionInput({
         disabled={disabled}
       />
     </Stack>
+  );
+}
+
+function AddTableButton({
+  onClick,
+  disabled,
+}: {
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Box>
+      <Button
+        leftSection={<Icon name="add_data" />}
+        variant="subtle"
+        px={0}
+        onClick={onClick}
+        disabled={disabled}
+      >
+        {t`Add a table`}
+      </Button>
+    </Box>
   );
 }
