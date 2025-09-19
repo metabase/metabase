@@ -295,18 +295,16 @@
           (testing "Indexing tokens are tracked"
             (semantic.indexer/indexing-step pgvector index-metadata index indexing-state)
             (is (= 1 (t2/count :model/SemanticSearchTokenTracking)))
-            (let [{:keys [request_type total_tokens prompt_tokens]}
+            (let [{:keys [request_type total_tokens]}
                   (t2/select-one :model/SemanticSearchTokenTracking)]
               (is (= :index request_type))
-              (is (= 11 prompt_tokens))
               (is (= 11 total_tokens))))
 
           (testing "Querying tokens are tracked"
             (t2/delete! :model/SemanticSearchTokenTracking)
             (semantic.index/query-index pgvector index {:search-string "elephant"})
             (is (= 1 (t2/count :model/SemanticSearchTokenTracking)))
-            (let [{:keys [request_type total_tokens prompt_tokens]}
+            (let [{:keys [request_type total_tokens]}
                   (t2/select-one :model/SemanticSearchTokenTracking)]
               (is (= :query request_type))
-              (is (= 5 total_tokens))
-              (is (= 5 prompt_tokens)))))))))
+              (is (= 5 total_tokens)))))))))

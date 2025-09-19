@@ -182,12 +182,11 @@
   (try
     (log/debug "Calling AI Service embeddings API" {:documents (count texts) :tokens (count-tokens-batch texts)})
     (let [response (metabot-v3.client/generate-embeddings model-name texts)
-          prompt-tokens (->> response :usage :prompt_tokens)
           total-tokens (->> response :usage :total_tokens)]
       (analytics/inc! :metabase-search/semantic-embedding-tokens
                       {:provider "ai-service", :model model-name}
                       (->> response :usage :total_tokens))
-      (semantic.models.token-tracking/record-tokens model-name (:type opts) total-tokens prompt-tokens)
+      (semantic.models.token-tracking/record-tokens model-name (:type opts) total-tokens)
       (extract-base64-response-embeddings response))
     (catch Exception e
       (log/error e "AI Service embeddings API call failed" {:documents (count texts) :tokens (count-tokens-batch texts)})

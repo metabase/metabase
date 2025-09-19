@@ -516,6 +516,11 @@ databaseChangeLog:
               - column:
                   name: id
                   remarks: Unique ID of a request
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
               - column:
                   name: model_name
                   remarks: Name of model used for embeddings generation
@@ -529,16 +534,16 @@ databaseChangeLog:
               - column:
                   name: created_at
                   remarks: Datetime of insertion
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
               - column:
                   name: total_tokens
                   remarks: Total tokens value as per OpenAI compatible API
                   type: int
                   constraints:
                     nullable: false
-              - column:
-                  name: prompt_tokens
-                  remarks: Prompt tokens value as per OpenAI compatible API
-                  type: int
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
