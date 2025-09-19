@@ -188,5 +188,4 @@
     ;;       this means that the corresponding entries would have been missing or stale when we indexed them.
     ;;       ideally, we would delay the indexing somehow, or only reindex what we've loaded.
     ;;       while we're figuring that out, here's a crude stopgap.
-    ;; TODO(johnswanson) Uncomment this and figure out test failures
-    #_(search/reindex! {:async? false})))
+    (search/reindex! {:async? false})))
