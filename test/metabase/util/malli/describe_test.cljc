@@ -2,7 +2,7 @@
   "Additional tests for this live in [[metabase.util.malli-test]]."
   (:require
    #?@(:clj
-       ([metabase.lib.schema :as lib.schema]
+       ([metabase.lib.schema]
         [metabase.util :as u]))
    [clojure.test :refer [are deftest is testing]]
    [metabase.util.malli.describe :as umd]
@@ -64,4 +64,4 @@
   (is (= "map where {:k -> <keyword>, :parent (optional) -> <recursive :metabase.util.malli.describe-test/map>}"
          (umd/describe ::map)))
   #?(:clj
-     (is (string? (u/with-timeout 500 (umd/describe ::lib.schema/query))))))
+     (is (string? (u/with-timeout 500 (umd/describe :metabase.lib.schema/query))))))
