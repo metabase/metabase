@@ -671,7 +671,26 @@ export const CardEmbedComponent = memo(
                         </Menu.Item>
                         <Menu.Item
                           onClick={() => {
-                            // TODO
+                            const pos = getPos();
+                            if (!pos) {
+                              return false;
+                            }
+                            const resolvedPos = editor.state.doc.resolve(pos);
+                            const match = findParentNodeClosestToPos(
+                              resolvedPos,
+                              (n) =>
+                                n.type.name === "flexContainer" ||
+                                n.type.name === "resizeNode",
+                            );
+                            if (!match) {
+                              return;
+                            }
+                            editor.commands.insertContentAt(match.pos + 1, {
+                              // TODO: un-hard-code "supportingText" everywhere
+                              type: "supportingText",
+                              content: [{ type: "paragraph" }],
+                            });
+                            // TODO: If parent type is resizeNode, wrap cardEmbed first
                           }}
                           disabled={!shouldAllowAddingSupportingText()}
                           leftSection={<Icon name="add_list" size={14} />}
