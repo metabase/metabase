@@ -67,9 +67,7 @@
   (let [;; Group all transforms by their database
         transforms-by-db (->> transforms
                               (map (fn [transform]
-                                     (let [db-id (if (transforms.util/python-transform? transform)
-                                                   (get-in transform [:target :database])
-                                                   (get-in transform [:source :query :database]))]
+                                     (let [db-id (transforms.util/target-database-id transform)]
                                        {db-id [transform]})))
                               (apply merge-with into))
 
