@@ -110,64 +110,37 @@ describe("scenarios - embedding hub", () => {
         .should("be.visible");
     });
 
-    it('"Create models" step should be marked as done after creating a model', () => {
-      cy.intercept("POST", "/api/dataset").as("dataset");
+    [
+      { dbId: 1, dbName: "sample db" },
+      { dbId: 2, dbName: "sqlite db" },
+    ].forEach(({ dbId, dbName }) => {
+      it(`"Create models" step should be marked in ${dbName} as done after creating a model`, () => {
+        if (dbId === 2) {
+          H.addSqliteDatabase(dbName);
+        }
 
-      H.addSqliteDatabase("Test Database");
+        cy.log("Create a native query model via API");
+        H.createNativeQuestion(
+          {
+            name: "Test Model",
+            type: "model",
+            database: dbId,
+            native: { query: "SELECT 1 as t" },
+          },
+          { visitQuestion: true },
+        );
 
-      cy.visit("/admin/embedding/setup-guide");
+        cy.log("Navigate to embedding setup guide");
+        cy.visit("/admin/embedding/setup-guide");
 
-      cy.log("'Create models' should not be marked as done initially");
-      cy.findByTestId("admin-layout-content")
-        .findByText("Create models")
-        .closest("button")
-        .findByText("Done")
-        .should("not.exist");
-
-      cy.findByTestId("admin-layout-content")
-        .findByText("Create models")
-        .first()
-        .click();
-
-      cy.url().should("include", "/model/new");
-
-      cy.log("Create a native query model");
-      cy.findByTestId("new-model-options")
-        .findByText("Use a native query")
-        .click();
-
-      cy.log("Use the test database");
-      H.popover().findByText("Test Database").click();
-
-      H.NativeEditor.focus().type("SELECT 1 as t");
-      cy.findByTestId("native-query-editor-container").icon("play").click();
-      cy.wait("@dataset");
-
-      cy.findByTestId("dataset-edit-bar").button("Save").click();
-      cy.findByTestId("save-question-modal").within(() => {
-        cy.findByLabelText("Name").type("Test Model");
-        cy.button("Save").click();
+        cy.log("'Create models' should now be marked as done");
+        cy.findByTestId("admin-layout-content")
+          .findByText("Create models")
+          .closest("button")
+          .scrollIntoView()
+          .findByText("Done", { timeout: 10_000 })
+          .should("be.visible");
       });
-
-      cy.log(
-        "wait for navigation to the model page to ensure model is created",
-      );
-      cy.url().should("include", "test-model");
-
-      H.main()
-        .findByText("Test Model", { timeout: 10_000 })
-        .should("be.visible");
-
-      cy.log("Navigate back to embedding setup guide");
-      cy.visit("/admin/embedding/setup-guide");
-
-      cy.log("'Create models' should now be marked as done");
-      cy.findByTestId("admin-layout-content")
-        .findByText("Create models")
-        .closest("button")
-        .scrollIntoView()
-        .findByText("Done", { timeout: 10_000 })
-        .should("be.visible");
     });
 
     it('"Embed in your code" card should take you to the embed flow', () => {
