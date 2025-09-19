@@ -52,12 +52,6 @@
       ;; Convert to legacy MBQL which the transform API expects
     (lib.convert/->legacy-MBQL query)))
 
-(defn- get-test-schema
-  "Get the schema from the products table in the test dataset.
-   This is needed for databases like BigQuery that require a schema/dataset."
-  []
-  (t2/select-one-fn :schema :model/Table (mt/id :transforms_products)))
-
 (deftest create-transform-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:transforms}
