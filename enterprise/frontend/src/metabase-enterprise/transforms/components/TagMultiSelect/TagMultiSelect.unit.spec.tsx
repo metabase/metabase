@@ -43,7 +43,9 @@ describe("TagMultiSelect", () => {
   it("should show a message when there are no tags", async () => {
     const { input } = setup({ tags: [] });
     await userEvent.click(input);
-    expect(await screen.findByText("No tags yet")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Start typing to create a tag"),
+    ).toBeInTheDocument();
   });
 
   it("should show a message when there all tags are selected", async () => {
@@ -58,7 +60,7 @@ describe("TagMultiSelect", () => {
     const { input } = setup({ tags: [tag], tagIds: [tag.id] });
     await userEvent.type(input, tag.name);
     expect(
-      await screen.findByText("That tag already exists"),
+      await screen.findByText("A tag with that name already exists"),
     ).toBeInTheDocument();
   });
 
