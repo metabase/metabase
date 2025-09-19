@@ -23,7 +23,9 @@
     :model/FieldValues
     :model/FieldUserSettings
     ;; Settings have human-selected unique names.
-    :model/Setting})
+    :model/Setting
+    ;; Glossary items have unique `term` key
+    :model/Glossary})
 
 (def ^:private entities-not-exported
   "Entities that are either:
@@ -91,6 +93,7 @@
     :model/TransformJobTransformTag
     :model/TransformTag
     :model/TransformTransformTag
+    :model/PythonLibrary
     :model/Undo
     :model/User
     :model/UserParameterValue

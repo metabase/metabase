@@ -13,10 +13,10 @@
   [:map
    [:role                          ::role]
    [:content    {:optional true}   [:maybe :string]]
-   [:tool_calls {:optional true}   [:maybe [:map
-                                            [:id :string]
-                                            [:name :string]
-                                            [:arguments :string]]]]
+   [:tool_calls {:optional true}   [:maybe [:vector [:map
+                                                     [:id :string]
+                                                     [:name :string]
+                                                     [:arguments :string]]]]]
    [:tool_call_id {:optional true} [:maybe :string]]])
 
 (mr/def ::messages

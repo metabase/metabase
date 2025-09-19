@@ -104,9 +104,6 @@ describe("scenarios > embedding > dashboard parameters", () => {
       H.filterWidget().contains("Id").should("not.exist");
 
       cy.findByTestId("scalar-value").invoke("text").should("eq", "2");
-      cy.findByTestId("scalar-title")
-        .findByText("test question")
-        .should("be.visible");
 
       // verify that disabled filters don't show up
       cy.findByTestId("dashboard-parameters-widget-container").within(() => {

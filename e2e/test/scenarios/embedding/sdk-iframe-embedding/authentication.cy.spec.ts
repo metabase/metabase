@@ -11,10 +11,14 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: true });
 
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-dashboard",
-      attributes: {
-        dashboardId: ORDERS_DASHBOARD_ID,
-      },
+      elements: [
+        {
+          component: "metabase-dashboard",
+          attributes: {
+            dashboardId: ORDERS_DASHBOARD_ID,
+          },
+        },
+      ],
     });
 
     frame.within(() => {
@@ -28,10 +32,14 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: false });
 
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-dashboard",
-      attributes: {
-        dashboardId: ORDERS_DASHBOARD_ID,
-      },
+      elements: [
+        {
+          component: "metabase-dashboard",
+          attributes: {
+            dashboardId: ORDERS_DASHBOARD_ID,
+          },
+        },
+      ],
       metabaseConfig: {
         useExistingUserSession: true,
       },
@@ -40,14 +48,49 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     assertDashboardLoaded(frame);
   });
 
+  it("cannot use existing user session when there is no session", () => {
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: true });
+
+    const frame = H.loadSdkIframeEmbedTestPage({
+      elements: [
+        {
+          component: "metabase-dashboard",
+          attributes: { dashboardId: ORDERS_DASHBOARD_ID },
+        },
+      ],
+
+      metabaseConfig: { useExistingUserSession: true },
+    });
+
+    frame.within(() => {
+      cy.findByTestId("sdk-error-container", { timeout: 10_000 }).should(
+        "contain",
+        /Failed to authenticate using an existing Metabase user session./,
+      );
+
+      cy.findByRole("link", { name: "Read more." })
+        .should("have.attr", "href")
+        .and(
+          "include",
+          "https://www.metabase.com/docs/latest/embedding/embedded-analytics-js#use-existing-user-session-to-test-embeds",
+        );
+
+      cy.findByTestId("sdk-error-container").should("be.visible");
+    });
+  });
+
   it("cannot use existing user session when useExistingUserSession is false", () => {
     H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: false });
 
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-dashboard",
-      attributes: {
-        dashboardId: ORDERS_DASHBOARD_ID,
-      },
+      elements: [
+        {
+          component: "metabase-dashboard",
+          attributes: {
+            dashboardId: ORDERS_DASHBOARD_ID,
+          },
+        },
+      ],
       metabaseConfig: {
         useExistingUserSession: false,
       },
@@ -68,10 +111,14 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt"], signOut: true });
 
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-dashboard",
-      attributes: {
-        dashboardId: ORDERS_DASHBOARD_ID,
-      },
+      elements: [
+        {
+          component: "metabase-dashboard",
+          attributes: {
+            dashboardId: ORDERS_DASHBOARD_ID,
+          },
+        },
+      ],
     });
 
     assertDashboardLoaded(frame);
@@ -82,10 +129,14 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: true });
 
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-dashboard",
-      attributes: {
-        dashboardId: ORDERS_DASHBOARD_ID,
-      },
+      elements: [
+        {
+          component: "metabase-dashboard",
+          attributes: {
+            dashboardId: ORDERS_DASHBOARD_ID,
+          },
+        },
+      ],
       onVisitPage: () => stubWindowOpenForSamlPopup(),
     });
 
@@ -97,10 +148,14 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: true });
 
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-dashboard",
-      attributes: {
-        dashboardId: ORDERS_DASHBOARD_ID,
-      },
+      elements: [
+        {
+          component: "metabase-dashboard",
+          attributes: {
+            dashboardId: ORDERS_DASHBOARD_ID,
+          },
+        },
+      ],
       onVisitPage: () => stubWindowOpenForSamlPopup({ isUserValid: false }),
     });
 
@@ -126,11 +181,15 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     cy.log("visit a test page with an origin of example.com using api keys");
     cy.get<string>("@apiKey").then((apiKey) => {
       const frame = H.loadSdkIframeEmbedTestPage({
-        element: "metabase-dashboard",
+        elements: [
+          {
+            component: "metabase-dashboard",
+            attributes: {
+              dashboardId: ORDERS_DASHBOARD_ID,
+            },
+          },
+        ],
         origin: "http://example.com",
-        attributes: {
-          dashboardId: ORDERS_DASHBOARD_ID,
-        },
         metabaseConfig: {
           apiKey,
         },
@@ -154,11 +213,15 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
       "visit a test page with an origin of example.com using the existing user session",
     );
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-dashboard",
+      elements: [
+        {
+          component: "metabase-dashboard",
+          attributes: {
+            dashboardId: ORDERS_DASHBOARD_ID,
+          },
+        },
+      ],
       origin: "http://example.com",
-      attributes: {
-        dashboardId: ORDERS_DASHBOARD_ID,
-      },
       metabaseConfig: {
         useExistingUserSession: true,
       },
@@ -181,10 +244,14 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
 
     cy.get<string>("@apiKey").then((apiKey) => {
       const frame = H.loadSdkIframeEmbedTestPage({
-        element: "metabase-dashboard",
-        attributes: {
-          dashboardId: ORDERS_DASHBOARD_ID,
-        },
+        elements: [
+          {
+            component: "metabase-dashboard",
+            attributes: {
+              dashboardId: ORDERS_DASHBOARD_ID,
+            },
+          },
+        ],
         metabaseConfig: {
           apiKey,
         },
@@ -207,10 +274,14 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     });
 
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-dashboard",
-      attributes: {
-        dashboardId: ORDERS_DASHBOARD_ID,
-      },
+      elements: [
+        {
+          component: "metabase-dashboard",
+          attributes: {
+            dashboardId: ORDERS_DASHBOARD_ID,
+          },
+        },
+      ],
       metabaseConfig: {
         preferredAuthMethod: "jwt",
       },
@@ -229,10 +300,14 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     });
 
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-dashboard",
-      attributes: {
-        dashboardId: ORDERS_DASHBOARD_ID,
-      },
+      elements: [
+        {
+          component: "metabase-dashboard",
+          attributes: {
+            dashboardId: ORDERS_DASHBOARD_ID,
+          },
+        },
+      ],
       metabaseConfig: {
         preferredAuthMethod: "saml",
       },

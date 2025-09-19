@@ -8,11 +8,8 @@
    [metabase.analyze.core :as analyze]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
-   ;; Lib soon
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
@@ -57,7 +54,7 @@
     (mapv standardize-metadata metadata)))
 
 (mu/defn- record-metadata!
-  [{{:keys [card-id]} :info, :as query} :- ::mbql.s/Query
+  [{{:keys [card-id]} :info, :as query} :- ::lib.schema/query
    metadata                             :- [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]
   (try
     ;; At the very least we can skip the Extra DB call to update this Card's metadata results
@@ -70,7 +67,7 @@
                  driver/*driver*
                  ;; pivot queries can run multiple queries, only record metadata for the main query
                  (not= actual-metadata :none)
-                 (driver.u/supports? driver/*driver* :nested-queries (lib.metadata/database (qp.store/metadata-provider)))
+                 (driver.u/supports? driver/*driver* :nested-queries (lib.metadata/database query))
                  card-id
                  ;; don't want to update metadata when we use a Card as a source Card.
                  (not (:qp/source-card-id query))

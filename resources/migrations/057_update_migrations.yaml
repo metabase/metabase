@@ -1354,6 +1354,97 @@ databaseChangeLog:
       rollback: # will be removed along the table
 
   - changeSet:
+      id: v57.2025-09-11T10:00:00
+      author: qnkhuat
+      comment: Add python_library table for storing Python transform user modules
+      changes:
+        - createTable:
+            tableName: python_library
+            remarks: Store Python library code for user modules in transforms
+            columns:
+              - column:
+                  name: id
+                  type: integer
+                  autoIncrement: true
+                  remarks: Primary key for python_library
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_python_library
+              - column:
+                  name: path
+                  type: varchar(254)
+                  remarks: Path identifier for the library
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uk_python_library_path
+              - column:
+                  name: source
+                  type: ${text.type}
+                  remarks: Python source code for user modules
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When the record was created
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: current_timestamp
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: When the record was last updated
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: current_timestamp
+
+  - changeSet:
+      id: v57.2025-09-12T16:08:00
+      author: piranha
+      comment: Create glossary table
+      changes:
+        - createTable:
+            tableName: glossary
+            remarks: Table to store glossary terms and their definitions
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key identifier for glossary entries
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: term
+                  type: varchar(255)
+                  remarks: The glossary term or phrase being defined
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: definition
+                  type: ${text.type}
+                  remarks: The detailed definition or explanation of the term
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when comment was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when comment was last updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
       id: v57.2025-09-16T12:55:00
       author: stasgavrylov
       comment: Add content_html column to comment table for storing HTML-rendered content
@@ -1373,6 +1464,7 @@ databaseChangeLog:
                   remarks: HTML-rendered version of the comment content
                   constraints:
                     nullable: true
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

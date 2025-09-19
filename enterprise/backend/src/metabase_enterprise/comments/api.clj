@@ -11,6 +11,7 @@
    [metabase.events.core :as events]
    [metabase.request.core :as request]
    [metabase.users.api :as api.user]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
@@ -240,16 +241,16 @@
 (api.macros/defendpoint :get "/mentions"
   "Get a list of entities suitable for mentions. NOTE: only users for now."
   [_route-params _query-params]
-  (let [clauses (api.user/user-clauses nil nil nil nil)]
+  (let [clauses (user/filter-clauses nil nil nil nil {:limit  (request/limit)
+                                                      :offset (request/offset)})]
     ;; returns nothing while we're trying to figure out how do we deal with sandboxes and tenants etc
     ;; do not forget to uncomment tests (both api and e2e)
-    {:data   []
-     #_(->> (t2/select [:model/User :id :first_name :last_name]
-                       (-> clauses
-                           (sql.helpers/order-by [:%lower.first_name :asc]
-                                                 [:%lower.last_name :asc]
-                                                 [:id :asc])))
-            (mapv #(assoc % :model "user")))
+    {:data   (->> (t2/select [:model/User :id :first_name :last_name]
+                             (-> clauses
+                                 (sql.helpers/order-by [:%lower.first_name :asc]
+                                                       [:%lower.last_name :asc]
+                                                       [:id :asc])))
+                  (mapv #(assoc % :model "user")))
      :total  (:count (t2/query-one
                       (merge {:select [[[:count [:distinct :core_user.id]] :count]]
                               :from   :core_user}

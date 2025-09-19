@@ -50,7 +50,7 @@ export function useEntitySearch({
 
   const { data: recents = [], isLoading: isRecentsLoading } =
     useListRecentsQuery(undefined, {
-      refetchOnMountOrArgChange: true,
+      refetchOnMountOrArgChange: 10, // only refetch if the cache is more than 10 seconds stale
       skip: !shouldFetchRecents,
     });
 
