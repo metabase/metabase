@@ -2038,7 +2038,7 @@ describe("scenarios > admin > transforms > runs", () => {
         cy.button("Update filter").click();
       });
       getRunMethodFilterWidget().findByText("Schedule").should("be.visible");
-      H.main().findByText("No runs yet").should("be.visible");
+      H.main().findByText("No runs found").should("be.visible");
 
       cy.log("run method filter - multiple options");
       getRunMethodFilterWidget().click();
@@ -2101,7 +2101,7 @@ describe("scenarios > admin > transforms > runs", () => {
       getStartAtFilterWidget().click();
       H.popover().findByText("Previous week").click();
       getStartAtFilterWidget().findByText("Previous week").should("be.visible");
-      H.main().findByText("No runs yet").should("be.visible");
+      H.main().findByText("No runs found").should("be.visible");
 
       getStartAtFilterWidget().button("Remove filter").click();
       getContentTable().within(() => {
@@ -2145,7 +2145,7 @@ describe("scenarios > admin > transforms > runs", () => {
       getEndAtFilterWidget().click();
       H.popover().findByText("Previous week").click();
       getEndAtFilterWidget().findByText("Previous week").should("be.visible");
-      H.main().findByText("No runs yet").should("be.visible");
+      H.main().findByText("No runs found").should("be.visible");
 
       getEndAtFilterWidget().button("Remove filter").click();
       getContentTable().within(() => {
