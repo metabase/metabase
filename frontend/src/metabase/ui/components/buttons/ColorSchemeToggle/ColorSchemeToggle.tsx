@@ -1,18 +1,27 @@
 import { ActionIcon, Tooltip } from "@mantine/core";
+import { t } from "ttag";
+
 import { Icon } from "metabase/ui";
 import { useColorScheme } from "metabase/ui/components/theme/ColorSchemeProvider";
-import { t } from "ttag";
 
 interface ColorSchemeToggleProps {
   size?: "xs" | "sm" | "md" | "lg" | "xl";
-  variant?: "subtle" | "light" | "filled" | "outline" | "default" | "transparent" | "gradient";
+  variant?:
+    | "subtle"
+    | "light"
+    | "filled"
+    | "outline"
+    | "default"
+    | "transparent"
+    | "gradient";
 }
 
 export function ColorSchemeToggle({
   size = "md",
-  variant = "subtle"
+  variant = "subtle",
 }: ColorSchemeToggleProps) {
-  const { colorScheme, resolvedColorScheme, toggleColorScheme } = useColorScheme();
+  const { colorScheme, resolvedColorScheme, toggleColorScheme } =
+    useColorScheme();
 
   const getIcon = () => {
     switch (colorScheme) {

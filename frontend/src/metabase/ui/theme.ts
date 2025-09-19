@@ -1,4 +1,4 @@
-import type { MantineThemeOverride, MantineColorScheme } from "@mantine/core";
+import type { MantineColorScheme, MantineThemeOverride } from "@mantine/core";
 import { rem } from "@mantine/core";
 
 import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/embedding-sdk/theme";
@@ -67,7 +67,9 @@ export const breakpoints = {
 };
 export type BreakpointName = keyof typeof breakpoints;
 
-export const getThemeOverrides = (colorScheme: MantineColorScheme = "light"): MantineThemeOverride => ({
+export const getThemeOverrides = (
+  colorScheme: MantineColorScheme = "light",
+): MantineThemeOverride => ({
   focusClassName: Styles.focus,
   breakpoints,
   colors: getThemeAwareColors(colorScheme),
@@ -76,7 +78,7 @@ export const getThemeOverrides = (colorScheme: MantineColorScheme = "light"): Ma
   // Store colorScheme in other property for access later
   other: {
     ...DEFAULT_METABASE_COMPONENT_THEME,
-    colorScheme
+    colorScheme,
   },
   shadows: {
     // eslint-disable-next-line no-color-literals

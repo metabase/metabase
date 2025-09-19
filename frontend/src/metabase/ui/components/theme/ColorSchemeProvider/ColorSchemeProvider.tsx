@@ -1,5 +1,11 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { MantineColorScheme } from "@mantine/core";
+import {
+  type ReactNode,
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 
 export type ColorScheme = "light" | "dark" | "auto";
 
@@ -18,8 +24,12 @@ interface ColorSchemeProviderProps {
 }
 
 function getSystemColorScheme(): MantineColorScheme {
-  if (typeof window === "undefined") return "light";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  if (typeof window === "undefined") {
+    return "light";
+  }
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
 }
 
 function resolveColorScheme(scheme: ColorScheme): MantineColorScheme {
@@ -28,7 +38,7 @@ function resolveColorScheme(scheme: ColorScheme): MantineColorScheme {
 
 export function ColorSchemeProvider({
   children,
-  defaultColorScheme = "light"
+  defaultColorScheme = "light",
 }: ColorSchemeProviderProps) {
   const [colorScheme, setColorScheme] = useState<ColorScheme>(() => {
     // Try to get saved preference from localStorage
@@ -41,9 +51,8 @@ export function ColorSchemeProvider({
     return defaultColorScheme;
   });
 
-  const [resolvedColorScheme, setResolvedColorScheme] = useState<MantineColorScheme>(() =>
-    resolveColorScheme(colorScheme)
-  );
+  const [resolvedColorScheme, setResolvedColorScheme] =
+    useState<MantineColorScheme>(() => resolveColorScheme(colorScheme));
 
   useEffect(() => {
     // Save to localStorage
@@ -67,7 +76,7 @@ export function ColorSchemeProvider({
   }, [colorScheme]);
 
   const toggleColorScheme = () => {
-    setColorScheme(current => {
+    setColorScheme((current) => {
       switch (current) {
         case "light":
           return "dark";
