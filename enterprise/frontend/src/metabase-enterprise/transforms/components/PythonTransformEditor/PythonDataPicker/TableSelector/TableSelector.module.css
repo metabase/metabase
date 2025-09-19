@@ -1,6 +1,5 @@
 .tableSelector {
-  text-align: start !important;
-  border-radius: var(--mantine-radius-xs);
+  border: 1px solid var(--border-color);
 }
 
 .tableSelectorInner {

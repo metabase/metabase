@@ -6,7 +6,15 @@ import {
   type DataPickerItem,
   DataPickerModal,
 } from "metabase/common/components/Pickers/DataPicker";
-import { Button } from "metabase/ui";
+import {
+  ActionIcon,
+  Button,
+  Group,
+  Icon,
+  Stack,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import type {
   DatabaseId,
   RecentItem,
@@ -22,6 +30,7 @@ export function TableSelector({
   selectedTableIds,
   disabled,
   onChange,
+  onRemove,
   table,
 }: {
   database: DatabaseId | undefined;
@@ -30,6 +39,7 @@ export function TableSelector({
   selectedTableIds: TableId[];
   disabled?: boolean;
   onChange: (table: Table | undefined) => void;
+  onRemove: () => void;
 }) {
   const [isOpened, { open, close }] = useDisclosure();
 
@@ -55,16 +65,35 @@ export function TableSelector({
 
   return (
     <>
-      <Button
-        className={S.tableSelector}
-        onClick={open}
-        flex="0 1 50%"
-        disabled={disabled}
-        fw="normal"
-        classNames={{ inner: S.tableSelectorInner }}
-      >
-        {table?.display_name ?? t`Select a table…`}
-      </Button>
+      <Group w="100%" bdrs="xs" gap="xs" p="sm" className={S.tableSelector}>
+        <Button
+          flex="1 1 auto"
+          onClick={open}
+          disabled={disabled}
+          classNames={{ inner: S.tableSelectorInner }}
+          p={0}
+          variant="subtle"
+        >
+          <Stack gap={0} align="start" justify="center">
+            {table ? (
+              <>
+                <Text size="sm" c="text-medium" fw="normal">
+                  {table?.db?.name} / {table?.schema}
+                </Text>
+                <Text>{table?.display_name}</Text>
+              </>
+            ) : (
+              <Text>{t`Select a table…`}</Text>
+            )}
+          </Stack>
+        </Button>
+
+        <Tooltip label={t`Remove this table`}>
+          <ActionIcon onClick={onRemove}>
+            <Icon name="close" c="text-dark" />
+          </ActionIcon>
+        </Tooltip>
+      </Group>
       {isOpened && (
         <DataPickerModal
           title={t`Pick a table`}
