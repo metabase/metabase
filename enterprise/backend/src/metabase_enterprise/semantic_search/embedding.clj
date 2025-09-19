@@ -186,7 +186,7 @@
           total-tokens (->> response :usage :total_tokens)]
       (analytics/inc! :metabase-search/semantic-embedding-tokens
                       {:provider "ai-service", :model model-name}
-                      (->> response :usage :total_tokens))
+                      total-tokens)
       (semantic.models.token-tracking/record-tokens model-name (:type opts) total-tokens)
       (extract-base64-response-embeddings response))
     (catch Exception e
