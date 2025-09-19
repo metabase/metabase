@@ -3,6 +3,7 @@ import { type CSSProperties, type PropsWithChildren, useMemo } from "react";
 import { jt, t } from "ttag";
 
 import { ERROR_DOC_LINKS } from "embedding-sdk-bundle/errors";
+import type { MetabaseErrorCode } from "embedding-sdk-bundle/errors/error-code";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getErrorComponent } from "embedding-sdk-bundle/store/selectors";
 import type { SdkErrorComponentProps } from "embedding-sdk-bundle/types";
@@ -23,7 +24,7 @@ export const SdkError = ({
 
   const errorMessage = useMemo(() => {
     if (error && "code" in error && typeof error.code === "string") {
-      const docsLink = ERROR_DOC_LINKS[error.code];
+      const docsLink = ERROR_DOC_LINKS[error.code as MetabaseErrorCode];
 
       if (docsLink) {
         return (

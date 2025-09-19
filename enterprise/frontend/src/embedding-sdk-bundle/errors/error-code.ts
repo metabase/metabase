@@ -13,4 +13,5 @@ export type MetabaseErrorCode =
   | "USER_FETCH_FAILED"
   | "CANNOT_CONNECT_TO_INSTANCE"
   | "INVALID_AUTH_METHOD"
-  | "AUTH_TIMEOUT";
+  | "AUTH_TIMEOUT"
+  | "EMBED_TAG_ERROR";
