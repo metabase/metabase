@@ -1,5 +1,5 @@
 import type { Attribute } from "@tiptap/core";
-import { Plugin } from "prosemirror-state";
+import { NodeSelection, Plugin, TextSelection } from "prosemirror-state";
 
 import { uuid } from "metabase/lib/uuid";
 
@@ -50,6 +50,25 @@ export function createProseMirrorPlugin(nodeName: string) {
       });
 
       return updated ? tr : null;
+    },
+    props: {
+      handleKeyDown: (view) => {
+        const { state } = view;
+        // Check if our selection is a node selection and
+        // if the selected node is the one we wish to protect.
+        if (
+          state.selection instanceof NodeSelection &&
+          (state.selection.node.type.name === "cardEmbed" ||
+            state.selection.node.type.name === "resizeNode")
+        ) {
+          view.dispatch(
+            state.tr.setSelection(
+              TextSelection.create(state.doc, state.selection.to + 1),
+            ),
+          );
+        }
+        return false;
+      },
     },
   });
 }
