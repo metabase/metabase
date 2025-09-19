@@ -317,8 +317,6 @@
 (defn- should-capture-schema? [schema]
   (cond
     (keyword? schema)    false
-    ;; (fn? schema)      (not ((mc/predicate-schemas) schema))
-    ;;
     ;; default varargs schema (no validation)
     (= schema [:* :any]) false
     :else                true))
