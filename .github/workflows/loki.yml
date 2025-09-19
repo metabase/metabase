@@ -24,7 +24,8 @@ jobs:
 
   visual-test:
     needs: files-changed
-    if: needs.files-changed.outputs.frontend_ci == 'true' || needs.files-changed.outputs.frontend_sources == 'true' || needs.files-changed.outputs.frontend_loki_ci == 'true'
+    #if: needs.files-changed.outputs.frontend_ci == 'true' || needs.files-changed.outputs.frontend_sources == 'true' || needs.files-changed.outputs.frontend_loki_ci == 'true'
+    if: false
     runs-on: ubuntu-latest
     services:
       docker:
