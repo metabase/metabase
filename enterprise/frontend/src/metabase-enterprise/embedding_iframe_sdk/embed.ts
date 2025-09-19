@@ -517,7 +517,7 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
 
     const staticToken = await fetchStaticToken(data);
 
-    this._sendMessage("metabase.embed.fetchStaticTokenResult", {
+    this.sendMessage("metabase.embed.fetchStaticTokenResult", {
       messageId: data.messageId,
       staticToken,
     });
