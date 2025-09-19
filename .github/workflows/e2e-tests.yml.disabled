@@ -1,16 +1,15 @@
 name: E2E Tests
 
 on:
-  workflow_dispatch:
-  # workflow_call:
-  #   inputs:
-  #     skip:
-  #       type: boolean
-  #       default: false
-  #     specs:
-  #       type: string
-  #       required: false
-  #       default: ""
+  workflow_call:
+    inputs:
+      skip:
+        type: boolean
+        default: false
+      specs:
+        type: string
+        required: false
+        default: ""
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-e2e

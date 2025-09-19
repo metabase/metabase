@@ -2,33 +2,32 @@ name: E2E Test
 run-name: E2E Test - ${{ inputs.name }}
 
 on:
-  workflow_dispatch:
-  # workflow_call:
-  #   inputs:
-  #     name:
-  #       required: true
-  #       type: string
-  #     edition: # oss | ee
-  #       required: false
-  #       type: string
-  #       default: ee
-  #     specs:
-  #       required: false
-  #       default: ./e2e/test/scenarios/**/*.cy.spec.*
-  #       type: string
-  #     tags:
-  #       required: false
-  #       type: string
-  #     runner:
-  #       required: false
-  #       type: string
-  #       default: ubuntu-22.04
-  #     total_chunks: # number of chunks
-  #       required: false
-  #       type: number
-  #     split_index: # index of the chunk
-  #       required: false
-  #       type: number
+  workflow_call:
+    inputs:
+      name:
+        required: true
+        type: string
+      edition: # oss | ee
+        required: false
+        type: string
+        default: ee
+      specs:
+        required: false
+        default: ./e2e/test/scenarios/**/*.cy.spec.*
+        type: string
+      tags:
+        required: false
+        type: string
+      runner:
+        required: false
+        type: string
+        default: ubuntu-22.04
+      total_chunks: # number of chunks
+        required: false
+        type: number
+      split_index: # index of the chunk
+        required: false
+        type: number
 
 jobs:
   e2e-tests:

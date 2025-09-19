@@ -1,12 +1,11 @@
 name: Driver Tests
 
 on:
-  workflow_dispatch:
-  # workflow_call:
-  #   inputs:
-  #     skip:
-  #       type: boolean
-  #       default: false
+  workflow_call:
+    inputs:
+      skip:
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-drivers
