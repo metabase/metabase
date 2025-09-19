@@ -2,17 +2,20 @@
   (:require
    [clojure.test :refer :all]
    [environ.core :as env]
+   [java-time.api :as t]
    [metabase-enterprise.dependencies.models.dependency :as dependencies.model]
    [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
    [metabase.task.core :as task]
    [metabase.test :as mt]
-   [metabase.util.log :as log]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
+(use-fixtures :once (fixtures/initialize :db))
+
 (defn- backfill-existing-entities []
-  (while (zero? (#'dependencies.backfill/backfill-dependencies))))
+  (while (#'dependencies.backfill/backfill-dependencies)))
 
 (deftest backfill-dependency-analysis-test
   (testing "Test that the backfill job correctly updates the dependency_analysis_version"
@@ -27,13 +30,13 @@
                 current-version dependencies.model/current-dependency-analysis-version]
             (is (= 3 (card-count)))
             ;; first run, should process 2 cards
-            (is (zero? (#'dependencies.backfill/backfill-dependencies)))
+            (is (true? (#'dependencies.backfill/backfill-dependencies)))
             (is (= 2 (card-count :dependency_analysis_version current-version)))
             ;; second run, should process the last card
-            (is (= 1 (#'dependencies.backfill/backfill-dependencies)))
+            (is (false? (#'dependencies.backfill/backfill-dependencies)))
             (is (= 3 (card-count :dependency_analysis_version current-version)))
             ;; third run, should not process anything
-            (is (= 2 (#'dependencies.backfill/backfill-dependencies)))
+            (is (false? (#'dependencies.backfill/backfill-dependencies)))
             (is (= 3 (card-count :dependency_analysis_version current-version)))))))))
 
 (deftest backfill-transform-test
@@ -138,3 +141,67 @@
                 (task/init! ::dependencies.backfill/DependencyBackfill)
                 (wait-for-condition #(= 3 (card-count :dependency_analysis_version current-version)) 10000)
                 (is (= 3 (card-count :dependency_analysis_version current-version)))))))))))
+
+(deftest backfill-terminal-failure-test
+  (testing "Entities should be marked as terminally broken after MAX_RETRIES failures"
+    (backfill-existing-entities)
+    (mt/with-temp [:model/Card {card-id :id} {:dependency_analysis_version 0, :dataset_query (mt/mbql-query orders)}]
+      (is (t2/exists? :model/Card :id card-id :dependency_analysis_version 0))
+
+      (let [update-attempts (volatile! 0)
+            failures (inc @#'dependencies.backfill/MAX_RETRIES)]
+        (with-redefs [env/env (assoc env/env
+                                     :mb-dependency-backfill-delay-minutes "0"
+                                     :mb-dependency-backfill-variance-minutes "0")
+                      t2/update! (fn [model-kw id & args]
+                                   (if (and (= model-kw :model/Card)
+                                            (= id card-id)
+                                            (< @update-attempts failures))
+                                     (do
+                                       (vswap! update-attempts inc)
+                                       (throw (ex-info "Simulated DB error" {:id id})))
+                                     (apply t2/update! model-kw id args)))]
+          ;; Fail MAX_RETRIES + 1 times
+          (while (< @update-attempts failures)
+            (#'dependencies.backfill/backfill-dependencies))))
+
+      ;; Verify card is not processed and is terminally broken
+      (is (t2/exists? :model/Card :id card-id :dependency_analysis_version 0))
+
+      ;; Verify subsequent runs don't process it
+      (#'dependencies.backfill/backfill-dependencies)
+      (is (t2/exists? :model/Card :id card-id :dependency_analysis_version 0)))))
+
+(deftest backfill-delayed-retry-test
+  (testing "Failed entities should be retried after their delay period expires"
+    (backfill-existing-entities)
+    (let [current-version dependencies.model/current-dependency-analysis-version
+          update-attempts (volatile! 0)]
+      (mt/with-temp [:model/Card {card-id :id} {:dependency_analysis_version 0, :dataset_query (mt/mbql-query orders)}]
+        (with-redefs [env/env (assoc env/env
+                                     :mb-dependency-backfill-delay-minutes "1") ; 1 minute delay for retries
+                      t2/update! (fn [model-kw id & args]
+                                   (if (and (= model-kw :model/Card)
+                                            (= id card-id)
+                                            (zero? @update-attempts))
+                                     (do
+                                       (vswap! update-attempts inc)
+                                       (throw (ex-info "Simulated DB error" {:id id})))
+                                     (apply t2/update! model-kw id args)))]
+          (is (t2/exists? :model/Card :id card-id :dependency_analysis_version 0))
+
+          ;; First failure - should be put into retry state
+          ;; Fail MAX_RETRIES + 1 times
+          (while (zero? @update-attempts)
+            (#'dependencies.backfill/backfill-dependencies))
+          (is (t2/exists? :model/Card :id card-id :dependency_analysis_version 0)))
+
+        ;; Advance time by less than retry delay - should NOT be processed
+        (mt/with-clock (t/plus (t/zoned-date-time) (t/duration 10 :seconds))
+          (#'dependencies.backfill/backfill-dependencies))
+        (is (t2/exists? :model/Card :id card-id :dependency_analysis_version 0))
+
+        ;; Advance time by more than retry delay - should be processed
+        (mt/with-clock (t/plus (t/zoned-date-time) (t/duration 2 :minutes))
+          (#'dependencies.backfill/backfill-dependencies))
+        (is (t2/exists? :model/Card :id card-id :dependency_analysis_version current-version))))))
