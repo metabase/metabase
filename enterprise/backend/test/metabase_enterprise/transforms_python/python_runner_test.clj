@@ -518,10 +518,10 @@
                  (set (map :name (:fields metadata))))))
 
         (testing "types are preserved correctly"
-          (is (= {"id"           :type/Integer
+          (is (= {"id"           (if (= :snowflake driver) :type/Number :type/Integer)
                   "price"        :type/Float
                   "active"       :type/Boolean
-                  "created_tz"   :type/DateTimeWithLocalTZ
+                  "created_tz"   (if (= :snowflake driver) :type/DateTimeWithTZ :type/DateTimeWithLocalTZ)
                   "created_at"   :type/DateTime
                   "created_date" :type/Date
                   "description"  :type/Text}
