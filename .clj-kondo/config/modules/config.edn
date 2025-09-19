@@ -1995,6 +1995,7 @@
   enterprise/transforms-python
   {:team "Querying"
    :api  #{metabase-enterprise.transforms-python.api
+           metabase-enterprise.transforms-python.execute
            metabase-enterprise.transforms-python.init
            metabase-enterprise.transforms-python.settings}
    :uses #{api
