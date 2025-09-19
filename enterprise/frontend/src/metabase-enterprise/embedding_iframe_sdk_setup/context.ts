@@ -7,10 +7,13 @@ import type {
   SdkIframeEmbedSetupRecentItem,
   SdkIframeEmbedSetupRecentItemType,
   SdkIframeEmbedSetupSettings,
+  SdkIframeEmbedSetupStartWith,
   SdkIframeEmbedSetupStep,
 } from "./types";
 
 export interface SdkIframeEmbedSetupContextType {
+  startWith?: SdkIframeEmbedSetupStartWith;
+
   // Navigation
   currentStep: SdkIframeEmbedSetupStep;
   setCurrentStep: (step: SdkIframeEmbedSetupStep) => void;

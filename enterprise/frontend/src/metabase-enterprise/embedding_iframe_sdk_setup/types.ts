@@ -1,3 +1,4 @@
+import type { SdkDashboardId, SdkQuestionId } from "embedding-sdk-bundle/types";
 import type {
   SdkIframeEmbedBaseSettings,
   SdkIframeEmbedTemplateSettings,
@@ -35,3 +36,9 @@ export type SdkIframeEmbedSetupSettings = Omit<
   "instanceUrl"
 > &
   SdkIframeEmbedTemplateSettings;
+
+export type SdkIframeEmbedSetupStartWith = {
+  step: SdkIframeEmbedSetupStep;
+  type: SdkIframeEmbedSetupExperience;
+  defaultResourceId: SdkDashboardId | SdkQuestionId;
+};

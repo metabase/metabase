@@ -25,16 +25,19 @@ import { useParameterList, useRecentItems } from "../hooks";
 import type {
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupSettings,
+  SdkIframeEmbedSetupStartWith,
   SdkIframeEmbedSetupStep,
 } from "../types";
 import { getDefaultSdkIframeEmbedSettings } from "../utils/default-embed-setting";
 
 interface SdkIframeEmbedSetupProviderProps {
   children: ReactNode;
+  startWith?: SdkIframeEmbedSetupStartWith;
 }
 
 export const SdkIframeEmbedSetupProvider = ({
   children,
+  startWith,
 }: SdkIframeEmbedSetupProviderProps) => {
   const location = useLocation();
   const [isEmbedSettingsLoaded, setEmbedSettingsLoaded] = useState(false);
@@ -67,13 +70,15 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const defaultSettings = useMemo(() => {
     return getDefaultSdkIframeEmbedSettings(
-      "dashboard",
-      recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
+      startWith?.type ?? "dashboard",
+      startWith?.defaultResourceId ??
+        recentDashboards[0]?.id ??
+        EMBED_FALLBACK_DASHBOARD_ID,
     );
-  }, [recentDashboards]);
+  }, [startWith, recentDashboards]);
 
   const [currentStep, setCurrentStep] = useState<SdkIframeEmbedSetupStep>(
-    "select-embed-experience",
+    startWith?.step ?? "select-embed-experience",
   );
 
   const settings = useMemo(() => {
@@ -151,6 +156,7 @@ export const SdkIframeEmbedSetupProvider = ({
   );
 
   const value: SdkIframeEmbedSetupContextType = {
+    startWith,
     currentStep,
     setCurrentStep,
     experience,

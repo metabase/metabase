@@ -58,6 +58,7 @@ import type {
   Bookmark,
   CacheableDashboard,
   CacheableModel,
+  CardId,
   Collection,
   CollectionAuthorityLevelConfig,
   CollectionEssentials,
@@ -572,10 +573,18 @@ export const PLUGIN_EMBEDDING_IFRAME_SDK = {
   SdkIframeEmbedRoute: (): ReactNode => null,
 };
 
+export type SdkIframeStaticEmbedSetupProps = {
+  resourceType: "chart" | "dashboard";
+  resourceId: CardId | DashboardId;
+};
+
 export const PLUGIN_EMBEDDING_IFRAME_SDK_SETUP = {
   isFeatureEnabled: () => false,
   shouldShowEmbedInNewItemMenu: () => false,
   SdkIframeEmbedSetup: (): ReactNode => null,
+  SdkIframeStaticEmbedSetup: (
+    _props: SdkIframeStaticEmbedSetupProps,
+  ): ReactNode => null,
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {
