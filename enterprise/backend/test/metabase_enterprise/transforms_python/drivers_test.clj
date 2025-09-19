@@ -262,7 +262,7 @@
           (testing (str "Exotic types for " driver-key)
             (let [{:keys [metadata]} validation
                   type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                             [name (transforms.execute/restricted-insert-type base_type)])]
+                             [name (python-runner/restricted-insert-type base_type)])]
 
               (is (isa? :type/Integer (type-map "id")))
 
@@ -311,7 +311,7 @@
               (let [{:keys [metadata]} validation]
                 (testing "Base type preservation"
                   (let [type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                                   [name (transforms.execute/restricted-insert-type base_type)])]
+                                   [name (python-runner/restricted-insert-type base_type)])]
                     (is (isa? (type-map "id") (if (= driver/*driver* :snowflake) :type/Number :type/Integer)))
                     (is (isa? (type-map "name") :type/Text))
                     (is (isa? (type-map "price") :type/Float))
@@ -365,7 +365,7 @@
               (when validation
                 (let [{:keys [rows metadata]} validation
                       type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                                 [name (transforms.execute/restricted-insert-type base_type)])]
+                                 [name (python-runner/restricted-insert-type base_type)])]
 
                   (testing "Original columns preserved"
                     (is (isa? (type-map "id") (if (= driver/*driver* :snowflake) :type/Number :type/Integer)))
@@ -430,7 +430,7 @@
                   (testing "Computed columns are added correctly"
                     (let [{:keys [metadata]} validation
                           type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                                     [name (transforms.execute/restricted-insert-type base_type)])]
+                                     [name (python-runner/restricted-insert-type base_type)])]
                       (is (= :type/Float (type-map "computed_field")))
                       (is (= :type/Text (type-map "name_upper"))))))))))))))
 
@@ -643,7 +643,7 @@
 
                                       (testing "Type preservation for exotic types"
                                         (let [type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                                                         [name (transforms.execute/restricted-insert-type base_type)])]
+                                                         [name (python-runner/restricted-insert-type base_type)])]
                                           (is (isa? (type-map "inet_field") :type/IPAddress))
                                           (is (isa? (type-map "money_field") :type/Float))
                                           (is (isa? (type-map "int_array") :type/Array))
@@ -734,7 +734,7 @@
 
                                    (testing "Type preservation for MySQL exotic types"
                                      (let [type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                                                      [name (transforms.execute/restricted-insert-type base_type)])]
+                                                      [name (python-runner/restricted-insert-type base_type)])]
                                        (is (isa? (type-map "json_field") (if (mysql/mariadb? (mt/db)) :type/Text :type/JSON)))
                                        (is (isa? (type-map "year_field") :type/Integer))
                                        (is (isa? (type-map "enum_field") :type/Text))
@@ -840,7 +840,7 @@
 
                                       (testing "Type preservation for BigQuery exotic types"
                                         (let [type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                                                         [name (transforms.execute/restricted-insert-type base_type)])]
+                                                         [name (python-runner/restricted-insert-type base_type)])]
                                          ;; we're lossy
                                           (is (isa? (type-map "struct_field") :type/JSON))
                                           (is (isa? (type-map "numeric_precise") :type/Decimal))

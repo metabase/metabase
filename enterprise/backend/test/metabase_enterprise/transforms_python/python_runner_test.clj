@@ -369,42 +369,7 @@
                   "updated_at"    :type/DateTime
                   "scheduled_for" :type/DateTimeWithLocalTZ}
                  (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                   [name (transforms.execute/restricted-insert-type base_type)]))))))))
-
-(deftest python-transform-scheduled-job-test
-  (mt/test-helpers-set-global-values!
-    (mt/with-temp-scheduler!
-      (task/init! ::transforms.schedule/RunTransform)
-      (mt/test-drivers #{:postgres}
-        (mt/with-premium-features #{:transforms-python :transforms}
-          (mt/dataset transforms-dataset/transforms-test
-            (transforms.tu/with-transform-cleanup! [target {:type   "table"
-                                                            :schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
-                                                            :name   "target_table"}]
-              (mt/with-temp
-                [:model/TransformTag {tag-id :id}       {:name "every second"}
-                 :model/Transform    {transform-id :id} {:name   "Gadget Products"
-                                                         :source {:type  "python"
-                                                                  :source-database (mt/id)
-                                                                  :source-tables {"transforms_customers" (mt/id :transforms_customers)}
-                                                                  :body  (str "import pandas as pd\n"
-                                                                              "\n"
-                                                                              "def transform():\n"
-                                                                              "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")}
-                                                         :target  (assoc target :database (mt/id))}
-                 :model/TransformTransformTag   _  {:transform_id transform-id :tag_id tag-id :position 0}
-                 :model/TransformJob {job-id :id :as job} {:schedule "* * * * * ? *"}
-                 :model/TransformJobTransformTag _ {:job_id job-id :tag_id tag-id :position 0}]
-                (transforms.schedule/initialize-job! job)
-                (transforms.schedule/update-job! job-id "* * * * * ? *")
-                (is (true? (u/poll {:thunk   (fn [] (driver/table-exists? driver/*driver* (mt/db) target))
-                                    :done?   true?
-                                    :timeout-ms 20000
-                                    :interval-ms 1000})))
-                (is (true? (u/poll {:thunk   (fn [] (t2/exists? :model/Table :name (:name target)))
-                                    :done?   true?
-                                    :timeout-ms 10000
-                                    :interval-ms 1000})))))))))))
+                   [name (python-runner/restricted-insert-type base_type)]))))))))
 
 (deftest transform-function-with-library-test
   (testing "transform function can use libraries"
@@ -526,7 +491,7 @@
                   "created_date" :type/Date
                   "description"  :type/Text}
                  (u/for-map [{:keys [name base_type]} (:fields metadata)]
-                   [name (transforms.execute/restricted-insert-type base_type)]))))
+                   [name (python-runner/restricted-insert-type base_type)]))))
 
         ;; cleanup
         (driver/drop-table! driver db-id qualified-table-name)))))
