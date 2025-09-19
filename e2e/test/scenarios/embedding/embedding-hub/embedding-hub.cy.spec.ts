@@ -111,9 +111,7 @@ describe("scenarios - embedding hub", () => {
     });
 
     it('"Create models" step should be marked as done after creating a model', () => {
-      cy.intercept("GET", "/api/ee/embedding-hub/checklist").as("getChecklist");
       cy.intercept("POST", "/api/dataset").as("dataset");
-      cy.intercept("POST", "/api/card").as("createModel");
 
       H.addSqliteDatabase("Test Database");
 
@@ -151,11 +149,13 @@ describe("scenarios - embedding hub", () => {
         cy.button("Save").click();
       });
 
-      cy.wait("@createModel");
+      cy.log("wait for the model to be created");
+      H.main()
+        .findByText("Test Model", { timeout: 20_000 })
+        .should("be.visible");
 
       cy.log("Navigate back to embedding setup guide");
       cy.visit("/admin/embedding/setup-guide");
-      cy.wait("@getChecklist");
 
       cy.log("'Create models' should now be marked as done");
       cy.findByTestId("admin-layout-content")
