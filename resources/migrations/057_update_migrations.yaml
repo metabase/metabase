@@ -1461,7 +1461,6 @@ databaseChangeLog:
                   name: model_entity_id
                   type: char(21)
                   remarks: Entity ID of the model that was changed
-                  defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
