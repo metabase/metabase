@@ -10,7 +10,6 @@
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -162,19 +161,12 @@
         (log/info "New table")
         (create-table-and-insert-data! driver (:id db) table-name metadata data-source)))))
 
-(defn- cancel-python-code-http-call!
-  [server-url run-id]
-  (python-runner/python-runner-request server-url :post "/cancel" {:body   (json/encode {:request_id run-id})
-                                                                   :async? true}
-                                       #_success #(log/debug %)
-                                       #_failure #(log/error %)))
-
 (defn- start-cancellation-process!
   "Starts a core.async process that optimistically sends a cancellation request to the python executor if cancel-chan receives a value.
   Returns a channel that will receive either the async http call j.u.c.FutureTask in the case of cancellation, or nil when the cancel-chan is closed."
   [server-url run-id cancel-chan]
   (a/go (when (a/<! cancel-chan)
-          (cancel-python-code-http-call! server-url run-id))))
+          (python-runner/cancel-python-code-http-call! server-url run-id))))
 
 (defn- run-python-transform! [{:keys [source] :as transform} db run-id cancel-chan message-log]
   ;; TODO restructure things such that s3 can we swapped out for other transfer mechanisms
