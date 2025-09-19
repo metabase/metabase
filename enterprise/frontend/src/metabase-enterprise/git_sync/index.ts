@@ -2,8 +2,8 @@ import { PLUGIN_GIT_SYNC } from "metabase/plugins";
 
 import { GitSyncSettings } from "./GitSyncSettings";
 import { LibraryNav } from "./LibraryNav";
-import { RemoteSyncReadOnlyBanner } from "./RemoteSyncReadOnlyBanner";
+import { SyncStatusBanner } from "./SyncStatusBanner";
 
 PLUGIN_GIT_SYNC.GitSyncSettings = GitSyncSettings;
 PLUGIN_GIT_SYNC.LibraryNav = LibraryNav;
-PLUGIN_GIT_SYNC.RemoteSyncReadOnlyBanner = RemoteSyncReadOnlyBanner;
+PLUGIN_GIT_SYNC.SyncStatusBanner = SyncStatusBanner;

@@ -851,8 +851,12 @@ export const PLUGIN_TRANSFORMS: TransformsPlugin = {
   getAdminRoutes: () => null,
 };
 
-export const PLUGIN_GIT_SYNC = {
+export const PLUGIN_GIT_SYNC: {
+  LibraryNav: ComponentType;
+  GitSyncSettings: ComponentType;
+  SyncStatusBanner: ComponentType;
+} = {
   LibraryNav: PluginPlaceholder,
   GitSyncSettings: NotFoundPlaceholder,
-  RemoteSyncReadOnlyBanner: PluginPlaceholder,
+  SyncStatusBanner: PluginPlaceholder,
 };

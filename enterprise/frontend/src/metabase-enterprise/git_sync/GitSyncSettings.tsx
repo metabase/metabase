@@ -21,6 +21,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
+import { isNotNull } from "metabase/lib/types";
 import {
   ActionIcon,
   Box,
@@ -38,6 +39,74 @@ import type { EnterpriseSettings, SettingDefinition } from "metabase-types/api";
 
 import { CollectionSyncManager } from "./CollectionSyncManager";
 import { GIT_SYNC_SCHEMA } from "./constants";
+
+interface GitSyncStatusBadgeProps {
+  isEnabled: boolean;
+}
+
+const GitSyncStatusBadge = ({ isEnabled }: GitSyncStatusBadgeProps) => (
+  <Box
+    py="xs"
+    px="sm"
+    bg={isEnabled ? "brand-lighter" : "bg-light"}
+    c={isEnabled ? "brand" : "error"}
+    fz="sm"
+    fw={600}
+  >
+    {isEnabled ? t`Active` : t`Paused`}
+  </Box>
+);
+
+interface GitSyncMenuProps {
+  isEnabled: boolean;
+  onToggle: () => void;
+  onDeactivate: () => void;
+}
+
+const GitSyncMenu = ({
+  isEnabled,
+  onToggle,
+  onDeactivate,
+}: GitSyncMenuProps) => {
+  const menuItems = useMemo(
+    () =>
+      [
+        {
+          title: isEnabled ? t`Pause Sync` : t`Resume Sync`,
+          icon: isEnabled ? "pause" : "play",
+          action: onToggle,
+        },
+        {
+          title: t`Turn Off`,
+          icon: "close",
+          action: onDeactivate,
+        },
+      ].filter(isNotNull),
+    [isEnabled, onToggle, onDeactivate],
+  );
+
+  return (
+    <Menu position="bottom-end">
+      <Menu.Target>
+        <ActionIcon variant="subtle" size="lg">
+          <Icon name="ellipsis" />
+        </ActionIcon>
+      </Menu.Target>
+      <Menu.Dropdown>
+        {menuItems.map((item) => (
+          <Menu.Item
+            key={item.title}
+            leftSection={<Icon name={item.icon as any} />}
+            onClick={item.action}
+            c={item.icon === "close" ? "danger" : undefined}
+          >
+            {item.title}
+          </Menu.Item>
+        ))}
+      </Menu.Dropdown>
+    </Menu>
+  );
+};
 
 const URL_KEY = "remote-sync-url";
 const TOKEN_KEY = "remote-sync-token";
@@ -111,109 +180,99 @@ export const GitSyncSettings = (): JSX.Element => {
   const syncMode = settingValues?.[TYPE_KEY];
 
   return (
-    <SettingsPageWrapper title={t`Remote sync configuration`}>
+    <SettingsPageWrapper>
       <SettingsSection>
-        {isGitSyncConfigured && (
-          <Flex justify="space-between" align="center">
-            <GitSyncStatus />
-            <Menu position="bottom-end">
-              <Menu.Target>
-                <ActionIcon variant="subtle" size="lg">
-                  <Icon name="ellipsis" />
-                </ActionIcon>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Item
-                  leftSection={
-                    <Icon name={isGitSyncEnabled ? "pause" : "play"} />
-                  }
-                  onClick={handlePauseResume}
-                >
-                  {isGitSyncEnabled ? t`Pause` : t`Resume`}
-                </Menu.Item>
-                <Menu.Item
-                  leftSection={<Icon name="close" />}
-                  onClick={() => setIsDeactivateModalOpen(true)}
-                  c="danger"
-                >
-                  {t`Deactivate`}
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
-          </Flex>
-        )}
-        <FormProvider
-          initialValues={initialValues}
-          enableReinitialize
-          validationSchema={GIT_SYNC_SCHEMA}
-          validationContext={settingValues}
-          onSubmit={onSubmit}
-        >
-          {({ dirty }) => (
-            <Form disabled={!dirty}>
-              <Stack gap="md">
-                <Title order={2}>{t`Git Sync`}</Title>
-                {!isGitSyncConfigured && <GitSyncStatus />}
-                <Text c="text-medium">
-                  {/* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */}
-                  {t`Enable Git sync to back up and version control your Metabase library content including dashboards, questions, and collections.`}
-                </Text>
-                <Text c="text-medium">
-                  {jt`To set up Git sync, you'll need to provide your Git repository URL and authentication token. Instructions on how to set this up can be found ${(
-                    <ExternalLink key="link" href={docsUrl}>
-                      {t`here`}
-                    </ExternalLink>
-                  )}.`}
-                </Text>
-
-                <FormTextInput
-                  name={URL_KEY}
-                  label={t`Git Repository URL`}
-                  placeholder={t`https://github.com/yourcompany/metabase-library.git`}
-                  {...getEnvSettingProps(settingDetails?.[URL_KEY])}
-                />
-
-                <FormTextInput
-                  name={TOKEN_KEY}
-                  label={t`Personal Access Token`}
-                  description={t`A GitHub personal access token with repository write permissions`}
-                  type="password"
-                  {...getEnvSettingProps(settingDetails?.[TOKEN_KEY])}
-                />
-
-                <FormRadioGroup
-                  name={TYPE_KEY}
-                  label={t`Synchronization Type`}
-                  description={t`Choose how to sync with Git. Import mode keeps collections in sync with Git and makes them read-only. Export mode lets you make changes and push them to Git manually.`}
-                >
-                  <Group mt="sm">
-                    <Radio value="import" label={t`Import from Git`} />
-                    <Radio value="export" label={t`Export to Git`} />
-                  </Group>
-                </FormRadioGroup>
-
-                <FormTextInput
-                  name={BRANCH_KEY}
-                  label={t`Branch`}
-                  description={t`Branch to pull content from`}
-                  placeholder="main"
-                  {...getEnvSettingProps(settingDetails?.[BRANCH_KEY])}
-                />
-
-                <Flex justify="end" align="center" gap="md">
-                  <FormErrorMessage />
-                  <FormSubmitButton
-                    label={
-                      isGitSyncConfigured ? t`Save changes` : t`Save and enable`
-                    }
-                    variant="filled"
-                    disabled={!dirty}
+        <Box flex={1} maw="52rem">
+          <Flex align="flex-end" gap="md" mb="xs">
+            <Title order={2}>{t`Git Sync`}</Title>
+            {isGitSyncConfigured && (
+              <>
+                <GitSyncStatusBadge isEnabled={!!isGitSyncEnabled} />
+                <Box ml="auto">
+                  <GitSyncMenu
+                    isEnabled={!!isGitSyncEnabled}
+                    onToggle={handlePauseResume}
+                    onDeactivate={() => setIsDeactivateModalOpen(true)}
                   />
-                </Flex>
-              </Stack>
-            </Form>
-          )}
-        </FormProvider>
+                </Box>
+              </>
+            )}
+          </Flex>
+          <Text c="text-dark" size="sm" mb="md" maw="40rem" lh="1.5rem">
+            {t`Keep your dashboards, questions, and collections safely backed up in Git.`}
+          </Text>
+
+          <FormProvider
+            initialValues={initialValues as GitSyncSettingsType}
+            enableReinitialize
+            validationSchema={GIT_SYNC_SCHEMA}
+            validationContext={settingValues}
+            onSubmit={onSubmit}
+          >
+            {({ dirty }) => (
+              <Form disabled={!dirty}>
+                <Stack gap="md">
+                  {!isGitSyncConfigured && (
+                    <Text c="text-medium" size="sm">
+                      {jt`Need help setting this up? Check out our ${(
+                        <ExternalLink key="link" href={docsUrl}>
+                          {t`setup guide`}
+                        </ExternalLink>
+                      )}.`}
+                    </Text>
+                  )}
+
+                  <FormTextInput
+                    name={URL_KEY}
+                    label={t`Repository URL`}
+                    placeholder="https://github.com/yourcompany/metabase-library.git"
+                    {...getEnvSettingProps(settingDetails?.[URL_KEY])}
+                  />
+
+                  <FormTextInput
+                    name={TOKEN_KEY}
+                    label={t`Access Token`}
+                    description={t`Personal access token with write permissions`}
+                    type="password"
+                    {...getEnvSettingProps(settingDetails?.[TOKEN_KEY])}
+                  />
+
+                  <FormRadioGroup
+                    name={TYPE_KEY}
+                    label={t`How do you want to sync?`}
+                    description={t`Import makes collections read-only and syncs from Git. Export lets you make changes here and push them to Git.`}
+                  >
+                    <Group mt="sm">
+                      <Radio value="import" label={t`Import from Git`} />
+                      <Radio value="export" label={t`Export to Git`} />
+                    </Group>
+                  </FormRadioGroup>
+
+                  <FormTextInput
+                    name={BRANCH_KEY}
+                    label={t`Branch`}
+                    description={t`Which branch to sync with`}
+                    placeholder="main"
+                    {...getEnvSettingProps(settingDetails?.[BRANCH_KEY])}
+                  />
+
+                  <Flex justify="end" align="center" gap="md">
+                    <FormErrorMessage />
+                    <FormSubmitButton
+                      label={
+                        isGitSyncConfigured
+                          ? t`Save Changes`
+                          : t`Set Up Git Sync`
+                      }
+                      variant="filled"
+                      disabled={!dirty}
+                    />
+                  </Flex>
+                </Stack>
+              </Form>
+            )}
+          </FormProvider>
+        </Box>
       </SettingsSection>
 
       {isGitSyncConfigured && syncMode != null ? (
@@ -221,8 +280,8 @@ export const GitSyncSettings = (): JSX.Element => {
           title={t`Collections`}
           description={
             syncMode === "export"
-              ? t`Select top-level collections to export to Git`
-              : t`Top-level collections imported from Git`
+              ? t`Choose which collections to sync with Git`
+              : t`Collections synced from your Git repository`
           }
         >
           <CollectionSyncManager mode={syncMode} />
@@ -231,39 +290,13 @@ export const GitSyncSettings = (): JSX.Element => {
 
       <ConfirmModal
         opened={isDeactivateModalOpen}
-        title={t`Deactivate Git Sync?`}
-        message={t`This will clear all your Git sync settings and stop syncing your library with Git.`}
-        confirmButtonText={t`Deactivate`}
+        title={t`Turn off Git Sync?`}
+        message={t`This will remove all Git sync settings and stop backing up your content to Git.`}
+        confirmButtonText={t`Turn Off`}
         onConfirm={handleDeactivate}
         onClose={() => setIsDeactivateModalOpen(false)}
       />
     </SettingsPageWrapper>
-  );
-};
-
-const GitSyncStatus = () => {
-  const isConfigured = useSetting("remote-sync-configured");
-  const isEnabled = useSetting("remote-sync-enabled");
-
-  let color: string;
-  let message: string;
-
-  if (!isConfigured) {
-    color = "error";
-    message = t`Git sync is not configured.`;
-  } else if (isEnabled) {
-    color = "success";
-    message = t`Git sync is active.`;
-  } else {
-    color = "warning";
-    message = t`Git sync is paused.`;
-  }
-
-  return (
-    <Flex align={"center"}>
-      <Box bdrs="50%" h="14" w="14" mr="sm" bg={color} />
-      <Text c="text-medium">{message}</Text>
-    </Flex>
   );
 };
 

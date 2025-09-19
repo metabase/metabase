@@ -49,7 +49,7 @@
 
 (defn ^:private exists-select
   [_k]
-  [[:inline 1]])
+  [[[:inline 1] :dummy]])
 
 (def ^:private items-select
   {:collection [:collection.id
@@ -142,7 +142,7 @@
   Returns:
     boolean if the collection has changes or not"
   [col-id]
-  (:exists (t2/query-one {:select [[[:exists (dirty-collection col-id exists-select)]]]})))
+  (:exists (t2/query-one {:select [[[:exists (dirty-collection col-id exists-select)] :exists]]})))
 
 (defn dirty-for-collection
   "All models for collection that are dirty along with a note about why their state is dirty

@@ -1,61 +1,46 @@
-import type { EnterpriseSettings, Transform } from "metabase-types/api";
+import type { CollectionId, EnterpriseSettings } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
 import { invalidateTags, tag } from "./tags";
 
-export type GitTreeNode = {
-  id: string;
-  name: string;
-  type: "file" | "folder";
-  children?: GitTreeNode[];
-};
-
-export type EntityType = "transform";
-
-export type GitFileContent = {
-  path: string;
-  content: string;
-  entityType?: EntityType;
-  entity?: Transform;
-};
-
-export type UnsyncedEntity = {
+export type DirtyEntity = {
   id: number;
   name: string;
   description: string | null;
   created_at: string;
   updated_at: string | null;
   model:
-    | "collection"
     | "card"
+    | "dataset"
+    | "metric"
     | "dashboard"
-    | "snippet"
-    | "timeline"
-    | "document";
+    | "collection"
+    | "document"
+    | "snippet";
   collection_id?: number;
-  authority_level?: "official" | null;
   display?: string;
   query_type?: string;
+  sync_status: "create" | "update" | "delete" | "touch";
+  authority_level?: string | null;
 };
 
-export type UnsyncedChangesResponse = {
-  has_unsynced_changes: boolean;
-  last_sync_at: string | null;
-  unsynced_counts?: {
-    collections: number;
-    cards: number;
-    dashboards: number;
-    snippets: number;
-    timelines: number;
-    documents: number;
-    total: number;
-  };
-  entities?: UnsyncedEntity[];
+export type CollectionDirtyResponse = {
+  dirty: DirtyEntity[];
+};
+
+export type CollectionIsDirtyResponse = {
+  is_dirty: boolean;
+};
+
+export type ExportChangesResponse = {
+  success: boolean;
   message?: string;
+  conflict?: boolean;
 };
 
 export type GitSyncSettings = Pick<
   EnterpriseSettings,
+  | "remote-sync-enabled"
   | "remote-sync-url"
   | "remote-sync-token"
   | "remote-sync-type"
@@ -65,18 +50,52 @@ export type GitSyncSettings = Pick<
 
 export const gitSyncApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    exportGit: builder.mutation<void, { branch: string }>({
-      query: ({ branch }) => ({
+    exportChanges: builder.mutation<
+      ExportChangesResponse,
+      {
+        message?: string;
+        collection: CollectionId;
+        forceSync?: boolean;
+      }
+    >({
+      query: ({ message, collection, forceSync }) => ({
+        url: `/api/ee/remote-sync/export`,
         method: "POST",
-        url: "/api/ee/library/export",
-        body: { branch },
+        body: {
+          message,
+          collection,
+          "force-sync": forceSync,
+        },
       }),
+      invalidatesTags: (_, error, { collection }) =>
+        invalidateTags(error, [
+          tag("collection-dirty", collection),
+          tag("collection-is-dirty", collection),
+        ]),
     }),
-    getUnsyncedChanges: builder.query<UnsyncedChangesResponse, void>({
-      query: () => ({
+    getCollectionDirtyEntities: builder.query<
+      CollectionDirtyResponse,
+      { collectionId: CollectionId }
+    >({
+      query: ({ collectionId }) => ({
+        url: `/api/ee/remote-sync/${collectionId}/dirty`,
         method: "GET",
-        url: "/api/ee/library/unsynced-changes",
       }),
+      providesTags: (_, __, { collectionId }) => [
+        tag("collection-dirty", collectionId),
+      ],
+    }),
+    isCollectionDirty: builder.query<
+      CollectionIsDirtyResponse,
+      { collectionId: CollectionId }
+    >({
+      query: ({ collectionId }) => ({
+        url: `/api/ee/remote-sync/${collectionId}/is-dirty`,
+        method: "GET",
+      }),
+      providesTags: (_, __, { collectionId }) => [
+        tag("collection-is-dirty", collectionId),
+      ],
     }),
     updateGitSyncSettings: builder.mutation<void, GitSyncSettings>({
       query: (settings) => ({
@@ -91,7 +110,8 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
 });
 
 export const {
-  useGetUnsyncedChangesQuery,
+  useGetCollectionDirtyEntitiesQuery,
+  useIsCollectionDirtyQuery,
   useUpdateGitSyncSettingsMutation,
-  useExportGitMutation,
+  useExportChangesMutation,
 } = gitSyncApi;
