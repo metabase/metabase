@@ -24,14 +24,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn check-feature-enabled
-  "Checking whether we have proper feature flags for using a given transform."
-  [transform]
-  (case (-> transform :source :type keyword)
-    :query  (premium-features/has-feature? :transforms)
-    :python (and (premium-features/has-feature? :transforms)
-                 (premium-features/has-feature? :transforms-python))))
-
 (defn qualified-table-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
   [_driver {:keys [schema name]}]
@@ -48,6 +40,14 @@
   "Check if this is a Python transform."
   [transform]
   (= :python (-> transform :source :type keyword)))
+
+(defn check-feature-enabled
+  "Checking whether we have proper feature flags for using a given transform."
+  [transform]
+  (if (python-transform? transform)
+    (and (premium-features/has-feature? :transforms)
+         (premium-features/has-feature? :transforms-python))
+    (premium-features/has-feature? :transforms)))
 
 (defn try-start-unless-already-running
   "Start a transform run, throwing an informative error if already running."
