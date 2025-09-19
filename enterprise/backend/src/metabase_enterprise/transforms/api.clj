@@ -183,10 +183,10 @@
   (t2/with-transaction [_]
     ;; Cycle detection should occur within the transaction to avoid race
     (let [old (t2/select-one :model/Transform id)
-          ;; we must validate on a full transform object
-          _   (check-feature-enabled! old)
           new (merge old body)
           target-fields #(-> % :target (select-keys [:schema :name]))]
+      ;; we must validate on a full transform object
+      (check-feature-enabled! new)
       (check-database-feature new)
       (when (transforms.util/query-transform? old)
         (when-let [{:keys [cycle-str]} (transforms.ordering/get-transform-cycle new)]
