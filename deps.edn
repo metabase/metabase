@@ -91,7 +91,7 @@
                                              :git/url "https://github.com/eerohele/pp"}
   ;; TODO: replace back to normal artifact
   io.github.metabase/macaw                  {#_:mvn/version #_"0.2.27"
-                                             :git/sha "6ca4b37addf63bbaf3ebc2e3cce1285717ce6dfa"
+                                             :git/sha "c007edb8abef8410a01448b3cabbe49cbbd4802c"
                                              :git/url "https://github.com/metabase/macaw"}             ; Parse native SQL queries
   io.github.resilience4j/resilience4j-retry ^:antq/exclude                      ; 2.x do not support Java 8
                                             {:mvn/version "1.7.1"}              ; Support for retrying operations

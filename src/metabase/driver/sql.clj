@@ -15,6 +15,7 @@
    [metabase.driver.sql.references :as sql.references]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
+   [metabase.util.humanization :as u.humanization]
    [metabase.util.malli :as mu]
    [potemkin :as p]))
 
@@ -219,7 +220,8 @@
   (or (:alias m) (str (gensym "new-col"))))
 
 (defn- get-display-name [m]
-  (get-name m))
+  (->> (get-name m)
+       (u.humanization/name->human-readable-name :simple)))
 
 (defmethod resolve-field :custom-field
   [_driver _metadata-provider col-spec]
@@ -234,9 +236,11 @@
   [(assoc col-spec ::bad-reference true)])
 
 (defn- lca [default-type & types]
-  (let [common-ancestors (->> (map #(conj (ancestors %) %)
-                                   types)
-                              (apply set/intersection))]
+  (let [ancestor-sets (for [t types
+                            :when t]
+                        (conj (ancestors t) t))
+        common-ancestors (when (seq ancestor-sets)
+                           (apply set/intersection ancestor-sets))]
     (if (seq common-ancestors)
       (apply (partial max-key (comp count ancestors)) common-ancestors)
       default-type)))

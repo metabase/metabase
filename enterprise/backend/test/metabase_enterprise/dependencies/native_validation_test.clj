@@ -6,6 +6,15 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]))
 
+(defn- fake-query
+  ([mp query]
+   (fake-query mp query {}))
+  ([mp query template-tags]
+   {:database (:id (lib.metadata/database mp))
+    :type     :native
+    :native   {:query query
+               :template-tags template-tags}}))
+
 (defn- validates?
   [mp driver card-id expected]
   (is (= expected
@@ -45,6 +54,14 @@
            (->> (lib.metadata/card mp 9)
                 :dataset-query
                 (deps.native-validation/native-query-deps driver mp))))))
+
+(deftest validate-bad-query-test
+  (testing "validate-native-query handles nonsense queries"
+    (let [mp (deps.tu/default-metadata-provider)
+          driver (:engine (lib.metadata/database mp))]
+      (is (not (deps.native-validation/validate-native-query
+                driver mp
+                (fake-query mp "this is not a query")))))))
 
 (deftest validate-native-query-with-subquery-columns-test
   (testing "validate-native-query should detect invalid columns in subqueries"
@@ -89,3 +106,56 @@
 
       (testing "Invalid column from aliased card"
         (validates? mp driver 23 false)))))
+
+(defn- check-result-metadata [driver mp query expected]
+  (is (=? expected
+          (->> query
+               (fake-query mp)
+               (deps.native-validation/native-result-metadata driver mp)))))
+
+(deftest result-metadata-test
+  (testing "Calculates result metadata"
+    (let [mp (deps.tu/default-metadata-provider)
+          driver (:engine (lib.metadata/database mp))]
+      (testing "Selecting a wildcard"
+        (check-result-metadata
+         driver mp
+         "select * from orders"
+         (lib.metadata/fields mp (meta/id :orders))))
+      (testing "Selecting a table wildcard"
+        (check-result-metadata
+         driver mp
+         "select orders.* from orders"
+         (lib.metadata/fields mp (meta/id :orders))))
+      (testing "Selecting a single col"
+        (check-result-metadata
+         driver mp
+         "select total from orders"
+         [(lib.metadata/field mp (meta/id :orders :total))]))
+      (testing "Selecting a custom col"
+        (check-result-metadata
+         driver mp
+         "select subtotal + tax as sum from orders"
+         [{:base-type :type/*,
+           :name "SUM",
+           :display-name "Sum",
+           :effective-type :type/*,
+           :semantic-type :Semantic/*}]))
+      (testing "Selecting a union"
+        (check-result-metadata
+         driver mp
+         "select total from orders union select subtotal from orders"
+         [{:name "TOTAL",
+           :display-name "Total",
+           :base-type :type/Float,
+           :effective-type :type/Float,
+           :semantic-type :Semantic/*}]))
+      (testing "Selecting a union with different types"
+        (check-result-metadata
+         driver mp
+         "select category from products union select title from products"
+         [{:name "CATEGORY",
+           :display-name "Category",
+           :base-type :type/Text,
+           :effective-type :type/Text,
+           :semantic-type :type/Category}])))))
