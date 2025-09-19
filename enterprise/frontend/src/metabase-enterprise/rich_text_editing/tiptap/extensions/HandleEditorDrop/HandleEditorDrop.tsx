@@ -6,7 +6,7 @@ import {
   Slice,
 } from "@tiptap/pm/model";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
-import type { EditorView } from "@tiptap/pm/view";
+import type { EditorView as PMEditorView } from "@tiptap/pm/view";
 import type { NodeViewProps } from "@tiptap/react";
 
 import {
@@ -307,7 +307,6 @@ export const HandleEditorDrop = Extension.create({
               }
 
               if (dropToParent.type.name === "paragraph") {
-                e.preventDefault();
                 return handleCardDropOnParagraph(
                   cardEmbedInitialData,
                   cameFromFlexContainer,
@@ -567,12 +566,12 @@ const handleCardDropOnParagraph = (
 };
 
 const moveNode = (
-  editor: EditorView,
+  view: PMEditorView,
   fromPos: number,
   toPos: number,
   wrapper?: PMNodeType,
 ) => {
-  const { state } = editor;
+  const { state } = view;
   const { tr, doc } = state;
 
   // Get the node at the fromPos.
@@ -601,5 +600,5 @@ const moveNode = (
 
   tr.insert(adjustedToPos, possiblyWrappedNode);
 
-  editor.dispatch(tr);
+  view.dispatch(tr);
 };
