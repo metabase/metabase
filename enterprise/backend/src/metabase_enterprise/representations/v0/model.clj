@@ -243,30 +243,6 @@
                 currency (assoc :currency currency))))
           columns)))
 
-;;; -- Export --
-
-(defn ->ref [card]
-  (format "%s-%s" (name (:type card)) (:id card)))
-
-(defn export [card]
-  (let [query (serdes/export-mbql (:dataset_query card))]
-    (cond-> {:name (:name card)
-             ;;:version "question-v0"
-             :type type
-             :ref (:type card)
-             :description (:description card)}
-
-      (= :native (:type query))
-      (assoc :query (-> query :native :query)
-             :database (:database query))
-
-      (= :query (:type query))
-      (assoc :mbql_query (:query query)
-             :database (:database query))
-
-      :always
-      v0-common/remove-nils)))
-
 ;;; ------------------------------------ Public API ------------------------------------
 
 (defn yaml->toucan
@@ -329,3 +305,50 @@
                                           (assoc :creator_id creator-id)
                                           (assoc :entity_id entity-id))]
           (first (t2/insert-returning-instances! :model/Card model-data-with-creator)))))))
+
+;;; -- Export --
+
+(defn- source-table-ref [table]
+  (cond
+    (vector? table)
+    (let [[db schema table] table]
+      {:database db
+       :schema   schema
+       :table    table})
+
+    (string? table)
+    (let [referred-card (t2/select-one :model/Card :entity_id table)])))
+
+(defn- update-source-table [card]
+  (if-some [table (get-in card [:mbql_query :source-table])]
+    (update-in card [:mbql_query :source-table] source-table-ref)
+    card))
+
+(defn- patch-refs [card]
+  (-> card
+      (update-source-table)))
+
+(defn ->ref [card]
+  (format "%s-%s" (name (:type card)) (:id card)))
+
+(defn export [card]
+  (let [query (serdes/export-mbql (:dataset_query card))]
+    (cond-> {:name (:name card)
+             ;;:version "question-v0"
+             :type (:type card)
+             :ref (->ref card)
+             :description (:description card)}
+
+      (= :native (:type query))
+      (assoc :query (-> query :native :query)
+             :database (:database query))
+
+      (= :query (:type query))
+      (assoc :mbql_query (:query query)
+             :database (:database query))
+
+      :always
+      patch-refs
+
+      :always
+      v0-common/remove-nils)))

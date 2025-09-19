@@ -165,8 +165,8 @@
   (let [query (serdes/export-mbql (:dataset_query card))]
     (cond-> {:name (:name card)
              ;;:version "question-v0"
-             :type type
-             :ref (:type card)
+             :type (:type card)
+             :ref (->ref card)
              :description (:description card)}
 
       (= :native (:type query))
