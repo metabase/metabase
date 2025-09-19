@@ -2,6 +2,7 @@ import { c, t } from "ttag";
 
 import { Schedule } from "metabase/common/components/Schedule";
 import { useSetting } from "metabase/common/hooks";
+import { explainCronExpression } from "metabase/lib/cron";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Divider, Group, Tooltip } from "metabase/ui";
 import { useRunTransformJobMutation } from "metabase-enterprise/api";
@@ -15,6 +16,8 @@ import type {
 import { RunButton } from "../../../components/RunButton";
 import { SplitSection } from "../../../components/SplitSection";
 import type { TransformJobInfo } from "../types";
+
+import S from "./ScheduleSection.module.css";
 
 type ScheduleSectionProps = {
   job: TransformJobInfo;
@@ -61,7 +64,29 @@ const SCHEDULE_OPTIONS: ScheduleType[] = [
 ];
 
 function ScheduleWidget({ job, onChangeSchedule }: ScheduleWidgetProps) {
-  const systemTimezone = useSetting("system-timezone");
+  const verb = c("A verb in the imperative mood").t`Run`;
+  const systemTimezone = useSetting("system-timezone") ?? "UTC";
+
+  const renderScheduleDescription = (
+    settings: ScheduleSettings,
+    schedule: string,
+  ) => {
+    if (settings.schedule_type !== "cron") {
+      return null;
+    }
+
+    const scheduleExplanation = getScheduleExplanation(schedule);
+    if (scheduleExplanation == null) {
+      return null;
+    }
+
+    return (
+      <Group gap="sm" wrap="nowrap">
+        <Box className={S.placeholder}>{verb}</Box>
+        <Box>{t`${scheduleExplanation}, ${systemTimezone}`}</Box>
+      </Group>
+    );
+  };
 
   const handleChange = (schedule: string, settings: ScheduleSettings) => {
     onChangeSchedule(
@@ -74,12 +99,21 @@ function ScheduleWidget({ job, onChangeSchedule }: ScheduleWidgetProps) {
     <Schedule
       cronString={job.schedule}
       scheduleOptions={SCHEDULE_OPTIONS}
-      isCustomSchedule={job.schedule_display_type === "cron/raw"}
-      verb={c("A verb in the imperative mood").t`Run`}
+      verb={verb}
       timezone={systemTimezone}
+      isCustomSchedule={job.schedule_display_type === "cron/raw"}
+      renderScheduleDescription={renderScheduleDescription}
       onScheduleChange={handleChange}
     />
   );
+}
+
+function getScheduleExplanation(cronExpression: string) {
+  try {
+    return explainCronExpression(cronExpression);
+  } catch {
+    return null;
+  }
 }
 
 type RunButtonSectionProps = {
