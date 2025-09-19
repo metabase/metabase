@@ -8,9 +8,8 @@
   (->> query macaw/parsed-query macaw/->ast (sql.references/field-references :sql)))
 
 (deftest garbage-test
-  (is (= {:used-fields []
+  (is (= {:used-fields #{}
           :returned-fields []
-          :names nil
           :bad-sql true}
          (->references "nothing"))))
 
@@ -19,20 +18,20 @@
           #{{:column "a",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table "products"}}]]}
+             :source-columns [[{:type :all-columns, :table {:table "products"}}]]}
             {:column "b",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table "products"}}]]}},
+             :source-columns [[{:type :all-columns, :table {:table "products"}}]]}},
           :returned-fields
           [{:column "a",
             :alias nil,
             :type :single-column,
-            :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table "products"}}]]}
+            :source-columns [[{:type :all-columns, :table {:table "products"}}]]}
            {:column "b",
             :alias nil,
             :type :single-column,
-            :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table "products"}}]]}]}
+            :source-columns [[{:type :all-columns, :table {:table "products"}}]]}]}
          (->references "select * from (select a, b from products)"))))
 
 (deftest basic-join-test
@@ -40,21 +39,21 @@
           #{{:column "product_id",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table "orders"}}]]}
+             :source-columns [[{:type :all-columns, :table {:table "orders"}}]]}
             {:column "id",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table "products"}}]]}
+             :source-columns [[{:type :all-columns, :table {:table "products"}}]]}
             {:column "id",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table "orders"}}]]}},
+             :source-columns [[{:type :all-columns, :table {:table "orders"}}]]}},
           :returned-fields
-          [{:type :all-columns, :table {:type :macaw.ast/table, :table "products"}}
+          [{:type :all-columns, :table {:table "products"}}
            {:column "id",
             :alias nil,
             :type :single-column,
-            :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table "orders"}}]]}]}
+            :source-columns [[{:type :all-columns, :table {:table "orders"}}]]}]}
          (->references "select products.*, orders.id from products inner join orders on products.id = orders.product_id"))))
 
 (deftest indeterminite-join-test
@@ -63,23 +62,23 @@
              :alias nil,
              :type :single-column,
              :source-columns
-             [[{:type :all-columns, :table {:type :macaw.ast/table, :table "orders"}}
-               {:type :all-columns, :table {:type :macaw.ast/table, :table "products"}}]]}
+             [[{:type :all-columns, :table {:table "orders"}}
+               {:type :all-columns, :table {:table "products"}}]]}
             {:column "id",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table "products"}}]]}
+             :source-columns [[{:type :all-columns, :table {:table "products"}}]]}
             {:column "product_id",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table "orders"}}]]}},
+             :source-columns [[{:type :all-columns, :table {:table "orders"}}]]}},
           :returned-fields
           [{:column "id",
             :alias nil,
             :type :single-column,
             :source-columns
-            [[{:type :all-columns, :table {:type :macaw.ast/table, :table "orders"}}
-              {:type :all-columns, :table {:type :macaw.ast/table, :table "products"}}]]}]}
+            [[{:type :all-columns, :table {:table "orders"}}
+              {:type :all-columns, :table {:table "products"}}]]}]}
          (->references "select id from products inner join orders on products.id = orders.product_id"))))
 
 (deftest table-wildcard-join-test
@@ -88,14 +87,14 @@
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "products"}}]]}
+                                :table {:table "products"}}]]}
             {:column "product_id",
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "orders"}}]]}},
+                                :table {:table "orders"}}]]}},
           :returned-fields
-          [{:type :all-columns, :table {:type :macaw.ast/table, :table "orders"}}]}
+          [{:type :all-columns, :table {:table "orders"}}]}
          (->references "select orders.* from products inner join orders on products.id = orders.product_id"))))
 
 (deftest wildcard-join-test
@@ -104,15 +103,15 @@
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "products"}}]]}
+                                :table {:table "products"}}]]}
             {:column "product_id",
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "orders"}}]]}},
+                                :table {:table "orders"}}]]}},
           :returned-fields
-          [{:type :all-columns, :table {:type :macaw.ast/table, :table "orders"}}
-           {:type :all-columns, :table {:type :macaw.ast/table, :table "products"}}]}
+          [{:type :all-columns, :table {:table "orders"}}
+           {:type :all-columns, :table {:table "products"}}]}
          (->references "select * from products inner join orders on products.id = orders.product_id"))))
 
 (deftest basic-alias-test
@@ -120,20 +119,20 @@
           #{{:column "c",
              :alias "d",
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table-alias "p", :table "products"}}]]}
+             :source-columns [[{:type :all-columns, :table {:table-alias "p", :table "products"}}]]}
             {:column "a",
              :alias "b",
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table-alias "p", :table "products"}}]]}},
+             :source-columns [[{:type :all-columns, :table {:table-alias "p", :table "products"}}]]}},
           :returned-fields
           [{:column "a",
             :alias "b",
             :type :single-column,
-            :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table-alias "p", :table "products"}}]]}
+            :source-columns [[{:type :all-columns, :table {:table-alias "p", :table "products"}}]]}
            {:column "c",
             :alias "d",
             :type :single-column,
-            :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table-alias "p", :table "products"}}]]}]}
+            :source-columns [[{:type :all-columns, :table {:table-alias "p", :table "products"}}]]}]}
          (->references "select p.a as b, p.c as d from products p"))))
 
 (deftest basic-nested-query-test
@@ -142,23 +141,23 @@
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "products"}}]]}
+                                :table {:table "products"}}]]}
             {:column "a",
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "products"}}]]}},
+                                :table {:table "products"}}]]}},
           :returned-fields
           [{:column "a",
             :alias nil,
             :type :single-column,
             :source-columns [[{:type :all-columns,
-                               :table {:type :macaw.ast/table, :table "products"}}]]}
+                               :table {:table "products"}}]]}
            {:column "b",
             :alias nil,
             :type :single-column,
             :source-columns [[{:type :all-columns,
-                               :table {:type :macaw.ast/table, :table "products"}}]]}]}
+                               :table {:table "products"}}]]}]}
          (->references "select a, b from (select a, b from products)"))))
 
 (deftest renamed-nested-query-test
@@ -167,18 +166,18 @@
              :alias "b",
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "products"}}]]}
+                                :table {:table "products"}}]]}
             {:column "a",
              :alias "c",
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "products"}}]]}},
+                                :table {:table "products"}}]]}},
           :returned-fields
           [{:column "a",
             :alias "c",
             :type :single-column,
             :source-columns [[{:type :all-columns,
-                               :table {:type :macaw.ast/table, :table "products"}}]]}]}
+                               :table {:table "products"}}]]}]}
          (->references "select b as c from (select a as b from products)"))))
 
 (deftest broken-nested-query-test
@@ -187,7 +186,7 @@
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "products"}}]]}
+                                :table {:table "products"}}]]}
             {:column "a",
              :alias nil,
              :type :single-column,
@@ -196,7 +195,7 @@
                 :alias nil,
                 :type :single-column,
                 :source-columns [[{:type :all-columns,
-                                   :table {:type :macaw.ast/table, :table "products"}}]]}]]}},
+                                   :table {:table "products"}}]]}]]}},
           :returned-fields
           [{:column "a",
             :alias nil,
@@ -206,7 +205,7 @@
                :alias nil,
                :type :single-column,
                :source-columns [[{:type :all-columns,
-                                  :table {:type :macaw.ast/table, :table "products"}}]]}]]}]}
+                                  :table {:table "products"}}]]}]]}]}
          (->references "select a from (select b from products)"))))
 
 (deftest different-case-nested-query-test
@@ -215,13 +214,13 @@
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "orders"}}]]}},
+                                :table {:table "orders"}}]]}},
           :returned-fields
           [{:column "a",
             :alias nil,
             :type :single-column,
             :source-columns [[{:type :all-columns,
-                               :table {:type :macaw.ast/table, :table "orders"}}]]}]}
+                               :table {:table "orders"}}]]}]}
          (->references "select A from (select a from orders)"))))
 
 (deftest wildcard-nested-query-test
@@ -230,13 +229,13 @@
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "orders"}}]]}},
+                                :table {:table "orders"}}]]}},
           :returned-fields
           [{:column "a",
             :alias nil,
             :type :single-column,
             :source-columns [[{:type :all-columns,
-                               :table {:type :macaw.ast/table, :table "orders"}}]]}]}
+                               :table {:table "orders"}}]]}]}
          (->references "select * from (select a from orders)"))))
 
 (deftest table-wildcard-nested-query-test
@@ -245,13 +244,13 @@
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "orders"}}]]}},
+                                :table {:table "orders"}}]]}},
           :returned-fields
           [{:column "a",
             :alias nil,
             :type :single-column,
             :source-columns [[{:type :all-columns,
-                               :table {:type :macaw.ast/table, :table "orders"}}]]}]}
+                               :table {:table "orders"}}]]}]}
          (->references "select o.* from (select a from orders) o"))))
 
 (deftest bad-table-wildcard-nested-query-test
@@ -260,7 +259,7 @@
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "orders"}}]]}},
+                                :table {:table "orders"}}]]}},
           :returned-fields
           [{:type :invalid-table-wildcard, :table "foo"}]}
          (->references "select foo.* from (select a from orders)"))))
@@ -284,9 +283,9 @@
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "products"}}]]}},
+                                :table {:table "products"}}]]}},
           :returned-fields [{:type :all-columns,
-                             :table {:type :macaw.ast/table, :table "products"}}]}
+                             :table {:table "products"}}]}
          (->references "select * from products where category = 'hello'"))))
 
 (deftest basic-aggregation-test
@@ -307,7 +306,6 @@
              :source-columns
              [[{:type :all-columns,
                 :table {:database "db",
-                        :type :macaw.ast/table,
                         :schema "schema",
                         :table "table"}}]]}},
           :returned-fields
@@ -317,7 +315,6 @@
             :source-columns
             [[{:type :all-columns,
                :table {:database "db",
-                       :type :macaw.ast/table,
                        :schema "schema",
                        :table "table"}}]]}]}
          (->references "select db.schema.table.col from db.schema.table"))))
@@ -328,12 +325,12 @@
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "orders"}}]]}
+                                :table {:table "orders"}}]]}
             {:column "total",
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "orders"}}]]}},
+                                :table {:table "orders"}}]]}},
           :returned-fields
           [{:alias "sum",
             :type :custom-field,
@@ -341,8 +338,7 @@
             #{{:column "total",
                :alias nil,
                :type :single-column,
-               :source-columns [[{:type :all-columns,
-                                  :table {:type :macaw.ast/table, :table "orders"}}]]}}}]}
+               :source-columns [[{:type :all-columns, :table {:table "orders"}}]]}}}]}
          (->references "select sum(total) as sum from orders group by category"))))
 
 (deftest basic-arg-test
@@ -351,9 +347,9 @@
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "products"}}]]}},
+                                :table {:table "products"}}]]}},
           :returned-fields [{:type :all-columns,
-                             :table {:type :macaw.ast/table, :table "products"}}]}
+                             :table {:table "products"}}]}
          (->references "select * from products where category = ?"))))
 
 (deftest basic-case-test
@@ -362,17 +358,17 @@
               :alias nil,
               :type :single-column,
               :source-columns [[{:type :all-columns,
-                                 :table {:type :macaw.ast/table, :table "orders"}}]]}
+                                 :table {:table "orders"}}]]}
              {:column "total",
               :alias nil,
               :type :single-column,
               :source-columns [[{:type :all-columns,
-                                 :table {:type :macaw.ast/table, :table "orders"}}]]}
+                                 :table {:table "orders"}}]]}
              {:column "subtotal",
               :alias nil,
               :type :single-column,
               :source-columns [[{:type :all-columns,
-                                 :table {:type :macaw.ast/table, :table "orders"}}]]}},
+                                 :table {:table "orders"}}]]}},
            :returned-fields
            [{:alias nil,
              :type :custom-field,
@@ -381,17 +377,17 @@
                 :alias nil,
                 :type :single-column,
                 :source-columns [[{:type :all-columns,
-                                   :table {:type :macaw.ast/table, :table "orders"}}]]}
+                                   :table {:table "orders"}}]]}
                {:column "total",
                 :alias nil,
                 :type :single-column,
                 :source-columns [[{:type :all-columns,
-                                   :table {:type :macaw.ast/table, :table "orders"}}]]}
+                                   :table {:table "orders"}}]]}
                {:column "subtotal",
                 :alias nil,
                 :type :single-column,
                 :source-columns [[{:type :all-columns,
-                                   :table {:type :macaw.ast/table, :table "orders"}}]]}}}]}
+                                   :table {:table "orders"}}]]}}}]}
           (->references "select case when total < 0 then -subtotal else tax end from orders"))))
 
 (deftest switch-case-test
@@ -400,7 +396,7 @@
               :alias nil,
               :type :single-column,
               :source-columns [[{:type :all-columns,
-                                 :table {:type :macaw.ast/table, :table "products"}}]]}},
+                                 :table {:table "products"}}]]}},
            :returned-fields
            [{:alias nil,
              :type :custom-field,
@@ -409,7 +405,7 @@
                 :alias nil,
                 :type :single-column,
                 :source-columns [[{:type :all-columns,
-                                   :table {:type :macaw.ast/table, :table "products"}}]]}}}]}
+                                   :table {:table "products"}}]]}}}]}
           (->references "select case category when 'Gizmo' then 'is gizmo' else 'is not gizmo' end from products"))))
 
 (deftest basic-select-subquery-test
@@ -418,28 +414,28 @@
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "orders"}}]]}
+                                :table {:table "orders"}}]]}
             {:column "id",
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "products"}}]]}
+                                :table {:table "products"}}]]}
             {:column "category",
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "products"}}]
+                                :table {:table "products"}}]
                               [{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "orders"}}]]}},
+                                :table {:table "orders"}}]]}},
           :returned-fields
           [{:column "category",
             :alias nil,
             :type :single-column,
             :source-columns [[{:type :all-columns,
-                               :table {:type :macaw.ast/table, :table "products"}}]
+                               :table {:table "products"}}]
                              [{:type :all-columns,
-                               :table {:type :macaw.ast/table, :table "orders"}}]]}
-           {:type :all-columns, :table {:type :macaw.ast/table, :table "orders"}}]}
+                               :table {:table "orders"}}]]}
+           {:type :all-columns, :table {:table "orders"}}]}
          (->references "select (select category from products where products.id = orders.product_id), * from orders"))))
 
 (deftest named-select-subquery-test
@@ -448,28 +444,28 @@
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "orders"}}]]}
+                                :table {:table "orders"}}]]}
             {:column "id",
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "products"}}]]}
+                                :table {:table "products"}}]]}
             {:column "category",
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "products"}}]
+                                :table {:table "products"}}]
                               [{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "orders"}}]]}},
+                                :table {:table "orders"}}]]}},
           :returned-fields
           [{:column "category",
             :alias "category2",
             :type :single-column,
             :source-columns [[{:type :all-columns,
-                               :table {:type :macaw.ast/table, :table "products"}}]
+                               :table {:table "products"}}]
                              [{:type :all-columns,
-                               :table {:type :macaw.ast/table, :table "orders"}}]]}
-           {:type :all-columns, :table {:type :macaw.ast/table, :table "orders"}}]}
+                               :table {:table "orders"}}]]}
+           {:type :all-columns, :table {:table "orders"}}]}
          (->references "select (select category from products where products.id = orders.product_id) as category2, * from orders"))))
 
 (deftest nested-select-subquery-test
@@ -478,30 +474,30 @@
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "orders"}}]]}
+                                :table {:table "orders"}}]]}
             {:column "id",
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "products"}}]]}
+                                :table {:table "products"}}]]}
             {:column "category",
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "products"}}]
+                                :table {:table "products"}}]
                               []
                               [{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "orders"}}]]}},
+                                :table {:table "orders"}}]]}},
           :returned-fields
           [{:column "category",
             :alias nil,
             :type :single-column,
             :source-columns [[{:type :all-columns,
-                               :table {:type :macaw.ast/table, :table "products"}}]
+                               :table {:table "products"}}]
                              []
                              [{:type :all-columns,
-                               :table {:type :macaw.ast/table, :table "orders"}}]]}
-           {:type :all-columns, :table {:type :macaw.ast/table, :table "orders"}}]}
+                               :table {:table "orders"}}]]}
+           {:type :all-columns, :table {:table "orders"}}]}
          (->references "select (select (select category from products where products.id = orders.product_id)), * from orders"))))
 
 (deftest select-subquery-with-normal-subquery-test
@@ -510,28 +506,28 @@
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "orders"}}]]}
+                                :table {:table "orders"}}]]}
             {:column "id",
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "products"}}]]}
+                                :table {:table "products"}}]]}
             {:column "category",
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "products"}}]
+                                :table {:table "products"}}]
                               [{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "orders"}}]]}},
+                                :table {:table "orders"}}]]}},
           :returned-fields
           [{:column "category",
             :alias nil,
             :type :single-column,
             :source-columns [[{:type :all-columns,
-                               :table {:type :macaw.ast/table, :table "products"}}]
+                               :table {:table "products"}}]
                              [{:type :all-columns,
-                               :table {:type :macaw.ast/table, :table "orders"}}]]}
-           {:type :all-columns, :table {:type :macaw.ast/table, :table "orders"}}]}
+                               :table {:table "orders"}}]]}
+           {:type :all-columns, :table {:table "orders"}}]}
          (->references "select (select * from (select category from products where products.id = orders.product_id) sub), * from orders"))))
 
 (deftest nested-select-subquery-with-reference-to-middle-select-test
@@ -539,26 +535,26 @@
           #{{:column "id",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table "products"}}]]}
+             :source-columns [[{:type :all-columns, :table {:table "products"}}]]}
             {:column "product_id",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table "orders"}}]]}
+             :source-columns [[{:type :all-columns, :table {:table "orders"}}]]}
             {:column "category",
              :alias nil,
              :type :single-column,
              :source-columns
              [[]
-              [{:type :all-columns, :table {:type :macaw.ast/table, :table "products"}}]
-              [{:type :all-columns, :table {:type :macaw.ast/table, :table "orders"}}]]}},
+              [{:type :all-columns, :table {:table "products"}}]
+              [{:type :all-columns, :table {:table "orders"}}]]}},
           :returned-fields
           [{:column "category",
             :alias nil,
             :type :single-column,
             :source-columns
             [[]
-             [{:type :all-columns, :table {:type :macaw.ast/table, :table "products"}}]
-             [{:type :all-columns, :table {:type :macaw.ast/table, :table "orders"}}]]}]}
+             [{:type :all-columns, :table {:table "products"}}]
+             [{:type :all-columns, :table {:table "orders"}}]]}]}
          (->references "select (select (select category) from products where products.id = orders.product_id) from orders"))))
 
 (deftest basic-exists-test
@@ -567,33 +563,33 @@
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table-alias "u", :table "users"}}]]}
+                                :table {:table-alias "u", :table "users"}}]]}
             {:column "user_id",
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table-alias "o", :table "orders"}}]]}
+                                :table {:table-alias "o", :table "orders"}}]]}
             {:column "id",
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table-alias "u", :table "users"}}]]}
+                                :table {:table-alias "u", :table "users"}}]]}
             {:column "email",
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table-alias "u", :table "users"}}]]}},
+                                :table {:table-alias "u", :table "users"}}]]}},
           :returned-fields
           [{:column "name",
             :alias nil,
             :type :single-column,
             :source-columns [[{:type :all-columns,
-                               :table {:type :macaw.ast/table, :table-alias "u", :table "users"}}]]}
+                               :table {:table-alias "u", :table "users"}}]]}
            {:column "email",
             :alias nil,
             :type :single-column,
             :source-columns [[{:type :all-columns,
-                               :table {:type :macaw.ast/table, :table-alias "u", :table "users"}}]]}]}
+                               :table {:table-alias "u", :table "users"}}]]}]}
          (->references "SELECT u.name, u.email
 FROM users u
 WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)"))))
@@ -604,9 +600,9 @@ WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)"))))
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "products"}}]]}},
+                                :table {:table "products"}}]]}},
           :returned-fields [{:type :all-columns,
-                             :table {:type :macaw.ast/table, :table "products"}}]}
+                             :table {:table "products"}}]}
          (->references "select * from products where not (category = 'Gizmo')"))))
 
 (deftest basic-is-null-test
@@ -615,9 +611,9 @@ WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)"))))
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "products"}}]]}},
+                                :table {:table "products"}}]]}},
           :returned-fields [{:type :all-columns,
-                             :table {:type :macaw.ast/table, :table "products"}}]}
+                             :table {:table "products"}}]}
          (->references "select * from products where category is null"))))
 
 (deftest negated-is-null-test
@@ -626,9 +622,9 @@ WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)"))))
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "products"}}]]}},
+                                :table {:table "products"}}]]}},
           :returned-fields [{:type :all-columns,
-                             :table {:type :macaw.ast/table, :table "products"}}]}
+                             :table {:table "products"}}]}
          (->references "select * from products where category is not null"))))
 
 (deftest basic-between-test
@@ -636,16 +632,16 @@ WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)"))))
           #{{:column "created_at",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table "orders"}}]]}
+             :source-columns [[{:type :all-columns, :table {:table "orders"}}]]}
             {:column "left",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table "orders"}}]]}
+             :source-columns [[{:type :all-columns, :table {:table "orders"}}]]}
             {:column "right",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table "orders"}}]]}},
-          :returned-fields [{:type :all-columns, :table {:type :macaw.ast/table, :table "orders"}}]}
+             :source-columns [[{:type :all-columns, :table {:table "orders"}}]]}},
+          :returned-fields [{:type :all-columns, :table {:table "orders"}}]}
          (->references "select * from orders where created_at between left and right"))))
 
 (deftest basic-cte-test
@@ -654,28 +650,28 @@ WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)"))))
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "users"}}]]}
+                                :table {:table "users"}}]]}
             {:column "id",
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "users"}}]]}
+                                :table {:table "users"}}]]}
             {:column "active",
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "users"}}]]}},
+                                :table {:table "users"}}]]}},
           :returned-fields
           [{:column "id",
             :alias nil,
             :type :single-column,
             :source-columns [[{:type :all-columns,
-                               :table {:type :macaw.ast/table, :table "users"}}]]}
+                               :table {:table "users"}}]]}
            {:column "name",
             :alias nil,
             :type :single-column,
             :source-columns [[{:type :all-columns,
-                               :table {:type :macaw.ast/table, :table "users"}}]]}]}
+                               :table {:table "users"}}]]}]}
          (->references "WITH active_users AS (SELECT id, name FROM users WHERE active = true)
 SELECT * FROM active_users"))))
 
@@ -685,19 +681,19 @@ SELECT * FROM active_users"))))
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "users"}}]]}
+                                :table {:table "users"}}]]}
             {:column "id",
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "users"}}]]}
+                                :table {:table "users"}}]]}
             {:column "active",
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "users"}}]]}},
+                                :table {:table "users"}}]]}},
           :returned-fields [{:type :all-columns,
-                             :table {:type :macaw.ast/table, :table "products"}}]}
+                             :table {:table "products"}}]}
          (->references "WITH active_users AS (SELECT id, name FROM users WHERE active = true)
 SELECT * FROM products"))))
 
@@ -707,55 +703,46 @@ SELECT * FROM products"))))
              :alias nil,
              :type :single-column,
              :source-columns
-             [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                            :table-alias "h", :table "emp_hierarchy"}}]]}
+             [[{:type :all-columns, :table {:table-alias "h", :table "emp_hierarchy"}}]]}
             {:alias "name",
              :type :composite-field,
              :member-fields
              [{:column "name",
                :alias nil,
                :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                              :table "employees"}}]]}
+               :source-columns [[{:type :all-columns, :table {:table "employees"}}]]}
               {:column "name",
                :alias nil,
                :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                              :table-alias "e",
+               :source-columns [[{:type :all-columns, :table {:table-alias "e",
                                                               :table "employees"}}]]}]}
             {:column "manager_id",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :table-alias "e",
+             :source-columns [[{:type :all-columns, :table {:table-alias "e",
                                                             :table "employees"}}]]}
             {:column "id",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :table-alias "e",
+             :source-columns [[{:type :all-columns, :table {:table-alias "e",
                                                             :table "employees"}}]]}
             {:column "level",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :table-alias "h",
+             :source-columns [[{:type :all-columns, :table {:table-alias "h",
                                                             :table "emp_hierarchy"}}]]}
             {:column "id",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :table "employees"}}]]}
+             :source-columns [[{:type :all-columns, :table {:table "employees"}}]]}
             {:column "name",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :table "employees"}}]]}
+             :source-columns [[{:type :all-columns, :table {:table "employees"}}]]}
             {:column "name",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :table-alias "e",
+             :source-columns [[{:type :all-columns, :table {:table-alias "e",
                                                             :table "employees"}}]]}
             {:alias "level",
              :type :composite-field,
@@ -768,14 +755,12 @@ SELECT * FROM products"))))
                   :alias nil,
                   :type :single-column,
                   :source-columns
-                  [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                 :table-alias "h",
+                  [[{:type :all-columns, :table {:table-alias "h",
                                                  :table "emp_hierarchy"}}]]}}}]}
             {:column "manager_id",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :table "employees"}}]]}},
+             :source-columns [[{:type :all-columns, :table {:table "employees"}}]]}},
           :returned-fields
           [{:alias "name",
             :type :composite-field,
@@ -783,14 +768,12 @@ SELECT * FROM products"))))
             [{:column "name",
               :alias nil,
               :type :single-column,
-              :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                             :table "employees"}}]]}
+              :source-columns [[{:type :all-columns, :table {:table "employees"}}]]}
              {:column "name",
               :alias nil,
               :type :single-column,
               :source-columns
-              [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                             :table-alias "e",
+              [[{:type :all-columns, :table {:table-alias "e",
                                              :table "employees"}}]]}]}
            {:alias "level",
             :type :composite-field,
@@ -803,8 +786,7 @@ SELECT * FROM products"))))
                  :alias nil,
                  :type :single-column,
                  :source-columns
-                 [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                :table-alias "h",
+                 [[{:type :all-columns, :table {:table-alias "h",
                                                 :table "emp_hierarchy"}}]]}}}]}]}
          (->references "WITH RECURSIVE emp_hierarchy AS (
   SELECT id, name, manager_id, 0 AS level
@@ -823,22 +805,22 @@ SELECT name, level FROM emp_hierarchy"))))
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "archived_users"}}]]}
+                                :table {:table "archived_users"}}]]}
             {:column "name",
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "users"}}]]}
+                                :table {:table "users"}}]]}
             {:column "id",
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "users"}}]]}
+                                :table {:table "users"}}]]}
             {:column "name",
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "archived_users"}}]]}},
+                                :table {:table "archived_users"}}]]}},
           :returned-fields
           [{:alias "id",
             :type :composite-field,
@@ -847,12 +829,12 @@ SELECT name, level FROM emp_hierarchy"))))
               :alias nil,
               :type :single-column,
               :source-columns [[{:type :all-columns,
-                                 :table {:type :macaw.ast/table, :table "users"}}]]}
+                                 :table {:table "users"}}]]}
              {:column "id",
               :alias nil,
               :type :single-column,
               :source-columns [[{:type :all-columns,
-                                 :table {:type :macaw.ast/table, :table "archived_users"}}]]}]}
+                                 :table {:table "archived_users"}}]]}]}
            {:alias "name",
             :type :composite-field,
             :member-fields
@@ -860,12 +842,12 @@ SELECT name, level FROM emp_hierarchy"))))
               :alias nil,
               :type :single-column,
               :source-columns [[{:type :all-columns,
-                                 :table {:type :macaw.ast/table, :table "users"}}]]}
+                                 :table {:table "users"}}]]}
              {:column "name",
               :alias nil,
               :type :single-column,
               :source-columns [[{:type :all-columns,
-                                 :table {:type :macaw.ast/table, :table "archived_users"}}]]}]}]}
+                                 :table {:table "archived_users"}}]]}]}]}
          (->references "SELECT id, name FROM users
 UNION
 SELECT id, name FROM archived_users"))))
@@ -876,18 +858,18 @@ SELECT id, name FROM archived_users"))))
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "employees"}}]]}
+                                :table {:table "employees"}}]]}
             {:column "name",
              :alias nil,
              :type :single-column,
              :source-columns [[{:type :all-columns,
-                                :table {:type :macaw.ast/table, :table "employees"}}]]}},
+                                :table {:table "employees"}}]]}},
           :returned-fields
           [{:column "name",
             :alias nil,
             :type :single-column,
             :source-columns [[{:type :all-columns,
-                               :table {:type :macaw.ast/table, :table "employees"}}]]}
+                               :table {:table "employees"}}]]}
            {:alias "rank",
             :type :custom-field,
             :used-fields
@@ -895,7 +877,7 @@ SELECT id, name FROM archived_users"))))
                :alias nil,
                :type :single-column,
                :source-columns [[{:type :all-columns,
-                                  :table {:type :macaw.ast/table, :table "employees"}}]]}}}]}
+                                  :table {:table "employees"}}]]}}}]}
          (->references "SELECT name, ROW_NUMBER() OVER (ORDER BY salary DESC) AS rank
 FROM employees"))))
 
@@ -904,37 +886,31 @@ FROM employees"))))
           #{{:column "salary",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :table "employees"}}]]}
+             :source-columns [[{:type :all-columns, :table {:table "employees"}}]]}
             {:column "department",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :table "employees"}}]]}
+             :source-columns [[{:type :all-columns, :table {:table "employees"}}]]}
             {:column "name",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :table "employees"}}]]}},
+             :source-columns [[{:type :all-columns, :table {:table "employees"}}]]}},
           :returned-fields
           [{:column "name",
             :alias nil,
             :type :single-column,
-            :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                           :table "employees"}}]]}
+            :source-columns [[{:type :all-columns, :table {:table "employees"}}]]}
            {:alias "dept_rank",
             :type :custom-field,
             :used-fields
             #{{:column "salary",
                :alias nil,
                :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                              :table "employees"}}]]}
+               :source-columns [[{:type :all-columns, :table {:table "employees"}}]]}
               {:column "department",
                :alias nil,
                :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                              :table "employees"}}]]}}}]}
+               :source-columns [[{:type :all-columns, :table {:table "employees"}}]]}}}]}
          (->references "SELECT name,
   RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS dept_rank
 FROM employees"))))
@@ -944,8 +920,7 @@ FROM employees"))))
           #{{:column "created_at",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :schema "public",
+             :source-columns [[{:type :all-columns, :table {:schema "public",
                                                             :table "orders"}}]]}},
           :returned-fields
           [{:alias "created_at",
@@ -954,8 +929,7 @@ FROM employees"))))
             #{{:column "created_at",
                :alias nil,
                :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                              :schema "public",
+               :source-columns [[{:type :all-columns, :table {:schema "public",
                                                               :table "orders"}}]]}}}
            {:alias "count", :type :custom-field, :used-fields #{}}]}
          (->references "SELECT
@@ -988,8 +962,7 @@ ORDER BY
           #{{:column "created_at",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :schema "public",
+             :source-columns [[{:type :all-columns, :table {:schema "public",
                                                             :table "orders"}}]]}},
           :returned-fields
           [{:alias "created_at",
@@ -998,8 +971,7 @@ ORDER BY
             #{{:column "created_at",
                :alias nil,
                :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                              :schema "public",
+               :source-columns [[{:type :all-columns, :table {:schema "public",
                                                               :table "orders"}}]]}}}
            {:alias "count", :type :custom-field, :used-fields #{}}]}
          (->references "SELECT
@@ -1062,20 +1034,17 @@ ORDER BY
           #{{:column "title",
              :alias "title",
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :schema "public",
+             :source-columns [[{:type :all-columns, :table {:schema "public",
                                                             :table "products"}}]]}
             {:column "discount",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :schema "public",
+             :source-columns [[{:type :all-columns, :table {:schema "public",
                                                             :table "orders"}}]]}
             {:column "rating",
              :alias "rating",
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :schema "public",
+             :source-columns [[{:type :all-columns, :table {:schema "public",
                                                             :table "products"}}]]}
             {:alias "upper_category",
              :type :custom-field,
@@ -1084,86 +1053,72 @@ ORDER BY
                 :alias "category",
                 :type :single-column,
                 :source-columns
-                [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                               :schema "public",
+                [[{:type :all-columns, :table {:schema "public",
                                                :table "products"}}]]}}}
             {:column "ean",
              :alias "ean",
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :schema "public",
+             :source-columns [[{:type :all-columns, :table {:schema "public",
                                                             :table "products"}}]]}
             {:column "created_at",
              :alias "created_at",
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :schema "public",
+             :source-columns [[{:type :all-columns, :table {:schema "public",
                                                             :table "products"}}]]}
             {:column "product_id",
              :alias "product_id",
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :schema "public",
+             :source-columns [[{:type :all-columns, :table {:schema "public",
                                                             :table "orders"}}]]}
             {:column "category",
              :alias "Products__category",
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :schema "public",
+             :source-columns [[{:type :all-columns, :table {:schema "public",
                                                             :table "products"}}]]}
             {:column "product_id",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :schema "public",
+             :source-columns [[{:type :all-columns, :table {:schema "public",
                                                             :table "orders"}}]]}
             {:column "category",
              :alias "category",
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :schema "public",
+             :source-columns [[{:type :all-columns, :table {:schema "public",
                                                             :table "products"}}]]}
             {:column "created_at",
              :alias "created_at",
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :schema "public",
+             :source-columns [[{:type :all-columns, :table {:schema "public",
                                                             :table "orders"}}]]}
             {:column "discount",
              :alias "discount",
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :schema "public",
+             :source-columns [[{:type :all-columns, :table {:schema "public",
                                                             :table "orders"}}]]}
             {:column "vendor",
              :alias "vendor",
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :schema "public",
+             :source-columns [[{:type :all-columns, :table {:schema "public",
                                                             :table "products"}}]]}
             {:column "total",
              :alias "total",
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :schema "public",
+             :source-columns [[{:type :all-columns, :table {:schema "public",
                                                             :table "orders"}}]]}
             {:column "id",
              :alias "Products__id",
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :schema "public",
+             :source-columns [[{:type :all-columns, :table {:schema "public",
                                                             :table "products"}}]]}
             {:column "id",
              :alias "id",
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :schema "public",
+             :source-columns [[{:type :all-columns, :table {:schema "public",
                                                             :table "products"}}]]}
             {:column "price",
              :alias "price",
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                            :schema "public",
+             :source-columns [[{:type :all-columns, :table {:schema "public",
                                                             :table "products"}}]]}},
           :returned-fields
           [{:alias "created_at",
@@ -1172,8 +1127,7 @@ ORDER BY
             #{{:column "created_at",
                :alias "created_at",
                :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                              :schema "public",
+               :source-columns [[{:type :all-columns, :table {:schema "public",
                                                               :table "orders"}}]]}}}
            {:alias "upper_category",
             :type :custom-field,
@@ -1182,8 +1136,7 @@ ORDER BY
                :alias "category",
                :type :single-column,
                :source-columns
-               [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                              :schema "public",
+               [[{:type :all-columns, :table {:schema "public",
                                               :table "products"}}]]}}}
            {:alias "sum",
             :type :custom-field,
@@ -1191,8 +1144,7 @@ ORDER BY
             #{{:column "total",
                :alias "total",
                :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                              :schema "public",
+               :source-columns [[{:type :all-columns, :table {:schema "public",
                                                               :table "orders"}}]]}}}
            {:alias "sum_2",
             :type :custom-field,
@@ -1200,8 +1152,7 @@ ORDER BY
             #{{:column "discount",
                :alias "discount",
                :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table,
-                                                              :schema "public",
+               :source-columns [[{:type :all-columns, :table {:schema "public",
                                                               :table "orders"}}]]}}}
            {:alias "count", :type :custom-field, :used-fields #{}}]}
          (->references "SELECT
@@ -1254,49 +1205,49 @@ ORDER BY
              :type :single-column,
              :source-columns
              [[{:type :all-columns,
-                :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
             {:column "is_converted",
              :alias nil,
              :type :single-column,
              :source-columns
              [[{:type :all-columns,
-                :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
             {:column "annual_value",
              :alias nil,
              :type :single-column,
              :source-columns
              [[{:type :all-columns,
-                :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
             {:column "base_fee",
              :alias nil,
              :type :single-column,
              :source-columns
              [[{:type :all-columns,
-                :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
             {:column "subscription_status",
              :alias nil,
              :type :single-column,
              :source-columns
              [[{:type :all-columns,
-                :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
             {:column "id",
              :alias nil,
              :type :single-column,
              :source-columns
              [[{:type :all-columns,
-                :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
             {:column "account_id",
              :alias nil,
              :type :single-column,
              :source-columns
              [[{:type :all-columns,
-                :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
+                :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
             {:column "plan_alias",
              :alias nil,
              :type :single-column,
              :source-columns
              [[{:type :all-columns,
-                :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
             {:alias "is_paid_accounts_enterprise",
              :type :custom-field,
              :used-fields
@@ -1305,30 +1256,30 @@ ORDER BY
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
                {:column "plan_name",
                 :alias nil,
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
                {:column "lifetime_value",
                 :alias nil,
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
                {:column "plan_name",
                 :alias nil,
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
+                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
                {:column "month",
                 :alias nil,
                 :type :single-column,
                 :source-columns
-                [[{:type :all-columns, :table {:type :macaw.ast/table, :table-alias "m", :table "months"}}]]}}}
+                [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
             {:alias "is_active_accounts_starter",
              :type :custom-field,
              :used-fields
@@ -1337,19 +1288,19 @@ ORDER BY
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
                {:column "subscription_status",
                 :alias nil,
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
+                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
                {:column "plan_name",
                 :alias nil,
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
+                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
             {:alias "is_active_accounts_enterprise",
              :type :custom-field,
              :used-fields
@@ -1358,25 +1309,25 @@ ORDER BY
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
                {:column "subscription_status",
                 :alias nil,
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
+                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
                {:column "plan_name",
                 :alias nil,
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
+                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
             {:column "trial_ended_at",
              :alias nil,
              :type :single-column,
              :source-columns
              [[{:type :all-columns,
-                :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
             {:alias "is_paid_accounts_pro",
              :type :custom-field,
              :used-fields
@@ -1385,30 +1336,30 @@ ORDER BY
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
                {:column "plan_name",
                 :alias nil,
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
                {:column "lifetime_value",
                 :alias nil,
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
                {:column "plan_name",
                 :alias nil,
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
+                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
                {:column "month",
                 :alias nil,
                 :type :single-column,
                 :source-columns
-                [[{:type :all-columns, :table {:type :macaw.ast/table, :table-alias "m", :table "months"}}]]}}}
+                [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
             {:alias "is_trialing_accounts_cloud",
              :type :custom-field,
              :used-fields
@@ -1417,48 +1368,48 @@ ORDER BY
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
                {:column "deployment",
                 :alias nil,
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
                {:column "subscription_status",
                 :alias nil,
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
+                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
                {:column "month",
                 :alias nil,
                 :type :single-column,
                 :source-columns
-                [[{:type :all-columns, :table {:type :macaw.ast/table, :table-alias "m", :table "months"}}]]}}}
+                [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
             {:column "deployment",
              :alias nil,
              :type :single-column,
              :source-columns
              [[{:type :all-columns,
-                :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
             {:column "plan_name",
              :alias nil,
              :type :single-column,
              :source-columns
              [[{:type :all-columns,
-                :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
             {:column "lifetime_value",
              :alias nil,
              :type :single-column,
              :source-columns
              [[{:type :all-columns,
-                :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
             {:column "subscription_status",
              :alias nil,
              :type :single-column,
              :source-columns
              [[{:type :all-columns,
-                :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
+                :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
             {:alias "is_active_accounts_pro",
              :type :custom-field,
              :used-fields
@@ -1467,25 +1418,25 @@ ORDER BY
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
                {:column "subscription_status",
                 :alias nil,
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
+                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
                {:column "plan_name",
                 :alias nil,
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
+                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
             {:column "plan_name",
              :alias nil,
              :type :single-column,
              :source-columns
              [[{:type :all-columns,
-                :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
+                :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
             {:alias "is_active_accounts_self_hosted",
              :type :custom-field,
              :used-fields
@@ -1494,13 +1445,13 @@ ORDER BY
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
                {:column "subscription_status",
                 :alias nil,
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
+                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
             {:alias "is_active_accounts_cloud",
              :type :custom-field,
              :used-fields
@@ -1509,13 +1460,13 @@ ORDER BY
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
                {:column "subscription_status",
                 :alias nil,
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
+                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
             {:alias "is_trialing_accounts_self_hosted",
              :type :custom-field,
              :used-fields
@@ -1524,30 +1475,30 @@ ORDER BY
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
                {:column "deployment",
                 :alias nil,
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
                {:column "subscription_status",
                 :alias nil,
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
+                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
                {:column "month",
                 :alias nil,
                 :type :single-column,
                 :source-columns
-                [[{:type :all-columns, :table {:type :macaw.ast/table, :table-alias "m", :table "months"}}]]}}}
+                [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
             {:column "customer_name",
              :alias nil,
              :type :single-column,
              :source-columns
              [[{:type :all-columns,
-                :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
             {:alias "is_trialing",
              :type :custom-field,
              :used-fields
@@ -1556,24 +1507,24 @@ ORDER BY
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
                {:column "subscription_status",
                 :alias nil,
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
+                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
                {:column "month",
                 :alias nil,
                 :type :single-column,
                 :source-columns
-                [[{:type :all-columns, :table {:type :macaw.ast/table, :table-alias "m", :table "months"}}]]}}}
+                [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
             {:column "is_active",
              :alias nil,
              :type :single-column,
              :source-columns
              [[{:type :all-columns,
-                :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
             {:alias "is_paid_accounts_self_hosted",
              :type :custom-field,
              :used-fields
@@ -1582,24 +1533,24 @@ ORDER BY
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
                {:column "deployment",
                 :alias nil,
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
                {:column "lifetime_value",
                 :alias nil,
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
                {:column "month",
                 :alias nil,
                 :type :single-column,
                 :source-columns
-                [[{:type :all-columns, :table {:type :macaw.ast/table, :table-alias "m", :table "months"}}]]}}}
+                [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
             {:alias "is_paid_accounts_cloud",
              :type :custom-field,
              :used-fields
@@ -1608,24 +1559,24 @@ ORDER BY
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
                {:column "deployment",
                 :alias nil,
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
                {:column "lifetime_value",
                 :alias nil,
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
                {:column "month",
                 :alias nil,
                 :type :single-column,
                 :source-columns
-                [[{:type :all-columns, :table {:type :macaw.ast/table, :table-alias "m", :table "months"}}]]}}}
+                [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
             {:alias "is_paid_accounts_starter",
              :type :custom-field,
              :used-fields
@@ -1634,125 +1585,125 @@ ORDER BY
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
                {:column "plan_name",
                 :alias nil,
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
                {:column "lifetime_value",
                 :alias nil,
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                   :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
                {:column "plan_name",
                 :alias nil,
                 :type :single-column,
                 :source-columns
                 [[{:type :all-columns,
-                   :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
+                   :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
                {:column "month",
                 :alias nil,
                 :type :single-column,
                 :source-columns
-                [[{:type :all-columns, :table {:type :macaw.ast/table, :table-alias "m", :table "months"}}]]}}}
+                [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
             {:column "month",
              :alias nil,
              :type :single-column,
-             :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table-alias "m", :table "months"}}]]}
+             :source-columns [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}
             {:column "valid_to",
              :alias nil,
              :type :single-column,
              :source-columns
              [[{:type :all-columns,
                 :table
-                {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
+                {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
             {:column "valid_from",
              :alias nil,
              :type :single-column,
              :source-columns
              [[{:type :all-columns,
                 :table
-                {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}},
+                {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}},
           :returned-fields
           [{:column "id",
             :alias nil,
             :type :single-column,
             :source-columns
             [[{:type :all-columns,
-               :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+               :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
            {:column "customer_name",
             :alias nil,
             :type :single-column,
             :source-columns
             [[{:type :all-columns,
-               :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+               :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
            {:column "created_at",
             :alias nil,
             :type :single-column,
             :source-columns
             [[{:type :all-columns,
-               :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+               :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
            {:column "is_converted",
             :alias nil,
             :type :single-column,
             :source-columns
             [[{:type :all-columns,
-               :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+               :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
            {:column "lifetime_value",
             :alias nil,
             :type :single-column,
             :source-columns
             [[{:type :all-columns,
-               :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+               :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
            {:column "is_active",
             :alias nil,
             :type :single-column,
             :source-columns
             [[{:type :all-columns,
-               :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+               :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
            {:column "subscription_status",
             :alias nil,
             :type :single-column,
             :source-columns
             [[{:type :all-columns,
-               :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+               :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
            {:column "deployment",
             :alias nil,
             :type :single-column,
             :source-columns
             [[{:type :all-columns,
-               :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+               :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
            {:column "plan_name",
             :alias nil,
             :type :single-column,
             :source-columns
             [[{:type :all-columns,
-               :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+               :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
            {:column "plan_alias",
             :alias nil,
             :type :single-column,
             :source-columns
             [[{:type :all-columns,
-               :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+               :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
            {:column "base_fee",
             :alias nil,
             :type :single-column,
             :source-columns
             [[{:type :all-columns,
-               :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+               :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
            {:column "annual_value",
             :alias nil,
             :type :single-column,
             :source-columns
             [[{:type :all-columns,
-               :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+               :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
            {:column "month",
             :alias nil,
             :type :single-column,
-            :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table-alias "m", :table "months"}}]]}
+            :source-columns [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}
            {:alias "is_trialing",
             :type :custom-field,
             :used-fields
@@ -1761,17 +1712,17 @@ ORDER BY
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
               {:column "subscription_status",
                :alias nil,
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
+                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
               {:column "month",
                :alias nil,
                :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table-alias "m", :table "months"}}]]}}}
+               :source-columns [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
            {:alias "is_trialing_accounts_cloud",
             :type :custom-field,
             :used-fields
@@ -1780,23 +1731,23 @@ ORDER BY
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
               {:column "deployment",
                :alias nil,
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
               {:column "subscription_status",
                :alias nil,
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
+                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
               {:column "month",
                :alias nil,
                :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table-alias "m", :table "months"}}]]}}}
+               :source-columns [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
            {:alias "is_active_accounts_cloud",
             :type :custom-field,
             :used-fields
@@ -1805,13 +1756,13 @@ ORDER BY
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
               {:column "subscription_status",
                :alias nil,
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
+                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
            {:alias "is_paid_accounts_cloud",
             :type :custom-field,
             :used-fields
@@ -1820,23 +1771,23 @@ ORDER BY
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
               {:column "deployment",
                :alias nil,
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
               {:column "lifetime_value",
                :alias nil,
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
               {:column "month",
                :alias nil,
                :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table-alias "m", :table "months"}}]]}}}
+               :source-columns [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
            {:alias "is_trialing_accounts_self_hosted",
             :type :custom-field,
             :used-fields
@@ -1845,23 +1796,23 @@ ORDER BY
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
               {:column "deployment",
                :alias nil,
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
               {:column "subscription_status",
                :alias nil,
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
+                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
               {:column "month",
                :alias nil,
                :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table-alias "m", :table "months"}}]]}}}
+               :source-columns [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
            {:alias "is_active_accounts_self_hosted",
             :type :custom-field,
             :used-fields
@@ -1870,13 +1821,13 @@ ORDER BY
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
               {:column "subscription_status",
                :alias nil,
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
+                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
            {:alias "is_paid_accounts_self_hosted",
             :type :custom-field,
             :used-fields
@@ -1885,23 +1836,23 @@ ORDER BY
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
               {:column "deployment",
                :alias nil,
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
               {:column "lifetime_value",
                :alias nil,
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
               {:column "month",
                :alias nil,
                :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table-alias "m", :table "months"}}]]}}}
+               :source-columns [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
            {:alias "is_active_accounts_enterprise",
             :type :custom-field,
             :used-fields
@@ -1910,19 +1861,19 @@ ORDER BY
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
               {:column "subscription_status",
                :alias nil,
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
+                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
               {:column "plan_name",
                :alias nil,
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
+                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
            {:alias "is_paid_accounts_enterprise",
             :type :custom-field,
             :used-fields
@@ -1931,29 +1882,29 @@ ORDER BY
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
               {:column "plan_name",
                :alias nil,
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
               {:column "lifetime_value",
                :alias nil,
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
               {:column "plan_name",
                :alias nil,
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
+                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
               {:column "month",
                :alias nil,
                :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table-alias "m", :table "months"}}]]}}}
+               :source-columns [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
            {:alias "is_active_accounts_starter",
             :type :custom-field,
             :used-fields
@@ -1962,19 +1913,19 @@ ORDER BY
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
               {:column "subscription_status",
                :alias nil,
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
+                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
               {:column "plan_name",
                :alias nil,
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
+                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
            {:alias "is_paid_accounts_starter",
             :type :custom-field,
             :used-fields
@@ -1983,29 +1934,29 @@ ORDER BY
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
               {:column "plan_name",
                :alias nil,
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
               {:column "lifetime_value",
                :alias nil,
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
               {:column "plan_name",
                :alias nil,
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
+                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
               {:column "month",
                :alias nil,
                :type :single-column,
-               :source-columns [[{:type :all-columns, :table {:type :macaw.ast/table, :table-alias "m", :table "months"}}]]}}}
+               :source-columns [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}
            {:alias "is_active_accounts_pro",
             :type :custom-field,
             :used-fields
@@ -2014,19 +1965,19 @@ ORDER BY
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
               {:column "subscription_status",
                :alias nil,
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
+                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
               {:column "plan_name",
                :alias nil,
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
+                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}}}
            {:alias "is_paid_accounts_pro",
             :type :custom-field,
             :used-fields
@@ -2035,30 +1986,30 @@ ORDER BY
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
               {:column "plan_name",
                :alias nil,
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
               {:column "lifetime_value",
                :alias nil,
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "a", :schema "dbt_models", :table "account"}}]]}
+                  :table {:table-alias "a", :schema "dbt_models", :table "account"}}]]}
               {:column "plan_name",
                :alias nil,
                :type :single-column,
                :source-columns
                [[{:type :all-columns,
-                  :table {:type :macaw.ast/table, :table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
+                  :table {:table-alias "ah", :schema "dbt_models", :table "account_history"}}]]}
               {:column "month",
                :alias nil,
                :type :single-column,
                :source-columns
-               [[{:type :all-columns, :table {:type :macaw.ast/table, :table-alias "m", :table "months"}}]]}}}]}
+               [[{:type :all-columns, :table {:table-alias "m", :table "months"}}]]}}}]}
          (->references "with months as (
   select
     generate_series(date_trunc('month', '2024-01-01'::date),

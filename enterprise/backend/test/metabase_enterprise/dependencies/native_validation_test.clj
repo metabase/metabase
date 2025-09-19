@@ -158,4 +158,11 @@
            :display-name "Category",
            :base-type :type/Text,
            :effective-type :type/Text,
-           :semantic-type :type/Category}])))))
+           :semantic-type :type/Category}]))
+      (testing "Selecting a bad table wildcard"
+        (check-result-metadata
+         driver mp
+         "select orders.* from products"
+         [{:type :invalid-table-wildcard,
+           :table "orders",
+           :metabase.driver.sql/bad-reference true}])))))

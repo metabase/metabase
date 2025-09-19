@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [macaw.ast-types :as macaw.ast-types]
    [macaw.core :as macaw]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -15,7 +16,58 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [potemkin :as p]))
+
+(mr/def ::single-column
+  [:map
+   [:type [:= :single-column]]
+   [:column :string]
+   [:source-columns [:sequential [:sequential [:ref ::col-spec]]]]
+   [:alias [:maybe :string]]])
+
+(mr/def ::all-columns
+  [:map
+   [:type [:= :all-columns]]
+   [:table [:map
+            [:table :string]
+            [:schema {:optional true} :string]
+            [:database {:optional true} :string]
+            [:table-alias {:optional true} :string]]]])
+
+(mr/def ::custom-field
+  [:map
+   [:type [:= :custom-field]]
+   [:alias [:maybe :string]]
+   [:used-fields [:set [:ref ::col-spec]]]])
+
+(mr/def ::composite-field
+  [:map
+   [:type [:= :composite-field]]
+   [:alias [:maybe :string]]
+   [:member-fields [:sequential ::col-spec]]])
+
+(mr/def ::invalid-table-wildcard
+  [:map
+   [:type [:= :invalid-table-wildcard]]
+   [:table :string]
+   [:schema {:optional true} :string]
+   [:database {:optional true} :string]
+   [:table-alias {:optional true} :string]])
+
+(mr/def ::col-spec
+  [:multi {:dispatch :type}
+   [:single-column [:ref ::single-column]]
+   [:all-columns [:ref ::all-columns]]
+   [:custom-field [:ref ::custom-field]]
+   [:composite-field [:ref ::composite-field]]
+   [:invalid-table-wildcard [:ref ::invalid-table-wildcard]]])
+
+(mr/def ::field-references
+  [:map
+   [:used-fields [:set [:ref ::col-spec]]]
+   [:returned-fields [:sequential [:ref ::col-spec]]]
+   [:bad-sql {:optional true} :boolean]])
 
 (defn- normalize-fields [driver m]
   (m/map-vals #(if (string? %)
@@ -184,7 +236,8 @@
         (update source :names assoc :table-alias (:table-alias expr)))
       {:used-fields #{}
        :returned-fields [{:type :all-columns
-                          :table (normalize-fields driver expr)}]
+                          :table (->> (select-keys expr [:table :schema :database :table-alias])
+                                      (normalize-fields driver))}]
        :names (normalize-fields driver expr)}))
 
 (defn- get-select-sources
@@ -251,12 +304,13 @@
 
 (defmethod field-references-impl :default
   [_driver _outside-sources _outside-withs expr]
-  {:used-fields []
+  {:used-fields #{}
    :returned-fields []
    :names nil
    :bad-sql true})
 
-(defn field-references
-  [driver expr]
+(mu/defn field-references :- [:ref ::field-references]
+  [driver :- :keyword
+   expr :- macaw.ast-types/ast]
   (-> (field-references-impl driver nil #{} expr)
       (dissoc :names)))
