@@ -21,6 +21,10 @@ export const SEMANTIC_COLOR_SCHEMES = {
     light: "#F9FBFC",
     dark: "#373A40",
   },
+  overlay: {
+    light: "hsla(225, 7.1%, 11%, 40%)",
+    dark: "hsla(225, 7.1%, 31%, 40%)",
+  },
 
   // Text colors
   "text-primary": {
