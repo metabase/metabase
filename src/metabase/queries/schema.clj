@@ -12,14 +12,16 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(defn- normalize-query [query]
+  (cond
+    (empty? query)        {}
+    (:lib/metadata query) query
+    :else                 (lib/query lib.metadata.jvm/application-database-metadata-provider query)))
+
 (mr/def ::query.non-empty
   [:and
    [:map
-    {:decode/normalize (fn [query]
-                         (cond
-                           (empty? query)        {}
-                           (:lib/metadata query) query
-                           :else                 (lib/query lib.metadata.jvm/application-database-metadata-provider query)))}]
+    {:decode/normalize #'normalize-query}]
    [:ref ::lib.schema/query]])
 
 (mr/def ::query
@@ -86,4 +88,4 @@
   [:merge
    [:ref ::card]
    [:map
-    [:dataset_query {:optional true} [:maybe [:ref ::query.non-empty]]]]])
+    [:dataset_query {:optional true} [:ref ::query.non-empty]]]])

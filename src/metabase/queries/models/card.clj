@@ -352,15 +352,6 @@
            (when table-id
              {:table_id table-id}))))))))
 
-(defn- ^:deprecated maybe-normalize-query [card]
-  (cond-> card
-    (seq (:dataset_query card)) (update :dataset_query (fn [{database-id :database, :as query}]
-                                                         {:pre [(pos-int? database-id)]}
-                                                         (when (seq query)
-                                                           (assert (= database-id (:database query))
-                                                                   "Card database_id and dataset_query.database are different!")
-                                                           (lib/query lib.metadata.jvm/application-database-metadata-provider query))))))
-
 ;;; TODO -- move this to [[metabase.query-processor.card]] or MLv2 so the logic can be shared between the backend and
 ;;; frontend (?)
 ;;;
@@ -691,10 +682,20 @@
       ;; At this point, the card should be at schema version 20 or higher.
       upgrade-card-schema-to-latest))
 
+(mu/defn- normalize-card :- ::queries.schema/card
+  [card :- :map
+   schema]
+  (try
+    (lib/normalize schema card)
+    (catch Throwable e
+      (throw (ex-info (tru "Invalid Card: {0}" (ex-message e))
+                      {:card card}
+                      e)))))
+
 (t2/define-before-insert :model/Card
   [card]
   (-> card
-      (->> (lib/normalize ::queries.schema/card))
+      (normalize-card ::queries.schema/card)
       (assoc :metabase_version config/mb-version-string
              :card_schema current-schema-version)
       card.metadata/populate-result-metadata
@@ -739,13 +740,13 @@
 
 (t2/define-before-update :model/Card
   [{::keys [verified-result-metadata?] :as card}]
-  (let [changes (t2/changes card)
-        changes (lib/normalize ::queries.schema/card.updates changes)]
+  (let [card    (normalize-card card ::queries.schema/card)
+        changes (t2/changes card)
+        changes (normalize-card changes ::queries.schema/card.updates)]
     (-> card
         (dissoc ::verified-result-metadata?)
         (assoc :card_schema current-schema-version)
         (apply-dashboard-question-updates changes)
-        maybe-normalize-query
         (populate-result-metadata changes verified-result-metadata?)
         (pre-update changes)
         populate-query-fields
@@ -896,7 +897,8 @@
                                                  :entity_id (u/generate-nano-id))
                                                 (cond-> (nil? type)
                                                   (assoc :type :question))
-                                                maybe-normalize-query)
+                                                ;; TODO -- shouldn't this be happening way sooner?
+                                                (normalize-card ::queries.schema/card))
          {:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata
                                              {:query     (:dataset_query card-data)
                                               :metadata  result_metadata
