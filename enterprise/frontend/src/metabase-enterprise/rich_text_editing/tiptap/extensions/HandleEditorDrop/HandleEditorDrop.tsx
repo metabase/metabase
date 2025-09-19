@@ -142,24 +142,30 @@ export const HandleEditorDrop = Extension.create({
                     return true; // Don't allow more than 3 cards in flexContainer
                   }
 
-                  const targetIndexInFlex = dropToParentPos.index();
-                  const dropSide = getCardEmbedDropSide(e);
-
-                  // Get all current children as cardEmbeds
-                  const currentChildren: Node[] = [];
-                  for (let i = 0; i < flexContainer.content.childCount; i++) {
-                    const child = flexContainer.content.child(i);
-                    currentChildren.push(child);
+                  const targetCardEmbedNode = getTargetCardEmbedNode(e, view);
+                  if (!targetCardEmbedNode) {
+                    return;
                   }
 
-                  // Create new children array with the dropped card inserted
-                  const newChildren = [...currentChildren];
-                  const insertIndex =
-                    dropSide === "left"
-                      ? targetIndexInFlex
-                      : targetIndexInFlex + 1;
+                  // Calculate the intended insertion index based on drop position
+                  let targetIndex =
+                    dropToParent.content.content.indexOf(targetCardEmbedNode);
+                  const dropSide = getCardEmbedDropSide(e);
 
-                  newChildren.splice(insertIndex, 0, cardEmbedNode.copy());
+                  if (dropSide === "left" && targetIndex > 1) {
+                    targetIndex--;
+                  } else if (dropSide === "right") {
+                    targetIndex++;
+                  }
+
+                  // Get all current children as cardEmbeds
+                  const newChildren: Node[] = [];
+                  for (let i = 0; i < flexContainer.content.childCount; i++) {
+                    const child = flexContainer.content.child(i);
+                    newChildren.push(child);
+                  }
+
+                  newChildren.splice(targetIndex, 0, cardEmbedNode.copy());
 
                   // Find the position of the flexContainer (it should be wrapped in resizeNode)
                   let flexContainerPos: number | null = null;
