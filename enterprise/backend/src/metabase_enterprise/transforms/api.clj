@@ -69,7 +69,9 @@
     (api/check-400 (not (:is_audit database))
                    (deferred-tru "Cannot run transforms on audit databases."))
     (api/check-400 (driver.u/supports? (:engine database) feature database)
-                   (deferred-tru "The database does not support the requested transform target type."))))
+                   (deferred-tru "The database does not support the requested transform target type."))
+    (api/check-400 (not (transforms.util/db-routing-enabled? database))
+                   (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
 
 (api.macros/defendpoint :get "/"
   "Get a list of transforms."
@@ -153,38 +155,38 @@
       (update :data #(map transforms.util/localize-run-timestamps %))))
 
 (api.macros/defendpoint :put "/:id"
-    "Update a transform."
-    [{:keys [id]} :- [:map
-                      [:id ms/PositiveInt]]
-     _query-params
-     body :- [:map
-              [:name {:optional true} :string]
-              [:description {:optional true} [:maybe :string]]
-              [:source {:optional true} ::transform-source]
-              [:target {:optional true} ::transform-target]
-              [:run_trigger {:optional true} ::run-trigger]
-              [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
-    (log/info "put transform" id)
-    (api/check-superuser)
-    (t2/with-transaction [_]
+  "Update a transform."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   body :- [:map
+            [:name {:optional true} :string]
+            [:description {:optional true} [:maybe :string]]
+            [:source {:optional true} ::transform-source]
+            [:target {:optional true} ::transform-target]
+            [:run_trigger {:optional true} ::run-trigger]
+            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
+  (log/info "put transform" id)
+  (api/check-superuser)
+  (t2/with-transaction [_]
     ;; Cycle detection should occur within the transaction to avoid race
-      (let [old (t2/select-one :model/Transform id)
-            new (merge old body)
-            target-fields #(-> % :target (select-keys [:schema :name]))]
-        (check-database-feature new)
-        (when-let [{:keys [cycle-str]} (transforms.ordering/get-transform-cycle new)]
-          (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
-                          {:status-code 400})))
-        (api/check (not (and (not= (target-fields old) (target-fields new))
-                             (transforms.util/target-table-exists? new)))
-                   403
-                   (deferred-tru "A table with that name already exists.")))
+    (let [old (t2/select-one :model/Transform id)
+          new (merge old body)
+          target-fields #(-> % :target (select-keys [:schema :name]))]
+      (check-database-feature new)
+      (when-let [{:keys [cycle-str]} (transforms.ordering/get-transform-cycle new)]
+        (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
+                        {:status-code 400})))
+      (api/check (not (and (not= (target-fields old) (target-fields new))
+                           (transforms.util/target-table-exists? new)))
+                 403
+                 (deferred-tru "A table with that name already exists.")))
 
-      (t2/update! :model/Transform id (dissoc body :tag_ids))
+    (t2/update! :model/Transform id (dissoc body :tag_ids))
     ;; Update tag associations if provided
-      (when (contains? body :tag_ids)
-        (transform.model/update-transform-tags! id (:tag_ids body)))
-      (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids)))
+    (when (contains? body :tag_ids)
+      (transform.model/update-transform-tags! id (:tag_ids body)))
+    (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids)))
 
 (api.macros/defendpoint :delete "/:id"
   "Delete a transform."
@@ -207,10 +209,10 @@
 (api.macros/defendpoint :post "/:id/cancel"
   "Cancel the current run for a given transform."
   [{:keys [id]} :- [:map
-                    [:id :string]]]
+                    [:id ms/PositiveInt]]]
   (log/info "canceling transform " id)
   (api/check-superuser)
-  (let [run (api/check-404 (transform-run/running-run-for-run-id id))]
+  (let [run (api/check-404 (transform-run/running-run-for-transform-id id))]
     (transform-run-cancelation/mark-cancel-started-run! (:id run)))
   nil)
 

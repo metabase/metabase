@@ -26,7 +26,6 @@ import "./sharing";
 import "./moderation";
 import "./advanced_permissions";
 import "./ai-sql-fixer";
-import "./ai-sql-generation";
 import "./ai-entity-analysis";
 import "./audit_app";
 import "./license";

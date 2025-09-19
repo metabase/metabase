@@ -2,6 +2,10 @@ import cx from "classnames";
 import { match } from "ts-pattern";
 import { c, jt, t } from "ttag";
 
+import {
+  RelatedSettingsSection,
+  getModularEmbeddingRelatedSettingItems,
+} from "metabase/admin/components/RelatedSettingsSection";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import { UpsellEmbeddingButton } from "metabase/admin/upsells/UpsellEmbeddingButton";
@@ -22,13 +26,14 @@ import {
   Group,
   HoverCard,
   Icon,
+  Stack,
   Text,
 } from "metabase/ui";
 
 import { SettingHeader } from "../../SettingHeader";
 import { AdminSettingInput } from "../../widgets/AdminSettingInput";
-import { LinkButton } from "../EmbeddingOption/LinkButton";
 import { EmbeddingToggle } from "../EmbeddingToggle";
+import { LinkButton } from "../LinkButton";
 
 import S from "./EmbeddingSdkSettings.module.css";
 
@@ -139,15 +144,18 @@ export function EmbeddingSdkSettings() {
       <UpsellDevInstances location="embedding-page" />
 
       <Flex direction="column" p="xl" className={S.SectionCard} gap="md">
-        <Group>
+        <Stack gap="xs">
           <Text fz="h3" fw={600} c="text-dark">
             {t`SDK for React`}
           </Text>
-        </Group>
+
+          <Text c="var(--mb-color-text-secondary)" lh="lg">
+            {t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`}
+          </Text>
+        </Stack>
 
         <Group gap="sm" align="center" justify="space-between" w="100%">
           <EmbeddingToggle
-            label={t`Enabled`}
             settingKey="enable-embedding-sdk"
             labelPosition="right"
             aria-label={t`SDK for React toggle`}
@@ -181,15 +189,18 @@ export function EmbeddingSdkSettings() {
 
       <Box p="xl" className={S.SectionCard}>
         <Flex direction="column" gap="md">
-          <Group gap="sm">
+          <Stack gap="xs">
             <Text fz="h3" fw={600} c="text-dark">
               {t`Embedded Analytics JS`}
             </Text>
-          </Group>
+
+            <Text c="var(--mb-color-text-secondary)" lh="lg">
+              {t`An easy-to-use library that lets you embed Metabase entities like charts, dashboards, or even the query builder into your own application using customizable components.`}
+            </Text>
+          </Stack>
 
           <Group gap="sm" align="center" justify="space-between" w="100%">
             <EmbeddingToggle
-              label={t`Enabled`}
               labelPosition="right"
               settingKey="enable-embedding-simple"
               disabled={!isSimpleEmbedFeatureEnabled}
@@ -303,6 +314,10 @@ export function EmbeddingSdkSettings() {
           </Text>
         </Flex>
       </Alert>
+
+      <RelatedSettingsSection
+        items={getModularEmbeddingRelatedSettingItems()}
+      />
     </SettingsPageWrapper>
   );
 }

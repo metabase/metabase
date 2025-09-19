@@ -1,4 +1,8 @@
 const { H } = cy;
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+
+const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > reference > databases", () => {
   beforeEach(() => {
@@ -102,6 +106,52 @@ describe("scenarios > reference > databases", () => {
         checkQuestionSourceDatabasesOrder("Native query");
       },
     );
+  });
+
+  H.describeWithSnowplow("x-ray", () => {
+    beforeEach(() => {
+      cy.intercept("GET", "/api/automagic-dashboards/**").as(
+        "getXrayDashboard",
+      );
+      H.resetSnowplow();
+      H.restore();
+      cy.signInAsAdmin();
+      H.enableTracking();
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
+    it("should x-ray a table in a data reference page", () => {
+      cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${PEOPLE_ID}`);
+      cy.findAllByRole("listitem")
+        .filter(":contains(X-ray this table)")
+        .click();
+      cy.wait("@getXrayDashboard");
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "x-ray_clicked",
+        event_detail: "table",
+        triggered_from: "data_reference",
+      });
+    });
+
+    it("should x-ray a field in a data reference page", () => {
+      cy.visit(
+        `/reference/databases/${SAMPLE_DB_ID}/tables/${PEOPLE_ID}/fields/${PEOPLE.EMAIL}`,
+      );
+      cy.findAllByRole("listitem")
+        .filter(":contains(X-ray this field)")
+        .click();
+      cy.wait("@getXrayDashboard");
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "x-ray_clicked",
+        event_detail: "field",
+        triggered_from: "data_reference",
+      });
+    });
   });
 });
 

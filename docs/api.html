@@ -230,24 +230,37 @@ redirect_from:
         } ]
       },
       "metabase-enterprise.metabot-v3.client.schema.message" : {
-        "allOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "content" : {
-              "type" : "string"
-            },
-            "navigate-to" : {
-              "type" : "string"
-            },
-            "role" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.client.schema.role"
-            }
+        "type" : "object",
+        "properties" : {
+          "content" : {
+            "type" : "string"
           },
-          "required" : [ "role" ]
-        }, {
-          "type" : "object",
-          "properties" : { }
-        } ]
+          "role" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.client.schema.role"
+          },
+          "tool_call_id" : {
+            "type" : "string"
+          },
+          "tool_calls" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : {
+                "arguments" : {
+                  "type" : "string"
+                },
+                "id" : {
+                  "type" : "string"
+                },
+                "name" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "id", "name", "arguments" ]
+            }
+          }
+        },
+        "required" : [ "role" ]
       },
       "metabase-enterprise.metabot-v3.client.schema.messages" : {
         "type" : "array",
@@ -2215,18 +2228,6 @@ redirect_from:
         "description" : "schema for a valid legacy MBQL :tag clause",
         "allOf" : [ ]
       },
-      "metabase.legacy-mbql.schema..parameter.target" : {
-        "description" : "Schema for the value of `:target` in a [[Parameter]].",
-        "anyOf" : [ {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field-or-expression-ref"
-        }, {
-          "oneOf" : [ {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.dimension"
-          }, {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.variable"
-          } ]
-        } ]
-      },
       "metabase.legacy-mbql.schema./" : {
         "description" : "schema for a valid legacy MBQL :tag clause",
         "allOf" : [ ]
@@ -2805,71 +2806,6 @@ redirect_from:
           } ]
         } ]
       },
-      "metabase.legacy-mbql.schema.Parameter" : {
-        "description" : "Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as\n  part of the `:parameters` list in a query.",
-        "type" : "object",
-        "properties" : {
-          "default" : { },
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          },
-          "name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          },
-          "required" : { },
-          "slug" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          },
-          "target" : {
-            "oneOf" : [ {
-              "description" : "Schema for the value of `:target` in a [[Parameter]].",
-              "anyOf" : [ {
-                "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field-or-expression-ref"
-              }, {
-                "oneOf" : [ {
-                  "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.dimension"
-                }, {
-                  "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.variable"
-                } ]
-              } ]
-            }, {
-              "description" : "Schema for the value of `:target` in a [[Parameter]].",
-              "anyOf" : [ {
-                "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field-or-expression-ref"
-              }, {
-                "oneOf" : [ {
-                  "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.dimension"
-                }, {
-                  "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.variable"
-                } ]
-              } ]
-            }, {
-              "description" : "Schema for the value of `:target` in a [[Parameter]].",
-              "anyOf" : [ {
-                "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field-or-expression-ref"
-              }, {
-                "oneOf" : [ {
-                  "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.dimension"
-                }, {
-                  "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.variable"
-                } ]
-              } ]
-            } ]
-          },
-          "type" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.parameter.type"
-          },
-          "value" : { }
-        },
-        "required" : [ "type" ]
-      },
-      "metabase.legacy-mbql.schema.ParameterList" : {
-        "type" : "array",
-        "items" : {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Parameter"
-        },
-        "optional" : true
-      },
       "metabase.legacy-mbql.schema.Query" : {
         "allOf" : [ {
           "type" : "object",
@@ -2919,7 +2855,7 @@ redirect_from:
               "enum" : [ "query", "native" ]
             },
             "parameters" : {
-              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.ParameterList"
+              "$ref" : "#/components/schemas/metabase.lib.schema.parameter.parameters"
             },
             "create-row" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.actions.row"
@@ -3388,9 +3324,6 @@ redirect_from:
         "description" : "schema for a valid legacy MBQL :tag clause",
         "allOf" : [ ]
       },
-      "metabase.legacy-mbql.schema.dimension" : {
-        "allOf" : [ ]
-      },
       "metabase.legacy-mbql.schema.distinct" : {
         "description" : "schema for a valid legacy MBQL :tag clause",
         "allOf" : [ ]
@@ -3722,10 +3655,6 @@ redirect_from:
         "description" : "schema for a valid legacy MBQL :tag clause",
         "allOf" : [ ]
       },
-      "metabase.legacy-mbql.schema.template-tag" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
-        "allOf" : [ ]
-      },
       "metabase.legacy-mbql.schema.temporal-extract" : {
         "description" : "schema for a valid legacy MBQL :tag clause",
         "allOf" : [ ]
@@ -3760,10 +3689,6 @@ redirect_from:
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.var" : {
-        "description" : "schema for a valid legacy MBQL :tag clause",
-        "allOf" : [ ]
-      },
-      "metabase.legacy-mbql.schema.variable" : {
         "description" : "schema for a valid legacy MBQL :tag clause",
         "allOf" : [ ]
       },
@@ -4203,6 +4128,9 @@ redirect_from:
             "lib/source-uuid" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
             },
+            "qp/implicit-field?" : {
+              "type" : "boolean"
+            },
             "lib/ref-name" : {
               "type" : "string"
             },
@@ -4477,6 +4405,9 @@ redirect_from:
               "lib/source-uuid" : {
                 "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
               },
+              "qp/implicit-field?" : {
+                "type" : "boolean"
+              },
               "lib/ref-name" : {
                 "type" : "string"
               },
@@ -4679,6 +4610,7 @@ redirect_from:
         "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field"
       },
       "metabase.lib.schema.parameter.parameter" : {
+        "description" : "Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as\n  part of the `:parameters` list in a query.",
         "type" : "object",
         "properties" : {
           "default" : { },
@@ -4701,6 +4633,13 @@ redirect_from:
           "value" : { }
         },
         "required" : [ "type" ]
+      },
+      "metabase.lib.schema.parameter.parameters" : {
+        "description" : "Schema for a list of `:parameters` as passed in to a query.",
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase.lib.schema.parameter.parameter"
+        }
       },
       "metabase.lib.schema.parameter.target" : {
         "oneOf" : [ {
@@ -12646,6 +12585,226 @@ redirect_from:
         "tags" : [ "/api/ee/cloud-add-ons" ]
       }
     },
+    "/api/ee/comment/" : {
+      "get" : {
+        "summary" : "GET /api/ee/comment/",
+        "description" : "Get comments for an entity",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "target_type",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "document" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "target_id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/comment" ]
+      },
+      "post" : {
+        "summary" : "POST /api/ee/comment/",
+        "description" : "Create a new comment",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "child_target_id" : {
+                    "type" : "string"
+                  },
+                  "content" : {
+                    "type" : "object"
+                  },
+                  "parent_comment_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "target_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "target_type" : {
+                    "type" : "string",
+                    "enum" : [ "document" ]
+                  }
+                },
+                "required" : [ "target_type", "target_id", "content" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/comment" ]
+      }
+    },
+    "/api/ee/comment/mentions" : {
+      "get" : {
+        "summary" : "GET /api/ee/comment/mentions",
+        "description" : "Get a list of entities suitable for mentions. NOTE: only users for now.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/comment" ]
+      }
+    },
+    "/api/ee/comment/{comment-id}" : {
+      "put" : {
+        "summary" : "PUT /api/ee/comment/{comment-id}",
+        "description" : "Update a comment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "comment-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "content" : {
+                    "type" : "object"
+                  },
+                  "is_resolved" : {
+                    "type" : "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/comment" ]
+      },
+      "delete" : {
+        "summary" : "DELETE /api/ee/comment/{comment-id}",
+        "description" : "Soft delete a comment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "comment-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/comment" ]
+      }
+    },
+    "/api/ee/comment/{comment-id}/reaction" : {
+      "post" : {
+        "summary" : "POST /api/ee/comment/{comment-id}/reaction",
+        "description" : "Toggle a reaction on a comment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "comment-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "emoji" : {
+                    "type" : "string",
+                    "minLength" : 1,
+                    "maxLength" : 10
+                  }
+                },
+                "required" : [ "emoji" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/comment" ]
+      }
+    },
     "/api/ee/content-translation/csv" : {
       "get" : {
         "summary" : "GET /api/ee/content-translation/csv",
@@ -13348,6 +13507,25 @@ redirect_from:
           }
         },
         "tags" : [ "/api/ee/email" ]
+      }
+    },
+    "/api/ee/embedding-hub/checklist" : {
+      "get" : {
+        "summary" : "GET /api/ee/embedding-hub/checklist",
+        "description" : "Get the embedding hub checklist status, indicating which setup steps have been completed.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/embedding-hub" ]
       }
     },
     "/api/ee/gsheets/connection" : {
@@ -14795,62 +14973,6 @@ redirect_from:
           }
         },
         "tags" : [ "/api/ee/metabot-v3/metabot" ]
-      }
-    },
-    "/api/ee/metabot-v3/v2/agent" : {
-      "post" : {
-        "summary" : "POST /api/ee/metabot-v3/v2/agent",
-        "description" : "Send a chat message to the LLM via the AI Service.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "context" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.context.context"
-                  },
-                  "conversation_id" : {
-                    "description" : "value must be a valid UUID.",
-                    "type" : "string",
-                    "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-                  },
-                  "history" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.client.schema.messages"
-                  },
-                  "message" : {
-                    "type" : "string",
-                    "minLength" : 1
-                  },
-                  "metabot_id" : {
-                    "type" : "string"
-                  },
-                  "profile_id" : {
-                    "type" : "string"
-                  },
-                  "state" : {
-                    "type" : "object",
-                    "properties" : { }
-                  }
-                },
-                "required" : [ "message", "context", "conversation_id", "state" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/metabot-v3" ]
       }
     },
     "/api/ee/metabot-v3/v2/agent-streaming" : {
@@ -16487,8 +16609,10 @@ redirect_from:
           "name" : "id",
           "required" : true,
           "schema" : {
-            "type" : "string"
-          }
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
         } ],
         "responses" : {
           "2XX" : {
@@ -16586,6 +16710,72 @@ redirect_from:
           }
         },
         "tags" : [ "/api/ee/transform" ]
+      }
+    },
+    "/api/ee/transforms-python/library/{path}" : {
+      "get" : {
+        "summary" : "GET /api/ee/transforms-python/library/{path}",
+        "description" : "Get the Python library for user modules.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/transforms-python" ]
+      },
+      "put" : {
+        "summary" : "PUT /api/ee/transforms-python/library/{path}",
+        "description" : "Update the Python library source code for user modules.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "source" : {
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "source" ],
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/transforms-python" ]
       }
     },
     "/api/ee/upload-management/tables" : {
@@ -17941,6 +18131,136 @@ redirect_from:
           }
         },
         "tags" : [ "/api/geojson" ]
+      }
+    },
+    "/api/glossary/" : {
+      "get" : {
+        "summary" : "GET /api/glossary/",
+        "description" : "Fetch all glossary entries, optionally filtered by search term.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/glossary" ]
+      },
+      "post" : {
+        "summary" : "POST /api/glossary/",
+        "description" : "Create a new glossary entry.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "definition" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "term" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "term", "definition" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/glossary" ]
+      }
+    },
+    "/api/glossary/{id}" : {
+      "put" : {
+        "summary" : "PUT /api/glossary/{id}",
+        "description" : "Update an existing glossary entry.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "definition" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "term" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "term", "definition" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/glossary" ]
+      },
+      "delete" : {
+        "summary" : "DELETE /api/glossary/{id}",
+        "description" : "Delete a glossary entry.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/glossary" ]
       }
     },
     "/api/google/settings" : {

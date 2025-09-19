@@ -89,4 +89,20 @@ describe("InteractiveEmbeddingSettings", () => {
     expect(url).toContain("/setting/session-cookie-samesite");
     expect(body).toEqual({ value: "strict" });
   });
+
+  it("should show cards with related settings", async () => {
+    await setup({ enabled: true });
+
+    const relatedSettingCards = await screen.findAllByTestId(
+      "related-setting-card",
+    );
+    expect(relatedSettingCards).toHaveLength(6);
+
+    expect(await screen.findByText("Authentication")).toBeInTheDocument();
+    expect(await screen.findByText("Databases")).toBeInTheDocument();
+    expect(await screen.findByText("People")).toBeInTheDocument();
+    expect(await screen.findByText("Permissions")).toBeInTheDocument();
+    expect(await screen.findByText("Metabot")).toBeInTheDocument();
+    expect(await screen.findByText("Appearance")).toBeInTheDocument();
+  });
 });

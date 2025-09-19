@@ -1,56 +1,45 @@
-import {
-  any,
-  function as functionSchema,
-  nonoptional,
-  optional,
-  strictObject,
-  type infer as zInfer,
-} from "zod/mini";
+import * as Yup from "yup";
 
-import type { ValidateInferredSchema } from "embedding-sdk-bundle/types/schema";
+import type { FunctionSchema } from "embedding-sdk-bundle/types/schema";
 
 import type { InteractiveQuestionProps } from "./InteractiveQuestion";
 
-const rawPropsSchema = strictObject({
-  children: optional(any()),
-  className: optional(any()),
-  componentPlugins: optional(
-    strictObject({
-      mapQuestionClickActions: optional(any()),
-      dashboard: optional(any()),
-    }),
-  ),
-  deserializedCard: optional(any()),
-  entityTypes: optional(any()),
-  height: optional(any()),
-  initialSqlParameters: optional(any()),
-  isSaveEnabled: optional(any()),
-  onBeforeSave: optional(any()),
-  onNavigateBack: optional(any()),
-  onRun: optional(any()),
-  onSave: optional(any()),
-  options: optional(any()),
-  plugins: optional(
-    strictObject({
-      mapQuestionClickActions: optional(any()),
-      dashboard: optional(any()),
-    }),
-  ),
-  questionId: nonoptional(any()),
-  style: optional(any()),
-  targetCollection: optional(any()),
-  targetDashboardId: optional(any()),
-  title: optional(any()),
-  width: optional(any()),
-  withChartTypeSelector: optional(any()),
-  withDownloads: optional(any()),
-  withResetButton: optional(any()),
-});
-const propsSchema: ValidateInferredSchema<
-  InteractiveQuestionProps,
-  zInfer<typeof rawPropsSchema>
-> = rawPropsSchema;
+const propsSchema: Yup.SchemaOf<InteractiveQuestionProps> = Yup.object({
+  children: Yup.mixed().optional(),
+  className: Yup.mixed().optional(),
+  componentPlugins: Yup.object({
+    mapQuestionClickActions: Yup.mixed().optional(),
+    dashboard: Yup.mixed().optional(),
+  })
+    .optional()
+    .noUnknown(),
+  deserializedCard: Yup.mixed().optional(),
+  entityTypes: Yup.mixed().optional(),
+  height: Yup.mixed().optional(),
+  initialSqlParameters: Yup.mixed().optional(),
+  isSaveEnabled: Yup.mixed().optional(),
+  onBeforeSave: Yup.mixed().optional(),
+  onNavigateBack: Yup.mixed().optional(),
+  onRun: Yup.mixed().optional(),
+  onSave: Yup.mixed().optional(),
+  options: Yup.mixed().optional(),
+  plugins: Yup.object({
+    mapQuestionClickActions: Yup.mixed().optional(),
+    dashboard: Yup.mixed().optional(),
+  })
+    .optional()
+    .noUnknown(),
+  questionId: Yup.mixed().required(),
+  style: Yup.mixed().optional(),
+  targetCollection: Yup.mixed().optional(),
+  targetDashboardId: Yup.mixed().optional(),
+  title: Yup.mixed().optional(),
+  width: Yup.mixed().optional(),
+  withChartTypeSelector: Yup.mixed().optional(),
+  withDownloads: Yup.mixed().optional(),
+  withResetButton: Yup.mixed().optional(),
+}).noUnknown();
 
-export const interactiveQuestionSchema = functionSchema({
+export const interactiveQuestionSchema: FunctionSchema = {
   input: [propsSchema],
-});
+};

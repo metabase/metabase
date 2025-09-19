@@ -125,15 +125,24 @@
   lib.dispatch/dispatch-value
   :hierarchy lib.hierarchy/hierarchy)
 
-(defn- default-MBQL-clause->pMBQL [mbql-clause]
-  (let [last-elem (peek mbql-clause)
-        last-elem-option? (map? last-elem)
-        [clause-type & args] (cond-> mbql-clause
-                               last-elem-option? pop)
-        options (if last-elem-option?
-                  last-elem
-                  {})]
-    (lib.options/ensure-uuid (into [clause-type options] (map ->pMBQL) args))))
+(defn- default-MBQL-clause->pMBQL [[tag & args :as clause]]
+  (if (map? (first args))
+    ;; already MBQL 5
+    clause
+    ;; decode from legacy MBQL
+    (let [[tag options & args] (case (mbql.s/options-style tag)
+                                 ::mbql.s/options-style.none                     (list* tag nil args)
+                                 ::mbql.s/options-style.mbql5                    clause
+                                 (::mbql.s/options-style.last-always
+                                  ::mbql.s/options-style.last-always.snake_case) (list* tag (or (last args) {}) (butlast args))
+                                 ::mbql.s/options-style.last-unless-empty        (if (map? (last args))
+                                                                                   (list* tag (last args) (butlast args))
+                                                                                   (list* tag {} args))
+                                 ::mbql.s/options-style.𝕨𝕚𝕝𝕕                     (cond
+                                                                                       (> (count args) 2) clause
+                                                                                       (map? (last args)) (list* tag (last args) (butlast args))
+                                                                                       :else              (list* tag {} args)))]
+      (lib.options/ensure-uuid (into [tag options] (map ->pMBQL) args)))))
 
 (defmethod ->pMBQL :default
   [x]
@@ -634,10 +643,14 @@
 (defmethod ->legacy-MBQL :field [[_ opts id]]
   ;; Fields are not like the normal clauses - they need that options field even if it's null.
   ;; TODO: Sometimes the given field is in the legacy order - that seems wrong.
-  (let [[opts id] (if ((some-fn nil? map?) opts)
-                    [opts id]
-                    [id opts])]
-    (clause-with-options->legacy-MBQL [:field opts id])))
+  (let [[opts id]        (if ((some-fn nil? map?) opts)
+                           [opts id]
+                           [id opts])
+        ensure-base-type (fn [[tag field-name legacy-opts, :as _legacy-ref]]
+                           [tag field-name (merge (select-keys opts [:base-type]) legacy-opts)])
+        legacy-ref       (clause-with-options->legacy-MBQL [:field opts id])]
+    (cond-> legacy-ref
+      (string? id) ensure-base-type)))
 
 (defn- update-list->legacy-boolean-expression
   [m pMBQL-key legacy-key]

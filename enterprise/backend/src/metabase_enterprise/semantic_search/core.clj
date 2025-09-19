@@ -68,6 +68,8 @@
                                    (catch Throwable t
                                      (log/warn t "Semantic search fallback errored, ignoring")
                                      []))
+                _ (analytics/observe! :metabase-search/semantic-fallback-results-usage
+                                      (count fallback-results))
                 combined-results (concat results fallback-results)
                 deduped-results  (m/distinct-by (juxt :model :id) combined-results)]
             (take (semantic.settings/semantic-search-results-limit) deduped-results)))))
