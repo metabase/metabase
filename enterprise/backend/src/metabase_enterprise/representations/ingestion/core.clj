@@ -1,7 +1,7 @@
 (ns metabase-enterprise.representations.ingestion.core
   "Core ingestion functionality for loading representations from YAML files
    and converting them into Metabase entities.
-   
+
    This namespace handles:
    - Reading and parsing YAML representation files
    - Validating representations against versioned schemas
@@ -13,7 +13,10 @@
    [metabase-enterprise.representations.ingestion.v0.question :as v0-question-ingest]
    [metabase-enterprise.representations.schema.core :as schema]
    [metabase.util.log :as log]
-   [metabase.util.yaml :as yaml]))
+   [metabase.util.yaml :as yaml]
+   [toucan2.core :as t2])
+  (:import
+   [java.io File]))
 
 (defn- ingest*
   [valid-representation]
@@ -63,3 +66,75 @@
       (do
         (log/error "Directory does not exist:" directory-path)
         {}))))
+
+(defn populate-folder
+  [directory-path]
+  (let [ids (atom {:question 0 :model 0 :metric 0 :snippet 0 :collection 0})]
+    (letfn [(id! [t] (-> ids (swap! update t dec) t))
+            (populate [dir collection]
+              (let [{yaml false subdirs true} (group-by File/.isDirectory
+                                                        (.listFiles (io/file dir)))
+                    ingested (map (comp (fn [c] (t2/instance :model/Card
+                                                             (assoc c
+                                                                    :id (id! :question)
+                                                                    :collection_id (:id collection))))
+                                        v0-question-ingest/representation->question-data
+                                        load-representation-yaml)
+                                  yaml)]
+                (apply merge-with concat
+                       {:question ingested
+                        :collection [collection]}
+                       (for [subdir subdirs
+                             :let [collection' (t2/instance :model/Collection
+                                                            {:name     (.getName (io/file subdir))
+                                                             :id       (id! :collection)
+                                                             :slug     (.getName (io/file subdir))
+                                                             :location (str (:location collection) (:id collection) "/")})]]
+                         (populate subdir collection')))))]
+      (let [dir (io/file directory-path)]
+        (if-not (.exists dir)
+          (throw (ex-info (format "Directory does not exist: %s" directory-path) {:directory directory-path}))
+          (let [collection (t2/instance :model/Collection {:name     (.getName (io/file directory-path))
+                                                           :id       (id! :collection)
+                                                           :slug     (.getName (io/file directory-path))
+                                                           :location "/"})]
+            (populate dir collection)))))))
+
+(defonce static-assets (atom nil))
+
+(defn set-static-assets
+  [folder]
+  (if-not (.exists (io/file folder))
+    (log/errorf "Folder %s does not exist" folder)
+    (let [assets (populate-folder folder)]
+      (reset! static-assets assets))))
+
+(defn fetch
+  [model id]
+  (->> @static-assets model (some (fn [x] (when (= (:id x) id) x)))))
+
+(defn collections
+  []
+  (:collection @static-assets))
+
+(defn collection-items
+  [id]
+  (->> @static-assets :question (filter (comp #{id} :collection_id)) (map (fn [c] (assoc c :model "card")))))
+
+(comment
+  (pst)
+  (v0-question-ingest/representation->question-data (load-representation-yaml "/tmp/pre-loaded/c-2-card196324.card.yml"))
+  (ingest-representation (clj-yaml.core/parse-string (slurp "/tmp/pre-loaded/c-2-card196324.card.yml")))
+  (file-seq (io/file "/tmp/pre-loaded"))
+  (fetch :collection -1)
+  (populate-folder "/tmp/pre-loaded")
+  (set-static-assets "/tmp/pre-loaded")
+  (set-static-assets "/tmp/swaperoo")
+  (reset! static-assets nil)
+  (t2/instance :model/Collection {:name "preloaded"
+                                  :slug "preloaded"
+                                  :location "/"
+                                  :created_at (java.time.OffsetDateTime/now)})
+  (type *1)
+  (t2/select-one :model/Collection :id 2)
+  )

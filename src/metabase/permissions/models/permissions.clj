@@ -404,7 +404,9 @@
     false
     (case model
       :model/Collection (mi/current-user-has-full-permissions? :read instance)
-      (mi/current-user-has-full-permissions? (perms-objects-set-for-parent-collection instance :read)))))
+      (if (some-> instance :id neg?)
+        true
+        (mi/current-user-has-full-permissions? (perms-objects-set-for-parent-collection instance :read))))))
 
 ; Audit permissions helper fns end
 

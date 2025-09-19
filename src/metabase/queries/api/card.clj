@@ -223,18 +223,24 @@
 (api.macros/defendpoint :get "/:id"
   "Get `Card` with ID."
   [{:keys [id]} :- [:map
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
+                    [:id [:or ms/PositiveInt ms/NanoIdString [:and integer? neg?]]]]
    {ignore-view? :ignore_view, :keys [context]} :- [:map
                                                     [:ignore_view {:optional true} [:maybe :boolean]]
                                                     [:context     {:optional true} [:maybe [:enum :collection]]]]]
-  (let [resolved-id (eid-translation/->id-or-404 :card id)
-        card (get-card resolved-id)]
+  (let [resolved-id (when (pos? id) (eid-translation/->id-or-404 :card id))
+        card (if (neg? id)
+               ((resolve 'metabase-enterprise.representations.ingestion.core/fetch) :question id)
+               (get-card resolved-id))]
     (u/prog1 card
-      (when-not ignore-view?
+      (when (and (not ignore-view?) (pos? id))
         (events/publish-event! :event/card-read
                                {:object-id (:id <>)
                                 :user-id api/*current-user-id*
                                 :context (or context :question)})))))
+
+(comment
+  ((resolve 'metabase-enterprise.representations.ingestion.core/fetch) :question -1)
+  )
 
 (defn- check-allowed-to-remove-from-existing-dashboards [card]
   (let [dashboards (or (:in_dashboards card)
@@ -693,9 +699,12 @@
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for a card."
   [{:keys [id]} :- [:map
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
-  (let [resolved-id (eid-translation/->id-or-404 :card id)]
-    (queries.metadata/batch-fetch-card-metadata [(get-card resolved-id)])))
+                    [:id [:or ms/PositiveInt ms/NanoIdString [:and integer? neg?]]]]]
+  (let [resolved-id (when (pos? id) (eid-translation/->id-or-404 :card id))
+        card (if (neg? id)
+               ((resolve 'metabase-enterprise.representations.ingestion.core/fetch) :question id)
+               (get-card resolved-id))]
+    (queries.metadata/batch-fetch-card-metadata [card])))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
 
@@ -796,7 +805,7 @@
 (api.macros/defendpoint :post "/:card-id/query"
   "Run the query associated with a Card."
   [{:keys [card-id]} :- [:map
-                         [:card-id [:or ms/PositiveInt ms/NanoIdString]]]
+                         [:card-id [:or ms/PositiveInt ms/NanoIdString [:and integer? neg?]]]]
    _query-params
    {:keys [parameters ignore_cache dashboard_id collection_preview]}
    :- [:map
@@ -808,7 +817,9 @@
   ;;    POST /api/dashboard/:dashboard-id/card/:card-id/query
   ;;
   ;; endpoint instead. Or error in that situtation? We're not even validating that you have access to this Dashboard.
-  (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)]
+  (let [resolved-card-id (if (pos? card-id) (eid-translation/->id-or-404 :card card-id)
+                             (when-let [card ((resolve 'metabase-enterprise.representations.ingestion.core/fetch) :question card-id)]
+                               (:id card)))]
     (qp.card/process-query-for-card
      resolved-card-id :api
      :parameters   parameters

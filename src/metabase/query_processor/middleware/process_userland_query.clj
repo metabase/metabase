@@ -104,7 +104,7 @@
 
       ([acc]
        ;; We don't actually have a guarantee that it's from a card just because it's userland
-       (when (integer? (:card_id execution-info))
+       (when ((every-pred integer? pos?) (:card_id execution-info))
          (events/publish-event! :event/card-query {:user-id (:executor_id execution-info)
                                                    :card-id (:card_id execution-info)
                                                    :context (:context execution-info)}))
