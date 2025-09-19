@@ -22,6 +22,8 @@ export interface CommandProps {
   embedItem?: boolean;
   entityId?: number | string;
   model?: string;
+  label?: string;
+  href?: string;
   document?: Document | null;
 }
 
