@@ -44,22 +44,26 @@ export const getTargetCardEmbedNode = (e: DragEvent, view: EditorView) => {
   return null;
 };
 
+export interface DroppedCardEmbedNodeData {
+  cardEmbedNode: Node;
+  originalPos: number;
+  originalParent: Node;
+  cameFromFlexContainer: boolean;
+  dropPos: number;
+  dropToParentPos: ResolvedPos;
+  dropToParent: Node;
+  event: DragEvent;
+  slice: Slice;
+  moved: boolean;
+  view: EditorView;
+}
+
 export const getDroppedCardEmbedNodeData = (
   view: EditorView,
   event: DragEvent,
   slice: Slice,
   moved: boolean,
-):
-  | {
-      cardEmbedNode: Node;
-      originalPos: number;
-      originalParent: Node;
-      cameFromFlexContainer: boolean;
-      dropPos: number;
-      dropToParentPos: ResolvedPos;
-      dropToParent: Node;
-    }
-  | undefined => {
+): DroppedCardEmbedNodeData | undefined => {
   // Check if we're moving a cardEmbed node
   if (slice.content.childCount === 1) {
     const droppedNode = slice.content.child(0);
@@ -115,6 +119,10 @@ export const getDroppedCardEmbedNodeData = (
           dropPos,
           dropToParentPos,
           dropToParent,
+          event,
+          slice,
+          view,
+          moved,
         };
       }
     }

@@ -1,6 +1,12 @@
 import { Extension } from "@tiptap/core";
-import { Fragment, type Node, Slice } from "@tiptap/pm/model";
+import {
+  Fragment,
+  type Node,
+  type NodeType as PMNodeType,
+  Slice,
+} from "@tiptap/pm/model";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
+import type { EditorView } from "@tiptap/pm/view";
 import type { NodeViewProps } from "@tiptap/react";
 
 import {
@@ -9,6 +15,7 @@ import {
 } from "metabase-enterprise/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode";
 
 import {
+  type DroppedCardEmbedNodeData,
   extractCardEmbed,
   getCardEmbedDropSide,
   getDroppedCardEmbedNodeData,
@@ -299,6 +306,14 @@ export const HandleEditorDrop = Extension.create({
                 return true;
               }
 
+              if (dropToParent.type.name === "paragraph") {
+                e.preventDefault();
+                return handleCardDropOnParagraph(
+                  cardEmbedInitialData,
+                  cameFromFlexContainer,
+                );
+              }
+
               // Check if dropping into document (not into another flexContainer or cardEmbed)
               if (
                 dropToParent.type.name !== "flexContainer" &&
@@ -526,3 +541,65 @@ export const HandleEditorDrop = Extension.create({
     ];
   },
 });
+
+const handleCardDropOnParagraph = (
+  { originalPos, view, dropToParentPos, event }: DroppedCardEmbedNodeData,
+  wrapCardWithResizeNode: boolean,
+) => {
+  const resolvedPos = dropToParentPos;
+  // Get the DOM element of the paragraph.
+  const paragraphDOM = view.domAtPos(resolvedPos.start()).node as Element;
+  const rect = paragraphDOM.getBoundingClientRect();
+  // If dropping in the upper half of the paragraph, insert before; else, insert after.
+  const insertBefore = event.clientY < rect.top + rect.height / 2;
+
+  const targetPos = insertBefore ? resolvedPos.start() : resolvedPos.end();
+  // Create a transaction that inserts the slice at the computed target position.
+  //const tr = view.state.tr.insert(targetPos, slice.content);
+  moveNode(
+    view,
+    originalPos,
+    targetPos,
+    wrapCardWithResizeNode ? view.state.schema.nodes.resizeNode : undefined,
+  );
+  //view.dispatch(tr);
+  return true; // Indicate that we've handled the drop.
+};
+
+const moveNode = (
+  editor: EditorView,
+  fromPos: number,
+  toPos: number,
+  wrapper?: PMNodeType,
+) => {
+  const { state } = editor;
+  const { tr, doc } = state;
+
+  // Get the node at the fromPos.
+  const node = doc.nodeAt(fromPos);
+  if (!node) {
+    console.error("No node found at position", fromPos);
+    return;
+  }
+
+  const possiblyWrappedNode = wrapper ? wrapper.create({}, [node]) : node;
+
+  // Calculate the range: from the start of the node to its end.
+  const start = fromPos;
+  const end = fromPos + node.nodeSize;
+
+  // Delete the node from its current location.
+  tr.delete(start, end);
+
+  // Insert it at the new desired position.
+  //
+  // Note: Because you've already deleted the node, the toPos might need adjustment.
+  // A simple approach is to calculate the new target position relative to the deletion.
+  // If the node is moved to a location that comes after its original position,
+  // subtract the node size from the target.
+  const adjustedToPos = toPos > start ? toPos - node.nodeSize : toPos;
+
+  tr.insert(adjustedToPos, possiblyWrappedNode);
+
+  editor.dispatch(tr);
+};
