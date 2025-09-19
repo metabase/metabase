@@ -245,7 +245,6 @@
                        (-> tokens-calls first second second)))
                 (is (= 2 (t2/count :model/SemanticSearchTokenTracking)))))))))))
 
-;; NOTE: I'll modify the test if it turns out testing against exact number of tokens is not a best idea.
 (deftest token-tracking-write-test
   (mt/with-premium-features #{:semantic-search}
     (when (string? (not-empty (:mb-pgvector-db-url env/env)))
