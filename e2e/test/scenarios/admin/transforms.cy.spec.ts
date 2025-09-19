@@ -2262,7 +2262,7 @@ function getTagFilterWidget() {
 }
 
 function getRunMethodFilterWidget() {
-  return cy.findByRole("group", { name: "Run method" });
+  return cy.findByRole("group", { name: "Trigger" });
 }
 
 function getStartAtFilterWidget() {
