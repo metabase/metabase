@@ -220,7 +220,7 @@
   (try (.delete file) (catch Exception _)))
 
 (defn- fields-metadata [_driver table-id]
-  (t2/select [:model/Field :id :name :base_type :effective_type :semantic_type :database_type :database_position :nfc_path :parent_id]
+  (t2/select [:model/Field :id :name :base_type :effective_type :semantic_type :database_type :database_position]
              :table_id table-id
              :active true
              ;; we are only interested in top-level objects, so filter out nested fields (parent or path)
