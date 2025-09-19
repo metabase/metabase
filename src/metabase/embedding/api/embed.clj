@@ -332,7 +332,7 @@
        [:lonField string?]]]
   (let [unsigned   (unsign-and-translate-ids token)
         card-id    (api.embed.common/unsigned-token->card-id unsigned)
-        parameters (json/decode+kw parameters)
+        parameters (when parameters (json/decode+kw parameters))
         lat-field  (json/decode+kw latField)
         lon-field  (json/decode+kw lonField)]
     (api.embed.common/check-embedding-enabled-for-card card-id)
@@ -356,7 +356,7 @@
        [:lonField string?]]]
   (let [unsigned     (unsign-and-translate-ids token)
         dashboard-id (api.embed.common/unsigned-token->dashboard-id unsigned)
-        parameters   (json/decode+kw parameters)
+        parameters   (when parameters (json/decode+kw parameters))
         lat-field    (json/decode+kw latField)
         lon-field    (json/decode+kw lonField)]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)

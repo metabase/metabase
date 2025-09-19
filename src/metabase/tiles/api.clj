@@ -264,7 +264,7 @@
        [:parameters {:optional true} ms/JSONString]
        [:latField string?]
        [:lonField string?]]]
-  (let [parameters (json/decode+kw parameters)
+  (let [parameters (when parameters (json/decode+kw parameters))
         lat-field  (json/decode+kw latField)
         lon-field  (json/decode+kw lonField)]
     (process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field)))
@@ -284,7 +284,7 @@
        [:parameters {:optional true} ms/JSONString]
        [:latField string?]
        [:lonField string?]]]
-  (let [parameters (json/decode+kw parameters)
+  (let [parameters (when parameters (json/decode+kw parameters))
         lat-field  (json/decode+kw latField)
         lon-field  (json/decode+kw lonField)]
     (process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field)))

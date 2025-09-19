@@ -589,7 +589,7 @@
        [:lonField string?]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card-id    (api/check-404 (t2/select-one-pk :model/Card :public_uuid uuid, :archived false))
-        parameters (json/decode+kw parameters)
+        parameters (when parameters (json/decode+kw parameters))
         lat-field  (json/decode+kw latField)
         lon-field  (json/decode+kw lonField)]
     (request/as-admin
@@ -613,7 +613,7 @@
        [:lonField string?]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))
-        parameters   (json/decode+kw parameters)
+        parameters   (when parameters (json/decode+kw parameters))
         lat-field    (json/decode+kw latField)
         lon-field    (json/decode+kw lonField)]
     (request/as-admin
