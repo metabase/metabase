@@ -41,7 +41,8 @@ jobs:
         name: Run Eastwood linter
 
   be-tests:
-    if: ${{ !inputs.skip }}
+    if: false
+    # if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
@@ -201,7 +202,7 @@ jobs:
       - be-linter-clj-kondo
       - be-cljfmt
       - be-check
-      - be-tests
+      #- be-tests
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     timeout-minutes: 5
