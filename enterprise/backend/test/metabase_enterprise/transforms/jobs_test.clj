@@ -1,4 +1,5 @@
 (ns metabase-enterprise.transforms.jobs-test
+  #_{:clj-kondo/ignore [:discouraged-namespace]}
   (:require
    [clojure.test :refer :all]
    [clojure.tools.logging :as log]
