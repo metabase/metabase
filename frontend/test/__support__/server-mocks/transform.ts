@@ -1,6 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import type {
+  Transform,
   TransformJob,
   TransformJobId,
   TransformTag,
@@ -12,6 +13,27 @@ export function setupListTransformTagsEndpoint(tags: TransformTag[]) {
 
 export function setupCreateTransformTagEndpoint(tag: TransformTag) {
   fetchMock.post(`path:/api/ee/transform-tag`, tag);
+}
+
+export function setupListTransformJobsEndpoint(jobs: TransformJob[]) {
+  fetchMock.get(`path:/api/ee/transform-job`, jobs);
+}
+
+export function setupListTransformJobTransformsEndpoint(
+  jobId: TransformJobId,
+  transforms: Transform[],
+) {
+  fetchMock.get(`path:/api/ee/transform-job/${jobId}/transforms`, transforms);
+}
+
+export function setupListTransformJobTransformsEndpointWithError(
+  jobId: TransformJobId,
+  error?: unknown,
+) {
+  fetchMock.get(`path:/api/ee/transform-job/${jobId}/transforms`, {
+    status: 500,
+    body: error,
+  });
 }
 
 export function setupGetTransformJobEndpoint(job: TransformJob) {

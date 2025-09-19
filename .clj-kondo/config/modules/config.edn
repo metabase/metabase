@@ -516,6 +516,7 @@
            public-sharing
            queries
            query-processor
+           request
            server
            settings
            tiles
@@ -545,6 +546,13 @@
    :uses #{api
            permissions
            settings
+           util}}
+
+  glossary
+  {:team "Workflows"
+   :api  #{metabase.glossary.api}
+   :uses #{api
+           models
            util}}
 
   indexed-entities

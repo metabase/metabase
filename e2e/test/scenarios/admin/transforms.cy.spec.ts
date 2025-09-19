@@ -441,6 +441,40 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       testCardSource({ type: "question", label: "Questions" });
       testCardSource({ type: "model", label: "Models" });
     });
+
+    it("should not auto-pivot query results for MBQL transforms", () => {
+      cy.log("create a new transform");
+      visitTransformListPage();
+      getTransformListPage().button("Create a transform").click();
+      H.popover().findByText("Query builder").click();
+
+      cy.log("build a query with 1 aggregation and 2 breakouts");
+      H.entityPickerModal().within(() => {
+        cy.findByText(DB_NAME).click();
+        cy.findByText(SOURCE_TABLE).click();
+      });
+      H.getNotebookStep("summarize")
+        .findByText("Pick a function or metric")
+        .click();
+      H.popover().findByText("Count of rows").click();
+      H.getNotebookStep("summarize")
+        .findByText("Pick a column to group by")
+        .click();
+      H.popover().findByText("Name").click();
+      H.getNotebookStep("summarize")
+        .findByTestId("breakout-step")
+        .icon("add")
+        .click();
+      H.popover().findByText("Score").click();
+      H.runButtonOverlay().click();
+
+      cy.log("verify that no pivoting is applied");
+      H.tableInteractiveHeader().within(() => {
+        cy.findByText("Name").should("be.visible");
+        cy.findByText(/Score/).should("be.visible");
+        cy.findByText("Count").should("be.visible");
+      });
+    });
   });
 
   describe("name and description", () => {
@@ -474,16 +508,16 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
   });
 
   describe("tags", () => {
-    it("should be able to add and remove tags", { tags: "@flaky" }, () => {
+    it("should be able to add and remove tags", () => {
       createMbqlTransform({ visitTransform: true });
       getTagsInput().click();
 
-      H.popover().findByRole("option", { name: "hourly" }).click();
+      H.popover().findByText("hourly").click();
       cy.wait("@updateTransform");
       assertOptionSelected("hourly");
       assertOptionNotSelected("daily");
 
-      H.popover().findByRole("option", { name: "daily" }).click();
+      H.popover().findByText("daily").click();
       cy.wait("@updateTransform");
       assertOptionSelected("hourly");
       assertOptionSelected("daily");
@@ -507,7 +541,8 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
 
       getTagsInput().click();
       H.popover()
-        .findByRole("option", { name: "hourly" })
+        .findByText("hourly")
+        .parent()
         .findByLabelText("Rename tag")
         .click({ force: true });
       H.modal().within(() => {
@@ -525,7 +560,8 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
 
       getTagsInput().click();
       H.popover()
-        .findByRole("option", { name: "hourly" })
+        .findByText("hourly")
+        .parent()
         .findByLabelText("Delete tag")
         .click({ force: true });
       H.modal().within(() => {
@@ -561,7 +597,8 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       cy.log("Remove the new tag from transform B");
       getTagsInput().click();
       H.popover()
-        .findByRole("option", { name: "New tag" })
+        .findByText("New tag")
+        .parent()
         .findByLabelText("Delete tag")
         .click({ force: true });
       H.modal().within(() => {
@@ -1342,22 +1379,18 @@ describe("scenarios > admin > transforms > databases without :schemas", () => {
     cy.intercept("DELETE", "/api/ee/transform-tag/*").as("deleteTag");
   });
 
-  it(
-    "should be not be possible to create a new schema when updating a transform target",
-    { tags: "@flaky" },
-    () => {
-      createMbqlTransform({
-        databaseId: WRITABLE_DB_ID,
-        sourceTable: "ORDERS",
-        visitTransform: true,
-        targetSchema: null,
-      });
+  it("should be not be possible to create a new schema when updating a transform target", () => {
+    createMbqlTransform({
+      databaseId: WRITABLE_DB_ID,
+      sourceTable: "ORDERS",
+      visitTransform: true,
+      targetSchema: null,
+    });
 
-      getTransformPage().button("Change target").click();
+    getTransformPage().button("Change target").click();
 
-      H.modal().findByLabelText("Schema").should("not.exist");
-    },
-  );
+    H.modal().findByLabelText("Schema").should("not.exist");
+  });
 
   it("should be not be possible to create a new schema when the database does not support schemas", () => {
     cy.log("create a new transform");
@@ -1505,17 +1538,16 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("tags", () => {
-    // skipped because it's flaking so often
-    it("should be able to add and remove tags", { tags: "@skip" }, () => {
+    it("should be able to add and remove tags", () => {
       H.createTransformJob({ name: "New job" }, { visitTransformJob: true });
       getTagsInput().click();
 
-      H.popover().findByRole("option", { name: "hourly" }).click();
+      H.popover().findByText("hourly").click();
       cy.wait("@updateJob");
       assertOptionSelected("hourly");
       assertOptionNotSelected("daily");
 
-      H.popover().findByRole("option", { name: "daily" }).click();
+      H.popover().findByText("daily").click();
       cy.wait("@updateJob");
       assertOptionSelected("hourly");
       assertOptionSelected("daily");
@@ -1604,7 +1636,7 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("filtering", () => {
-    it("should be able to filter jobs ", { tags: "@flaky" }, () => {
+    it("should be able to filter jobs ", () => {
       cy.log("run hourly job so know that was recently run");
       visitJobListPage();
 
