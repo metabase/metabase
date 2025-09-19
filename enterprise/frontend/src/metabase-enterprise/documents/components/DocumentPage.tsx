@@ -245,7 +245,6 @@ export const DocumentPage = ({
 
   const handleChange = useCallback(
     (content: JSONContent) => {
-      console.log({ content });
       // For new documents, any content means changes
       if (isNewDocument) {
         // when navigating to `/new`, handleChange is fired but the editor instance hasn't been set yet

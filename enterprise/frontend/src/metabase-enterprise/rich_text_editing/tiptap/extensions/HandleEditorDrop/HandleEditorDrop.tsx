@@ -554,14 +554,14 @@ const handleCardDropOnParagraph = (
 
   const targetPos = insertBefore ? resolvedPos.start() : resolvedPos.end();
   // Create a transaction that inserts the slice at the computed target position.
-  //const tr = view.state.tr.insert(targetPos, slice.content);
   moveNode(
     view,
     originalPos,
     targetPos,
     wrapCardWithResizeNode ? view.state.schema.nodes.resizeNode : undefined,
   );
-  //view.dispatch(tr);
+  // If we have moved content out of a flex container, we may need to unwrap an unneeded flex container
+  cleanupFlexContainerNodes(view);
   return true; // Indicate that we've handled the drop.
 };
 
@@ -601,4 +601,18 @@ const moveNode = (
   tr.insert(adjustedToPos, possiblyWrappedNode);
 
   view.dispatch(tr);
+};
+
+// Traverses the document and unwraps any flexContainer nodes that only have 1 child
+const cleanupFlexContainerNodes = (view: PMEditorView) => {
+  view.state.doc.descendants((node, pos) => {
+    if (node.type.name === "flexContainer" && node.childCount === 1) {
+      const child = node.firstChild;
+      if (child) {
+        view.dispatch(
+          view.state.tr.replaceWith(pos, pos + node.nodeSize, child),
+        );
+      }
+    }
+  });
 };
