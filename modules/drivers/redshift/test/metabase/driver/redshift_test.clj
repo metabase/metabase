@@ -525,8 +525,9 @@
     (are [base-type expected] (= expected (driver/type->database-type :redshift base-type))
       :type/TextLike           [[:varchar 65535]]
       :type/Text               [[:varchar 65535]]
-      :type/Number             [:bigint]
+      :type/Integer            [:integer]
       :type/Float              [(keyword "double precision")]
+      :type/Number             [:bigint]
       :type/Boolean            [:boolean]
       :type/Date               [:date]
       :type/DateTime           [:timestamp]

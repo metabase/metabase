@@ -221,15 +221,14 @@
 
 (defmethod type->database-type :type/Boolean [_] [[:raw "Nullable(Boolean)"]])
 (defmethod type->database-type :type/Float [_] [[:raw "Nullable(Float64)"]])
-(defmethod type->database-type :type/Integer [_] [[:raw "Nullable(Int64)"]])
+(defmethod type->database-type :type/Integer [_] [[:raw "Nullable(Int32)"]])
 (defmethod type->database-type :type/Number [_] [[:raw "Nullable(Int64)"]])
 (defmethod type->database-type :type/Text [_] [[:raw "Nullable(String)"]])
 (defmethod type->database-type :type/TextLike [_] [[:raw "Nullable(String)"]])
 (defmethod type->database-type :type/Date [_] [[:raw "Nullable(Date32)"]])
-(defmethod type->database-type :type/DateTime [_] [[:raw "Nullable(DateTime64(3))"]])
-(defmethod type->database-type :type/DateTimeWithTZ [_]
-  ;; ?
-  [[:raw "Nullable(DateTime64(3))"]])
+(defmethod type->database-type :type/Time [_] [[:raw "Nullable(Time)"]])
+(defmethod type->database-type :type/DateTime [_] [[:raw "Nullable(DateTime64(3, 'GMT0'))"]])
+(defmethod type->database-type :type/DateTimeWithTZ [_] [[:raw "Nullable(DateTime64(3, 'UTC'))"]])
 
 (defmethod driver/type->database-type :clickhouse
   [_driver base-type]
@@ -242,7 +241,8 @@
   206)
 
 (defn- quote-name [s]
-  (let [parts (str/split (name s) #"\.")]
+  (let [s (if (and (keyword? s) (namespace s)) (str (namespace s) "." (name s)) s)
+        parts (filter identity (str/split (name s) #"\."))]
     (str/join "." (map #(str "`" % "`") parts))))
 
 (defn- create-table!-sql
