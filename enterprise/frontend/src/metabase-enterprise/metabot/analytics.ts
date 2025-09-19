@@ -1,7 +1,7 @@
 import { trackSimpleEvent } from "metabase/lib/analytics";
 
 export const trackMetabotChatOpened = (
-  origin: "search" | "command_palette" | "keyboard_shortcut" | "native_editor",
+  origin: "search" | "command_palette" | "keyboard_shortcut",
 ) => {
   trackSimpleEvent({
     event: "metabot_chat_opened",
