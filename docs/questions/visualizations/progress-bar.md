@@ -49,7 +49,7 @@ Once you built the query that returns data in the appropriate shape, you can cre
 
    If your query only returns one number, you'll only be able to set a constant goal.
 
-## Set goal for a progress bar
+## Set progress bar goal
 
 You can set a constant goal (e.g. 5000) or a custom goal based on another column.
 
