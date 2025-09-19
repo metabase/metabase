@@ -34,7 +34,7 @@ export function ScheduleSection({
   return (
     <SplitSection
       label={t`Schedule`}
-      description={t`Use cron syntax to set this job’s schedule.`}
+      description={t`Configure when this job should run.`}
     >
       <Box px="xl" py="lg">
         <ScheduleWidget job={job} onChangeSchedule={onScheduleChange} />
