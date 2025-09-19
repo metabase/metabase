@@ -43,6 +43,11 @@
                         e))
         (throw e)))))
 
+(defn python-transform?
+  "Check if this is a Python transform."
+  [transform]
+  (= :python (-> transform :source :type keyword)))
+
 (defn run-cancelable-transform!
   "Execute a transform with cancellation support and proper error handling."
   [run-id driver {:keys [db-id conn-spec output-schema]} run-transform!]
