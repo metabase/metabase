@@ -70,8 +70,7 @@
   (if-not (transforms.execute/check-feature-enabled transform)
     (log/warnf "Skip running transform %d due to lacking premium features" transform-id)
     (do
-      (when
-       (transform-run/running-run-for-transform-id transform-id)
+      (when (transform-run/running-run-for-transform-id transform-id)
         (log/warn "Transform" (pr-str transform-id) "already running, waiting")
         (loop []
           (Thread/sleep 2000)
