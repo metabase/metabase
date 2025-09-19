@@ -1958,8 +1958,7 @@
                            {:name "hourly" :built_in_type "hourly"}
 
                            :model/TransformTag
-                           {daily-tag-id :id
-                            daily-tag-eid :entity_id}
+                           {daily-tag-eid :entity_id}
                            {:name "daily" :built_in_type "daily"}
 
                            ;; Create custom tag
