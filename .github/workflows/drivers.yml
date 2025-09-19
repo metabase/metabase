@@ -90,6 +90,7 @@ jobs:
         junit-name: 'be-tests-athena-ee'
         test-args: >-
           :only-tags [:mb/driver-tests]
+          :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -240,6 +241,7 @@ jobs:
         junit-name: 'be-tests-druid-ee'
         test-args: >-
           :only-tags [:mb/driver-tests]
+          :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -276,6 +278,7 @@ jobs:
         junit-name: 'be-tests-druid-jdbc-ee'
         test-args: >-
           :only-tags [:mb/driver-tests]
+          :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -312,6 +315,7 @@ jobs:
         junit-name: 'be-tests-databricks-ee'
         test-args: >-
           :only-tags [:mb/driver-tests]
+          :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -349,6 +353,7 @@ jobs:
         junit-name: 'be-tests-databricks-multi-catalog-ee'
         test-args: >-
           :only-tags [:mb/driver-tests]
+          :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -380,6 +385,7 @@ jobs:
         junit-name: 'be-tests-h2'
         test-args: >-
           :only-tags [:mb/driver-tests]
+          :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -525,7 +531,7 @@ jobs:
         job:
           - name: Driver Tests
             test-args: >-
-              :exclude-tags [:mongo-sharded-cluster-tests :mb/transforms-python-test]
+              :exclude-tags '[:mongo-sharded-cluster-tests :mb/transforms-python-test]'
               :only-tags [:mb/driver-tests]
           - name: Transforms Python Tests
             test-args: >-
@@ -620,7 +626,7 @@ jobs:
         with:
           junit-name: ${{ matrix.version.junit-name }}
           test-args: >-
-            :exclude-tags [:mongo-sharded-cluster-tests]
+            :exclude-tags '[:mongo-sharded-cluster-tests :mb/transforms-python-test]'
             :only-tags [:mb/driver-tests]
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
@@ -728,6 +734,7 @@ jobs:
         junit-name: ${{ matrix.version.junit-name }}
         test-args: >-
           :only-tags [:mb/driver-tests]
+          :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -889,6 +896,7 @@ jobs:
         junit-name: 'be-tests-presto-jdbc-ee'
         test-args: >-
           :only-tags [:mb/driver-tests]
+          :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -918,7 +926,7 @@ jobs:
             skip: false
             test-args: >-
               :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/upload-tests :mb/transforms-python-test]
+              :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
               :fail-fast? true
           - name: Redshift Transforms Python Tests
             skip: false
@@ -1043,6 +1051,7 @@ jobs:
         junit-name: 'be-tests-sparksql-ee'
         test-args: >-
           :only-tags [:mb/driver-tests]
+          :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -1072,6 +1081,7 @@ jobs:
         junit-name: 'be-tests-sqlite-ee'
         test-args: >-
           :only-tags [:mb/driver-tests]
+          :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()

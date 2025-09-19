@@ -1,7 +1,7 @@
 ;; This is a driver test currently to benefit from the localstack S3 setup in driver tests.
 ;; Perhaps we should create a new testing category?
 ;; This code otherwise runs in the appdb section, but it does not touch the appdb.
-(ns ^:mb/transforms-python-test metabase-enterprise.transforms-python.s3-test
+(ns ^:mb/driver-tests ^:mb/transforms-python-test metabase-enterprise.transforms-python.s3-test
   "Tests for S3 operations in transforms-python module."
   (:require
    [clj-http.client :as http]
