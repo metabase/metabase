@@ -169,7 +169,7 @@
                                        #_success #(log/debug %)
                                        #_failure #(log/error %)))
 
-(defn open-cancellation-process!
+(defn- start-cancellation-process!
   "Starts a core.async process that optimistically sends a cancellation request to the python executor if cancel-chan receives a value.
   Returns a channel that will receive either the async http call j.u.c.FutureTask in the case of cancellation, or nil when the cancel-chan is closed."
   [server-url run-id cancel-chan]
@@ -186,7 +186,7 @@
                                                         :shared-storage @shared-storage-ref
                                                         :table-name->id (:source-tables source)
                                                         :cancel-chan    cancel-chan})
-          _          (open-cancellation-process! server-url run-id cancel-chan) ; inherits lifetime of cancel-chan
+          _          (start-cancellation-process! server-url run-id cancel-chan) ; inherits lifetime of cancel-chan
           {:keys [status body] :as response}
           (python-runner/execute-python-code-http-call!
            {:server-url     server-url
