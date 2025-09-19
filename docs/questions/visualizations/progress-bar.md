@@ -45,7 +45,7 @@ Once you built the query that returns data in the appropriate shape, you can cre
 2. While viewing a visualization, click on on the **Visualization** button in the bottom left of the screen and switch visualization to **Progress**.
 
 3. To set the bar's goal and metric, click on the **gear** icon in the bottom left to open the settings sidebar.
-4. In the "Display" bar in the settings sidebar, choose the column to use as a metric and the column or number to use as a goal. See [Set a goal](#set-goal-for-a-progress-bar).
+4. In the "Display" bar in the settings sidebar, choose the column to use as a metric and the column or number to use as a goal. See [Set a goal](#set-progress-bar-goal).
 
    If your query only returns one number, you'll only be able to set a constant goal.
 
