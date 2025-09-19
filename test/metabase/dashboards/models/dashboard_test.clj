@@ -31,9 +31,9 @@
           (is (= nil
                  (:public_uuid dashboard))))))))
 
-(def default-parameter
+(def ^:private default-parameter
   {:id   "_CATEGORY_NAME_"
-   :type "category"
+   :type :category
    :name "Category Name"
    :slug "category_name"})
 
@@ -109,27 +109,29 @@
                :parameterized_object_type :dashboard
                :parameterized_object_id   dashboard-id
                :parameter_id              "_CATEGORY_NAME_"}
-              (t2/select-one :model/ParameterCard :card_id card-id)))))
+              (t2/select-one :model/ParameterCard :card_id card-id))))))
 
+(deftest parameter-card-test-2
   (testing "Adding a card_id creates a new ParameterCard"
     (mt/with-temp [:model/Card      {card-id :id}      {}
                    :model/Dashboard {dashboard-id :id} {:parameters [default-parameter]}]
       (is (nil? (t2/select-one :model/ParameterCard :card_id card-id)))
       (t2/update! :model/Dashboard dashboard-id {:parameters [(merge default-parameter
-                                                                     {:values_source_type    "card"
+                                                                     {:values_source_type    :card
                                                                       :values_source_config {:card_id card-id}})]})
       (is (=? {:card_id                   card-id
                :parameterized_object_type :dashboard
                :parameterized_object_id   dashboard-id
                :parameter_id              "_CATEGORY_NAME_"}
-              (t2/select-one :model/ParameterCard :card_id card-id)))))
+              (t2/select-one :model/ParameterCard :card_id card-id))))))
 
+(deftest parameter-card-test-3
   (testing "Removing a card_id deletes old ParameterCards"
     (mt/with-temp [:model/Card      {card-id :id}      {}
                    :model/Dashboard {dashboard-id :id} {:parameters [(merge default-parameter
                                                                             {:values_source_type    "card"
                                                                              :values_source_config {:card_id card-id}})]}]
-        ;; same setup as earlier test, we know the ParameterCard exists right now
+      ;; same setup as earlier test, we know the ParameterCard exists right now
       (t2/delete! :model/Dashboard :id dashboard-id)
       (is (nil? (t2/select-one :model/ParameterCard :card_id card-id))))))
 
