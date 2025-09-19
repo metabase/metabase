@@ -3,8 +3,8 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { EmbeddingHubHomePage } from "metabase/embedding/embedding-hub";
 import { useSelector } from "metabase/lib/redux";
-import { isEEBuild } from "metabase/lib/utils";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getLandingPageIllustration } from "metabase/selectors/whitelabel";
 import { Tooltip } from "metabase/ui";
@@ -30,16 +30,14 @@ export const HomeLayout = ({ children }: HomeLayoutProps): ReactNode => {
 
   const user = useSelector(getUser);
   const embeddingHomepage = useSetting("embedding-homepage");
-  const isEE = isEEBuild();
   const isSimpleEmbeddingAvailable = useHasTokenFeature("embedding_simple");
 
   if (
     embeddingHomepage === "visible" &&
     user?.is_superuser &&
-    isEE &&
     isSimpleEmbeddingAvailable
   ) {
-    return children;
+    return <EmbeddingHubHomePage />;
   }
 
   return (

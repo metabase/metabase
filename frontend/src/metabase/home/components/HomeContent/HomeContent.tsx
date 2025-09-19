@@ -2,15 +2,9 @@ import { useMemo } from "react";
 
 import { useListPopularItemsQuery, useListRecentsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import {
-  useDatabaseListQuery,
-  useHasTokenFeature,
-  useSetting,
-} from "metabase/common/hooks";
-import { EmbeddingHubHomePage } from "metabase/embedding/embedding-hub";
+import { useDatabaseListQuery, useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
-import { isEEBuild } from "metabase/lib/utils";
 import { getUser } from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { PopularItem, RecentItem, User } from "metabase-types/api";
@@ -26,8 +20,6 @@ export const HomeContent = (): JSX.Element | null => {
   const user = useSelector(getUser);
   const embeddingHomepage = useSetting("embedding-homepage");
   const isXrayEnabled = useSelector(getIsXrayEnabled);
-  const isEE = isEEBuild();
-  const isSimpleEmbeddingAvailable = useHasTokenFeature("embedding_simple");
 
   const { data: databases, error: databasesError } = useDatabaseListQuery();
   const { data: recentItemsRaw, error: recentItemsError } = useListRecentsQuery(
@@ -52,10 +44,6 @@ export const HomeContent = (): JSX.Element | null => {
   }
 
   if (embeddingHomepage === "visible" && user.is_superuser) {
-    if (isEE && isSimpleEmbeddingAvailable) {
-      return <EmbeddingHubHomePage />;
-    }
-
     return <EmbedHomepage />;
   }
 
