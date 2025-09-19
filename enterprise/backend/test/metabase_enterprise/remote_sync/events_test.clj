@@ -9,6 +9,7 @@
    [metabase.events.core :as events]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -78,7 +79,7 @@
         ;; Publish an event which should trigger the handler to create a database entry
         (events/publish-event! :event/remote-sync
                                {:sync-type "import"
-                                :collection-id 123
+                                :collection-id "asdfasdf"
                                 :user-id 456
                                 :status "success"
                                 :source-branch "main"
@@ -103,11 +104,9 @@
     (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
                    :model/Collection normal-collection {:name "Normal"}
                    :model/Card remote-sync-card {:name "Test Card"
-                                                 :collection_id (:id remote-sync-collection)
-                                                 :entity_id "test-card-entity-123456"}
+                                                 :collection_id (:id remote-sync-collection)}
                    :model/Card normal-card {:name "Normal Card"
-                                            :collection_id (:id normal-collection)
-                                            :entity_id "normal-card-entity-7890"}]
+                                            :collection_id (:id normal-collection)}]
       (mt/with-model-cleanup [:model/RemoteSyncChangeLog]
         (testing "card-create event creates change log entry for remote-sync cards"
           ;; Clear any existing entries
@@ -180,8 +179,7 @@
   (testing "dashboard change events create remote-sync change log entries"
     (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
                    :model/Dashboard dashboard {:name "Test Dashboard"
-                                               :collection_id (:id remote-sync-collection)
-                                               :entity_id "test-dash-entity-123456"}]
+                                               :collection_id (:id remote-sync-collection)}]
       (mt/with-model-cleanup [:model/RemoteSyncChangeLog]
         (testing "dashboard-create event creates change log entry"
           (t2/delete! :model/RemoteSyncChangeLog)
@@ -238,73 +236,67 @@
 
 (deftest document-change-events-test
   (testing "document change events create remote-sync change log entries"
-    (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}]
+    (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
+                   :model/Document document {:collection_id (u/the-id remote-sync-collection)}]
       (mt/with-model-cleanup [:model/RemoteSyncChangeLog]
-        ;; Mock document since it might not exist in the model
-        (let [document {:id 999 :name "Test Document"
-                        :collection_id (:id remote-sync-collection)
-                        :entity_id "test-doc-entity-123456"}]
+        (testing "document-create event creates change log entry"
+          (t2/delete! :model/RemoteSyncChangeLog)
 
-          (testing "document-create event creates change log entry"
-            (t2/delete! :model/RemoteSyncChangeLog)
+          (events/publish-event! :event/document-create
+                                 {:object document :user-id (mt/user->id :rasta)})
 
-            (events/publish-event! :event/document-create
-                                   {:object document :user-id (mt/user->id :rasta)})
+          (let [entries (t2/select :model/RemoteSyncChangeLog)]
+            (is (= 1 (count entries)))
+            (is (=? {:model_type "Document"
+                     :model_entity_id (:entity_id document)
+                     :sync_type "create"}
+                    (first entries)))))
 
-            (let [entries (t2/select :model/RemoteSyncChangeLog)]
-              (is (= 1 (count entries)))
-              (is (=? {:model_type "Document"
-                       :model_entity_id (:entity_id document)
-                       :sync_type "create"}
-                      (first entries)))))
+        (testing "document-update event creates change log entry"
+          (t2/delete! :model/RemoteSyncChangeLog)
 
-          (testing "document-update event creates change log entry"
-            (t2/delete! :model/RemoteSyncChangeLog)
+          (events/publish-event! :event/document-update
+                                 {:object document :user-id (mt/user->id :rasta)})
 
-            (events/publish-event! :event/document-update
-                                   {:object document :user-id (mt/user->id :rasta)})
+          (let [entries (t2/select :model/RemoteSyncChangeLog)]
+            (is (= 1 (count entries)))
+            (is (=? {:model_type "Document"
+                     :model_entity_id (:entity_id document)
+                     :sync_type "update"}
+                    (first entries)))))
 
-            (let [entries (t2/select :model/RemoteSyncChangeLog)]
-              (is (= 1 (count entries)))
-              (is (=? {:model_type "Document"
-                       :model_entity_id (:entity_id document)
-                       :sync_type "update"}
-                      (first entries)))))
+        (testing "document-update event with archived=true creates delete entry"
+          (t2/delete! :model/RemoteSyncChangeLog)
 
-          (testing "document-update event with archived=true creates delete entry"
-            (t2/delete! :model/RemoteSyncChangeLog)
+          (events/publish-event! :event/document-update
+                                 {:object (assoc document :archived true)
+                                  :user-id (mt/user->id :rasta)})
 
-            (events/publish-event! :event/document-update
-                                   {:object (assoc document :archived true)
-                                    :user-id (mt/user->id :rasta)})
+          (let [entries (t2/select :model/RemoteSyncChangeLog)]
+            (is (= 1 (count entries)))
+            (is (=? {:model_type "Document"
+                     :model_entity_id (:entity_id document)
+                     :sync_type "delete"}
+                    (first entries)))))
 
-            (let [entries (t2/select :model/RemoteSyncChangeLog)]
-              (is (= 1 (count entries)))
-              (is (=? {:model_type "Document"
-                       :model_entity_id (:entity_id document)
-                       :sync_type "delete"}
-                      (first entries)))))
+        (testing "document-delete event creates change log entry"
+          (t2/delete! :model/RemoteSyncChangeLog)
 
-          (testing "document-delete event creates change log entry"
-            (t2/delete! :model/RemoteSyncChangeLog)
+          (events/publish-event! :event/document-delete
+                                 {:object document :user-id (mt/user->id :rasta)})
 
-            (events/publish-event! :event/document-delete
-                                   {:object document :user-id (mt/user->id :rasta)})
-
-            (let [entries (t2/select :model/RemoteSyncChangeLog)]
-              (is (= 1 (count entries)))
-              (is (=? {:model_type "Document"
-                       :model_entity_id (:entity_id document)
-                       :sync_type "delete"}
-                      (first entries))))))))))
+          (let [entries (t2/select :model/RemoteSyncChangeLog)]
+            (is (= 1 (count entries)))
+            (is (=? {:model_type "Document"
+                     :model_entity_id (:entity_id document)
+                     :sync_type "delete"}
+                    (first entries)))))))))
 
 (deftest collection-touch-events-test
   (testing "collection touch events create remote-sync change log entries"
     (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced"
-                                                             :name "Remote-Sync"
-                                                             :entity_id "test-coll-entity-123456"}
-                   :model/Collection normal-collection {:name "Normal"
-                                                        :entity_id "normal-coll-entity-7890"}]
+                                                             :name "Remote-Sync"}
+                   :model/Collection normal-collection {:name "Normal"}]
       (mt/with-model-cleanup [:model/RemoteSyncChangeLog]
         (testing "collection-touch event creates change log entry for remote-sync collections"
           (t2/delete! :model/RemoteSyncChangeLog)
