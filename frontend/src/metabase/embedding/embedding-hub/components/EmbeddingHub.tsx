@@ -1,14 +1,8 @@
 import { useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
-import { t } from "ttag";
 
-import {
-  RelatedSettingsSection,
-  getModularEmbeddingRelatedSettingItems,
-} from "metabase/admin/components/RelatedSettingsSection";
 import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashboardModal";
 import { AddDataModal } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal";
-import { Stack, Text, Title } from "metabase/ui";
 
 import { useCompletedEmbeddingHubSteps } from "../hooks";
 import type {
@@ -77,19 +71,9 @@ export const EmbeddingHub = () => {
   }, [embeddingSteps, completedSteps, lockedSteps]);
 
   return (
-    <Stack mx="auto" py="xl" gap="xl" maw={800}>
-      <Stack gap="xs" ml="3rem">
-        <Title
-          order={1}
-          c="var(--mb-color-text-primary)"
-        >{t`Embedding setup guide`}</Title>
-
-        <Text c="var(--mb-color-text-secondary)">{t`Follow the guide to get started with Embedded Analytics JS`}</Text>
-      </Stack>
+    <>
       <StepperWithCards steps={stepperSteps} />
-      <RelatedSettingsSection
-        items={getModularEmbeddingRelatedSettingItems()}
-      />
+
       <AddDataModal
         opened={openedModal?.type === "add-data"}
         onClose={closeModal}
@@ -105,6 +89,6 @@ export const EmbeddingHub = () => {
         opened={openedModal?.type === "xray-dashboard"}
         onClose={closeModal}
       />
-    </Stack>
+    </>
   );
 };
