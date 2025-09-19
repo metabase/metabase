@@ -25,16 +25,19 @@ import { useParameterList, useRecentItems } from "../hooks";
 import type {
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupSettings,
+  SdkIframeEmbedSetupStartWith,
   SdkIframeEmbedSetupStep,
 } from "../types";
 import { getDefaultSdkIframeEmbedSettings } from "../utils/default-embed-setting";
 
 interface SdkIframeEmbedSetupProviderProps {
   children: ReactNode;
+  startWith?: SdkIframeEmbedSetupStartWith;
 }
 
 export const SdkIframeEmbedSetupProvider = ({
   children,
+  startWith,
 }: SdkIframeEmbedSetupProviderProps) => {
   const location = useLocation();
   const [isEmbedSettingsLoaded, setEmbedSettingsLoaded] = useState(false);
@@ -73,6 +76,13 @@ export const SdkIframeEmbedSetupProvider = ({
   }, [location.search]);
 
   const defaultSettings = useMemo(() => {
+    if (startWith) {
+      return getDefaultSdkIframeEmbedSettings(
+        startWith.type,
+        startWith.defaultResourceId,
+      );
+    }
+
     return match([urlParams.resourceType, urlParams.resourceId])
       .with(["dashboard", P.nonNullable], ([, id]) =>
         getDefaultSdkIframeEmbedSettings("dashboard", id),
@@ -86,17 +96,21 @@ export const SdkIframeEmbedSetupProvider = ({
           recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
         ),
       );
-  }, [recentDashboards, urlParams]);
+  }, [startWith, recentDashboards, urlParams]);
 
   // Default to the embed options step if both resource type and id are provided.
   // This is to skip the experience and resource selection steps as we know both.
   const defaultStep: SdkIframeEmbedSetupStep = useMemo(() => {
+    if (startWith?.step) {
+      return startWith?.step;
+    }
+
     if (urlParams.resourceType !== null && urlParams.resourceId !== null) {
       return "select-embed-options";
     }
 
     return "select-embed-experience";
-  }, [urlParams]);
+  }, [startWith, urlParams]);
 
   const [currentStep, setCurrentStep] =
     useState<SdkIframeEmbedSetupStep>(defaultStep);
@@ -176,6 +190,7 @@ export const SdkIframeEmbedSetupProvider = ({
   );
 
   const value: SdkIframeEmbedSetupContextType = {
+    startWith,
     currentStep,
     setCurrentStep,
     experience,

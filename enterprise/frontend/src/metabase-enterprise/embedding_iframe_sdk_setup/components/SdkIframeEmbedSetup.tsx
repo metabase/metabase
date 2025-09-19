@@ -27,9 +27,9 @@ import { SdkIframeEmbedPreview } from "./SdkIframeEmbedPreview";
 import S from "./SdkIframeEmbedSetup.module.css";
 import { SdkIframeEmbedSetupProvider } from "./SdkIframeEmbedSetupProvider";
 
-const SdkIframeEmbedSetupContent = () => {
+export const SdkIframeEmbedSetupContent = () => {
   const [updateSettings] = useUpdateSettingsMutation();
-  const { currentStep, settings } = useSdkIframeEmbedSetupContext();
+  const { startWith, currentStep, settings } = useSdkIframeEmbedSetupContext();
 
   const isSimpleEmbeddingEnabled = useSetting("enable-embedding-simple");
 
@@ -46,6 +46,8 @@ const SdkIframeEmbedSetupContent = () => {
 
     window.history.back();
   }
+
+  const showBackButton = !startWith || currentStep !== startWith.step;
 
   const nextStepButton = match(currentStep)
     .with("get-code", () => (
@@ -81,13 +83,15 @@ const SdkIframeEmbedSetupContent = () => {
           </Box>
 
           <Group className={S.Navigation} justify="space-between">
-            <Button
-              variant="default"
-              onClick={handleBack}
-              disabled={!canGoBack || !isSimpleEmbeddingEnabled}
-            >
-              {t`Back`}
-            </Button>
+            {showBackButton && (
+              <Button
+                variant="default"
+                onClick={handleBack}
+                disabled={!canGoBack || !isSimpleEmbeddingEnabled}
+              >
+                {t`Back`}
+              </Button>
+            )}
 
             {nextStepButton}
           </Group>
