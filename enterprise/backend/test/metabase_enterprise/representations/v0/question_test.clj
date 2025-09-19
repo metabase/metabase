@@ -1,9 +1,12 @@
 (ns metabase-enterprise.representations.v0.question-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.representations.core :as rep]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest validate-example-yamls
   (testing "Testing valid examples"
