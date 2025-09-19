@@ -22,10 +22,10 @@ export const ResizeNode: Node<{
 }> = Node.create({
   name: "resizeNode",
   group: "block",
-  content: "block",
+  content: "(flexContainer | cardEmbed)",
   atom: true,
   draggable: false,
-  selectable: true,
+  selectable: false,
   disableDropCursor: true,
 
   addAttributes() {
