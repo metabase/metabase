@@ -488,10 +488,9 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       assertOptionSelected("hourly");
       assertOptionSelected("daily");
 
-      H.popover().findByRole("option", { name: "hourly" }).click();
-      cy.wait("@updateTransform");
-      assertOptionNotSelected("hourly");
-      assertOptionSelected("daily");
+      getTagsInput().type("{backspace}");
+      assertOptionSelected("hourly");
+      assertOptionNotSelected("daily");
     });
 
     it("should be able to create tags inline", () => {
@@ -1521,10 +1520,9 @@ describe("scenarios > admin > transforms > jobs", () => {
       assertOptionSelected("hourly");
       assertOptionSelected("daily");
 
-      H.popover().findByRole("option", { name: "hourly" }).click();
-      cy.wait("@updateJob");
-      assertOptionNotSelected("hourly");
-      assertOptionSelected("daily");
+      getTagsInput().type("{backspace}");
+      assertOptionSelected("hourly");
+      assertOptionNotSelected("daily");
     });
   });
 
