@@ -399,7 +399,7 @@
    {:doc/title "`:field` or `:expression` ref"}
    (one-of expression field)])
 
-(def Field
+(def FieldOrExpressionRef
   "Schema for either a `:field` clause (reference to a Field) or an `:expression` clause (reference to an expression)."
   [:ref ::field-or-expression-ref])
 
@@ -467,7 +467,7 @@
    [:string            :string]
    [:string-expression StringExpression]
    [:value             value]
-   [:else              Field]])
+   [:else              FieldOrExpressionRef]])
 
 (def ^:private StringExpressionArg
   [:ref ::StringExpressionArg])
@@ -539,7 +539,7 @@
    [:aggregation         Aggregation]
    [:value               value]
    [:datetime-expression DatetimeExpression]
-   [:else                [:or [:ref ::DateOrDatetimeLiteral] Field]]])
+   [:else                [:or [:ref ::DateOrDatetimeLiteral] FieldOrExpressionRef]]])
 
 (def ^:private DateTimeExpressionArg
   [:ref ::DateTimeExpressionArg])
@@ -568,7 +568,7 @@
    [:string               :string]
    [:string-expression    StringExpression]
    [:value                value]
-   [:else                 Field]])
+   [:else                 FieldOrExpressionRef]])
 
 (def ^:private ExpressionArg
   [:ref ::ExpressionArg])
@@ -813,7 +813,7 @@
                        :relative-datetime
                        :else))}
    [:relative-datetime relative-datetime]
-   [:else              Field]])
+   [:else              FieldOrExpressionRef]])
 
 (mr/def ::EqualityComparable
   [:maybe
@@ -888,11 +888,11 @@
   lon-max   OrderComparable)
 
 ;; SUGAR CLAUSES: These are rewritten as `[:= <field> nil]` and `[:not= <field> nil]` respectively
-(defclause ^:sugar is-null,  field Field)
-(defclause ^:sugar not-null, field Field)
+(defclause ^:sugar is-null,  field FieldOrExpressionRef)
+(defclause ^:sugar not-null, field FieldOrExpressionRef)
 
 (mr/def ::Emptyable
-  [:or StringExpressionArg Field])
+  [:or StringExpressionArg FieldOrExpressionRef])
 
 (def Emptyable
   "Schema for a valid is-empty or not-empty argument."
@@ -962,7 +962,7 @@
 ;;
 ;; SUGAR: This is automatically rewritten as a filter clause with a relative-datetime value
 (defclause ^:sugar time-interval
-  field   Field
+  field   FieldOrExpressionRef
   n       [:or
            :int
            [:enum :current :last :next]]
@@ -972,12 +972,12 @@
 (defmethod options-style-method :time-interval [_tag] ::options-style.last-unless-empty)
 
 (defclause ^:sugar during
-  field   Field
+  field   FieldOrExpressionRef
   value   [:or ::lib.schema.literal/date ::lib.schema.literal/datetime]
   unit    ::DateTimeUnit)
 
 (defclause ^:sugar relative-time-interval
-  col           Field
+  col           FieldOrExpressionRef
   value         :int
   bucket        [:ref ::RelativeDatetimeUnit]
   offset-value  :int
@@ -1019,7 +1019,7 @@
    [:boolean  BooleanExpression]
    [:value    value]
    [:segment  segment]
-   [:else     Field]])
+   [:else     FieldOrExpressionRef]])
 
 (def ^:private CaseClause
   [:tuple {:error/message ":case subclause"} Filter ExpressionArg])
@@ -1077,7 +1077,7 @@
    [:if       case:if]
    [:offset   offset]
    [:value    value]
-   [:else     Field]])
+   [:else     FieldOrExpressionRef]])
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------
 
@@ -1085,8 +1085,8 @@
 
 ;; cum-sum and cum-count are SUGAR because they're implemented in middleware. The clauses are swapped out with
 ;; `count` and `sum` aggregations respectively and summation is done in Clojure-land
-(defclause ^{:requires-features #{:basic-aggregations}} ^:sugar count,     field (optional Field))
-(defclause ^{:requires-features #{:basic-aggregations}} ^:sugar cum-count, field (optional Field))
+(defclause ^{:requires-features #{:basic-aggregations}} ^:sugar count,     field (optional FieldOrExpressionRef))
+(defclause ^{:requires-features #{:basic-aggregations}} ^:sugar cum-count, field (optional FieldOrExpressionRef))
 
 ;; technically aggregations besides count can also accept expressions as args, e.g.
 ;;
@@ -1375,7 +1375,7 @@
                 (core/= tag-name (:name tag-definition)))
               m))]])
 
-(def ^:private NativeQuery:Common
+(def ^:private NativeInnerQuery:Common
   [:and
    [:map
     [:template-tags {:optional true} [:ref ::TemplateTagMap]]
@@ -1386,24 +1386,24 @@
      :source-table ":source-table is only allowed in MBQL inner queries."
      :fields       ":fields is only allowed in MBQL inner queries."})])
 
-(def NativeQuery
+(def NativeInnerQuery
   "Schema for a valid, normalized native [inner] query."
   [:merge
-   NativeQuery:Common
+   NativeInnerQuery:Common
    [:map
     [:query :some]]])
 
 (mr/def ::NativeSourceQuery
   [:merge
-   NativeQuery:Common
+   NativeInnerQuery:Common
    [:map
     [:native :some]]])
 
 ;;; ----------------------------------------------- MBQL [Inner] Query -----------------------------------------------
 
-(def MBQLQuery
+(def MBQLInnerQuery
   "Schema for a valid, normalized MBQL [inner] query."
-  [:ref ::MBQLQuery])
+  [:ref ::MBQLInnerQuery])
 
 (mr/def ::SourceQuery
   [:multi
@@ -1415,7 +1415,7 @@
    ;; `:query` for reasons I do not fully remember (perhaps to make it easier to differentiate them from MBQL source
    ;; queries).
    [:native [:ref ::NativeSourceQuery]]
-   [:mbql   MBQLQuery]])
+   [:mbql   MBQLInnerQuery]])
 
 (def SourceQuery
   "Schema for a valid value for a `:source-query` clause."
@@ -1612,18 +1612,18 @@
 (mr/def ::Fields
   [:schema
    {:error/message "Distinct, non-empty sequence of Field clauses"}
-   (helpers/distinct [:sequential {:min 1} Field])])
+   (helpers/distinct [:sequential {:min 1} FieldOrExpressionRef])])
 
 (mr/def ::OrderBys
   (helpers/distinct [:sequential {:min 1} [:ref ::OrderBy]]))
 
-(mr/def ::MBQLQuery
+(mr/def ::MBQLInnerQuery
   [:and
    [:map
     [:source-query {:optional true} SourceQuery]
     [:source-table {:optional true} SourceTable]
     [:aggregation  {:optional true} [:sequential {:min 1} Aggregation]]
-    [:breakout     {:optional true} [:sequential {:min 1} Field]]
+    [:breakout     {:optional true} [:sequential {:min 1} FieldOrExpressionRef]]
     [:expressions  {:optional true} [:map-of ::lib.schema.common/non-blank-string [:ref ::FieldOrExpressionDef]]]
     [:fields       {:optional true} Fields]
     [:filter       {:optional true} Filter]
@@ -1741,8 +1741,8 @@
       {:description "Type of query. `:query` = MBQL; `:native` = native."}
       :query :native]]
 
-    [:native     {:optional true} NativeQuery]
-    [:query      {:optional true} MBQLQuery]
+    [:native     {:optional true} NativeInnerQuery]
+    [:query      {:optional true} MBQLInnerQuery]
     [:parameters {:optional true} [:maybe [:ref ::lib.schema.parameter/parameters]]]
     ;;
     ;; OPTIONS
