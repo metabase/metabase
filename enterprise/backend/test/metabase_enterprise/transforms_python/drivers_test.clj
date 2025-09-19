@@ -370,7 +370,7 @@
                   (testing "Original columns preserved"
                     (is (isa? (type-map "id") (if (= driver/*driver* :snowflake) :type/Number :type/Integer)))
                     (is (isa? (type-map "text_field") :type/Text))
-                    (is (isa? (type-map "int_field") :type/Integer))
+                    (is (isa? (type-map "int_field") (if (= driver/*driver* :snowflake) :type/Number :type/Integer)))
                     (is (isa? (type-map "float_field") :type/Float))
                     (is (isa? (type-map "bool_field") :type/Boolean))
                     (is (isa? (type-map "date_field") (if (= driver/*driver* :mongo) :type/Instant :type/Date))))
