@@ -149,9 +149,13 @@ describe("scenarios - embedding hub", () => {
         cy.button("Save").click();
       });
 
-      cy.log("wait for the model to be created");
+      cy.log(
+        "wait for navigation to the model page to ensure model is created",
+      );
+      cy.url().should("include", "test-model");
+
       H.main()
-        .findByText("Test Model", { timeout: 20_000 })
+        .findByText("Test Model", { timeout: 10_000 })
         .should("be.visible");
 
       cy.log("Navigate back to embedding setup guide");
