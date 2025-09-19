@@ -512,17 +512,17 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       createMbqlTransform({ visitTransform: true });
       getTagsInput().click();
 
-      H.popover().findByRole("option", { name: "hourly" }).click();
+      H.popover().findByText("hourly").click();
       cy.wait("@updateTransform");
       assertOptionSelected("hourly");
       assertOptionNotSelected("daily");
 
-      H.popover().findByRole("option", { name: "daily" }).click();
+      H.popover().findByText("daily").click();
       cy.wait("@updateTransform");
       assertOptionSelected("hourly");
       assertOptionSelected("daily");
 
-      H.popover().findByRole("option", { name: "hourly" }).click();
+      H.popover().findByText("hourly").click();
       cy.wait("@updateTransform");
       assertOptionNotSelected("hourly");
       assertOptionSelected("daily");
@@ -542,7 +542,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
 
       getTagsInput().click();
       H.popover()
-        .findByRole("option", { name: "hourly" })
+        .findByText("hourly")
         .findByLabelText("Rename tag")
         .click({ force: true });
       H.modal().within(() => {
@@ -560,7 +560,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
 
       getTagsInput().click();
       H.popover()
-        .findByRole("option", { name: "hourly" })
+        .findByText("hourly")
         .findByLabelText("Delete tag")
         .click({ force: true });
       H.modal().within(() => {
@@ -1540,17 +1540,17 @@ describe("scenarios > admin > transforms > jobs", () => {
       H.createTransformJob({ name: "New job" }, { visitTransformJob: true });
       getTagsInput().click();
 
-      H.popover().findByRole("option", { name: "hourly" }).click();
+      H.popover().findByText("hourly").click();
       cy.wait("@updateJob");
       assertOptionSelected("hourly");
       assertOptionNotSelected("daily");
 
-      H.popover().findByRole("option", { name: "daily" }).click();
+      H.popover().findByText("daily").click();
       cy.wait("@updateJob");
       assertOptionSelected("hourly");
       assertOptionSelected("daily");
 
-      H.popover().findByRole("option", { name: "hourly" }).click();
+      H.popover().findByText("hourly").click();
       cy.wait("@updateJob");
       assertOptionNotSelected("hourly");
       assertOptionSelected("daily");
