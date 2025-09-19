@@ -5,7 +5,7 @@ on:
     inputs:
       skip:
         type: boolean
-        default: true
+        default: false
       skip-lint:
         type: boolean
         default: false
@@ -127,7 +127,7 @@ jobs:
       - fe-type-check
       - fe-tests-unit
       - fe-tests-timezones
-    if: false#always() && !cancelled()
+    if: always() && !cancelled()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:

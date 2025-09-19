@@ -96,30 +96,28 @@ jobs:
       skip: ${{ needs.files-changed.outputs.backend_all != 'true' }}
 
   driver-tests:
-    if: false
     needs: files-changed
     uses: ./.github/workflows/drivers.yml
     secrets: inherit
     with:
       skip: ${{ needs.files-changed.outputs.backend_all != 'true' }}
 
-  # frontend-tests:
-  #   if: false
-  #   needs: files-changed
-  #   uses: ./.github/workflows/frontend.yml
-  #   secrets: inherit
-  #   with:
-  #     skip: ${{ needs.files-changed.outputs.frontend_all != 'true' }}
-  #     skip-lint: ${{ needs.files-changed.outputs.frontend_all != 'true' && needs.files-changed.outputs.e2e_specs != 'true' }}
-#
+  frontend-tests:
+    needs: files-changed
+    uses: ./.github/workflows/frontend.yml
+    secrets: inherit
+    with:
+      skip: ${{ needs.files-changed.outputs.frontend_all != 'true' }}
+      skip-lint: ${{ needs.files-changed.outputs.frontend_all != 'true' && needs.files-changed.outputs.e2e_specs != 'true' }}
+
 
   e2e-tests:
     needs: [files-changed, uberjar]
-    if: false #always() && !cancelled()
+    if: always() && !cancelled()
     uses: ./.github/workflows/e2e-tests.yml
     secrets: inherit
     with:
-      skip: true #${{ needs.files-changed.outputs.e2e_all != 'true' }}
+      skip: ${{ needs.files-changed.outputs.e2e_all != 'true' }}
       # here we pass result from files-changed, which is a list of files, comma separated
       # e.g. e2e/test/scenarios/onboarding/command-palette.cy.spec.js,e2e/test/scenarios/question/document-title.cy.spec.js
       # e2e_all_files includes all changes which trigger all e2e tests, if the list of changes files is included in the
@@ -127,7 +125,6 @@ jobs:
       specs: ${{ needs.files-changed.outputs.e2e_all_files == needs.files-changed.outputs.e2e_specs_files && needs.files-changed.outputs.e2e_specs_files || '' }}
 
   sdk-tests:
-    if: false
     needs: files-changed
     uses: ./.github/workflows/embedding-sdk.yml
     secrets: inherit

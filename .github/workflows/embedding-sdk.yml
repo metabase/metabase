@@ -1,8 +1,7 @@
 name: SDK
 
 on:
-  #workflow_call:
-  workflow_dispatch:
+  workflow_call:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}

@@ -40,126 +40,126 @@ jobs:
       - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
         name: Run Eastwood linter
 
-  # be-tests:
-  #   if: ${{ !inputs.skip }}
-  #   runs-on: ubuntu-22.04
-  #   timeout-minutes: 60
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       java-version: [21]
-  #       job:
-  #         - name: Enterprise Tests
-  #           edition: ee
-  #           build-static-viz: 'false'
-  #           test-args: >-
-  #             :only '"enterprise/backend/test"'
-  #         - name: EE App DB Tests (Part 1)
-  #           edition: ee
-  #           build-static-viz: 'true'
-  #           test-args: >-
-  #             :only '["test" ".clj-kondo/test"]'
-  #             :partition/total 2
-  #             :partition/index 0
-  #         - name: EE App DB Tests (Part 2)
-  #           edition: ee
-  #           build-static-viz: 'true'
-  #           test-args: >-
-  #             :only '["test" ".clj-kondo/test"]'
-  #             :partition/total 2
-  #             :partition/index 1
-  #         - name: OSS App DB Tests (Part 1)
-  #           edition: oss
-  #           build-static-viz: 'true'
-  #           test-args: >-
-  #             :only '["test" ".clj-kondo/test"]'
-  #             :partition/total 2
-  #             :partition/index 0
-  #         - name: OSS App DB Tests (Part 2)
-  #           edition: oss
-  #           build-static-viz: 'true'
-  #           test-args: >-
-  #             :only '["test" ".clj-kondo/test"]'
-  #             :partition/total 2
-  #             :partition/index 1
-  #   name: "Java ${{ matrix.java-version }} ${{ matrix.job.name }}"
-  #   env:
-  #     # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
-  #     # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
-  #     # it in to the command below.
-  #     __ADDITIONAL_EXCLUDED_TAG__: >-
-  #       ${{
-  #         (
-  #           github.event_name == 'push' &&
-  #           (
-  #             github.ref == 'master' ||
-  #             startsWith(github.ref, 'release-')
-  #           ) &&
-  #           ''
-  #         ) ||
-  #         ':mb/old-migrations-test'
-  #       }}
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: Prepare front-end environment
-  #       if: ${{ matrix.job.build-static-viz == 'true' }}
-  #       uses: ./.github/actions/prepare-frontend
-  #     - name: Prepare back-end environment
-  #       uses: ./.github/actions/prepare-backend
-  #       with:
-  #         m2-cache-key: be-tests
-  #         java-version: "${{ matrix.java-version }}"
-  #     # Depending on which files changed, we might either have to build static-viz
-  #     # from scratch or download the previously built artifact
-  #     - name: Build static-viz frontend
-  #       if: ${{ matrix.job.build-static-viz == 'true' && !inputs.skip }}
-  #       run: yarn build-static-viz
-  #       env:
-  #         MB_EDITION: ${{ matrix.job.edition }}
-  #     - name: Download Static Viz Bundle Artifact
-  #       if: ${{ matrix.job.build-static-viz == 'true' && !inputs.skip }}
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         name: static-viz-bundle-${{ github.sha }}
-  #         path: resources/frontend_client/app/dist
+  be-tests:
+    if: ${{ !inputs.skip }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        java-version: [21]
+        job:
+          - name: Enterprise Tests
+            edition: ee
+            build-static-viz: 'false'
+            test-args: >-
+              :only '"enterprise/backend/test"'
+          - name: EE App DB Tests (Part 1)
+            edition: ee
+            build-static-viz: 'true'
+            test-args: >-
+              :only '["test" ".clj-kondo/test"]'
+              :partition/total 2
+              :partition/index 0
+          - name: EE App DB Tests (Part 2)
+            edition: ee
+            build-static-viz: 'true'
+            test-args: >-
+              :only '["test" ".clj-kondo/test"]'
+              :partition/total 2
+              :partition/index 1
+          - name: OSS App DB Tests (Part 1)
+            edition: oss
+            build-static-viz: 'true'
+            test-args: >-
+              :only '["test" ".clj-kondo/test"]'
+              :partition/total 2
+              :partition/index 0
+          - name: OSS App DB Tests (Part 2)
+            edition: oss
+            build-static-viz: 'true'
+            test-args: >-
+              :only '["test" ".clj-kondo/test"]'
+              :partition/total 2
+              :partition/index 1
+    name: "Java ${{ matrix.java-version }} ${{ matrix.job.name }}"
+    env:
+      # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
+      # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
+      # it in to the command below.
+      __ADDITIONAL_EXCLUDED_TAG__: >-
+        ${{
+          (
+            github.event_name == 'push' &&
+            (
+              github.ref == 'master' ||
+              startsWith(github.ref, 'release-')
+            ) &&
+            ''
+          ) ||
+          ':mb/old-migrations-test'
+        }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        if: ${{ matrix.job.build-static-viz == 'true' }}
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: be-tests
+          java-version: "${{ matrix.java-version }}"
+      # Depending on which files changed, we might either have to build static-viz
+      # from scratch or download the previously built artifact
+      - name: Build static-viz frontend
+        if: ${{ matrix.job.build-static-viz == 'true' && !inputs.skip }}
+        run: yarn build-static-viz
+        env:
+          MB_EDITION: ${{ matrix.job.edition }}
+      - name: Download Static Viz Bundle Artifact
+        if: ${{ matrix.job.build-static-viz == 'true' && !inputs.skip }}
+        uses: actions/download-artifact@v4
+        with:
+          name: static-viz-bundle-${{ github.sha }}
+          path: resources/frontend_client/app/dist
 
-  #     - name: "Test Java ${{ matrix.java-version }} ${{ matrix.job.name }}"
-  #       id: run-java-tests
-  #       run: >-
-  #         clojure -X:dev:ci:test:${{ matrix.job.edition }}:${{ matrix.job.edition }}-dev
-  #         :exclude-tags '[:mb/driver-tests ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
-  #         ${{ matrix.job.test-args }}
+      - name: "Test Java ${{ matrix.java-version }} ${{ matrix.job.name }}"
+        id: run-java-tests
+        run: >-
+          clojure -X:dev:ci:test:${{ matrix.job.edition }}:${{ matrix.job.edition }}-dev
+          :exclude-tags '[:mb/driver-tests ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
+          ${{ matrix.job.test-args }}
 
-  #     - name: Upload Test Results
-  #       uses: ./.github/actions/upload-test-results
-  #       if: always() && (steps.run-java-tests.conclusion != 'skipped' || steps.run-java-tests-21.conclusion != 'skipped')
-  #       with:
-  #         input-path: ./target/junit/
-  #         output-name: be-tests-java-${{ matrix.java-version }}-${{ matrix.job.edition }}
-  #         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-  #         aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-  #         aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-  #         aws-region: ${{ vars.AWS_REGION }}
-  #         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+      - name: Upload Test Results
+        uses: ./.github/actions/upload-test-results
+        if: always() && (steps.run-java-tests.conclusion != 'skipped' || steps.run-java-tests-21.conclusion != 'skipped')
+        with:
+          input-path: ./target/junit/
+          output-name: be-tests-java-${{ matrix.java-version }}-${{ matrix.job.edition }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
-  #     - name: Publish Test Report (JUnit)
-  #       uses: dorny/test-reporter@v1
-  #       if: failure()
-  #       with:
-  #         path: "target/junit/**/*_test.xml"
-  #         name: JUnit Test Report be-tests-java-${{ matrix.java-version }}-${{ matrix.job.edition }}
-  #         reporter: java-junit
-  #         list-suites: failed
-  #         list-tests: failed
-  #         fail-on-error: false
+      - name: Publish Test Report (JUnit)
+        uses: dorny/test-reporter@v1
+        if: failure()
+        with:
+          path: "target/junit/**/*_test.xml"
+          name: JUnit Test Report be-tests-java-${{ matrix.java-version }}-${{ matrix.job.edition }}
+          reporter: java-junit
+          list-suites: failed
+          list-tests: failed
+          fail-on-error: false
 
-  #     - name: Upload Logs on Failure
-  #       if: always() && !success()
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: test-logs-${{ matrix.java-version }}-${{ matrix.job.edition }}-${{ github.job }}
-  #         path: logs/test-log.json
-  #         retention-days: 1
+      - name: Upload Logs on Failure
+        if: always() && !success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs-${{ matrix.java-version }}-${{ matrix.job.edition }}-${{ github.job }}
+          path: logs/test-log.json
+          retention-days: 1
 
   # checks that all the namespaces we actually ship can be compiled, without any dependencies that we don't ship (such
   # as `:dev` dependencies). See #27009 for more context.
@@ -201,7 +201,7 @@ jobs:
       - be-linter-clj-kondo
       - be-cljfmt
       - be-check
-      #- be-tests
+      - be-tests
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     timeout-minutes: 5
