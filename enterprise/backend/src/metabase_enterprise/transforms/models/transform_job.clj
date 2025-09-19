@@ -127,14 +127,18 @@
 
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 
-;; TODO(johnswanson) make it batched
-(mi/define-simple-hydration-method job-tags
+(mi/define-batched-hydration-method job-tags
   :job_tags
   "Fetch tags for job"
-  [job]
-  (t2/select :model/TransformJobTransformTag
-             :job_id (u/the-id job)
-             {:order-by [[:position :asc]]}))
+  [jobs]
+  (when (seq jobs)
+    (let [job-ids      (into #{} (map u/the-id) jobs)
+          tag-mappings (group-by :job_id
+                                 (t2/select :model/TransformJobTransformTag
+                                            :job_id [:in job-ids]
+                                            {:order-by [[:position :asc]]}))]
+      (for [job jobs]
+        (assoc job :job_tags (get tag-mappings (u/the-id job) []))))))
 
 (defmethod serdes/hash-fields :model/TransformJob
   [_job]

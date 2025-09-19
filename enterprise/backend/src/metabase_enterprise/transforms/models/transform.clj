@@ -5,7 +5,6 @@
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -115,14 +114,18 @@
 
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 
-;; TODO(johnswanson) make it batched
-(mi/define-simple-hydration-method tags
+(mi/define-batched-hydration-method tags
   :tags
   "Fetch tags"
-  [transform]
-  (t2/select :model/TransformTransformTag
-             :transform_id (u/the-id transform)
-             {:order-by [[:position :asc]]}))
+  [transforms]
+  (when (seq transforms)
+    (let [transform-ids (into #{} (map u/the-id) transforms)
+          tag-mappings  (group-by :transform_id
+                                  (t2/select :model/TransformTransformTag
+                                             :transform_id [:in transform-ids]
+                                             {:order-by [[:position :asc]]}))]
+      (for [transform transforms]
+        (assoc transform :tags (get tag-mappings (u/the-id transform) []))))))
 
 (defmethod serdes/hash-fields :model/Transform
   [_transform]

@@ -50,7 +50,7 @@
   [:name :built_in_type])
 
 (defmethod serdes/make-spec "TransformTag"
-  [_model-name opts]
+  [_model-name _opts]
   {:copy [:entity_id :built_in_type]
    :transform {:name {:export str :import identity}
                :created_at (serdes/date)

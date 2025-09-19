@@ -17,7 +17,7 @@
   [:job_id :tag_id :position])
 
 (defmethod serdes/make-spec "TransformJobTransformTag"
-  [_model-name opts]
+  [_model-name _opts]
   {:copy [:entity_id :position]
    :transform {:job_id (serdes/parent-ref)
                :tag_id (serdes/fk :model/TransformTag)}})
