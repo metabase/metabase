@@ -670,7 +670,8 @@ export const CardEmbedComponent = memo(
                           {t`Comment`}
                         </Menu.Item>
                         <Menu.Item
-                          onClick={() => {
+                          onClick={async () => {
+                            await Promise.resolve(); // Wait for the menu to close. The transaction below may cause this item to disable and the mouseup isn't registered (so the menu stays open).
                             const pos = getPos();
                             if (!pos) {
                               return false;
@@ -685,12 +686,27 @@ export const CardEmbedComponent = memo(
                             if (!match) {
                               return;
                             }
-                            editor.commands.insertContentAt(match.pos + 1, {
-                              // TODO: un-hard-code "supportingText" everywhere
-                              type: "supportingText",
-                              content: [{ type: "paragraph" }],
-                            });
-                            // TODO: If parent type is resizeNode, wrap cardEmbed first
+                            const { schema, tr } = editor.view.state;
+                            const supportingText =
+                              schema.nodes.supportingText.create({}, [
+                                schema.nodes.paragraph.create({}),
+                              ]);
+                            if (match.node.type.name === "flexContainer") {
+                              tr.insert(match.start, supportingText);
+                              editor.view.dispatch(tr);
+                              editor.commands.focus(match.start + 1);
+                              return;
+                            }
+                            const flexContainer =
+                              editor.view.state.schema.nodes.flexContainer.create(
+                                { columnWidths: [100 / 3, 200 / 3] },
+                                [supportingText, node],
+                              );
+                            const endPos = match.start + match.node.nodeSize;
+                            tr.replaceWith(match.start, endPos, flexContainer);
+
+                            editor.view.dispatch(tr);
+                            editor.commands.focus(match.start + 2);
                           }}
                           disabled={!shouldAllowAddingSupportingText()}
                           leftSection={<Icon name="add_list" size={14} />}
