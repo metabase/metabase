@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { hasFeature } from "metabase/admin/databases/utils";
@@ -8,33 +8,19 @@ import {
   useListTablesQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
-import {
-  type DataPickerItem,
-  DataPickerModal,
-} from "metabase/common/components/Pickers/DataPicker";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
-import {
-  ActionIcon,
-  Box,
-  Button,
-  Group,
-  Icon,
-  Stack,
-  Text,
-  TextInput,
-} from "metabase/ui";
+import { Box, Button, Icon, Stack, Text } from "metabase/ui";
 import type {
   Database,
   DatabaseId,
   PythonTransformTableAliases,
-  RecentItem,
   Table,
-  TableId,
 } from "metabase-types/api";
 
+import { AliasInput } from "./AliasInput";
 import S from "./PythonDataPicker.module.css";
-import type { TableOption, TableSelection } from "./types";
+import { TableSelector } from "./TableSelector";
+import type { TableSelection } from "./types";
 import {
   getInitialTableSelections,
   selectionsToTableAliases,
@@ -43,7 +29,7 @@ import {
 
 type PythonDataPickerProps = {
   database?: DatabaseId;
-  tables?: PythonTransformTableAliases;
+  tables: PythonTransformTableAliases;
   onChange: (
     database: number,
     tables: PythonTransformTableAliases,
@@ -80,7 +66,7 @@ export function PythonDataPicker({
       : skipToken,
   );
 
-  const notifyParentOfChange = (
+  const handleChange = (
     database: DatabaseId | undefined,
     selections: TableSelection[],
   ) => {
@@ -98,19 +84,18 @@ export function PythonDataPicker({
     return <LoadingAndErrorWrapper loading />;
   }
 
-  const availableTables: TableOption[] = (tablesData || [])
-    .filter((tbl: Table) => tbl.db_id === database && tbl.active)
-    .map((tbl: Table) => ({
-      value: tbl.id.toString(),
-      label: tbl.display_name || tbl.name,
-      table: tbl,
-    }));
+  const availableTables = (tablesData || []).filter(
+    (tbl: Table) => tbl.db_id === database && tbl.active,
+  );
 
-  const selectedTableIds = new Set(tableSelections.map((s) => s.tableId));
   const usedAliases = new Set(tableSelections.map((s) => s.alias));
 
   const handleDatabaseChange = (value: string | null) => {
     const newDatabase = value ? parseInt(value) : undefined;
+
+    if (newDatabase === database) {
+      return;
+    }
 
     // Clear selections since they won't make sense
     const newSelections = [
@@ -120,7 +105,7 @@ export function PythonDataPicker({
       },
     ];
     setTableSelections(newSelections);
-    notifyParentOfChange(newDatabase, newSelections);
+    handleChange(newDatabase, newSelections);
   };
 
   const handleSelectionChange = (
@@ -130,7 +115,7 @@ export function PythonDataPicker({
     const newSelections = Array.from(tableSelections);
     newSelections[selectionIndex] = selection;
     setTableSelections(newSelections);
-    notifyParentOfChange(database, newSelections);
+    handleChange(database, newSelections);
   };
 
   const handleAddTable = () => {
@@ -147,7 +132,7 @@ export function PythonDataPicker({
     const newSelections = Array.from(tableSelections);
     newSelections.splice(selectionIndex, 1);
     setTableSelections(newSelections);
-    notifyParentOfChange(database, newSelections);
+    handleChange(database, newSelections);
   };
 
   return (
@@ -163,7 +148,7 @@ export function PythonDataPicker({
       <Box>
         <Text fw="bold">{t`Source database`}</Text>
         <Text size="sm" c="text-light" mb="sm">
-          {t`Select the database that contains your source data`}
+          {t`Select the database that contains your source data.`}
         </Text>
 
         <DatabaseDataSelector
@@ -178,40 +163,30 @@ export function PythonDataPicker({
       </Box>
       {database && (
         <Box>
-          <Text fw="bold">{t`Source tables`}</Text>
+          <Text fw="bold">{t`Pick tables and alias them`}</Text>
           <Text size="sm" c="text-light" mb="sm">
-            {t`Select tables to use as data sources and provide aliases for each`}
+            {t`Select tables to use as data sources and provide aliases that can be referenced in your Python script.`}
           </Text>
-          <Stack gap="xs">
-            <Group gap="xs">
-              <Text fw="bold" size="sm" flex="0 1 45%">{t`Table`}</Text>
-              <Text fw="bold" size="sm">{t`Alias`}</Text>
-            </Group>
-
+          <Stack gap="md">
             {tableSelections.map((selection, index) => (
               <SelectionInput
                 key={index}
                 selection={selection}
                 database={database}
+                tables={tables}
                 usedAliases={usedAliases}
                 availableTables={availableTables}
                 onChange={(selection) =>
                   handleSelectionChange(index, selection)
                 }
                 onRemove={() => handleRemoveTable(index)}
-                selectedTableIds={selectedTableIds}
                 disabled={isLoadingTables}
               />
             ))}
-
-            <Button
-              leftSection={<Icon name="add" />}
-              variant="subtle"
+            <AddTableButton
               onClick={handleAddTable}
               disabled={availableTables.length === 0}
-            >
-              {t`Add another table`}
-            </Button>
+            />
           </Stack>
         </Box>
       )}
@@ -221,26 +196,24 @@ export function PythonDataPicker({
 
 function SelectionInput({
   database,
+  tables,
   selection,
   availableTables,
   usedAliases,
   onChange,
   onRemove,
-  selectedTableIds,
   disabled,
 }: {
   database: DatabaseId | undefined;
+  tables: PythonTransformTableAliases;
   selection: TableSelection;
-  availableTables: TableOption[];
+  availableTables: Table[];
   usedAliases: Set<string>;
   onChange: (selection: TableSelection) => void;
   onRemove: () => void;
-  selectedTableIds: Set<TableId | undefined>;
   disabled?: boolean;
 }) {
-  const table = availableTables.find(
-    (t) => t.value === selection.tableId?.toString(),
-  )?.table;
+  const table = availableTables.find((table) => table.id === selection.tableId);
 
   function handleAliasChange(newAlias: string) {
     const newSelection = {
@@ -261,8 +234,8 @@ function SelectionInput({
     }
 
     const oldTable = availableTables.find(
-      (t) => t.table.id === selection?.tableId,
-    )?.table;
+      (table) => table.id === selection?.tableId,
+    );
 
     const wasOldAliasManuallySet =
       selection.alias !== "" &&
@@ -282,16 +255,16 @@ function SelectionInput({
   }
 
   return (
-    <Group gap="xs" align="center" wrap="nowrap">
-      <TableInput
+    <Stack gap="xs" align="center" w="100%">
+      <TableSelector
         database={database}
         table={table}
+        selectedTableIds={Object.values(tables)}
         onChange={handleTableChange}
+        onRemove={onRemove}
         availableTables={availableTables}
-        selectedTableIds={selectedTableIds}
         disabled={disabled}
       />
-
       <AliasInput
         selection={selection}
         table={table}
@@ -299,135 +272,28 @@ function SelectionInput({
         usedAliases={usedAliases}
         disabled={disabled}
       />
-
-      <ActionIcon onClick={onRemove} aria-label={t`Remove table`}>
-        <Icon name="trash" />
-      </ActionIcon>
-    </Group>
+    </Stack>
   );
 }
 
-function TableInput({
-  database,
-  availableTables,
-  selectedTableIds,
+function AddTableButton({
+  onClick,
   disabled,
-  onChange,
-  table,
 }: {
-  database: DatabaseId | undefined;
-  table: Table | undefined;
-  availableTables: TableOption[];
-  selectedTableIds: Set<TableId | undefined>;
   disabled?: boolean;
-  onChange: (table: Table | undefined) => void;
+  onClick: () => void;
 }) {
-  function handleChange(tableId: TableId | undefined) {
-    const table = availableTables.find(
-      (table) => table.table?.id === tableId,
-    )?.table;
-    if (!table) {
-      return;
-    }
-    onChange(table);
-  }
-
-  function shouldDisableItem(
-    item: DataPickerItem | CollectionPickerItem | RecentItem,
-  ) {
-    if (item.model === "table") {
-      // Filter available tables to exclude already selected ones (except current selection)
-      return selectedTableIds.has(item.id);
-    }
-    if (item.model === "database") {
-      return item.id !== database;
-    }
-    return true;
-  }
-
-  const [isOpened, setIsOpened] = useState(false);
-
-  const value = table
-    ? {
-        model: "table" as const,
-        id: table.id,
-        name: table.display_name,
-        db_id: table.db_id,
-        schema: table.schema,
-      }
-    : undefined;
-
   return (
-    <>
+    <Box>
       <Button
-        className={S.tableSelector}
-        onClick={() => setIsOpened(true)}
-        flex="0 1 50%"
+        leftSection={<Icon name="add_data" />}
+        variant="subtle"
+        px={0}
+        onClick={onClick}
         disabled={disabled}
-        fw="normal"
-        classNames={{ inner: S.tableSelectorInner }}
       >
-        {table?.display_name ?? t`Select a table…`}
+        {t`Add a table`}
       </Button>
-      {isOpened && (
-        <DataPickerModal
-          title={t`Pick a table`}
-          value={value}
-          databaseId={database}
-          onChange={handleChange}
-          onClose={() => setIsOpened(false)}
-          shouldDisableItem={shouldDisableItem}
-        />
-      )}
-    </>
-  );
-}
-
-function AliasInput({
-  table,
-  selection,
-  onChange,
-  usedAliases,
-  disabled,
-}: {
-  selection: TableSelection;
-  table?: Table;
-  onChange: (value: string) => void;
-  usedAliases: Set<string>;
-  disabled?: boolean;
-}) {
-  const [value, setValue] = useState(selection.alias);
-
-  useEffect(() => {
-    setValue(selection.alias);
-  }, [selection.alias]);
-
-  const defaultAlias = table
-    ? slugify(table.name, usedAliases, selection.alias)
-    : "";
-  const isManualAlias = selection.alias !== defaultAlias;
-  const showReset = table && isManualAlias;
-
-  return (
-    <TextInput
-      flex="0 1 50%"
-      value={value}
-      onChange={(event) => setValue(event.target.value)}
-      onBlur={() => onChange(value)}
-      placeholder={t`Enter alias`}
-      rightSection={
-        showReset ? (
-          <ActionIcon
-            onClick={() => onChange(defaultAlias)}
-            aria-label={t`Reset alias to default`}
-            color="gray"
-            variant="subtle"
-          >
-            <Icon name="refresh" size={12} />
-          </ActionIcon>
-        ) : null
-      }
-      disabled={disabled}
-    />
+    </Box>
   );
 }

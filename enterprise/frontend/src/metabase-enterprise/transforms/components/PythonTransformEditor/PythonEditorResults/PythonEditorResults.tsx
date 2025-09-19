@@ -55,7 +55,7 @@ function EmptyState() {
   const keyboardShortcut = getRunQueryShortcut();
 
   return (
-    <Flex h="100%" align="center" justify="center">
+    <Flex h="100%" align="center" justify="center" className={S.empty}>
       <Stack maw="25rem" gap={0} ta="center" align="center">
         <Box maw="3rem" mb="0.75rem">
           <img src={EmptyCodeResult} alt="Code prompt icon" />

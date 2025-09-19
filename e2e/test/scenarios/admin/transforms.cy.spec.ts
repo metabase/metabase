@@ -183,7 +183,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       testSnippets();
     });
 
-    it("should be able to create and run a Python transform", () => {
+    it("should be possible to create and run a Python transform", () => {
       cy.log("create a new transform");
       visitTransformListPage();
       getTransformListPage().button("Create a transform").click();
@@ -211,7 +211,8 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       H.entityPickerModal().findByText("Animals").click();
 
       getPythonDataPicker().within(() => {
-        cy.button("Animals").should("be.visible");
+        cy.findByText("Writable Postgres12 / Schema A").should("be.visible");
+        cy.findByText("Animals").should("be.visible");
         cy.findByPlaceholderText("Enter alias").should("have.value", "animals");
         cy.findByPlaceholderText("Enter alias").clear().type("foo bar").blur();
         cy.findByPlaceholderText("Enter alias").should("have.value", "foo_bar");
@@ -225,7 +226,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         );
 
       getPythonDataPicker().within(() => {
-        cy.findByText("Add another table").click();
+        cy.findByText("Add a table").click();
         cy.button("Select a table…").click();
       });
 
@@ -249,7 +250,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
           .clear()
           .type("foo bar")
           .blur()
-          .should("have.value", "foo_bart s");
+          .should("have.value", "foo_bar");
         cy.findAllByPlaceholderText("Enter alias")
           .eq(1)
           .should("have.value", "animals")

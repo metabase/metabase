@@ -16,7 +16,6 @@ import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Database as ApiDatabase,
   NativeQuerySnippet,
-  PythonTransformSource,
   RecentItem,
 } from "metabase-types/api";
 
@@ -37,8 +36,6 @@ const NATIVE_EDITOR_SIDEBAR_FEATURES = {
 type EditorBodyProps = {
   question: Question;
   isNative: boolean;
-  isPython?: boolean;
-  pythonSource?: PythonTransformSource;
   isRunnable: boolean;
   isRunning: boolean;
   isResultDirty: boolean;

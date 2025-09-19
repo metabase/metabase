@@ -9,7 +9,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { JobListPage } from "./pages/JobListPage";
 import { JobPage } from "./pages/JobPage";
 import { NewJobPage } from "./pages/NewJobPage";
-import { NewTransformQueryPage } from "./pages/NewTransformQueryPage";
+import { NewTransformPage } from "./pages/NewTransformPage";
 import { PythonLibraryEditorPage } from "./pages/PythonLibraryEditorPage";
 import { RunListPage } from "./pages/RunListPage";
 import { TransformListPage } from "./pages/TransformListPage";
@@ -38,8 +38,8 @@ if (hasPremiumFeature("transforms")) {
         >
           <Route path="library/:path" component={PythonLibraryEditorPage} />
         </Route>
-        <Route path="new/:type" component={NewTransformQueryPage} />
-        <Route path="new/card/:cardId" component={NewTransformQueryPage} />
+        <Route path="new/:type" component={NewTransformPage} />
+        <Route path="new/card/:cardId" component={NewTransformPage} />
         <Route path=":transformId/query" component={TransformQueryPage} />
       </Route>
     </Route>

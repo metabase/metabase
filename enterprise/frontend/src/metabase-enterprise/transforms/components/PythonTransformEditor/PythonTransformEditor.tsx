@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { Flex, Stack } from "metabase/ui";
 import type {
+  DatabaseId,
   PythonTransformSource,
   PythonTransformTableAliases,
   Table,
@@ -13,10 +14,21 @@ import { EditorHeader } from "../QueryEditor/EditorHeader";
 import { PythonDataPicker } from "./PythonDataPicker";
 import { PythonEditorBody } from "./PythonEditorBody";
 import { PythonEditorResults } from "./PythonEditorResults";
-import { updateTransformSignature, useTestPythonTransform } from "./utils";
+import {
+  isPythonTransformSource,
+  updateTransformSignature,
+  useTestPythonTransform,
+} from "./utils";
+
+export type PythonTransformSourceDraft = {
+  type: "python";
+  body: string;
+  "source-database": DatabaseId | undefined;
+  "source-tables": PythonTransformTableAliases;
+};
 
 type PythonTransformEditorProps = {
-  initialSource: PythonTransformSource;
+  initialSource: PythonTransformSourceDraft;
   isNew?: boolean;
   isSaving?: boolean;
   isRunnable?: boolean;
@@ -69,7 +81,9 @@ export function PythonTransformEditor({
   };
 
   const handleSave = () => {
-    onSave(source);
+    if (isPythonTransformSource(source)) {
+      onSave(source);
+    }
   };
 
   const showDebugger =
@@ -81,7 +95,7 @@ export function PythonTransformEditor({
     }
     if (isRunning) {
       cancel();
-    } else if (isRunnable) {
+    } else if (isRunnable && isPythonTransformSource(source)) {
       run();
     }
   };
@@ -118,7 +132,7 @@ export function PythonTransformEditor({
         />
         <Stack w="100%" h="100%" gap={0}>
           <PythonEditorBody
-            isRunnable={isRunnable}
+            isRunnable={isRunnable && isPythonTransformSource(source)}
             isRunning={isRunning}
             isDirty={isDirty}
             onRun={run}

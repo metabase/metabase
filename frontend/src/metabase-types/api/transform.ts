@@ -1,3 +1,4 @@
+import type { DatabaseId } from "./database";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery } from "./query";
 import type { Table, TableId } from "./table";
@@ -27,7 +28,7 @@ export type PythonTransformTableAliases = Record<string, TableId>;
 export type PythonTransformSource = {
   type: "python";
   body: string;
-  "source-database": number;
+  "source-database": DatabaseId;
   "source-tables": PythonTransformTableAliases;
 };
 export type QueryTransformSource = {
@@ -166,4 +167,18 @@ export type ExecutePythonTransformResponse = {
   error?: string;
   exit_code?: number;
   timeout?: boolean;
+};
+
+export type PythonLibrary = {
+  path: string;
+  source: string;
+};
+
+export type GetPythonLibraryRequest = {
+  path: string;
+};
+
+export type UpdatePythonLibraryRequest = {
+  path: string;
+  source: string;
 };

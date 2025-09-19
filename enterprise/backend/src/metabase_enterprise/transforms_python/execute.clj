@@ -245,12 +245,13 @@
                                  :conn-spec      (driver/connection-spec driver db)
                                  :output-schema  (:schema target)
                                  :output-table   (transforms.util/qualified-table-name driver target)}
-              run-fn            (fn [cancel-chan] (run-python-transform! transform db run-id cancel-chan message-log))
+              run-fn            (fn [cancel-chan]
+                                  (run-python-transform! transform db run-id cancel-chan message-log)
+                                  (log! message-log (format "Python execution finished successfully in %s" (Duration/ofMillis (u/since-ms start-ms))))
+                                  (save-log-to-transform-run-message! run-id message-log))
               result            (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn)]
           (transforms.instrumentation/with-stage-timing [run-id :table-sync]
             (transforms.util/sync-target! target db run-id))
-          (log! message-log (format "Python execution finished successfully in %s" (Duration/ofMillis (u/since-ms start-ms))))
-          (save-log-to-transform-run-message! run-id message-log)
           {:run_id run-id
            :result result}))
       (catch Throwable t
