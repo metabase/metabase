@@ -11,6 +11,7 @@ import type {
 } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 import type {
+  SdkIframeEmbedSetupEmbeddingType,
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupSettings,
 } from "../types";
@@ -20,10 +21,12 @@ import { filterEmptySettings } from "./filter-empty-settings";
 type SettingKey = Exclude<keyof SdkIframeEmbedBaseSettings, "_isLocalhost">;
 
 export function getEmbedSnippet({
+  embeddingType,
   settings,
   instanceUrl,
   experience,
 }: {
+  embeddingType: SdkIframeEmbedSetupEmbeddingType;
   settings: SdkIframeEmbedSetupSettings;
   instanceUrl: string;
   experience: SdkIframeEmbedSetupExperience;
@@ -38,7 +41,11 @@ function defineMetabaseConfig(config) {
 
 <script>
   defineMetabaseConfig({
-    ${getMetabaseConfigSnippet(settings, instanceUrl)}
+    ${getMetabaseConfigSnippet({
+      embeddingType,
+      settings,
+      instanceUrl,
+    })}
   });
 </script>
 
@@ -117,10 +124,17 @@ export function transformEmbedSettingsToAttributes(
   return attributes.join(" ");
 }
 
-export function getMetabaseConfigSnippet(
-  settings: Partial<SdkIframeEmbedSetupSettings>,
-  instanceUrl: string,
-): string {
+export function getMetabaseConfigSnippet({
+  embeddingType,
+  settings,
+  instanceUrl,
+}: {
+  embeddingType: SdkIframeEmbedSetupEmbeddingType;
+  settings: Partial<SdkIframeEmbedSetupSettings>;
+  instanceUrl: string;
+}): string {
+  const isStaticEmbedding = embeddingType === "static";
+
   const config = _.pick(settings, ALLOWED_EMBED_SETTING_KEYS_MAP.base);
 
   const cleanedConfig = {
@@ -131,6 +145,10 @@ export function getMetabaseConfigSnippet(
 
     // Append these settings that can't be controlled by users.
     instanceUrl,
+
+    ...(isStaticEmbedding && {
+      fetchStaticToken: "{{fetchStaticToken}}",
+    }),
   };
 
   // filter out empty arrays, strings, objects, null and undefined.
@@ -141,6 +159,10 @@ export function getMetabaseConfigSnippet(
   return JSON.stringify(filteredConfig, null, 2)
     .replace(/^{/, "")
     .replace(/}$/, "")
+    .replace(
+      `"{{fetchStaticToken}}"`,
+      config.fetchStaticToken?.toString() ?? "",
+    )
     .split("\n")
     .map((line) => `  ${line}`)
     .join("\n")

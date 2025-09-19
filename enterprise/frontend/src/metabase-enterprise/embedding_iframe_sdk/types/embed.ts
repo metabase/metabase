@@ -3,6 +3,7 @@ import type { MetabaseErrorCode } from "embedding-sdk-bundle/errors/error-code";
 import type { MetabaseAuthMethod } from "embedding-sdk-bundle/types";
 import type {
   MetabaseEmbeddingSessionToken,
+  MetabaseFetchStaticTokenFn,
   MetabaseFetchStaticTokenFnData,
   UserBackendJwtResponse,
 } from "embedding-sdk-bundle/types/refresh-token";
@@ -187,11 +188,12 @@ export type SdkIframeEmbedBaseSettings = {
   _isLocalhost?: boolean;
 };
 
-export type SdkIframeEmbedInternalIframeSettings = Omit<
+export type SdkIframeEmbedStaticEmbeddingSettings = Pick<
   SdkIframeEmbedBaseSettings,
-  "fetchRequestToken"
+  "useExistingUserSession"
 > & {
-  fetchRequestToken?: boolean;
+  isStatic: boolean;
+  fetchStaticToken: MetabaseFetchStaticTokenFn;
 };
 
 export type SdkIframeEmbedTemplateSettings =

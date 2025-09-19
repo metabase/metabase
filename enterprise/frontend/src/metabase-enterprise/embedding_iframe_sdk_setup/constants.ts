@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import type { SdkIframeEmbedStaticEmbeddingSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
+
 import { GetCodeStep } from "./components/GetCodeStep";
 import { SelectEmbedExperienceStep } from "./components/SelectEmbedExperienceStep";
 import { SelectEmbedOptionsStep } from "./components/SelectEmbedOptionsStep";
@@ -89,3 +91,15 @@ export const SET_INITIAL_PARAMETER_DEBOUNCE_MS = 500;
  * causing unnecessary API calls and potential race condition.
  */
 export const USER_SETTINGS_DEBOUNCE_MS = 800;
+
+export const STATIC_EMBEDDING_SETTINGS: SdkIframeEmbedStaticEmbeddingSettings =
+  {
+    isStatic: true,
+    useExistingUserSession: false,
+    fetchStaticToken: async () => {
+      // Implement your logic to fetch a static signed JWT token from your backend.
+      return {
+        jwt: "...",
+      };
+    },
+  };
