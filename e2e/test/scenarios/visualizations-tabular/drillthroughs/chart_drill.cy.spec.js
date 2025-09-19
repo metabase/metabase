@@ -1,6 +1,7 @@
 const { H } = cy;
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
@@ -851,6 +852,76 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       cy.findByText("<").should("be.visible");
       cy.findByText("=").should("be.visible");
       cy.findByText("≠").should("be.visible");
+    });
+  });
+
+  H.describeWithSnowplow("chart click actions analytics", () => {
+    beforeEach(() => {
+      H.resetSnowplow();
+      H.restore();
+      cy.signInAsAdmin();
+      H.enableTracking();
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
+    // This list is not exhaustive. It only covers the events that were defined in a ticket defined by Product.
+    // The full list can be found in frontend/src/metabase/visualizations/types/click-actions.ts
+    // See: `type ClickActionSection`
+    it("should track clicks on action sections", () => {
+      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+
+      H.cartesianChartCircle().eq(1).should("be.visible").click();
+
+      H.popover()
+        .findByText(/^See these/)
+        .click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "click_action",
+        triggered_from: "records",
+      });
+
+      cy.go("back");
+      H.cartesianChartCircle().eq(1).should("be.visible").click();
+      H.popover()
+        .findByText(/^See this year/)
+        .click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "click_action",
+        triggered_from: "zoom",
+      });
+
+      H.cartesianChartCircle().eq(1).should("be.visible").click();
+      H.popover()
+        .findByText(/^Break out by/)
+        .click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "click_action",
+        triggered_from: "breakout",
+      });
+
+      H.cartesianChartCircle().eq(1).should("be.visible").click();
+      H.popover()
+        .findByText(/^Automatic insights/)
+        .click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "click_action",
+        triggered_from: "auto",
+      });
+
+      H.cartesianChartCircle().eq(1).should("be.visible").click();
+      H.popover().findByText(">").click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "click_action",
+        triggered_from: "filter",
+      });
     });
   });
 });
