@@ -1,6 +1,8 @@
 name: Representation Tests
 
 on:
+  push:
+  pull_request:
   workflow_call:
     inputs:
       skip:
@@ -23,4 +25,4 @@ jobs:
         with:
           m2-cache-key: 'representation-tests'
       - name: Run test
-        run: clojure -X:dev:ci:test:ee:ee-dev :only '"enterprise/backend/test/metabase_enterprise/represenation/"'
+        run: clojure -X:dev:ci:test:ee:ee-dev :only '"enterprise/backend/test/metabase_enterprise/representation/"'
