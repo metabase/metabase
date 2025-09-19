@@ -26,11 +26,11 @@ const EDITOR_HEIGHT = 400;
 
 const NATIVE_EDITOR_SIDEBAR_FEATURES = {
   dataReference: true,
-  variables: false,
   snippets: true,
-  promptInput: true,
   formatQuery: true,
-  aiGeneration: true,
+  variables: false,
+  promptInput: false,
+  aiGeneration: false,
 };
 
 type EditorBodyProps = {
