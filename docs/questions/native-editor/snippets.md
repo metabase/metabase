@@ -76,7 +76,7 @@ You can also just pick a snippet to insert from the snippet sidebar:
 2. Search for the snippet. Note that search results only include snippets that you have permissions to see.
 3. Hover over a snippet and click on the arrow to the left of snippet's name to insert it into your query.
 
-Note: if you use aliases in a snippet, you'll need to observe those aliases outside of the snippet as well. For example, if a snippet aliases `products AS p`, code outside of the snippet will need to use the alias `p` to reference columns in that table (as in `p.column_name`).
+If you use aliases in a snippet, you'll need to refer to those aliases in the larger query. For example, if a snippet aliases `products AS p`, code outside of the snippet will need to use the alias `p` to refer to columns in that table (as in `p.column_name`).
 
 ## Preview a query with snippets
 
@@ -94,9 +94,9 @@ To edit a snippet:
 
 1. Open the snippet sidebar by clicking on the **Snippet** icon above the editor window.
 
-2. Search for the snippet. Note that search results only include snippets that you have permissions to edit.
+2. Search for the snippet. Search results only include snippets you have permission to edit.
 
-3. Click on the **down arrow** to the right of the snippet name, then click **Edit**.
+3. Click the **down arrow** to the right of the snippet name, then click **Edit**.
 
    You can change the code, snippet name, and snippet description.
 
@@ -114,14 +114,14 @@ To archive a snippet:
 
 1. Open the snippet sidebar by clicking on the **Snippet** icon above the editor window.
 2. Search for the snippet.
-3. Click on the **down arrow** to the right of the snippet name, then click **Edit**.
-4. Click on **Archive**
+3. Click the **down arrow** to the right of the snippet name, then click **Edit**.
+4. Click **Archive**
 
 You can access an archived snippet from the snippet sidebar menu by clicking on the archived button in the bottom left of the sidebar.
 
 Although there is no way to delete a snippet, you can archive and unarchive a snippet at any time.
 
-Note: two snippets cannot share the same name, as even if a snippet is archived, that snippet might still be active in questions.
+Two snippets cannot share the same name, as even if a snippet is archived, that snippet might still be active in questions.
 
 ## SQL parameters in snippets
 
@@ -134,19 +134,19 @@ AND category = {% raw %}{{category}}{% endraw %}
 GROUP BY {% raw %}{{time_grouping}}{% endraw %}
 ```
 
-When a snippet containing SQL parameters is added to a SQL query, the parameters from the snippet will be surfaced in the query.
+When a snippet with parameters is added to a SQL query, Metabase will show a widget for the snippet's parameter.
 
 ![Snippet with a parameter](../images/snippet-with-param.png)
 
-You'll be able to specify the type, connected columns, default values etc for the parameters coming from snippets in the query's Variables sidebar.
+You'll be able to specify the type, connected columns, and default values for the parameters coming from snippets in the query's Variables sidebar.
 
-Settings for parameters from snippets are defined on the query level, not on the snippet level, and aren't shared between queries that use the same snippet. This means if you have a snippet
+Settings for snippet parameters are defined by the query, not the snippet, so settings aren't shared between queries that use the same snippet. For example, if you have a snippet like:
 
 ```sql
 WHERE {% raw %}{{created_at}}{% endraw %}
 ```
 
-you can have one query with that snippet where the `{{created_at}}` parameter is connected to `Products.Created_At` and named `"Release date"`, and another query with the same snippet where `{{created_at}}` is connected to `Orders.created_date` and named `"Order date"`.
+you could put the snippet in one query and have the snippet parameter map to a `CREATED_AT` column, and put the snippet in another query and have that same snippet parameter map to a different column, like `CANCELED_AT`.
 
 If you have multiple snippets containing parameters with the same name, the question using those snippets will only use one instance of the parameter. For example, if `{{snippet: 1}}` contains parameter `{{var}}` and `{{snippet: 2}}` also contains parameter `{{var}}`, the question will display only one `{{var}}` parameter and use its value in both snippets.
 
@@ -158,7 +158,7 @@ Some plans contain additional functionality for organizing snippets into folders
 
 ## Why use Snippets?
 
-There are three main use cases for Snippets:
+Snippets are good for:
 
 - **Standardization**
 
