@@ -13,6 +13,7 @@ import {
   useRunTransformMutation,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
+import { trackTransformTriggerManualRun } from "metabase-enterprise/transforms/analytics";
 import { LogOutput } from "metabase-enterprise/transforms/components/LogOutput";
 import type { Transform, TransformTagId } from "metabase-types/api";
 
