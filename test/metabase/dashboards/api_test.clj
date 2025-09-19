@@ -259,7 +259,7 @@
     [:model/Dashboard {rasta-dash-id :id} {:creator_id (mt/user->id :rasta)}
      :model/Dashboard {crowberto-dash-id :id
                        :as               crowberto-dash}    {:creator_id    (mt/user->id :crowberto)
-                                                             :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))}
+                       :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))}
      :model/Dashboard {archived-dash-id :id} {:archived          true
                                               :archived_directly true
                                               :collection_id     (:id (collection/user->personal-collection (mt/user->id :crowberto)))
@@ -276,12 +276,13 @@
                                 :email       "crowberto@metabase.com"
                                 :first_name  "Crowberto"
                                 :last_name   "Corv"
-                                :common_name "Crowberto Corv"}}
-                     {:last-edit-info {:id         (mt/user->id :crowberto)
+                                :common_name "Crowberto Corv"}
+                      :last-edit-info {:id         (mt/user->id :crowberto)
                                        :first_name "Crowberto"
                                        :last_name  "Corv"
                                        :email      "crowberto@metabase.com"
-                                       :timestamp  true}})
+                                       :timestamp  true}
+                      :width "fixed"})
               (-> (m/find-first #(= (:id %) crowberto-dash-id)
                                 (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine"))
                   (update-in [:last-edit-info :timestamp] boolean)))))
@@ -728,7 +729,7 @@
       (mt/with-log-messages-for-level [messages [metabase.parameters.params :error]]
         (is (some? (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id))))
         (is (=? [{:level   :error
-                  :message "Could not find matching field clause for target: [:dimension [:template-tag not-existed-filter]]"}]
+                  :message "Could not extract field ID from target: [:dimension [:template-tag \"not-existed-filter\"]]"}]
                 (messages)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -3092,23 +3093,19 @@
                 :values          [["African"] ["American"] ["Asian"]]}
                (mt/user-http-request :rasta :get 200
                                      (chain-filter-values-url (:id dashboard) (:static-category param-keys)))))
-
         (is (= {:has_more_values false
                 :values          [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}
                (mt/user-http-request :rasta :get 200
                                      (chain-filter-values-url (:id dashboard) (:static-category-label param-keys))))))
-
       (testing "we could search the values"
         (is (= {:has_more_values false
                 :values          [["African"]]}
                (mt/user-http-request :rasta :get 200
                                      (chain-filter-search-url (:id dashboard) (:static-category param-keys) "af"))))
-
         (is (= {:has_more_values false
                 :values          [["African" "Af"]]}
                (mt/user-http-request :rasta :get 200
                                      (chain-filter-search-url (:id dashboard) (:static-category-label param-keys) "f")))))
-
       (testing "we could edit the values list"
         ;; TODO add tests for schema check
         (let [dashboard (mt/user-http-request :rasta :put 200 (str "dashboard/" (:id dashboard))
@@ -3124,10 +3121,9 @@
                    :id                    "_STATIC_CATEGORY_"
                    :type                  "category"
                    :values_query_type     "search"
-                   :values_source_type    :static-list
+                   :values_source_type    "static-list"
                    :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
                  (:parameters dashboard))))))
-
     (testing "source-options must be a map and sourcetype must be `card` or `static-list` must be a string"
       (is (= "nullable sequence of parameter must be a map with :id and :type keys"
              (get-in (mt/user-http-request :rasta :post 400 "dashboard"

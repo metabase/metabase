@@ -16,7 +16,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.lib.schema :as lib.schema]))
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib-be.core :as lib-be]))
 
 (def ^:dynamic *card-id*
   "ID of the Card currently being executed, if there is one. Bind this in a Card-execution so we will use
@@ -157,7 +158,7 @@
 ;;; |                                                Writeback fns                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn check-query-action-permissions*
+(mu/defn- check-query-action-permissions**
   "Check that User with `user-id` has permissions to run query action `query`, or throw an exception."
   [{database-id :database, :as query} :- ::lib.schema/query]
   (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
@@ -168,6 +169,11 @@
              (query-perms/required-perms-for-query query :already-preprocessed? true)
              :throw-exceptions? false)
     (check-block-permissions query)))
+
+(defn check-query-action-permissions*
+  "Check that User with `user-id` has permissions to run query action `query`, or throw an exception."
+  [query]
+  (check-query-action-permissions** (lib-be/normalize-query query)))
 
 (defn check-query-action-permissions
   "Middleware that check that the current user has permissions to run the current query action."
