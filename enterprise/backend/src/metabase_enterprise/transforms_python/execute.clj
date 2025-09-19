@@ -1,5 +1,6 @@
 (ns metabase-enterprise.transforms-python.execute
   (:require
+   [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
@@ -9,6 +10,7 @@
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -160,6 +162,19 @@
         (log/info "New table")
         (create-table-and-insert-data! driver (:id db) table-name metadata data-source)))))
 
+(defn- cancel-python-code-http-call! [server-url run-id]
+  (python-runner/python-runner-request server-url :post "/cancel" {:body   (json/encode {:request_id run-id})
+                                                                   :async? true}
+                                       #_success #(log/debug %)
+                                       #_failure #(log/error %)))
+
+(defn open-cancellation-process!
+  "Starts a core.async process that optimistically sends a cancellation request to the python executor if cancel-chan receives a value.
+  Returns a channel that will receive either the async http call j.u.c.FutureTask in the case of cancellation, or nil when the cancel-chan is closed."
+  [server-url run-id cancel-chan]
+  (a/go (when (a/<! cancel-chan)
+          (cancel-python-code-http-call! server-url run-id))))
+
 (defn- run-python-transform! [{:keys [source] :as transform} db run-id cancel-chan message-log]
   ;; TODO restructure things such that s3 can we swapped out for other transfer mechanisms
   (with-open [log-future-ref     (open-python-message-update-future! run-id message-log)
@@ -170,7 +185,7 @@
                                                         :shared-storage @shared-storage-ref
                                                         :table-name->id (:source-tables source)
                                                         :cancel-chan    cancel-chan})
-          _          (python-runner/open-cancellation-process! server-url run-id cancel-chan) ; inherits lifetime of cancel-chan
+          _          (open-cancellation-process! server-url run-id cancel-chan) ; inherits lifetime of cancel-chan
           {:keys [status body] :as response}
           (python-runner/execute-python-code-http-call!
            {:server-url     server-url

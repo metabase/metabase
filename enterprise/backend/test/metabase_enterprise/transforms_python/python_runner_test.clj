@@ -5,18 +5,13 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase-enterprise.transforms-python.execute :as transforms.execute]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
-   [metabase-enterprise.transforms.schedule :as transforms.schedule]
-   [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
-   [metabase-enterprise.transforms.test-util :as transforms.tu]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.sync.core :as sync]
-   [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
@@ -364,7 +359,7 @@
                   "count"         :type/BigInteger
                   "price"         :type/Float
                   "is_active"     :type/Boolean
-                  ;; Our hack works
+                 ;; Our hack works
                   "created_date"  :type/Date
                   "updated_at"    :type/DateTime
                   "scheduled_for" :type/DateTimeWithLocalTZ}
@@ -493,5 +488,5 @@
                  (u/for-map [{:keys [name base_type]} (:fields metadata)]
                    [name (python-runner/restricted-insert-type base_type)]))))
 
-        ;; cleanup
+       ;; cleanup
         (driver/drop-table! driver db-id qualified-table-name)))))
