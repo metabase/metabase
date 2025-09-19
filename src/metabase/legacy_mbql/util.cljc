@@ -872,7 +872,7 @@
     [:field field-form nil]
     (lib.util.match/match-lite-recursive field-form :field field-form)))
 
-(mu/defn unwrap-field-or-expression-clause :- mbql.s/Field
+(mu/defn unwrap-field-or-expression-clause :- mbql.s/FieldOrExpressionRef
   "Unwrap a `:field` clause or expression clause, such as a template tag. Also handles unwrapped integers for
   legacy compatibility."
   [field-or-ref-form]

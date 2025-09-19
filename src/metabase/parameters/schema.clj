@@ -15,7 +15,7 @@
   "Schema for a valid legacy `:field` or `:expression` reference (possibly not yet normalized)."
   [:fn
    (fn [k]
-     ((comp (mr/validator mbql.s/Field)
+     ((comp (mr/validator mbql.s/FieldOrExpressionRef)
             mbql.normalize/normalize-tokens) k))])
 
 (mr/def ::values-source-config

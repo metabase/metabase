@@ -67,7 +67,7 @@
   [[_ tag] card]
   (get-in card [:dataset_query :native :template-tags (u/qualified-name tag) :dimension]))
 
-(mu/defn param-target->field-clause :- [:maybe mbql.s/Field]
+(mu/defn param-target->field-clause :- [:maybe mbql.s/FieldOrExpressionRef]
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
   [target card]
