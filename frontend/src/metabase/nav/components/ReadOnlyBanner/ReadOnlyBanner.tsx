@@ -13,7 +13,7 @@ export const ReadOnlyBanner = () => {
           {t`Metabase is under maintenance and is operating in read-only mode. It should only take up to 30 minutes.`}
         </Text>
       }
-      icon="info_filled"
+      icon="info"
     />
   );
 };

@@ -538,7 +538,7 @@ describe("issue 45410", () => {
       cy.findByText("abc2@example.com")
         .next("button")
         .then(([removeButton]) => {
-          cy.icon("info_filled").then(([infoIcon]) => {
+          cy.icon("info").then(([infoIcon]) => {
             const removeButtonRect = removeButton.getBoundingClientRect();
             const infoIconRect = infoIcon.getBoundingClientRect();
             expect(removeButtonRect.right).to.be.lte(infoIconRect.left);

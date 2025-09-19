@@ -212,8 +212,6 @@ import index_component from "./index.svg?component";
 import index_source from "./index.svg?source";
 import info_component from "./info.svg?component";
 import info_source from "./info.svg?source";
-import info_filled_component from "./info_filled.svg?component";
-import info_filled_source from "./info_filled.svg?source";
 import info_outline_component from "./info_outline.svg?component";
 import info_outline_source from "./info_outline.svg?source";
 import insight_component from "./insight.svg?component";
@@ -886,10 +884,6 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     info: {
       component: info_component,
       source: info_source,
-    },
-    info_filled: {
-      component: info_filled_component,
-      source: info_filled_source,
     },
     info_outline: {
       component: info_outline_component,
@@ -1569,7 +1563,6 @@ export type IconName =
   | "horizontal_bar"
   | "hourglass"
   | "info"
-  | "info_filled"
   | "info_outline"
   | "insight"
   | "int"

@@ -30,7 +30,7 @@ export function RequiredParamToggle(props: RequiredParamToggleProps) {
           {disabled && (
             <HoverCard position="top-end" shadow="xs">
               <HoverCard.Target>
-                <Icon name="info_filled" />
+                <Icon name="info" />
               </HoverCard.Target>
               <HoverCard.Dropdown w={320}>
                 <Stack p="md" gap="sm">
