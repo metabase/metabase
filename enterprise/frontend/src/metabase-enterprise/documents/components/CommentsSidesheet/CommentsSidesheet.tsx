@@ -191,28 +191,22 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
     <Box
       component="aside"
       pos="relative"
-      h="100dvh"
+      mah="100dvh"
       w="30rem"
       className={Animation.slideLeft}
       style={{
         borderLeft: "1px solid var(--mb-color-border)",
       }}
+      data-testid="comments-sidebar"
     >
-      <Title
-        order={3}
-        px="xl"
-        pt="1.25rem"
-        pb="sm"
-        display="flex"
-        style={{ justifyContent: "space-between" }}
-      >
-        <Box>
+      <Flex px="xl" pt="1.25rem" pb="sm" justify="space-between" align="center">
+        <Title order={3}>
           {childTargetId === "all" ? t`All comments` : t`Comments about this`}
-        </Box>
+        </Title>
         <ActionIcon onClick={closeSidebar}>
           <Icon name="close" c="text-primary" />
         </ActionIcon>
-      </Title>
+      </Flex>
 
       <Tabs
         value={activeTab}
