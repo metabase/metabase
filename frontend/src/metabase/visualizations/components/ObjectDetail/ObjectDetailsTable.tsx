@@ -19,7 +19,7 @@ import {
   isa,
 } from "metabase-lib/v1/types/utils/isa";
 import type {
-  DatasetData,
+  DatasetColumn,
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -133,7 +133,7 @@ export function DetailsTableCell({
 }
 
 export interface DetailsTableProps {
-  data: DatasetData;
+  columns: DatasetColumn[];
   zoomedRow: RowValue[];
   settings: VisualizationSettings;
   onVisualizationClick: OnVisualizationClickType;
@@ -141,13 +141,12 @@ export interface DetailsTableProps {
 }
 
 export function DetailsTable({
-  data,
+  columns,
   zoomedRow,
   settings,
   onVisualizationClick,
   visualizationIsClickable,
 }: DetailsTableProps): JSX.Element {
-  const { cols: columns } = data;
   const columnSettings = settings["table.columns"];
 
   const { cols, row } = useMemo(() => {
