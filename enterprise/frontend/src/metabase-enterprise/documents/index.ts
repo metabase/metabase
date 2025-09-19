@@ -8,13 +8,18 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { documentsReducer } from "./documents.slice";
 import { getRoutes } from "./routes";
-import { getCurrentDocument, getSidebarOpen } from "./selectors";
+import {
+  getCommentSidebarOpen,
+  getCurrentDocument,
+  getSidebarOpen,
+} from "./selectors";
 
 if (hasPremiumFeature("documents")) {
   PLUGIN_DOCUMENTS.getRoutes = getRoutes;
   PLUGIN_DOCUMENTS.shouldShowDocumentInNewItemMenu = () => true;
   PLUGIN_DOCUMENTS.getCurrentDocument = getCurrentDocument;
   PLUGIN_DOCUMENTS.getSidebarOpen = getSidebarOpen;
+  PLUGIN_DOCUMENTS.getCommentSidebarOpen = getCommentSidebarOpen;
 
   PLUGIN_REDUCERS.documents = documentsReducer;
 
