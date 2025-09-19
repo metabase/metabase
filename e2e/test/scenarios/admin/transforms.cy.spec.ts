@@ -543,6 +543,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       getTagsInput().click();
       H.popover()
         .findByText("hourly")
+        .parent()
         .findByLabelText("Rename tag")
         .click({ force: true });
       H.modal().within(() => {
@@ -561,6 +562,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       getTagsInput().click();
       H.popover()
         .findByText("hourly")
+        .parent()
         .findByLabelText("Delete tag")
         .click({ force: true });
       H.modal().within(() => {
@@ -596,7 +598,8 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       cy.log("Remove the new tag from transform B");
       getTagsInput().click();
       H.popover()
-        .findByRole("option", { name: "New tag" })
+        .findByText("New tag")
+        .parent()
         .findByLabelText("Delete tag")
         .click({ force: true });
       H.modal().within(() => {
