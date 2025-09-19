@@ -33,10 +33,14 @@ describe("scenarios > embedding > sdk iframe embedding > theming", () => {
 
   it("should apply custom themes", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-dashboard",
-      attributes: {
-        dashboardId: ORDERS_DASHBOARD_ID,
-      },
+      elements: [
+        {
+          component: "metabase-dashboard",
+          attributes: {
+            dashboardId: ORDERS_DASHBOARD_ID,
+          },
+        },
+      ],
       metabaseConfig: {
         theme: DARK_THEME,
       },
@@ -87,10 +91,14 @@ describe("scenarios > embedding > sdk iframe embedding > theming", () => {
     `;
 
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-dashboard",
-      attributes: {
-        dashboardId: ORDERS_DASHBOARD_ID,
-      },
+      elements: [
+        {
+          component: "metabase-dashboard",
+          attributes: {
+            dashboardId: ORDERS_DASHBOARD_ID,
+          },
+        },
+      ],
       metabaseConfig: {
         theme: LIGHT_THEME,
       },

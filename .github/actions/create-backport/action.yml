@@ -74,7 +74,7 @@ runs:
 
         git push -u origin ${BACKPORT_BRANCH}
 
-        BACKPORT_PR_URL=$(gh pr create --base "${TARGET_BRANCH}" --head "${BACKPORT_BRANCH}" --label "was-backported" --assignee "${GITHUB_ACTOR}" --title "🤖 backported \"${ORIGINAL_TITLE}\"" --body "${PR_BODY}")
+        BACKPORT_PR_URL=$(gh pr create --base "${TARGET_BRANCH}" --head "${BACKPORT_BRANCH}" --label "was-backported" --assignee "${{ github.event.pull_request.user.login }}" --title "🤖 backported \"${ORIGINAL_TITLE}\"" --body "${PR_BODY}")
         BACKPORT_PR_NUMBER=${BACKPORT_PR_URL##*/}
 
         echo "backport_pr_number=$BACKPORT_PR_NUMBER" >> $GITHUB_OUTPUT
