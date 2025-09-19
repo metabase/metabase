@@ -2209,7 +2209,7 @@
 (deftest move-collection!-dependency-checking-failure-test
   (testing "move-collection! with into-remote-synced? true throws exception when dependencies exist outside remote-synced collection"
     (mt/with-temp [:model/Collection {non-remote-synced-id :id} {:name "Non-Remote-Synced" :location "/" :type nil}
-                   :model/Collection {parent-id :id} {:name "Parent" :location "/"}
+                   :model/Collection {parent-id :id} {:name "Parent" :location "/" :type "remote-synced"}
                    :model/Collection {coll-id :id :as coll} {:name "Collection to Move"
                                                              :location "/"
                                                              :type nil}

@@ -1533,8 +1533,12 @@
   (if-let [collection (t2/select-one :model/Collection :id (if (= (t2/model model) :model/Collection) (:id model) (:collection_id model)))]
     (let [root-collection-id (or (-> collection :location location-path->ids first)
                                  (:id collection))
-          all-descendants (u/traverse [[(name (t2/model model)) id]] #(serdes/descendants (first %) (second %)))
-          {cards "Card"} (->> all-descendants keys (u/group-by first second))]
+          {cards "Card"} (u/group-by first second
+                                     (some-> (serdes/descendants (name (t2/model model)) id)
+                                             keys
+                                             not-empty
+                                             (u/traverse #(serdes/descendants (first %) (second %)))
+                                             keys))]
       (set/difference (set cards) (t2/select-pks-set :model/Card {:inner-join [[:collection :c]
                                                                                [:and
                                                                                 [:= :c.id :collection_id]
