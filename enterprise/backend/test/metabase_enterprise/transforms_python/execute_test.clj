@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase-enterprise.transforms-python.execute-test
+(ns ^:mb/transforms-python-test metabase-enterprise.transforms-python.execute-test
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.execute :as transforms-python.execute]

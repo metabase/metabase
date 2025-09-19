@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase-enterprise.transforms-python.e2e-test
+(ns ^:mb/transforms-python-test metabase-enterprise.transforms-python.e2e-test
   "End-to-end tests for Python library functionality."
   (:require
    [clojure.test :refer :all]

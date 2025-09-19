@@ -6,5 +6,5 @@ git clone --depth 1 https://${METABASE_AUTOMATION_USER_TOKEN}@github.com/metabas
 
 echo "Starting python-runner..."
 cd python-runner
-make run
+make run-ci
 cd ..

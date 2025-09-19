@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase-enterprise.transforms-python.drivers-test
+(ns ^:mb/transforms-python-test metabase-enterprise.transforms-python.drivers-test
   "Comprehensive tests for Python transforms across all supported drivers with all base and exotic types."
   (:require
    [clojure.core.async :as a]

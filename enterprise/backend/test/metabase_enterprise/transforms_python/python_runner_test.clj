@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase-enterprise.transforms-python.python-runner-test
+(ns ^:mb/transforms-python-test metabase-enterprise.transforms-python.python-runner-test
   (:require
    [clojure.core.async :as a]
    [clojure.java.jdbc :as jdbc]
