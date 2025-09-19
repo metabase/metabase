@@ -29,6 +29,7 @@
            "Metabot"
            "Setting"
            "Transform"
+           "TransformJob"
            "TransformTag"]))
 
 (def inlined-models
@@ -43,6 +44,7 @@
    "MetabotEntity"
    "MetabotPrompt"
    "TimelineEvent"
+   "TransformJobTransformTag"
    "TransformTransformTag"])
 
 (def excluded-models
@@ -101,9 +103,7 @@
    "Secret"
    "Session"
    "TaskHistory"
-   "TransformJob"
    "TransformJobRun"
-   "TransformJobTransformTag"
    "TransformRun"
    "TransformRunCancelation"
    "Undo"

@@ -1303,7 +1303,7 @@
                                                                                                     :dimension dimension}}}}})}}}]
 
       (testing "selecting a collection includes settings metabot and data model by default"
-        (is (= #{"Card" "Collection" "Dashboard" "Database" "Setting" "TransformTag"}
+        (is (= #{"Card" "Collection" "Dashboard" "Database" "Setting" "TransformTag" "TransformJob"}
                (->> {:targets [["Collection" coll1-id]]}
                     extract/extract
                     (map (comp :model first serdes/path))
@@ -1950,6 +1950,8 @@
     (mt/with-empty-h2-app-db!
       ;; Delete the existing built-in transform tags
       (t2/delete! :model/TransformTag)
+      ;; Delete the existing built-in transform jobs
+      (t2/delete! :model/TransformJob)
       (ts/with-temp-dpc [:model/Database
                          {db-id :id}
                          {:name "My Database"}
@@ -2010,7 +2012,38 @@
                          {}
                          {:transform_id transform-id
                           :tag_id daily-tag-id
-                          :position 2}]
+                          :position 2}
+                         ;; Create built-in TransformJob
+                         :model/TransformJob
+                         {hourly-job-id :id
+                          hourly-job-eid :entity_id}
+                         {:name "Hourly job"
+                          :description "Executes transforms tagged with 'hourly' every hour"
+                          :schedule "0 0 * * * ? *"
+                          :built_in_type "hourly"}
+                         ;; Create custom TransformJob
+                         :model/TransformJob
+                         {custom-job-id :id
+                          custom-job-eid :entity_id}
+                         {:name "Custom ETL Job"
+                          :description "Custom data processing job"
+                          :schedule "0 0 2 * * ? *"}
+                         ;; Create job-tag associations
+                         :model/TransformJobTransformTag
+                         {}
+                         {:job_id hourly-job-id
+                          :tag_id hourly-tag-id
+                          :position 0}
+                         :model/TransformJobTransformTag
+                         {}
+                         {:job_id custom-job-id
+                          :tag_id custom-tag-id
+                          :position 0}
+                         :model/TransformJobTransformTag
+                         {}
+                         {:job_id custom-job-id
+                          :tag_id daily-tag-id
+                          :position 1}]
 
         (testing "TransformTag extraction"
           (testing "built-in tags extract correctly"
@@ -2069,8 +2102,53 @@
                 (is (contains? deps [{:model "TransformTag" :id custom-tag-eid}]))
                 (is (contains? deps [{:model "TransformTag" :id daily-tag-eid}]))))))
 
+        (testing "TransformJob extraction"
+          (testing "built-in job extracts correctly"
+            (let [ser (serdes/extract-one "TransformJob" {} (t2/hydrate (t2/select-one :model/TransformJob :id hourly-job-id) :job_tags))]
+              (is (=? {:serdes/meta [{:model "TransformJob"
+                                      :id hourly-job-eid}]
+                       :name "Hourly job"
+                       :description "Executes transforms tagged with 'hourly' every hour"
+                       :schedule "0 0 * * * ? *"
+                       :built_in_type "hourly"
+                       :created_at string?
+                       :updated_at string?}
+                      ser))
+              (is (not (contains? ser :id)))
+              (testing "job has associated tags"
+                (is (= 1 (count (:job_tags ser))))
+                (is (= hourly-tag-eid (-> ser :job_tags first :tag_id)))
+                (is (= 0 (-> ser :job_tags first :position))))
+              (testing "dependencies include referenced tags"
+                (is (= #{[{:model "TransformTag" :id hourly-tag-eid}]}
+                       (set (serdes/dependencies ser)))))))
+          (testing "custom job extracts correctly"
+            (let [ser (serdes/extract-one "TransformJob" {} (t2/hydrate (t2/select-one :model/TransformJob :id custom-job-id) :job_tags))]
+              (is (=? {:serdes/meta [{:model "TransformJob"
+                                      :id custom-job-eid}]
+                       :name "Custom ETL Job"
+                       :description "Custom data processing job"
+                       :schedule "0 0 2 * * ? *"
+                       :built_in_type nil
+                       :created_at string?
+                       :updated_at string?}
+                      ser))
+              (is (not (contains? ser :id)))
+              (testing "job has multiple associated tags in correct order"
+                (is (= 2 (count (:job_tags ser))))
+                (let [tag-ids (map :tag_id (:job_tags ser))
+                      positions (map :position (:job_tags ser))]
+                  (is (= [custom-tag-eid daily-tag-eid] tag-ids))
+                  (is (= [0 1] positions))))
+              (testing "dependencies include all referenced tags"
+                (is (= #{[{:model "TransformTag" :id custom-tag-eid}]
+                         [{:model "TransformTag" :id daily-tag-eid}]}
+                       (set (serdes/dependencies ser))))))))
+
         (testing "extraction counts"
           (is (= #{transform-eid}
-                 (ids-by-model "Transform" (extract/extract nil))))
+                 (ids-by-model "Transform" (extract/extract {}))))
+          (is (= #{hourly-job-eid custom-job-eid}
+                 (ids-by-model "TransformJob" (extract/extract {}))))
           (is (= #{hourly-tag-eid daily-tag-eid custom-tag-eid}
-                 (ids-by-model "TransformTag" (extract/extract nil)))))))))
+                 (ids-by-model "TransformTag" (extract/extract {})))))))))

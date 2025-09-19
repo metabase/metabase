@@ -166,6 +166,8 @@
  [:Transform :source :query]     []
  [:Transform :source :query :native] []
  [:Transform :source :query :native :template-tags] []
+ :TransformJob                   []
+ [:TransformJob :job_tags]       []
  :TransformTag                   []
  :Metabot                        [:name
                                   :description
