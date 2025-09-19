@@ -79,14 +79,12 @@
                                                          (qp.store/with-metadata-provider db-id
                                                            {:output-tables (output-table-map db-transforms)
                                                             :dependencies (dependency-map db-transforms)})))
-                                                  (apply merge-with merge))
-
-        all-deps (update-vals dependencies #(into #{}
-                                                  (keep (fn [{:keys [table transform]}]
-                                                          (or (output-tables table)
-                                                              (transform-ids transform))))
-                                                  %))]
-    all-deps))
+                                                  (apply merge-with merge))]
+    (update-vals dependencies #(into #{}
+                                     (keep (fn [{:keys [table transform]}]
+                                             (or (output-tables table)
+                                                 (transform-ids transform))))
+                                     %))))
 
 (defn find-cycle
   "Finds a path containing a cycle in the directed graph `node->children`.
