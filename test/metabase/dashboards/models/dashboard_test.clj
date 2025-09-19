@@ -224,16 +224,16 @@
     (testing "creating"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #":parameters must be a sequence of maps with :id and :type keys"
+           #"Invalid parameters: \[\"invalid type\"\]"
            (mt/with-temp [:model/Dashboard _ {:parameters {:a :b}}]))))
     (testing "updating"
       (mt/with-temp [:model/Dashboard {:keys [id]} {:parameters []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #":parameters must be a sequence of maps with :id and :type keys"
+             #"Invalid parameters: \[\{:id \[\"should be a string\" \"non-blank string\"\], :type \[\"missing required key\"\]\}\]"
              (t2/update! :model/Dashboard id {:parameters [{:id 100}]})))))))
 
-(deftest normalize-parameters-test
+(deftest ^:parallel normalize-parameters-test
   (testing ":parameters should get normalized when coming out of the DB"
     (doseq [[target expected] {[:dimension [:field-id 1000]] [:dimension [:field 1000 nil]]
                                [:field-id 1000]              [:field 1000 nil]}]
@@ -253,8 +253,8 @@
                    :id     "_CATEGORY_NAME_"
                    :type   :category
                    :target expected
-                   :values_query_type "list",
-                   :values_source_type "card",
+                   :values_query_type :list
+                   :values_source_type :card
                    :values_source_config {:card_id card-id, :value_field [:field 2 nil]}}]
                  (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id))))))))
 
@@ -284,8 +284,8 @@
                 :slug                 "category_name"
                 :id                   "_CATEGORY_NAME_"
                 :type                 :category
-                :values_query_type    "list",
-                :values_source_type   "card",
+                :values_query_type    :list
+                :values_source_type   :card
                 :values_source_config {:card_id card-id, :value_field [:field 2 nil]}}]
               (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id))))))
 

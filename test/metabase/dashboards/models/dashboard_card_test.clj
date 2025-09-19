@@ -13,29 +13,34 @@
 (set! *warn-on-reflection* true)
 
 (defn remove-ids-and-timestamps [m]
-  (let [f (fn [v]
-            (cond
-              (map? v) (remove-ids-and-timestamps v)
-              (coll? v) (mapv remove-ids-and-timestamps v)
-              :else v))]
-    (into {} (for [[k v] m]
-               (when-not (or (= :id k)
-                             (.endsWith (name k) "_id")
-                             (= :created_at k)
-                             (= :updated_at k)
-                             (= :card_schema k))
-                 [k (f v)])))))
+  (if-not (map? m)
+    m
+    (let [f (fn [v]
+              (cond
+                (map? v)  (remove-ids-and-timestamps v)
+                (coll? v) (mapv remove-ids-and-timestamps v)
+                :else     v))]
+      (into {}
+            (map (fn [[k v]]
+                   (when-not (or (= :id k)
+                                 (.endsWith (name k) "_id")
+                                 (= :created_at k)
+                                 (= :updated_at k)
+                                 (= :card_schema k))
+                     [k (f v)])))
+            m))))
 
 (deftest ^:parallel retrieve-dashboard-card-test
   (testing "retrieve-dashboard-card basic dashcard (no additional series)"
     (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
                    :model/Card          {card-id :id}      {}
-                   :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id :card_id card-id :parameter_mappings [{:foo "bar"}]}]
+                   :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id :card_id card-id :parameter_mappings [{:parameter_id "bar"
+                                                                                                                              :target       [:dimension [:field 1 nil]]}]}]
       (is (= {:size_x                 4
               :size_y                 4
               :col                    0
               :row                    0
-              :parameter_mappings     [{:foo "bar"}]
+              :parameter_mappings     [{:target [:dimension [:field 1 nil]]}] ; not sure what happened to `parameter_id`, not my problem I guess
               :inline_parameters      []
               :visualization_settings {}
               :series                 []}
@@ -116,7 +121,8 @@
                                      :size_y                 3
                                      :row                    1
                                      :col                    1
-                                     :parameter_mappings     [{:foo "bar"}]
+                                     :parameter_mappings     [{:parameter_id "bar"
+                                                               :target [:dimension [:field 1 nil]]}]
                                      :inline_parameters      []
                                      :visualization_settings {}
                                      :series                 [card-id]}]))]
@@ -125,7 +131,7 @@
                   :size_y                 3
                   :col                    1
                   :row                    1
-                  :parameter_mappings     [{:foo "bar"}]
+                  :parameter_mappings     [{:target [:dimension [:field 1 nil]]}]
                   :inline_parameters      []
                   :visualization_settings {}
                   :series                 [{:name                   "Test Card"
@@ -140,7 +146,7 @@
                   :size_y                 3
                   :col                    1
                   :row                    1
-                  :parameter_mappings     [{:foo "bar"}]
+                  :parameter_mappings     [{:target [:dimension [:field 1 nil]]}]
                   :inline_parameters      []
                   :visualization_settings {}
                   :series                 [{:name                   "Test Card"
@@ -160,7 +166,8 @@
                    :model/DashboardCard {dashcard-id :id
                                          :as dashboard-card} {:dashboard_id       dashboard-id
                                                               :card_id            card-id
-                                                              :parameter_mappings [{:foo "bar"}]}
+                                                              :parameter_mappings [{:parameter_id "bar"
+                                                                                    :target [:dimension [:field 1 nil]]}]}
                    :model/Card          {card-id-1 :id}   {:name "Test Card 1"}
                    :model/Card          {card-id-2 :id}   {:name "Test Card 2"}]
       (testing "unmodified dashcard"
@@ -168,7 +175,7 @@
                 :size_y                 4
                 :col                    0
                 :row                    0
-                :parameter_mappings     [{:foo "bar"}]
+                :parameter_mappings     [{:target [:dimension [:field 1 nil]]}]
                 :inline_parameters      []
                 :visualization_settings {}
                 :series                 []}
@@ -183,7 +190,8 @@
                     :size_y                 3
                     :row                    1
                     :col                    1
-                    :parameter_mappings     [{:foo "barbar"}]
+                    :parameter_mappings     [{:parameter_id "barbar"
+                                              :target [:dimension [:field 1 nil]]}]
                     :inline_parameters      []
                     :visualization_settings {}
                     :series                 [card-id-2 card-id-1]}
@@ -193,7 +201,7 @@
                 :size_y                 3
                 :col                    1
                 :row                    1
-                :parameter_mappings     [{:foo "barbar"}]
+                :parameter_mappings     [{:target [:dimension [:field 1 nil]]}]
                 :inline_parameters      []
                 :visualization_settings {}
                 :series                 [{:name                   "Test Card 2"

@@ -79,7 +79,7 @@
   [:enum {:decode/normalize lib.schema.common/normalize-keyword} :static-list :card])
 
 (mr/def ::values-query-type
-  [:enum {:decode/normalize lib.schema.common/normalize-keyword} :none])
+  [:enum {:decode/normalize lib.schema.common/normalize-keyword} :none :list :search])
 
 (mr/def ::parameter
   "Schema for a valid Parameter. We're not using [[metabase.legacy-mbql.schema/Parameter]] here because this Parameter

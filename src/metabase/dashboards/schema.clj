@@ -5,7 +5,8 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.lib.schema.common :as lib.schema.common]))
 
 (mr/def ::dashcard.base
   [:map
@@ -84,7 +85,8 @@
    [:points_of_interest      {:optional true} [:maybe :string]]
    [:position                {:optional true} [:maybe ms/PositiveInt]]
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
-   [:tabs                    {:optional true} [:maybe [:ref ::dashboard-tabs]]]])
+   [:tabs                    {:optional true} [:maybe [:ref ::dashboard-tabs]]]
+   [:width                   {:optional true} [:enum {:decode/normalize lib.schema.common/normalize-keyword} :fixed :full]]])
 
 (mr/def ::dashboard.update
   [:merge
@@ -92,7 +94,7 @@
    [:map
     [:tabs {:optional true} [:ref ::dashboard-tabs.update]]]])
 
-(mu/defn normalize-dashboard :- ::dashboard
+(mu/defn normalize-dashboard :- :map
   "Normalize a Dashboard using `schema`, default `::dashboard`."
   ([dashboard]
    (normalize-dashboard dashboard ::dashboard))

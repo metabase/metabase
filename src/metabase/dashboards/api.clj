@@ -589,13 +589,11 @@
     (events/publish-event! :event/dashboard-delete {:object dashboard :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
-
-
 (api.macros/defendpoint :put "/:id"
-  "Update a Dashboard, and optionally the `dashcards` and `tabs` of a Dashboard. The request body should be a JSON object with the same
-  structure as the response from `GET /api/dashboard/:id`."
+  "Update a Dashboard, and optionally the `dashcards` and `tabs` of a Dashboard. The request body should be a JSON
+  object with the same structure as the response from `GET /api/dashboard/:id`."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::lib.schema.id/dashboard]]
    _query-params
    dash-updates :- ::dashboards.schema/dashboard.update]
   (dashboard.update/update-dashboard! id dash-updates))

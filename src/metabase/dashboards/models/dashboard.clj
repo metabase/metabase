@@ -70,7 +70,8 @@
 
 (t2/deftransforms :model/Dashboard
   {:parameters       parameters/transform-parameters
-   :embedding_params mi/transform-json})
+   :embedding_params mi/transform-json
+   :width            mi/transform-keyword})
 
 (t2/define-before-delete :model/Dashboard
   [dashboard]
@@ -94,13 +95,16 @@
 (t2/define-before-update :model/Dashboard
   [dashboard]
   (let [changes (t2/changes dashboard)]
-    (u/prog1 (maybe-populate-initially-published-at dashboard)
-      (params/assert-valid-parameters dashboard)
-      (when (:parameters changes)
-        (queries/upsert-or-delete-parameter-cards-from-parameters! :model/Dashboard (:id dashboard) (:parameters dashboard)))
-      (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard))
-      (when (:archived changes)
-        (t2/delete! :model/Pulse :dashboard_id (u/the-id dashboard))))))
+    (if (empty? changes)
+      changes
+      (let [changes (dashboards.schema/normalize-dashboard dashboard ::dashboards.schema/dashboard.update)]
+        (u/prog1 (maybe-populate-initially-published-at dashboard)
+          (params/assert-valid-parameters changes)
+          (when (:parameters changes)
+            (queries/upsert-or-delete-parameter-cards-from-parameters! :model/Dashboard (:id dashboard) (:parameters dashboard)))
+          (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard))
+          (when (:archived changes)
+            (t2/delete! :model/Pulse :dashboard_id (u/the-id dashboard))))))))
 
 (defn- migrate-parameter [p]
   (cond-> p

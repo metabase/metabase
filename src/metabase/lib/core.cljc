@@ -44,6 +44,7 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
+   [metabase.lib.schema]
    [metabase.lib.schema.util]
    [metabase.lib.segment :as lib.segment]
    [metabase.lib.serialize]
@@ -95,6 +96,7 @@
          lib.query/keep-me
          lib.ref/keep-me
          lib.remove-replace/keep-me
+         metabase.lib.schema/keep-me
          metabase.lib.schema.util/keep-me
          lib.segment/keep-me
          metabase.lib.serialize/keep-me
@@ -408,6 +410,8 @@
   rename-join
   replace-clause
   replace-join]
+ [metabase.lib.schema
+  native-only-query?]
  [metabase.lib.schema.util]
  [lib.segment
   available-segments]

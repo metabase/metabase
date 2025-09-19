@@ -65,10 +65,10 @@
   checks (since there is no current User) and get *all* values."
   false)
 
-(mu/defn- template-tag->field-id :- ::lib.schema.id/field
+(mu/defn- template-tag->field-id :- [:maybe ::lib.schema.id/field]
   "Fetch the `:field` clause from `dashcard` referenced by `template-tag`.
 
-    (template-tag->field-id [:template-tag :company] some-dashcard) ; -> 100"
+    (template-tag->field-id [:template-tag \"company\"] some-dashcard) ; -> 100"
   [[_ tag] :- ::lib.schema.parameter/template-tag
    query    :- ::lib.schema/query]
   (lib.util.match/match-one (get-in (lib/all-template-tags-map query) [tag :dimension])

@@ -52,7 +52,6 @@
   (when (update-dashcards-and-tabs? dash-updates)
     (api/check-not-archived (merge current-dash (select-keys dash-updates [:archived])))))
 
-;; TODO -- should we only check *new* or *modified* mappings?
 (mu/defn- check-parameter-mapping-permissions
   "Starting in 0.41.0, you must have *data* permissions in order to add or modify a DashboardCard parameter mapping."
   {:added "0.41.0"}
@@ -109,12 +108,12 @@
   [dashboard-id dashcards]
   (let [dashcard-id->existing-mappings (existing-parameter-mappings dashboard-id)
         existing-mapping?              (fn [dashcard-id mapping]
-                                         (let [[mapping]         (parameters/normalize-parameter-mapping mapping)
+                                         (let [mapping           (parameters/normalize-parameter-mapping mapping)
                                                existing-mappings (get dashcard-id->existing-mappings dashcard-id)]
                                            (contains? existing-mappings (select-keys mapping [:target :parameter_id]))))
         new-mappings                   (for [{mappings :parameter_mappings, dashcard-id :id} dashcards
                                              mapping mappings
-                                             :when (not (existing-mapping? dashcard-id mapping))]
+                                             :when   (not (existing-mapping? dashcard-id mapping))]
                                          (assoc mapping :dashcard-id dashcard-id))
         ;; need to add the appropriate `:card-id` for all the new mappings we're going to check.
         dashcard-id->card-id           (when (seq new-mappings)
@@ -285,14 +284,10 @@
 (defn- handle-broken-subscriptions!
   "Given a dashboard id and original parameters, determine if any of the subscriptions are broken (we've removed params
   that subscriptions require). If so, delete the subscriptions and notify the dashboard and pulse creators."
-  [dashboard-id {:keys [parameters], :as _dash-updates}]
+  [dashboard-id current-dash {:keys [parameters], :as _dash-updates}]
   ;; If there are parameters in the update, we want the old params so that we can do a check to see if any of
   ;; the notifications were broken by the update.
-  (let [{original-params :resolved-params} (when parameters
-                                             (t2/hydrate
-                                              (t2/select-one :model/Dashboard dashboard-id)
-                                              [:dashcards :card]
-                                              :resolved-params))]
+  (let [{original-params :resolved-params} current-dash]
     (doseq [{:keys [pulse-id] :as broken-subscription} (broken-subscription-data dashboard-id original-params)]
       ;; Archive the pulse
       (pulse/update-pulse! {:id pulse-id :archived true})
@@ -368,7 +363,7 @@
       (when (contains? dash-updates :collection_id)
         (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
       ;; Handle broken subscriptions, if any, when parameters changed
-      (handle-broken-subscriptions! id dash-updates))
+      (handle-broken-subscriptions! id current-dash dash-updates))
     ;; [[update-dashcards-and-tabs!]] uses `:dashcards` which is removed by [[select-dash-update-keys]]
     (update-dashcards-and-tabs! current-dash dash-updates changes-stats)))
 
@@ -390,7 +385,9 @@
   (span/with-span! {:name       "update-dashboard"
                     :attributes {:dashboard/id id}}
     (let [dash-updates  (dashboards.schema/normalize-dashboard dash-updates ::dashboards.schema/dashboard.update)
-          current-dash  (api/write-check :model/Dashboard id)
+          current-dash  (cond-> (api/write-check :model/Dashboard id)
+                          (contains? dash-updates :parameters)
+                          (t2/hydrate [:dashcards :card] :resolved-params))
           changes-stats (atom nil)
           dash-updates (api/updates-with-archived-directly current-dash dash-updates)]
       (check-allowed-to-update-dashboard current-dash dash-updates)

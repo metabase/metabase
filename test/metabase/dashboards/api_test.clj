@@ -892,17 +892,15 @@
       (mt/with-temp [:model/Dashboard dashboard {}]
         (with-dashboards-in-writeable-collection! [dashboard]
           (testing "the default dashboard width value is 'fixed'."
-            (is (= "fixed"
+            (is (= :fixed
                    (t2/select-one-fn :width :model/Dashboard :id (u/the-id dashboard)))))
-
           (testing "changing the width setting to 'full' works."
             (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard)) {:width "full"})
-            (is (= "full"
+            (is (= :full
                    (t2/select-one-fn :width :model/Dashboard :id (u/the-id dashboard)))))
-
           (testing "values that are not 'fixed' or 'full' error."
-            (is (=? {:specific-errors {:width ["should be either \"fixed\" or \"full\", received: 1200"]}
-                     :errors          {:width "enum of fixed, full"}}
+            (is (=? {:specific-errors {:width ["should be either :fixed or :full, received: 1200"]}
+                     :errors          {:width ["enum of :fixed, :full"]}}
                     (mt/user-http-request :rasta :put 400 (str "dashboard/" (u/the-id dashboard)) {:width 1200})))))))))
 
 (deftest update-dashboard-add-time-granularity-param
@@ -2143,7 +2141,7 @@
                                                                    :parameter_mappings     [{:parameter_id "abc"
                                                                                              :card_id      123
                                                                                              :hash         "abc"
-                                                                                             :target       "foo"}]
+                                                                                             :target       [:field 1 nil]}]
                                                                    :visualization_settings {}}]
                                                       :tabs      []}))]
           ;; extra sure here because the dashcard we given has a negative id
@@ -2155,7 +2153,7 @@
                    :row                        4
                    :series                     []
                    :dashboard_tab_id           nil
-                   :parameter_mappings         [{:parameter_id "abc" :card_id 123, :hash "abc", :target "foo"}]
+                   :parameter_mappings         [{:parameter_id "abc" :card_id 123, :hash "abc", :target ["field" 1 nil]}]
                    :visualization_settings     {}
                    :created_at                 true
                    :updated_at                 true
@@ -2169,7 +2167,7 @@
                    :size_y                 4
                    :col                    4
                    :row                    4
-                   :parameter_mappings     [{:parameter_id "abc", :card_id 123, :hash "abc", :target "foo"}]
+                   :parameter_mappings     [{:parameter_id "abc", :card_id 123, :hash "abc", :target [:field 1 nil]}]
                    :visualization_settings {}}]
                  (map (partial into {})
                       (t2/select [:model/DashboardCard :size_x :size_y :col :row :parameter_mappings :visualization_settings]
@@ -2327,7 +2325,7 @@
                                                          :parameter_mappings     [{:parameter_id "abc"
                                                                                    :card_id      123
                                                                                    :hash         "abc"
-                                                                                   :target       "foo"}]
+                                                                                   :target       [:field 1 nil]}]
                                                          :visualization_settings {}}]
                                             :tabs      []}))))))
 
@@ -3249,7 +3247,8 @@
                                            :card_id      (:id card)
                                            :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
                                           {:parameter_id "_PRICE_"
-                                           :card_id      (:id card)}]})
+                                           :card_id      (:id card)
+                                           :target       [:dimension [:field 1 nil]]}]})
         (testing "Since the _PRICE_ param is not mapped to a valid Field, it should get ignored"
           (mt/let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_" "_PRICE_" 4)]
             (is (= {:values          [["African"] ["American"] ["Artisan"]]
@@ -3358,6 +3357,8 @@
 (deftest chain-filter-should-use-cached-field-values-test
   (testing "Chain filter endpoints should use cached FieldValues if applicable (#13832)"
     ;; ignore the cache entries added by #23699
+    (assert (t2/exists? :model/FieldValues :field_id (mt/id :categories :name) :hash_key nil)
+            "FieldValues entry for categories.name has gone missing! (If this is gone there's probably a bug in sync)")
     (mt/with-temp-vals-in-db :model/FieldValues (t2/select-one-pk :model/FieldValues :field_id (mt/id :categories :name) :hash_key nil) {:values ["Good" "Bad"]}
       (with-chain-filter-fixtures [{:keys [dashboard]}]
         (testing "GET /api/dashboard/:id/params/:param-key/values"
@@ -4395,7 +4396,7 @@
                                       :type          :model}
            :model/Dashboard {dash-id        :id
                              dashboard-name :name} {:name       "My Awesome Dashboard"
-                                                    :parameters [param]}
+                             :parameters [param]}
            :model/DashboardCard {dash-card-id :id} {:dashboard_id       dash-id
                                                     :card_id            card-id
                                                     :parameter_mappings [{:parameter_id "_SOURCE_PARAM_ID_"
@@ -4451,20 +4452,18 @@
             (let [{:keys [parameters]} (dashboard-response (mt/user-http-request
                                                             :rasta :put 200 (str "dashboard/" dash-id)
                                                             {:parameters []}))
-                  title            (format "Subscription to %s removed" dashboard-name)
+                  title                (format "Subscription to %s removed" dashboard-name)
                   ;; Keep only the relevant messages. If not, you might get some other side-effecting email, such
                   ;; as "We've Noticed a New Metabase Login, Rasta".
-                  inbox            (update-vals
-                                    @mt/inbox
-                                    (fn [messages]
-                                      (filterv (comp #{title} :subject) messages)))
-                  emails-received? (fn [recipient-email]
-                                     (testing "The first email was received"
-                                       (is (true? (some-> (get-in inbox [recipient-email 0 :body 0 :content])
-                                                          (str/includes? title)))))
-                                     (testing "The second email (about the broken slack pulse) was received"
-                                       (is (true? (some-> (get-in inbox [recipient-email 1 :body 0 :content])
-                                                          (str/includes? "#my-channel"))))))]
+                  inbox                (update-vals
+                                        @mt/inbox
+                                        (fn [messages]
+                                          (filterv (comp #{title} :subject) messages)))
+                  test-emails-received (fn [recipient-email]
+                                         (testing "The first email was received, and the second email (about the broken slack pulse) was received"
+                                           (is (=? {recipient-email [{:body [{:content #(str/includes? % title)}]}
+                                                                     {:body [{:content #(str/includes? % "#my-channel")}]}]}
+                                                   inbox))))]
               (testing "The dashboard parameters were removed"
                 (is (empty? parameters)))
               (testing "The broken pulse was archived"
@@ -4475,8 +4474,8 @@
                 (is (= #{"trashbird@metabase.com" "rasta@metabase.com"}
                        (set (keys inbox)))))
               (testing "Notification emails were sent to the dashboard and pulse creators"
-                (emails-received? "rasta@metabase.com")
-                (emails-received? "trashbird@metabase.com")))))))))
+                (test-emails-received "rasta@metabase.com")
+                (test-emails-received "trashbird@metabase.com")))))))))
 
 (deftest run-mlv2-dashcard-query-test
   (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id"
@@ -4631,7 +4630,8 @@
   (testing "Don't throw an error if source card is deleted (#48461)"
     (mt/with-temp
       [:model/Card          {card-id-1 :id}    {:dataset_query (mt/mbql-query products)}
-       :model/Card          {card-id-2 :id}    {:dataset_query {:type     :query
+       :model/Card          {card-id-2 :id}    {:dataset_query {:database (mt/id)
+                                                                :type     :query
                                                                 :query    {:source-table (str "card__" card-id-1)}}}
        :model/Dashboard     {dashboard-id :id} {}
        :model/DashboardCard _                  {:card_id      card-id-2

@@ -326,10 +326,10 @@
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
-(defn populate-query-fields
+(mu/defn populate-query-fields :- [:maybe :map]
   "Lift `database_id`, `table_id`, `query_type`, and `source_card_id` fields
   from query definition when inserting/updating a Card."
-  [{query :dataset_query, :as card}]
+  [{query :dataset_query, :as card} :- ::queries.schema/card]
   (merge
    card
    ;; mega HACK FIXME -- don't update this stuff when doing deserialization because it might differ from what's in the
