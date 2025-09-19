@@ -22,7 +22,7 @@
 (deftest validate-exported-questions
   (doseq [question (t2/select :model/Card :type :question)]
     (let [edn (rep/export question)
-          ;; convert to yaml
+          ;; convert to yaml and read back in to convert keywords to strings, etc
           yaml (yaml/generate-string edn)
           rep  (yaml/parse-string yaml)]
       (is (rep/validate rep)))))
