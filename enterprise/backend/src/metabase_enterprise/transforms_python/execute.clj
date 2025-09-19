@@ -10,7 +10,6 @@
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
