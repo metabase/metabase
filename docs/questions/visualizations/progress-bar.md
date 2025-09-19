@@ -22,7 +22,7 @@ Progress bars give you an option to set up an alert whenever the result of a que
 
 To create a progress bar you'll need:
 
-- A query that returns a single row with one or more numeric columns, like "Sum of order quantity". Progress bar doesn't work with breakouts.
+- A query that returns a single row with one or more numeric columns, like "Sum of order quantity". Progress bars don't work with breakouts.
 
   | Sum of Quantity | Average Quantity | Max Quantity |
   | --------------- | ---------------- | ------------ |
@@ -40,25 +40,25 @@ Once you built the query that returns data in the appropriate shape, you can cre
 
 1. Visualize the query results.
 
-   By default, Metabase might display them as a table or big number, but you can switch the visualization type.
+   By default, Metabase might display results as a table or a number, but you can switch the visualization type.
 
-2. While viewing a visualization, click on on the **Visualization** button in the bottom left of the screen and switch visualization to **Progress**.
+2. While viewing a visualization, click the **Visualization** button in the bottom left of the screen and switch visualization to **Progress**.
 
-3. To set the bar's goal and metric, click on the **gear** icon in the bottom left to open the settings sidebar.
+3. To set the bar's goal and metric, click the **gear** icon in the bottom left to open the settings sidebar.
 4. In the "Display" bar in the settings sidebar, choose the column to use as a metric and the column or number to use as a goal. See [Set a goal](#set-progress-bar-goal).
 
    If your query only returns one number, you'll only be able to set a constant goal.
 
 ## Set goal for a progress bar
 
-You can set a constant goal (e.g. 5000) or a custom goal based on another column.
+You can set a constant goal (e.g., 5000) or a custom goal based on another column.
 
 ### Use a constant goal
 
 To set a constant goal for the progress bar:
 
-1. While viewing the progress bar visualization, click on the **Gear** icon in bottom left to open settings.
-2. On the display tab, click on the **Goal** dropdown and select **Custom value**.
+1. While viewing the progress bar, click the **Gear** icon in bottom left to open settings.
+2. On the display tab, click the **Goal** dropdown and select **Custom value**.
 
    If your query result contains only a single column, you won't see the column dropdown, and instead you'll just see a field to enter your constant goal.
 
@@ -72,7 +72,7 @@ The custom goal has to come from a column in the same query, so your query has t
 | ----- | ---- |
 | 4910  | 5000 |
 
-If you're building the query in the query builder, this means might need to compute both metric and goal as aggregations, so [custom aggregations](../query-builder/expressions-list.md#aggregations) might be handy.
+If you're using the query builder, you might need to compute both the metric and the goal as aggregations, so [custom aggregations](../query-builder/expressions-list.md#aggregations) might be handy.
 
 For example, if you want to build a progress bar comparing count of orders this year (the metric) vs count of orders last year (the goal) you can make use of [`CountIf()`](../query-builder/expressions/countif.md) to build a query returning conditional counts based on years:
 
@@ -87,18 +87,18 @@ Once you have a column that you want to use, set it as a goal:
 
 ### Use another query's result as the goal
 
-To use the result of another query as the goal value for the progress bar, you'll first need to bring this value into your query as a column, then select that newly added column as the goal value in progress bar settings. You can accomplish this in the query. buidler using a join on `1=1`
+To use the result of another query as the goal value for the progress bar, you'll first need to bring this value into your query as a column, then select that newly added column as the goal value in progress bar settings. In the query builder, you can bring in a result from another question using a join on `1=1`:
 
-1. Create a separate question returning a single number - your dynamic goal.
-2. In your progress bar question, built the query that evaluates the metric you want to compare to the goal.
-3. In the last stage of the query for your progress bar, [join](../query-builder/join.md) the question containing your dynamic goal using a custom expression `1` for both sides of the join. See [joins with custom expressions](../query-builder/join.md#joins-with-custom-expressions).
+1. Create a separate question returning a single number: your dynamic goal.
+2. Create a new question. This question should return the metric you want to compare to the goal. This is the question you'll visualize as a progress bar.
+3. ```
+3. [Join](../query-builder/join.md) this question to the question containing your dynamic goal from step 1. Join the question using a custom expression `1` for both sides of the join. See [joins with custom expressions](../query-builder/join.md#joins-with-custom-expressions).
 
-   This should add the dynamic goal as a new column to your query
+   This join should add the dynamic goal as a new column to your query.
 
    ![Dynamic goal in the query builder](../images/progress-bar-dynamic.png)
 
-4. [Create a progress bar](#create-a-progress-bar) and [set the dynamic goal column as the goal](#use-another-column-as-the-goal)
-   .
+4. Set the visualization to a [progress bar](#create-a-progress-bar) and [set the dynamic goal column as the goal](#use-another-column-as-the-goal).
 
 ## Progress bar options
 
