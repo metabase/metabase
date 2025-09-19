@@ -1,5 +1,4 @@
 import { useWindowEvent } from "@mantine/hooks";
-import cx from "classnames";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLatest, useLocation } from "react-use";
 import { t } from "ttag";
@@ -9,15 +8,14 @@ import { useToast } from "metabase/common/hooks";
 import Animation from "metabase/css/core/animation.module.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
+  ActionIcon,
   Box,
   Flex,
   Icon,
   Image,
-  Modal,
   Tabs,
   Text,
   Title,
-  rem,
 } from "metabase/ui";
 import {
   useCreateCommentMutation,
@@ -155,11 +153,6 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
     }
   }, [hash, activeTabRef, isHashCommentResolved, isHashCommentUnresolved]);
 
-  // Mantine modal, at least in v8 listens to `window` events in capture mode (before bubbling up),
-  // so the modal closes before the event reaches the comment editor
-  // See: https://github.com/mantinedev/mantine/blob/master/packages/%40mantine/core/src/components/ModalBase/use-modal.ts#L43
-  // Therefore we need to listen for escape events during the bubbling phase, not the capture phase
-  const closeOnEscape = false;
   useWindowEvent("keydown", (event) => {
     if (event.key === "Escape" && !event.defaultPrevented) {
       closeSidebar();
@@ -200,13 +193,15 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
       pos="relative"
       h="100dvh"
       w="30rem"
+      className={Animation.slideLeft}
       style={{
         borderLeft: "1px solid var(--mb-color-border)",
       }}
     >
       <Title
         order={3}
-        p="xl"
+        px="xl"
+        pt="1.25rem"
         pb="sm"
         display="flex"
         style={{ justifyContent: "space-between" }}
@@ -214,14 +209,9 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
         <Box>
           {childTargetId === "all" ? t`All comments` : t`Comments about this`}
         </Box>
-        <Icon
-          cursor="pointer"
-          name="close"
-          ta="right"
-          onClick={closeSidebar}
-          size={20}
-          c="var(--mb-color-text-tertiary)"
-        />
+        <ActionIcon onClick={closeSidebar}>
+          <Icon name="close" c="text-primary" />
+        </ActionIcon>
       </Title>
 
       <Tabs
@@ -290,102 +280,6 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
         </Tabs.Panel>
       </Tabs>
     </Box>
-  );
-
-  return (
-    <Modal.Root
-      h="100dvh"
-      lockScroll={false}
-      opened
-      variant="sidesheet"
-      onClose={closeSidebar}
-      closeOnEscape={closeOnEscape}
-    >
-      <Modal.Content
-        classNames={{
-          content: cx(S.content, Animation.slideLeft),
-        }}
-        data-testid="sidesheet"
-        px="none"
-        transitionProps={{ duration: 0 }}
-        w={rem(400)}
-      >
-        <Modal.Header px="xl">
-          <Modal.Title>
-            {childTargetId === "all" ? t`All comments` : t`Comments about this`}
-          </Modal.Title>
-          <Modal.CloseButton onClick={closeSidebar} />
-        </Modal.Header>
-
-        <Modal.Body className={S.body} p={0}>
-          <Tabs
-            value={activeTab}
-            onChange={(value) => {
-              setActiveTab(value as SidesheetTab);
-            }}
-          >
-            {availableTabs.length > 0 && (
-              <Tabs.List px="1.625rem" className={S.tabsList}>
-                <Tabs.Tab value="open" data-testid="comments-open-tab">
-                  {t`Open`}
-                </Tabs.Tab>
-                <Tabs.Tab value="resolved" data-testid="comments-resolved-tab">
-                  {t`Resolved (${resolvedCommentsCount})`}
-                </Tabs.Tab>
-              </Tabs.List>
-            )}
-
-            <Tabs.Panel value="open">
-              {activeComments.length > 0 && (
-                <Discussions
-                  childTargetId={childTargetId === "all" ? null : childTargetId}
-                  comments={activeComments}
-                  enableHoverHighlight={childTargetId === "all"}
-                  targetId={document.id}
-                  targetType="document"
-                />
-              )}
-
-              {activeComments.length === 0 && childTargetId === "all" && (
-                <Flex
-                  p="xl"
-                  pt="5rem"
-                  align="center"
-                  color="muted"
-                  direction="column"
-                  gap="md"
-                >
-                  <Image w={120} h={120} src={noResultsSource} />
-
-                  <Text fw="700" c="text-light">{t`No comments`}</Text>
-                </Flex>
-              )}
-
-              {childTargetId !== "all" && (
-                <Box px="lg" py={activeComments.length === 0 ? "lg" : "xs"}>
-                  <CommentEditor
-                    autoFocus={shouldAutoOpenNewComment}
-                    data-testid="new-thread-editor"
-                    placeholder={t`Add a comment…`}
-                    onChange={(document) => setNewComment(document)}
-                    onSubmit={handleSubmit}
-                  />
-                </Box>
-              )}
-            </Tabs.Panel>
-
-            <Tabs.Panel value="resolved">
-              <Discussions
-                childTargetId={childTargetId === "all" ? null : childTargetId}
-                comments={resolvedComments}
-                targetId={document.id}
-                targetType="document"
-              />
-            </Tabs.Panel>
-          </Tabs>
-        </Modal.Body>
-      </Modal.Content>
-    </Modal.Root>
   );
 };
 
