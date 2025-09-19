@@ -43,6 +43,11 @@
                         e))
         (throw e)))))
 
+(defn python-transform?
+  "Check if this is a Python transform."
+  [transform]
+  (= :python (-> transform :source :type keyword)))
+
 (defn run-cancelable-transform!
   "Execute a transform with cancellation support and proper error handling."
   [run-id driver {:keys [db-id conn-spec output-schema]} run-transform!]
@@ -82,7 +87,9 @@
 (defn target-table-exists?
   "Test if the target table of a transform already exists."
   [{:keys [source target] :as _transform}]
-  (let [db-id (-> source :query :database)
+  (let [db-id (or (-> source :query :database)
+                  ;; python transform target
+                  (-> target :database))
         {driver :engine :as database} (t2/select-one :model/Database db-id)]
     (driver/table-exists? driver database target)))
 
@@ -124,7 +131,9 @@
   [{:keys [id target source], :as _transform}]
   (when target
     (let [target (update target :type keyword)
-          database-id (-> source :query :database)
+          database-id (or (-> source :query :database)
+                          ;; python transform target
+                          (-> target :database))
           {driver :engine :as database} (t2/select-one :model/Database database-id)]
       (driver/drop-transform-target! driver database target)
       (log/info "Deactivating  target " (pr-str target) "for transform" id)
@@ -212,6 +221,24 @@
         primary-key-opts (select-keys table-schema [:primary-key])]
     (log/infof "Creating table %s with %d columns" table-name (count columns))
     (driver/create-table! driver database-id table-name column-definitions primary-key-opts)))
+
+(defn drop-table!
+  "Drop a table in the database."
+  [driver database-id table-name]
+  (log/infof "Dropping table %s" table-name)
+  (driver/drop-table! driver database-id table-name))
+
+(defn temp-table-name
+  "Generate a temporary table name with the given suffix and current timestamp in seconds."
+  [base-table-name suffix]
+  (keyword (str (u/qualified-name base-table-name) "_" suffix "_" (quot (System/currentTimeMillis) 1000))))
+
+(defn rename-tables!
+  "Rename multiple tables atomically within a transaction using the new driver/rename-tables method.
+   This is a simpler, composable operation that only handles renaming."
+  [driver database-id rename-map]
+  (log/infof "Renaming tables: %s" (pr-str rename-map))
+  (driver/rename-tables! driver database-id rename-map))
 
 (defn db-routing-enabled?
   "Returns whether or not the given database is either a router or destination database"

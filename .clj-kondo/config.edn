@@ -419,6 +419,7 @@
   metabase-enterprise.transforms.api-test/with-transform-tags                           clojure.core/let
   metabase-enterprise.transforms.api-test/with-worker-runs                              clojure.core/let
   metabase-enterprise.transforms.test-util/with-transform-cleanup!                      clojure.core/let
+  metabase-enterprise.transforms.execute/with-transform-lifecycle                       clojure.core/let
   metabase.actions.test-util/with-actions                                               clojure.core/let
   metabase.api.common/let-404                                                           clojure.core/let
   metabase.app-db.custom-migrations.util/with-temp-scheduler!                           clojure.core/fn
@@ -520,6 +521,7 @@
    metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
    metabase-enterprise.semantic-search.db.connection/with-migrate-tx                                                         hooks.common/let-one-with-optional-value
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
+   metabase-enterprise.transforms-python.drivers-test/with-test-table                                                        hooks.common/with-two-bindings
    metabase.api.common.internal-test/with-jetty-server                                                                       hooks.common/with-one-binding
    metabase.api.macros/defendpoint                                                                                           hooks.metabase.api.macros/defendpoint
    metabase.app-db.schema-migrations-test.impl/test-migrations                                                               hooks.metabase.app-db.schema-migrations-test.impl/test-migrations
