@@ -1455,8 +1455,8 @@ databaseChangeLog:
               - column:
                   name: schedule_display_type
                   remarks: Either "cron/raw" or "cron/builder"
-                  type: int
-                  defaultValue: "cron/builder"
+                  type: ${text.type}
+                  defaultValue: "cron/raw"
                   constraints:
                     nullable: false
 
