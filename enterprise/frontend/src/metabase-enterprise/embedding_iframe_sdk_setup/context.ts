@@ -3,6 +3,7 @@ import { createContext, useContext } from "react";
 import type { Parameter } from "metabase-types/api";
 
 import type {
+  SdkIframeEmbedSetupEmbeddingType,
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupRecentItem,
   SdkIframeEmbedSetupRecentItemType,
@@ -13,6 +14,7 @@ import type {
 
 export interface SdkIframeEmbedSetupContextType {
   startWith?: SdkIframeEmbedSetupStartWith;
+  embeddingType: SdkIframeEmbedSetupEmbeddingType;
 
   // Navigation
   currentStep: SdkIframeEmbedSetupStep;

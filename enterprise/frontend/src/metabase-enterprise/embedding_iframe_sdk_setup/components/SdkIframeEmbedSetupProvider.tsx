@@ -15,6 +15,7 @@ import { useUserSetting } from "metabase/common/hooks";
 import { trackEmbedWizardSettingsUpdated } from "../analytics";
 import {
   EMBED_FALLBACK_DASHBOARD_ID,
+  STATIC_EMBEDDING_SETTINGS,
   USER_SETTINGS_DEBOUNCE_MS,
 } from "../constants";
 import {
@@ -45,6 +46,9 @@ export const SdkIframeEmbedSetupProvider = ({
   const [rawSettings, setRawSettings] = useState<SdkIframeEmbedSetupSettings>();
 
   const [persistedSettings, persistSettings] = usePersistedSettings();
+
+  const embeddingType = startWith?.embeddingType ?? "modular";
+  const isStaticEmbedding = embeddingType === "static";
 
   // We don't want to re-fetch the recent items every time we switch between
   // steps, therefore we load recent items once in the provider.
@@ -197,6 +201,7 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const value: SdkIframeEmbedSetupContextType = {
     startWith,
+    embeddingType,
     currentStep,
     setCurrentStep,
     experience,
@@ -225,11 +230,13 @@ export const SdkIframeEmbedSetupProvider = ({
         ...(urlParams.authMethod !== null && {
           useExistingUserSession: urlParams.authMethod === "user_session",
         }),
+        ...(isStaticEmbedding && STATIC_EMBEDDING_SETTINGS),
       });
 
       setEmbedSettingsLoaded(true);
     }
   }, [
+    isStaticEmbedding,
     persistedSettings,
     isEmbedSettingsLoaded,
     settings,

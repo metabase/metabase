@@ -1,6 +1,7 @@
 import type { SdkDashboardId, SdkQuestionId } from "embedding-sdk-bundle/types";
 import type {
   SdkIframeEmbedBaseSettings,
+  SdkIframeEmbedStaticEmbeddingSettings,
   SdkIframeEmbedTemplateSettings,
 } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 import type { BaseRecentItem } from "metabase-types/api";
@@ -35,10 +36,13 @@ export type SdkIframeEmbedSetupSettings = Omit<
   SdkIframeEmbedBaseSettings,
   "instanceUrl"
 > &
+  SdkIframeEmbedStaticEmbeddingSettings &
   SdkIframeEmbedTemplateSettings;
 
+export type SdkIframeEmbedSetupEmbeddingType = "modular" | "static";
+
 export type SdkIframeEmbedSetupStartWith = {
-  embeddingType: "modular" | "static";
+  embeddingType: SdkIframeEmbedSetupEmbeddingType;
   step: SdkIframeEmbedSetupStep;
   resourceType: SdkIframeEmbedSetupExperience;
   resourceId: SdkDashboardId | SdkQuestionId;

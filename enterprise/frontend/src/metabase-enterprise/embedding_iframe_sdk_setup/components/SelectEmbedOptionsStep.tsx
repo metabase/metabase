@@ -10,9 +10,10 @@ import { ColorCustomizationSection } from "./ColorCustomizationSection";
 import { ParameterSettings } from "./ParameterSettings";
 
 export const SelectEmbedOptionsStep = () => {
-  const { experience, settings, updateSettings } =
+  const { embeddingType, experience, settings, updateSettings } =
     useSdkIframeEmbedSetupContext();
 
+  const isStaticEmbedding = embeddingType === "static";
   const { theme } = settings;
 
   const isQuestionOrDashboardEmbed =
@@ -40,7 +41,7 @@ export const SelectEmbedOptionsStep = () => {
           {t`Behavior`}
         </Text>
         <Stack gap="md">
-          {isQuestionOrDashboardEmbed && (
+          {!isStaticEmbedding && isQuestionOrDashboardEmbed && (
             <Checkbox
               label={t`Allow people to drill through on data points`}
               checked={settings.drills}
@@ -58,7 +59,7 @@ export const SelectEmbedOptionsStep = () => {
             />
           )}
 
-          {isQuestionComponent && (
+          {!isStaticEmbedding && isQuestionComponent && (
             <Checkbox
               label={t`Allow people to save new questions`}
               checked={settings.isSaveEnabled}
@@ -68,7 +69,7 @@ export const SelectEmbedOptionsStep = () => {
             />
           )}
 
-          {isBrowserComponent && (
+          {!isStaticEmbedding && isBrowserComponent && (
             <Checkbox
               label={t`Allow editing dashboards and questions`}
               checked={!settings.readOnly}
