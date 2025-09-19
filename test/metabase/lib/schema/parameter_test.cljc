@@ -1,7 +1,7 @@
 (ns metabase.lib.schema.parameter-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [are deftest is]]
+   [clojure.test :refer [are deftest is testing]]
    [malli.error :as me]
    [metabase.lib.core :as lib]
    [metabase.lib.normalize :as lib.normalize]
@@ -46,3 +46,12 @@
     (is (=? {:stages [{:parameters [{:target [:dimension [:expression "my_stringExpr" {:base-type :type/Text}] {:stage-number 0}]}]}]}
             query))
     (is (not (me/humanize (mr/explain ::lib.schema/query query))))))
+
+(deftest ^:parallel dimension-target-test
+  (testing "Failures"
+    (are [v] (not (mr/validate ::lib.schema.parameter/dimension.target v))
+      [:aggregation 0]
+      [:field "name" {}]))
+  (testing "Successes"
+    (are [v] (mr/validate ::lib.schema.parameter/dimension.target v)
+      [:field 3 nil])))

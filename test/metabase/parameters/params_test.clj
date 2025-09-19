@@ -128,7 +128,7 @@
                                                                                              :breakout    [$category]})}
                      :model/DashboardCard _dashcard {:dashboard_id       (u/the-id dashboard)
                                                      :card_id            (u/the-id card)
-                                                     :parameter_mappings [ ;; p1 - no :stage-number, -1 is implied, id-based ref
+                                                     :parameter_mappings [;; p1 - no :stage-number, -1 is implied, id-based ref
                                                                           {:card_id (u/the-id card)
                                                                            :parameter_id "p1"
                                                                            :target  [:dimension

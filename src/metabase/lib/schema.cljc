@@ -393,7 +393,8 @@
 (mr/def ::query
   [:and
    [:map
-    {:decode/normalize common/normalize-map
+    {:description      "Valid MBQL 5 query."
+     :decode/normalize common/normalize-map
      :encode/serialize serialize-query}
     [:lib/type [:=
                 {:decode/normalize common/normalize-keyword, :default :mbql/query}

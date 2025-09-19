@@ -12,23 +12,14 @@
   "Schema for the map of actual value -> human-readable value. Cannot be empty."
   [:map-of {:min 1} :any [:maybe :string]])
 
-(mr/def ::legacy-field-or-expression-reference
-  "Schema for a valid legacy `:field` or `:expression` reference (possibly not yet normalized)."
-  [:ref ::lib.schema.parameter/dimension.target]
-  ;; NOCOMMIT
-  #_[:fn
-     (fn [k]
-       ((comp (mr/validator mbql.s/FieldOrExpressionRef)
-              mbql.normalize/normalize-tokens) k))])
-
 (mr/def ::values-source-config
   "Schema for valid source_options within a Parameter"
   ;; TODO: This should be tighter
   [:map
    [:values      {:optional true} [:* :any]]
    [:card_id     {:optional true} ::lib.schema.id/card]
-   [:value_field {:optional true} ::legacy-field-or-expression-reference]
-   [:label_field {:optional true} ::legacy-field-or-expression-reference]])
+   [:value_field {:optional true} ::lib.schema.parameter/dimension.target]
+   [:label_field {:optional true} ::lib.schema.parameter/dimension.target]])
 
 #_(def ParameterSource
     (mc/schema
@@ -56,7 +47,12 @@
   [:and
    [:map
     [:id            {:optional true} ::lib.schema.id/card]
-    [:dataset_query [:ref ::lib.schema/query]]]
+    [:dataset_query [:and
+                     :map
+                     [:or
+                      [:ref ::lib.schema/query]
+                      ;; a handful of tests just use empty queries =(
+                      [:= {:description "empty map"} {}]]]]]
    ;; we will allow maps without a Toucan model, but we won't allow ones with a DIFFERENT Toucan model.
    [:fn
     {:error/message "Instance of a Card"}
@@ -74,12 +70,12 @@
     #(contains? #{:model/DashboardCard nil} (t2/model %))]])
 
 (mr/def ::parameter-mapping
-  "Schema for a parameter mapping as it would appear in the DashboardCard `:parameter_mappings` column."
+  "Valid parameter mapping for a Card or DashboardCard `parameter_mappings`."
   [:and
    [:map
     {:description "parameter_mapping must be a map with :parameter_id and :target keys"}
     [:parameter_id ::lib.schema.parameter/id]
-    [:target       ::lib.schema.parameter/target]
+    [:target       [:ref ::lib.schema.parameter/target]]
     [:card_id      {:optional true} ::lib.schema.id/card]
     [:dashcard     {:optional true} [:ref ::dashcard]]]
    [:map-of :keyword :any]])
@@ -101,7 +97,10 @@
    ;; TODO (Cam 9/18/25) -- why are we mixing `camelCase` and `snake_case` here? Is this to make me sad?
    [:sectionId            {:optional true} ::lib.schema.common/non-blank-string]
    [:temporal_units       {:optional true} [:maybe [:sequential ::lib.schema.temporal-bucketing/unit]]]
-   [:mappings             {:optional true} [:maybe [:sequential ::parameter-mapping]]]])
+   [:mappings             {:optional true} [:maybe
+                                            [:or
+                                             [:sequential ::parameter-mapping]
+                                             [:set ::parameter-mapping]]]]])
 
 (mr/def ::remapped-field-value
   "Has two components:

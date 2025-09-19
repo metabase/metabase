@@ -62,6 +62,10 @@
          (umd/describe ::cons)))
   (is (mr/validate ::map {:k :child, :parent {:k :parent}}))
   (is (= "map where {:k -> <keyword>, :parent (optional) -> <recursive :metabase.util.malli.describe-test/map>}"
-         (umd/describe ::map)))
-  #?(:clj
-     (is (string? (u/with-timeout 500 (umd/describe ::lib.schema/query))))))
+         (umd/describe ::map))))
+
+#?(:clj
+   (deftest ^:synchronized mega-schemas-test
+     ;; force it to recurse into nested schemas instead of using `:description`
+     (with-redefs [umd/description (constantly nil)]
+       (is (string? (u/with-timeout 500 (umd/describe ::lib.schema/query)))))))

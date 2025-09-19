@@ -21,7 +21,6 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.util :as lib.schema.util]
@@ -36,6 +35,7 @@
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.models.query :as query]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
@@ -46,25 +46,12 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
-
-(mr/def ::card.query [:ref ::query/query])
-
-(mr/def ::card.result-metadata
-  [:sequential [:ref ::lib.schema.metadata/lib-or-legacy-column]])
-
-;;; TODO (Cam 9/17/25) -- fill this out a bit more. We can probably use a lot of stuff from
-;;; `:metabase.lib.schema.metadata/card`
-(mr/def ::card
-  [:map
-   [:dataset_query   {:optional true} [:maybe ::card.query]]
-   [:result_metadata {:optional true} [:maybe ::card.result-metadata]]])
 
 (methodical/defmethod t2/table-name :model/Card [_model] :report_card)
 
@@ -152,21 +139,6 @@
   [card]
   (= (keyword (:type card)) :model))
 
-(defn ^:deprecated lib-query
-  "Given a card with at least its `:dataset_query` field, this returns the `metabase.lib` form of the query.
-
-  A `metadata-provider` may be passed as an optional first parameter, if the caller has one to hand.
-
-  DEPRECATED: should already be a Lib query."
-  ([{:keys [database_id dataset_query] :as card}]
-   (when dataset_query
-     (let [db-id (or database_id (:database dataset_query))
-           mp    (lib.metadata.jvm/application-database-metadata-provider db-id)]
-       (lib-query mp card))))
-  ([metadata-providerable {query :dataset_query, :as _card}]
-   (when query
-     (lib/query metadata-providerable query))))
-
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :dashboard_count]
@@ -227,7 +199,7 @@
 
 (mu/defn- card->integer-table-ids :- [:maybe [:set ::lib.schema.id/table]]
   "Return integer source table ids for card's :dataset_query."
-  [{query :dataset_query, :as _card} :- ::card]
+  [{query :dataset_query, :as _card} :- ::queries.schema/card]
   (when (seq query)
     (lib/all-source-table-ids query)))
 
@@ -358,33 +330,36 @@
   [{query :dataset_query, :as card}]
   (merge
    card
-   (when-let [source-id (lib/source-card-id query)]
-     {:source_card_id source-id})
    ;; mega HACK FIXME -- don't update this stuff when doing deserialization because it might differ from what's in the
    ;; YAML file and break tests like [[metabase-enterprise.serialization.v2.e2e.yaml-test/e2e-storage-ingestion-test]].
    ;; The root cause of this issue is that we're generating Cards that have a different Database ID or Table ID from
    ;; what's actually in their query -- we need to fix [[metabase.test.generate]], but I'm not sure how to do that
    (when (and (map? query)
+              (seq query)
               (not mi/*deserializing?*))
-     (when-let [{:keys [database-id table-id]} (query/query->database-and-table-id query)]
-       ;; TODO -- not sure `query_type` is actually used for anything important anyway
-       (let [query-type (if (query/query-is-native? query)
-                          :native
-                          :query)]
-         (merge
-          {:query_type (keyword query-type)}
-          (when database-id
-            {:database_id database-id})
-          (when table-id
-            {:table_id table-id})))))))
+     (merge
+      (when-let [source-id (lib/source-card-id query)]
+        {:source_card_id source-id})
+      (when-let [{:keys [database-id table-id]} (query/query->database-and-table-id query)]
+        ;; TODO -- not sure `query_type` is actually used for anything important anyway
+        (let [query-type (if (query/query-is-native? query)
+                           :native
+                           :query)]
+          (merge
+           {:query_type (keyword query-type)}
+           (when database-id
+             {:database_id database-id})
+           (when table-id
+             {:table_id table-id}))))))))
 
-(defn- maybe-normalize-query [card]
+(defn- ^:deprecated maybe-normalize-query [card]
   (cond-> card
     (seq (:dataset_query card)) (update :dataset_query (fn [{database-id :database, :as query}]
                                                          {:pre [(pos-int? database-id)]}
-                                                         (lib/query
-                                                          (lib.metadata.jvm/application-database-metadata-provider database-id)
-                                                          query)))))
+                                                         (when (seq query)
+                                                           (assert (= database-id (:database query))
+                                                                   "Card database_id and dataset_query.database are different!")
+                                                           (lib/query lib.metadata.jvm/application-database-metadata-provider query))))))
 
 ;;; TODO -- move this to [[metabase.query-processor.card]] or MLv2 so the logic can be shared between the backend and
 ;;; frontend (?)
@@ -397,7 +372,7 @@
   "Transforms native query's `template-tags` into `parameters`.
   An older style was to not include `:template-tags` onto cards as parameters. I think this is a mistake and they
   should always be there. Apparently lots of e2e tests are sloppy about this so this is included as a convenience."
-  [{query :dataset_query, :as _card} :- ::card]
+  [{query :dataset_query, :as _card} :- ::queries.schema/card]
   (for [{tag-type :type, widget-type :widget-type, :as tag} (when (seq query)
                                                               (lib/all-template-tags query))
         :when                         (and tag-type
@@ -424,7 +399,7 @@
   The usual way a user gets into the situation of having a mismatch between the Database and Field Filters is by
   creating a native query in the Query Builder UI, adding parameters, and *then* changing the Database that the query
   targets. See https://github.com/metabase/metabase/issues/14145 for more details."
-  [{{query-db-id :database, :as query} :dataset_query, :as card} :- [:maybe ::card]]
+  [{{query-db-id :database, :as query} :dataset_query, :as card} :- [:maybe ::queries.schema/card]]
   ;; for updates if `query` isn't being updated we don't need to validate anything.
   (when (seq query)
     (when-let [field-ids (not-empty (params/card->template-tag-field-ids card))]
@@ -450,7 +425,7 @@
 
 (mu/defn- assert-valid-type
   "Check that the card is a valid model if being saved as one. Throw an exception if not."
-  [{query :dataset_query, card-type :type, :as _card} :- [:maybe ::card]]
+  [{query :dataset_query, card-type :type, :as _card} :- [:maybe ::queries.schema/card]]
   (when (and (= (keyword card-type) :model)
              (seq query))
     (let [template-tag-types (->> (lib/all-template-tags query)
@@ -518,24 +493,6 @@
 (defn- maybe-check-dashboard-internal-card [card]
   (cond-> card
     (dashboard-internal-card? card) check-dashboard-internal-card-insert))
-
-;; TODO -- consider whether we should validate the Card query when you save/update it?? (#40013)
-;;
-;; TODO (Cam 7/18/25) -- weird/offputting to have half of the before-insert logic live here and then the other half live
-;; in `define-before-insert`... we should consolidate it so it all lives in one or the other.
-(defn- pre-insert [card]
-  (let [defaults {:parameters         []
-                  :parameter_mappings []
-                  :card_schema        current-schema-version}
-        card     (maybe-check-dashboard-internal-card
-                  (merge defaults card))]
-    (u/prog1 card
-      (check-field-filter-fields-are-from-correct-database card)
-      ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters (#40013)
-      (assert-valid-type card)
-      (params/assert-valid-parameters card)
-      (params/assert-valid-parameter-mappings card)
-      (collection/check-collection-namespace :model/Card (:collection_id card)))))
 
 (defenterprise pre-update-check-sandbox-constraints
   "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
@@ -618,8 +575,7 @@
     (let [old-card-info (when (or (contains? changes :type)
                                   (:dataset_query changes))
                           (t2/select-one [:model/Card :dataset_query :type :result_metadata :card_schema]
-                                         :id (u/the-id id)))
-          changes (maybe-normalize-query changes)]
+                                         :id (u/the-id id)))]
       ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
       ;; On-Demand DB Fields
       (when (:dataset_query changes)
@@ -664,16 +620,16 @@
 
   This function is used in `t2/define-after-select :model/Card`. Metadata provider caching should be considered when
   fetching multiple metric cards having common database, as done in eg. dashboard API context."
-  [card]
-  (if-not (and (map? card)
-               (= :metric (:type card))
-               (-> card :dataset_query not-empty)
-               (-> card :database_id))
+  [{query :dataset_query, database-id :database_id, :as card}]
+  (if (or (not (map? card))
+          (not= (:type card) :metric)
+          (empty? query)
+          (not (pos-int? database-id)))
     card
-    (m/assoc-some card :query_description (some-> (lib.metadata.jvm/application-database-metadata-provider
-                                                   (:database_id card))
-                                                  (lib/query (:dataset_query card))
-                                                  lib/suggested-name))))
+    (do
+      (assert (= (lib/normalized-mbql-version query) :mbql-version/mbql5)
+              "Expected app DB to return an MBQL 5 query")
+      (m/assoc-some card :query_description (lib/suggested-name query)))))
 
 ;; Schema upgrade: 20 to 21 ==========================================================================================
 ;; Originally this backfilled `:ident`s on all columns in `:result_metadata`.
@@ -697,7 +653,7 @@
                                   (mapv #(dissoc % :ident :model/inner_ident) cols))))
 
 (mu/defn- upgrade-card-schema-to-latest :- [:map
-                                            [:result_metadata {:optional true} [:maybe ::card.result-metadata]]]
+                                            [:result_metadata {:optional true} [:maybe ::queries.schema/card.result-metadata]]]
   [card]
   (if (and (:id card)
            (or (:dataset_query card)
@@ -738,14 +694,21 @@
 (t2/define-before-insert :model/Card
   [card]
   (-> card
+      (->> (lib/normalize ::queries.schema/card))
       (assoc :metabase_version config/mb-version-string
              :card_schema current-schema-version)
-      maybe-normalize-query
-      ;; Must have an entity_id before populating the metadata. TODO (Cam 7/11/25) -- actually, this is no longer true,
-      ;; since we're removing `:ident`s; we can probably remove this now.
-      (u/assoc-default :entity_id (u/generate-nano-id))
       card.metadata/populate-result-metadata
-      pre-insert
+      (->> (merge {:parameters         []
+                   :parameter_mappings []
+                   :card_schema        current-schema-version}))
+      maybe-check-dashboard-internal-card
+      (u/prog1
+        (check-field-filter-fields-are-from-correct-database <>)
+        ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters (#40013)
+        (assert-valid-type <>)
+        (params/assert-valid-parameters <>)
+        (params/assert-valid-parameter-mappings <>)
+        (collection/check-collection-namespace :model/Card (:collection_id <>)))
       populate-query-fields))
 
 (t2/define-after-insert :model/Card
@@ -762,7 +725,7 @@
     card))
 
 (mu/defn- populate-result-metadata :- [:map
-                                       [:result_metadata {:optional true} [:maybe ::card.result-metadata]]]
+                                       [:result_metadata {:optional true} [:maybe ::queries.schema/card.result-metadata]]]
   "If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
   change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
   verified-result-metadata? flag (see #37009)."
@@ -772,13 +735,14 @@
             (not verified-result-metadata?)
             (contains? (t2/changes card) :type))
         (card.metadata/populate-result-metadata changes))
-      (m/update-existing :result_metadata #(some->> % (lib/normalize ::card.result-metadata)))))
+      (m/update-existing :result_metadata #(some->> % (lib/normalize ::queries.schema/card.result-metadata)))))
 
 (t2/define-before-update :model/Card
-  [{:keys [verified-result-metadata?] :as card}]
-  (let [changes (t2/changes card)]
+  [{::keys [verified-result-metadata?] :as card}]
+  (let [changes (t2/changes card)
+        changes (lib/normalize ::queries.schema/card.updates changes)]
     (-> card
-        (dissoc :verified-result-metadata?)
+        (dissoc ::verified-result-metadata?)
         (assoc :card_schema current-schema-version)
         (apply-dashboard-question-updates changes)
         maybe-normalize-query
@@ -1122,7 +1086,7 @@
                                     :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id :document_id}
                                     :non-nil #{:dataset_query :display :name :visualization_settings :archived
                                                :enable_embedding :type :parameters :parameter_mappings :embedding_params
-                                               :result_metadata :collection_preview :verified-result-metadata?}))
+                                               :result_metadata :collection_preview ::verified-result-metadata?}))
     ;; ok, now update dependent dashcard parameters
     (try
       (update-associated-parameters! card-before-update card-updates)

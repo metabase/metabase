@@ -41,7 +41,11 @@
        :options  options})))
 
 (mu/defn ^:private chain-filter-constraints :- chain-filter/Constraints
-  [dashboard                   :- :map
+  [dashboard                   :- [:map
+                                   [:resolved-params
+                                    [:map-of
+                                     ::lib.schema.parameter/id
+                                     ::parameters.schema/parameter]]]
    constraint-param-key->value :- [:map-of string? any?]]
   (vec (for [[param-key value] constraint-param-key->value
              :let              [param (get-in dashboard [:resolved-params param-key])]

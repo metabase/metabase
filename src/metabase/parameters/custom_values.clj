@@ -22,7 +22,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]))
 
 ;;; ------------------------------------------------- source=static-list --------------------------------------------------
 
@@ -99,7 +100,7 @@
    (values-from-card card value-field nil))
 
   ([card            :- (ms/InstanceOf :model/Card)
-    value-field-ref :- ::parameters.schema/legacy-field-or-expression-reference
+    value-field-ref :- ::lib.schema.parameter/dimension.target
     opts            :- [:maybe :map]]
    (let [mbql-query   (values-from-card-query card value-field-ref opts)
          result       (qp/process-query mbql-query)

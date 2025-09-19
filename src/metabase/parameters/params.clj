@@ -14,6 +14,9 @@
    [malli.error :as me]
    [medley.core :as m]
    [metabase.app-db.core :as app-db]
+   ;; allowing for now because we don't have a good alternative for [[metabase.legacy-mbql.util/is-clause?]] for
+   ;; `:dimension` (it is a "fake" clause that uses legacy syntax still)
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
@@ -268,26 +271,24 @@
 
   ([ctx
     {:keys [param-mapping param-target-field-id] :as param-dashcard-info} :- ::param-dashcard-info]
-   (if-not param-target-field-id
-     ctx
-     (let [card-id (:card_id param-mapping)
-           card (if card-id
-                  (m/find-first #(= (:id %) card-id)
-                                (cons (get-in param-dashcard-info [:dashcard :card])
-                                      (get-in param-dashcard-info [:dashcard :series])))
-                  (get-in param-dashcard-info [:dashcard :card]))
-           param-id (:parameter_id param-mapping)
-           stage-number (get-in param-mapping [:target 2 :stage-number] -1)]
-       ;; Get the field id from the field-clause if it contains it. This is the common case
-       ;; for mbql queries.
-       (if param-target-field-id
-         (update-in ctx [:param-id->field-ids param-id] (fnil conj #{}) param-target-field-id)
-         ;; In case the card doesn't have the same result_metadata columns as filterable columns (a question that
-         ;; aggregates a native query model with a field that was mapped to a db field), we need to load metadata in
-         ;; [[ensure-filterable-columns-for-card]] to find the originating field. (#42829)
-         (-> ctx
-             (ensure-filterable-columns-for-card card stage-number)
-             (field-id-from-dashcards-filterable-columns param-dashcard-info stage-number)))))))
+   (let [card-id (:card_id param-mapping)
+         card (if card-id
+                (m/find-first #(= (:id %) card-id)
+                              (cons (get-in param-dashcard-info [:dashcard :card])
+                                    (get-in param-dashcard-info [:dashcard :series])))
+                (get-in param-dashcard-info [:dashcard :card]))
+         param-id (:parameter_id param-mapping)
+         stage-number (get-in param-mapping [:target 2 :stage-number] -1)]
+     ;; Get the field id from the field-clause if it contains it. This is the common case
+     ;; for mbql queries.
+     (if param-target-field-id
+       (update-in ctx [:param-id->field-ids param-id] (fnil conj #{}) param-target-field-id)
+       ;; In case the card doesn't have the same result_metadata columns as filterable columns (a question that
+       ;; aggregates a native query model with a field that was mapped to a db field), we need to load metadata in
+       ;; [[ensure-filterable-columns-for-card]] to find the originating field. (#42829)
+       (-> ctx
+           (ensure-filterable-columns-for-card card stage-number)
+           (field-id-from-dashcards-filterable-columns param-dashcard-info stage-number))))))
 
 (mu/defn- dashcard->param-dashcard-info :- [:sequential ::param-dashcard-info]
   [dashcard :- ::parameters.schema/dashcard]
@@ -371,7 +372,8 @@
   Mostly used for determining Fields referenced by Cards for purposes other than processing queries. Filters out
   `:field` clauses which use names."
   [{query :dataset_query, :as _card} :- ::parameters.schema/card]
-  (lib/all-template-tags-id->field-ids query))
+  (when (seq query)
+    (lib/all-template-tags-id->field-ids query)))
 
 (methodical/defmethod t2.hydrate/simple-hydrate [:model/Card :param_fields]
   "Add a `:param_fields` map (Field ID -> Field) for all of the Fields referenced by the parameters of a Card."

@@ -87,18 +87,17 @@
   [:merge
    ::parameter.schema.common
    [:map
-
     [:type ::parameter.type]
     ;; TODO -- I don't think `:null` can have `:enum`
     [:enum {:optional true} [:sequential :any]]]])
 
 (mr/def ::parameter.schema.string
+  "https://swagger.io/docs/specification/v3_0/data-models/data-types/#strings"
   [:merge
    ::parameter.schema.typed.common
    [:map
-
     [:type [:= :string]]
-    [:format    {:optional true} [:enum :binary "binary" :byte "byte"]]
+    [:format    {:optional true} [:or :keyword [:string {:min 1}]]] ; format is open and can be anything.
     [:minLength {:optional true} integer?]
     [:maxLength {:optional true} integer?]
     [:pattern   {:optional true} (ms/InstanceOfClass java.util.regex.Pattern)]]])
@@ -107,7 +106,6 @@
   [:merge
    ::parameter.schema.typed.common
    [:map
-
     [:type [:= :number]]
     [:minimum {:optional true} number?]
     [:maximum {:optional true} number?]]])
@@ -116,7 +114,6 @@
   [:merge
    ::parameter.schema.typed.common
    [:map
-
     [:type [:= :integer]]
     [:minimum {:optional true} integer?]
     [:maximum {:optional true} integer?]]])
@@ -125,14 +122,12 @@
   [:merge
    ::parameter.schema.typed.common
    [:map
-
     [:type [:= :boolean]]]])
 
 (mr/def ::parameter.schema.null
   [:merge
    ::parameter.schema.typed.common
    [:map
-
     [:type [:= :null]]]])
 
 (mr/def ::parameter.schema.object
@@ -152,7 +147,6 @@
   [:merge
    ::parameter.schema.typed.common
    [:map
-
     [:type        [:= :array]]
     [:items           {:optional true} [:multi
                                         {:dispatch map?}
@@ -183,7 +177,6 @@
   [:merge
    ::parameter.schema.common
    [:map
-
     [:$ref [:re
             {:description "string starting with '#/components/schemas/'"}
             #"^#/components/schemas/[^/]+$"]]
@@ -200,34 +193,29 @@
     [:merge
      ::parameter.schema.common
      [:map
-
       [:anyOf [:sequential [:ref ::parameter.schema]]]]]]
    [:oneOf
     [:merge
      ::parameter.schema.common
      [:map
-
       [:oneOf [:sequential [:ref ::parameter.schema]]]]]]])
 
 (mr/def ::parameter.schema.and
   [:merge
    ::parameter.schema.common
    [:map
-
     [:allOf [:sequential [:ref ::parameter.schema]]]]])
 
 (mr/def ::parameter.schema.const
   [:merge
    ::parameter.schema.common
    [:map
-
     [:const :any]]])
 
 (mr/def ::parameter.schema.untyped-enum
   [:merge
    ::parameter.schema.common
    [:map
-
     [:enum [:sequential :any]]]])
 
 (mr/def ::parameter.schema.empty

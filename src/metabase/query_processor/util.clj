@@ -144,7 +144,9 @@
     (buddy-hash/sha3-256 (json/encode (select-keys-for-hashing query)))))
 
 (defn query->source-card-id
-  "Return the ID of the Card used as the \"source\" query of this query, if applicable; otherwise return `nil`."
+  "Return the ID of the Card used as the \"source\" query of this query, if applicable; otherwise return `nil`.
+
+  DEPRECATED: use [[metabase.lib.core/source-card-id]] going forward."
   {:deprecated "0.57.0"}
   ^Long [outer-query]
   (let [source-table (get-in outer-query [:query :source-table])]

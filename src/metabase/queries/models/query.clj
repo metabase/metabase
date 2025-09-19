@@ -7,6 +7,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -16,12 +17,6 @@
    [toucan2.model :as t2.model]))
 
 (set! *warn-on-reflection* true)
-
-(mr/def ::query [:and
-                 :map
-                 [:multi {:dispatch (comp boolean empty?)}
-                  [true  [:= {} {}]]
-                  [false [:ref ::lib.schema/query]]]])
 
 (methodical/defmethod t2/table-name :model/Query [_model] :query)
 (methodical/defmethod t2.model/primary-keys :model/Query [_model] [:query_hash])
@@ -101,11 +96,12 @@
 
 (mu/defn query->database-and-table-id :- [:maybe ::database-and-table-id]
   "Return a map with `:database-id` and source `:table-id` that should be saved for a Card."
-  [{database-id :database, :as query} :- [:maybe ::query]]
+  [{database-id :database, :as query} :- [:maybe ::queries.schema/query]]
   (when (seq query)
     (if-let [source-card-id (lib.util/source-card-id query)]
-      (let [card (lib.metadata/card query source-card-id)]
-        (merge {:table-id nil} (select-keys card [:database-id :table-id])))
+      (when-let [card (lib.metadata/card query source-card-id)]
+        (merge {:table-id nil}
+               (select-keys card [:database-id :table-id])))
       (let [table-id (lib.util/source-table-id query)]
         {:database-id database-id
          :table-id    table-id}))))
@@ -113,7 +109,7 @@
 (mu/defn query-is-native? :- :boolean
   "Whether this query (pMBQL or legacy) has a `:native` first stage. Queries with source Cards are considered to be MBQL
   regardless of whether the Card has a native query or not."
-  [query :- [:maybe ::query]]
+  [query :- [:maybe ::queries.schema/query]]
   (boolean
    (when (seq query)
      (lib.util/first-stage-is-native? query))))

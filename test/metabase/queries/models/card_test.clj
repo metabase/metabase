@@ -251,7 +251,7 @@
                       :result_metadata metadata
                       :entity_id       card-eid}
                (= creating-or-updating "updating")
-               (assoc :verified-result-metadata? true))
+               (assoc ::card/verified-result-metadata? true))
              (fn [new-metadata]
                (is (= (mt/derecordize metadata)
                       (mt/derecordize new-metadata))))))))))
@@ -408,7 +408,7 @@
     (testing "creating"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #":parameters must be a sequence of maps with :id and :type keys"
+           #"Invalid input: \{:parameters \[\"invalid type, got: \{:a :b\}\"\]\}"
            (mt/with-temp [:model/Card _ {:parameters {:a :b}}])))
       (mt/with-temp [:model/Card card {:parameters [{:id   "valid-id"
                                                      :type "id"}]}]
@@ -420,7 +420,7 @@
       (mt/with-temp [:model/Card {:keys [id]} {:parameters []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #":parameters must be a sequence of maps with :id and :type keys"
+             #"Invalid input: \{:parameters \[\{:id \[\"should be a string, got: 100\" \"non-blank string, got: 100\"\], :type \[\"missing required key, got: nil\"\]\}\]\}"
              (t2/update! :model/Card id {:parameters [{:id 100}]})))
         (is (pos? (t2/update! :model/Card id {:parameters [{:id   "new-valid-id"
                                                             :type "id"}]})))))))
@@ -430,19 +430,19 @@
     (doseq [[target expected] {[:dimension [:field-id 1000]] [:dimension [:field 1000 nil]]
                                [:field-id 1000]              [:field 1000 nil]}]
       (testing (format "target = %s" (pr-str target))
-        (mt/with-temp [:model/Card {card-id :id} {:parameter_mappings [{:parameter_id     "_CATEGORY_NAME_"
-                                                                        :target target}]}]
-
-          (is (= [{:parameter_id     "_CATEGORY_NAME_"
-                   :target expected}]
+        (mt/with-temp [:model/Card {card-id :id} {}]
+          (t2/update! (t2/table-name :model/Card) card-id {:parameter_mappings (json/encode [{:parameter_id "_CATEGORY_NAME_"
+                                                                                              :target       target}])})
+          (is (= [{:parameter_id "_CATEGORY_NAME_"
+                   :target       expected}]
                  (t2/select-one-fn :parameter_mappings :model/Card :id card-id))))))))
 
-(deftest validate-parameter-mappings-test
+(deftest ^:parallel validate-parameter-mappings-test
   (testing "Should validate Card :parameter_mappings when"
     (testing "creating"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #":parameter_mappings must be a sequence of maps with :parameter_id and :type keys"
+           #"Invalid input: \{:parameter_mappings \[\"invalid type, got: \{:a :b\}\"\]\}"
            (mt/with-temp [:model/Card _ {:parameter_mappings {:a :b}}])))
       (mt/with-temp [:model/Card card {:parameter_mappings [{:parameter_id "valid-id"
                                                              :target       [:field 1000 nil]}]}]
@@ -454,16 +454,17 @@
       (mt/with-temp [:model/Card {:keys [id]} {:parameter_mappings []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #":parameter_mappings must be a sequence of maps with :parameter_id and :type keys"
+             #"Invalid input: \{:parameter_mappings \[\{:parameter_id \[\"should be a string, got: 100\" \"non-blank string, got: 100\"\], :target \[\"missing required key, got: nil\"\]\}\]\}"
              (t2/update! :model/Card id {:parameter_mappings [{:parameter_id 100}]})))
         (is (pos? (t2/update! :model/Card id {:parameter_mappings [{:parameter_id "new-valid-id"
                                                                     :target       [:field 1000 nil]}]})))))))
 
 (deftest normalize-parameter-mappings-test
   (testing ":parameter_mappings should get normalized when coming out of the DB"
-    (mt/with-temp [:model/Card {card-id :id} {:parameter_mappings [{:parameter_id "22486e00"
-                                                                    :card_id      1
-                                                                    :target       [:dimension [:field-id 1]]}]}]
+    (mt/with-temp [:model/Card {card-id :id}]
+      (t2/update! (t2/table-name :model/Card) card-id {:parameter_mappings (json/encode [{:parameter_id "22486e00"
+                                                                                          :card_id      1
+                                                                                          :target       [:dimension [:field-id 1]]}])})
       (is (= [{:parameter_id "22486e00"
                :card_id      1
                :target       [:dimension [:field 1 nil]]}]
@@ -1066,5 +1067,5 @@
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
       ;; This should not cause an error even though verified-result-metadata? is not a valid column
       (t2/update! :model/Card card-id {:name "Updated"
-                                       :verified-result-metadata? true})
+                                       ::card/verified-result-metadata? true})
       (is (= "Updated" (t2/select-one-fn :name :model/Card :id card-id))))))

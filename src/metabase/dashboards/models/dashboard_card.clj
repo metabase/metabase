@@ -3,16 +3,16 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
-   [metabase.parameters.schema :as parameters.schema]
-   [metabase.lib.schema.id :as lib.schema.id]))
+   [toucan2.core :as t2]))
 
 (methodical/defmethod t2/table-name :model/DashboardCard [_model] :report_dashboardcard)
 

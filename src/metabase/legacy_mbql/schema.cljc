@@ -172,7 +172,6 @@
 ;; [:= [:field 10 {:temporal-unit :day}] [:absolute-datetime #inst "2018-10-02" :day]]
 (mr/def ::absolute-datetime
   [:multi {:error/message "valid :absolute-datetime clause"
-           :doc/title     [:span [:code ":absolute-datetime"] " clause"]
            :dispatch      (fn [x]
                             (cond
                               (core/not (is-clause? :absolute-datetime x)) :invalid
@@ -382,7 +381,6 @@
 
 (mr/def ::field
   [:and
-   {:doc/title [:span [:code ":field"] " clause"]}
    (helpers/clause
     :field
     "id-or-name" [:or ::lib.schema.id/field :string]
@@ -396,8 +394,8 @@
   ^{:clause-name :field} [:ref ::field])
 
 (mr/def ::field-or-expression-ref
+  "`:field` or `:expression` ref"
   [:schema
-   {:doc/title "`:field` or `:expression` ref"}
    (one-of expression field)])
 
 (def FieldOrExpressionRef
@@ -1058,7 +1056,6 @@
   `:+` clause or a `:field` or `:value` clause."
   [:multi
    {:error/message ":field or :expression reference or expression"
-    :doc/title     "expression definition"
     :dispatch      (fn [x]
                      (cond
                        (is-clause? numeric-functions x)  :numeric
@@ -1667,7 +1664,6 @@
 
 (mr/def ::dimension
   [:and
-   {:doc/title [:span [:code ":dimension"] " clause"]}
    [:fn {:error/message "must be a `:dimension` clause"} (partial helpers/is-clause? :dimension)]
    [:catn
     [:tag [:= :dimension]]

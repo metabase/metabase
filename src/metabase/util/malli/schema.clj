@@ -9,6 +9,7 @@
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
@@ -91,6 +92,8 @@
   (let [message (deferred-tru "value must be an integer greater or equal to than zero.")]
     [:int
      {:min         0
+      ;; TODO (Cam 9/18/25) -- these aren't going to get i18n'ed if we're calling `(str ...)` on them at namespace
+      ;; load time.
       :description (str message)
       :error/fn    (fn [_ _]
                      (str message))
@@ -270,7 +273,9 @@
 (def NanoIdString
   "Schema for a 21-character NanoID string, like \"FReCLx5hSWTBU7kjCWfuu\"."
   (mu/with-api-error-message
-   [:re #"^[A-Za-z0-9_\-]{21}$"]
+   [:re
+    {:api/regex #"[A-Za-z0-9_\-]{21}"}
+    #"^[A-Za-z0-9_\-]{21}$"]
    (deferred-tru "String must be a valid 21-character NanoID string.")))
 
 (def UUIDString
@@ -284,9 +289,7 @@
   [schema]
   [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} schema])
 
-(defn MapWithNoKebabKeys
-  "Helper for creating a schema to check if a map doesn't contain kebab case keys."
-  []
+(mr/def ::snake_case_map
   [:fn
    {:error/message "Map should not contain any kebab-case keys"}
    (fn [m]

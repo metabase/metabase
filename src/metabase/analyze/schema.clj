@@ -5,12 +5,10 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
-(mr/def ::no-kebab-case-keys (ms/MapWithNoKebabKeys))
-
 (mr/def ::Table
   [:and
    (ms/InstanceOf :model/Table)
-   ::no-kebab-case-keys])
+   [:ref ::ms/snake_case_map]])
 
 ;; TODO: fix memory issues with `mu/defn` and `ms/InstanceOf` so we don't need to do this
 (def Table

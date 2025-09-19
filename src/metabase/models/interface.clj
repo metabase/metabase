@@ -193,16 +193,8 @@
   {:in  json-in-with-eliding
    :out json-out-with-keywordization})
 
-(defn- query->metadata-provider [query]
-  (if (lib.metadata.protocols/metadata-provider? (:lib/metadata query))
-    ;; in case someone passes in an already-normalized query to [[maybe-normalize-query]] below,
-    ;; preserve the existing metadata provider.
-    (:lib/metadata query)
-    ((requiring-resolve 'metabase.lib-be.metadata.jvm/application-database-metadata-provider)
-     (u/the-id (some #(get query %) [:database "database"])))))
-
 (defn- ->mbql5-query [query]
-  (lib/query (query->metadata-provider query) query))
+  (lib/query (requiring-resolve 'metabase.lib-be.metadata.jvm/application-database-metadata-provider) query))
 
 (defn- serialize-mbql5-query
   "Saving MBQL 5 queries​ we can assume MBQL 5 queries are normalized enough already, but remove the metadata provider

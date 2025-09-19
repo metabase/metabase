@@ -213,6 +213,24 @@
 ;;; real MBQL clause tho.
 (mr/def ::dimension
   [:catn
+   ;; this `:decode/normalize` function seems unnecessary but it improves the errors a lot: without it we won't
+   ;; normalize the tag if the target or options are invalid:
+   ;;
+   ;; without:
+   ;;
+   ;;    (metabase.lib.core/normalize ::target ["dimension" ["template-tags" "category"]])
+   ;;    ;; WARN lib.normalize :: Error normalizing MBQL 5: [["should be :dimension"]]
+   ;;    {:value ["dimension" ["template-tags" "category"]], :schema :metabase.lib.schema.parameter/target}
+   ;;
+   ;; with:
+   ;;
+   ;;    ;; WARN lib.normalize :: Error normalizing MBQL 5: [nil ["Invalid :dimension target: must be a :field, :template-tag, or :expression, got: [\"template-tags\" \"category\"]"]]
+   ;;    {:value [:dimension ["template-tags" "category"]], :schema :metabase.lib.schema.parameter/target}
+   {:decode/normalize (fn [dimension]
+                        (if (and (sequential? dimension)
+                                 (string? (first dimension)))
+                          (update (vec dimension) 0 keyword)
+                          dimension))}
    [:tag     [:= {:decode/normalize lib.schema.common/normalize-keyword} :dimension]]
    [:target  ::dimension.target]
    [:options [:? [:maybe ::dimension.options]]]])
