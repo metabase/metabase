@@ -180,10 +180,11 @@
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "put transform" id)
   (api/check-superuser)
-  (check-feature-enabled! body)
   (t2/with-transaction [_]
     ;; Cycle detection should occur within the transaction to avoid race
     (let [old (t2/select-one :model/Transform id)
+          ;; we must validate on a full transform object
+          _   (check-feature-enabled! old)
           new (merge old body)
           target-fields #(-> % :target (select-keys [:schema :name]))]
       (check-database-feature new)
