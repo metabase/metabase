@@ -3,7 +3,6 @@ import L from "leaflet";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { GET } from "metabase/lib/api";
 import { isWithinIframe } from "metabase/lib/dom";
-import { encodeFieldRefForUrl } from "metabase-lib/fields";
 
 import { getTileUrl } from "../lib/map";
 
@@ -53,8 +52,8 @@ export default class LeafletTilePinMap extends LeafletMap {
       return;
     }
 
-    const latFieldParam = encodeFieldRefForUrl(latitudeField.field_ref);
-    const lonFieldParam = encodeFieldRefForUrl(longitudeField.field_ref);
+    const latFieldParam = JSON.stringify(latitudeField.field_ref);
+    const lonFieldParam = JSON.stringify(longitudeField.field_ref);
 
     const { dashboard, dashcard, uuid, token } = this.props;
 
