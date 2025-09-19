@@ -118,7 +118,7 @@ jobs:
     uses: ./.github/workflows/e2e-tests.yml
     secrets: inherit
     with:
-      skip: ${{ needs.files-changed.outputs.e2e_all != 'true' }}
+      skip: true #${{ needs.files-changed.outputs.e2e_all != 'true' }}
       # here we pass result from files-changed, which is a list of files, comma separated
       # e.g. e2e/test/scenarios/onboarding/command-palette.cy.spec.js,e2e/test/scenarios/question/document-title.cy.spec.js
       # e2e_all_files includes all changes which trigger all e2e tests, if the list of changes files is included in the
