@@ -11,15 +11,19 @@
    [metabase.util.malli :as mu]))
 
 (defn- join-url
-  [user-id]
+  [user-id is-from-setup]
   ;; TODO: the reset token should come from the event-info, not generated here!
   (let [reset-token               (user/set-password-reset-token! user-id)
         should-link-to-login-page (and (sso/sso-enabled?)
                                        (not (session/enable-password-login)))]
     (if should-link-to-login-page
       (str (system/site-url) "/auth/login")
-      ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
-      (str (user/form-password-reset-url reset-token) "#new"))))
+      ;; NOTE: the new user join url is a password reset route with an indicator that this is a first time user.
+      ;; It may also include a redirect to databases/create page if the user has been invited from the setup flow.
+      (let [base-url (user/form-password-reset-url reset-token)]
+        (if is-from-setup
+          (str base-url "?redirect=/admin/databases/create#new")
+          (str base-url "#new"))))))
 
 (defn- custom-payload
   "Returns a map of custom payload for a given topic and event-info.
@@ -30,7 +34,7 @@
   (case topic
     :event/user-invited
     {:user_invited_email_subject (trs "You''re invited to join {0}''s {1}" (appearance/site-name) (messages/app-name-trs))
-     :user_invited_join_url      (-> event-info :object :id join-url)}
+     :user_invited_join_url      (join-url (-> event-info :object :id) (-> event-info :object :is_from_setup))}
     {}))
 
 (mu/defmethod notification.payload/payload :notification/system-event

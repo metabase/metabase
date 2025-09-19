@@ -372,8 +372,10 @@
                                  (u/select-keys-when body
                                                      :non-nil [:first_name :last_name :email :password :login_attributes])
                                  @api/*current-user*
-                                 false))]
+                                 (= source "setup")))]
       (maybe-set-user-group-memberships! new-user-id user_group_memberships)
+      (when (= source "setup")
+        (maybe-set-user-permissions-groups! new-user-id [(perms/all-users-group) (perms/admin-group)]))
       (analytics/track-event! :snowplow/invite
                               {:event           :invite-sent
                                :invited-user-id new-user-id
