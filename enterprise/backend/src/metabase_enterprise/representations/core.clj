@@ -19,6 +19,9 @@
               (assoc map k v)))
           {} map))
 
+(defn card-ref [card]
+  (format "%s-%s" (name (:type card)) (:id card)))
+
 (defn export-card [type question]
   (let [query (serdes/export-mbql (:dataset_query question))]
     (cond-> {:name (:name question)

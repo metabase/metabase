@@ -34,15 +34,39 @@
       (log/error e)
       (throw e))))
 
+(defn- source-table-ref [table]
+  (cond
+    (vector? table)
+    (let [[db schema table] table]
+      {:database db
+       :schema   schema
+       :table    table})
+
+    (string? table)
+    (let [referred-card (t2/select-one :model/Card :entity_id table)]
+      {:type (:type referred-card)
+       :ref (rep/card-ref referred-card)})))
+
+(defn- update-source-table [card]
+  (if-some [table (get-in card [:mbql_query :source-table])]
+    (update-in card [:mbql_query :source-table] source-table-ref)
+    card))
+
+(defn- patch-card-refs [card]
+  (println "patching")
+  (-> card
+      (update-source-table)))
+
 (api.macros/defendpoint :get "/question/:id"
   "Download a yaml representation of a question."
-  [{:keys [id]}
+  [{:keys [id]} :- :any
    _query-params
    _body-params
    _request]
   (let [id (Long/parseLong id)
         question (api/check-404 (t2/select-one :model/Card :id id :type "question"))
-        rep (rep/export-card "question" question)]
+        rep (rep/export-card "question" question)
+        rep (patch-card-refs rep)]
     (try
       (schema/validate rep)
       (catch Exception e
