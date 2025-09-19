@@ -172,8 +172,9 @@
       (log/error e "Failed to pull embedding model")
       (throw e))))
 
-(defmethod get-embedding        "ollama" [{:keys [model-name]} text & {:as opts}]  (ollama-get-embedding model-name text))
-(defmethod get-embeddings-batch "ollama" [{:keys [model-name]} texts & {:as opts}] (ollama-get-embeddings-batch model-name texts))
+;; Ollama is not used in production. Token tracking is not implemented.
+(defmethod get-embedding        "ollama" [{:keys [model-name]} text & {:as _opts}]  (ollama-get-embedding model-name text))
+(defmethod get-embeddings-batch "ollama" [{:keys [model-name]} texts & {:as _opts}] (ollama-get-embeddings-batch model-name texts))
 (defmethod pull-model           "ollama" [{:keys [model-name]}]       (ollama-pull-model model-name))
 
 ;;;; AI Service impl
@@ -214,7 +215,7 @@
      (str/starts-with? model-name "text-embedding-3"))))
 
 (defn- openai-get-embeddings-batch
-  [{:keys [model-name vector-dimensions] :as embedding-model} texts]
+  [{:keys [model-name vector-dimensions] :as embedding-model} texts & {:as opts}]
   (let [api-key (semantic-settings/openai-api-key)
         endpoint (str (semantic-settings/openai-api-base-url) "/v1/embeddings")]
     (when-not api-key
@@ -230,25 +231,27 @@
                                                                   (when (supports-dimensions? embedding-model)
                                                                     {:dimensions vector-dimensions})))})
                          :body
-                         (json/decode true))]
+                         (json/decode true))
+            total-tokens (->> response :usage :total_tokens)]
         (analytics/inc! :metabase-search/semantic-embedding-tokens
                         {:provider "openai", :model model-name}
-                        (->> response :usage :total_tokens))
+                        total-tokens)
+        (semantic.models.token-tracking/record-tokens model-name (:type opts) total-tokens)
         (extract-base64-response-embeddings response))
       (catch Exception e
         (log/error e "OpenAI embeddings API call failed" {:documents (count texts) :tokens (count-tokens-batch texts)})
         (throw e)))))
 
-(defn- openai-get-embedding [embedding-model text]
+(defn- openai-get-embedding [embedding-model text & {:as opts}]
   (try
     (log/debug "Generating OpenAI embedding for text of length:" (count text))
-    (first (openai-get-embeddings-batch embedding-model [text]))
+    (first (openai-get-embeddings-batch embedding-model [text] opts))
     (catch Exception e
       (log/error e "Failed to generate OpenAI embedding for text of length:" (count text))
       (throw e))))
 
-(defmethod get-embedding        "openai" [embedding-model text & {:as opts}]  (openai-get-embedding embedding-model text))
-(defmethod get-embeddings-batch "openai" [embedding-model texts & {:as opts}] (openai-get-embeddings-batch embedding-model texts))
+(defmethod get-embedding        "openai" [embedding-model text & {:as opts}]  (openai-get-embedding embedding-model text opts))
+(defmethod get-embeddings-batch "openai" [embedding-model texts & {:as opts}] (openai-get-embeddings-batch embedding-model texts opts))
 (defmethod pull-model           "openai" [_] (log/debug "OpenAI provider does not require pulling a model"))
 
 ;;;; Global embedding model
