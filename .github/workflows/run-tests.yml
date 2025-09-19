@@ -103,14 +103,15 @@ jobs:
     with:
       skip: ${{ needs.files-changed.outputs.backend_all != 'true' }}
 
-  frontend-tests:
-    if: false
-    needs: files-changed
-    uses: ./.github/workflows/frontend.yml
-    secrets: inherit
-    with:
-      skip: ${{ needs.files-changed.outputs.frontend_all != 'true' }}
-      skip-lint: ${{ needs.files-changed.outputs.frontend_all != 'true' && needs.files-changed.outputs.e2e_specs != 'true' }}
+  # frontend-tests:
+  #   if: false
+  #   needs: files-changed
+  #   uses: ./.github/workflows/frontend.yml
+  #   secrets: inherit
+  #   with:
+  #     skip: ${{ needs.files-changed.outputs.frontend_all != 'true' }}
+  #     skip-lint: ${{ needs.files-changed.outputs.frontend_all != 'true' && needs.files-changed.outputs.e2e_specs != 'true' }}
+#
 
   e2e-tests:
     needs: [files-changed, uberjar]
