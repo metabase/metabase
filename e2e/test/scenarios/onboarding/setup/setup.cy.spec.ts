@@ -362,6 +362,7 @@ describe("scenarios > setup", () => {
       "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited&use_case=embedding",
     );
 
+    cy.log("Change language to Dutch before user creation");
     cy.get("header")
       .should("be.visible")
       .findByLabelText("Select a language")
@@ -381,13 +382,35 @@ describe("scenarios > setup", () => {
       cy.findByLabelText("Hallo, John. Leuk je te ontmoeten!").should(
         "be.visible",
       );
+    });
 
-      cy.findByText("Breng me naar Metabase").click();
+    cy.log("After user creation, change language to German");
+    cy.get("header")
+      .should("be.visible")
+      .findByLabelText("Selecteer een taal")
+      .should("have.value", "Dutch")
+      .click();
+
+    H.popover()
+      .findByText("German")
+      .scrollIntoView()
+      .should("be.visible")
+      .click();
+
+    cy.findByTestId("setup-forms").within(() => {
+      cy.findByText("Ich aktiviere später").click();
+      cy.findByText("Beenden").click();
+      cy.findByText("Führe mich zu Metabase").click();
     });
 
     cy.location("pathname").should("eq", "/");
 
-    H.main().findByText("Metabase insluiten").should("be.visible");
+    cy.log("Verify final language (German) is preserved");
+    H.main()
+      .findByText(
+        "Erste Schritte mit der Einbettung der Metabase in Ihre Anwendung",
+      )
+      .should("be.visible");
   });
 
   it("should allow you to connect a db during setup", () => {

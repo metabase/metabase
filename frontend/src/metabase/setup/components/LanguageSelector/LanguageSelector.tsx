@@ -4,7 +4,11 @@ import { findWhere } from "underscore";
 
 import { useUpdateSettingsMutation } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getAvailableLocales, getLocale } from "metabase/setup/selectors";
+import {
+  getAvailableLocales,
+  getLocale,
+  getUser,
+} from "metabase/setup/selectors";
 import { Select } from "metabase/ui";
 
 import { updateLocale } from "../../actions";
@@ -14,6 +18,7 @@ export const LanguageSelector = () => {
   const dispatch = useDispatch();
   const locale = useSelector(getLocale);
   const localeData = useSelector(getAvailableLocales);
+  const user = useSelector(getUser);
   const [updateSettings] = useUpdateSettingsMutation();
 
   const locales = useMemo(() => getLocales(localeData), [localeData]);
@@ -24,7 +29,12 @@ export const LanguageSelector = () => {
 
     if (locale) {
       dispatch(updateLocale(locale));
-      await updateSettings({ "site-locale": locale.code });
+
+      // Only update site-locale setting if the user has been created.
+      // This prevents the API request from failing before the user creation step.
+      if (user) {
+        await updateSettings({ "site-locale": locale.code });
+      }
     }
   };
 
