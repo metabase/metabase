@@ -128,10 +128,12 @@ Two snippets cannot share the same name, as even if a snippet is archived, that 
 You can reference [SQL parameters](sql-parameters.md) in snippets. For example, you can save a snippet with SQL code like
 
 ```sql
+ {% raw %}
 WHERE
- {% raw %}{{created_at}}{% endraw %}
-AND category = {% raw %}{{category}}{% endraw %}
-GROUP BY {% raw %}{{time_grouping}}{% endraw %}
+  {{created_at}}
+AND category = {{category}}
+GROUP BY {{time_grouping}}
+{% endraw %}
 ```
 
 When a snippet with parameters is added to a SQL query, Metabase will show a widget for the snippet's parameter.
