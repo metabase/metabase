@@ -11,10 +11,8 @@
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
-   [metabase.util.field-ref :as util.field-ref]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])
   (:import
    (java.awt Color)
@@ -158,19 +156,6 @@
         (assoc-in [:query :fields] [lat-field-ref lon-field-ref])
         (assoc-in [:query :limit] tile-coordinate-limit))))
 
-;;; TODO -- what if the field name contains a slash? Are we expected to URL-encode it? I don't think we have any code
-;;; that handles that.
-(mr/def :api.tiles/field-id-or-name
-  [:string {:api/regex #"[^/]+"}])
-
-(mr/def :api.tiles/route-params
-  [:map
-   [:zoom      ms/Int]
-   [:x         ms/Int]
-   [:y         ms/Int]
-   [:lat-field :string]
-   [:lon-field :string]])
-
 (defn- result->points
   [{{:keys [rows cols]} :data} lat-field-ref lon-field-ref]
   ;; existing usages, don't use this going forward.
@@ -202,14 +187,19 @@
 ;; string param). We evaluate the query and find the set of lat/lon pairs which are relevant and then render the
 ;; appropriate ones. It's expected that to render a full map view several calls will be made to this endpoint in
 ;; parallel.
-(api.macros/defendpoint :get "/:zoom/:x/:y/:lat-field/:lon-field"
+(api.macros/defendpoint :get "/:zoom/:x/:y"
   "Generates a single tile image for an ad-hoc query."
-  [{:keys [zoom x y lat-field lon-field]} :- :api.tiles/route-params
-   {:keys [query]} :- [:map
-                       [:query ms/JSONString]]]
+  [{:keys [zoom x y]} :- [:map
+                          [:zoom ms/Int]
+                          [:x ms/Int]
+                          [:y ms/Int]]
+   {:keys [query latField lonField]} :- [:map
+                                         [:query ms/JSONString]
+                                         [:latField string?]
+                                         [:lonField string?]]]
   (let [query         (json/decode+kw query)
-        lat-field     (mbql.normalize/normalize (util.field-ref/decode-field-ref-from-url lat-field))
-        lon-field     (mbql.normalize/normalize (util.field-ref/decode-field-ref-from-url lon-field))
+        lat-field     (mbql.normalize/normalize (json/decode+kw latField))
+        lon-field     (mbql.normalize/normalize (json/decode+kw lonField))
         updated-query (tiles-query query zoom x y lat-field lon-field)
         result        (qp/process-query
                        (qp/userland-query updated-query {:executed-by api/*current-user-id*
@@ -261,34 +251,40 @@
         points (result->points result lat-field-ref lon-field-ref)]
     (tiles-response result zoom points)))
 
-(api.macros/defendpoint :get "/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+(api.macros/defendpoint :get "/:card-id/:zoom/:x/:y"
   "Generates a single tile image for a saved Card."
-  [{:keys [card-id zoom x y lat-field lon-field]}
-   :- [:merge
-       :api.tiles/route-params
-       [:map
-        [:card-id ms/PositiveInt]]]
-   {:keys [parameters]}
+  [{:keys [card-id zoom x y]}
    :- [:map
-       [:parameters {:optional true} ms/JSONString]]]
+       [:card-id ms/PositiveInt]
+       [:zoom ms/Int]
+       [:x ms/Int]
+       [:y ms/Int]]
+   {:keys [parameters latField lonField]}
+   :- [:map
+       [:parameters {:optional true} ms/JSONString]
+       [:latField string?]
+       [:lonField string?]]]
   (let [parameters (json/decode+kw parameters)
-        lat-field  (util.field-ref/decode-field-ref-from-url lat-field)
-        lon-field  (util.field-ref/decode-field-ref-from-url lon-field)]
+        lat-field  (json/decode+kw latField)
+        lon-field  (json/decode+kw lonField)]
     (process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field)))
 
-(api.macros/defendpoint :get "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+(api.macros/defendpoint :get "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y"
   "Generates a single tile image for a dashcard."
-  [{:keys [dashboard-id dashcard-id card-id zoom x y lat-field lon-field]}
-   :- [:merge
-       :api.tiles/route-params
-       [:map
-        [:dashboard-id ms/PositiveInt]
-        [:dashcard-id ms/PositiveInt]
-        [:card-id   ms/PositiveInt]]]
-   {:keys [parameters]}
+  [{:keys [dashboard-id dashcard-id card-id zoom x y]}
    :- [:map
-       [:parameters {:optional true} ms/JSONString]]]
+       [:dashboard-id ms/PositiveInt]
+       [:dashcard-id ms/PositiveInt]
+       [:card-id ms/PositiveInt]
+       [:zoom ms/Int]
+       [:x ms/Int]
+       [:y ms/Int]]
+   {:keys [parameters latField lonField]}
+   :- [:map
+       [:parameters {:optional true} ms/JSONString]
+       [:latField string?]
+       [:lonField string?]]]
   (let [parameters (json/decode+kw parameters)
-        lat-field  (util.field-ref/decode-field-ref-from-url lat-field)
-        lon-field  (util.field-ref/decode-field-ref-from-url lon-field)]
+        lat-field  (json/decode+kw latField)
+        lon-field  (json/decode+kw lonField)]
     (process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field)))

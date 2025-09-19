@@ -29,7 +29,6 @@
    [metabase.request.core :as request]
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
-   [metabase.util.field-ref :as util.field-ref]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -574,43 +573,49 @@
 
 ;;; ----------------------------------------------------- Map Tiles --------------------------------------------------
 
-(api.macros/defendpoint :get "/tiles/card/:uuid/:zoom/:x/:y/:lat-field/:lon-field"
+(api.macros/defendpoint :get "/tiles/card/:uuid/:zoom/:x/:y"
   "Generates a single tile image for a publicly-accessible Card using the map visualization. Does not require auth
   credentials. Public sharing must be enabled."
-  [{:keys [uuid zoom x y lat-field lon-field]}
-   :- [:merge
-       :api.tiles/route-params
-       [:map
-        [:uuid ms/UUIDString]]]
-   {:keys [parameters]}
+  [{:keys [uuid zoom x y]}
    :- [:map
-       [:parameters {:optional true} ms/JSONString]]]
+       [:uuid ms/UUIDString]
+       [:zoom ms/Int]
+       [:x ms/Int]
+       [:y ms/Int]]
+   {:keys [parameters latField lonField]}
+   :- [:map
+       [:parameters {:optional true} ms/JSONString]
+       [:latField string?]
+       [:lonField string?]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card-id    (api/check-404 (t2/select-one-pk :model/Card :public_uuid uuid, :archived false))
         parameters (json/decode+kw parameters)
-        lat-field  (util.field-ref/decode-field-ref-from-url lat-field)
-        lon-field  (util.field-ref/decode-field-ref-from-url lon-field)]
+        lat-field  (json/decode+kw latField)
+        lon-field  (json/decode+kw lonField)]
     (request/as-admin
       (api.tiles/process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field))))
 
-(api.macros/defendpoint :get "/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+(api.macros/defendpoint :get "/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y"
   "Generates a single tile image for a Card using the map visualization in a publicly-accessible Dashboard. Does not
   require auth credentials. Public sharing must be enabled."
-  [{:keys [uuid dashcard-id card-id zoom x y lat-field lon-field]}
-   :- [:merge
-       :api.tiles/route-params
-       [:map
-        [:uuid        ms/UUIDString]
-        [:dashcard-id ms/PositiveInt]
-        [:card-id     ms/PositiveInt]]]
-   {:keys [parameters]}
+  [{:keys [uuid dashcard-id card-id zoom x y]}
    :- [:map
-       [:parameters {:optional true} ms/JSONString]]]
+       [:uuid        ms/UUIDString]
+       [:dashcard-id ms/PositiveInt]
+       [:card-id     ms/PositiveInt]
+       [:zoom        ms/Int]
+       [:x           ms/Int]
+       [:y           ms/Int]]
+   {:keys [parameters latField lonField]}
+   :- [:map
+       [:parameters {:optional true} ms/JSONString]
+       [:latField string?]
+       [:lonField string?]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))
         parameters   (json/decode+kw parameters)
-        lat-field    (util.field-ref/decode-field-ref-from-url lat-field)
-        lon-field    (util.field-ref/decode-field-ref-from-url lon-field)]
+        lat-field    (json/decode+kw latField)
+        lon-field    (json/decode+kw lonField)]
     (request/as-admin
       (api.tiles/process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field))))
 

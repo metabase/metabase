@@ -59,11 +59,3 @@ export function legacyRef(
 ): FieldReference {
   return ML.legacy_ref(query, stageIndex, column);
 }
-
-export function encodeFieldRefForUrl(fieldRef: FieldReference): string {
-  return ML.encode_field_ref_for_url(fieldRef);
-}
-
-export function decodeFieldRefFromUrl(encodedFieldRef: string): FieldReference {
-  return ML.decode_field_ref_from_url(encodedFieldRef);
-}

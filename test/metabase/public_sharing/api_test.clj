@@ -1690,30 +1690,29 @@
   (= [\P \N \G] (drop 1 (take 4 s))))
 
 (deftest card-tile-query-test
-  (testing "GET api/public/tiles/card/:uuid/:zoom/:x/:y/:lat-field/:lon-field"
+  (testing "GET api/public/tiles/card/:uuid/:zoom/:x/:y with latField and lonField query params"
     (let [uuid (str (random-uuid))]
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (mt/with-temp [:model/Card _card {:dataset_query (venues-query)
                                           :public_uuid uuid}]
-          (is (png? (client/client :get 200 (format "public/tiles/card/%s/1/1/1/%s/%s"
-                                                    uuid
-                                                    (tiles.api-test/encoded-lat-field-ref)
-                                                    (tiles.api-test/encoded-lon-field-ref))))))))))
+          (is (png? (client/client :get 200 (format "public/tiles/card/%s/1/1/1" uuid)
+                                   {:latField (tiles.api-test/encoded-lat-field-ref)
+                                    :lonField (tiles.api-test/encoded-lon-field-ref)}))))))))
 
 (deftest dashcard-tile-query-test
-  (testing "GET api/public/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+  (testing "GET api/public/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y with latField and lonField query params"
     (let [uuid (str (random-uuid))]
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:public_uuid uuid}
                        :model/Card          {card-id :id}      {:dataset_query (venues-query)}
                        :model/DashboardCard {dashcard-id :id}  {:card_id card-id
                                                                 :dashboard_id dashboard-id}]
-          (is (png? (client/client :get 200 (format "public/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1/%s/%s"
+          (is (png? (client/client :get 200 (format "public/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1"
                                                     uuid
                                                     dashcard-id
-                                                    card-id
-                                                    (tiles.api-test/encoded-lat-field-ref)
-                                                    (tiles.api-test/encoded-lon-field-ref))))))))))
+                                                    card-id)
+                                   {:latField (tiles.api-test/encoded-lat-field-ref)
+                                    :lonField (tiles.api-test/encoded-lon-field-ref)}))))))))
 
 ;;; --------------------------------- POST /oembed ----------------------------------
 
