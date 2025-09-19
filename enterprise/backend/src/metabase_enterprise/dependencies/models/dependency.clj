@@ -420,6 +420,7 @@
 
   (bfs-nodes key-dependents [[:transform 1]])
   (bfs-entities key-dependents (t2/select :model/Transform 1))
+  (transitive-dependents {:snippet [{:id 2}]})
   (transitive-dependents {:transform [{:id 1}]})
   (transitive-dependents {:table [{:id 136}]})
   (transitive-dependents {:card [{:id 124}]}))

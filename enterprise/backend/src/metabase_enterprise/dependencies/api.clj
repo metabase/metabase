@@ -7,17 +7,11 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.driver :as driver]
    [metabase.lib-be.metadata.jvm :as lib-be.metadata.jvm]
-   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.core :as native-query-snippets]
    [metabase.queries.schema :as queries.schema]
-   [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.setup :as qp.setup]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -86,7 +80,7 @@
   "Check a proposed edit to a transform, and return the card, transform, etc. IDs for things that will break."
   [_route-params
    _query-params
-   {:keys [id source target] :as body} :- ::transform-body]
+   {:keys [id source target] :as _body} :- ::transform-body]
   (let [database-id   (-> source :query :database)
         base-provider (lib-be.metadata.jvm/application-database-metadata-provider database-id)
         original      (lib.metadata/transform base-provider id)
@@ -96,43 +90,6 @@
         edits         {:transform [transform]}
         breakages     (dependencies/errors-from-proposed-edits base-provider edits)]
     (broken-cards-response breakages)))
-
-(defn- card-uses-snippet?
-  [card {snippet-id :id snippet-name :name}]
-  (let [template-tags (-> card :dataset_query :native :template-tags vals)]
-    (some #(and (= (:type %) :snippet)
-                (or (= (:snippet-id %) snippet-id)
-                    (= (:name %) snippet-name))) template-tags)))
-
-(defn- calculate-native-result-metadata
-  [metadata-provider query]
-  (let [driver (:engine (lib.metadata/database metadata-provider))]
-    (qp.setup/with-qp-setup [query (lib/query metadata-provider query)]
-      (->> (qp.compile/compile-with-inline-parameters query)
-           :query
-           (driver/native-result-metadata driver metadata-provider)))))
-
-(defn- reset-result-metadata-if-uses-snippet
-  [mp card-id snippet]
-  (let [card (lib.metadata/card mp card-id)]
-    (cond-> card
-      (card-uses-snippet? card snippet)
-      (assoc :result-metadata (calculate-native-result-metadata mp (:dataset_query card))))))
-
-(defn- broken-by-snippet
-  [database-id snippet]
-  (let [;; TODO: This sucks - it's getting all cards for the same database_id, which is slow and over-reaching.
-        all-cards      (t2/select-fn-set :id :model/Card :database_id database-id :archived false)
-        all-transforms (t2/select-fn-set :id :model/Transform)
-        base-mp        (doto (lib-be.metadata.jvm/application-database-metadata-provider database-id)
-                         (lib.metadata.protocols/store-metadata! snippet))
-        updated-cards  (map #(reset-result-metadata-if-uses-snippet base-mp % snippet) all-cards)
-        provider       (doto (lib.metadata.cached-provider/cached-metadata-provider base-mp)
-
-                         (lib.metadata.protocols/store-metadatas! updated-cards))]
-    ;; FIXME: Implement this properly.
-    {}
-    #_(dependencies/check-cards-have-sound-refs provider all-cards all-transforms)))
 
 (api.macros/defendpoint :post "/check_snippet"
   "Check a proposed edit to a native snippet, and return the cards, etc. which will be broken."
@@ -154,9 +111,7 @@
                                         :name snippet-name
                                         :content content)
                     content native-query-snippets/add-template-tags)
-        breakages (->> (t2/select-fn-vec :id :model/Database)
-                       (map #(broken-by-snippet % snippet))
-                       (apply merge-with merge))]
+        breakages (dependencies/errors-from-proposed-edits {:snippet [snippet]})]
     (broken-cards-response breakages)))
 
 (def ^{:arglists '([request respond raise])} routes

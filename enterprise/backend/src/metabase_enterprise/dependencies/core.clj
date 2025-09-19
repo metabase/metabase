@@ -9,7 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -31,10 +31,13 @@
   Note that if `:result-metadata` is present on an updated Card, it **will be used!** The only case where that is
   actually useful is with a native query which has been executed, so the caller has driver metadata to give us. Any
   old, pre-update `:result-metadata` should be dropped from any other cards in `updated-entities`."
-  [base-provider    :- ::lib.schema.metadata/metadata-provider
-   updated-entities :- ::updates-map]
-  (let [deps (deps.graph/transitive-dependents updated-entities)]
-    (deps.provider/override-metadata-provider base-provider updated-entities deps)))
+  ([base-provider    :- ::lib.schema.metadata/metadata-provider
+    updated-entities :- ::updates-map]
+   (metadata-provider base-provider updated-entities (deps.graph/transitive-dependents updated-entities)))
+  ([base-provider    :- ::lib.schema.metadata/metadata-provider
+    updated-entities :- ::updates-map
+    dependents       :- ::deps.calculation/upstream-deps]
+   (deps.provider/override-metadata-provider base-provider updated-entities dependents)))
 
 (mu/defn check-query-soundness ;; :- [:map-of ::lib.schema.id/card [:sequential ::lib.schema.mbql-clause/clause]]
   "Given a `MetadataProvider` as returned by [[metadata-provider]], scan all its updated entities and their dependents
@@ -68,23 +71,55 @@
         (vswap! errors assoc-in [entity-type id] bad-refs)))
     @errors))
 
+(defn- group-by-db [deps]
+  (let [by-db (volatile! {})]
+    (when (seq (:card deps))
+      (doseq [[db-id card-ids] (->> (t2/select [:model/Card :id :database_id :card_schema] :id [:in (:card deps)])
+                                    (u/group-by :database_id :id conj #{}))]
+        (vswap! by-db assoc-in [db-id :card] card-ids)))
+    (when (seq (:table deps))
+      (doseq [[db-id table-ids] (->> (t2/select [:model/Table :id :db_id] :id [:in (:table deps)])
+                                     (u/group-by :db_id :id conj #{}))]
+        (vswap! by-db assoc-in [db-id :table] table-ids)))
+    (when (seq (:transform deps))
+      (doseq [[db-id transform-ids] (->> (t2/select [:model/Transform :id :source] :id [:in (:transform deps)])
+                                         (u/group-by #(get-in % [:source :query :database]) :id conj #{}))]
+        (if db-id
+          (vswap! by-db assoc-in [db-id :transform] transform-ids)
+          (log/warnf "Unable to infer database from transforms %s" transform-ids))))
+    (when (seq (:snippet deps))
+      ;; Copy any snippet deps to each database, since they span them all.
+      (vswap! by-db update-vals #(assoc % :snippet (:snippet deps))))
+
+    @by-db))
+
 (defn errors-from-proposed-edits
   "Given a regular `MetadataProvider`, and a map of entity types (`:card`, `:transform`, `:snippet`) to lists of
   updated entities, this returns a map of `{entity-type {entity-id [bad-ref ...]}}`.
 
+  If called without a `base-provider`, groups all the dependents by which Database they are part of, and calls the
+  2-arity with a [[lib-be.metadata.jvm/application-database-metadata-provider]] for each one in turn.
+
   See [[check-query-soundness]] for more details."
-  [base-provider edits]
-  (-> base-provider
-      (metadata-provider edits)
-      check-query-soundness))
+  ([edits]
+   (let [all-deps (deps.graph/transitive-dependents edits)
+         by-db    (group-by-db all-deps)]
+     (reduce (fn [errors [db-id deps]]
+               (-> (lib-be.metadata.jvm/application-database-metadata-provider db-id)
+                   (metadata-provider edits deps)
+                   check-query-soundness
+                   (merge errors)))
+             {} by-db)))
+
+  ([base-provider edits]
+   (-> base-provider
+       (metadata-provider edits)
+       check-query-soundness)))
 
 #_{:clj-kondo/ignore [:unresolved-namespace]}
 (comment
   ;; This should work on any fresh-ish Metabase instance; these are the built-in example questions.
-  (let [card-ids [1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20
-                  21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37]
-        base-mp  #_{:clj-kondo/ignore [:unresolved-namespace]}
-        (lib-be.metadata.jvm/application-database-metadata-provider 39)
+  (let [base-mp (lib-be.metadata.jvm/application-database-metadata-provider 39)
         transform (lib.metadata/transform base-mp 1)
         transform (-> transform
                       (update-in [:source :query :query :expressions]
@@ -95,6 +130,12 @@
     #_(deps.provider/all-overrides mp)
     (check-query-soundness mp))
 
+  ;; Checking that we can properly group everything by database. Surprisingly fast even fetching everything.
+  (let [deps {:card      (t2/select-fn-set :id :model/Card)
+              :transform (t2/select-fn-set :id :model/Transform)
+              :table     (t2/select-fn-set :id :model/Table)}]
+    (group-by-db deps))
+
   (t2/select-fn-vec (juxt :id :name :active :table_id) :model/Field :id [:in [1065 1066 1067 1068 1069]])
 
   (t2/select-one :model/Card :id 124)
@@ -102,6 +143,6 @@
   (deps.graph/transitive-dependents {:table [{:id 155}]})
   (metabase.premium-features.core/token-features)
 
-  (let [card (toucan2.core/select-one :model/Card :id 121)
+  (let [card (t2/select-one :model/Card :id 121)
         mp   (lib-be.metadata.jvm/application-database-metadata-provider (:database_id card))]
     (upstream-deps:card mp card)))

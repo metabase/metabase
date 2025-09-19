@@ -236,7 +236,7 @@
   (with-overrides mp
     {[:metadata/native-query-snippet id] (delay (merge (when id
                                                          (lib.metadata/native-query-snippet (inner-mp mp) id))
-                                                       updates))}))
+                                                       (u/normalize-map updates)))}))
 
 (defn all-overrides
   "Returns all the overrides by ID, in the same form as the map input to [[with-deps]]:
@@ -270,8 +270,3 @@
              :when (not (updated id))]
        (add-override omp entity-type id nil))
      omp)))
-
-(comment
-  (let [mp (metabase.lib-be.metadata.jvm/application-database-metadata-provider 1)]
-    (lib.metadata/transform mp 1))
-  *e)
