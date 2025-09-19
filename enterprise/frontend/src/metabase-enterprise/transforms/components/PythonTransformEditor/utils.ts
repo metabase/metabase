@@ -151,6 +151,7 @@ type TestPythonScriptState = {
 
 export function useTestPythonTransform(
   source: PythonTransformSource,
+  proposedSource?: PythonTransformSource,
 ): TestPythonScriptState {
   const [executePython, { isLoading: isRunning, originalArgs }] =
     useExecutePythonMutation();
@@ -162,9 +163,10 @@ export function useTestPythonTransform(
   const isDirty = originalArgs?.code !== source.body;
 
   const run = async () => {
+    const runSource = proposedSource ?? source;
     const request = executePython({
-      code: source.body,
-      tables: source["source-tables"],
+      code: runSource.body,
+      tables: runSource["source-tables"],
     });
     abort.current = () => request.abort();
 
