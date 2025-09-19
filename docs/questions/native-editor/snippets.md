@@ -1,92 +1,121 @@
 ---
-title: Snippets
+title: SQL Snippets
 redirect_from:
   - /docs/latest/users-guide/sql-snippets
   - /docs/latest/questions/native-editor/sql-snippets
 ---
 
-# Snippets
+# SQL Snippets
 
 ![SQL snippet](../images/sql-snippets.png)
 
-**Snippets** are reusable bits of SQL or native queries. Anyone with permissions to the [SQL editor](./writing-sql.md) can create and edit snippets, which are then available for all SQL authors.
+**SQL Snippets** are reusable bits of SQL or native queries. Anyone with permissions to the [SQL editor](./writing-sql.md) can create and edit snippets, which are then available for all SQL authors.
 
-For example, if you frequently perform queries that involve multiple tables, you can save the SQL code that joins those tables as a snippet so that you (and others in your organization) can reuse that code in multiple questions.
+For example, if you frequently write queries that involve multiple tables, you can save the SQL code that joins those tables as a snippet so that you (and others in your organization) can reuse that code in multiple questions.
 
-## How to create a snippet
+You can use SQL Snippets to define standardized KPIs and filters using SQL, just like you do with [metrics](../../data-modeling/metrics.md) and [segments](../../data-modeling/segments.md) in the query builder. For example, you may want to store exactly how you calculate revenue, or what constitutes an active user.
 
-Here's a simple query with a join using the **Sample Database** included with Metabase.
+You can also use snippets to define a set of reusable filters for SQL questions.
 
-```sql
-SELECT
-  *
-FROM
-  orders AS o
-  LEFT JOIN products AS p ON o.product_id = p.id
-```
+## Create a snippet
 
-Let's save everything after FROM as a snippet to reuse in other queries.
+In the [**SQL editor**](./writing-sql.md):
 
-In the **SQL editor**:
-
-1. **Highlight a section of SQL** that you want to save. In this case, we'll select the following SQL code:
+1. Open the SQL editor by clicking **+ New > SQL query** in the top right corner.
+2. Write some SQL and highlight a section of SQL that you want to save to reuse later. The section doesn't have to be a whole query. For example, you can highlight:
 
    ```sql
    orders AS o
    LEFT JOIN products AS p ON o.product_id = p.id
+   WHERE p.category = {% raw %}{{category}}{% endraw %}
    ```
 
-2. **Right-click on the highlighted section.**
-3. **Select Save as snippet** to create a snippet. A modal will pop up with the SQL statement you highlighted.
-4. **Edit, name, and describe your snippet**. Snippet names must be unique. Click the save button to create the snippet.
+   Within a snippet, you can use:
 
-In this case, we named the snippet "Orders and Products". The snippet will now be available for anyone to use. Here's what the snippet looks like in the SQL editor:
+   - [SQL parameters](#sql-parameters-in-snippets), like `{{param}}`,
+   - references to other snippets, like `{{snippet: orders}}` (Metabase will detect and disallow circular references),
+   - [references to saved questions or models](./referencing-saved-questions-in-queries.md), like `{{#123-orders-model}}`.
+
+3. Right-click on the highlighted section and select **Save as snippet** to create a snippet.
+
+   ![Save a snippet](../images/save-snippet.png)
+
+4. Name and describe your snippet. Snippet names must be unique (even names of archived snippets).
+5. Save.
+
+[IMAGE]
+
+You can also create a new snippet from the Snippet sidebar:
+
+1. Open the SQL editor by clicking **+ New > SQL query** in the top right corner.
+2. Open the Snippet sidebar by clicking **SQL Snippets** button above the SQL editor window
+3. Enter the SQL code that you want to save as a reusable snippet.
+4. Save.
+
+## Use a snippet
+
+You can insert a saved snippet into your query, which will add a `{{snippet: }}` reference:
 
 ```sql
-{% raw %}
 SELECT
   *
 FROM
-  {{snippet: Orders and products}}
-{% endraw %}
+ {% raw %}{{snippet: orders and products}}{% endraw %}
 ```
 
-When writing in the SQL editor, you can now start typing `{% raw %}{{snippet:}}{% endraw %}` and Metabase will present autocomplete options for available snippets.
+To add a snippet to your SQL, start typing `{% raw %}{{snippet: }}{% endraw %}` and Metabase will present autocomplete options for available snippets.
+
+Metabase is sensitive to whitespace in snippet references, so you should type `{% raw %}{{snippet: Products}}{% endraw %}`, with no space between `{{` and `snippet`, and with a space between `:` and snippet's name.
+
+When you execute the query, behind the scenes Metabase replace the snippet reference with the snippet's SQL.
+
+You can also just pick a snippet to insert from the snippet sidebar:
+
+1. Open the snippet sidebar by clicking on the **SQL Snippets** above the SQL editor window.
+   ![Open snippet sidebar](../images/snippet-button.png)
+2. Search for the snippet. Note that search results only include snippets that you have permissions to see.
+3. Hover over a snippet and click on the arrow to the left of snippet's name to insert it into your query.
 
 Note: if you use aliases in a snippet, you'll need to observe those aliases outside of the snippet as well. For example, if a snippet aliases `products AS p`, code outside of the snippet will need to use the alias `p` to reference columns in that table (as in `p.column_name`).
 
-## Snippet menu
+## Preview a query with snippets
 
-The SQL editor **sidebar** has a **Snippets** menu to list available and archived snippets.
+Metabase will keep the snippet as a reference and will not show you the full query - with snippet's code substituted - in the SQL editor itself. You can see the full query that Metabase will send to the database by clicking on the **Eye** icon above the SQL editor.
 
-Click on the snippet icon on the right side of the SQL editor, below the Data Reference book icon and the Variables χ icon. Metabase will slide out a sidebar menu that lists available snippets.
+![Query preview](../images/query-preview.png)
 
-From the Snippets menu, you can:
-
-- **Create a snippet.** Click on the `+` in the upper right of the Snippets sidebar to create a new snippet.
-- **Preview snippets.** Click on the down arrow to the right of a snippet to see its description and a preview of its SQL code. There's also an option to edit the snippet.
-- **Insert a snippet.** Click on a snippet's name to insert it into your query at the cursor's current location.
-- **Search for snippets**. If you've saved over 15 snippets, a **Search** icon (the classic magnifying glass) will appear to the left of the `+` button. Note that search results only include snippets the user has permissions for. Snippet folders do not populate the search results.
-- [**Edit a snippet.**](#editing-snippets) You can change a snippet's name, description and code.
-- [**Archive and unarchive a snippet.**](#archiving-snippets) From the Edit modal, you can archive a snippet, which removes the snippet from the snippet menu and autocomplete options in the SQL editor.
-
-## Editing snippets
-
-You can **edit** a snippet at any time by selecting the snippet from the Snippets sidebar menu in the SQL editor. Click on the down arrow to the right of the snippet, then click **Edit**. You can change the SQL code, snippet name, and snippet description.
+## Edit snippets
 
 Editing snippets is a great way to make changes to many questions at once. If, for example, you've saved the SQL code to pull user data from tables X, Y, and Z as the snippet `User Data`, but you need to change how that data is pulled (such as by adding data from another column or table), you can update the SQL code in the snippet, and all questions that use the snippet `User Data` will have the updated code.
 
-**Editing a snippet's name**. Changing a snippet's name will update the snippet's name in every question that uses that snippet. It won't break any existing questions (the underlying SQL remains unchanged), but be aware that other users may be caught off guard to discover you renamed a snippet they use frequently from "Orders and Products" to "All the things", or whatever.
+![Edit a snippet](../images/edit-snippet.png)
 
-**Editing a snippet's SQL.** Here's where we have to remind you that with great power comes great responsibility. There is one major caveat when editing snippets, worthy of a callout:
+To edit a snippet:
 
-> **Caution: if you edit a snippet and include broken code, you will break every question that uses that snippet.** Make sure to test your code before saving it to an existing snippet.
+1. Open the snippet sidebar by clicking on the **SQL Snippet** icon above the SQL editor window.
 
-## Archiving snippets
+2. Search for the snippet. Note that search results only include snippets that you have permissions to edit.
 
-**Archiving** snippets can help keep dated or less relevant snippets out of the way. When you archive a snippet, the snippet no longer populates in the snippet autocomplete dropdown, and the snippet will no longer show up in the main list of snippets in the **SQL editor** sidebar.
+3. Click on the **down arrow** to the right of the snippet name, then click **Edit**.
 
-Archiving a snippet does not affect any existing queries that use the snippet, so you can safely archive a snippet without impacting any questions.
+   You can change the SQL code, snippet name, and snippet description.
+
+- **Editing a snippet's name**. Changing a snippet's name will update the snippet's name in every question that uses that snippet. Renaming a snippet won't break any existing _questions_ that reference this snippet, but it will **break other snippets** that reference this snippet.
+
+- **Editing a snippet's SQL.** Here's where we have to remind you that with great power comes great responsibility. There is one major caveat when editing snippets, worthy of a callout: if you edit a snippet and include broken code, you will break every question that uses that snippet. Make sure to test your code before saving it to an existing snippet.
+
+## Archive snippets
+
+Archiving snippets can help keep dated or less relevant snippets out of the way.
+
+When you archive a snippet, the snippet no longer populates in the snippet autocomplete dropdown, and the snippet will no longer show up in the list of snippets in the sidebar. Archiving a snippet does **not** affect any existing queries that use the snippet, so you can safely archive a snippet without impacting any questions.
+
+To archive a snippet:
+
+1. Open the snippet sidebar by clicking on the **SQL Snippet** icon above the SQL editor window.
+2. Search for the snippet.
+3. Click on the **down arrow** to the right of the snippet name, then click **Edit**.
+4. Click on **Archive**
 
 You can access an archived snippet from the snippet sidebar menu by clicking on the archived button in the bottom left of the sidebar.
 
@@ -94,14 +123,58 @@ Although there is no way to delete a snippet, you can archive and unarchive a sn
 
 Note: two snippets cannot share the same name, as even if a snippet is archived, that snippet might still be active in questions.
 
+## SQL parameters in snippets
+
+You can reference [SQL parameters](sql-parameters.md) in snippets. For example, you can save a snippet with SQL code like
+
+```sql
+WHERE
+ {% raw %}{{created_at}}{% endraw %}
+AND category = {% raw %}{{category}}{% endraw %}
+GROUP BY {% raw %}{{time_grouping}}{% endraw %}
+```
+
+When a snippet containing SQL parameters is added to a SQL query, the parameters from the snippet will be surfaced in the query.
+
+![Snippet with a parameter](../images/snippet-with-param.png)
+
+You'll be able to specify the type, connected columns, default values etc for the parameters coming from snippets in the query's Variables sidebar.
+
+Settings for parameters from snippets are defined on the query level, not on the snippet level, and aren't shared between queries that use the same snippet. This means if you have a snippet
+
+```sql
+WHERE {% raw %}{{created_at}}{% endraw %}
+```
+
+you can have one query with that snippet where the `{{created_at}}` parameter is connected to `Products.Created_At` and named `"Release date"`, and another query with the same snippet where `{{created_at}}` is connected to `Orders.created_date` and named `"Order date"`.
+
+If you have multiple snippets containing parameters with the same name, the question using those snippets will only use one instance of the parameter. For example, if `{{snippet: 1}}` contains parameter `{{var}}` and `{{snippet: 2}}` also contains parameter `{{var}}`, the question will display only one `{{var}}` parameter and use its value in both snippets.
+
 ## Snippet permissions
 
 Any user who has SQL editor permissions to at least one of your connected databases will be able to view the snippets sidebar, and will be able to create, edit, and archive or unarchive any and all snippets — even snippets intended to be used with databases the user lacks SQL editing access to.
 
 Some plans contain additional functionality for organizing snippets into folders and setting permissions on those folders. See our [docs on Snippet folders and permissions](../../permissions/snippets.md).
 
+## Why use Snippets?
+
+There are three main use cases for Snippets:
+
+- **Standardization**
+
+  How does your organization define a popular product? Is it by number of units sold? Or by reviews with an average rating greater than 4? You can define those qualifications for a popular product and codify them in a Snippet, `{{snippet: popular products}}`, and have that code populate in every question that uses that snippet. If down the line this definition needs to change, simply update the snippet’s SQL, and the change will propagate to all questions that use that snippet.
+
+  Similar to how [segments](../../data-modeling/segments.md) (a named filter or set of filters) and [metrics](../../data-modeling/models.md) (a named computation) can standardize analytics in your organization, snippets offer a way to ensure correctness and consistency of SQL across teams.
+
+- **Efficiency**
+
+  Do you find yourself copying and pasting SQL code often? Don’t want to bother remembering which foreign keys map to which tables? Write that complicated join once, save it as a snippet, and summon the snippet as needed.
+
+- **Education**
+
+  Snippets can level up folks who are new to SQL (or even experienced analysts) by exposing them to your organization’s “canonical SQL,” or to more efficient or more complex queries. Reading, copying, and building upon quality code is one of the best ways to develop skills. It can also save your organization time: people can copy a snippet’s code, modify it to obtain different results, and save that code as a new snippet for others to use.
+
 ## Learn more
 
-- [Snippets](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/sql-snippets)
 - [Snippets vs Saved Questions vs Views](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/organizing-sql).
 - If you're having trouble with your SQL query, go to the [SQL troubleshooting guide](../../troubleshooting-guide/sql.md).
