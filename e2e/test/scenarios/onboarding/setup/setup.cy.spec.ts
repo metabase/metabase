@@ -357,6 +357,39 @@ describe("scenarios > setup", () => {
       .should("be.visible");
   });
 
+  it("should update the site locale setting when changing language in setup", () => {
+    cy.visit(
+      "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited&use_case=embedding",
+    );
+
+    cy.get("header")
+      .should("be.visible")
+      .findByLabelText("Select a language")
+      .should("have.value", "English")
+      .click();
+
+    H.popover().findByText("Dutch").should("be.visible").click();
+
+    cy.findByTestId("setup-forms").within(() => {
+      const password = "12341234";
+
+      cy.findByDisplayValue("John").should("exist");
+      cy.findByLabelText("Maak een wachtwoord").type(password);
+      cy.findByLabelText("Bevestig je wachtwoord").type(password);
+      cy.button("Volgende").click();
+
+      cy.findByLabelText("Hallo, John. Leuk je te ontmoeten!").should(
+        "be.visible",
+      );
+
+      cy.findByText("Breng me naar Metabase").click();
+    });
+
+    cy.location("pathname").should("eq", "/");
+
+    H.main().findByText("Metabase insluiten").should("be.visible");
+  });
+
   it("should allow you to connect a db during setup", () => {
     const dbName = "SQLite db";
 
