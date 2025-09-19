@@ -70,10 +70,11 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const defaultSettings = useMemo(() => {
     return getDefaultSdkIframeEmbedSettings(
-      startWith?.type ?? "dashboard",
-      startWith?.defaultResourceId ??
-        recentDashboards[0]?.id ??
-        EMBED_FALLBACK_DASHBOARD_ID,
+      startWith ?? {
+        embeddingType: "modular",
+        resourceType: "dashboard",
+        resourceId: recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
+      },
     );
   }, [startWith, recentDashboards]);
 

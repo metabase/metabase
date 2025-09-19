@@ -38,7 +38,8 @@ export type SdkIframeEmbedSetupSettings = Omit<
   SdkIframeEmbedTemplateSettings;
 
 export type SdkIframeEmbedSetupStartWith = {
+  embeddingType: "modular" | "static";
   step: SdkIframeEmbedSetupStep;
-  type: SdkIframeEmbedSetupExperience;
-  defaultResourceId: SdkDashboardId | SdkQuestionId;
+  resourceType: SdkIframeEmbedSetupExperience;
+  resourceId: SdkDashboardId | SdkQuestionId;
 };
