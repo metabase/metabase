@@ -34,9 +34,14 @@
         (is (some? (:hash_key fv)))
 
         (testing "call second time shouldn't create a new FieldValues"
-          (params.field-values/get-or-create-field-values!
-           (t2/select-one :model/Field :id (mt/id :categories :id)))
-          (is (= 1 (t2/count :model/FieldValues :field_id categories-id :type :advanced))))
+          (let [last-used-at-before (t/offset-date-time "2019-11-11T00:00:00Z")]
+            (t2/update! :model/FieldValues (:id fv) {:last_used_at last-used-at-before})
+            (params.field-values/get-or-create-field-values!
+             (t2/select-one :model/Field :id (mt/id :categories :id)))
+
+            (is (= 1 (t2/count :model/FieldValues :field_id categories-id :type :advanced)))
+            (is (not= last-used-at-before
+                      (:last_used_at (t2/select-one :model/FieldValues (:id fv)))))))
 
         (testing "after changing the question, should create new FieldValues"
           (let [new-query (mt/mbql-query categories
