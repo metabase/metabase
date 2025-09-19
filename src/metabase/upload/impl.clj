@@ -527,7 +527,7 @@
          :num-rows          (count (rest rows))
          :generated-columns 0}))))
 
-(defn- create-from-csv-and-sync!
+(defn create-from-csv-and-sync!
   "This is separated from `create-csv-upload!` for testing"
   [{:keys [db filename file schema table-name display-name]}]
   (let [driver            (driver.u/database->driver db)

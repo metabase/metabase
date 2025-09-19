@@ -295,7 +295,7 @@ export type TransformJobTriggerManualRunEvent = ValidateEvent<{
 export type TransformCreateEvent = ValidateEvent<{
   event: "transform_create";
   triggered_from: "transform-page-create-menu";
-  event_detail: "query" | "native" | "saved-question";
+  event_detail: "query" | "native" | "python" | "saved-question";
 }>;
 
 export type TransformCreatedEvent = ValidateEvent<{

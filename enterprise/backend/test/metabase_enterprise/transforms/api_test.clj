@@ -8,7 +8,7 @@
    [metabase-enterprise.transforms.models.transform-transform-tag]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
-   [metabase-enterprise.transforms.test-util :refer [parse-instant with-transform-cleanup! utc-timestamp]]
+   [metabase-enterprise.transforms.test-util :as transforms.tu :refer [parse-instant with-transform-cleanup! utc-timestamp get-test-schema]]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -52,12 +52,6 @@
       ;; Convert to legacy MBQL which the transform API expects
     (lib.convert/->legacy-MBQL query)))
 
-(defn- get-test-schema
-  "Get the schema from the products table in the test dataset.
-   This is needed for databases like BigQuery that require a schema/dataset."
-  []
-  (t2/select-one-fn :schema :model/Table (mt/id :transforms_products)))
-
 (deftest create-transform-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:transforms}
@@ -72,6 +66,80 @@
                                    :target {:type   "table"
                                             :schema schema
                                             :name   table-name}})))))))
+
+(deftest create-transform-feature-flag-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (testing "Creating a query transform without :transforms feature returns 403"
+      (mt/with-premium-features #{}
+        (mt/dataset transforms-dataset/transforms-test
+          (let [query  (make-query "Gadget")
+                schema (get-test-schema)
+                response (mt/user-http-request :crowberto :post 402 "ee/transform"
+                                               {:name   "Test Transform"
+                                                :source {:type  "query"
+                                                         :query query}
+                                                :target {:type   "table"
+                                                         :schema schema
+                                                         :name   "test_transform"}})]
+            (is (= "error-premium-feature-not-available" (:status response)))))))
+
+    (testing "Creating a query transform with :transforms feature succeeds"
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-cleanup! [table-name "test_query_transform"]
+            (let [query  (make-query "Gadget")
+                  schema (get-test-schema)
+                  response (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                 {:name   "Test Transform"
+                                                  :source {:type  "query"
+                                                           :query query}
+                                                  :target {:type   "table"
+                                                           :schema schema
+                                                           :name   table-name}})]
+              (is (some? (:id response))))))))))
+
+(deftest update-transform-feature-flag-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (testing "Updating a query transform requires :transforms feature"
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-cleanup! [table-name "test_update"]
+            (let [query  (make-query "Gadget")
+                  schema (get-test-schema)
+                  transform-payload {:name   "Original Transform"
+                                     :source {:type  "query"
+                                              :query query}
+                                     :target {:type   "table"
+                                              :schema schema
+                                              :name   table-name}}
+                  created (mt/user-http-request :crowberto :post 200 "ee/transform" transform-payload)]
+              ;; Now test update without feature flag
+              (mt/with-premium-features #{}
+                (let [response (mt/user-http-request :crowberto :put
+                                                     (format "ee/transform/%d" (:id created))
+                                                     (assoc transform-payload :name "Updated Transform"))]
+                  (is (= "error-premium-feature-not-available" (:status response))))))))))))
+
+(deftest run-transform-feature-flag-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (testing "Running a query transform requires :transforms feature"
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-cleanup! [table-name "test_run"]
+            (let [query  (make-query "Gadget")
+                  schema (get-test-schema)
+                  transform-payload {:name   "Test Run Transform"
+                                     :source {:type  "query"
+                                              :query query}
+                                     :target {:type   "table"
+                                              :schema schema
+                                              :name   table-name}}
+                  created (mt/user-http-request :crowberto :post 200 "ee/transform" transform-payload)]
+              ;; Now test run without feature flag
+              (mt/with-premium-features #{}
+                (let [response (mt/user-http-request :crowberto :post
+                                                     (format "ee/transform/%d/run" (:id created)))]
+                  (is (= "error-premium-feature-not-available" (:status response))))))))))))
 
 (deftest list-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -213,24 +281,6 @@
                                                      :name   table-name}})]
             (mt/user-http-request :crowberto :delete 204 (format "ee/transform/%s/table" (:id resp)))))))))
 
-(defn- test-run
-  [transform-id]
-  (let [resp      (mt/user-http-request :crowberto :post 202 (format "ee/transform/%s/run" transform-id))
-        timeout-s 10 ; 10 seconds is our timeout to finish execution and sync
-        limit     (+ (System/currentTimeMillis) (* timeout-s 1000))]
-    (is (=? {:message "Transform run started"}
-            resp))
-    (loop []
-      (when (> (System/currentTimeMillis) limit)
-        (throw (ex-info (str "Transform run timed out after " timeout-s " seconds") {})))
-      (let [resp   (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" transform-id))
-            status (some-> resp :last_run :status keyword)]
-        (when-not (contains? #{:started :succeeded} status)
-          (throw (ex-info (str "Transform run failed with status " status) {:resp resp})))
-        (when-not (some? (:table resp))
-          (Thread/sleep 100)
-          (recur))))))
-
 (defn- check-query-results
   "Verifies that a transform successfully created a table with expected data.
 
@@ -269,19 +319,6 @@
           (str "Expected " (count ids) " rows with category " category
                " in table " table-name ", but got " actual-count)))))
 
-(defn- wait-for-table
-  "Wait for a table to appear in metadata, with timeout.
-   Copied from execute_test.clj - will consolidate later."
-  [table-name timeout-ms]
-  (let [mp    (mt/metadata-provider)
-        limit (+ (System/currentTimeMillis) timeout-ms)]
-    (loop []
-      (Thread/sleep 200)
-      (when (> (System/currentTimeMillis) limit)
-        (throw (ex-info "table has not been created" {:table-name table-name, :timeout-ms timeout-ms})))
-      (or (m/find-first (comp #{table-name} :name) (lib.metadata/tables mp))
-          (recur)))))
-
 (deftest execute-transform-test
   (testing "transform execution with :transforms/table target"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -301,8 +338,8 @@
                                         :target target1}
                     {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
                                                              original)
-                    _                  (do (test-run transform-id)
-                                           (wait-for-table table1-name 5000))
+                    _                  (do (transforms.tu/test-run transform-id)
+                                           (transforms.tu/wait-for-table table1-name 5000))
                     _                  (is (true? (transforms.util/target-table-exists? original)))
                     _                  (check-query-results table1-name [5 11 16] "Gadget")
                     updated            {:name        "Doohickey Products"
@@ -314,8 +351,8 @@
                         (->
                          (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" transform-id) updated)
                          (update-in [:source :query] mbql.normalize/normalize))))
-                (test-run transform-id)
-                (wait-for-table table2-name 5000)
+                (transforms.tu/test-run transform-id)
+                (transforms.tu/wait-for-table table2-name 5000)
                 (is (true? (transforms.util/target-table-exists? original)))
                 (is (true? (transforms.util/target-table-exists? updated)))
                 (check-query-results table2-name [2 3 4 13] "Doohickey")))))))))

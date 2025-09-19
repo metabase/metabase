@@ -66,6 +66,7 @@
     :model/PermissionsGroupMembership
     :model/PermissionsRevision
     :model/PersistedInfo
+    :model/PythonLibrary
     :model/Pulse
     :model/PulseCard
     :model/PulseChannel
@@ -91,7 +92,6 @@
     :model/TransformJobTransformTag
     :model/TransformTag
     :model/TransformTransformTag
-    :model/PythonLibrary
     :model/Undo
     :model/User
     :model/UserParameterValue

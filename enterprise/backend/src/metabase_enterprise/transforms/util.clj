@@ -30,6 +30,16 @@
     (keyword schema name)
     (keyword name)))
 
+(defn query-transform?
+  "Check if this is a query transform: native query / mbql query."
+  [transform]
+  (= :query (-> transform :source :type keyword)))
+
+(defn python-transform?
+  "Check if this is a Python transform."
+  [transform]
+  (= :python (-> transform :source :type keyword)))
+
 (defn try-start-unless-already-running
   "Start a transform run, throwing an informative error if already running."
   [id run-method]
@@ -42,11 +52,6 @@
                          :transform-id id}
                         e))
         (throw e)))))
-
-(defn python-transform?
-  "Check if this is a Python transform."
-  [transform]
-  (= :python (-> transform :source :type keyword)))
 
 (defn run-cancelable-transform!
   "Execute a transform with cancellation support and proper error handling."

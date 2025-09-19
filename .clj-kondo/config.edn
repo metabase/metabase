@@ -1,7 +1,7 @@
 ;; -*- comment-column: 100; -*-
 {:config-paths ["macros" "src" "config"]
  :linters
- { ;;
+ {;;
   ;; enabled optional linters (these are disabled by default)
   ;;
 
@@ -187,7 +187,7 @@
   :metabase/disallow-hardcoded-driver-names-in-tests
   ;; don't include `:h2` since that will probably lead to a mountain of tests where we are specifically testing
   ;; middleware or compilation behavior with just H2 since it's the default.
-  {:drivers #{ ;; core drivers
+  {:drivers #{;; core drivers
               #_:h2
               :postgres
               :mysql
@@ -627,7 +627,7 @@
    metabase.test/with-temp                                                                                                   hooks.toucan2.tools.with-temp/with-temp
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
    metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
-   metabase.users.api-test/with-temp-user-email!                                                                              hooks.common/with-one-binding
+   metabase.users.api-test/with-temp-user-email!                                                                             hooks.common/with-one-binding
    metabase.util.i18n/deferred-trs                                                                                           hooks.metabase.util.i18n/deferred-trs
    metabase.util.i18n/deferred-tru                                                                                           hooks.metabase.util.i18n/deferred-tru
    metabase.util.i18n/trs                                                                                                    hooks.metabase.util.i18n/trs
@@ -742,7 +742,9 @@
   ;; `metabase-enterprise.sandbox.query-processor*-test`
   ;;
   {:pattern "^metabase(?:((?:-enterprise\\.sandbox)?\\.query-processor)|(?:\\.driver\\.sql(?!server)(?!ite))).*-test$"
-   :name    general-qp-and-driver-test-namespaces}]
+   :name    general-qp-and-driver-test-namespaces}
+  {:pattern "^metabase\\.python-runner\\..*"
+   :name    python-runner-namespaces}]
 
  :config-in-ns
  {test-namespaces
@@ -767,8 +769,8 @@
   source-namespaces
   {:linters
    {:metabase/validate-escaped-single-quotes-in-i18n {:level :warning}
-    :metabase/validate-string-or-str-args-to-i18n {:level :warning}
-    :metabase/discourage-millis-duration {:level :warning}
+    :metabase/validate-string-or-str-args-to-i18n    {:level :warning}
+    :metabase/discourage-millis-duration             {:level :warning}
 
     :discouraged-var
     {clojure.core/with-redefs {:message "Don't use with-redefs outside of tests"}

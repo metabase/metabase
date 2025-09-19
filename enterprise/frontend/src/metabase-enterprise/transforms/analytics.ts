@@ -34,7 +34,7 @@ export function trackTransformCreate({
   creationType,
 }: {
   triggeredFrom: "transform-page-create-menu";
-  creationType: "query" | "native" | "saved-question";
+  creationType: "query" | "native" | "python" | "saved-question";
 }) {
   trackSimpleEvent({
     event: "transform_create",
