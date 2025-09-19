@@ -545,6 +545,18 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v56.2025-09-19T15:33:18
+      author: lbrdnk
+      comment: Semantic search token usage tracking
+      changes:
+        - createIndex:
+            tableName: semantic_search_token_tracking
+            indexName: idx_semantic_search_token_tracking_created_at
+            columns:
+              column:
+                name: created_at
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
