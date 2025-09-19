@@ -5,7 +5,7 @@ on:
     inputs:
       skip:
         type: boolean
-        default: false
+        default: true
       skip-lint:
         type: boolean
         default: false
