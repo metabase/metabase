@@ -436,7 +436,9 @@
 
 (deftest comprehensive-e2e-python-transform-test
   (testing "End-to-end test using execute-python-transform! across all supported drivers with comprehensive type coverage"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :transforms/python)
+                           ;; we sometimes get I/O error in CI due to it taking too long. it's too slow, too flakey to keep enabled
+                           :redshift)
       (mt/with-empty-db
         (mt/with-premium-features #{:transforms-python}
           (with-test-table [source-table-id source-table-name] [base-type-test-data (:data base-type-test-data)]
