@@ -83,7 +83,6 @@ export function getValidationResult(query: Lib.Query): QueryValidationResult {
     if (tags.some((t) => t.type !== "card" && t.type !== "snippet")) {
       return {
         isValid: false,
-        errorType: "variable",
         errorMessage: t`In transforms, you can use snippets and question or model references, but not variables.`,
       };
     }

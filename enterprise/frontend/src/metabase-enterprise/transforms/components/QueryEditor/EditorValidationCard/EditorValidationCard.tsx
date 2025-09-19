@@ -5,21 +5,21 @@ import { Button, Card, Stack, Text } from "metabase/ui";
 
 import type { QueryValidationResult } from "../types";
 
-import { getErrorAcknowledgementKey } from "./utils";
+import { TRANSFORM_ERROR_SEEN_KEY } from "./constants";
 
 type EditorValidationCardProps = {
   validationResult: QueryValidationResult;
 };
 
 export function EditorValidationCard({
-  validationResult: { errorType, errorMessage },
+  validationResult: { errorMessage },
 }: EditorValidationCardProps) {
-  if (errorType == null || errorMessage == null) {
+  if (errorMessage == null) {
     return null;
   }
 
   return (
-    <UserHasSeen id={getErrorAcknowledgementKey(errorType)}>
+    <UserHasSeen id={TRANSFORM_ERROR_SEEN_KEY}>
       {({ hasSeen, ack }) =>
         !hasSeen && <ErrorCard errorMessage={errorMessage} onClose={ack} />
       }
