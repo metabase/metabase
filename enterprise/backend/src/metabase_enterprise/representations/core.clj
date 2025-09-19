@@ -125,42 +125,12 @@
 
 ;; =============================================================== ;;
 
-;; this probably exists somewhere
-(defn- remove-nils [map]
-  (reduce (fn [map [k v]]
-            (if (nil? v)
-              map
-              (assoc map k v)))
-          {} map))
-
-(defn card-ref [card]
-  (format "%s-%s" (name (:type card)) (:id card)))
-
-(defn export-card [type question]
-  (let [query (serdes/export-mbql (:dataset_query question))]
-    (cond-> {:name (:name question)
-             ;;:version "question-v0"
-             :type type
-             :ref (format "%s-%s" (name type) (:id question))
-             :description (:description question)}
-
-      (= :native (:type query))
-      (assoc :query (-> query :native :query)
-             :database (:database query))
-
-      (= :query (:type query))
-      (assoc :mbql_query (:query query)
-             :database (:database query))
-
-      :always
-      remove-nils)))
-
-(defn export-collection [collection]
-  (-> {:type "collection"
-       :ref (format "%s-%s" "collection" (:id collection))
-       :name (:name collection)
-       :description (:description collection)}
-      remove-nils))
+(defn export [t2-model]
+  (case (t2/model t2-model)
+    :model/Card (case (:type t2-model)
+                  :question (v0-question/export t2-model)
+                  :model    (v0-model/export t2-model))
+    :model/Collection (v0-coll/export t2-model)))
 
 (defn- write-em
   "Writes representations to a directory `dir`. Will take a collection-id and serialize the whole collection, creating a folder named <collection-name> there. Example, supposing a collection id of 8 with name \"custom\",

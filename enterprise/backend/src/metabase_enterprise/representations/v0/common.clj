@@ -60,3 +60,11 @@
       :else
       (throw (ex-info "Question must have either 'query' or 'mbql_query'"
                       {:representation representation})))))
+
+;; this probably exists somewhere
+(defn remove-nils [map]
+  (reduce (fn [map [k v]]
+            (if (nil? v)
+              map
+              (assoc map k v)))
+          {} map))

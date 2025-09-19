@@ -3,6 +3,7 @@
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.config.core :as config]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.models.serialization :as serdes]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -134,3 +135,50 @@
       (do
         (log/info "Creating new question" (:name question-data))
         (first (t2/insert-returning-instances! :model/Card question-data))))))
+
+;; -- Export --
+
+(defn- source-table-ref [table]
+  (cond
+    (vector? table)
+    (let [[db schema table] table]
+      {:database db
+       :schema   schema
+       :table    table})
+
+    (string? table)
+    (let [referred-card (t2/select-one :model/Card :entity_id table)])))
+
+(defn- update-source-table [card]
+  (if-some [table (get-in card [:mbql_query :source-table])]
+    (update-in card [:mbql_query :source-table] source-table-ref)
+    card))
+
+(defn- patch-refs [card]
+  (-> card
+      (update-source-table)))
+
+(defn ->ref [card]
+  (format "%s-%s" (name (:type card)) (:id card)))
+
+(defn export [card]
+  (let [query (serdes/export-mbql (:dataset_query card))]
+    (cond-> {:name (:name card)
+             ;;:version "question-v0"
+             :type type
+             :ref (:type card)
+             :description (:description card)}
+
+      (= :native (:type query))
+      (assoc :query (-> query :native :query)
+             :database (:database query))
+
+      (= :query (:type query))
+      (assoc :mbql_query (:query query)
+             :database (:database query))
+
+      :always
+      patch-refs
+
+      :always
+      v0-common/remove-nils)))

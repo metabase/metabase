@@ -4,6 +4,7 @@
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.config.core :as config]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.models.serialization :as serdes]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -242,6 +243,30 @@
                 currency (assoc :currency currency))))
           columns)))
 
+;;; -- Export --
+
+(defn ->ref [card]
+  (format "%s-%s" (name (:type card)) (:id card)))
+
+(defn export [card]
+  (let [query (serdes/export-mbql (:dataset_query card))]
+    (cond-> {:name (:name card)
+             ;;:version "question-v0"
+             :type type
+             :ref (:type card)
+             :description (:description card)}
+
+      (= :native (:type query))
+      (assoc :query (-> query :native :query)
+             :database (:database query))
+
+      (= :query (:type query))
+      (assoc :mbql_query (:query query)
+             :database (:database query))
+
+      :always
+      v0-common/remove-nils)))
+
 ;;; ------------------------------------ Public API ------------------------------------
 
 (defn yaml->toucan
@@ -264,12 +289,12 @@
      {;; Core fields
       :name model-name
       :description (or description "")
-      :display :table ; Models are typically displayed as tables
+      :display :table                   ; Models are typically displayed as tables
       :dataset_query (v0-common/representation->dataset-query representation)
       :visualization_settings {}
       :database_id database-id
-      :query_type :native ; TODO: Support MBQL queries
-      :type :model ; This is what makes it a model instead of a question
+      :query_type :native               ; TODO: Support MBQL queries
+      :type :model                      ; This is what makes it a model instead of a question
       }
      ;; Result metadata with column definitions
      (when columns

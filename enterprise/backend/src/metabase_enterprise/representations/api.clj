@@ -34,29 +34,6 @@
       (log/error e)
       (throw e))))
 
-(defn- source-table-ref [table]
-  (cond
-    (vector? table)
-    (let [[db schema table] table]
-      {:database db
-       :schema   schema
-       :table    table})
-
-    (string? table)
-    (let [referred-card (t2/select-one :model/Card :entity_id table)]
-      {:type (:type referred-card)
-       :ref (rep/card-ref referred-card)})))
-
-(defn- update-source-table [card]
-  (if-some [table (get-in card [:mbql_query :source-table])]
-    (update-in card [:mbql_query :source-table] source-table-ref)
-    card))
-
-(defn- patch-card-refs [card]
-  (println "patching")
-  (-> card
-      (update-source-table)))
-
 (api.macros/defendpoint :get "/question/:id"
   "Download a yaml representation of a question."
   [{:keys [id]} :- :any
@@ -65,8 +42,7 @@
    _request]
   (let [id (Long/parseLong id)
         question (api/check-404 (t2/select-one :model/Card :id id :type "question"))
-        rep (rep/export-card "question" question)
-        rep (patch-card-refs rep)]
+        rep (rep/export question)]
     (try
       (rep/validate rep)
       (catch Exception e
@@ -81,33 +57,12 @@
    _request]
   (let [id (Long/parseLong id)
         question (api/check-404 (t2/select-one :model/Card :id id :type "model"))
-        rep (rep/export-card "model" question)]
+        rep (rep/export question)]
     (try
       (rep/validate rep)
       (catch Exception e
         (log/error e "Does not validate.")))
     (yaml/generate-string rep)))
-
-(api.macros/defendpoint :get "/card/:id"
-  "Download a yaml representation of a card."
-  [{:keys [id]}
-   _query-params
-   _body-params
-   _request]
-  (let [id (Long/parseLong id)
-        question (api/check-404 (t2/select-one :model/Card :id id))
-        rep (rep/export-card (:type question) question)]
-    (try
-      (rep/validate rep)
-      (catch Exception e
-        (log/error e "Does not validate.")))
-    (yaml/generate-string rep)))
-
-(defn- model->url [model]
-  (let [modelname (get {:dataset :model
-                        :card :question}
-                       (keyword (:model model)) (:model model))]
-    (format "/api/ee/representation/%s/%s" (name modelname) (:id model))))
 
 (api.macros/defendpoint :get "/collection/:id"
   "Download a yaml representation of a collection."
@@ -117,15 +72,12 @@
    _request]
   (let [id (Long/parseLong id)
         collection (api/check-404 (t2/select-one :model/Collection :id id))
-        rep (rep/export-collection collection)
-        children (coll.api/collection-children collection {:show-dashboard-questions? true
-                                                           :archived? false})]
+        rep (rep/export collection)]
     (try
       (rep/validate rep)
       (catch Exception e
         (log/error e "Does not validate.")))
-    (let [rep (assoc rep :children (mapv model->url (:data children)))]
-      (yaml/generate-string rep))))
+    (yaml/generate-string rep)))
 
 (comment
   (binding [api/*current-user-id* 1]
