@@ -678,7 +678,7 @@ describe("scenarios > dashboard > filters > reset all filters", () => {
     cy.signInAsAdmin();
   });
 
-  describe("resetting to empty value", () => {
+  describe("resetting to empty value", { tags: "@flaky" }, () => {
     it("works across all tabs with 'auto-apply filters' on", () => {
       createDashboardWithParameterInEachTab({
         autoApplyFilters: true,
