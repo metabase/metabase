@@ -2,48 +2,48 @@ name: Driver Stress Test
 
 on:
   workflow_dispatch:
-    inputs:
-      test:
-        description: 'The exact test name with its namespace.'
-        type: string
-        required: true
-      times:
-        description: 'How many times do you want to run this test?'
-        type: number
-        required: true
-        default: 1
-      driver:
-        description: 'The driver against which you want to run this test.'
-        required: true
-        default: 'Postgres'
-        type: choice
-        options:
-          - Athena
-          - BigQuery
-          - Druid
-          - Google Classpath Test
-          - Maria DB
-          - Maria DB (latest)
-          - Mongo 4
-          - Mongo 4 (SSL)
-          - Mongo 5
-          - Mongo 5 (SSL)
-          - Mongo (latest)
-          - MySQL
-          - MySQL (latest)
-          - Oracle 18
-          - Oracle 21
-          - Postgres
-          - Postgres (latest)
-          - Presto JDBC
-          - Redshift
-          - Snowflake
-          - SparkSQL
-          - SQLite
-          - SQL Server 2017
-          - SQL Server 2022
-          - Starburst
-          - Vertica
+    # inputs:
+    #   test:
+    #     description: 'The exact test name with its namespace.'
+    #     type: string
+    #     required: true
+    #   times:
+    #     description: 'How many times do you want to run this test?'
+    #     type: number
+    #     required: true
+    #     default: 1
+    #   driver:
+    #     description: 'The driver against which you want to run this test.'
+    #     required: true
+    #     default: 'Postgres'
+    #     type: choice
+    #     options:
+    #       - Athena
+    #       - BigQuery
+    #       - Druid
+    #       - Google Classpath Test
+    #       - Maria DB
+    #       - Maria DB (latest)
+    #       - Mongo 4
+    #       - Mongo 4 (SSL)
+    #       - Mongo 5
+    #       - Mongo 5 (SSL)
+    #       - Mongo (latest)
+    #       - MySQL
+    #       - MySQL (latest)
+    #       - Oracle 18
+    #       - Oracle 21
+    #       - Postgres
+    #       - Postgres (latest)
+    #       - Presto JDBC
+    #       - Redshift
+    #       - Snowflake
+    #       - SparkSQL
+    #       - SQLite
+    #       - SQL Server 2017
+    #       - SQL Server 2022
+    #       - Starburst
+    #       - Vertica
 
 jobs:
 
