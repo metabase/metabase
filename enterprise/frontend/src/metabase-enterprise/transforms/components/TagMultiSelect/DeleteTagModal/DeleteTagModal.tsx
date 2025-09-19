@@ -22,7 +22,12 @@ export function DeleteTagModal({
   onClose,
 }: DeleteTagModalProps) {
   return (
-    <Modal title={t`Delete this tag?`} opened padding="xl" onClose={onClose}>
+    <Modal
+      title={t`Delete the ${tag.name} tag?`}
+      opened
+      padding="xl"
+      onClose={onClose}
+    >
       <FocusTrap.InitialFocus />
       <DeleteTagForm tag={tag} onDelete={onDelete} onClose={onClose} />
     </Modal>
