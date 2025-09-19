@@ -261,7 +261,7 @@ function getNotFoundMessage(
   trimmedSearchValue: string,
 ) {
   if (tags.length === 0) {
-    return t`No tags yet`;
+    return t`Start typing to create a tag`;
   }
   if (tags.some((tag) => tag.name === trimmedSearchValue)) {
     return t`A tag with that name already exists`;
