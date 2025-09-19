@@ -1,6 +1,6 @@
 import { Extension } from "@tiptap/core";
 import { Fragment, type Node, Slice } from "@tiptap/pm/model";
-import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { NodeSelection, Plugin, PluginKey } from "@tiptap/pm/state";
 import type { NodeViewProps } from "@tiptap/react";
 
 import {
@@ -685,6 +685,20 @@ export const HandleEditorDrop = Extension.create({
                 return false;
               }
             },
+          },
+
+          handleTextInput: (view) => {
+            const { state } = view;
+            const { selection } = state;
+
+            // Check if we have a node selection on a cardEmbed
+            if (selection instanceof NodeSelection) {
+              const selectedNode = selection.node;
+              if (selectedNode.type.name === "cardEmbed") {
+                // Ignore text input when a cardEmbed is selected
+                return true; // Prevent default behavior
+              }
+            }
           },
 
           transformPasted: (slice, view) => {

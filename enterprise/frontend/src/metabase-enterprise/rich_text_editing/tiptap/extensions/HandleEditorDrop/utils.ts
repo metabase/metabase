@@ -67,30 +67,14 @@ export const getDroppedCardEmbedNodeData = (
 
     // Dropping a "cardEmbed" node
     if (cardEmbedNode && moved) {
-      // Find the original position to determine context
-      let originalPos: number | null = null;
-      let originalParent: Node | null = null;
+      const nodeParentResult = findNodeParentAndPos(view, cardEmbedNode);
 
-      view.state.doc.descendants((node, pos, parent) => {
-        if (node === cardEmbedNode) {
-          originalPos = pos;
-          originalParent = parent;
-          return false;
-        }
-
-        if (
-          extractCardEmbed(node) === cardEmbedNode &&
-          node !== cardEmbedNode
-        ) {
-          originalPos = pos;
-          originalParent = node;
-          return false;
-        }
-      });
-
-      if (!originalPos || !originalParent) {
+      if (!nodeParentResult) {
         return;
       }
+
+      const { parent: originalParent, parentPos: originalPos } =
+        nodeParentResult;
 
       const cameFromFlexContainer = originalParent
         ? (originalParent as Node).type.name === "flexContainer"
@@ -119,4 +103,32 @@ export const getDroppedCardEmbedNodeData = (
       }
     }
   }
+};
+
+export const findNodeParentAndPos = (
+  view: EditorView,
+  nodeToFind: Node,
+): { parentPos: number; parent: Node } | null => {
+  let parentPos: number | null = null;
+  let parent: Node | null = null;
+
+  view.state.doc.descendants((node, pos, nodeParent) => {
+    if (node === nodeToFind) {
+      parentPos = pos;
+      parent = nodeParent;
+      return false;
+    }
+
+    if (extractCardEmbed(node) === nodeToFind && node !== nodeToFind) {
+      parentPos = pos;
+      parent = node;
+      return false;
+    }
+  });
+
+  if (parentPos && parent) {
+    return { parentPos, parent };
+  }
+
+  return null;
 };
