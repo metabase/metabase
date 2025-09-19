@@ -40,25 +40,25 @@
       (log/error e "Failed to parse YAML file" file)
       nil)))
 
-(defn validate-representation
+(defn validate
   "Validate a parsed representation against its schema.
    Uses the schema.core validation which throws on error.
    Returns the representation if valid, nil if invalid."
   [representation]
   (schema/validate representation))
 
-(defn translate-representation
+(defn translate
   "Converts the yaml format into a structure suitable for inserting into the appdb
   with toucan."
   [representation]
-  (when-let [validated (validate-representation representation)]
+  (when-let [validated (validate representation)]
     (translate* validated)))
 
 (defn ingest-representation
   "Ingest a single representation file and convert to Metabase entity.
    Returns the created/updated entity or nil on failure."
   [representation]
-  (when-let [validated (validate-representation representation)]
+  (when-let [validated (validate representation)]
     (ingest* validated)))
 
 ;; TOTALLY UNTESTED
@@ -91,7 +91,7 @@
                                                              (assoc c
                                                                     :id (id! :question)
                                                                     :collection_id (:id collection))))
-                                        translate-representation
+                                        translate
                                         load-representation-yaml)
                                   yaml)]
                 (apply merge-with concat
