@@ -29,6 +29,7 @@ export const HandleEditorDrop = Extension.create({
       new Plugin({
         key: new PluginKey("metabaseTiptapDrop"),
         props: {
+          // eslint-disable-next-line complexity
           handleDrop: (view, e, slice, moved) => {
             const cardEmbedInitialData = getDroppedCardEmbedNodeData(
               view,
@@ -131,6 +132,194 @@ export const HandleEditorDrop = Extension.create({
 
                   view.dispatch(tr);
 
+                  return true;
+                }
+
+                // Handle dropping from one FlexContainer to another FlexContainer
+                if (cameFromFlexContainer && originalParent !== dropToParent) {
+                  const targetFlexContainer = dropToParent;
+
+                  // Check if target flexContainer already has 3 or more cards
+                  if (targetFlexContainer.content.childCount >= 3) {
+                    return true; // Don't allow dropping if target already has 3 cards
+                  }
+
+                  const targetCardEmbedNode = getTargetCardEmbedNode(e, view);
+                  if (!targetCardEmbedNode) {
+                    return;
+                  }
+
+                  // Calculate the intended insertion index based on drop position
+                  let targetIndex =
+                    dropToParent.content.content.indexOf(targetCardEmbedNode);
+                  const dropSide = getCardEmbedDropSide(e);
+
+                  if (dropSide === "left" && targetIndex > 1) {
+                    targetIndex--;
+                  } else if (dropSide === "right") {
+                    targetIndex++;
+                  }
+
+                  // Create transaction
+                  const tr = view.state.tr;
+
+                  // First, remove the card from the source flexContainer
+                  const sourceFlexContainer = originalParent;
+                  const sourceIndex = view.state.doc
+                    .resolve(originalPos)
+                    .index();
+
+                  const sourceNewChildren = [];
+                  for (let i = 0; i < sourceFlexContainer.childCount; i++) {
+                    if (i !== sourceIndex) {
+                      const child = sourceFlexContainer.child(i);
+                      sourceNewChildren.push(child);
+                    }
+                  }
+
+                  // Find source flexContainer position
+                  let sourceFlexContainerPos: number | null = null;
+                  view.state.doc.descendants((node, nodePos) => {
+                    if (node === sourceFlexContainer) {
+                      sourceFlexContainerPos = nodePos;
+                      return false;
+                    }
+                  });
+
+                  if (sourceFlexContainerPos === null) {
+                    return;
+                  }
+
+                  // Update source flexContainer or remove it if empty
+                  if (sourceNewChildren.length === 1) {
+                    // Only one card left in source - unwrap it from flexContainer
+                    const remainingChild = sourceNewChildren[0];
+                    const remainingCardEmbed = extractCardEmbed(remainingChild);
+
+                    if (remainingCardEmbed) {
+                      const wrappedRemainingCard =
+                        view.state.schema.nodes.resizeNode.create(
+                          {
+                            height: RESIZE_NODE_DEFAULT_HEIGHT,
+                            minHeight: RESIZE_NODE_MIN_HEIGHT,
+                          },
+                          [remainingCardEmbed],
+                        );
+
+                      // Replace the source flexContainer with unwrapped card
+                      const sourceContainerResolvedPos = view.state.doc.resolve(
+                        sourceFlexContainerPos,
+                      );
+                      const sourceContainerParent =
+                        sourceContainerResolvedPos.parent;
+
+                      if (sourceContainerParent.type.name === "resizeNode") {
+                        // FlexContainer is wrapped in resizeNode, replace the entire wrapper
+                        const sourceWrapperPos =
+                          sourceContainerResolvedPos.before();
+                        tr.replaceWith(
+                          sourceWrapperPos,
+                          sourceWrapperPos + sourceContainerParent.nodeSize,
+                          wrappedRemainingCard,
+                        );
+                      } else {
+                        // FlexContainer is not wrapped, just replace it
+                        tr.replaceWith(
+                          sourceFlexContainerPos,
+                          sourceFlexContainerPos + sourceFlexContainer.nodeSize,
+                          wrappedRemainingCard,
+                        );
+                      }
+                    }
+                  } else if (sourceNewChildren.length > 1) {
+                    // Multiple cards left in source, keep as flexContainer
+                    const newSourceFlexContainer =
+                      view.state.schema.nodes.flexContainer.create(
+                        sourceFlexContainer.attrs,
+                        sourceNewChildren,
+                      );
+                    tr.replaceWith(
+                      sourceFlexContainerPos,
+                      sourceFlexContainerPos + sourceFlexContainer.nodeSize,
+                      newSourceFlexContainer,
+                    );
+                  } else {
+                    // No cards left, remove the entire source flexContainer and its wrapper
+                    const sourceContainerResolvedPos = view.state.doc.resolve(
+                      sourceFlexContainerPos,
+                    );
+                    const sourceContainerParent =
+                      sourceContainerResolvedPos.parent;
+
+                    if (sourceContainerParent.type.name === "resizeNode") {
+                      // Remove the entire resizeNode wrapper
+                      const sourceWrapperPos =
+                        sourceContainerResolvedPos.before();
+                      tr.delete(
+                        sourceWrapperPos,
+                        sourceWrapperPos + sourceContainerParent.nodeSize,
+                      );
+                    } else {
+                      // Remove just the flexContainer
+                      tr.delete(
+                        sourceFlexContainerPos,
+                        sourceFlexContainerPos + sourceFlexContainer.nodeSize,
+                      );
+                    }
+                  }
+
+                  // Now add the card to the target flexContainer
+                  const targetChildren: Node[] = [];
+                  for (
+                    let i = 0;
+                    i < targetFlexContainer.content.childCount;
+                    i++
+                  ) {
+                    const child = targetFlexContainer.content.child(i);
+                    targetChildren.push(child);
+                  }
+
+                  targetChildren.splice(targetIndex, 0, cardEmbedNode.copy());
+
+                  // Find target flexContainer position
+                  let targetFlexContainerPos: number | null = null;
+                  view.state.doc.descendants((node, nodePos) => {
+                    if (node === targetFlexContainer) {
+                      targetFlexContainerPos = nodePos;
+                      return false;
+                    }
+                  });
+
+                  if (targetFlexContainerPos === null) {
+                    return;
+                  }
+
+                  // Replace target flexContainer with updated one
+                  const newTargetFlexContainer =
+                    view.state.schema.nodes.flexContainer.create(
+                      targetFlexContainer.attrs,
+                      targetChildren,
+                    );
+
+                  // Since we may have modified the document above, recalculate the target position
+                  const updatedDoc = tr.doc;
+                  let updatedTargetPos: number | null = null;
+                  updatedDoc.descendants((node, nodePos) => {
+                    if (node === targetFlexContainer) {
+                      updatedTargetPos = nodePos;
+                      return false;
+                    }
+                  });
+
+                  if (updatedTargetPos !== null) {
+                    tr.replaceWith(
+                      updatedTargetPos,
+                      updatedTargetPos + targetFlexContainer.nodeSize,
+                      newTargetFlexContainer,
+                    );
+                  }
+
+                  view.dispatch(tr);
                   return true;
                 }
 
