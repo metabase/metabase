@@ -366,5 +366,5 @@
       :type/Text               [[:raw "Nullable(String)"]]
       :type/TextLike           [[:raw "Nullable(String)"]]
       :type/Date               [[:raw "Nullable(Date32)"]]
-      :type/DateTime           [[:raw "Nullable(DateTime64(3, 'GMT0')))"]]
+      :type/DateTime           [[:raw "Nullable(DateTime64(3)))"]]
       :type/DateTimeWithTZ     [[:raw "Nullable(DateTime64(3, 'UTC'))"]])))

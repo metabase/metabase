@@ -432,10 +432,12 @@
     (mt/with-empty-db
       (let [driver       driver/*driver*
             db-id        (mt/id)
-            table-name   (if (= driver :redshift)
+            table-name   (if (= :redshift driver)
                            (tx/db-qualified-table-name (get-in (mt/db) [:settings :database-source-dataset-name]) (mt/random-name))
                            (mt/random-name))
-            schema-name  (sql.tx/session-schema driver)
+            schema-name  (if  (= :clickhouse driver)
+                           (-> (mt/db) :details :db)
+                           (sql.tx/session-schema driver))
             qualified-table-name (if schema-name
                                    (keyword schema-name table-name)
                                    (keyword table-name))
