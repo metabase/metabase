@@ -58,7 +58,7 @@
       read-timestamps))
 
 (def legal-top-level-paths "Known top-level paths for directory with serialization output"
-  #{"actions" "collections" "databases" "snippets"}) ; But return the hierarchy without labels.
+  #{"actions" "collections" "databases" "snippets" "glossary"}) ; But return the hierarchy without labels.
 
 (defn- ingest-all [^File root-dir]
   ;; This returns a map {unlabeled-hierarchy [original-hierarchy File]}.

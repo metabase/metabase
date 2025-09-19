@@ -17,6 +17,7 @@ export const TAG_TYPES = [
   "embedding-hub-checklist",
   "field",
   "field-values",
+  "glossary",
   "indexed-entity",
   "logger-preset",
   "model-index",

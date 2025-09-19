@@ -56,6 +56,7 @@ export function QuestionActivityTimeline({
       data-testid="saved-question-history-list"
       revert={(revision) => dispatch(revertToRevision(question.id(), revision))}
       canWrite={question.canWrite()}
+      entity="card"
     />
   );
 }

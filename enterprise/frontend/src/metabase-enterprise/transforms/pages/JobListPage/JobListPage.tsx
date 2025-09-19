@@ -27,7 +27,7 @@ export function JobListPage({ location }: JobListPageProps) {
 
   return (
     <Stack gap="xl" data-testid="job-list-page">
-      <Group justify="space-between">
+      <Group justify="space-between" align="start">
         <Stack gap="sm">
           <Title order={1}>{t`Jobs`}</Title>
           <Box>{t`Jobs let you run groups of transforms on a schedule.`}</Box>

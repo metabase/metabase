@@ -45,18 +45,18 @@ export const transformTagApi = EnterpriseApi.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [idTag("transform-tag", id)]),
+        invalidateTags(error, [
+          listTag("transform-tag"),
+          idTag("transform-tag", id),
+        ]),
     }),
     deleteTransformTag: builder.mutation<void, TransformTagId>({
       query: (id) => ({
         method: "DELETE",
         url: `/api/ee/transform-tag/${id}`,
       }),
-      invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [
-          listTag("transform-tag"),
-          idTag("transform-tag", id),
-        ]),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("transform-tag")]),
     }),
   }),
 });

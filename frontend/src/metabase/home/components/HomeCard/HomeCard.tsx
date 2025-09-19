@@ -7,15 +7,17 @@ interface HomeCardProps {
   url?: string;
   external?: boolean;
   children?: ReactNode;
+  onClick?: () => void;
 }
 
 export const HomeCard = ({
   className,
   url = "",
   children,
+  onClick,
 }: HomeCardProps): JSX.Element => {
   return (
-    <CardRoot className={className} to={url}>
+    <CardRoot className={className} to={url} onClick={onClick}>
       {children}
     </CardRoot>
   );

@@ -102,12 +102,17 @@
                new-domain
                (when (and port (not= domain "*")) (format ":%s" port))))))))
 
+(def ^:private always-allowed-iframe-hosts
+  ["'self'"
+   "https://www.metabase.com/"
+   "https://metabase.com/"])
+
 (defn- parse-allowed-iframe-hosts*
   [hosts-string]
   (->> (str/split hosts-string #"[ ,\s\r\n]+")
        (remove str/blank?)
        (mapcat add-wildcard-entries)
-       (into ["'self'"])))
+       (into always-allowed-iframe-hosts)))
 
 (def ^{:doc "Parse the string of allowed iframe hosts, adding wildcard prefixes as needed."}
   parse-allowed-iframe-hosts

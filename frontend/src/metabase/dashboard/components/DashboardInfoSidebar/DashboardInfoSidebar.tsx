@@ -259,6 +259,7 @@ const HistoryTab = ({
           dispatch(revertToRevision(dashboard.id, revision))
         }
         canWrite={canWrite}
+        entity="dashboard"
       />
     </SidesheetCard>
   );

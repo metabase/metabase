@@ -1935,3 +1935,12 @@
                             :DIMENSION [(str "$_card:" card-entity-id "_name")]}}}
                 result (serdes/export-visualizer-settings input)]
             (is (= expected result))))))))
+
+(deftest glossary-test
+  (testing "Glossary entries are extracted well"
+    (mt/with-temp [:model/Glossary _ {:term       "foobar"
+                                      :definition "It's foobar2000 actually"}]
+      (let [ser (serdes/extract-one "Glossary" {} (t2/select-one :model/Glossary :term "foobar"))]
+        (is (=? {:serdes/meta [{:model "Glossary" :id "foobar"}]
+                 :term        "foobar"}
+                ser))))))

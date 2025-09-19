@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetabotContext } from "metabase/metabot";
 
+import { trackMetabotRequestSent } from "../analytics";
 import {
   type MetabotPromptSubmissionResult,
   getAgentErrorMessages,
@@ -95,6 +96,8 @@ export const useMetabotAgent = () => {
           metabot_id: metabotRequestId,
         }),
       );
+
+      trackMetabotRequestSent();
 
       if (isFulfilled(action)) {
         prepareRetryIfUnsuccesful(action.payload);

@@ -11,40 +11,65 @@ import { getLocation } from "metabase/selectors/routing";
 
 import { getJobListUrl, getRunListUrl, getTransformListUrl } from "../../urls";
 
-type TransformPageLayoutParams = {
+type TransformPageLayoutPropsParams = {
   transformId?: string;
   jobId?: string;
 };
 
 type TransformPageLayoutProps = {
-  params: TransformPageLayoutParams;
+  params: TransformPageLayoutPropsParams;
   children?: ReactNode;
 };
 
-export function TransformPageLayout({
+type TransformPageLayoutOwnProps = TransformPageLayoutProps & {
+  maw?: string;
+};
+
+export function ListPageLayout({ params, children }: TransformPageLayoutProps) {
+  return (
+    <TransformPageLayout params={params} maw="100rem">
+      {children}
+    </TransformPageLayout>
+  );
+}
+
+export function DetailsPageLayout({
   params,
   children,
 }: TransformPageLayoutProps) {
   return (
+    <TransformPageLayout params={params} maw="60rem">
+      {children}
+    </TransformPageLayout>
+  );
+}
+
+function TransformPageLayout({
+  params,
+  maw,
+  children,
+}: TransformPageLayoutOwnProps) {
+  return (
     <AdminSettingsLayout
-      sidebar={<TransformSidebar params={params} />}
-      maw="60rem"
+      sidebar={<TransformPageSidebar params={params} />}
+      maw={maw}
     >
       {children}
     </AdminSettingsLayout>
   );
 }
 
-type TransformSidebarProps = {
-  params: TransformPageLayoutParams;
+type TransformPageSidebarProps = {
+  params: TransformPageLayoutPropsParams;
 };
 
-function TransformSidebar({ params }: TransformSidebarProps) {
-  const { transformId } = params;
+function TransformPageSidebar({ params }: TransformPageSidebarProps) {
+  const { transformId, jobId } = params;
   const location = useSelector(getLocation);
   const pathname = location?.pathname;
   const transformListUrl = getTransformListUrl();
   const jobListUrl = getJobListUrl();
+  const runListUrl = getRunListUrl();
 
   return (
     <AdminNavWrapper data-testid="transform-sidebar">
@@ -58,9 +83,14 @@ function TransformSidebar({ params }: TransformSidebarProps) {
         label={t`Jobs`}
         path={jobListUrl}
         icon="play_outlined"
-        active={pathname?.startsWith(jobListUrl)}
+        active={pathname === jobListUrl || jobId != null}
       />
-      <AdminNavItem label={t`Runs`} path={getRunListUrl()} icon="list" />
+      <AdminNavItem
+        label={t`Runs`}
+        path={runListUrl}
+        icon="list"
+        active={pathname === runListUrl}
+      />
     </AdminNavWrapper>
   );
 }

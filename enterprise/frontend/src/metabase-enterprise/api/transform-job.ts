@@ -14,7 +14,7 @@ import {
   listTag,
   provideTransformJobListTags,
   provideTransformJobTags,
-  provideTransformTags,
+  provideTransformListTags,
   tag,
 } from "./tags";
 
@@ -40,11 +40,10 @@ export const transformJobApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: `/api/ee/transform-job/${id}/transforms`,
       }),
-      providesTags: (transforms, error, id) =>
-        invalidateTags(error, [
-          idTag("transform-job", id),
-          ...(transforms?.flatMap(provideTransformTags) ?? []),
-        ]),
+      providesTags: (transforms = [], _error, id) => [
+        idTag("transform-job", id),
+        ...provideTransformListTags(transforms),
+      ],
     }),
     runTransformJob: builder.mutation<void, TransformJobId>({
       query: (id) => ({
@@ -104,6 +103,7 @@ export const transformJobApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: (_, error, { id, tag_ids = [] }) =>
         invalidateTags(error, [
+          listTag("transform-job"),
           idTag("transform-job", id),
           ...tag_ids.map((tagId) => idTag("transform-job-via-tag", tagId)),
         ]),

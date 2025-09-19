@@ -55,10 +55,13 @@ export function TransformList() {
         columnTitles={[
           t`Transform`,
           t`Target`,
-          <Flex align="center" gap="xs" key="last-run-at">
-            {t`Last run at`} <TimezoneIndicator />
+          <Flex key="last-run-at" component="span" align="center" gap="xs">
+            <span className={S.nowrap}>{t`Last run at`}</span>{" "}
+            <TimezoneIndicator />
           </Flex>,
-          t`Last run status`,
+          <span key="last-run-status" className={S.nowrap}>
+            {t`Last run status`}
+          </span>,
           t`Tags`,
         ]}
       >
@@ -68,8 +71,8 @@ export function TransformList() {
             className={S.row}
             onClick={() => handleRowClick(transform)}
           >
-            <td>{transform.name}</td>
-            <td>{transform.target.name}</td>
+            <td className={S.wrap}>{transform.name}</td>
+            <td className={S.wrap}>{transform.target.name}</td>
             <td className={S.nowrap}>
               {transform.last_run?.end_time
                 ? parseTimestampWithTimezone(
@@ -94,7 +97,7 @@ export function TransformList() {
                 />
               ) : null}
             </td>
-            <td>
+            <td className={S.wrap}>
               <TagList tags={tags} tagIds={transform.tag_ids ?? []} />
             </td>
           </tr>
