@@ -108,7 +108,7 @@
 
 (defn target-table-exists?
   "Test if the target table of a transform already exists."
-  [{:keys [source target] :as transform}]
+  [{:keys [target] :as transform}]
   (let [db-id (target-database-id transform)
         {driver :engine :as database} (t2/select-one :model/Database db-id)]
     (driver/table-exists? driver database target)))
