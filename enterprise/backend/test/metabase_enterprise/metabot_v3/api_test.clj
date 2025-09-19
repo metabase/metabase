@@ -30,7 +30,7 @@
             (mt/with-model-cleanup [:model/MetabotMessage
                                     [:model/MetabotConversation :created_at]]
               (reset! ai-requests [])
-              (let [response (mt/user-http-request :rasta :post 202 "ee/metabot-v3/v2/agent-streaming"
+              (let [response (mt/user-http-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
                                                    (-> {:message         (:content question)
                                                         :context         {}
                                                         :conversation_id conversation-id
