@@ -1,12 +1,12 @@
 (ns metabase.dashboards.schema
   (:require
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [metabase.lib.schema.common :as lib.schema.common]))
+   [metabase.util.malli.schema :as ms]))
 
 (mr/def ::dashcard.base
   [:map
