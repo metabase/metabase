@@ -487,6 +487,7 @@
            public-sharing
            queries
            query-processor
+           request
            settings
            tiles
            util}}
