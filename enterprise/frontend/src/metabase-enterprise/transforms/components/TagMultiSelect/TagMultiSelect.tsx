@@ -51,6 +51,7 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
       sendErrorToast(t`Failed to create a tag`);
     } else {
       onChange([...tagIds, tag.id], true);
+      setSearchValue("");
     }
   };
 
