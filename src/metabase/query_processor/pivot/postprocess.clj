@@ -39,9 +39,11 @@
    [:pivot-measures {:optional true}
     [:sequential [:int {:min 0}]]]])
 
-(def NON_PIVOT_ROW_GROUP
+(def non-pivot-row-group
   "Pivot query results have a 'pivot-grouping' column. Rows whose pivot-grouping value is 0 are expected results.
-  Rows whose pivot-grouping values are greater than 0 represent subtotals, and should not be included in non-pivot result outputs."
+
+  Rows whose pivot-grouping values are greater than 0 represent subtotals, and should not be included in non-pivot
+  result outputs."
   0)
 
 (defn pivot-grouping-index
@@ -57,19 +59,24 @@
        ;; every possible idx is just the range over the count of cols
        (set (range (count column-titles)))
        ;; we exclude indices already used in pivot rows and cols, and the pivot-grouping key
-       ;; recall that a raw pivot row will always contain this 'pivot-grouping' column, which we don't actually need to use.
+       ;;
+       ;; recall that a raw pivot row will always contain this 'pivot-grouping' column, which we don't actually need
+       ;; to use.
        (set (concat pivot-rows pivot-cols [(pivot-grouping-index column-titles)])))
       sort
       vec))
 
 (mu/defn add-pivot-measures :- ::pivot-spec
-  "Given a pivot-spec map without the `:pivot-measures` key, determine what key(s) the measures will be and assoc that value into `:pivot-measures`."
+  "Given a pivot-spec map without the `:pivot-measures` key, determine what key(s) the measures will be and assoc that
+  value into `:pivot-measures`."
   [{measure-indices :pivot-measures :as pivot-spec} :- ::pivot-spec]
   (let [pivot-grouping-key (pivot-grouping-index (:column-titles pivot-spec))]
     (cond-> pivot-spec
-      ;; if pivot-measures don't already exist (from the pivot qp), we add them ourselves, assuming lowest ID -> highest ID sort order
+      ;; if pivot-measures don't already exist (from the pivot qp), we add them ourselves, assuming lowest ID ->
+      ;; highest ID sort order
       (not (seq measure-indices)) (assoc :pivot-measures (pivot-measures pivot-spec))
-      ;; otherwise, we modify indices to skip over whatever the pivot-grouping idx is, so we pull the correct values per row
+      ;; otherwise, we modify indices to skip over whatever the pivot-grouping idx is, so we pull the correct values
+      ;; per row
       (seq measure-indices)       (update :pivot-measures (fn [indices]
                                                             (mapv (fn [idx]
                                                                     (if (>= idx pivot-grouping-key)

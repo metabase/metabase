@@ -4,7 +4,9 @@
        :cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing use-fixtures]]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
@@ -222,6 +224,28 @@
                [:field {} (meta/id :venues :id)]
                60]]]
             @calls))))
+
+(deftest ^:parallel walk-clauses-join-conditions-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                  (lib/join (meta/table-metadata :categories)))]
+    (is (=? {:stages [{:joins [{:alias      "Categories"
+                                :conditions [[:=
+                                              {}
+                                              [:field {} (meta/id :venues :category-id)]
+                                              [:field {:join-alias "Categories"} (meta/id :categories :id)]]]}]}]}
+            query))
+    (is (=? {:stages [{:joins [{:alias      "Categories"
+                                :conditions [[:=
+                                              {}
+                                              [:field {} "CATEGORY_ID"]
+                                              [:field {:join-alias "Categories"} "ID"]]]}]}]}
+            (lib.walk/walk-clauses
+             query
+             (fn [query _path-type _stage-or-join-path clause]
+               (lib.util.match/match-lite clause
+                 [:field opts id]
+                 (let [col (lib.metadata/field query id)]
+                   [:field (merge (select-keys col [:base-type]) opts) (:name col)]))))))))
 
 (deftest ^:parallel walk-clauses-identity-test
   (testing "If we don't update any clauses then we should return the original query"

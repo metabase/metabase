@@ -5,6 +5,8 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase-enterprise.semantic-search.core :as semantic-search.core]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
+   [metabase.premium-features.core :as premium-features]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.task.core :as task]
    [metabase.util.log :as log])
@@ -28,13 +30,15 @@
         (log/error e "Failed to complete semantic search index repair")))))
 
 (defmethod task/init! ::SemanticIndexRepair [_]
-  (let [job (jobs/build
-             (jobs/of-type SemanticIndexRepair)
-             (jobs/with-identity repair-job-key))
-        trigger (triggers/build
-                 (triggers/with-identity repair-trigger-key)
-                 (triggers/start-now)
-                 (triggers/with-schedule
+  (when (and (string? (not-empty semantic.db.datasource/db-url))
+             (premium-features/has-feature? :semantic-search))
+    (let [job (jobs/build
+               (jobs/of-type SemanticIndexRepair)
+               (jobs/with-identity repair-job-key))
+          trigger (triggers/build
+                   (triggers/with-identity repair-trigger-key)
+                   (triggers/start-now)
+                   (triggers/with-schedule
                   ;; Run hourly at minute 15
-                  (cron/cron-schedule "0 15 * * * ? *")))]
-    (task/schedule-task! job trigger)))
+                    (cron/cron-schedule "0 15 * * * ? *")))]
+      (task/schedule-task! job trigger))))

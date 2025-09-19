@@ -9,6 +9,7 @@ import type {
   SqlParameterValues,
 } from "embedding-sdk-package";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
+import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 import type { CollectionId } from "metabase-types/api";
 
 /** Events that the embed.js script listens for */
@@ -34,6 +35,10 @@ export type SdkIframeEmbedMessage =
       data: {
         error: MetabaseError<string, unknown>;
       };
+    }
+  | {
+      type: "metabase.embed.reportAnalytics";
+      data: EmbeddedAnalyticsJsEventSchema;
     };
 
 // --- Embed Option Interfaces ---
@@ -148,6 +153,14 @@ export type SdkIframeEmbedTemplateSettings =
 /** Settings used by the sdk embed route */
 export type SdkIframeEmbedSettings = SdkIframeEmbedBaseSettings &
   SdkIframeEmbedTemplateSettings;
+
+export type SdkIframeEmbedElementSettings = SdkIframeEmbedBaseSettings &
+  (
+    | DashboardEmbedOptions
+    | QuestionEmbedOptions
+    | (Omit<ExplorationEmbedOptions, "questionId"> & { questionId: "new" })
+    | BrowserEmbedOptions
+  );
 
 export type SdkIframeEmbedEvent = { type: "ready" };
 

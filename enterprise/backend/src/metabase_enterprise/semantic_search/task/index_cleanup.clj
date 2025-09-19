@@ -8,8 +8,10 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
+   [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
@@ -178,16 +180,18 @@
   (cleanup-stale-indexes-and-gate-tombstones!))
 
 (defmethod task/init! ::SemanticIndexCleanup [_]
-  (let [job (jobs/build
-             (jobs/of-type SemanticIndexCleanup)
-             (jobs/with-identity cleanup-job-key))
-        trigger (triggers/build
-                 (triggers/with-identity cleanup-trigger-key)
-                 (triggers/start-now)
-                 (triggers/with-schedule
+  (when (and (string? (not-empty semantic.db.datasource/db-url))
+             (premium-features/has-feature? :semantic-search))
+    (let [job (jobs/build
+               (jobs/of-type SemanticIndexCleanup)
+               (jobs/with-identity cleanup-job-key))
+          trigger (triggers/build
+                   (triggers/with-identity cleanup-trigger-key)
+                   (triggers/start-now)
+                   (triggers/with-schedule
                   ;; Run daily at 3 AM
-                  (cron/cron-schedule "0 0 3 * * ? *")))]
-    (task/schedule-task! job trigger)))
+                    (cron/cron-schedule "0 0 3 * * ? *")))]
+      (task/schedule-task! job trigger))))
 
 (comment
   (task/job-exists? cleanup-job-key)

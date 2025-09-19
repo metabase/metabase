@@ -17,6 +17,7 @@
    "Collection"
    "Dashboard"
    "Document"
+   "Glossary"
    "NativeQuerySnippet"
    "Timeline"])
 
@@ -79,6 +80,7 @@
    "PermissionsGroupMembership"
    "PermissionsRevision"
    "PersistedInfo"
+   "PythonLibrary"
    "Pulse"
    "PulseCard"
    "PulseChannel"

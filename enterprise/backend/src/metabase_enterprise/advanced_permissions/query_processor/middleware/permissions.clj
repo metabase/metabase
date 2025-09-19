@@ -4,7 +4,6 @@
    [metabase.api.common :as api]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.walk :as lib.walk]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise-schema]]
    [metabase.query-permissions.core :as query-perms]
@@ -29,23 +28,10 @@
   [{database-id :database, :as _query}]
   (perms/native-download-permission-for-user api/*current-user-id* database-id))
 
-;;; TODO (Cam 9/11/25) -- move this to `lib.walk.util` once my PR that adds it finally gets reviewed
-(mu/defn- any-native-stage?
-  "Returns true if any stage of this query is native."
-  [query :- ::lib.schema/query]
-  (let [has-native-stage? (atom false)]
-    (lib.walk/walk-stages
-     query
-     (fn [_query _path stage]
-       (when (= (:lib/type stage) :mbql.stage/native)
-         (reset! has-native-stage? true))
-       nil))
-    @has-native-stage?))
-
 (mu/defmethod current-user-download-perms-level :mbql.stage/mbql
   [{db-id :database, :as query} :- ::lib.schema/query]
   (let [{:keys [table-ids native?]} (query-perms/query->source-ids query)
-        perms (if (or native? (any-native-stage? query))
+        perms (if (or native? (lib/any-native-stage? query))
                 ;; If we detect any native subqueries/joins, even with source-card IDs, require full native
                 ;; download perms
                 #{(perms/native-download-permission-for-user api/*current-user-id* db-id)}

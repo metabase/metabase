@@ -302,11 +302,11 @@ H.describeWithSnowplowEE("documents", () => {
         idAlias: "documentId",
       });
 
-      cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
       H.addPostgresDatabase();
     });
 
     it("should support typing with a markdown syntax", () => {
+      cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
       H.documentContent().click();
 
       H.addToDocument("# This is a heading level 1");
@@ -460,6 +460,7 @@ H.describeWithSnowplowEE("documents", () => {
             dashboard_id: id,
           });
         });
+        cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
       });
 
       it("should support keyboard and mouse selection in suggestions without double highlight", () => {

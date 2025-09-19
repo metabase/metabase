@@ -1,0 +1,7 @@
+created_at: '2025-09-18T13:38:26.721389Z'
+definition: It's foobar2000 actually
+term: foobar
+updated_at: '2025-09-18T13:38:26.721389Z'
+serdes/meta:
+- id: foobar
+  model: Glossary

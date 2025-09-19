@@ -16,6 +16,7 @@ import {
   TimelineEvent,
   Timestamp,
 } from "./Timeline.styled";
+import { trackVersionRevertClicked } from "./analytics";
 
 interface TimelineProps {
   events: RevisionOrModerationEvent[];
@@ -23,6 +24,7 @@ interface TimelineProps {
   canWrite: boolean;
   revert: (revision: Revision) => void;
   className?: string;
+  entity: "card" | "dashboard";
 }
 
 export function Timeline({
@@ -31,6 +33,7 @@ export function Timeline({
   canWrite,
   revert,
   className,
+  entity,
 }: TimelineProps) {
   return (
     <TimelineContainer className={className} data-testid={dataTestId}>
@@ -52,7 +55,10 @@ export function Timeline({
                       icon="revert"
                       onlyIcon
                       borderless
-                      onClick={() => revert(revision)}
+                      onClick={() => {
+                        trackVersionRevertClicked(entity);
+                        revert(revision);
+                      }}
                       data-testid="question-revert-button"
                       aria-label={t`revert to ${title}`}
                     />

@@ -13,7 +13,7 @@ import { NewTransformQueryPage } from "./pages/NewTransformQueryPage";
 import { RunListPage } from "./pages/RunListPage";
 import { TransformListPage } from "./pages/TransformListPage";
 import { TransformPage } from "./pages/TransformPage";
-import { TransformPageLayout } from "./pages/TransformPageLayout";
+import { DetailsPageLayout, ListPageLayout } from "./pages/TransformPageLayout";
 import { TransformQueryPage } from "./pages/TransformQueryPage";
 
 if (hasPremiumFeature("transforms")) {
@@ -24,12 +24,14 @@ if (hasPremiumFeature("transforms")) {
   PLUGIN_TRANSFORMS.getAdminRoutes = () => (
     <Route path="transforms" component={createAdminRouteGuard("transforms")}>
       <Route title={t`Transforms`}>
-        <Route component={TransformPageLayout}>
+        <Route component={ListPageLayout}>
           <IndexRoute component={TransformListPage} />
           <Route path="jobs" component={JobListPage} />
+          <Route path="runs" component={RunListPage} />
+        </Route>
+        <Route component={DetailsPageLayout}>
           <Route path="jobs/new" component={NewJobPage} />
           <Route path="jobs/:jobId" component={JobPage} />
-          <Route path="runs" component={RunListPage} />
           <Route path=":transformId" component={TransformPage} />
         </Route>
         <Route path="new/:type" component={NewTransformQueryPage} />
