@@ -58,7 +58,7 @@ describe("TagMultiSelect", () => {
     const { input } = setup({ tags: [tag], tagIds: [tag.id] });
     await userEvent.type(input, tag.name);
     expect(
-      await screen.findByText("A tag with that name already exists"),
+      await screen.findByText("That tag already exists"),
     ).toBeInTheDocument();
   });
 
