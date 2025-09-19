@@ -138,6 +138,9 @@
 
 ;; -- Export --
 
+(defn ->ref [card]
+  (format "%s-%s" (name (:type card)) (:id card)))
+
 (defn- source-table-ref [table]
   (cond
     (vector? table)
@@ -147,7 +150,8 @@
        :table    table})
 
     (string? table)
-    (let [referred-card (t2/select-one :model/Card :entity_id table)])))
+    (let [referred-card (t2/select-one :model/Card :entity_id table)]
+      (->ref referred-card))))
 
 (defn- update-source-table [card]
   (if-some [table (get-in card [:mbql_query :source-table])]
@@ -157,9 +161,6 @@
 (defn- patch-refs [card]
   (-> card
       (update-source-table)))
-
-(defn ->ref [card]
-  (format "%s-%s" (name (:type card)) (:id card)))
 
 (defn export [card]
   (let [query (serdes/export-mbql (:dataset_query card))]

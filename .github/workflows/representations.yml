@@ -25,4 +25,4 @@ jobs:
         with:
           m2-cache-key: 'representation-tests'
       - name: Run test
-        run: clojure -X:dev:ci:test:ee:ee-dev :only '"enterprise/backend/test/metabase_enterprise/representation/"'
+        run: clojure -X:dev:ci:test:ee:ee-dev :only '"enterprise/backend/test/metabase_enterprise/representations/"'
