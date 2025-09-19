@@ -226,7 +226,7 @@
 (defmethod type->database-type :type/Text [_] [[:raw "Nullable(String)"]])
 (defmethod type->database-type :type/TextLike [_] [[:raw "Nullable(String)"]])
 (defmethod type->database-type :type/Date [_] [[:raw "Nullable(Date32)"]])
-(defmethod type->database-type :type/Date [_] [[:raw "Nullable(Time)"]])
+(defmethod type->database-type :type/Time [_] [[:raw "Nullable(Time)"]])
 (defmethod type->database-type :type/DateTime [_] [[:raw "Nullable(DateTime64(3, 'GMT0'))"]])
 (defmethod type->database-type :type/DateTimeWithTZ [_] [[:raw "Nullable(DateTime64(3, 'UTC'))"]])
 
