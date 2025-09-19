@@ -5,4 +5,4 @@ export interface CardEmbedRef {
   name?: string;
 }
 
-export type SuggestionModel = SearchModel | "user";
+export type SuggestionModel = SearchModel | "transform" | "user";

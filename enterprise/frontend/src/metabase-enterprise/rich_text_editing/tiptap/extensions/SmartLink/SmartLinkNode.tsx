@@ -203,7 +203,7 @@ export const SmartLink = Node.create<{
   renderText({ node }) {
     const { entityId, model } = node.attrs;
 
-    return `{% entity id="${entityId}" model="${model}" %}`;
+    return `[${entityId}](metabase://${model}/${entityId})`;
   },
 
   addPasteRules() {

@@ -18,7 +18,7 @@
 }
 
 .inputContainer {
-  padding: 0 0.75rem 0 0.25rem;
+  padding: 0 0.75rem 0 0.3rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -27,43 +27,13 @@
   min-height: 3rem;
   border: 1px solid var(--mb-color-border);
 
-  &:has(.textarea textarea:focus) {
+  &:focus-within {
     border-color: var(--mb-color-brand);
   }
 }
 
 .inputContainerLoading {
   background: var(--mb-color-bg-light);
-}
-
-.inputContainerExpanded {
-  padding: 1rem var(--padding-x);
-  align-items: flex-start;
-  height: 8rem;
-}
-
-.textarea textarea {
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  outline: none;
-  width: 100%;
-  padding: 0.5rem 0;
-  line-height: 1.7;
-  color: var(--mb-color-text-dark);
-
-  &:focus {
-    border-color: var(--mb-color-brand);
-  }
-}
-
-.textareaExpanded textarea {
-  padding: 0;
-}
-
-.textareaLoading textarea:disabled {
-  opacity: 1;
-  background: transparent;
 }
 
 .messagesContainer {
@@ -91,6 +61,12 @@
   max-width: 80%;
   min-width: 6rem;
   width: fit-content;
+}
+
+.messageContainerUser :global(.smart-link) {
+  border: 1px solid var(--mb-color-brand-light);
+  position: relative;
+  bottom: -2px;
 }
 
 .message {

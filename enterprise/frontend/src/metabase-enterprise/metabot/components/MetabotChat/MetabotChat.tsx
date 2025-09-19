@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -14,7 +14,6 @@ import {
   Paper,
   Stack,
   Text,
-  Textarea,
   Tooltip,
 } from "metabase/ui";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
@@ -23,6 +22,7 @@ import { MetabotResetLongChatButton } from "metabase-enterprise/metabot/componen
 import { useMetabotAgent, useMetabotChatHandlers } from "../../hooks";
 
 import Styles from "./MetabotChat.module.css";
+import { MetabotChatEditor } from "./MetabotChatEditor";
 import { Messages } from "./MetabotChatMessage";
 import { MetabotThinking } from "./MetabotThinking";
 import { useScrollManager } from "./hooks";
@@ -55,6 +55,15 @@ export const MetabotChat = ({
     handleResetInput();
     metabot.setVisible(false);
   };
+
+  const handleEditorChange = useCallback(
+    (value: string) => metabot.setPrompt(value),
+    [metabot],
+  );
+
+  const handleEditorSubmit = useCallback(() => {
+    handleSubmitInput(metabot.prompt);
+  }, [handleSubmitInput, metabot.prompt]);
 
   return (
     <Sidebar
@@ -174,41 +183,16 @@ export const MetabotChat = ({
               Styles.inputContainer,
               metabot.isDoingScience && Styles.inputContainerLoading,
             )}
+            data-testid="metabot-chat-input"
           >
-            <Textarea
-              id="metabot-chat-input"
-              data-testid="metabot-chat-input"
-              w="100%"
-              leftSection={
-                <Box h="100%" pt="11px">
-                  <Icon name="metabot" c="brand" />
-                </Box>
-              }
-              autosize
-              minRows={1}
-              maxRows={10}
+            <MetabotChatEditor
               ref={metabot.promptInputRef}
-              autoFocus
               value={metabot.prompt}
-              className={cx(
-                Styles.textarea,
-                metabot.isDoingScience && Styles.textareaLoading,
-              )}
+              autoFocus
+              disabled={metabot.isDoingScience}
               placeholder={t`Tell me to do something, or ask a question`}
-              onChange={(e) => metabot.setPrompt(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.nativeEvent.isComposing) {
-                  return;
-                }
-                const isModifiedKeyPress =
-                  e.shiftKey || e.ctrlKey || e.metaKey || e.altKey;
-                if (e.key === "Enter" && !isModifiedKeyPress) {
-                  // prevent event from inserting new line + interacting with other content
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleSubmitInput(metabot.prompt);
-                }
-              }}
+              onChange={handleEditorChange}
+              onSubmit={handleEditorSubmit}
             />
           </Paper>
         </Box>
