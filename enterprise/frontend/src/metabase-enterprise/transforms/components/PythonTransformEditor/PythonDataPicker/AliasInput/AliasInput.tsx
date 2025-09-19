@@ -42,7 +42,7 @@ export function AliasInput({
 
   return (
     <TextInput
-      flex="0 1 50%"
+      w="100%"
       value={value}
       onChange={handleChange}
       onBlur={handleBlur}

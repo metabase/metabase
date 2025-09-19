@@ -9,7 +9,7 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
-import { ActionIcon, Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
+import { Box, Button, Icon, Stack, Text } from "metabase/ui";
 import type {
   Database,
   DatabaseId,
@@ -163,27 +163,24 @@ export function PythonDataPicker({
           <Text size="sm" c="text-light" mb="sm">
             {t`Select tables to use as data sources and provide aliases for each`}
           </Text>
-          <Stack gap="xs">
-            <Group gap="xs">
-              <Text fw="bold" size="sm" flex="0 1 45%">{t`Table`}</Text>
-              <Text fw="bold" size="sm">{t`Alias`}</Text>
-            </Group>
-
-            {tableSelections.map((selection, index) => (
-              <SelectionInput
-                key={index}
-                selection={selection}
-                database={database}
-                tables={tables}
-                usedAliases={usedAliases}
-                availableTables={availableTables}
-                onChange={(selection) =>
-                  handleSelectionChange(index, selection)
-                }
-                onRemove={() => handleRemoveTable(index)}
-                disabled={isLoadingTables}
-              />
-            ))}
+          <Stack gap="sm">
+            <Stack gap="lg">
+              {tableSelections.map((selection, index) => (
+                <SelectionInput
+                  key={index}
+                  selection={selection}
+                  database={database}
+                  tables={tables}
+                  usedAliases={usedAliases}
+                  availableTables={availableTables}
+                  onChange={(selection) =>
+                    handleSelectionChange(index, selection)
+                  }
+                  onRemove={() => handleRemoveTable(index)}
+                  disabled={isLoadingTables}
+                />
+              ))}
+            </Stack>
 
             <Button
               leftSection={<Icon name="add" />}
@@ -261,12 +258,13 @@ function SelectionInput({
   }
 
   return (
-    <Group gap="xs" align="center" wrap="nowrap">
+    <Stack gap="xs" align="center" w="100%">
       <TableSelector
         database={database}
         table={table}
         selectedTableIds={Object.values(tables)}
         onChange={handleTableChange}
+        onRemove={onRemove}
         availableTables={availableTables}
         disabled={disabled}
       />
@@ -277,9 +275,6 @@ function SelectionInput({
         usedAliases={usedAliases}
         disabled={disabled}
       />
-      <ActionIcon onClick={onRemove} aria-label={t`Remove table`}>
-        <Icon name="trash" />
-      </ActionIcon>
-    </Group>
+    </Stack>
   );
 }
