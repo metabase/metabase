@@ -1,7 +1,4 @@
-(ns metabase-enterprise.representations.schema.v0.database
-  "Schema for v0 of the human-writable database representation format.
-
-   Note: v0 is a theoretical work-in-progress and subject to change."
+(ns metabase-enterprise.representations.v0.database
   (:require
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli.registry :as mr]))

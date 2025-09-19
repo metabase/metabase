@@ -2,8 +2,6 @@
   (:require
    [clojure.pprint :refer [pprint]]
    [metabase-enterprise.representations.core :as rep]
-   [metabase-enterprise.representations.ingestion.core :as ingest]
-   [metabase-enterprise.representations.schema.core :as schema]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -25,10 +23,12 @@
    _body-params
    request]
   (try
-    (let [collection-id (Long/parseLong collection-id)
-          rep (yaml/parse-string (slurp (:body request)))]
-      (schema/validate rep)
-      (ingest/ingest-representation (assoc rep :collection collection-id))
+    (let [collection-id (Long/parseLong collection-id)]
+      (-> (slurp (:body request))
+          yaml/parse-string
+          (assoc :collection collection-id)
+          rep/yaml->toucan
+          rep/persist!)
       nil)
     (catch Throwable e
       (log/error e)
@@ -68,7 +68,7 @@
         rep (rep/export-card "question" question)
         rep (patch-card-refs rep)]
     (try
-      (schema/validate rep)
+      (rep/validate rep)
       (catch Exception e
         (log/error e "Does not validate.")))
     (yaml/generate-string rep)))
@@ -83,7 +83,7 @@
         question (api/check-404 (t2/select-one :model/Card :id id :type "model"))
         rep (rep/export-card "model" question)]
     (try
-      (schema/validate rep)
+      (rep/validate rep)
       (catch Exception e
         (log/error e "Does not validate.")))
     (yaml/generate-string rep)))
@@ -98,7 +98,7 @@
         question (api/check-404 (t2/select-one :model/Card :id id))
         rep (rep/export-card (:type question) question)]
     (try
-      (schema/validate rep)
+      (rep/validate rep)
       (catch Exception e
         (log/error e "Does not validate.")))
     (yaml/generate-string rep)))
@@ -121,7 +121,7 @@
         children (coll.api/collection-children collection {:show-dashboard-questions? true
                                                            :archived? false})]
     (try
-      (schema/validate rep)
+      (rep/validate rep)
       (catch Exception e
         (log/error e "Does not validate.")))
     (let [rep (assoc rep :children (mapv model->url (:data children)))]
@@ -143,7 +143,7 @@
   (try
     (let [yaml-string (slurp (:body request))
           representation (yaml/parse-string yaml-string)]
-      (schema/validate representation)
+      (rep/validate representation)
       "")                               ; Return empty string on success
     (catch Exception e
       (with-out-str

@@ -1,12 +1,15 @@
-(ns metabase-enterprise.representations.ingestion.common
+(ns metabase-enterprise.representations.v0.common
   (:require
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (defn generate-entity-id
+  "Generate a stable entity-id from the representation's collection-ref and its own ref."
   [representation]
-  ;; Behold the beauty of this mechanism:
+  ;; Behold the beauty of this mechanism!
+  ;; A bit hacky.
+  ;; TODO: raw `:collection` key could be fragile; use name?
   (-> (str (:collection representation) "/" (:ref representation))
       hash
       str
@@ -32,7 +35,7 @@
      (t2/select-one-pk :model/Collection :name collection-ref))))
 
 (defn representation->dataset-query
-  "Convert the representation's query format into Metabase's dataset_query format.
+  "Returns Metabase's dataset_query format, given a representation.
    For POC, we're focusing on native SQL queries."
   [{:keys [query mbql_query database] :as representation}]
   (let [database-id (find-database-id database)]
@@ -43,6 +46,7 @@
        :native {:query query}
        :database database-id}
 
+      ;; STUB:
       ;; MBQL query - use serdes/import-mbql if it's already in MBQL format
       mbql_query
       (try
