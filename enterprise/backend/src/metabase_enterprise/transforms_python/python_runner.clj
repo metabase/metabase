@@ -15,6 +15,7 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.query-processor.store :as qp.store]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (clojure.lang PersistentQueue)
@@ -213,6 +214,14 @@
     {:output          output-content
      :output-manifest (json/decode+kw output-manifest-content)
      :events          (mapv json/decode+kw (str/split-lines events-content))}))
+
+(defn cancel-python-code-http-call!
+  "Calls the /cancel endpoint of the python runner. Returns immediately."
+  [server-url run-id]
+  (python-runner-request server-url :post "/cancel" {:body   (json/encode {:request_id run-id})
+                                                     :async? true}
+                         #_success #(log/debug %)
+                         #_failure #(log/error %)))
 
 (defn- safe-delete
   "Safely delete a file."
