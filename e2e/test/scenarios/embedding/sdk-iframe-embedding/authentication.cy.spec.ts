@@ -52,18 +52,21 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: true });
 
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-dashboard",
-      attributes: { dashboardId: ORDERS_DASHBOARD_ID },
+      elements: [
+        {
+          component: "metabase-dashboard",
+          attributes: { dashboardId: ORDERS_DASHBOARD_ID },
+        },
+      ],
+
       metabaseConfig: { useExistingUserSession: true },
     });
 
     frame.within(() => {
-      cy.findByTestId("sdk-error-container", { timeout: 10_000 })
-        .should("be.visible")
-        .and(
-          "contain",
-          /Failed to authenticate using an existing Metabase user session./,
-        );
+      cy.findByTestId("sdk-error-container", { timeout: 10_000 }).should(
+        "contain",
+        /Failed to authenticate using an existing Metabase user session./,
+      );
 
       cy.findByRole("link", { name: "Read more." })
         .should("have.attr", "href")
@@ -71,6 +74,8 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
           "include",
           "https://www.metabase.com/docs/latest/embedding/embedded-analytics-js#use-existing-user-session-to-test-embeds",
         );
+
+      cy.findByTestId("sdk-error-container").should("be.visible");
     });
   });
 
