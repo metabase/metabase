@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.channel.render.core :as channel.render]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
    [metabase.users.api :as api.user]
@@ -127,7 +128,10 @@
                     :author         (:common_name (:creator comment))
                     :comment        (:content_html comment)
                     :parent_author  (:common_name (:creator parent))
-                    :parent_comment (:content_html parent)}]
+                    :parent_comment (:content_html parent)
+                    :style            {:color_text_dark   channel.render/color-text-dark
+                                       :color_text_light  channel.render/color-text-light
+                                       :color_text_medium channel.render/color-text-medium}}]
     (doseq [email recipients]
       (events/publish-event! :event/comment-created (assoc payload :email email)))))
 
