@@ -82,7 +82,7 @@
                    (catch Exception e
                      (let [current-time (current-millis)
                            entity-retry-info (.get retry-state-map id)
-                           failure-count (inc (get entity-retry-info :fail-count 0))
+                           failure-count (inc (:fail-count entity-retry-info 0))
                            retry-minutes (* failure-count (get-delay-minutes))
                            new-next-retry-timestamp (+ current-time (* retry-minutes 60 1000))]
                        (if (> failure-count MAX_RETRIES)
