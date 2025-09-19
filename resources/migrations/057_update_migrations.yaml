@@ -1456,7 +1456,7 @@ databaseChangeLog:
                   name: schedule_display_type
                   remarks: Either "cron/raw" or "cron/builder"
                   type: varchar(255)
-                  defaultValue: "cron/raw"
+                  defaultValue: "cron/builder"
                   constraints:
                     nullable: false
 

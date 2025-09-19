@@ -2,7 +2,7 @@ import { c, t } from "ttag";
 
 import { Schedule } from "metabase/common/components/Schedule";
 import { useSetting } from "metabase/common/hooks";
-import { explainCronExpression } from "metabase/lib/cron";
+import { getScheduleExplanation } from "metabase/lib/cron";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Divider, Group, Tooltip } from "metabase/ui";
 import { useRunTransformJobMutation } from "metabase-enterprise/api";
@@ -16,8 +16,6 @@ import type {
 import { RunButton } from "../../../components/RunButton";
 import { SplitSection } from "../../../components/SplitSection";
 import type { TransformJobInfo } from "../types";
-
-import S from "./ScheduleSection.module.css";
 
 type ScheduleSectionProps = {
   job: TransformJobInfo;
@@ -80,12 +78,7 @@ function ScheduleWidget({ job, onChangeSchedule }: ScheduleWidgetProps) {
       return null;
     }
 
-    return (
-      <Group gap="sm" wrap="nowrap">
-        <Box className={S.placeholder}>{verb}</Box>
-        <Box>{t`${scheduleExplanation}, ${systemTimezone}`}</Box>
-      </Group>
-    );
+    return t`This job will run ${scheduleExplanation}, ${systemTimezone}`;
   };
 
   const handleChange = (schedule: string, settings: ScheduleSettings) => {
@@ -106,14 +99,6 @@ function ScheduleWidget({ job, onChangeSchedule }: ScheduleWidgetProps) {
       onScheduleChange={handleChange}
     />
   );
-}
-
-function getScheduleExplanation(cronExpression: string) {
-  try {
-    return explainCronExpression(cronExpression);
-  } catch {
-    return null;
-  }
 }
 
 type RunButtonSectionProps = {
