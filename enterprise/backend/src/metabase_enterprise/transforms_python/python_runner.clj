@@ -235,45 +235,13 @@
   (try (.delete file) (catch Exception _)))
 
 (defn- fields-metadata [_driver table-id]
-  (->> (t2/select [:model/Field :id :name :base_type :effective_type :semantic_type :database_type :database_position :nfc_path :parent_id]
-                  :table_id table-id
-                  :active true
-                  ;; we are only interested in top-level objects, so filter out nested fields (parent or path)
-                  :parent_id nil
-                  :nfc_path nil
-                  {:order-by [[:database_position :asc]]})
-
-       ;; adjust metadata where necessary. disabled for now as we've restricted ourselves only to basic types for v1.
-       ;; TODO introduce a multimethod once we do this in anger
-       identity
-       #_(map (fn [meta]
-                (case driver
-
-                  :bigquery-cloud-sdk
-                  (case (:database_type meta)
-                    ;; the bigquery driver returns a lossy database-type
-                    ;; so we must translate to a valid one, even if it may be lossy
-                    ("ARRAY" "RECORD") (assoc meta :database_type "JSON" :base_type :type/JSON)
-                    "FLOAT" (assoc meta :database_type "FLOAT64")
-                    meta)
-
-                  :postgres
-                  (if (str/starts-with? (:database_type meta) "_")
-                    (assoc meta :base_type :type/Array)
-                    meta)
-
-                  :mysql
-                  (case (:database_type meta)
-                    ("ENUM" "VARCHAR" "SET")
-                    (dissoc meta :database_type)
-
-                    "VARBINARY"
-                    (assoc meta :database_type "BINARY")
-
-                    meta)
-
-                  ;; else
-                  meta)))))
+  (t2/select [:model/Field :id :name :base_type :effective_type :semantic_type :database_type :database_position :nfc_path :parent_id]
+             :table_id table-id
+             :active true
+             ;; we are only interested in top-level objects, so filter out nested fields (parent or path)
+             :parent_id nil
+             :nfc_path nil
+             {:order-by [[:database_position :asc]]}))
 
 ;; TODO break this up such that s3 can be swapped out for other transfer mechanisms.
 (defn copy-tables-to-s3!
