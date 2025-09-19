@@ -66,16 +66,9 @@
              :schema "transforms"
              :name "gadget_products"}}])
 
-;; TODO this and target-database-id can be transforms multimethods?
-(defn- target-database-id
-  [transform]
-  (if (transforms.util/python-transform? transform)
-    (-> transform :target :database)
-    (-> transform :source :query :database)))
-
 (defn- check-database-feature
   [transform]
-  (let [database (api/check-400 (t2/select-one :model/Database (target-database-id transform))
+  (let [database (api/check-400 (t2/select-one :model/Database (transforms.util/target-database-id transform))
                                 (deferred-tru "The target database cannot be found."))
         feature (transforms.util/required-database-feature transform)]
     (api/check-400 (not (:is_sample database))
@@ -135,7 +128,7 @@
   (log/info "get transform" id)
   (api/check-superuser)
   (let [{:keys [target] :as transform} (api/check-404 (t2/select-one :model/Transform id))
-        target-table (transforms.util/target-table (target-database-id transform)  target :active true)]
+        target-table (transforms.util/target-table (transforms.util/target-database-id transform) target :active true)]
     (-> transform
         (t2/hydrate :last_run :transform_tag_ids)
         (u/update-some :last_run transforms.util/localize-run-timestamps)
