@@ -170,6 +170,14 @@
   (let [server-url (transforms-python.settings/python-runner-url)]
     (python-runner-request server-url :get "/logs" {:query-params {:request_id run-id}})))
 
+(defn cancel-python-code-http-call!
+  "Cancel a python runner with given run-id."
+  [server-url run-id]
+  (python-runner-request server-url :post "/cancel" {:body   (json/encode {:request_id run-id})
+                                                     :async? true}
+                         #_success #(log/debug %)
+                         #_failure #(log/error %)))
+
 (defn execute-python-code-http-call!
   "Calls the /execute endpoint of the python runner. Blocks until the run either succeeds or fails and returns
   the response from the server."

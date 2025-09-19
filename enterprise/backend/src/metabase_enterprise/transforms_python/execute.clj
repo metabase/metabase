@@ -228,30 +228,30 @@
 
   Blocks until the transform returns."
   [transform {:keys [run-method start-promise]}]
-  (when (transforms.util/python-transform? transform)
-    (try
-      (let [message-log (empty-message-log)
-            {:keys [target] transform-id :id} transform
-            {driver :engine :as db} (t2/select-one :model/Database (:database target))
-            {run-id :id} (transforms.util/try-start-unless-already-running transform-id run-method)]
-        (some-> start-promise (deliver [:started run-id]))
-        (log! message-log "Executing Python transform")
-        (log/info "Executing Python transform" transform-id "with target" (pr-str target))
-        (let [start-ms          (u/start-timer)
-              transform-details {:db-id          (:id db)
-                                 :transform-type (keyword (:type target))
-                                 :conn-spec      (driver/connection-spec driver db)
-                                 :output-schema  (:schema target)
-                                 :output-table   (transforms.util/qualified-table-name driver target)}
-              run-fn            (fn [cancel-chan]
-                                  (run-python-transform! transform db run-id cancel-chan message-log)
-                                  (log! message-log (format "Python execution finished successfully in %s" (Duration/ofMillis (u/since-ms start-ms))))
-                                  (save-log-to-transform-run-message! run-id message-log))
-              result            (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn)]
-          (transforms.instrumentation/with-stage-timing [run-id :table-sync]
-            (transforms.util/sync-target! target db run-id))
-          {:run_id run-id
-           :result result}))
-      (catch Throwable t
-        (log/error t "Error executing Python transform")
-        (throw t)))))
+  (assert (transforms.util/python-transform? transform) "Transform must be a python transform")
+  (try
+    (let [message-log (empty-message-log)
+          {:keys [target] transform-id :id} transform
+          {driver :engine :as db} (t2/select-one :model/Database (:database target))
+          {run-id :id} (transforms.util/try-start-unless-already-running transform-id run-method)]
+      (some-> start-promise (deliver [:started run-id]))
+      (log! message-log "Executing Python transform")
+      (log/info "Executing Python transform" transform-id "with target" (pr-str target))
+      (let [start-ms          (u/start-timer)
+            transform-details {:db-id          (:id db)
+                               :transform-type (keyword (:type target))
+                               :conn-spec      (driver/connection-spec driver db)
+                               :output-schema  (:schema target)
+                               :output-table   (transforms.util/qualified-table-name driver target)}
+            run-fn            (fn [cancel-chan]
+                                (run-python-transform! transform db run-id cancel-chan message-log)
+                                (log! message-log (format "Python execution finished successfully in %s" (Duration/ofMillis (u/since-ms start-ms))))
+                                (save-log-to-transform-run-message! run-id message-log))
+            result            (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn)]
+        (transforms.instrumentation/with-stage-timing [run-id :table-sync]
+          (transforms.util/sync-target! target db run-id))
+        {:run_id run-id
+         :result result}))
+    (catch Throwable t
+      (log/error t "Error executing Python transform")
+      (throw t))))
