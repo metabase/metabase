@@ -73,10 +73,6 @@ export function useInsertSnippetHandler({
 }
 
 export function getValidationResult(query: Lib.Query): QueryValidationResult {
-  if (!Lib.canSave(query, "question")) {
-    return { isValid: false };
-  }
-
   const { isNative } = Lib.queryDisplayInfo(query);
   if (isNative) {
     const tags = Object.values(Lib.templateTags(query));
@@ -86,6 +82,10 @@ export function getValidationResult(query: Lib.Query): QueryValidationResult {
         errorMessage: t`In transforms, you can use snippets and question or model references, but not variables.`,
       };
     }
+  }
+
+  if (!Lib.canSave(query, "question")) {
+    return { isValid: false };
   }
 
   return { isValid: true };
