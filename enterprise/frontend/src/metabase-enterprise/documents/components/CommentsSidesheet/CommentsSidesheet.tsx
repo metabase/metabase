@@ -204,7 +204,6 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
         borderLeft: "1px solid var(--mb-color-border)",
       }}
     >
-      {/* <Modal.Title> */}
       <Title
         order={3}
         p="xl"
@@ -225,8 +224,6 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
         />
       </Title>
 
-      {/* </Modal.Title> */}
-      {/* <Modal.CloseButton onClick={closeSidebar} /> */}
       <Tabs
         value={activeTab}
         onChange={(value) => {
@@ -244,7 +241,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
           </Tabs.List>
         )}
 
-        <Tabs.Panel value="open">
+        <Tabs.Panel value="open" className={S.tabPanel}>
           {activeComments.length > 0 && (
             <Discussions
               childTargetId={childTargetId === "all" ? null : childTargetId}
@@ -283,7 +280,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
           )}
         </Tabs.Panel>
 
-        <Tabs.Panel value="resolved">
+        <Tabs.Panel value="resolved" className={S.tabPanel}>
           <Discussions
             childTargetId={childTargetId === "all" ? null : childTargetId}
             comments={resolvedComments}
