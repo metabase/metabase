@@ -22,7 +22,7 @@ import {
   getValidationResult,
   useInsertSnippetHandler,
   useSelectedText,
-} from "./util";
+} from "./utils";
 
 type QueryEditorProps = {
   initialQuery: DatasetQuery;
