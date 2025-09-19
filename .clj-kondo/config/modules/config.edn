@@ -1712,6 +1712,7 @@
            premium-features
            queries
            query-processor
+           task
            util}}
 
   enterprise/documents
