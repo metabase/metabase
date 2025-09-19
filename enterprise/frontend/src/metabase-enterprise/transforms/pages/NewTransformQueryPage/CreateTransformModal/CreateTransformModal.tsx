@@ -137,11 +137,6 @@ function CreateTransformForm({
             label={t`Description`}
             placeholder={t`This is optional`}
           />
-          <SchemaFormSelect
-            name="targetSchema"
-            label={t`Schema`}
-            data={schemas}
-          />
           {supportsSchemas && (
             <SchemaFormSelect
               name="targetSchema"
