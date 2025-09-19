@@ -209,7 +209,7 @@
                                                  :namespace                      namespace
                                                  :shallow                        shallow
                                                  :collection-id                  collection-id})
-                            (let [load-static-collections (resolve 'metabase-enterprise.representations.ingestion.core/collections)]
+                            (let [load-static-collections (resolve 'metabase-enterprise.representations.core/collections)]
                                 (load-static-collections)))]
     (if shallow
       (shallow-tree-from-collection-id collections)
@@ -1409,7 +1409,7 @@
   (if (pos? id)
     (let [resolved-id (eid-translation/->id-or-404 :collection id)]
       (collection-detail (api/read-check :model/Collection resolved-id)))
-    (let [get-item (resolve 'metabase-enterprise.representations.ingestion.core/fetch)]
+    (let [get-item (resolve 'metabase-enterprise.representations.core/fetch)]
       (api/check-404 (get-item :collection id)))))
 
 (api.macros/defendpoint :put "/:id"
@@ -1491,7 +1491,7 @@
                                           [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
                                           [:show_dashboard_questions    {:default false} [:maybe ms/BooleanValue]]]]
   (if (neg? id)
-    (let [items ((resolve 'metabase-enterprise.representations.ingestion.core/collection-items) id)]
+    (let [items ((resolve 'metabase-enterprise.representations.core/collection-items) id)]
       {:total  (count items)
        :data   items
        :limit  (request/limit)

@@ -310,7 +310,7 @@
                                                      :cache_invalidated_at :entity_id :created_at :card_schema
                                                      :parameters]
                                                     :id card-id)
-                                     ((resolve 'metabase-enterprise.representations.ingestion.core/fetch) :question card-id)))
+                                     ((resolve 'metabase-enterprise.representations.core/fetch) :question card-id)))
         parameters (enrich-parameters-from-card parameters (combined-parameters-and-template-tags card))
         dash-viz   (when (and (not= context :question)
                               dashcard-id)

@@ -24,7 +24,7 @@
    [:map
     {:closed true}
     [:lib/type [:ref ::metadata-type-excluding-database]]
-    [:id       {:optional true} [:set {:min 1} pos-int?]]
+    [:id       {:optional true} [:set {:min 1} [:or pos-int? neg-int?]]]
     [:name     {:optional true} [:set {:min 1} :string]]
     [:table-id {:optional true} ::lib.schema.id/table]
     [:card-id  {:optional true} ::lib.schema.id/card]]
@@ -167,7 +167,7 @@
 (mu/defn- metadata-by-id :- [:maybe ::metadata]
   [metadata-provider :- ::metadata-provider
    metadata-type     :- ::metadata-type-excluding-database
-   metadata-id       :- pos-int?]
+   metadata-id       :- [:or pos-int? neg-int?]]
   (first (metadatas metadata-provider {:lib/type metadata-type, :id #{metadata-id}})))
 
 (mu/defn- metadatas-by-name :- [:maybe [:sequential ::metadata]]
@@ -232,7 +232,13 @@
   query."
   [metadata-provider :- ::metadata-provider
    card-id           :- ::lib.schema.id/card]
-  (metadata-by-id metadata-provider :metadata/card card-id))
+  (if (neg? card-id)
+    (let [c ((resolve 'metabase-enterprise.representations.core/fetch) :question card-id)]
+      (assoc c
+             :lib/type :metadata/card
+             :database-id (:database_id c)
+             :dataset-query (:dataset_query c)))
+    (metadata-by-id metadata-provider :metadata/card card-id)))
 
 (mu/defn native-query-snippet :- [:maybe ::lib.schema.metadata/native-query-snippet]
   "Get metadata for a NativeQuerySnippet with `snippet-id` if it can be found."

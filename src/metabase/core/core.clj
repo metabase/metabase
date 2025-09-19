@@ -181,7 +181,7 @@
   (database/check-health!)
   (startup/run-startup-logic!)
   (when directory
-    ((requiring-resolve 'metabase-enterprise.representations.ingestion.core/set-static-assets) directory))
+    ((requiring-resolve 'metabase-enterprise.representations.core/set-static-assets) directory))
   (task/start-scheduler!)
   (queue/start-listeners!)
   (init-status/set-complete!)

@@ -38,7 +38,7 @@
   [:schema {:doc/title "Valid Field ID"} pos-int?])
 
 (mr/def ::card
-  [:schema {:doc/title "Valid Card ID"} pos-int?])
+  [:schema {:doc/title "Valid Card ID"} [:or pos-int? neg-int?]])
 
 (mr/def ::segment
   [:schema {:doc/title "Valid legacy Segment ID"} pos-int?])
