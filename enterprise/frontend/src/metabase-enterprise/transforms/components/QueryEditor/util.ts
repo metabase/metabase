@@ -84,9 +84,5 @@ export function getValidationResult(query: Lib.Query): QueryValidationResult {
     }
   }
 
-  if (!Lib.canSave(query, "question")) {
-    return { isValid: false };
-  }
-
-  return { isValid: true };
+  return { isValid: Lib.canSave(query, "question") };
 }
