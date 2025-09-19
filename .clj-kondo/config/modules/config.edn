@@ -1809,6 +1809,7 @@
            settings
            sync
            system
+           task
            users
            util
            warehouse-schema

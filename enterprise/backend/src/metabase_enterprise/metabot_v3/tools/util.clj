@@ -139,7 +139,7 @@
   Takes a metabot-id and returns all metric and model cards in that metabot's collection
   and its subcollections. If the metabot has use_verified_content enabled, only verified
   content is returned."
-  [metabot-id]
+  [metabot-id & {:keys [limit] :as _opts}]
   (let [metabot (t2/select-one :model/Metabot :id metabot-id)
         metabot-collection-id (:collection_id metabot)
         use-verified-content? (:use_verified_content metabot)
@@ -148,13 +148,16 @@
                                   collection-ids (conj (collection/descendant-ids collection) metabot-collection-id)]
                               [:in :collection_id collection-ids])
                             [:and true])
-        base-query {:select [:report_card.*]
-                    :from   [[:report_card]]
-                    :where  [:and
-                             collection-filter
-                             [:in :type [:inline ["metric" "model"]]]
-                             [:= :archived false]
-                             (collection/visible-collection-filter-clause :collection_id)]}]
+        base-query (merge {:select [:report_card.*]
+                           :from   [[:report_card]]
+                           :where [:and
+                                   collection-filter
+                                   [:in :type [:inline ["metric" "model"]]]
+                                   [:= :archived false]
+                                   (when api/*current-user-id*
+                                     (collection/visible-collection-filter-clause :collection_id))]}
+                          (when limit
+                            {:limit limit}))]
     (if (and use-verified-content? (premium-features/has-feature? :content-verification))
       (-> base-query
           (assoc :left-join [[:moderation_review :mr] [:and
@@ -176,6 +179,6 @@
   "Retrieve the metric and model cards for the Metabot instance with ID `metabot-id` from the app DB.
 
   Only cards visible to the current user are returned."
-  [metabot-id]
-  (t2/select :model/Card (-> (metabot-metrics-and-models-query metabot-id)
+  [metabot-id & {:as opts}]
+  (t2/select :model/Card (-> (metabot-metrics-and-models-query metabot-id opts)
                              (assoc :order-by [:id]))))

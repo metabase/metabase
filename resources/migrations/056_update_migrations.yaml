@@ -786,6 +786,20 @@ databaseChangeLog:
                   name: conversation_id
       rollback: # will be dropped with table
 
+  - changeSet:
+      id: v56.2025-09-15T17:12:11
+      author: lbrdnk
+      comment: Make the use_verified_content default to true for internal Metabot
+      changes:
+        - update:
+            tableName: metabot
+            columns:
+              - column:
+                  name: use_verified_content
+                  valueBoolean: true
+            where: entity_id = 'metabotmetabotmetabot'
+      rollback:
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
