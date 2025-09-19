@@ -70,6 +70,8 @@ In order to check compatibility between Sample Apps and Embedding SDK, we have a
 
 #### Local runs
 
+Define one of the following environment variables with enterprise token: `CYPRESS_MB_ALL_FEATURES_TOKEN`, `CYPRESS_ALL_FEATURES_TOKEN`, `MB_ALL_FEATURES_TOKEN`, `ENTERPRISE_TOKEN`.
+
 To run these tests locally, run:
 ```
 TEST_SUITE=<sample_app_repo_name>-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local START_METABASE=false GENERATE_SNAPSHOTS=false START_CONTAINERS=false yarn test-cypress

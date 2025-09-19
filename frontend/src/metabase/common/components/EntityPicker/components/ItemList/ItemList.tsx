@@ -7,6 +7,7 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 import { LoadingAndErrorWrapper } from "metabase/public/containers/PublicAction/PublicAction.styled";
 import {
   Box,
+  type BoxProps,
   Center,
   Flex,
   Icon,
@@ -35,6 +36,7 @@ interface ItemListProps<
   shouldDisableItem?: (item: Item) => boolean;
   shouldShowItem?: (item: Item) => boolean;
   navLinkProps?: (isSelected?: boolean) => NavLinkProps;
+  containerProps?: BoxProps;
 }
 
 export const ItemList = <
@@ -52,6 +54,7 @@ export const ItemList = <
   shouldDisableItem,
   shouldShowItem,
   navLinkProps,
+  containerProps = { pb: "xs" },
 }: ItemListProps<Id, Model, Item>) => {
   const filteredItems =
     items && shouldShowItem ? items.filter(shouldShowItem) : items;
@@ -84,19 +87,28 @@ export const ItemList = <
   }
 
   return (
-    <VirtualizedList Wrapper={PickerColumn} scrollTo={activeItemIndex}>
+    <VirtualizedList
+      Wrapper={PickerColumn}
+      scrollTo={activeItemIndex}
+      estimatedItemSize={37}
+    >
       {filteredItems.map((item: Item) => {
         const isSelected = isSelectedItem(item, selectedItem);
         const icon = getEntityPickerIcon(item, isSelected && isCurrentLevel);
 
         return (
-          <div data-testid="picker-item" key={`${item.model}-${item.id}`}>
+          <Box
+            data-testid="picker-item"
+            key={`${item.model}-${item.id}`}
+            {...containerProps}
+          >
             <NavLink
               w={"auto"}
               disabled={shouldDisableItem?.(item)}
               rightSection={
                 isFolder(item) ? <Icon name="chevronright" size={10} /> : null
               }
+              mb={0}
               label={
                 <Flex align="center">
                   {item.name}{" "}
@@ -116,10 +128,9 @@ export const ItemList = <
                 onClick(item);
               }}
               variant={isCurrentLevel ? "default" : "mb-light"}
-              mb="xs"
               {...navLinkProps?.(isSelected)}
             />
-          </div>
+          </Box>
         );
       })}
     </VirtualizedList>
