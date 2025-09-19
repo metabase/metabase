@@ -61,6 +61,7 @@
   ^{:doc "Backfill the dependency table."
     org.quartz.DisallowConcurrentExecution true}
   BackfillDependencies [_ctx]
+  (log/info "Executing BackfillDependencies job...")
   (when (< (backfill-dependencies) 1)
     (let [delay-seconds    (* (get-delay-minutes) 60)
           variance-seconds (* (get-variance-minutes) 60)
@@ -78,6 +79,7 @@
                   (triggers/with-identity (triggers/key trigger-key))
                   (triggers/for-job job-key)
                   (triggers/start-at start-at))]
+    (log/info "Scheduling next run in" delay-in-seconds "seconds.")
     (task/schedule-task! job trigger)))
 
 (defmethod task/init! ::DependencyBackfill [_]
