@@ -8,6 +8,7 @@
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.sync.core :as sync]
@@ -22,6 +23,14 @@
    (java.util Date)))
 
 (set! *warn-on-reflection* true)
+
+(defn check-feature-enabled
+  "Checking whether we have proper feature flags for using a given transform."
+  [transform]
+  (case (-> transform :source :type keyword)
+    :query  (premium-features/has-feature? :transforms)
+    :python (and (premium-features/has-feature? :transforms)
+                 (premium-features/has-feature? :transforms-python))))
 
 (defn qualified-table-name
   "Return the name of the target table of a transform as a possibly qualified symbol."

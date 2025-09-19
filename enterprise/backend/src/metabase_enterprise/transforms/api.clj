@@ -82,7 +82,7 @@
 
 (defn- check-feature-enabled!
   [transform]
-  (api/check (transforms.execute/check-feature-enabled transform)
+  (api/check (transforms.util/check-feature-enabled transform)
              [402 (deferred-tru "Premium features required for this transform type are not enabled.")]))
 
 (api.macros/defendpoint :get "/"

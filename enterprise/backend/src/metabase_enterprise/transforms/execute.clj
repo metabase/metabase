@@ -5,7 +5,6 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
-   [metabase.premium-features.core :as premium-features]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -22,14 +21,6 @@
 (mr/def ::transform-opts
   [:map
    [:overwrite? :boolean]])
-
-(defn check-feature-enabled
-  "Checking whether we have proper feature flags for using a given transform."
-  [transform]
-  (case (-> transform :source :type keyword)
-    :query  (premium-features/has-feature? :transforms)
-    :python (and (premium-features/has-feature? :transforms)
-                 (premium-features/has-feature? :transforms-python))))
 
 (defn run-mbql-transform!
   "Run `transform` and sync its target table.
