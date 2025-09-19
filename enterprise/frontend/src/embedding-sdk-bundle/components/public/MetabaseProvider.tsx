@@ -12,7 +12,7 @@ import {
   setMetabaseClientUrl,
   setPlugins,
 } from "embedding-sdk-bundle/store/reducer";
-import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
+import type { SdkStore, SdkStoreState } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import type { SdkEventHandlersConfig } from "embedding-sdk-bundle/types/events";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
@@ -88,6 +88,11 @@ export interface MetabaseProviderProps
    * Whether to allow logging to the DevTools console. Defaults to true.
    **/
   allowConsoleLog?: boolean;
+
+  /**
+   * @internal This prop is a part of `ComponentProvider` on 57, but we don't have that here yet.
+   */
+  reduxStore?: SdkStore;
 }
 
 interface InternalMetabaseProviderProps extends MetabaseProviderProps {
