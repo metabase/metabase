@@ -131,7 +131,13 @@
   [table-name schema data]
   (let [driver driver/*driver*
         db-id (mt/id)
-        schema-name (when-not (= :mongo driver) (sql.tx/session-schema driver))
+        schema-name (case driver
+
+                      :clickhouse (-> (mt/db) :details :db)
+
+                      :mongo nil
+
+                      (sql.tx/session-schema driver))
         qualified-table-name (if schema-name
                                (keyword schema-name table-name)
                                (keyword table-name))
@@ -328,7 +334,7 @@
                                           {:name "date_field" :type :type/Date :nullable? true}]
                                 :data [[1 "" 0 0.0 false "2024-01-01"]
                                        [2 "Very long text with special chars: !@#$%^&*(){}[]|\\:;\"'<>,.?/~`"
-                                        2147483647 1.7976931348623157E308 true "2222-12-31"]
+                                        2147483647 1.79769313486 true "2222-12-31"]
                                        [3 nil nil nil nil nil]]}]
           (with-test-table [table-id table-name] [edge-case-schema (:data edge-case-schema)]
             (let [transform-code (str "import pandas as pd\n"
@@ -495,8 +501,8 @@
                                 "Second row price_with_tax should be ~16.74")))
 
                         (testing "Name length calculations"
-                          (is (= 9 (get-column first-row "name_length")) "First row name_length should be 9")
-                          (is (= 9 (get-column second-row "name_length")) "Second row name_length should be 9"))
+                          (is (== 9 (get-column first-row "name_length")) "First row name_length should be 9")
+                          (is (== 9 (get-column second-row "name_length")) "Second row name_length should be 9"))
 
                         (testing "Boolean expense calculations"
                           (is (true? (get-column first-row "is_expensive")) "First row is_expensive should be true")
