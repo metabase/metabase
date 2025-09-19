@@ -307,6 +307,10 @@ describe("scenarios > setup", () => {
 
     cy.findByTestId("setup-forms").within(() => {
       cy.findByLabelText("Hi, John. Nice to meet you!").should("be.visible");
+
+      skipLicenseStepOnEE();
+
+      cy.findByText("Finish").click();
       cy.findByText("You're all set up!").should("be.visible");
       cy.findByText("Take me to Metabase").click();
     });
@@ -344,6 +348,12 @@ describe("scenarios > setup", () => {
       cy.findByLabelText("Hallo, John. Leuk je te ontmoeten!").should(
         "be.visible",
       );
+
+      if (IS_ENTERPRISE) {
+        cy.button("Ik activeer later").click();
+      }
+
+      cy.findByText("Voltooi").click();
       cy.findByText("Breng me naar Metabase").click();
     });
 

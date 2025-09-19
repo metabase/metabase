@@ -2,6 +2,7 @@
 title: Running Metabase as a systemd service
 redirect_from:
   - /docs/latest/operations-guide/running-metabase-on-debian
+  - /docs/installation-and-operation/running-metabase-on-debian
 ---
 
 # Running Metabase as a systemd service

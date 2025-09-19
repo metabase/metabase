@@ -45,7 +45,7 @@ const getMessage = (name: string | null | undefined): string => {
   return _.sample(options) ?? "";
 };
 
-const MetabotGreeting = () => {
+export const MetabotGreeting = () => {
   const [buffer, setBuffer] = useState<string[]>([]);
   const [isCooling, setIsCooling] = useState(false);
   const [isCool, setIsCool] = useState(false);

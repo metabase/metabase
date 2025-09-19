@@ -37,7 +37,7 @@ import {
 import { TaskModal } from "metabase/admin/tools/components/TaskModal";
 import { TasksApp } from "metabase/admin/tools/components/TasksApp";
 import { ToolsApp } from "metabase/admin/tools/components/ToolsApp";
-import { EmbeddingHub } from "metabase/embedding/embedding-hub";
+import { EmbeddingHubAdminSettingsPage } from "metabase/embedding/embedding-hub";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import { DataModel } from "metabase/metadata/pages/DataModel";
@@ -150,7 +150,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           <Route
             path="setup-guide"
             title={t`Setup guide`}
-            component={EmbeddingHub}
+            component={EmbeddingHubAdminSettingsPage}
           />
           <Route
             path="modular"

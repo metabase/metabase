@@ -889,8 +889,7 @@
       (mt/with-temp [:model/Card card]
         (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) {:cache_ttl 1234})
         (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) {:cache_ttl nil})
-        (is (=? {:cache_ttl nil}
-                (mt/user-http-request :crowberto :get 200 (str "card/" (u/the-id card)))))))))
+        (is (nil? (:cache_ttl (mt/user-http-request :crowberto :get 200 (str "card/" (u/the-id card))))))))))
 
 (deftest saving-card-fetches-correct-metadata
   (testing "make sure when saving a Card the correct query metadata is fetched (if incorrect)"
