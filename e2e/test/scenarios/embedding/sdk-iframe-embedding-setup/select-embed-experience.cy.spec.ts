@@ -157,8 +157,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
   });
 
-  // TODO: fix this flaky test
-  it.skip("localizes the iframe preview when ?locale is passed", () => {
+  it("localizes the iframe preview when ?locale is passed", () => {
     visitNewEmbedPage({ locale: "fr" });
 
     // TODO: update this test once "Exploration" is localized in french.
@@ -168,7 +167,12 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     H.getSimpleEmbedIframeContent().within(() => {
       cy.log("data picker is localized");
-      cy.findByText("Choisissez vos données de départ").should("be.visible");
+
+      cy.findByText("Données", { timeout: 10_000 }).should("be.visible");
+
+      cy.findByText("Choisissez vos données de départ", {
+        timeout: 10_000,
+      }).should("be.visible");
     });
   });
 
