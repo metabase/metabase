@@ -1283,7 +1283,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
 
       getNavSidebar().findByText("Runs").click();
       getContentTable().within(() => {
-        cy.findByText("In-progress").should("be.visible");
+        cy.findByText("In progress").should("be.visible");
         cy.findByLabelText("Cancel run").click();
       });
 
