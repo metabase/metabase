@@ -8,21 +8,24 @@ import type {
 } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 import type {
-  SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupSettings,
+  SdkIframeEmbedSetupStartWith,
 } from "../types";
 
-export const getDefaultSdkIframeEmbedSettings = (
-  type: SdkIframeEmbedSetupExperience,
-  defaultResourceId: string | number,
-): SdkIframeEmbedSetupSettings => {
-  const templateDefaults = match(type)
+export const getDefaultSdkIframeEmbedSettings = ({
+  embeddingType,
+  resourceType,
+  resourceId,
+}: Omit<SdkIframeEmbedSetupStartWith, "step">): SdkIframeEmbedSetupSettings => {
+  const isStaticEmbedding = embeddingType === "static";
+
+  const templateDefaults = match(resourceType)
     .with(
       "dashboard",
       (): DashboardEmbedOptions => ({
         componentName: "metabase-dashboard",
-        dashboardId: defaultResourceId,
-        drills: true,
+        dashboardId: resourceId,
+        drills: !isStaticEmbedding,
         withDownloads: false,
         withTitle: true,
       }),
@@ -31,8 +34,8 @@ export const getDefaultSdkIframeEmbedSettings = (
       "chart",
       (): QuestionEmbedOptions => ({
         componentName: "metabase-question",
-        questionId: defaultResourceId,
-        drills: true,
+        questionId: resourceId,
+        drills: !isStaticEmbedding,
         withDownloads: false,
         withTitle: true,
         isSaveEnabled: false,
@@ -58,6 +61,6 @@ export const getDefaultSdkIframeEmbedSettings = (
 
   return {
     ...templateDefaults,
-    useExistingUserSession: true,
+    useExistingUserSession: !isStaticEmbedding,
   };
 };

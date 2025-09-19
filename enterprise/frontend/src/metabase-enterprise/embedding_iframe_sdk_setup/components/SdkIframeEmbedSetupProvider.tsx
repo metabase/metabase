@@ -77,24 +77,30 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const defaultSettings = useMemo(() => {
     if (startWith) {
-      return getDefaultSdkIframeEmbedSettings(
-        startWith.type,
-        startWith.defaultResourceId,
-      );
+      return getDefaultSdkIframeEmbedSettings(startWith);
     }
 
     return match([urlParams.resourceType, urlParams.resourceId])
       .with(["dashboard", P.nonNullable], ([, id]) =>
-        getDefaultSdkIframeEmbedSettings("dashboard", id),
+        getDefaultSdkIframeEmbedSettings({
+          embeddingType: "modular",
+          resourceType: "dashboard",
+          resourceId: id,
+        }),
       )
       .with(["question", P.nonNullable], ([, id]) =>
-        getDefaultSdkIframeEmbedSettings("chart", id),
+        getDefaultSdkIframeEmbedSettings({
+          embeddingType: "modular",
+          resourceType: "chart",
+          resourceId: id,
+        }),
       )
       .otherwise(() =>
-        getDefaultSdkIframeEmbedSettings(
-          "dashboard",
-          recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
-        ),
+        getDefaultSdkIframeEmbedSettings({
+          embeddingType: "modular",
+          resourceType: "dashboard",
+          resourceId: recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
+        }),
       );
   }, [startWith, recentDashboards, urlParams]);
 

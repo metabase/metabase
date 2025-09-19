@@ -9,9 +9,10 @@ export const SdkIframeStaticEmbedSetup = ({
 }: SdkIframeStaticEmbedSetupProps) => (
   <SdkIframeEmbedSetupProvider
     startWith={{
+      embeddingType: "static",
       step: "select-embed-options",
-      type: resourceType,
-      defaultResourceId: resourceId,
+      resourceType,
+      resourceId,
     }}
   >
     <SdkIframeEmbedSetupContent />
