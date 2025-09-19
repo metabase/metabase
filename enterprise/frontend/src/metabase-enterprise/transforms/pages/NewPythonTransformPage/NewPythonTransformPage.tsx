@@ -1,8 +1,12 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { push } from "react-router-redux";
 
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import {
+  getMetabotSuggestedTransform,
+  setSuggestedTransform,
+} from "metabase-enterprise/metabot/state";
 import type { PythonTransformSource, Transform } from "metabase-types/api";
 
 import { PythonTransformEditor } from "../../components/PythonTransformEditor";
@@ -30,9 +34,28 @@ def transform():
 };
 
 export function NewPythonTransformPage() {
-  const [source, setSource] = useState<PythonTransformSource>(
-    DEFAULT_PYTHON_SOURCE,
-  );
+  const suggestedTransform = useSelector(
+    getMetabotSuggestedTransform as any,
+  ) as ReturnType<typeof getMetabotSuggestedTransform>;
+
+  const suggestedSource =
+    suggestedTransform?.source.type === "python"
+      ? suggestedTransform?.source
+      : undefined;
+
+  const [initialSuggestedSource] = useState(suggestedSource);
+
+  const initialSource = initialSuggestedSource || DEFAULT_PYTHON_SOURCE;
+
+  return <NewPythonTransformPageBody initialSource={initialSource} />;
+}
+
+function NewPythonTransformPageBody({
+  initialSource,
+}: {
+  initialSource: PythonTransformSource;
+}) {
+  const [source, setSource] = useState<PythonTransformSource>(initialSource);
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const dispatch = useDispatch();
@@ -50,17 +73,58 @@ export function NewPythonTransformPage() {
     dispatch(push(getTransformListUrl()));
   };
 
+  const suggestedTransform = useSelector(
+    getMetabotSuggestedTransform as any,
+  ) as ReturnType<typeof getMetabotSuggestedTransform>;
+
+  const onRejectProposed = () => dispatch(setSuggestedTransform(undefined));
+
+  const suggestedSource =
+    suggestedTransform?.source.type === "python"
+      ? suggestedTransform?.source
+      : undefined;
+
+  const initSource =
+    initialSource.body && initialSource.body.trim().length > 0
+      ? initialSource
+      : (suggestedSource ?? initialSource);
+
+  const proposedSource =
+    suggestedSource?.body &&
+    initSource.body &&
+    suggestedSource.body === initSource.body
+      ? undefined
+      : suggestedSource;
+
+  const createTransformInitValues = useMemo(
+    () =>
+      suggestedTransform
+        ? {
+            name: suggestedTransform.name,
+            description: suggestedTransform.description,
+            targetName: suggestedTransform.target.name,
+            // TODO: enabling this breaks the UI for some reason...
+            // targetSchema: suggestedTransform.target.schema,
+          }
+        : undefined,
+    [suggestedTransform],
+  );
+
   return (
     <>
       <PythonTransformEditor
-        initialSource={DEFAULT_PYTHON_SOURCE}
+        initialSource={initSource}
+        proposedSource={proposedSource}
         isNew
         onSave={handleSaveClick}
         onCancel={handleCancelClick}
+        onRejectProposed={onRejectProposed}
+        onAcceptProposed={handleSaveClick}
       />
       {isModalOpened && (
         <CreateTransformModal
           source={source}
+          initValues={createTransformInitValues}
           onCreate={handleCreate}
           onClose={closeModal}
         />
