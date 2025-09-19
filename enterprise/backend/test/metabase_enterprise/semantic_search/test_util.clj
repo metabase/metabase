@@ -246,8 +246,8 @@
         (semantic.index-metadata/qualify-index mock-index-metadata))))
 
 ;; NOTE: opts are currently unused in following mock implementations
-(defmethod semantic.embedding/get-embedding        "mock" [_ text & {:as opts}] (get-mock-embedding text))
-(defmethod semantic.embedding/get-embeddings-batch "mock" [_ texts & {:as opts}] (get-mock-embeddings-batch texts))
+(defmethod semantic.embedding/get-embedding        "mock" [_ text & {:as _opts}] (get-mock-embedding text))
+(defmethod semantic.embedding/get-embeddings-batch "mock" [_ texts & {:as _opts}] (get-mock-embeddings-batch texts))
 (defmethod semantic.embedding/pull-model           "mock" [_])
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
