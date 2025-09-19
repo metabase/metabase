@@ -1,0 +1,122 @@
+(ns metabase-enterprise.dependencies.models.dependency-test
+  (:require
+   [clojure.set :as set]
+   [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.dependencies.models.dependency :as deps.graph]
+   [metabase.queries.models.card :as card]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
+
+(defn- depends-on-> [from-type from-id to-type to-id]
+  {:from_entity_type from-type
+   :from_entity_id   from-id
+   :to_entity_type   to-type
+   :to_entity_id     to-id})
+
+(defn- upstream-of [from-type from-id]
+  (t2/select-fn-set #(select-keys % [:from_entity_type :from_entity_id :to_entity_type :to_entity_id])
+                    :model/Dependency :from_entity_type from-type :from_entity_id from-id))
+
+(defn- basic-orders []
+  {:name                   "Test card"
+   :database_id            (mt/id)
+   :table_id               (mt/id :orders)
+   :display                :table
+   :query_type             :query
+   :type                   :question
+   :dataset_query          (mt/mbql-query orders)
+   :visualization_settings {}})
+
+(defn- wrap-card [inner-card]
+  {:name                   "Downstream card"
+   :database_id            (mt/id)
+   :display                :table
+   :query_type             :query
+   :type                   :question
+   :dataset_query          (mt/mbql-query nil
+                             {:source-table (str "card__" (:id inner-card))})
+   :visualization_settings {}})
+
+(deftest ^:sequential card-deps-maintenance-test-1-new-card
+  (testing "upstream deps of a card are updated correctly"
+    (mt/dataset test-data
+      (mt/with-temp [:model/User user {:email "me@wherever.com"}]
+        (let [card1 (card/create-card! (basic-orders) user)]
+          (is (integer? (:id card1)))
+          (testing "when creating a new card"
+            (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))}
+                    (upstream-of :card (:id card1))))
+
+            (testing "that depends on another card"
+              (let [card2 (card/create-card! (wrap-card card1) user)]
+                (is (=? #{(depends-on-> :card (:id card2) :card (:id card1))}
+                        (upstream-of :card (:id card2))))
+                (testing "but that doesn't affect the upstream deps of the inner card"
+                  (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))}
+                          (upstream-of :card (:id card1))))))))
+
+          (testing "when updating an existing card"
+            (testing "to add a new table dep"
+              (card/update-card! {:card-before-update card1
+                                  :card-updates
+                                  {:dataset_query (mt/mbql-query orders
+                                                    {:joins [{:alias "Products"
+                                                              :source-table (mt/id :products)
+                                                              :condition [:= $id &Products.$products.id]}]})}})
+              (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))
+                        (depends-on-> :card (:id card1) :table (mt/id :products))}
+                      (upstream-of :card (:id card1)))))
+            (testing "to remove a table dep"
+              (card/update-card! {:card-before-update (t2/select-one :model/Card :id (:id card1))
+                                  :card-updates
+                                  {:dataset_query (mt/mbql-query products)}})
+              (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :products))}
+                      (upstream-of :card (:id card1)))))))))))
+
+(deftest ^:sequential card-deps-graph-test-1-mbql-card-chain
+  (testing "deps graph is connected properly for a chain of MBQL cards"
+    (mt/dataset test-data
+      (mt/with-temp [:model/User user {:email "me@wherever.com"}]
+        (let [{id1 :id :as card1} (card/create-card! (basic-orders) user)
+              {id2 :id :as card2} (card/create-card! (wrap-card card1) user)
+              {id3 :id :as card3} (card/create-card! (wrap-card card2) user)]
+          (testing "raw deps are recorded correctly"
+            (is (=? #{(depends-on-> :card id1 :table (mt/id :orders))} (upstream-of :card id1)))
+            (is (=? #{(depends-on-> :card id2 :card  id1)}             (upstream-of :card id2)))
+            (is (=? #{(depends-on-> :card id3 :card  id2)}             (upstream-of :card id3))))
+
+          (testing "transitive deps are computed correctly"
+            (testing "for each card"
+              (is (=? {:card #{id2 id3}}
+                      (deps.graph/transitive-dependents {:card [card1]})))
+              (is (=? {:card #{id3}}
+                      (deps.graph/transitive-dependents {:card [card2]})))
+              (is (=? {}
+                      (deps.graph/transitive-dependents {:card [card3]}))))
+            (testing "for the table"
+              (is (set/subset? #{id1 id2 id3}
+                               (-> {:table [{:id (mt/id :orders)}]}
+                                   deps.graph/transitive-dependents
+                                   :card))))))))))
+
+(defn- sql-card [sql]
+  {:name                   "SQL card"
+   :database_id            (mt/id)
+   :display                :table
+   :query_type             :query
+   :type                   :question
+   :dataset_query          (mt/native-query {:query sql})
+   :visualization_settings {}})
+
+;; FIXME: This should work, I think? But the deps are not actually getting created.
+#_(deftest ^:sequential card-deps-graph-test-2-native-card-chain
+    (testing "deps graph is connected properly for a chain of native cards"
+      (mt/dataset test-data
+        (mt/with-temp [:model/User user {:email "me@wherever.com"}]
+          (let [{id1 :id :as card1} (card/create-card! (sql-card "SELECT * FROM orders;") user)
+                {id2 :id :as card2} (card/create-card! (sql-card (str "SELECT * FROM {{#" id1 "}}")) user)
+                {id3 :id :as card3} (card/create-card! (sql-card (str "SELECT * FROM {{#" id2 "}}")) user)]
+            (testing "raw deps are recorded correctly"
+              (is (=? #{(depends-on-> :card id1 :table (mt/id :orders))} (upstream-of :card id1)))
+              (is (=? #{(depends-on-> :card id2 :card  id1)}             (upstream-of :card id2)))
+              (is (=? #{(depends-on-> :card id3 :card  id2)}             (upstream-of :card id3)))))))))
