@@ -2,6 +2,7 @@ name: metabase-e2e
 
 include:
   - ../../../snowplow/docker-compose.yml
+  - ../../../python-runner/compose.ci.yaml
 
 services:
   postgres-sample:
