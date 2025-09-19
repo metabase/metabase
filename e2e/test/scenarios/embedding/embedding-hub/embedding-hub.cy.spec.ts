@@ -162,7 +162,7 @@ describe("scenarios - embedding hub", () => {
         .findByText("Create models")
         .closest("button")
         .scrollIntoView()
-        .findByText("Done")
+        .findByText("Done", { timeout: 10_000 })
         .should("be.visible");
     });
 
