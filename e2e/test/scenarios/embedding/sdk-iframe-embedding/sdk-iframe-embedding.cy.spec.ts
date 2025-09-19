@@ -155,7 +155,7 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
     });
 
     frame.within(() => {
-      cy.findByText("2,000 Zeilen").should("exist");
+      cy.findByText("Zeige die ersten 2,000 Zeilen").should("exist");
     });
   });
 

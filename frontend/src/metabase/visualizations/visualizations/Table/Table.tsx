@@ -60,7 +60,10 @@ interface TableProps extends VisualizationProps {
 }
 
 interface TableState {
-  data: Pick<DatasetData, "cols" | "rows" | "results_timezone"> | null;
+  data: Pick<
+    DatasetData,
+    "cols" | "rows" | "results_timezone" | "rows_truncated"
+  > | null;
   question: Question | null;
 }
 
@@ -424,7 +427,7 @@ class Table extends Component<TableProps, TableState> {
         question,
       });
     } else {
-      const { cols, rows, results_timezone } = data;
+      const { cols, rows, results_timezone, rows_truncated } = data;
       const columnSettings = settings["table.columns"] ?? [];
       const columnIndexes = findColumnIndexesForColumnSettings(
         cols,
@@ -442,6 +445,7 @@ class Table extends Component<TableProps, TableState> {
           cols: columnIndexes.map((i) => cols[i]),
           rows: rows.map((row) => columnIndexes.map((i) => row[i])),
           results_timezone,
+          rows_truncated,
         },
         question,
       });
