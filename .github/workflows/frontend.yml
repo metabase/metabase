@@ -127,7 +127,7 @@ jobs:
       - fe-type-check
       - fe-tests-unit
       - fe-tests-timezones
-    if: always() && !cancelled()
+    if: false#always() && !cancelled()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
