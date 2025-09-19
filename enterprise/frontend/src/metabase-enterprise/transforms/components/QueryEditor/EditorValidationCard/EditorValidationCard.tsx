@@ -35,7 +35,7 @@ type ErrorCardProps = {
 function ErrorCard({ errorMessage, onClose }: ErrorCardProps) {
   return (
     <Card pos="fixed" left="2rem" bottom="2rem" maw="21rem" withBorder>
-      <Stack align="end">
+      <Stack align="start">
         <Text>{errorMessage}</Text>
         <Button variant="filled" onClick={onClose}>{t`Okay`}</Button>
       </Stack>
