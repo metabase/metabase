@@ -136,7 +136,14 @@ export const CardEmbed: Node<{
 });
 
 export const CardEmbedComponent = memo(
-  ({ node, updateAttributes, selected, editor, getPos }: NodeViewProps) => {
+  ({
+    node,
+    updateAttributes,
+    selected,
+    editor,
+    getPos,
+    deleteNode,
+  }: NodeViewProps) => {
     const childTargetId = useSelector(getChildTargetId);
     const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
     const document = useSelector(getCurrentDocument);
@@ -270,6 +277,11 @@ export const CardEmbedComponent = memo(
       },
       [updateAttributes, document],
     );
+
+    const handleRemoveNode = useCallback(() => {
+      deleteNode();
+      editor.chain().focus();
+    }, [deleteNode, editor]);
 
     // Handle drill-through navigation
     const handleChangeCardAndRun = useCallback(
@@ -490,6 +502,13 @@ export const CardEmbedComponent = memo(
                           leftSection={<Icon name="refresh" size={14} />}
                         >
                           {t`Replace`}
+                        </Menu.Item>
+                        <Menu.Item
+                          onClick={handleRemoveNode}
+                          disabled={!canWrite}
+                          leftSection={<Icon name="trash" size={14} />}
+                        >
+                          {t`Remove Chart`}
                         </Menu.Item>
                       </Menu.Dropdown>
                     </Menu>

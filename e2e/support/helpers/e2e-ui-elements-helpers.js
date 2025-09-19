@@ -56,7 +56,7 @@ export function entityPickerModalLevel(level) {
 /**
  *
  * @param {number} level
- * @param {string} name
+ * @param {string | RegExp} name
  */
 export function entityPickerModalItem(level, name) {
   return entityPickerModalLevel(level).findByText(name).parents("a");
