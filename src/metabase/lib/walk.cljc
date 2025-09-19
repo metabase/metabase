@@ -394,7 +394,7 @@
                                             (walk-clauses* f)))))
 
          :lib.walk/stage
-         (when (= (:lib/type stage-or-join) :mbql.stage/mbql)
+         (when (lib.util/mbql-stage? stage-or-join)
            (reduce
             (fn [stage k]
               (m/update-existing stage k walk-clauses* f))
