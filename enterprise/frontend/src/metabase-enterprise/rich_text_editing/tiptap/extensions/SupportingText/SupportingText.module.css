@@ -24,6 +24,8 @@
   width: 100%;
   overflow: auto;
   padding: 1rem;
+  cursor: text;
+  caret-color: auto;
 }
 
 .handle {
