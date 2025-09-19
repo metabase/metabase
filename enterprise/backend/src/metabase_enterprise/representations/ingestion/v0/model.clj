@@ -54,7 +54,7 @@
 
 ;;; ------------------------------------ Public API ------------------------------------
 
-(defn representation->model-data
+(defn yaml->toucan
   "Convert a validated v0 model representation into data suitable for creating/updating a Card (Model).
    
    Returns a map with keys matching the Card model fields.
@@ -98,7 +98,7 @@
    Returns the created/updated Card."
   [representation & {:keys [creator-id]
                      :or {creator-id config/internal-mb-user-id}}]
-  (let [model-data (representation->model-data representation)
+  (let [model-data (yaml->toucan representation)
         ;; Generate stable entity_id from ref and collection
         entity-id (ing-com/generate-entity-id representation)
         existing (when entity-id
@@ -131,7 +131,7 @@
   ;; Test with sample model file
   (do
     (require '[metabase-enterprise.representations.ingestion.core :as ing-core])
-    (representation->model-data
+    (yaml->toucan
      (ing-core/load-representation-yaml "test_resources/representations/v0/product-performance.model.yml")))
 
   ;; Actually ingest a model

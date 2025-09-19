@@ -24,6 +24,12 @@
     :v0/question (v0-question-ingest/ingest! valid-representation)
     :v0/model (v0-model-ingest/ingest! valid-representation)))
 
+(defn- translate*
+  [valid-representation]
+  (case (:type valid-representation)
+    :v0/question (v0-question-ingest/yaml->toucan valid-representation)
+    :v0/model (v0-model-ingest/yaml->toucan valid-representation)))
+
 (defn load-representation-yaml
   "Parse a YAML representation file and return the data structure.
    Returns nil if the file cannot be parsed."
@@ -40,6 +46,13 @@
    Returns the representation if valid, nil if invalid."
   [representation]
   (schema/validate representation))
+
+(defn translate-representation
+  "Converts the yaml format into a structure suitable for inserting into the appdb
+  with toucan."
+  [representation]
+  (when-let [validated (validate-representation representation)]
+    (translate* validated)))
 
 (defn ingest-representation
   "Ingest a single representation file and convert to Metabase entity.
@@ -78,7 +91,7 @@
                                                              (assoc c
                                                                     :id (id! :question)
                                                                     :collection_id (:id collection))))
-                                        v0-question-ingest/representation->question-data
+                                        translate-representation
                                         load-representation-yaml)
                                   yaml)]
                 (apply merge-with concat
@@ -123,7 +136,7 @@
 
 (comment
   (pst)
-  (v0-question-ingest/representation->question-data (load-representation-yaml "/tmp/pre-loaded/c-2-card196324.card.yml"))
+  (v0-question-ingest/yaml->toucan (load-representation-yaml "/tmp/pre-loaded/c-2-card196324.card.yml"))
   (ingest-representation (clj-yaml.core/parse-string (slurp "/tmp/pre-loaded/c-2-card196324.card.yml")))
   (file-seq (io/file "/tmp/pre-loaded"))
   (fetch :collection -1)
@@ -136,5 +149,4 @@
                                   :location "/"
                                   :created_at (java.time.OffsetDateTime/now)})
   (type *1)
-  (t2/select-one :model/Collection :id 2)
-  )
+  (t2/select-one :model/Collection :id 2))

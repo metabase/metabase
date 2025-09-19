@@ -11,7 +11,7 @@
 
 ;;; ------------------------------------ Public API ------------------------------------
 
-(defn representation->question-data
+(defn yaml->toucan
   "Convert a validated v0 question representation into data suitable for creating/updating a Card (Question).
 
    Returns a map with keys matching the Card model fields.
@@ -62,7 +62,7 @@
    Returns the created/updated Card."
   [representation & {:keys [creator-id]
                      :or {creator-id config/internal-mb-user-id}}]
-  (let [question-data (representation->question-data representation :creator-id creator-id)
+  (let [question-data (yaml->toucan representation :creator-id creator-id)
         entity-id (:entity_id question-data)
         existing (when entity-id
                    (t2/select-one :model/Card :entity_id entity-id))]
@@ -82,7 +82,7 @@
     (t2/insert-returning-instance! :model/Database {:name "Sample Database" :engine :h2 :details {:db "mem:sample"} :is_sample true}))
   (do ; load a sample question
     (require '[metabase-enterprise.representations.ingestion.core :as ing-core])
-    (representation->question-data
+    (yaml->toucan
      (ing-core/ingest-representation
       (ing-core/load-representation-yaml "test_resources/representations/v0/monthly-revenue.question.yml"))))
   (do ; load AND WRITE a sample question
