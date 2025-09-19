@@ -358,6 +358,8 @@ describe("scenarios > setup", () => {
   });
 
   it("should update the site locale setting when changing language in setup", () => {
+    cy.intercept("PUT", "/api/setting/site-locale").as("updateSiteLocale");
+
     cy.visit(
       "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited&use_case=embedding",
     );
@@ -370,6 +372,9 @@ describe("scenarios > setup", () => {
       .click();
 
     H.popover().findByText("Dutch").should("be.visible").click();
+
+    cy.log("Verify site locale does not get updated before a user is created");
+    cy.get("@updateSiteLocale.all").should("have.length", 0);
 
     cy.findByTestId("setup-forms").within(() => {
       const password = "12341234";
