@@ -16,9 +16,7 @@ Progress bars are useful when you want to show the movement of a metric toward a
 
 Progress bars give you an option to set up an alert whenever the result of a question reaches the goal set in the progress bar settings. See [Progress bar alerts](../alerts.md#progress-bar-alerts).
 
-## How to create a progress bar
-
-### Data shape for the progress bar
+## Data shape for the progress bar
 
 To create a progress bar you'll need:
 
@@ -34,7 +32,7 @@ To create a progress bar you'll need:
 
   ![Progress bar KPI](../images/progress-bar-elements.png)
 
-### Create a progress bar
+## Create a progress bar
 
 Once you built the query that returns data in the appropriate shape, you can create a progress bar:
 
@@ -91,7 +89,6 @@ To use the result of another query as the goal value for the progress bar, you'l
 
 1. Create a separate question returning a single number: your dynamic goal.
 2. Create a new question. This question should return the metric you want to compare to the goal. This is the question you'll visualize as a progress bar.
-3. ```
 3. [Join](../query-builder/join.md) this question to the question containing your dynamic goal from step 1. Join the question using a custom expression `1` for both sides of the join. See [joins with custom expressions](../query-builder/join.md#joins-with-custom-expressions).
 
    This join should add the dynamic goal as a new column to your query.
