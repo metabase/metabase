@@ -102,7 +102,3 @@ export function formatFrame(frame: "first" | "last" | "mid") {
       return frame;
   }
 }
-
-export function timezoneToUTCOffset(timezone: string) {
-  return dayjs().tz(timezone).format("Z");
-}
