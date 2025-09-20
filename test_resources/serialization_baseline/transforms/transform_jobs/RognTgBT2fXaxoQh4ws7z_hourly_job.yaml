@@ -1,0 +1,18 @@
+built_in_type: hourly
+created_at: '2025-09-19T16:53:47.903413Z'
+description: Executes transforms tagged with 'hourly' every hour
+entity_id: RognTgBT2fXaxoQh4ws7z
+job_tags:
+- entity_id: RognTgBT2fXaxoQh4ws7z
+  position: 0
+  tag_id: wYLcUPbtF7jVPO0duGGHR
+  serdes/meta:
+  - id: RognTgBT2fXaxoQh4ws7z
+    model: TransformJobTransformTag
+name: Hourly job
+schedule: 0 0 * * * ? *
+updated_at: '2025-09-19T16:53:47.903413Z'
+serdes/meta:
+- id: RognTgBT2fXaxoQh4ws7z
+  label: hourly_job
+  model: TransformJob
