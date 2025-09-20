@@ -34,6 +34,7 @@
                               :expression-literals       true
                               :now                       true
                               :identifiers-with-spaces   true
+                              :uuid-type                 true
                               :percentile-aggregations   false
                               :test/jvm-timezone-setting false
                               :database-routing          false}]
@@ -56,6 +57,7 @@
     :Numeric                   :type/Decimal
     :Double                    :type/Decimal
     :Float                     :type/Float
+    :Uuid                      :type/UUID
     :Date                      :type/Date
     :Time                      :type/Time
     :TimeTz                    :type/TimeWithLocalTZ
