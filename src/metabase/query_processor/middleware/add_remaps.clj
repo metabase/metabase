@@ -25,6 +25,7 @@
   `name` is `:remapped_from` `:category_id`.
 
   See also [[metabase.parameters.chain-filter]] for another explanation of remapping."
+  (:refer-clojure :exclude [mapv select-keys some])
   (:require
    [clojure.data :as data]
    [medley.core :as m]
@@ -46,7 +47,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [mapv select-keys some]]))
 
 (mr/def ::simplified-ref
   [:tuple

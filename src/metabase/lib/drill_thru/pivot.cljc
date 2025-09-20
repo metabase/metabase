@@ -41,6 +41,7 @@
   - `pivotTypes` function that return available column types for the drill - \"category\" | \"location\" | \"time\"
 
   - `pivotColumnsForType` returns the list of available columns for the drill and the selected type"
+  (:refer-clojure :exclude [select-keys])
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
@@ -52,7 +53,8 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.underlying :as lib.underlying]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [select-keys]]))
 
 (mu/defn- pivot-drill-pred :- [:sequential ::lib.schema.metadata/column]
   "Implementation for pivoting on various kinds of fields.

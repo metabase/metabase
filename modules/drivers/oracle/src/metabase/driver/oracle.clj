@@ -1,4 +1,5 @@
 (ns metabase.driver.oracle
+  (:refer-clojure :exclude [mapv])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -24,7 +25,8 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [mapv]])
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
    (java.security KeyStore)

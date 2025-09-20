@@ -1,10 +1,10 @@
 (ns metabase.driver.mongo.query-processor
   "Logic for translating MBQL queries into Mongo Aggregation Pipeline queries. See
   https://docs.mongodb.com/manual/reference/operator/aggregation-pipeline/ for more details."
+  (:refer-clojure :exclude [some mapv select-keys])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
    [medley.core :as m]
@@ -27,7 +27,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf :refer [some mapv select-keys]])
   (:import
    (org.bson BsonBinarySubType)
    (org.bson.types Binary ObjectId)))
@@ -1307,7 +1308,7 @@ function(bin) {
                                   ;; are used match against `aggr-expr` where identifiers have the prefix.
                                   (map #(str \$ %)))
                             distinct-keys)]
-    [(walk/postwalk (fn [x]
+    [(perf/postwalk (fn [x]
                       (if (and (string? x)
                                (distinct-vals x))
                         {$size x}
@@ -1669,7 +1670,7 @@ function(bin) {
 (defn- log-aggregation-pipeline [form]
   (when-not driver-api/*disable-qp-logging*
     (log/tracef "\nMongo aggregation pipeline:\n%s\n"
-                (u/pprint-to-str 'green (walk/postwalk #(if (symbol? %) (symbol (name %)) %) form)))))
+                (u/pprint-to-str 'green (perf/postwalk #(if (symbol? %) (symbol (name %)) %) form)))))
 
 (defn simple-mbql->native
   "Compile a simple (non-nested) MBQL query."

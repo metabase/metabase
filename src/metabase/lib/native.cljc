@@ -1,5 +1,6 @@
 (ns metabase.lib.native
   "Functions for working with native queries."
+  (:refer-clojure :exclude [some select-keys mapv every?])
   (:require
    [clojure.core.match :refer [match]]
    [clojure.set :as set]
@@ -18,7 +19,8 @@
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [some select-keys mapv every?]]))
 
 (def ^:private variable-tag-regex
   #"\{\{\s*([A-Za-z0-9_\.]+)\s*\}\}")

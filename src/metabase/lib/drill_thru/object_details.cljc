@@ -1,11 +1,13 @@
 (ns metabase.lib.drill-thru.object-details
+  (:refer-clojure :exclude [some])
   (:require
    [metabase.lib.drill-thru.fk-details :as lib.drill-thru.fk-details]
    [metabase.lib.drill-thru.pk :as lib.drill-thru.pk]
    [metabase.lib.drill-thru.zoom :as lib.drill-thru.zoom]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [some]]))
 
 (mu/defn object-detail-drill :- [:maybe [:or
                                          ::lib.schema.drill-thru/drill-thru.pk

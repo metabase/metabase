@@ -1,6 +1,7 @@
 (ns metabase.lib.field.resolution
   "Code for resolving field metadata from a field ref. There's a lot of code here, isn't there? This is probably more
   complicated than it needs to be!"
+  (:refer-clojure :exclude [some select-keys])
   (:require
    #?@(:clj
        ([metabase.config.core :as config]))
@@ -24,7 +25,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [some select-keys]]))
 
 (mr/def ::id-or-name
   [:or :string ::lib.schema.id/field])

@@ -20,6 +20,7 @@
 
   Question transformation:
   - None"
+  (:refer-clojure :exclude [select-keys])
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
@@ -32,7 +33,8 @@
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [select-keys]]))
 
 (mu/defn fk-filter-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.fk-filter]
   "When clicking on a foreign key value, filter this query by that column.

@@ -1,4 +1,5 @@
 (ns metabase.lib.fe-util
+  (:refer-clojure :exclude [every? mapv select-keys some])
   (:require
    [inflections.core :as inflections]
    [medley.core :as m]
@@ -34,6 +35,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.number :as u.number]
+   [metabase.util.performance :refer [every? mapv select-keys some]]
    [metabase.util.time :as u.time]))
 
 (def ^:private ExpressionArg

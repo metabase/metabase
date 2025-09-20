@@ -74,6 +74,7 @@
 
      2b. Otherwise if `:bin-width` is < 20°, replace them with the current `:bin-width` divided by 10, and add
          `:>=`/`:<` filters for the clicked latitude/longitude values."
+  (:refer-clojure :exclude [some])
   (:require
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
@@ -89,7 +90,8 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.underlying :as lib.underlying]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [some]]))
 
 (def ^:private ContextWithLatLon
   [:merge

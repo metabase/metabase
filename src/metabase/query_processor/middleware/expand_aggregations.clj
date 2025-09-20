@@ -1,9 +1,11 @@
 (ns metabase.query-processor.middleware.expand-aggregations
+  (:refer-clojure :exclude [select-keys])
   (:require
    [medley.core :as m]
    [metabase.lib.options :as lib.options]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.walk :as lib.walk]))
+   [metabase.lib.walk :as lib.walk]
+   [metabase.util.performance :refer [select-keys]]))
 
 (defn- expand-aggregation-ref
   [aggregation-ref aggregation]

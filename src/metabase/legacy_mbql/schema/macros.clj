@@ -1,7 +1,9 @@
 (ns metabase.legacy-mbql.schema.macros
+  (:refer-clojure :exclude [run!])
   (:require
    [metabase.legacy-mbql.schema.helpers]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [run!]]))
 
 (defn- stringify-names [arg-names-and-schemas]
   (into []
