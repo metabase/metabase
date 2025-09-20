@@ -120,7 +120,14 @@ export const ParameterSettings = () => {
                 updateInitialParameterValue(parameter.slug, value)
               }
               setParameterValueToDefault={() => {
-                updateInitialParameterValue(parameter.slug, parameter.default);
+                if (parameter.default) {
+                  // types of updateInitialParameterValue can be extended with
+                  // other possible parameter values
+                  updateInitialParameterValue(
+                    parameter.slug,
+                    parameter.default.toString(),
+                  );
+                }
               }}
               enableParameterRequiredBehavior
             />
