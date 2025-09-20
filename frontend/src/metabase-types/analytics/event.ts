@@ -259,6 +259,29 @@ export type EmbedWizardEvent =
   | EmbedWizardAuthSelectedEvent
   | EmbedWizardCodeCopiedEvent;
 
+export type MetabotChatOpenedEvent = ValidateEvent<{
+  event: "metabot_chat_opened";
+  triggered_from: "search" | "command_palette" | "keyboard_shortcut";
+}>;
+
+export type MetabotRequestSentEvent = ValidateEvent<{
+  event: "metabot_request_sent";
+}>;
+
+export type MetabotFixQueryClickedEvent = ValidateEvent<{
+  event: "metabot_fix_query_clicked";
+}>;
+
+export type MetabotExplainChartClickedEvent = ValidateEvent<{
+  event: "metabot_explain_chart_clicked";
+}>;
+
+export type MetabotEvent =
+  | MetabotChatOpenedEvent
+  | MetabotRequestSentEvent
+  | MetabotFixQueryClickedEvent
+  | MetabotExplainChartClickedEvent;
+
 export type SimpleEvent =
   | CustomSMTPSetupClickedEvent
   | CustomSMTPSetupSuccessEvent
@@ -290,4 +313,5 @@ export type SimpleEvent =
   | DashboardFilterMovedEvent
   | EmbedWizardEvent
   | ConnectionStringParsedSuccessEvent
-  | ConnectionStringParsedFailedEvent;
+  | ConnectionStringParsedFailedEvent
+  | MetabotEvent;
