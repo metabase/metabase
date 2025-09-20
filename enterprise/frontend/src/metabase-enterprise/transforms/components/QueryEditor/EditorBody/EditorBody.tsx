@@ -19,8 +19,9 @@ import type {
   RecentItem,
 } from "metabase-types/api";
 
+import { ResizeHandle } from "../ResizeHandle";
+
 import S from "./EditorBody.module.css";
-import { ResizableBoxHandle } from "./ResizableBoxHandle";
 
 const EDITOR_HEIGHT = 400;
 
@@ -141,7 +142,7 @@ export function EditorBody({
       className={S.root}
       axis="y"
       height={EDITOR_HEIGHT}
-      handle={<ResizableBoxHandle />}
+      handle={<ResizeHandle />}
       resizeHandles={["s"]}
       onResizeStart={() => setIsResizing(true)}
       onResizeStop={() => setIsResizing(false)}

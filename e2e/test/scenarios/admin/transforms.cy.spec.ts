@@ -246,6 +246,40 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       testCardSource({ type: "model", label: "Models" });
     });
 
+    it("should be possible to convert an MBQL transform to a SQL transform", () => {
+      const EXPECTED_QUERY = `SELECT
+  "Schema Q"."Animals"."name" AS "name",
+  "Schema Q"."Animals"."score" AS "score"
+FROM
+  "Schema Q"."Animals"
+LIMIT
+  5`;
+
+      createMbqlTransform({ visitTransform: true });
+      getTransformPage().findByText("Edit query").click();
+
+      getQueryEditor().icon("sql").click();
+      H.sidebar().should("be.visible");
+      H.NativeEditor.value().should("eq", EXPECTED_QUERY);
+
+      H.sidebar().findByText("Convert this transform to SQL").click();
+      H.sidebar().should("be.visible");
+
+      H.NativeEditor.value().should("eq", EXPECTED_QUERY);
+      getQueryEditor().button("Save changes").click();
+
+      cy.log("run the transform and make sure its table can be queried");
+      runTransformAndWaitForSuccess();
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_trigger_manual_run",
+        triggered_from: "transform-page",
+      });
+
+      getTableLink().click();
+      H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
+      H.assertQueryBuilderRowCount(3);
+    });
+
     it("should not allow to overwrite an existing table when creating a transform", () => {
       cy.log("open the new transform page");
       visitTransformListPage();
