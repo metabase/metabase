@@ -162,5 +162,5 @@
             {:score        score
              :name         k
              :weight       weight
-             :contribution (* weight score)}))
+             :contribution (* score weight)}))
         scorers))
