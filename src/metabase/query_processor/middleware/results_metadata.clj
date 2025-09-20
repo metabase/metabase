@@ -79,8 +79,10 @@
                         (qp.store/miscellaneous-value [::card-stored-metadata]))))
         (when-let [error (me/humanize (mr/explain [:sequential ::lib.schema.metadata/lib-or-legacy-column] actual-metadata))]
           (throw (ex-info "Invalid result metadata!" {:error error, :metadata actual-metadata})))
-        (t2/update! :model/Card card-id {:result_metadata actual-metadata
-                                         :updated_at      :updated_at})))
+        (if (pos? card-id)
+          (t2/update! :model/Card card-id {:result_metadata actual-metadata
+                                           :updated_at      :updated_at})
+          ((resolve 'metabase-enterprise.representations.core/record-metadata) card-id actual-metadata))))
     ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
     ;; rather than failing the entire query
     (catch Throwable e

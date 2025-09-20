@@ -1,0 +1,180 @@
+# Vastly overcomplicated, I know, but experimental
+
+type: v0/model
+ref: sales-data-experiment
+name: Sales Data
+description: Monthly sales analysis with product categories and financial metrics
+database: Sample Database
+mbql_query:
+  database: 1
+  type: query
+  query:
+    source-table: "card__117"
+columns:
+  - name: category
+    display_name: Product
+    description: "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget"
+    base_type: type/Text
+    semantic_type: type/Category
+    # Additional fields from reference-model.json
+    database_type: CHARACTER VARYING
+    table_id: 3
+    qp/implicit-field?: true
+    lib/deduplicated-name: CATEGORY
+    lib/original-name: CATEGORY
+    lib/breakout?: false
+    lib/card-id: 117
+    lib/source: source/previous-stage
+    lib/source-column-alias: Products__CATEGORY
+    lib/original-display-name: Category
+    source: fields
+    lib/original-join-alias: Products
+    field_ref: ["field", 18, null]
+    effective_type: type/Text
+    active: true
+    id: 18
+    lib/desired-column-alias: Products__CATEGORY
+    position: 3
+    visibility_type: normal
+    fingerprint:
+      global:
+        distinct-count: 4
+        nil%: 0
+      type:
+        type/Text:
+          percent-json: 0
+          percent-url: 0
+          percent-email: 0
+          percent-state: 0
+          average-length: 6.375
+    source_alias: Products
+
+  - name: created_at_month
+    display_name: Month of Creation
+    description: The date and time an order was submitted
+    base_type: type/DateTime
+    semantic_type: type/CreationDate
+    # Additional fields from reference-model.json
+    database_type: TIMESTAMP
+    table_id: 2
+    qp/implicit-field?: true
+    lib/deduplicated-name: CREATED_AT
+    lib/original-name: CREATED_AT
+    lib/breakout?: false
+    unit: month
+    lib/card-id: 117
+    lib/source: source/previous-stage
+    lib/source-column-alias: CREATED_AT
+    lib/original-display-name: Created At
+    source: fields
+    field_ref: ["field", 13, null]
+    effective_type: type/DateTime
+    active: true
+    id: 13
+    lib/desired-column-alias: CREATED_AT
+    position: 7
+    visibility_type: normal
+    inherited_temporal_unit: month
+    fingerprint:
+      global:
+        distinct-count: 10001
+        nil%: 0
+      type:
+        type/DateTime:
+          earliest: "2022-04-30T18:56:13.352Z"
+          latest: "2026-04-19T14:07:15.657Z"
+
+  - name: avg_price
+    display_name: Price
+    description: Average price for products in this category
+    base_type: type/Float
+    semantic_type: type/Currency
+    currency: USD
+    # Additional fields from reference-model.json
+    database_type: DECFLOAT
+    qp/implicit-field?: true
+    lib/deduplicated-name: avg
+    lib/original-name: avg
+    lib/breakout?: false
+    lib/card-id: 117
+    lib/source: source/previous-stage
+    lib/source-column-alias: avg
+    source: fields
+    field_ref: ["field", "avg", {"base-type": "type/Float"}]
+    effective_type: type/Float
+    lib/desired-column-alias: avg
+    fingerprint:
+      global:
+        distinct-count: 193
+        nil%: 0
+      type:
+        type/Number:
+          min: 44.58274363307868
+          q1: 57.600806124373236
+          q3: 88.09271147203903
+          max: 96.64621371736679
+          sd: 15.8631975962918
+          avg: 74.58862603950313
+
+  - name: avg_quantity
+    display_name: Quantity
+    description: Average quantity ordered
+    base_type: type/Float
+    semantic_type: type/Quantity
+    # Additional fields from reference-model.json
+    database_type: DOUBLE PRECISION
+    qp/implicit-field?: true
+    lib/deduplicated-name: avg_2
+    lib/original-name: avg
+    lib/breakout?: false
+    lib/card-id: 117
+    lib/source: source/previous-stage
+    lib/source-column-alias: avg_2
+    source: fields
+    field_ref: ["field", "avg_2", {"base-type": "type/Float"}]
+    effective_type: type/Float
+    lib/desired-column-alias: avg_2
+    fingerprint:
+      global:
+        distinct-count: 188
+        nil%: 0
+      type:
+        type/Number:
+          min: 0.9473684210526315
+          q1: 1.952519905145135
+          q3: 5.366328067372997
+          max: 10.6
+          sd: 1.9943042998281337
+          avg: 3.845225507005692
+
+  - name: avg_tax
+    display_name: Tax
+    description: Average tax amount
+    base_type: type/Float
+    semantic_type: type/Currency
+    currency: USD
+    # Additional fields from reference-model.json
+    database_type: DECFLOAT
+    qp/implicit-field?: true
+    lib/deduplicated-name: avg_3
+    lib/original-name: avg
+    lib/breakout?: false
+    lib/card-id: 117
+    lib/source: source/previous-stage
+    lib/source-column-alias: avg_3
+    source: fields
+    field_ref: ["field", "avg_3", {"base-type": "type/Float"}]
+    effective_type: type/Float
+    lib/desired-column-alias: avg_3
+    fingerprint:
+      global:
+        distinct-count: 193
+        nil%: 0
+      type:
+        type/Number:
+          min: 1.715
+          q1: 2.7945478408368567
+          q3: 4.233460390752219
+          max: 4.972888888888889
+          sd: 0.7772569669948295
+          avg: 3.5730384974402205
