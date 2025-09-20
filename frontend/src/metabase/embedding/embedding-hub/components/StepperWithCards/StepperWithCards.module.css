@@ -54,13 +54,16 @@
   height: 8.75rem;
   max-width: 30rem;
   text-align: left;
+  width: 100%;
+  box-shadow: none;
 }
 
 .stepCard:not(.optionalStepCard) {
   width: 100%;
 }
 
-.optionalStepCard {
+.optionalStepCard,
+.optionalStepCard .stepCardLink {
   max-width: 15.625rem;
 }
 

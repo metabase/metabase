@@ -194,6 +194,10 @@ const CardAction = ({
         return children;
       }
 
-      return <Link to={to}>{children}</Link>;
+      return (
+        <Link to={to} className={S.stepCardLink}>
+          {children}
+        </Link>
+      );
     })
     .otherwise(() => children);
