@@ -118,8 +118,10 @@ function ActionMenu({
     const handler = () => {
       const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
 
+      if (!isBookmarked) {
+        trackCollectionItemBookmarked(item);
+      }
       toggleBookmark?.(item.id.toString(), normalizeItemModel(item));
-      trackCollectionItemBookmarked(item);
     };
     return handler;
   }, [createBookmark, deleteBookmark, isBookmarked, item]);
