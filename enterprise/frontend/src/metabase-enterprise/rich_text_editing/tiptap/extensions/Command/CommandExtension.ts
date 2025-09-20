@@ -22,6 +22,8 @@ export interface CommandProps {
   embedItem?: boolean;
   entityId?: number | string;
   model?: string;
+  label?: string;
+  href?: string;
   document?: Document | null;
 }
 
@@ -189,6 +191,8 @@ export const CommandExtension = Extension.create<CommandOptions>({
                 attrs: {
                   entityId: props.entityId,
                   model: props.model,
+                  label: props.label,
+                  href: props.href,
                 },
               })
               .run();

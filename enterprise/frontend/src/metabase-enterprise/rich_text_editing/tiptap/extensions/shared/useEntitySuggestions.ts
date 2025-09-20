@@ -2,6 +2,7 @@ import type { Editor } from "@tiptap/core";
 import { useCallback, useEffect, useState } from "react";
 
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
+import { modelToUrl } from "metabase/lib/urls/modelToUrl";
 import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
 import type {
   MentionableUser,
@@ -9,6 +10,7 @@ import type {
   SearchResult,
 } from "metabase-types/api";
 
+import { entityToUrlableModel } from "./suggestionUtils";
 import { useEntitySearch } from "./useEntitySearch";
 
 interface UseEntitySuggestionsOptions {
@@ -18,6 +20,7 @@ interface UseEntitySuggestionsOptions {
     id: number | string;
     model: string;
     label?: string;
+    href: string | null;
   }) => void;
   enabled?: boolean;
   searchModels?: SuggestionModel[];
@@ -59,6 +62,7 @@ export function useEntitySuggestions({
         id: item.id,
         model: item.model,
         label: "display_name" in item ? item.display_name : item.name,
+        href: modelToUrl(entityToUrlableModel(item, item.model)),
       });
     },
     [onSelectEntity],
@@ -70,6 +74,7 @@ export function useEntitySuggestions({
         id: item.id,
         model: item.model,
         label: item.name,
+        href: modelToUrl(entityToUrlableModel(item, item.model)),
       });
     },
     [onSelectEntity],
@@ -81,6 +86,7 @@ export function useEntitySuggestions({
         id: item.id,
         model: "user",
         label: item.common_name,
+        href: modelToUrl(entityToUrlableModel(item, "user")),
       });
     },
     [onSelectEntity],
@@ -153,6 +159,8 @@ export function useEntitySuggestions({
       onSelectEntity({
         id: item.id,
         model: item.model,
+        label: item.name,
+        href: modelToUrl(entityToUrlableModel(item, item.model)),
       });
       setModal(null);
     },
