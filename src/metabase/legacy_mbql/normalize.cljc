@@ -28,7 +28,8 @@
   Removing empty clauses like `{:aggregation nil}` or `{:breakout []}`.
 
   Token normalization occurs first, followed by canonicalization, followed by removing empty clauses."
-  (:refer-clojure :exclude [mapv every? some select-keys #?(:clj doseq) #?(:clj for)])
+  (:refer-clojure :exclude [mapv every? some select-keys first non-empty update-keys update-vals
+                            #?(:clj doseq) #?(:clj for)])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -44,7 +45,8 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [mapv every? some select-keys #?(:clj doseq) #?(:clj for)]]
+   [metabase.util.performance :refer [mapv every? some select-keys update-keys update-vals first not-empty
+                                      #?(:clj doseq) #?(:clj for)]]
    [metabase.util.time :as u.time]))
 
 (defn- mbql-clause?
@@ -233,8 +235,7 @@
   [opts]
   (when opts
     (-> opts
-        (perf/update-keys (fn [k]
-                            (keyword (u/->snake_case_en k))))
+        (update-keys (fn [k] (keyword (u/->snake_case_en k))))
         (m/update-existing :base_type      keyword)
         (m/update-existing :effective_type keyword)
         (m/update-existing :semantic_type  keyword)
@@ -366,7 +367,7 @@
     values_source_config (update-in [:values_source_config :value_field] #(normalize-tokens % nil))))
 
 (defn- normalize-source-query [source-query]
-  (let [{native? :native, :as source-query} (perf/update-keys source-query maybe-normalize-token)]
+  (let [{native? :native, :as source-query} (update-keys source-query maybe-normalize-token)]
     (if native?
       (-> source-query
           (set/rename-keys {:native :query})
@@ -431,14 +432,14 @@
 (mu/defn- normalize-native-query :- [:maybe :map]
   "For native queries, normalize the top-level keys, and template tags, but nothing else."
   [native-query :- [:maybe :map]]
-  (let [native-query (perf/update-keys native-query maybe-normalize-token)]
+  (let [native-query (update-keys native-query maybe-normalize-token)]
     (cond-> native-query
       (seq (:template-tags native-query)) (update :template-tags normalize-template-tags))))
 
 (defn- normalize-actions-row [row]
 
   (cond-> row
-    (map? row) (perf/update-keys u/qualified-name)))
+    (map? row) (update-keys u/qualified-name)))
 
 (def ^:private path->special-token-normalization-fn
   "Map of special functions that should be used to perform token normalization for a given path. For example, the
@@ -791,18 +792,21 @@
                               e))))]
       ;; Canonical clauses are assumed to be sequential things conj'd at the end.
       ;; In fact, they should better be vectors.
-      (if (seq top-canonical)
-        (into (conj (empty top-canonical) (first top-canonical))
-              (map canonicalize-mbql-clauses)
-              (rest top-canonical))
-        top-canonical))
+      (cond (vector? top-canonical)
+            (update-vals top-canonical canonicalize-mbql-clauses)
+
+            (seq top-canonical)
+            (into (conj (empty top-canonical) (first top-canonical))
+                  (map canonicalize-mbql-clauses)
+                  (rest top-canonical))
+
+            :else top-canonical))
 
     ;; ISeq instances (e.g., list and lazy sequences) are converted to vectors.
-    (seq? form)
+    (or (seq? form) (vector? form))
     (mapv canonicalize-mbql-clauses form)
 
-    ;; Other collections (e.g., vectors, sets, and queues) are assumed to be conj'd at the end
-    ;; and we keep their types.
+    ;; Other collections (e.g., sets, queues) are assumed to be conj'd at the end and we keep their types.
     (coll? form)
     (into (empty form) (map canonicalize-mbql-clauses) form)
 
@@ -1082,7 +1086,7 @@
 
 (defn- remove-empty-clauses-in-sequence* [xs special-fns]
   (let [special-fns (::sequence special-fns)
-        xs (#?(:clj perf/mapv :default mapv) #(remove-empty-clauses % special-fns) xs)]
+        xs (mapv #(remove-empty-clauses % special-fns) xs)]
     (when (some some? xs)
       xs)))
 
