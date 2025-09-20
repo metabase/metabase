@@ -29,6 +29,7 @@ export const useCellMeasure = (
     return (
       <div
         ref={rootRef}
+        data-element-id="data-grid-measure-root"
         style={{
           position: "absolute",
           top: "-9999px",
