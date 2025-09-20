@@ -29,7 +29,7 @@ export const useCompletedEmbeddingHubSteps = (): {
       };
     }
 
-    return { "create-models": false, ...embeddingHubChecklist };
+    return embeddingHubChecklist;
   }, [embeddingHubChecklist, isLoading]);
 
   return { data, isLoading };

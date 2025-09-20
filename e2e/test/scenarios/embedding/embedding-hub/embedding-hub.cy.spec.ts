@@ -110,17 +110,37 @@ describe("scenarios - embedding hub", () => {
         .should("be.visible");
     });
 
-    it('"Create models" link should navigate correctly', () => {
-      cy.visit("/admin/embedding/setup-guide");
+    [
+      { dbId: 1, dbName: "sample db" },
+      { dbId: 2, dbName: "sqlite db" },
+    ].forEach(({ dbId, dbName }) => {
+      it(`"Create models" step should be marked in ${dbName} as done after creating a model`, () => {
+        if (dbId === 2) {
+          H.addSqliteDatabase(dbName);
+        }
 
-      cy.log("Find and click on 'Create models' link");
-      cy.findByTestId("admin-layout-content")
-        .findByText("Create models")
-        .first()
-        .click();
+        cy.log("Create a native query model via API");
+        H.createNativeQuestion(
+          {
+            name: "Test Model",
+            type: "model",
+            database: dbId,
+            native: { query: "SELECT 1 as t" },
+          },
+          { visitQuestion: true },
+        );
 
-      cy.log("Should navigate to model creation page");
-      cy.url().should("include", "/model/new");
+        cy.log("Navigate to embedding setup guide");
+        cy.visit("/admin/embedding/setup-guide");
+
+        cy.log("'Create models' should now be marked as done");
+        cy.findByTestId("admin-layout-content")
+          .findByText("Create models")
+          .closest("button")
+          .scrollIntoView()
+          .findByText("Done", { timeout: 10_000 })
+          .should("be.visible");
+      });
     });
 
     it('"Embed in your code" card should take you to the embed flow', () => {
