@@ -8,43 +8,55 @@ import {
 } from "__support__/server-mocks";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
+import type { SettingKey } from "metabase-types/api";
 import {
   createMockSettingDefinition,
   createMockSettings,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { SiteUrlWidget } from "./SiteUrlWidget";
 
-const setup = () => {
-  setupPropertiesEndpoints(
-    createMockSettings({
-      "site-url": "http://mysite.biz",
+const setup = (props: { isHosted?: boolean }) => {
+  const siteUrlWidgetSettings = {
+    "site-url": "http://mysite.biz",
+    "token-features": createMockTokenFeatures({
+      hosting: Boolean(props.isHosted),
     }),
-  );
+  } as const;
+
+  const settings = createMockSettings(siteUrlWidgetSettings);
+
+  setupPropertiesEndpoints(settings);
   setupUpdateSettingEndpoint();
-  setupSettingsEndpoints([
-    createMockSettingDefinition({
-      key: "site-url",
-      value: "http://mysite.biz",
-    }),
-  ]);
+  setupSettingsEndpoints(
+    Object.entries(settings).map(([key, value]) =>
+      createMockSettingDefinition({ key: key as SettingKey, value }),
+    ),
+  );
 
   return renderWithProviders(
     <div>
       <SiteUrlWidget />
       <UndoListing />
     </div>,
+    {
+      storeInitialState: {
+        settings: createMockSettingsState(settings),
+      },
+    },
   );
 };
 
 describe("siteUrlWidget", () => {
   it("should render a SiteUrlWidget", async () => {
-    setup();
+    setup({});
     expect(await screen.findByText("Site url")).toBeInTheDocument();
   });
 
   it("should load existing value", async () => {
-    setup();
+    setup({});
     const selectInput = await screen.findByRole("textbox", {
       name: "input-prefix",
     });
@@ -55,7 +67,7 @@ describe("siteUrlWidget", () => {
   });
 
   it("should update the value", async () => {
-    setup();
+    setup({});
     const input = await screen.findByDisplayValue("mysite.biz");
     await userEvent.clear(input);
     await userEvent.type(input, "newsite.guru");
@@ -68,7 +80,7 @@ describe("siteUrlWidget", () => {
   });
 
   it("can change from http to https", async () => {
-    setup();
+    setup({});
     await userEvent.click(
       await screen.findByRole("textbox", { name: "input-prefix" }),
     );
@@ -80,7 +92,7 @@ describe("siteUrlWidget", () => {
   });
 
   it("should show success toast", async () => {
-    setup();
+    setup({});
     const input = await screen.findByDisplayValue("mysite.biz");
     await userEvent.clear(input);
     await userEvent.type(input, "newsite.guru");
@@ -94,7 +106,7 @@ describe("siteUrlWidget", () => {
   });
 
   it("should show error message", async () => {
-    setup();
+    setup({});
     setupUpdateSettingEndpoint({ status: 500 });
 
     const input = await screen.findByDisplayValue("mysite.biz");
@@ -106,5 +118,10 @@ describe("siteUrlWidget", () => {
     expect(
       await screen.findByText("Error saving Site URL"),
     ).toBeInTheDocument();
+  });
+
+  it("should not render if it's hosted", async () => {
+    setup({ isHosted: true });
+    expect(screen.queryByText("Site url")).not.toBeInTheDocument();
   });
 });

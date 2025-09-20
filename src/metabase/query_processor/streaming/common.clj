@@ -32,6 +32,8 @@
   [t]
   (u.date/with-time-zone-same-instant
    t
+   ;; existing usage -- don't use going forward
+   #_{:clj-kondo/ignore [:deprecated-var]}
    (qp.store/cached ::results-timezone (t/zone-id (qp.timezone/results-timezone-id)))))
 
 (defprotocol FormatValue

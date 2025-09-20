@@ -2,7 +2,7 @@ export const SANKEY_CHART_STYLE = {
   nodeWidth: 20,
   nodeLabels: {
     weight: 400,
-    size: 13,
+    size: 12,
     textBorderWidth: 3,
   },
   edgeLabels: {

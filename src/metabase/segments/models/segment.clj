@@ -115,7 +115,8 @@
                              (map #(lib.metadata.jvm/instance->metadata % :metadata/segment)
                                   segments)))
         field-ids         (mbql.u/referenced-field-ids (map :definition segments))
-        fields            (lib.metadata.protocols/metadatas metadata-provider :metadata/column field-ids)
+        fields            (when (seq field-ids)
+                            (lib.metadata.protocols/metadatas metadata-provider {:lib/type :metadata/column, :id (set field-ids)}))
         table-ids         (into #{}
                                 cat
                                 [(map :table-id fields)

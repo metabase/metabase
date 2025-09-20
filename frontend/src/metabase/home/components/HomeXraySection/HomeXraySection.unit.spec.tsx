@@ -74,4 +74,27 @@ describe("HomeXraySection", () => {
     expect(screen.getByText("Orders")).toBeInTheDocument();
     expect(screen.queryByText("People")).not.toBeInTheDocument();
   });
+
+  it("should default to 'public' schema when it's present", async () => {
+    await setup({
+      database: createMockDatabase({
+        name: "H2",
+        is_sample: false,
+      }),
+      candidates: [
+        createMockDatabaseCandidate({
+          id: "1/auth",
+          schema: "auth",
+          tables: [createMockTableCandidate({ title: "People" })],
+        }),
+        createMockDatabaseCandidate({
+          id: "1/public",
+          schema: "public",
+          tables: [createMockTableCandidate({ title: "Orders" })],
+        }),
+      ],
+    });
+
+    expect(screen.getByTestId("xray-schema-name")).toHaveTextContent("public");
+  });
 });

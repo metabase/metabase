@@ -116,43 +116,6 @@
     (t/is (= [:= [:field 1 nil] nil]
              (mbql.u/simplify-compound-filter [:and nil [:= [:field 1 nil] nil]])))))
 
-(t/deftest ^:parallel add-order-by-clause-test
-  (t/testing "can we add an order-by clause to a query?"
-    (t/is (= {:source-table 1, :order-by [[:asc [:field 10 nil]]]}
-             (mbql.u/add-order-by-clause {:source-table 1} [:asc [:field 10 nil]])))
-
-    (t/is (= {:source-table 1
-              :order-by     [[:asc [:field 10 nil]]
-                             [:asc [:field 20 nil]]]}
-             (mbql.u/add-order-by-clause {:source-table 1
-                                          :order-by     [[:asc [:field 10 nil]]]}
-                                         [:asc [:field 20 nil]])))))
-
-(t/deftest ^:parallel add-order-by-clause-test-2
-  (t/testing "duplicate clauses should get ignored"
-    (t/is (= {:source-table 1
-              :order-by     [[:asc [:field 10 nil]]]}
-             (mbql.u/add-order-by-clause {:source-table 1
-                                          :order-by     [[:asc [:field 10 nil]]]}
-                                         [:asc [:field 10 nil]])))))
-
-(t/deftest ^:parallel add-order-by-clause-test-3
-  (t/testing "as should clauses that reference the same Field"
-    (t/is (= {:source-table 1
-              :order-by     [[:asc [:field 10 nil]]]}
-             (mbql.u/add-order-by-clause {:source-table 1
-                                          :order-by     [[:asc [:field 10 nil]]]}
-                                         [:desc [:field 10 nil]])))))
-
-(t/deftest ^:parallel add-order-by-clause-test-4
-  (t/testing "fields with different temporal-units should still get added (#40995)"
-    (t/is (= {:source-table 1
-              :order-by     [[:asc [:field 10 nil]]
-                             [:asc [:field 10 {:temporal-unit :day}]]]}
-             (mbql.u/add-order-by-clause {:source-table 1
-                                          :order-by     [[:asc [:field 10 nil]]]}
-                                         [:asc [:field 10 {:temporal-unit :day}]])))))
-
 (t/deftest ^:parallel combine-filter-clauses-test
   (t/is (= [:and [:= [:field 1 nil] 100] [:= [:field 2 nil] 200]]
            (mbql.u/combine-filter-clauses
@@ -182,28 +145,6 @@
              [:= [:field 3 nil] 300]
              [:= [:field 4 nil] 300]]))
         "Should be able to combine multiple compound clauses"))
-
-(t/deftest ^:parallel map-stages-test
-  (let [test-fn (fn [inner-query stage-number]
-                  (assoc inner-query ::stage-number stage-number))]
-    (t/is (=? {:source-table  1
-               :filter        [:= [:field 1 nil] 100]
-               :aggregation   [[:count]]
-               ::stage-number 0}
-              (mbql.u/map-stages test-fn {:source-table 1
-                                          :filter       [:= [:field 1 nil] 100]
-                                          :aggregation  [[:count]]})))
-    (t/is (=? {:source-query  {:source-table  1
-                               :filter        [:= [:field 1 nil] 100]
-                               :aggregation   [[:count]]
-                               ::stage-number 0}
-               :expressions   {"negated" [:* [:field 1 nil] -1]}
-
-               ::stage-number 1}
-              (mbql.u/map-stages test-fn {:source-query  {:source-table  1
-                                                          :filter        [:= [:field 1 nil] 100]
-                                                          :aggregation   [[:count]]}
-                                          :expressions   {"negated" [:* [:field 1 nil] -1]}})))))
 
 (t/deftest ^:parallel desugar-time-interval-test
   (t/is (= [:between
@@ -653,19 +594,6 @@
              (mbql.u/negate-filter-clause
               [:inside [:field 1 nil] [:field 2 nil] 10.0 -20.0 -10.0 20.0])))))
 
-(t/deftest ^:parallel join->source-table-id-test
-  (let [join {:strategy  :left-join
-              :condition [:=
-                          [:field 48 nil]
-                          [:field 44 {:join-alias "products"}]]
-              :alias     "products"}]
-    (t/is (= 5
-             (mbql.u/join->source-table-id (assoc join :source-table 5))))
-    (t/is (= 5
-             (mbql.u/join->source-table-id (assoc join :source-query {:source-table 5}))))))
-
-;;; ---------------------------------------------- aggregation-at-index ----------------------------------------------
-
 (def ^:private query-with-some-nesting
   {:database 1
    :type     :query
@@ -684,8 +612,6 @@
     (t/testing (pr-str (cons 'aggregation-at-index input))
       (t/is (= expected
                (apply mbql.u/aggregation-at-index query-with-some-nesting input))))))
-
-;;; --------------------------------- Unique names & transforming ags to have names ----------------------------------
 
 (t/deftest ^:parallel uniquify-names
   (t/testing "can we generate unique names?"

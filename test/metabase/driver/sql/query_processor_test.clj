@@ -454,14 +454,14 @@
 (deftest ^:parallel multiple-joins-with-expressions-test
   (testing "We should be able to compile a complicated query with multiple joins and expressions correctly"
     (is (= '{:select   [source.PRODUCTS__via__PRODUCT_ID__CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
-                        source.PEOPLE__via__USER_ID__SOURCE AS PEOPLE__via__USER_ID__SOURCE
-                        DATE_TRUNC ("year" source.CREATED_AT) AS CREATED_AT
-                        source.pivot-grouping AS pivot-grouping
-                        COUNT (*) AS count]
-             :from     [{:select    [ORDERS.USER_ID                     AS USER_ID
-                                     ORDERS.PRODUCT_ID                  AS PRODUCT_ID
-                                     ORDERS.CREATED_AT                  AS CREATED_AT
-                                     ABS (0)                            AS pivot-grouping
+                        source.PEOPLE__via__USER_ID__SOURCE        AS PEOPLE__via__USER_ID__SOURCE
+                        DATE_TRUNC ("year" source.CREATED_AT)      AS CREATED_AT
+                        source.pivot-grouping                      AS pivot-grouping
+                        COUNT (*)                                  AS count]
+             :from     [{:select    [ORDERS.USER_ID    AS USER_ID
+                                     ORDERS.PRODUCT_ID AS PRODUCT_ID
+                                     ORDERS.CREATED_AT AS CREATED_AT
+                                     ABS (0)           AS pivot-grouping
                                      ;; TODO: The order here is not deterministic! It's coming
                                      ;; from [[metabase.query-processor.util.transformations.nest-breakouts]]
                                      ;; or [[metabase.query-processor.util.nest-query]], which walks the query looking
@@ -512,9 +512,9 @@
                         DATE_TRUNC ("year" source.CREATED_AT)
                         source.pivot-grouping]
              :order-by [source.PRODUCTS__via__PRODUCT_ID__CATEGORY ASC
-                        source.PEOPLE__via__USER_ID__SOURCE ASC
-                        DATE_TRUNC ("year" source.CREATED_AT) ASC
-                        source.pivot-grouping ASC]}
+                        source.PEOPLE__via__USER_ID__SOURCE        ASC
+                        DATE_TRUNC ("year" source.CREATED_AT)      ASC
+                        source.pivot-grouping                      ASC]}
            (-> (lib.tu.macros/mbql-query orders
                  {:aggregation [[:aggregation-options [:count] {:name "count"}]]
                   :breakout    [&PRODUCTS__via__PRODUCT_ID.products.category
@@ -1400,7 +1400,7 @@
                     (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
 
 ;;; see also [[metabase.query-processor.util.add-alias-info-test/resolve-incorrect-field-ref-for-expression-test]]
-;;; and [[metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test/evil-field-ref-for-an-expression-test]]
+;;; and [[metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test/evil-field-ref-for-an-expression-test]]
 (deftest ^:parallel evil-field-ref-for-an-expression-test
   (testing "If we accidentally use a :field ref for an :expression, the query should still compile correctly"
     ;; (this is actually mostly checking that `add-alias-info` or someone else rewrites the `:field` ref as an

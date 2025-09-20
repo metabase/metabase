@@ -1050,6 +1050,7 @@ describe("Question", () => {
       const cardWithTextFilter = {
         id: 1,
         dataset_query: {
+          database: SAMPLE_DB_ID,
           type: "native",
           native: {
             "template-tags": {
@@ -1073,6 +1074,7 @@ describe("Question", () => {
       const cardWithFieldFilter = {
         id: 2,
         dataset_query: {
+          database: SAMPLE_DB_ID,
           type: "native",
           native: {
             "template-tags": {
@@ -1254,6 +1256,7 @@ describe("Question", () => {
   describe("Question.generateQueryDescription", () => {
     it("should work with multiple aggregations", () => {
       const question = base_question.setDatasetQuery({
+        database: SAMPLE_DB_ID,
         query: {
           "source-table": ORDERS_ID,
           aggregation: [["count"], ["sum", ["field", ORDERS.TOTAL, null]]],
@@ -1266,6 +1269,7 @@ describe("Question", () => {
 
     it("should work with named aggregations", () => {
       const question = base_question.setDatasetQuery({
+        database: SAMPLE_DB_ID,
         query: {
           "source-table": ORDERS_ID,
           aggregation: [

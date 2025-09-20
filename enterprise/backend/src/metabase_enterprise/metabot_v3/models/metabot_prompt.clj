@@ -18,13 +18,11 @@
 (t2/deftransforms :model/MetabotPrompt
   {:model mi/transform-keyword})
 
-;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
+;;; ------------------------------------------------- Serialization -------------------------------------------------
 
 (defmethod serdes/hash-fields :model/MetabotPrompt
   [_table]
   [:metabot_entity_id :model :card_id :prompt])
-
-;;; ------------------------------------------------- Serialization -------------------------------------------------
 
 (defmethod serdes/generate-path "MetabotPrompt" [_ entity]
   (conj (serdes/generate-path "MetabotEntity" (t2/select-one :model/MetabotEntity (:metabot_entity_id entity)))

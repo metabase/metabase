@@ -115,6 +115,46 @@ There are some limitations to this indexing:
 
 You can edit a model's query by clicking on the down arrow next to the model's name and clicking on **Edit query definition**. When you're doing editing, be sure to save your changes. Unlike questions, which prompt you to save as a new question, any changes here will overwrite the existing model. If you want to create a new model from an existing model, select **Duplicate this model** from the model sidebar (the icon of two overlapping squares).
 
+## Model list view
+
+![Viewing a model as a list, with a detail view](./images/model-list-detail.png)
+
+To view a model as a list:
+
+1. Visit the model.
+2. Click the three-dot menu.
+3. Select **Edit metadata**.
+4. Navigate to the **Settings** tab.
+5. Under "What should the default view of this data be?", toggle to **List**.
+
+![Model list view](./images/model-list-view.png)
+
+### Customize model list view
+
+![Customize list layout](./images/customize-list.png)
+
+You can customize how the data appears by clicking **Customize the List layout**.
+
+Each item in the list has:
+
+- An entity icon
+- A left column with:
+  - The title or primary identifier on top.
+  - A subtitle/description or secondary identifier.
+  - An image (only if the record contains an image link)
+- A right column for up to 5 additional columns.
+
+You can:
+
+- **Search for columns** using the "Find a column..." search box
+- **Drag columns** from the available list into either the left (Title + Subtitle) or right columns areas
+- **Reorder columns** by dragging them within their respective areas
+- **Remove columns** by clicking on the X on the column.
+
+You can see a preview on the bottom with sample data from your model. 
+
+Click **Done** to save your changes.
+
 ## Start a question from a model
 
 See [asking questions][question].

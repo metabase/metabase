@@ -62,6 +62,7 @@
     transparent
   );
   --mb-color-success: #84bb4c;
+  --mb-color-success-darker: var(--mb-base-color-palm-50);
   --mb-color-summarize: #88bf4d;
   --mb-color-error: var(--mb-base-color-lobster-50);
   --mb-color-danger: var(--mb-base-color-lobster-50);
@@ -116,6 +117,7 @@
   --mb-color-syntax-parameters: var(--mb-base-color-mango-40);
   --mb-color-syntax-parameters-active: var(--mb-base-color-mango-10);
   --mb-color-switch-off: var(--mb-base-color-orion-10);
+  --mb-color-shadow-embedding-hub-card: rgba(162, 197, 228, 0.7);
 
   /**
     * Base colors
@@ -208,10 +210,10 @@
   --mb-base-color-orion-alpha-60: hsla(204, 66%, 8%, 0.62);
   --mb-base-color-orion-alpha-50: hsla(204, 66%, 8%, 0.51);
   --mb-base-color-orion-alpha-40: hsla(204, 66%, 8%, 0.44);
-  --mb-base-color-orion-alpha-30: hsla(204, 66%, 8%, 0.44);
-  --mb-base-color-orion-alpha-20: hsla(204, 66%, 8%, 0.44);
-  --mb-base-color-orion-alpha-10: hsla(204, 66%, 8%, 0.44);
-  --mb-base-color-orion-alpha-5: hsla(204, 66%, 8%, 0.44);
+  --mb-base-color-orion-alpha-30: hsla(204, 66%, 8%, 0.29);
+  --mb-base-color-orion-alpha-20: hsla(204, 66%, 8%, 0.14);
+  --mb-base-color-orion-alpha-10: hsla(204, 66%, 8%, 0.05);
+  --mb-base-color-orion-alpha-5: hsla(204, 66%, 8%, 0.02);
 
   /* Lobster */
   --mb-base-color-lobster-100: hsla(0, 81%, 11%, 1);
