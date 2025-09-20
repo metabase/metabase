@@ -67,8 +67,11 @@ export const EmbedModalContent = (
   if (isEEBuild()) {
     return (
       <PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.SdkIframeStaticEmbedSetup
-        resourceType={resourceType === "question" ? "chart" : resourceType}
-        resourceId={resource.id}
+        resource={resource}
+        resourceType={resourceType}
+        resourceParameters={resourceParameters}
+        onUpdateEmbeddingParams={onUpdateEmbeddingParams}
+        onUpdateEnableEmbedding={onUpdateEnableEmbedding}
       />
     );
   }
