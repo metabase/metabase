@@ -420,6 +420,11 @@
                                 new-cards)
        new-cards))))
 
+(defn- every-pos-int?
+  "Returns true if `xs` is a sequence of positive integers."
+  [ids]
+  (every? pos-int? (api/parse-multi-values-param ids parse-long)))
+
 (api.macros/defendpoint :get "/:id/series"
   "Fetches a list of compatible series with the card with id `card_id`.
 
@@ -433,9 +438,8 @@
        [:last_cursor {:optional true} [:maybe ms/PositiveInt]]
        [:query       {:optional true} [:maybe ms/NonBlankString]]
        [:exclude_ids {:optional true} [:maybe [:fn
-                                               {:error/fn (fn [_ _] (deferred-tru "value must be a sequence of positive integers"))}
-                                               (fn [ids]
-                                                 (every? pos-int? (api/parse-multi-values-param ids parse-long)))]]]]]
+                                               {:error/message (deferred-tru "value must be a sequence of positive integers")}
+                                               #'every-pos-int?]]]]]
   (let [exclude_ids  (when exclude_ids (api/parse-multi-values-param exclude_ids parse-long))
         card         (-> (t2/select-one :model/Card :id id) api/check-404 api/read-check)
         card-display (:display card)]

@@ -460,6 +460,15 @@
    [:map
     [:lib/desired-column-alias ::lib.schema.metadata/desired-column-alias]]])
 
+(defn- distinct-col-aliases-msg [{:keys [value]} _]
+  (str "Column :lib/desired-column-alias values must be distinct, got: "
+       (pr-str (mapv :lib/desired-column-alias value))))
+
+(defn- returned-columns-check [columns]
+  (or
+   (empty? columns)
+   (apply distinct? (map :lib/desired-column-alias columns))))
+
 (mr/def ::returned-columns
   "Schema for column metadata that should be returned by [[returned-columns]] and implementations
   of [[returned-columns-method]]."
@@ -468,13 +477,8 @@
    [:fn
     ;; should be dev-facing only, so don't need to i18n
     {:error/message "Column :lib/desired-column-alias values must be distinct for each stage!"
-     :error/fn      (fn [{:keys [value]} _]
-                      (str "Column :lib/desired-column-alias values must be distinct, got: "
-                           (pr-str (mapv :lib/desired-column-alias value))))}
-    (fn [columns]
-      (or
-       (empty? columns)
-       (apply distinct? (map :lib/desired-column-alias columns))))]])
+     :error/fn #'distinct-col-aliases-msg}
+    #'returned-columns-check]])
 
 (mr/def ::returned-columns.options
   "Schema for options passed to [[returned-columns]] and [[returned-columns-method]]."
