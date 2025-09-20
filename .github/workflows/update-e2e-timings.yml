@@ -1,0 +1,92 @@
+name: Update E2E Timings
+
+permissions:
+  contents: write
+  pull-requests: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      days_back:
+        description: "Number of days to look back for timing artifacts"
+        type: number
+        default: 7
+        required: false
+  schedule:
+    # Run weekly on Sundays at 6 AM UTC
+    - cron: "0 6 * * 0"
+
+jobs:
+  collect-and-average-timings:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    env:
+      DAYS_BACK: ${{ inputs.days_back || 7 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Collect and average timing data
+        id: collect-timings
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { collectAndAverageTimings } = require('${{ github.workspace }}/.github/scripts/average-e2e-timings.js');
+            const result = await collectAndAverageTimings({
+              github,
+              context,
+              token: '${{ secrets.GITHUB_TOKEN }}',
+              daysBack: ${{ env.DAYS_BACK }},
+              existingTimingsPath: 'e2e/support/timings.json'
+            });
+
+            core.setOutput('artifact-count', result.artifactCount);
+
+      - name: Set up git configuration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          BRANCH_NAME="update-e2e-timings-$(date +%Y%m%d-%H%M%S)"
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+          echo "Branch name will be: $BRANCH_NAME"
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ env.BRANCH_NAME }}
+          base: master
+          commit-message: |
+            Update E2E test timings with averaged data
+
+            Collected timing data from ${{ env.DAYS_BACK }} days of test runs.
+            All specs with timing data were included (simple averages).
+
+            🤖 Generated automatically by update-e2e-timings workflow
+
+            Co-Authored-By: GitHub Actions <actions@github.com>
+          committer: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+          author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+          title: "[chore] Update E2E test timings with recent data"
+          body: |
+            ## Summary
+            This PR updates the E2E test timing data with averaged values from recent test runs.
+
+            ## Details
+            - Collected data from the last **${{ env.DAYS_BACK }} days** of test runs
+            - Averaged timing data from **${{ steps.collect-timings.outputs.artifact-count }}** test runs
+
+            ## Generated automatically
+            🤖 This PR was created automatically by the `update-e2e-timings` workflow.
+            The timing data helps cypress-split optimize test distribution across parallel jobs.
+
+            Co-Authored-By: GitHub Actions <actions@github.com>
+          labels: |
+            .CI & Tests
+          add-paths: e2e/support/timings.json
