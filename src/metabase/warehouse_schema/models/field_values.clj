@@ -424,6 +424,11 @@
   [field-id]
   (get-latest-field-values field-id :full nil))
 
+(defn get-last-used-field-values
+  "This returns the last used FieldValues for the given Field, regardless of type."
+  [field-id]
+  (t2/select-one :model/FieldValues :field_id field-id {:order-by [[:last_used_at :desc]] :limit 1}))
+
 (defn batched-get-latest-full-field-values
   "Batched version of [[get-latest-full-field-values]] .
   Takes a list of field-ids and returns a map of field-id -> full FieldValues.
