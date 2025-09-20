@@ -150,7 +150,12 @@
   "Whether `x` is a [[metadata-provider?]], or has one attached at `:lib/metadata` (i.e., a query)."
   [x]
   (or (metadata-provider? x)
-      (some-> x :lib/metadata metadata-providerable?)))
+      (some-> x :lib/metadata metadata-providerable?)
+      ;; function with the signature
+      ;;
+      ;;    (f database-id) => metadata-provider
+      (fn? x)
+      (var? x)))
 
 (mr/def ::metadata-providerable
   "Something that can be used to get a MetadataProvider. Either a MetadataProvider, or a map with a MetadataProvider in

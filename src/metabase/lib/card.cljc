@@ -55,8 +55,8 @@
 
 (mu/defn- infer-returned-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   [metadata-providerable                 :- ::lib.schema.metadata/metadata-providerable
-   {card-query :dataset-query :as _card} :- :map]
-  (when (some? card-query)
+   {card-query :dataset-query :as _card} :- ::lib.schema.metadata/card]
+  (when (seq card-query)
     (lib.metadata.calculation/returned-columns (lib.query/query metadata-providerable card-query))))
 
 (mu/defn- ->card-metadata-column :- ::lib.schema.metadata/column
@@ -170,7 +170,7 @@
   "If `card` itself has a source card that is a Model, return that Model's columns."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card                  :- ::lib.schema.metadata/card]
-  (when-let [card-query (some->> (:dataset-query card) (lib.query/query metadata-providerable))]
+  (when-let [card-query (some->> (:dataset-query card) not-empty (lib.query/query metadata-providerable))]
     (when-let [source-card-id (lib.util/source-card-id card-query)]
       (when-not (= source-card-id (:id card))
         (let [source-card (lib.metadata/card metadata-providerable source-card-id)]
