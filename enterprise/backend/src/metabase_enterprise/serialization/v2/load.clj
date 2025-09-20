@@ -190,4 +190,4 @@
     ;;       this means that the corresponding entries would have been missing or stale when we indexed them.
     ;;       ideally, we would delay the indexing somehow, or only reindex what we've loaded.
     ;;       while we're figuring that out, here's a crude stopgap.
-      (search/reindex!))))
+      (search/reindex! {:async? false}))))
