@@ -1578,12 +1578,32 @@ describe("scenarios > admin > transforms > jobs", () => {
         event: "transform_job_trigger_manual_run",
         triggered_from: "job-page",
       });
+
+      getJobPage().findByText("Last ran a few seconds ago successfully.");
+
       getNavSidebar().findByText("Runs").click();
       getContentTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("Success").should("be.visible");
         cy.findByText("Manual").should("be.visible");
       });
+    });
+
+    it("should display the error message from a failed run", () => {
+      H.createTransformTag({ name: "New tag" }).then(({ body: tag }) => {
+        createSqlTransform({
+          sourceQuery: "SELECT * FROM abc",
+          tagIds: [tag.id],
+        });
+        H.createTransformJob(
+          { name: "New job", tag_ids: [tag.id] },
+          { visitTransformJob: true },
+        );
+      });
+      runJobAndWaitForFailure();
+      getJobPage().findByText("Last run failed a few seconds ago.");
+      getRunErrorInfoButton().click();
+      H.modal().should("contain.text", 'relation "abc" does not exist');
     });
   });
 
@@ -2297,6 +2317,11 @@ function runTransformAndWaitForFailure() {
 function runJobAndWaitForSuccess() {
   getRunButton().click();
   getRunButton().should("have.text", "Ran successfully");
+}
+
+function runJobAndWaitForFailure() {
+  getRunButton().click();
+  getRunButton().should("have.text", "Run failed");
 }
 
 function createMbqlTransform({
