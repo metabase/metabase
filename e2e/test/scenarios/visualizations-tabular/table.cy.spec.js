@@ -531,7 +531,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
       .findByText(rowsRegex)
       .should("not.exist");
 
-    cy.get("@tableDashcard").findByText("2,000 rows");
+    cy.get("@tableDashcard").findByText("Showing first 2,000 rows");
 
     // Enable pagination
     H.editDashboard();

@@ -103,7 +103,7 @@ describe("issue 61013", () => {
     H.getDashboardCards().should("have.length", 1);
     H.getDashboardCard(0).within(() => {
       cy.findByText("Orders question").should("be.visible");
-      cy.findByText("2,000 rows").should("be.visible");
+      cy.findByText("Showing first 2,000 rows").should("be.visible");
     });
 
     cy.findByTestId("edit-bar")
@@ -115,7 +115,7 @@ describe("issue 61013", () => {
     H.getDashboardCards().should("have.length", 1);
     H.getDashboardCard(0).within(() => {
       cy.findByText("Orders question").should("be.visible");
-      cy.findByText("2,000 rows").should("be.visible");
+      cy.findByText("Showing first 2,000 rows").should("be.visible");
     });
   });
 
