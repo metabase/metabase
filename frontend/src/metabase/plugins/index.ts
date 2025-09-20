@@ -44,6 +44,7 @@ import {
   NotFoundPlaceholder,
   PluginPlaceholder,
 } from "metabase/plugins/components/PluginPlaceholder";
+import type { StaticEmbedSetupPaneProps } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/StaticEmbedSetupPane";
 import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import type { SearchFilterComponent } from "metabase/search/types";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
@@ -58,7 +59,6 @@ import type {
   Bookmark,
   CacheableDashboard,
   CacheableModel,
-  CardId,
   CheckDependenciesResponse,
   Collection,
   CollectionAuthorityLevelConfig,
@@ -579,18 +579,12 @@ export const PLUGIN_EMBEDDING_IFRAME_SDK = {
   SdkIframeEmbedRoute: (): ReactNode => null,
 };
 
-export type SdkIframeStaticEmbedSetupProps = {
-  resourceType: "chart" | "dashboard";
-  resourceId: CardId | DashboardId;
-};
-
 export const PLUGIN_EMBEDDING_IFRAME_SDK_SETUP = {
   isFeatureEnabled: () => false,
   shouldShowEmbedInNewItemMenu: () => false,
   SdkIframeEmbedSetup: (): ReactNode => null,
-  SdkIframeStaticEmbedSetup: (
-    _props: SdkIframeStaticEmbedSetupProps,
-  ): ReactNode => null,
+  SdkIframeStaticEmbedSetup: (_props: StaticEmbedSetupPaneProps): ReactNode =>
+    null,
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {
