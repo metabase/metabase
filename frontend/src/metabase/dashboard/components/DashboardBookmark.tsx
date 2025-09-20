@@ -6,6 +6,8 @@ import { useDispatch } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import type { DashboardId, Bookmark as IBookmark } from "metabase-types/api";
 
+import { trackDashboardBookmarked } from "../analytics";
+
 export interface DashboardBookmarkProps {
   isBookmarked: boolean;
 }
@@ -26,6 +28,7 @@ export const DashboardBookmark = (): JSX.Element | null => {
     if (dashboard) {
       const id = dashboard.id;
       dispatch(Bookmark.actions.create({ id, type: "dashboard" }));
+      trackDashboardBookmarked();
     }
   };
 
