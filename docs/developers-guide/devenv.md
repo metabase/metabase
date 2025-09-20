@@ -147,6 +147,18 @@ You can also start a REPL another way (e.g., through your editor) and then call:
 To start the server (at `localhost:3000`). This will also set up or migrate your application database. To actually
 use Metabase, don't forget to start the frontend as well (e.g. with `yarn build-hot`).
 
+### Multiple Instances
+
+You can run multiple instances of Metabase on the same machine by specifying a different port for each instance.
+
+Frontend:
+- If you are running the frontend with `yarn build-hot`, set the `PORT` environment variable: `PORT=3001 MB_EDITION=ee yarn build-hot`
+- If you are building the frontend statically with `yarn build`, there is nothing different to do
+
+Backend:
+- Set the `MB_JETTY_PORT` environment variable
+- If you are running the frontend with `yarn build-hot`, set `MB_WEBPACK_PORT` to the same port as the `PORT` variable above
+
 ### The application database
 
 By default, Metabase uses H2 for its application database, but we recommend using Postgres. This is configured with
