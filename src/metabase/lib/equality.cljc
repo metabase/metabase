@@ -169,7 +169,7 @@
   ;; TODO (Cam 6/19/25) -- seems busted to be using joins that happened at ANY LEVEL previously for equality purposes
   ;; so lightly but removing this breaks stuff. We should just remove this and do smarter matching like we do
   ;; in [[plausible-matches-for-name-with-join-alias]] below.
-  ((some-fn :metabase.lib.join/join-alias :lib/original-join-alias :source-alias) column))
+  ((some-fn :metabase.lib.join/join-alias :lib/original-join-alias) column))
 
 (mu/defn- matching-join? :- :boolean
   [[_ref-kind {:keys [join-alias source-field source-field-name
@@ -242,10 +242,7 @@
     (when-let [columns-from-join (some (fn [k]
                                          (not-empty (filter #(= (k %) join-alias) columns)))
                                        [:metabase.lib.join/join-alias
-                                        :lib/original-join-alias
-                                        ;; use the `:source-alias` key which was traditionally set by QP result
-                                        ;; metadata sometimes if neither one of the other keys had match(es)
-                                        :source-alias])]
+                                        :lib/original-join-alias])]
       (plausible-matches columns-from-join))))
 
 (mu/defn- plausible-matches-for-name :- [:maybe [:sequential ::lib.schema.metadata/column]]
@@ -339,19 +336,19 @@
 (mu/defn- disambiguate-matches-ignoring-join-alias :- [:maybe ::lib.schema.metadata/column]
   [a-ref   :- ::lib.schema.ref/ref
    columns :- [:sequential ::lib.schema.metadata/column]]
-  ;; a-ref without :join-alias - if exactly one column has no :source-alias, that's the match.
+  ;; a-ref without :join-alias - if exactly one column has no join alias, that's the match.
   ;; ignore the source alias on columns with :source/card
   (if-let [no-alias (not-empty (remove #(and (column-join-alias %)
                                              (not= (:lib/source %) :source/card))
                                        columns))]
-    ;; At least 1 matching column with no :source-alias.
+    ;; At least 1 matching column with no join alias
     (if-not (next no-alias)
       (first no-alias)
       ;; More than 1, keep digging.
       (disambiguate-matches-prefer-explicit a-ref no-alias))
-    ;; No columns are missing :source-alias - pass them all to the next stage.
-    ;; TODO: I'm not certain this one is sound, but it's necessary to make `lib.join/select-home-column` work as
-    ;; written. If this case causes issues, that logic may need rewriting.
+    ;; No columns are missing join alias - pass them all to the next stage. TODO: I'm not certain this one is sound,
+    ;; but it's necessary to make `lib.join/select-home-column` work as written. If this case causes issues, that
+    ;; logic may need rewriting.
     nil))
 
 (mu/defn- disambiguate-matches :- [:maybe ::lib.schema.metadata/column]

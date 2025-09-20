@@ -665,7 +665,6 @@
                                :source-metadata [{:semantic_type :type/Category
                                                   :table_id 45
                                                   :name "CATEGORY"
-                                                  :field_ref [:field 350 {:base-type :type/Text}]
                                                   :effective_type :type/Text
                                                   :id 350
                                                   :display_name "Category"
@@ -714,7 +713,6 @@
                                      :source-metadata [{:semantic_type :type/Category
                                                         :table_id 45
                                                         :name "CATEGORY"
-                                                        :field_ref [:field 350 {:base-type :type/Text, :join-alias "Products"}]
                                                         :effective_type :type/Text
                                                         :id 350
                                                         :display_name "Products → Category"
@@ -728,13 +726,10 @@
                                                        {:name "count"
                                                         :display_name "Count"
                                                         :base_type :type/Integer
-                                                        :semantic_type :type/Quantity
-                                                        :field_ref [:aggregation 0]}]}
+                                                        :semantic_type :type/Quantity}]}
                       :source-metadata [{:semantic_type :type/Category
                                          :table_id 45
                                          :name "CATEGORY"
-                                         :field_ref [:field 350 {:base-type :type/Text
-                                                                 :join-alias "Card 2 - Category"}]
                                          :effective_type :type/Text
                                          :id 350
                                          :display_name "Products → Category"
@@ -748,8 +743,7 @@
                                         {:name "count"
                                          :display_name "Count"
                                          :base_type :type/Integer
-                                         :semantic_type :type/Quantity
-                                         :field_ref [:field "count" {:base-type :type/Integer}]}]}}]]
+                                         :semantic_type :type/Quantity}]}}]]
       (test-round-trip query))))
 
 (deftest ^:parallel round-trip-options-test
@@ -815,8 +809,6 @@
                             [{:semantic_type   :type/PK
                               :table_id        32598
                               :name            "id"
-                              :source          :fields
-                              :field_ref       [:field 134528 nil]
                               :effective_type  :type/Integer
                               :id              134528
                               :visibility_type :normal
@@ -828,13 +820,10 @@
                    :semantic-type   :type/Category
                    :table-id        32600
                    :name            "category"
-                   :source          :breakout
                    :effective-type  :type/Text
                    :id              134551
-                   :source-alias    "products__via__product_id"
                    :visibility-type :normal
                    :display-name    "Product → Category"
-                   :field-ref       [:field 134551 {:source-field 134534}]
                    :fk-field-id     134534
                    :fingerprint     {:global {:distinct-count 4, :nil% 0.0}
                                      :type   {:type/Text {:percent-json   0.0

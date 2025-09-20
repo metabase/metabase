@@ -172,14 +172,12 @@
                  {:id                       (meta/id :categories :id)
                   :name                     "ID_2"
                   :lib/source               :source/joins
-                  :source-alias             "Cat"
                   :display-name             "ID"
                   :lib/source-column-alias  "ID"
                   :lib/desired-column-alias "Cat__ID"}
                  {:id                       (meta/id :categories :name)
                   :name                     "NAME_2"
                   :lib/source               :source/joins
-                  :source-alias             "Cat"
                   :display-name             "Name"
                   :lib/source-column-alias  "NAME"
                   :lib/desired-column-alias "Cat__NAME"}]
@@ -892,8 +890,7 @@
           :lib/type                     :metadata/column
           :metabase.lib.join/join-alias "Orders"
           :name                         "sum"
-          :semantic-type                :type/Quantity
-          :source-alias                 "Orders"}
+          :semantic-type                :type/Quantity}
          {:base-type                    :type/Integer
           :display-name                 "Sum"
           :effective-type               :type/Integer
@@ -929,7 +926,6 @@
                       :preview-display              true
                       :semantic-type                :type/Title
                       :settings                     nil
-                      :source-alias                 "Orders"
                       :table-id                     24050
                       :visibility-type              :normal
                       :lib/breakout?                false
