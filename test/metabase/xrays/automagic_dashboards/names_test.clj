@@ -36,7 +36,9 @@
                                :week-of-year    (u.date/extract dt :week-of-year)}]
         (testing (format "unit = %s" unit)
           (is (= (str expected)
-                 (str (names/humanize-datetime t-str unit))))))))
+                 (str (names/humanize-datetime t-str unit)))))))))
+
+(deftest ^:parallel temporal-humanization-test-2
   (testing "Extracted unit handling"
     (is (= :sunday (#'u.date/start-of-week)) "adjust the test, it assumes Sunday as first day of the week")
     (let [t 3]                          ; t = 2 or t = 4 would also work

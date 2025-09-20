@@ -30,7 +30,6 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.pulse.dashboard-subscription-test :as dashboard-subscription-test]
-   [metabase.pulse.models.pulse :as models.pulse]
    [metabase.queries.api.card-test :as api.card-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -260,7 +259,7 @@
     [:model/Dashboard {rasta-dash-id :id} {:creator_id (mt/user->id :rasta)}
      :model/Dashboard {crowberto-dash-id :id
                        :as               crowberto-dash}    {:creator_id    (mt/user->id :crowberto)
-                                                             :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))}
+                       :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))}
      :model/Dashboard {archived-dash-id :id} {:archived          true
                                               :archived_directly true
                                               :collection_id     (:id (collection/user->personal-collection (mt/user->id :crowberto)))
@@ -277,12 +276,13 @@
                                 :email       "crowberto@metabase.com"
                                 :first_name  "Crowberto"
                                 :last_name   "Corv"
-                                :common_name "Crowberto Corv"}}
-                     {:last-edit-info {:id         (mt/user->id :crowberto)
+                                :common_name "Crowberto Corv"}
+                      :last-edit-info {:id         (mt/user->id :crowberto)
                                        :first_name "Crowberto"
                                        :last_name  "Corv"
                                        :email      "crowberto@metabase.com"
-                                       :timestamp  true}})
+                                       :timestamp  true}
+                      :width "fixed"})
               (-> (m/find-first #(= (:id %) crowberto-dash-id)
                                 (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine"))
                   (update-in [:last-edit-info :timestamp] boolean)))))
@@ -729,7 +729,7 @@
       (mt/with-log-messages-for-level [messages [metabase.parameters.params :error]]
         (is (some? (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id))))
         (is (=? [{:level   :error
-                  :message "Could not find matching field clause for target: [:dimension [:template-tag not-existed-filter]]"}]
+                  :message "Could not extract field ID from target: [:dimension [:template-tag \"not-existed-filter\"]]"}]
                 (messages)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -893,17 +893,15 @@
       (mt/with-temp [:model/Dashboard dashboard {}]
         (with-dashboards-in-writeable-collection! [dashboard]
           (testing "the default dashboard width value is 'fixed'."
-            (is (= "fixed"
+            (is (= :fixed
                    (t2/select-one-fn :width :model/Dashboard :id (u/the-id dashboard)))))
-
           (testing "changing the width setting to 'full' works."
             (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard)) {:width "full"})
-            (is (= "full"
+            (is (= :full
                    (t2/select-one-fn :width :model/Dashboard :id (u/the-id dashboard)))))
-
           (testing "values that are not 'fixed' or 'full' error."
-            (is (=? {:specific-errors {:width ["should be either \"fixed\" or \"full\", received: 1200"]}
-                     :errors          {:width "enum of fixed, full"}}
+            (is (=? {:specific-errors {:width ["should be either :fixed or :full, received: 1200"]}
+                     :errors          {:width ["enum of :fixed, :full"]}}
                     (mt/user-http-request :rasta :put 400 (str "dashboard/" (u/the-id dashboard)) {:width 1200})))))))))
 
 (deftest update-dashboard-add-time-granularity-param
@@ -1339,10 +1337,12 @@
                                             :collection_id (u/the-id dest-coll)})]
             (is (= (:collection_id resp) (u/the-id dest-coll))
                 "Dashboard should go into the destination collection")
-            (is (= 3 (count (t2/select 'Card :collection_id (u/the-id source-coll)))))
-            (let [copied-cards (t2/select 'Card :collection_id (u/the-id dest-coll))
-                  copied-db-cards (t2/select 'DashboardCard :dashboard_id (u/the-id (:id resp)))
-                  source-db-cards (t2/select 'DashboardCard :dashboard_id (u/the-id dashboard))]
+            (is (=? {:id pos-int?}
+                    resp))
+            (is (= 3 (count (t2/select :model/Card :collection_id (u/the-id source-coll)))))
+            (let [copied-cards (t2/select :model/Card :collection_id (u/the-id dest-coll))
+                  copied-db-cards (t2/select :model/DashboardCard :dashboard_id (u/the-id (:id resp)))
+                  source-db-cards (t2/select :model/DashboardCard :dashboard_id (u/the-id dashboard))]
               (testing "Copies all of the questions on the dashboard"
                 (is (= 2 (count copied-cards))))
               (testing "Copies all of the dashboard cards"
@@ -1422,8 +1422,8 @@
                                               :collection_id (u/the-id dest-coll)})]
               (is (= (:collection_id resp) (u/the-id dest-coll))
                   "Dashboard should go into the destination collection")
-              (let [copied-cards (t2/select 'Card :collection_id (u/the-id dest-coll))
-                    copied-db-cards (t2/select 'DashboardCard :dashboard_id (u/the-id (:id resp)))]
+              (let [copied-cards (t2/select :model/Card :collection_id (u/the-id dest-coll))
+                    copied-db-cards (t2/select :model/DashboardCard :dashboard_id (u/the-id (:id resp)))]
                 (testing "Copies only one of the questions on the dashboard"
                   (is (= 1 (count copied-cards))))
                 (testing "Copies one of the dashboard cards"
@@ -1499,7 +1499,7 @@
                                                :description "A new description"
                                                :is_deep_copy true
                                                :collection_id (u/the-id source-coll)})
-                  cards-in-coll (t2/select 'Card :collection_id (u/the-id source-coll))]
+                  cards-in-coll (t2/select :model/Card :collection_id (u/the-id source-coll))]
               ;; original 3 plust 3 duplicates
               (is (= 6 (count cards-in-coll)) "Not all cards were copied")
               (is (= (into #{} (comp (map :name)
@@ -2142,7 +2142,7 @@
                                                                    :parameter_mappings     [{:parameter_id "abc"
                                                                                              :card_id      123
                                                                                              :hash         "abc"
-                                                                                             :target       "foo"}]
+                                                                                             :target       [:field 1 nil]}]
                                                                    :visualization_settings {}}]
                                                       :tabs      []}))]
           ;; extra sure here because the dashcard we given has a negative id
@@ -2154,7 +2154,7 @@
                    :row                        4
                    :series                     []
                    :dashboard_tab_id           nil
-                   :parameter_mappings         [{:parameter_id "abc" :card_id 123, :hash "abc", :target "foo"}]
+                   :parameter_mappings         [{:parameter_id "abc" :card_id 123, :hash "abc", :target ["field" 1 nil]}]
                    :visualization_settings     {}
                    :created_at                 true
                    :updated_at                 true
@@ -2168,7 +2168,7 @@
                    :size_y                 4
                    :col                    4
                    :row                    4
-                   :parameter_mappings     [{:parameter_id "abc", :card_id 123, :hash "abc", :target "foo"}]
+                   :parameter_mappings     [{:parameter_id "abc", :card_id 123, :hash "abc", :target [:field 1 nil]}]
                    :visualization_settings {}}]
                  (map (partial into {})
                       (t2/select [:model/DashboardCard :size_x :size_y :col :row :parameter_mappings :visualization_settings]
@@ -2326,7 +2326,7 @@
                                                          :parameter_mappings     [{:parameter_id "abc"
                                                                                    :card_id      123
                                                                                    :hash         "abc"
-                                                                                   :target       "foo"}]
+                                                                                   :target       [:field 1 nil]}]
                                                          :visualization_settings {}}]
                                             :tabs      []}))))))
 
@@ -2745,13 +2745,13 @@
                                                            :slug                 "static_category"
                                                            :id                   "_STATIC_CATEGORY_"
                                                            :type                 "category"
-                                                           :values_source_type   "static-list"
+                                                           :values_source_type   :static-list
                                                            :values_source_config {:values ["African" "American" "Asian"]}}
                                                           {:name                 "Static Category label"
                                                            :slug                 "static_category_label"
                                                            :id                   "_STATIC_CATEGORY_LABEL_"
                                                            :type                 "category"
-                                                           :values_source_type   "static-list"
+                                                           :values_source_type   :static-list
                                                            :values_source_config {:values [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}}
                                                           {:id                   "_CARD_"
                                                            :type                 "category"
@@ -3093,23 +3093,19 @@
                 :values          [["African"] ["American"] ["Asian"]]}
                (mt/user-http-request :rasta :get 200
                                      (chain-filter-values-url (:id dashboard) (:static-category param-keys)))))
-
         (is (= {:has_more_values false
                 :values          [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}
                (mt/user-http-request :rasta :get 200
                                      (chain-filter-values-url (:id dashboard) (:static-category-label param-keys))))))
-
       (testing "we could search the values"
         (is (= {:has_more_values false
                 :values          [["African"]]}
                (mt/user-http-request :rasta :get 200
                                      (chain-filter-search-url (:id dashboard) (:static-category param-keys) "af"))))
-
         (is (= {:has_more_values false
                 :values          [["African" "Af"]]}
                (mt/user-http-request :rasta :get 200
                                      (chain-filter-search-url (:id dashboard) (:static-category-label param-keys) "f")))))
-
       (testing "we could edit the values list"
         ;; TODO add tests for schema check
         (let [dashboard (mt/user-http-request :rasta :put 200 (str "dashboard/" (:id dashboard))
@@ -3118,7 +3114,7 @@
                                                              :id                    "_STATIC_CATEGORY_"
                                                              :type                  "category"
                                                              :values_query_type     "search"
-                                                             :values_source_type    "static-list"
+                                                             :values_source_type    :static-list
                                                              :values_source_config {"values" ["BBQ" "Bakery" "Bar"]}}]})]
           (is (= [{:name                  "Static Category"
                    :slug                  "static_category"
@@ -3128,7 +3124,6 @@
                    :values_source_type    "static-list"
                    :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
                  (:parameters dashboard))))))
-
     (testing "source-options must be a map and sourcetype must be `card` or `static-list` must be a string"
       (is (= "nullable sequence of parameter must be a map with :id and :type keys"
              (get-in (mt/user-http-request :rasta :post 400 "dashboard"
@@ -3145,7 +3140,7 @@
                                             :parameters [{:id                    "_value_"
                                                           :name                  "value"
                                                           :type                  "category"
-                                                          :values_source_type    "static-list"
+                                                          :values_source_type    :static-list
                                                           :values_source_config []}]})
                      [:errors :parameters]))))))
 
@@ -3163,7 +3158,7 @@
         (let [metadata (-> (:dataset_query native-card)
                            qp/process-query :data :results_metadata :columns)]
           (is (seq metadata) "Did not get metadata")
-          (t2/update! 'Card {:id model-id}
+          (t2/update! :model/Card {:id model-id}
                       {:result_metadata (assoc-in metadata [0 :id]
                                                   (mt/id :products :category))}))
         ;; ...so instead we create a question on top of this model (note that
@@ -3248,7 +3243,8 @@
                                            :card_id      (:id card)
                                            :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
                                           {:parameter_id "_PRICE_"
-                                           :card_id      (:id card)}]})
+                                           :card_id      (:id card)
+                                           :target       [:dimension [:field 1 nil]]}]})
         (testing "Since the _PRICE_ param is not mapped to a valid Field, it should get ignored"
           (mt/let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_" "_PRICE_" 4)]
             (is (= {:values          [["African"] ["American"] ["Artisan"]]
@@ -3357,6 +3353,8 @@
 (deftest chain-filter-should-use-cached-field-values-test
   (testing "Chain filter endpoints should use cached FieldValues if applicable (#13832)"
     ;; ignore the cache entries added by #23699
+    (assert (t2/exists? :model/FieldValues :field_id (mt/id :categories :name) :hash_key nil)
+            "FieldValues entry for categories.name has gone missing! (If this is gone there's probably a bug in sync)")
     (mt/with-temp-vals-in-db :model/FieldValues (t2/select-one-pk :model/FieldValues :field_id (mt/id :categories :name) :hash_key nil) {:values ["Good" "Bad"]}
       (with-chain-filter-fixtures [{:keys [dashboard]}]
         (testing "GET /api/dashboard/:id/params/:param-key/values"
@@ -4341,7 +4339,7 @@
                                                                      {:name                 "Static Category label"
                                                                       :id                   list-param-id
                                                                       :type                 "category"
-                                                                      :values_source_type   "static-list"
+                                                                      :values_source_type   :static-list
                                                                       :values_source_config {:values [["A frican" "Af"]
                                                                                                       ["American" "Am"]
                                                                                                       ["A   sian" "As"]]}}]}
@@ -4371,123 +4369,6 @@
         (is (= ["A   sian" "As"]
                (mt/user-http-request :crowberto :get 200 (url list-param-id "A   sian"))))))))
 
-(deftest broken-subscription-data-logic-test
-  (testing "Ensure underlying logic of fixing broken pulses works (#30100)"
-    (let [{param-id :id :as param} {:name "Source"
-                                    :slug "source"
-                                    :id   "_SOURCE_PARAM_ID_"
-                                    :type :string/=}]
-      (mt/dataset test-data
-        (mt/with-temp
-          [:model/Card {card-id :id} {:name          "Native card"
-                                      :database_id   (mt/id)
-                                      :dataset_query {:database (mt/id)
-                                                      :type     :query
-                                                      :query    {:source-table (mt/id :people)}}
-                                      :type          :model}
-           :model/Dashboard {dash-id :id} {:name "My Awesome Dashboard"}
-           :model/DashboardCard {dash-card-id :id} {:dashboard_id dash-id
-                                                    :card_id      card-id}
-           ;; Broken pulse
-           :model/Pulse {bad-pulse-id :id
-                         :as          bad-pulse} {:name         "Bad Pulse"
-                                                  :dashboard_id dash-id
-                                                  :creator_id   (mt/user->id :trashbird)
-                                                  :parameters   [(assoc param :value ["Twitter", "Facebook"])]}
-           :model/PulseCard _ {:pulse_id          bad-pulse-id
-                               :card_id           card-id
-                               :dashboard_card_id dash-card-id}
-           :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
-                                                       :pulse_id     bad-pulse-id
-                                                       :enabled      true}
-           :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                           :user_id          (mt/user->id :rasta)}
-           :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                           :user_id          (mt/user->id :crowberto)}
-           ;; Broken slack pulse
-           :model/Pulse {bad-slack-pulse-id :id} {:name         "Bad Slack Pulse"
-                                                  :dashboard_id dash-id
-                                                  :creator_id   (mt/user->id :trashbird)
-                                                  :parameters   [(assoc param :value ["LinkedIn"])]}
-           :model/PulseCard _ {:pulse_id          bad-slack-pulse-id
-                               :card_id           card-id
-                               :dashboard_card_id dash-card-id}
-           :model/PulseChannel _ {:channel_type :slack
-                                  :pulse_id     bad-slack-pulse-id
-                                  :details      {:channel "#my-channel"}
-                                  :enabled      true}
-           ;; Non broken pulse
-           :model/Pulse {good-pulse-id :id} {:name         "Good Pulse"
-                                             :dashboard_id dash-id
-                                             :creator_id   (mt/user->id :trashbird)}
-           :model/PulseCard _ {:pulse_id          good-pulse-id
-                               :card_id           card-id
-                               :dashboard_card_id dash-card-id}
-           :model/PulseChannel {good-pulse-channel-id :id} {:channel_type :email
-                                                            :pulse_id     good-pulse-id
-                                                            :enabled      true}
-           :model/PulseChannelRecipient _ {:pulse_channel_id good-pulse-channel-id
-                                           :user_id          (mt/user->id :rasta)}
-           :model/PulseChannelRecipient _ {:pulse_channel_id good-pulse-channel-id
-                                           :user_id          (mt/user->id :crowberto)}]
-          (testing "We can identify the broken parameter ids"
-            (is (=? [{:archived     false
-                      :name         "Bad Pulse"
-                      :creator_id   (mt/user->id :trashbird)
-                      :id           bad-pulse-id
-                      :parameters
-                      [{:name "Source" :slug "source" :id "_SOURCE_PARAM_ID_" :type "string/=" :value ["Twitter" "Facebook"]}]
-                      :dashboard_id dash-id}
-                     {:archived     false
-                      :name         "Bad Slack Pulse"
-                      :creator_id   (mt/user->id :trashbird)
-                      :id           bad-slack-pulse-id
-                      :parameters   [{:name  "Source"
-                                      :slug  "source"
-                                      :id    "_SOURCE_PARAM_ID_"
-                                      :type  "string/="
-                                      :value ["LinkedIn"]}],
-                      :dashboard_id dash-id}]
-                    (#'api.dashboard/broken-pulses dash-id {param-id param}))))
-          (testing "We can gather all needed data regarding broken params"
-            (let [bad-pulses    (mapv
-                                 #(update % :affected-users (partial sort-by :email))
-                                 (#'api.dashboard/broken-subscription-data dash-id {param-id param}))
-                  bad-pulse-ids (set (map :pulse-id bad-pulses))]
-              (testing "We only detect the bad pulse and not the good one"
-                (is (true? (contains? bad-pulse-ids bad-pulse-id)))
-                (is (false? (contains? bad-pulse-ids good-pulse-id))))
-              (is (=? [{:pulse-creator     {:email "trashbird@metabase.com"}
-                        :dashboard-creator {:email "rasta@metabase.com"}
-                        :pulse-id          bad-pulse-id
-                        :pulse-name        "Bad Pulse"
-                        :dashboard-id      dash-id
-                        :bad-parameters    [{:name "Source" :value ["Twitter" "Facebook"]}]
-                        :dashboard-name    "My Awesome Dashboard"
-                        :affected-users    [{:notification-type :email
-                                             :recipient         "Crowberto Corv"}
-                                            {:notification-type :email
-                                             :recipient         "Rasta Toucan"}]}
-                       {:pulse-creator     {:email "trashbird@metabase.com"}
-                        :affected-users    [{:notification-type :slack
-                                             :recipient         "#my-channel"}]
-                        :dashboard-creator {:email "rasta@metabase.com"}
-                        :pulse-id          bad-slack-pulse-id
-                        :pulse-name        "Bad Slack Pulse"
-                        :dashboard-id      dash-id
-                        :bad-parameters    [{:name  "Source"
-                                             :slug  "source"
-                                             :id    "_SOURCE_PARAM_ID_"
-                                             :type  "string/="
-                                             :value ["LinkedIn"]}]
-                        :dashboard-name    "My Awesome Dashboard"}]
-                      bad-pulses))))
-          (testing "Pulse can be archived"
-            (testing "Pulse starts as unarchived"
-              (is (false? (:archived bad-pulse))))
-            (testing "Pulse is now archived"
-              (is (true? (:archived (models.pulse/update-pulse! {:id bad-pulse-id :archived true})))))))))))
-
 (deftest handle-broken-subscriptions-due-to-bad-parameters-test
   (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100)"
     (let [param {:name "Source"
@@ -4511,7 +4392,7 @@
                                       :type          :model}
            :model/Dashboard {dash-id        :id
                              dashboard-name :name} {:name       "My Awesome Dashboard"
-                                                    :parameters [param]}
+                             :parameters [param]}
            :model/DashboardCard {dash-card-id :id} {:dashboard_id       dash-id
                                                     :card_id            card-id
                                                     :parameter_mappings [{:parameter_id "_SOURCE_PARAM_ID_"
@@ -4567,20 +4448,18 @@
             (let [{:keys [parameters]} (dashboard-response (mt/user-http-request
                                                             :rasta :put 200 (str "dashboard/" dash-id)
                                                             {:parameters []}))
-                  title            (format "Subscription to %s removed" dashboard-name)
+                  title                (format "Subscription to %s removed" dashboard-name)
                   ;; Keep only the relevant messages. If not, you might get some other side-effecting email, such
                   ;; as "We've Noticed a New Metabase Login, Rasta".
-                  inbox            (update-vals
-                                    @mt/inbox
-                                    (fn [messages]
-                                      (filterv (comp #{title} :subject) messages)))
-                  emails-received? (fn [recipient-email]
-                                     (testing "The first email was received"
-                                       (is (true? (some-> (get-in inbox [recipient-email 0 :body 0 :content])
-                                                          (str/includes? title)))))
-                                     (testing "The second email (about the broken slack pulse) was received"
-                                       (is (true? (some-> (get-in inbox [recipient-email 1 :body 0 :content])
-                                                          (str/includes? "#my-channel"))))))]
+                  inbox                (update-vals
+                                        @mt/inbox
+                                        (fn [messages]
+                                          (filterv (comp #{title} :subject) messages)))
+                  test-emails-received (fn [recipient-email]
+                                         (testing "The first email was received, and the second email (about the broken slack pulse) was received"
+                                           (is (=? {recipient-email [{:body [{:content #(str/includes? % title)}]}
+                                                                     {:body [{:content #(str/includes? % "#my-channel")}]}]}
+                                                   inbox))))]
               (testing "The dashboard parameters were removed"
                 (is (empty? parameters)))
               (testing "The broken pulse was archived"
@@ -4591,8 +4470,8 @@
                 (is (= #{"trashbird@metabase.com" "rasta@metabase.com"}
                        (set (keys inbox)))))
               (testing "Notification emails were sent to the dashboard and pulse creators"
-                (emails-received? "rasta@metabase.com")
-                (emails-received? "trashbird@metabase.com")))))))))
+                (test-emails-received "rasta@metabase.com")
+                (test-emails-received "trashbird@metabase.com")))))))))
 
 (deftest run-mlv2-dashcard-query-test
   (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id"
@@ -4747,7 +4626,8 @@
   (testing "Don't throw an error if source card is deleted (#48461)"
     (mt/with-temp
       [:model/Card          {card-id-1 :id}    {:dataset_query (mt/mbql-query products)}
-       :model/Card          {card-id-2 :id}    {:dataset_query {:type     :query
+       :model/Card          {card-id-2 :id}    {:dataset_query {:database (mt/id)
+                                                                :type     :query
                                                                 :query    {:source-table (str "card__" card-id-1)}}}
        :model/Dashboard     {dashboard-id :id} {}
        :model/DashboardCard _                  {:card_id      card-id-2
@@ -5173,7 +5053,7 @@
                                                                       :slug                 "static_list"
                                                                       :id                   "_STATIC_"
                                                                       :type                 "category"
-                                                                      :values_source_type   "static-list"
+                                                                      :values_source_type   :static-list
                                                                       :values_source_config {:values ["A" "B" "C"]}}]}]
       (with-dashboards-in-writeable-collection! [dashboard-id]
         (testing "Initial parameter cards are created for card-sourced parameters only"

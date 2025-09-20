@@ -6,10 +6,8 @@
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
-   [metabase.queries.schema :as queries.schema]
-   [metabase.search.config
-    :as search.config
-    :refer [SearchContext SearchableModel]]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
    [metabase.search.engine :as search.engine]
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
@@ -458,7 +456,7 @@
       (search.in-place.filter/build-filters model context)))
 
 (mu/defn- shared-card-impl
-  [model :- ::queries.schema/card-type
+  [model :- ::lib.schema.metadata/card.type
    search-ctx :- SearchContext]
   (-> (base-query-for-model "card" search-ctx)
       (sql.helpers/where [:= :card.type (name model)])

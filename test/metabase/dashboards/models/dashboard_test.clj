@@ -31,9 +31,9 @@
           (is (= nil
                  (:public_uuid dashboard))))))))
 
-(def default-parameter
+(def ^:private default-parameter
   {:id   "_CATEGORY_NAME_"
-   :type "category"
+   :type :category
    :name "Category Name"
    :slug "category_name"})
 
@@ -41,7 +41,7 @@
   (testing "test that a Dashboard's :parameters filterParameters are cleared if the :values_source_type is not nil"
     (doseq [[values_source_type
              keep-filtering-parameters?] {"card"        false
-                                          "static-list" false
+                                          :static-list false
                                           nil           true}]
       (testing (format "\nvalues_source_type=%s" values_source_type)
         (mt/with-temp [:model/Dashboard dashboard {:parameters [(merge
@@ -103,37 +103,39 @@
   (testing "A new dashboard creates a new ParameterCard"
     (mt/with-temp [:model/Card      {card-id :id}      {}
                    :model/Dashboard {dashboard-id :id} {:parameters [(merge default-parameter
-                                                                            {:values_source_type    "card"
+                                                                            {:values_source_type    :card
                                                                              :values_source_config {:card_id card-id}})]}]
       (is (=? {:card_id                   card-id
                :parameterized_object_type :dashboard
                :parameterized_object_id   dashboard-id
                :parameter_id              "_CATEGORY_NAME_"}
-              (t2/select-one 'ParameterCard :card_id card-id)))))
+              (t2/select-one :model/ParameterCard :card_id card-id))))))
 
+(deftest parameter-card-test-2
   (testing "Adding a card_id creates a new ParameterCard"
     (mt/with-temp [:model/Card      {card-id :id}      {}
                    :model/Dashboard {dashboard-id :id} {:parameters [default-parameter]}]
-      (is (nil? (t2/select-one 'ParameterCard :card_id card-id)))
+      (is (nil? (t2/select-one :model/ParameterCard :card_id card-id)))
       (t2/update! :model/Dashboard dashboard-id {:parameters [(merge default-parameter
-                                                                     {:values_source_type    "card"
+                                                                     {:values_source_type    :card
                                                                       :values_source_config {:card_id card-id}})]})
       (is (=? {:card_id                   card-id
                :parameterized_object_type :dashboard
                :parameterized_object_id   dashboard-id
                :parameter_id              "_CATEGORY_NAME_"}
-              (t2/select-one 'ParameterCard :card_id card-id)))))
+              (t2/select-one :model/ParameterCard :card_id card-id))))))
 
+(deftest parameter-card-test-3
   (testing "Removing a card_id deletes old ParameterCards"
     (mt/with-temp [:model/Card      {card-id :id}      {}
                    :model/Dashboard {dashboard-id :id} {:parameters [(merge default-parameter
                                                                             {:values_source_type    "card"
                                                                              :values_source_config {:card_id card-id}})]}]
-        ;; same setup as earlier test, we know the ParameterCard exists right now
+      ;; same setup as earlier test, we know the ParameterCard exists right now
       (t2/delete! :model/Dashboard :id dashboard-id)
-      (is (nil? (t2/select-one 'ParameterCard :card_id card-id))))))
+      (is (nil? (t2/select-one :model/ParameterCard :card_id card-id))))))
 
-(deftest do-not-update-parameter-card-if-it-doesn't-change-test
+(deftest do-not-update-parameter-card-if-it-doesnt-change-test
   (testing "Do not update ParameterCard if updating a Dashboard doesn't change the parameters"
     (mt/with-temp [:model/Card      {source-card-id :id} {}
                    :model/Dashboard {dashboard-id :id} {:parameters [{:name       "Category Name"
@@ -224,16 +226,16 @@
     (testing "creating"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #":parameters must be a sequence of maps with :id and :type keys"
+           #"Invalid parameters: \[\"invalid type\"\]"
            (mt/with-temp [:model/Dashboard _ {:parameters {:a :b}}]))))
     (testing "updating"
       (mt/with-temp [:model/Dashboard {:keys [id]} {:parameters []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #":parameters must be a sequence of maps with :id and :type keys"
+             #"Invalid parameters: \[\{:id \[\"should be a string\" \"non-blank string\"\], :type \[\"missing required key\"\]\}\]"
              (t2/update! :model/Dashboard id {:parameters [{:id 100}]})))))))
 
-(deftest normalize-parameters-test
+(deftest ^:parallel normalize-parameters-test
   (testing ":parameters should get normalized when coming out of the DB"
     (doseq [[target expected] {[:dimension [:field-id 1000]] [:dimension [:field 1000 nil]]
                                [:field-id 1000]              [:field 1000 nil]}]
@@ -253,8 +255,8 @@
                    :id     "_CATEGORY_NAME_"
                    :type   :category
                    :target expected
-                   :values_query_type "list",
-                   :values_source_type "card",
+                   :values_query_type :list
+                   :values_source_type :card
                    :values_source_config {:card_id card-id, :value_field [:field 2 nil]}}]
                  (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id))))))))
 
@@ -284,8 +286,8 @@
                 :slug                 "category_name"
                 :id                   "_CATEGORY_NAME_"
                 :type                 :category
-                :values_query_type    "list",
-                :values_source_type   "card",
+                :values_query_type    :list
+                :values_source_type   :card
                 :values_source_config {:card_id card-id, :value_field [:field 2 nil]}}]
               (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id))))))
 

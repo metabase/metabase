@@ -251,7 +251,7 @@
                                     ;; order importance: the default from template-tag is in the final result
                  :default "C TAG"
                  :required false
-                 :values_source_type    "static-list"
+                 :values_source_type    :static-list
                  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}
                                     ;; the parameter id = "d" is in template-tags, but not card.parameters,
                                     ;; when fetching card we should get it returned
@@ -1788,13 +1788,13 @@
                                             :slug                 "static_category"
                                             :id                   param-static-list
                                             :type                 "category"
-                                            :values_source_type   "static-list"
+                                            :values_source_type   :static-list
                                             :values_source_config {:values ["African" "American" "Asian"]}}
                                            {:name                 "Static Category label"
                                             :slug                 "static_category_label"
                                             :id                   param-static-list-label
                                             :type                 "category"
-                                            :values_source_type   "static-list"
+                                            :values_source_type   :static-list
                                             :values_source_config {:values [["Af rican" "Af"] ["American" "Am"] ["Asian" "As"]]}}
                                            {:name                 "Card as source"
                                             :slug                 "card"

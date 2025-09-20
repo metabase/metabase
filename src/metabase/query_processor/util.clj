@@ -143,18 +143,16 @@
                                   e))))]
     (buddy-hash/sha3-256 (json/encode (select-keys-for-hashing query)))))
 
-;;; --------------------------------------------- Query Source Card IDs ----------------------------------------------
-
 (defn query->source-card-id
-  "Return the ID of the Card used as the \"source\" query of this query, if applicable; otherwise return `nil`."
+  "Return the ID of the Card used as the \"source\" query of this query, if applicable; otherwise return `nil`.
+
+  DEPRECATED: use [[metabase.lib.core/source-card-id]] going forward."
   {:deprecated "0.57.0"}
-  ^Integer [outer-query]
+  ^Long [outer-query]
   (let [source-table (get-in outer-query [:query :source-table])]
     (when (string? source-table)
       (when-let [[_ card-id-str] (re-matches #"^card__(\d+$)" source-table)]
-        (Integer/parseInt card-id-str)))))
-
-;;; ------------------------------------------- Metadata Combination Utils --------------------------------------------
+        (parse-long card-id-str)))))
 
 (defn field-ref->key
   "A standard and repeatable way to address a column. Names can collide and sometimes are not unique. Field refs should

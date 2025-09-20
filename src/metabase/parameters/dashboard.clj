@@ -8,6 +8,7 @@
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.custom-values :as custom-values]
    [metabase.parameters.params :as params]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -40,7 +41,11 @@
        :options  options})))
 
 (mu/defn ^:private chain-filter-constraints :- chain-filter/Constraints
-  [dashboard                   :- :map
+  [dashboard                   :- [:map
+                                   [:resolved-params
+                                    [:map-of
+                                     ::lib.schema.parameter/id
+                                     ::parameters.schema/parameter]]]
    constraint-param-key->value :- [:map-of string? any?]]
   (vec (for [[param-key value] constraint-param-key->value
              :let              [param (get-in dashboard [:resolved-params param-key])]
@@ -82,7 +87,7 @@
                  2 second
                  1 first)))))
 
-(mu/defn chain-filter :- ms/FieldValuesResult
+(mu/defn chain-filter :- ::parameters.schema/field-values-result
   "C H A I N filters!
 
   Used to query for values that populate chained filter dropdowns and text search boxes."

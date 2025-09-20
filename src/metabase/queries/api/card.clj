@@ -1,7 +1,6 @@
 (ns metabase.queries.api.card
   "/api/card endpoints."
   (:require
-   [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -12,6 +11,10 @@
    [metabase.events.core :as events]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
+   [metabase.lib.equality :as lib.equality]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
@@ -21,7 +24,6 @@
    [metabase.queries.metadata :as queries.metadata]
    [metabase.queries.models.card :as card]
    [metabase.queries.models.card.metadata :as card.metadata]
-   [metabase.queries.models.query :as query]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
@@ -95,11 +97,12 @@
                                                          [:= :c.database_id :m.database_id]
                                                          [:or
                                                           [:like :c.dataset_query (format "%%card__%s%%" model-id)]
+                                                          ;; TODO (Cam 9/17/25) -- update this to work for MBQL 5 queries
                                                           [:like :c.dataset_query (format "%%#%s%%" model-id)]]]]
                                :where [:and [:= :m.id model-id] [:not :c.archived]]
                                :order-by [[[:lower :c.name] :asc]]})
        ;; now check if model-id really occurs as a card ID
-       (filter (fn [card] (some #{model-id} (-> card :dataset_query query/collect-card-ids))))))
+       (filter (fn [card] (some #{model-id} (-> card :dataset_query lib/all-source-card-ids))))))
 
 (defn- cards-for-segment-or-metric
   [model-type model-id]
@@ -108,9 +111,10 @@
                                        {:where [:like :dataset_query (str "%" (name model-type) "%" model-id "%")]}))
          ;; now check if the segment/metric with model-id really occurs in a filter/aggregation expression
          (filter (fn [card]
-                   (when-let [legacy-query (some-> card :dataset_query)]
-                     (let [mp    (lib.metadata.jvm/application-database-metadata-provider (:database_id card))
-                           query (lib/query mp legacy-query)]
+                   (when-let [legacy-query (some-> card :dataset_query not-empty)]
+                     (assert (= (:database_id card) (:database (:dataset_query card)))
+                             "Card has a different database_id from dataset_query, which one should we use??")
+                     (let [query (lib/query lib.metadata.jvm/application-database-metadata-provider legacy-query)]
                        (case model-type
                          :segment (lib/uses-segment? query model-id)
                          :metric  (lib/uses-metric? query model-id)))))))))
@@ -223,7 +227,7 @@
 (api.macros/defendpoint :get "/:id"
   "Get `Card` with ID."
   [{:keys [id]} :- [:map
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
+                    [:id [:or ::lib.schema.id/card ms/NanoIdString]]]
    {ignore-view? :ignore_view, :keys [context]} :- [:map
                                                     [:ignore_view {:optional true} [:maybe :boolean]]
                                                     [:context     {:optional true} [:maybe [:enum :collection]]]]]
@@ -252,14 +256,11 @@
       (api/write-check dashboard))
     (map #(dissoc % :collection_id :description :archived) dashboards)))
 
-(defn- dataset-query->query
+(mu/defn- ->mbql5-query :- [:maybe ::lib.schema/query]
   "Convert the `dataset_query` column of a Card to a MLv2 pMBQL query."
-  ([dataset-query]
-   (some-> (:database dataset-query)
-           lib.metadata.jvm/application-database-metadata-provider
-           (dataset-query->query dataset-query)))
-  ([metadata-provider dataset-query]
-   (some->> dataset-query card.metadata/normalize-dataset-query (lib/query metadata-provider))))
+  [query :- [:maybe :map]]
+  (when (seq query)
+    (lib/query lib.metadata.jvm/application-database-metadata-provider query)))
 
 (defn- card-columns-from-names
   [card names]
@@ -272,70 +273,71 @@
 
 (mu/defn- source-cols
   [card
-   source :- [:enum ::breakouts ::aggregations]
-   database-id->metadata-provider]
+   source :- [:enum ::breakouts ::aggregations]]
+  (assert lib.metadata.jvm/*metadata-provider-cache* "Please make sure we're using a metadata provider cache!")
   (if-let [names (get-in card [:visualization_settings (case source
                                                          ::breakouts    :graph.dimensions
                                                          ::aggregations :graph.metrics)])]
     (cols->kebab-case (card-columns-from-names card names))
-    (->> (dataset-query->query (get database-id->metadata-provider (:database_id card)) (:dataset_query card))
+    (->> (->mbql5-query (:dataset_query card))
          lib/returned-columns
          (filter (case source
                    ::breakouts    :lib/breakout?
                    ::aggregations #(= (:lib/source %) :source/aggregations))))))
 
 (defn- area-bar-line-series-are-compatible?
-  [first-card second-card database-id->metadata-provider]
-  (and (#{:area :line :bar} (:display second-card))
-       (let [initial-dimensions (source-cols first-card ::breakouts database-id->metadata-provider)
-             new-dimensions     (source-cols second-card ::breakouts database-id->metadata-provider)
-             new-metrics        (source-cols second-card ::aggregations database-id->metadata-provider)]
-         (cond
-           ;; must have at least one dimension and one metric
-           (or (zero? (count new-dimensions))
-               (zero? (count new-metrics)))
-           false
+  [first-card second-card]
+  (lib.metadata.jvm/with-metadata-provider-cache
+    (and (#{:area :line :bar} (:display second-card))
+         (let [initial-dimensions (source-cols first-card ::breakouts)
+               new-dimensions     (source-cols second-card ::breakouts)
+               new-metrics        (source-cols second-card ::aggregations)]
+           (cond
+             ;; must have at least one dimension and one metric
+             (or (zero? (count new-dimensions))
+                 (zero? (count new-metrics)))
+             false
 
-           ;; all metrics must be numeric
-           (not (every? lib.types.isa/numeric? new-metrics))
-           false
+             ;; all metrics must be numeric
+             (not (every? lib.types.isa/numeric? new-metrics))
+             false
 
-           ;; both or neither primary dimension must be dates
-           (not= (lib.types.isa/temporal? (first initial-dimensions))
-                 (lib.types.isa/temporal? (first new-dimensions)))
-           false
+             ;; both or neither primary dimension must be dates
+             (not= (lib.types.isa/temporal? (first initial-dimensions))
+                   (lib.types.isa/temporal? (first new-dimensions)))
+             false
 
-           ;; both or neither primary dimension must be numeric
-           ;; a timestamp field is both date and number so don't enforce the condition if both fields are dates; see #2811
-           (and (not= (lib.types.isa/numeric? (first initial-dimensions))
-                      (lib.types.isa/numeric? (first new-dimensions)))
-                (not (and
-                      (lib.types.isa/temporal? (first initial-dimensions))
-                      (lib.types.isa/temporal? (first new-dimensions)))))
-           false
+             ;; both or neither primary dimension must be numeric
+             ;; a timestamp field is both date and number so don't enforce the condition if both fields are dates; see #2811
+             (and (not= (lib.types.isa/numeric? (first initial-dimensions))
+                        (lib.types.isa/numeric? (first new-dimensions)))
+                  (not (and
+                        (lib.types.isa/temporal? (first initial-dimensions))
+                        (lib.types.isa/temporal? (first new-dimensions)))))
+             false
 
-           :else true))))
+             :else true)))))
 
 (defmulti series-are-compatible?
   "Check if the `second-card` is compatible to be used as series of `card`."
-  {:arglists '([card second-card database-id->metadata-provider])}
-  (fn [card _second-card _database-id->metadata-provider]
+  {:arglists '([card second-card])}
+  (fn [card _second-card]
     (:display card)))
 
 (defmethod series-are-compatible? :area
-  [first-card second-card database-id->metadata-provider]
-  (area-bar-line-series-are-compatible? first-card second-card database-id->metadata-provider))
+  [first-card second-card]
+  (area-bar-line-series-are-compatible? first-card second-card))
 
 (defmethod series-are-compatible? :line
-  [first-card second-card database-id->metadata-provider]
-  (area-bar-line-series-are-compatible? first-card second-card database-id->metadata-provider))
+  [first-card second-card]
+  (area-bar-line-series-are-compatible? first-card second-card))
 
 (defmethod series-are-compatible? :bar
-  [first-card second-card database-id->metadata-provider]
-  (area-bar-line-series-are-compatible? first-card second-card database-id->metadata-provider))
+  [first-card second-card]
+  (area-bar-line-series-are-compatible? first-card second-card))
 
 (defmethod series-are-compatible? :scalar
-  [first-card second-card _database-id->metadata-provider]
+  [first-card second-card]
   (and (= :scalar (:display second-card))
        (= 1
           (count (:result_metadata first-card))
@@ -348,47 +350,39 @@
 
   Provide `page-size` to limit the number of cards returned, it does not guaranteed to return exactly `page-size` cards.
   Use `fetch-compatible-series` for that."
-  [card database-id->metadata-provider {:keys [query last-cursor page-size exclude-ids] :as _options}]
-  (let [matching-cards  (t2/select :model/Card
-                                   :archived false
-                                   :display [:in supported-series-display-type]
-                                   :id [:not= (:id card)]
-                                   (cond-> {:order-by [[:id :desc]]
-                                            :where    [:and]}
-                                     last-cursor
-                                     (update :where conj [:< :id last-cursor])
+  [card {:keys [query last-cursor page-size exclude-ids] :as _options}]
+  (lib.metadata.jvm/with-metadata-provider-cache
+    (let [matching-cards (t2/select :model/Card
+                                    :archived false
+                                    :display [:in supported-series-display-type]
+                                    :id [:not= (:id card)]
+                                    (cond-> {:order-by [[:id :desc]]
+                                             :where    [:and]}
+                                      last-cursor
+                                      (update :where conj [:< :id last-cursor])
 
-                                     (seq exclude-ids)
-                                     (update :where conj [:not [:in :id exclude-ids]])
+                                      (seq exclude-ids)
+                                      (update :where conj [:not [:in :id exclude-ids]])
 
-                                     query
-                                     (update :where conj [:like :%lower.name (str "%" (u/lower-case-en query) "%")])
+                                      query
+                                      (update :where conj [:like :%lower.name (str "%" (u/lower-case-en query) "%")])
 
-                                     ;; add a little buffer to the page to account for cards that are not
-                                     ;; compatible + do not have permissions to read
-                                     ;; this is just a heuristic, but it should be good enough
-                                     page-size
-                                     (assoc :limit (+ 10 page-size))))
-        database-ids (set (keys database-id->metadata-provider))
-        database-id->metadata-provider (->> matching-cards
-                                            (filter #(or (nil? (get-in % [:visualization_settings :graph.metrics]))
-                                                         (nil? (get-in % [:visualization_settings :graph.dimensions]))))
-                                            (keep :database_id)
-                                            (set)
-                                            (remove #(contains? database-ids %))
-                                            (into database-id->metadata-provider
-                                                  (map (juxt identity lib.metadata.jvm/application-database-metadata-provider))))
-        compatible-cards (->> matching-cards
-                              (filter mi/can-read?)
-                              (filter #(or
-                                         ;; columns name on native query are not match with the column name in viz-settings. why??
-                                         ;; so we can't use series-are-compatible? to filter out incompatible native cards.
-                                         ;; => we assume all native queries are compatible and FE will figure it out later
-                                        (= (:query_type %) :native)
-                                        (series-are-compatible? card % database-id->metadata-provider))))]
-    (if page-size
-      [database-id->metadata-provider (take page-size compatible-cards)]
-      [database-id->metadata-provider compatible-cards])))
+                                       ;; add a little buffer to the page to account for cards that are not
+                                       ;; compatible + do not have permissions to read
+                                       ;; this is just a heuristic, but it should be good enough
+                                      page-size
+                                      (assoc :limit (+ 10 page-size))))
+          compatible-cards (->> matching-cards
+                                (filter mi/can-read?)
+                                (filter #(or
+                                          ;; columns name on native query are not match with the column name in viz-settings. why??
+                                          ;; so we can't use series-are-compatible? to filter out incompatible native cards.
+                                          ;; => we assume all native queries are compatible and FE will figure it out later
+                                          (= (:query_type %) :native)
+                                          (series-are-compatible? card %))))]
+      (if page-size
+        (take page-size compatible-cards)
+        compatible-cards))))
 
 (defn- fetch-compatible-series
   "Fetch a list of compatible series for `card`.
@@ -399,26 +393,22 @@
   - last-cursor: the id of the last card from the previous page
   - page-size:   is nullable, it'll try to fetches exactly `page-size` cards if there are enough cards."
   ([card options]
-   (fetch-compatible-series
-    card
-    options
-    {(:database_id card) (lib.metadata.jvm/application-database-metadata-provider (:database_id card))}
-    []))
+   (fetch-compatible-series card options []))
 
-  ([card {:keys [page-size] :as options} database-id->metadata-provider current-cards]
-   (let [[database-id->metadata-provider cards] (fetch-compatible-series* card database-id->metadata-provider options)
-         new-cards (concat current-cards cards)]
-     ;; if the total card fetches is less than page-size and there are still more, continue fetching
-     (if (and (some? page-size)
-              (seq cards)
-              (< (count cards) page-size))
-       (fetch-compatible-series card
-                                (merge options
-                                       {:page-size   (- page-size (count cards))
-                                        :last-cursor (:id (last cards))})
-                                database-id->metadata-provider
-                                new-cards)
-       new-cards))))
+  ([card {:keys [page-size] :as options} current-cards]
+   (lib.metadata.jvm/with-metadata-provider-cache
+     (let [cards     (fetch-compatible-series* card options)
+           new-cards (concat current-cards cards)]
+       ;; if the total card fetches is less than page-size and there are still more, continue fetching
+       (if (and (some? page-size)
+                (seq cards)
+                (< (count cards) page-size))
+         (fetch-compatible-series card
+                                  (merge options
+                                         {:page-size   (- page-size (count cards))
+                                          :last-cursor (:id (last cards))})
+                                  new-cards)
+         new-cards)))))
 
 (api.macros/defendpoint :get "/:id/series"
   "Fetches a list of compatible series with the card with id `card_id`.
@@ -453,10 +443,11 @@
 
 ;;; ------------------------------------------------- Creating Cards -------------------------------------------------
 
-(defn- check-if-card-can-be-saved
-  [dataset-query card-type]
-  (when (and dataset-query (= card-type :metric))
-    (when-not (lib/can-save (dataset-query->query dataset-query) card-type)
+(mu/defn- check-if-card-can-be-saved
+  [query     :- [:maybe ::lib.schema/query]
+   card-type :- [:maybe ::lib.schema.metadata/card.type]]
+  (when (and query (= card-type :metric))
+    (when-not (lib/can-save query card-type)
       (throw (ex-info (tru "Card of type {0} is invalid, cannot be saved." (name card-type))
                       {:type        card-type
                        :status-code 400})))))
@@ -488,11 +479,12 @@
 
       :else nil)))
 
-(def CardCreateSchema
+;;; TODO (Cam 9/19/25) -- merge with [[metabase.queries.schema/card]]
+(def ^:deprecated CardCreateSchema
   "Schema for creating a new card"
   [:map
    [:name                   ms/NonBlankString]
-   [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
+   [:type                   {:optional true} [:maybe ::lib.schema.metadata/card.type]]
    [:dataset_query          ms/Map]
                             ;; TODO: Make entity_id a NanoID regex schema?
    [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
@@ -515,22 +507,24 @@
    {query         :dataset_query
     card-type     :type
     :as           body} :- CardCreateSchema]
-  (check-if-card-can-be-saved query card-type)
-  ;; check that we have permissions to run the query that we're trying to save
-  (query-perms/check-run-permissions-for-query query)
-  ;; check that we have permissions for the collection we're trying to save this card to, if applicable.
-  ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
-  (collection/check-write-perms-for-collection
-   (actual-collection-id body))
-  (try
-    (lib/check-card-overwrite ::no-id (dataset-query->query query))
-    (catch clojure.lang.ExceptionInfo e
-      (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400)))))
-  (let [body (cond-> body
-               (string? (:type body)) (update :type keyword))]
-    (-> (card/create-card! body @api/*current-user*)
-        hydrate-card-details
-        (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
+  (let [query (when query
+                (->mbql5-query query))]
+    (check-if-card-can-be-saved query card-type)
+    ;; check that we have permissions to run the query that we're trying to save
+    (query-perms/check-run-permissions-for-query query)
+    ;; check that we have permissions for the collection we're trying to save this card to, if applicable.
+    ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
+    (collection/check-write-perms-for-collection
+     (actual-collection-id body))
+    (try
+      (lib/check-card-overwrite ::no-id (->mbql5-query query))
+      (catch clojure.lang.ExceptionInfo e
+        (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400)))))
+    (let [body (cond-> body
+                 (string? (:type body)) (update :type keyword))]
+      (-> (card/create-card! body @api/*current-user*)
+          hydrate-card-details
+          (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*))))))
 
 (api.macros/defendpoint :post "/:id/copy"
   "Copy a `Card`, with the new name 'Copy of _name_'"
@@ -545,12 +539,15 @@
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
 
-(defn- check-allowed-to-modify-query
+(mu/defn- check-allowed-to-modify-query
   "If the query is being modified, check that we have data permissions to run the query."
-  [card-before-updates card-updates]
-  (let [card-updates (m/update-existing card-updates :dataset_query card.metadata/normalize-dataset-query)]
-    (when (api/column-will-change? :dataset_query card-before-updates card-updates)
-      (query-perms/check-run-permissions-for-query (:dataset_query card-updates)))))
+  [card-before-updates :- ::queries.schema/card
+   card-updates        :- ::queries.schema/card.updates]
+  (when-let [updated-query (:dataset_query card-updates)]
+    (let [original-query (:dataset_query card-before-updates)]
+      (when (or (empty? original-query)
+                (not (lib.equality/= updated-query original-query)))
+        (query-perms/check-run-permissions-for-query (:dataset_query card-updates))))))
 
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
@@ -573,26 +570,6 @@
           result-metadata (:result_metadata card-updates)]
       (query-perms/check-result-metadata-data-perms database-id result-metadata))))
 
-(def ^:private CardUpdateSchema
-  [:map
-   [:name                   {:optional true} [:maybe ms/NonBlankString]]
-   [:parameters             {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
-   [:dataset_query          {:optional true} [:maybe ms/Map]]
-   [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
-   [:display                {:optional true} [:maybe ms/NonBlankString]]
-   [:description            {:optional true} [:maybe :string]]
-   [:visualization_settings {:optional true} [:maybe ms/Map]]
-   [:archived               {:optional true} [:maybe :boolean]]
-   [:enable_embedding       {:optional true} [:maybe :boolean]]
-   [:embedding_params       {:optional true} [:maybe ms/EmbeddingParams]]
-   [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
-   [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
-   [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
-   [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
-   [:collection_preview     {:optional true} [:maybe :boolean]]
-   [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
-   [:dashboard_tab_id {:optional true} [:maybe ms/PositiveInt]]])
-
 (defn- maybe-populate-collection-id
   "`card-updates` may contain either or both of a `collection_id` and a `dashboard_id`.
   If either one is set, let's validate that they match using `actual-collection-id` and make sure that the
@@ -606,25 +583,25 @@
           (api/column-will-change? :collection_id card-before-update card-updates))
       (assoc :collection_id collection-id))))
 
-(mu/defn update-card!
+(mu/defn- -update-card!
   "Updates a card - impl"
-  [id :- ms/PositiveInt
-   {:keys [dataset_query
-           result_metadata
-           type] :as card-updates} :- CardUpdateSchema
-   delete-old-dashcards? :- :boolean]
-  (check-if-card-can-be-saved dataset_query type)
-  (when-some [query (dataset-query->query dataset_query)]
-    (try
-      (lib/check-card-overwrite id query)
-      (catch clojure.lang.ExceptionInfo e
-        (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400))))))
+  [id :- ::lib.schema.id/card
+   {query           :dataset_query
+    card-type       :type
+    result-metadata :result_metadata
+    :as             card-updates} :- ::queries.schema/card.updates
+   {:keys [delete-old-dashcards?], :as _opts}]
+  (check-if-card-can-be-saved query card-type)
+  (try
+    (lib/check-card-overwrite id query)
+    (catch clojure.lang.ExceptionInfo e
+      (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400)))))
   (let [card-before-update     (t2/hydrate (api/write-check :model/Card id)
                                            [:moderation_reviews :moderator_details])
         card-updates           (maybe-populate-collection-id
                                 card-before-update
                                 (api/updates-with-archived-directly card-before-update card-updates))
-        is-model-after-update? (if (nil? type)
+        is-model-after-update? (if (nil? card-type)
                                  (card/model? card-before-update)
                                  (card/model? card-updates))]
     ;; Do various permissions checks
@@ -635,14 +612,14 @@
       (f card-before-update card-updates))
     (let [{:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata
                                               {:original-query    (:dataset_query card-before-update)
-                                               :query             dataset_query
-                                               :metadata          result_metadata
+                                               :query             query
+                                               :metadata          result-metadata
                                                :original-metadata (:result_metadata card-before-update)
                                                :model?            is-model-after-update?
                                                :entity-id         (or (:entity_id card-updates)
                                                                       (:entity_id card-before-update))})
           card-updates                       (merge card-updates
-                                                    (when (and (some? type)
+                                                    (when (and (some? card-type)
                                                                is-model-after-update?
                                                                ;; leave display unchanged if explicitly set to "list"
                                                                (not (= :list (keyword (get card-updates :display)))))
@@ -657,8 +634,8 @@
                                                       {:archived false}))
           card-updates                       (cond-> card-updates
                                                metadata
-                                               (assoc :result_metadata           metadata
-                                                      :verified-result-metadata? true))
+                                               (assoc :result_metadata                 metadata
+                                                      ::card/verified-result-metadata? true))
           card                               (-> (card/update-card! {:card-before-update    card-before-update
                                                                      :card-updates          card-updates
                                                                      :actor                 @api/*current-user*
@@ -681,14 +658,21 @@
         (card.metadata/save-metadata-async! metadata-future card))
       card)))
 
+;;; TODO (Cam 9/18/25) -- this should just be part of the general Toucan 2 update logic for a Card, it's a cardinal
+;;; sin in the Toucan world to have separate functions like `update-card!` that you can forget to use.
+(mu/defn update-card!
+  "Updates a card - impl"
+  [id card-updates opts]
+  (-update-card! id (lib/normalize ::queries.schema/card.updates card-updates) opts))
+
 (api.macros/defendpoint :put "/:id"
   "Update a `Card`."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::lib.schema.id/card]]
    {delete-old-dashcards? :delete_old_dashcards} :- [:map
                                                      [:delete_old_dashcards {:optional true} [:maybe :boolean]]]
-   body :- CardUpdateSchema]
-  (update-card! id body (boolean delete-old-dashcards?)))
+   body :- ::queries.schema/card.updates]
+  (update-card! id body {:delete-old-dashcards? delete-old-dashcards?}))
 
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for a card."

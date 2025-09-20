@@ -4,6 +4,7 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.card :as lib.card]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
@@ -97,7 +98,7 @@
   [query     :- ::lib.schema/query
    stage     :- ::lib.schema/stage
    dep-graph :- (lib.schema.common/instance-of-class clojure.lang.Volatile)]
-  (when (and (= (:lib/type stage) :mbql.stage/mbql)
+  (when (and (lib/mbql-stage? stage)
              (:source-card stage))
     ;; make sure nested queries are enabled before resolving them.
     (when-not (lib-be/enable-nested-queries)

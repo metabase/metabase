@@ -893,3 +893,11 @@
   (t/testing "If this gets called incorrectly with a base type keyword then handle it gracefully"
     (t/is (= :type/Text
              (mbql.u/normalize-token "type/Text")))))
+
+(t/deftest ^:parallel wrap-field-id-if-needed-test
+  (doseq [[x expected] {10                                      [:field 10 nil]
+                        [:field 10 nil]                         [:field 10 nil]
+                        [:field "name" {:base-type :type/Text}] [:field "name" {:base-type :type/Text}]}]
+    (t/testing x
+      (t/is (= expected
+               (mbql.u/wrap-field-id-if-needed x))))))

@@ -12,11 +12,10 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
-(defn shorthand->constraint [field-id v]
+(defn- shorthand->constraint [field-id v]
   (if-not (vector? v)
     {:field-id field-id
-     :op       :=
-     :value    v}
+     :op       := :value    v}
     (let [op      (when (keyword? (first v)) (first v))
           options (when (map? (last v)) (last v))
           v       (cond-> v
@@ -65,57 +64,84 @@
                              me/humanize))
           :starts-with :ends-with :contains :does-not-contain)))))
 
-(deftest chain-filter-test
+(deftest ^:parallel chain-filter-test
   (testing "Show me expensive restaurants"
-    (is (= {:values          [["Dal Rae Restaurant"]
-                              ["Lawry's The Prime Rib"]
-                              ["Pacific Dining Car - Santa Monica"]
-                              ["Sushi Nakazawa"]
-                              ["Sushi Yasuda"]
-                              ["Tanoshi Sushi & Sake Bar"]]
+    (is (= {:values
+            [["Dal Rae Restaurant"]
+             ["Lawry's The Prime Rib"]
+             ["Pacific Dining Car - Santa Monica"]
+             ["Sushi Nakazawa"]
+             ["Sushi Yasuda"]
+             ["Tanoshi Sushi & Sake Bar"]],
             :has_more_values false}
-           (chain-filter venues.name {venues.price 4}))))
-  (testing "Show me categories that have expensive restaurants"
-    (is (= {:values          [["Japanese"] ["Steakhouse"]]
-            :has_more_values false}
-           (chain-filter categories.name {venues.price 4})))
-    (testing "Should work with string versions of param values"
-      (is (= {:values          [["Japanese"] ["Steakhouse"]]
-              :has_more_values false}
-             (chain-filter categories.name {venues.price "4"})))))
-  (testing "Show me categories starting with s (case-insensitive) that have expensive restaurants"
-    (is (= {:values          [["Steakhouse"]]
-            :has_more_values false}
-           (chain-filter categories.name {venues.price 4, categories.name [:starts-with "s" {:case-sensitive false}]}))))
-  (testing "Show me cheap Thai restaurants"
-    (is (= {:values          [["Kinaree Thai Bistro"] ["Krua Siri"]]
-            :has_more_values false}
-           (chain-filter venues.name {venues.price 1, categories.name "Thai"}))))
-  (testing "Show me the categories that have cheap restaurants"
-    (is (= {:values          [["Asian"] ["BBQ"] ["Bakery"] ["Bar"] ["Burger"] ["Caribbean"] ["Deli"]
-                              ["Karaoke"] ["Mexican"] ["Pizza"] ["Southern"] ["Thai"]]
-            :has_more_values false}
-           (chain-filter categories.name {venues.price 1}))))
-  (testing "Show me cheap restaurants with the word 'taco' in their name (case-insensitive)"
-    (is (= {:values          [["Tacos Villa Corona"] ["Tito's Tacos"]]
-            :has_more_values false}
-           (chain-filter venues.name {venues.price 1, venues.name [:contains "tAcO" {:case-sensitive false}]}))))
-  (testing "Show me the first 3 expensive restaurants"
-    (is (= {:values          [["Dal Rae Restaurant"] ["Lawry's The Prime Rib"] ["Pacific Dining Car - Santa Monica"]]
-            :has_more_values true}
-           (chain-filter venues.name {venues.price 4} :limit 3))))
-  (testing "Oh yeah, we actually support arbitrary MBQL filter clauses. Neat!"
-    (is (= {:values          [["Festa"] ["Fred 62"]]
-            :has_more_values false}
-           (chain-filter venues.name {venues.price [:between 2 3]
-                                      venues.name  [:starts-with "f" {:case-sensitive false}]})))))
+           (chain-filter venues.name {venues.price 4})))))
 
-(deftest multiple-values-test
+(deftest ^:parallel chain-filter-test-2
+  (testing "Show me categories that have expensive restaurants"
+    (is (= {:values [["Japanese"] ["Steakhouse"]], :has_more_values false}
+           (chain-filter categories.name {venues.price 4})))))
+
+(deftest ^:parallel chain-filter-test-2b
+  (testing "Show me categories that have expensive restaurants"
+    (testing "Should work with string versions of param values"
+      (is (= {:values [["Japanese"] ["Steakhouse"]], :has_more_values false}
+             (chain-filter categories.name {venues.price "4"}))))))
+
+(deftest ^:parallel chain-filter-test-3
+  (testing "Show me categories starting with s (case-insensitive) that have expensive restaurants"
+    (is (= {:values [["Steakhouse"]], :has_more_values false}
+           (chain-filter categories.name {venues.price 4, categories.name [:starts-with "s" {:case-sensitive false}]})))))
+
+(deftest ^:parallel chain-filter-test-4
+  (testing "Show me cheap Thai restaurants"
+    (is (= {:values [["Kinaree Thai Bistro"] ["Krua Siri"]], :has_more_values false}
+           (chain-filter venues.name {venues.price 1, categories.name "Thai"})))))
+
+(deftest ^:parallel chain-filter-test-5
+  (testing "Show me the categories that have cheap restaurants"
+    (is (= {:values
+            [["Asian"]
+             ["BBQ"]
+             ["Bakery"]
+             ["Bar"]
+             ["Burger"]
+             ["Caribbean"]
+             ["Deli"]
+             ["Karaoke"]
+             ["Mexican"]
+             ["Pizza"]
+             ["Southern"]
+             ["Thai"]],
+            :has_more_values false}
+           (chain-filter categories.name {venues.price 1})))))
+
+(deftest ^:parallel chain-filter-test-6
+  (testing "Show me cheap restaurants with the word 'taco' in their name (case-insensitive)"
+    (is (= {:values [["Tacos Villa Corona"] ["Tito's Tacos"]], :has_more_values false}
+           (chain-filter venues.name {venues.price 1, venues.name [:contains "tAcO" {:case-sensitive false}]})))))
+
+(deftest ^:parallel chain-filter-test-7
+  (testing "Show me the first 3 expensive restaurants"
+    (is (= {:values [["Dal Rae Restaurant"] ["Lawry's The Prime Rib"] ["Pacific Dining Car - Santa Monica"]],
+            :has_more_values true}
+           (chain-filter venues.name {venues.price 4} :limit 3)))))
+
+(deftest ^:parallel chain-filter-test-8
+  (testing "Oh yeah, we actually support arbitrary MBQL filter clauses. Neat!"
+    (is (= {:values [["Festa"] ["Fred 62"]], :has_more_values false}
+           (chain-filter
+            venues.name
+            {venues.price [:between 2 3], venues.name [:starts-with "f" {:case-sensitive false}]})))))
+
+(deftest ^:parallel multiple-values-test
   (testing "Chain filtering should support multiple values for a single parameter (as a vector or set of values)"
     (testing "Show me restaurants with price = 1 or 2 with the word 'BBQ' in their name (case-sensitive)"
       (is (= {:values          [["Baby Blues BBQ"] ["Beachwood BBQ & Brewing"] ["Bludso's BBQ"]]
               :has_more_values false}
-             (chain-filter venues.name {venues.price #{1 2}, venues.name [:contains "BBQ"]}))))
+             (chain-filter venues.name {venues.price #{1 2}, venues.name [:contains "BBQ"]}))))))
+
+(deftest ^:parallel multiple-values-test-2
+  (testing "Chain filtering should support multiple values for a single parameter (as a vector or set of values)"
     (testing "Show me the possible values of price for Bakery *or* BBQ restaurants"
       (is (= {:values          [[1] [2] [3]]
               :has_more_values false}
@@ -574,8 +600,7 @@
     (mt/$ids
       (is (= [:time-interval $checkins.date -32 :week {:include-current false}]
              (#'chain-filter/filter-clause $$checkins {:field-id %checkins.date
-                                                       :op       :=
-                                                       :value    "past32weeks"}))))))
+                                                       :op       := :value    "past32weeks"}))))))
 
 (mt/defdataset nil-values-dataset
   [["tbl"
@@ -596,7 +621,7 @@
                                                              :has_more_values false}}]
                     (testing "chain-filter"
                       ;; sorting can differ a bit based on whether we use FieldValues or not... not sure why this is
-                      ;; the case, but that's not important for this test anyway. Just sort everything
+                      ;; ;; the case, but that's not important for this test anyway. Just sort everything
                       (is (= expected-values
                              (update (chain-filter/chain-filter (mt/id :tbl field) []) :values sort))))
                     (testing "chain-filter-search"

@@ -34,7 +34,8 @@
    [toucan2.tools.before-insert :as t2.before-insert]
    [toucan2.tools.hydrate :as t2.hydrate]
    [toucan2.tools.identity-query :as t2.identity-query]
-   [toucan2.util :as t2.u])
+   [toucan2.util :as t2.u]
+   [metabase.lib.schema.parameter :as lib.schema.parameter])
   (:import
    (java.sql Blob)
    (toucan2.instance Instance)))
@@ -193,43 +194,6 @@
   {:in  json-in-with-eliding
    :out json-out-with-keywordization})
 
-(defn- serialize-mbql5-query
-  "Saving MBQL 5 queries​ we can assume MBQL 5 queries are normalized enough already, but remove the metadata provider
-  before saving it, because it's not something that lends itself well to serialization."
-  [query]
-  (dissoc query :lib/metadata))
-
-(defn- deserialize-mbql5-query
-  "Reading MBQL 5 queries​: normalize them, then attach a MetadataProvider based on their Database."
-  [query]
-  (let [metadata-provider (if (lib.metadata.protocols/metadata-provider? (:lib/metadata query))
-                            ;; in case someone passes in an already-normalized query to [[maybe-normalize-query]] below,
-                            ;; preserve the existing metadata provider.
-                            (:lib/metadata query)
-                            ((requiring-resolve 'metabase.lib-be.metadata.jvm/application-database-metadata-provider)
-                             (u/the-id (some #(get query %) [:database "database"]))))]
-    (lib/query metadata-provider query)))
-
-(mu/defn maybe-normalize-query
-  "For top-level query maps like `Card.dataset_query`. Normalizes them on the way in & out."
-  [in-or-out :- [:enum :in :out]
-   query]
-  (letfn [(normalize [query]
-            (let [f (if (= (lib/normalized-query-type query) :mbql/query)
-                      ;; MBQL 5 queries
-                      (case in-or-out
-                        :in  serialize-mbql5-query
-                        :out deserialize-mbql5-query)
-                      ;; legacy queries: just normalize them with the legacy normalization code for now... in the near
-                      ;; future we'll probably convert to MBQL 5 before saving so everything in the app DB is MBQL 5
-                      (case in-or-out
-                        :in  mbql.normalize/normalize
-                        :out mbql.normalize/normalize))]
-              (f query)))]
-    (cond-> query
-      (and (map? query) (seq query))
-      normalize)))
-
 (defn catch-normalization-exceptions
   "Wraps normalization fn `f` and returns a version that gracefully handles Exceptions during normalization. When
   invalid queries (etc.) come out of the Database, it's best we handle normalization failures gracefully rather than
@@ -242,44 +206,17 @@
         (log/errorf e "Unable to normalize:\n%s" (u/pprint-to-str 'red query))
         nil))))
 
-(defn normalize-parameters-list
-  "Normalize `parameters` or `parameter-mappings` when coming out of the application database or in via an API request."
-  [parameters]
-  (or (mbql.normalize/normalize-fragment [:parameters] parameters)
-      []))
+;; DEPRECATED: move all this stuff to `lib-be`.
 
-(defn- keywordize-temporal_units
-  [parameter]
-  (m/update-existing parameter :temporal_units (fn [units] (mapv keyword units))))
+(def ^:deprecated transform-field-ref
+  "Transform field refs
 
-(defn normalize-card-parameters-list
-  "Normalize `parameters` of actions, cards, and dashboards when coming out of the application database."
-  [parameters]
-  (->> parameters
-       normalize-parameters-list
-       (mapv keywordize-temporal_units)))
-
-(def transform-metabase-query
-  "Transform for metabase-query."
-  {:in  (comp json-in (partial maybe-normalize-query :in))
-   :out (comp (catch-normalization-exceptions (partial maybe-normalize-query :out)) json-out-without-keywordization)})
-
-(def transform-parameters-list
-  "Transform for parameters list."
-  {:in  (comp json-in normalize-parameters-list)
-   :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization)})
-
-(def transform-card-parameters-list
-  "Transform for parameters list."
-  {:in  (comp json-in normalize-card-parameters-list)
-   :out (comp (catch-normalization-exceptions normalize-card-parameters-list) json-out-with-keywordization)})
-
-(def transform-field-ref
-  "Transform field refs"
+  DEPRECATED: move to `queries` or `lib-be`."
   {:in  json-in
    :out (comp (catch-normalization-exceptions mbql.normalize/normalize-field-ref) json-out-with-keywordization)})
 
-(defn- normalize-result-metadata-column [col]
+(defn- ^:deprecated normalize-result-metadata-column
+  [col]
   (if (:lib/type col)
     (lib.normalize/normalize ::lib.schema.metadata/column col)
     (-> col
@@ -288,14 +225,14 @@
         lib.temporal-bucket/ensure-temporal-unit-in-display-name
         lib.binning/ensure-binning-in-display-name)))
 
-(defn- result-metadata-out
+(defn- ^:deprecated result-metadata-out
   "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."
   [metadata]
   ;; TODO -- can we make this whole thing a lazy seq?
   (when-let [metadata (not-empty (json-out-with-keywordization metadata))]
     (not-empty (mapv normalize-result-metadata-column metadata))))
 
-(def transform-result-metadata
+(def ^:deprecated transform-result-metadata
   "Transform for card.result_metadata like columns."
   {:in  json-in
    :out result-metadata-out})

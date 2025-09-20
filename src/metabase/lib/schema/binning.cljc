@@ -25,7 +25,6 @@
 (mr/def ::binning
   "Schema for `:binning` options passed to a `:field` clause."
   [:and
-   {:doc/title "`:binning` options"}
    [:map
     {:decode/normalize lib.schema.common/normalize-map}
     [:strategy [:ref ::strategy]]]

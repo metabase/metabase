@@ -169,9 +169,7 @@
              (= (mc/type route-params-schema) :map))
     (some (fn [[k _options v-schema]]
             (when (= k route-param)
-              (or
-               (:api/regex (mc/properties v-schema))
-               (second (metabase.api.common.internal/->matching-regex v-schema)))))
+              (metabase.api.common.internal/->matching-regex v-schema)))
           (mc/children route-params-schema))))
 
 (mu/defn- inferred-route-regexes :- [:maybe [:map-of :keyword (ms/InstanceOfClass java.util.regex.Pattern)]]
@@ -378,10 +376,6 @@
                             specific-errors (invalid-params-specific-errors explanation)
                             errors          (invalid-params-errors schema explanation specific-errors)]
                         {:status-code     400
-                         #_:api/debug     #_{:params-type params-type
-                                             :schema      (mc/form schema)
-                                             :params      params
-                                             :decoded     decoded}
                          :specific-errors specific-errors
                          :errors          errors}))))
     decoded))
@@ -761,9 +755,11 @@
   ([nmspace]
    (let [nmspace         (the-ns nmspace)
          resolve-handler (fn []
-                           (-> nmspace meta :api/handler))]
+                           (or (-> nmspace meta :api/handler)
+                               (throw (ex-info "Namespace is missing :api/handler" {:namespace nmspace}))))
+         handler         (resolve-handler)]
      (cond
-       (not (resolve-handler))
+       (not handler)
        (fn pass-thru-handler [_request respond _raise]
          (respond nil))
 
@@ -779,7 +775,7 @@
        ;; For prod, fetching the handler on each request gives us nothing since it shouldn't change; fetch it once and
        ;; if it's not defined just use the [[pass-thru-handler]] above instead.
        :else
-       (resolve-handler))))
+       handler)))
 
   ([nmspace & middleware :- [:sequential {:min 1} ::middleware]]
    (apply-middleware

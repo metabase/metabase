@@ -1355,7 +1355,7 @@
   [parameters]
   (reduce set/union #{}
           (for [parameter parameters
-                :when (= "card" (:values_source_type parameter))
+                :when (= (keyword (:values_source_type parameter)) :card)
                 :let  [config (:values_source_config parameter)]]
             (set/union #{[{:model "Card" :id (:card_id config)}]}
                        (mbql-deps-vector (:value_field config))))))

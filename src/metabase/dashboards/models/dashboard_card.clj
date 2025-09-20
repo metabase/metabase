@@ -3,8 +3,11 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.parameters.core :as parameters]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -24,7 +27,7 @@
   #_(derive :hook/search-index))
 
 (t2/deftransforms :model/DashboardCard
-  {:parameter_mappings     mi/transform-parameters-list
+  {:parameter_mappings     parameters/transform-parameter-mappings
    :visualization_settings mi/transform-visualization-settings
    :inline_parameters      mi/transform-json})
 
@@ -73,7 +76,7 @@
   [dashboard-card]
   (t2/instance :model/DashboardCard
                (-> dashboard-card
-                   (m/update-existing :parameter_mappings mi/normalize-parameters-list)
+                   (m/update-existing :parameter_mappings parameters/normalize-parameter-mappings)
                    (m/update-existing :visualization_settings mi/normalize-visualization-settings))))
 
 (defmethod serdes/hash-fields :model/DashboardCard
@@ -190,22 +193,12 @@
         (update-dashboard-cards-series! {dashcard-id series}))
       nil)))
 
-(def ParamMapping
-  "Schema for a parameter mapping as it would appear in the DashboardCard `:parameter_mappings` column."
-  [:and
-   [:map-of :keyword :any]
-   [:map
-    ;; TODO -- validate `:target` as well... breaks a few tests tho so those will have to be fixed (#40021)
-    [:parameter_id ms/NonBlankString]
-    #_[:target       :any]]])
-
 (def ^:private NewDashboardCard
   ;; TODO - make the rest of the options explicit instead of just allowing whatever for other keys (#40021)
   [:map
-   [:dashboard_id                            ms/PositiveInt]
-   [:action_id              {:optional true} [:maybe ms/PositiveInt]]
-   ;; TODO - use ParamMapping. Breaks too many tests right now tho (#40021)
-   [:parameter_mappings     {:optional true} [:maybe [:sequential map?]]]
+   [:dashboard_id                            ::lib.schema.id/dashboard]
+   [:action_id              {:optional true} [:maybe ::lib.schema.id/action]]
+   [:parameter_mappings     {:optional true} [:maybe [:sequential ::parameters.schema/parameter-mapping]]]
    [:visualization_settings {:optional true} [:maybe map?]]
    [:inline_parameters      {:optional true} [:maybe [:sequential ms/NonBlankString]]]
    [:series                 {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
@@ -302,11 +295,11 @@
     (second column-or-aliased)
     column-or-aliased))
 
-(defn- select-clause-for-link-card-model
+(mu/defn- select-clause-for-link-card-model
   "The search query uses a `union-all` which requires that there be the same number of columns in each of the segments
   of the query. This function will take the columns for `model` and will inject constant `nil` values for any column
   missing from `entity-columns` but found in `all-card-info-columns`."
-  [model]
+  [model :- (into [:enum] (keys link-card-columns-for-model))]
   (let [model-cols                       (link-card-columns-for-model model)
         model-col-alias->honeysql-clause (m/index-by ->column-alias model-cols)]
     (for [[col col-type] all-card-info-columns
@@ -395,7 +388,7 @@
 
 (defmethod serdes/generate-path "DashboardCard" [_ dashcard]
   (remove nil?
-          [(serdes/infer-self-path "Dashboard" (t2/select-one 'Dashboard :id (:dashboard_id dashcard)))
+          [(serdes/infer-self-path "Dashboard" (t2/select-one :model/Dashboard :id (:dashboard_id dashcard)))
            (when (:dashboard_tab_id dashcard)
              (serdes/infer-self-path "DashboardTab" (t2/select-one :model/DashboardTab :id (:dashboard_tab_id dashcard))))
            (serdes/infer-self-path "DashboardCard" dashcard)]))

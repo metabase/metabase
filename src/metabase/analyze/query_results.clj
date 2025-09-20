@@ -7,6 +7,8 @@
    [metabase.analyze.classifiers.name :as classifiers.name]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.analyze.fingerprint.insights :as insights]
+   ;; allowed for now since this hasn't been updated to work with Lib-style metadata yet
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -14,20 +16,16 @@
    [metabase.util.malli.registry :as mr]
    [redux.core :as redux]))
 
-(def ^:private ResultColumnMetadata
-  "Result metadata for a single column"
-  [:ref ::mbql.s/legacy-column-metadata])
-
 (mr/def ::ResultsMetadata
   (mu/with-api-error-message
-   [:maybe [:sequential ResultColumnMetadata]]
+   [:maybe [:sequential ::mbql.s/legacy-column-metadata]]
    (i18n/deferred-tru "value must be an array of valid results column metadata maps.")))
 
 (def ResultsMetadata
   "Schema for valid values of the `result_metadata` column."
   [:ref ::ResultsMetadata])
 
-(mu/defn- maybe-infer-semantic-type :- ResultColumnMetadata
+(mu/defn- maybe-infer-semantic-type :- ::mbql.s/legacy-column-metadata
   "Infer the semantic type and add it to the result metadata. If the inferred semantic type is nil, don't override the
   semantic type with a nil semantic type"
   [col]
@@ -41,7 +39,7 @@
        (nil :type/Number) (classifiers.name/infer-semantic-type-by-name col)
        original-value))))
 
-(mu/defn- col->ResultColumnMetadata :- ResultColumnMetadata
+(mu/defn- col->ResultColumnMetadata :- ::mbql.s/legacy-column-metadata
   "Make sure a `column` as it comes back from a driver's initial results metadata matches the schema for valid results
   column metadata, adding placeholder values and removing nil keys."
   [column]

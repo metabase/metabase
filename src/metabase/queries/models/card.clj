@@ -4,7 +4,6 @@
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
-   [clojure.string :as str]
    [clojure.walk :as walk]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
@@ -17,26 +16,26 @@
    [metabase.content-verification.core :as moderation]
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.events.core :as events]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.normalize :as lib.normalize]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.types.isa :as lib.types]
-   [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.parameters.params :as params]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.public-sharing.core :as public-sharing]
-   ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.models.query :as query]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
@@ -50,7 +49,9 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.tools.hydrate :as t2.hydrate]))
+   [toucan2.tools.hydrate :as t2.hydrate]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.parameters.core :as parameters]))
 
 (set! *warn-on-reflection* true)
 
@@ -98,14 +99,14 @@
     target-schema-version))
 
 (t2/deftransforms :model/Card
-  {:dataset_query          mi/transform-metabase-query
+  {:dataset_query          lib-be/transform-query
    :display                mi/transform-keyword
    :embedding_params       mi/transform-json
    :query_type             mi/transform-keyword
    :result_metadata        mi/transform-result-metadata
    :visualization_settings mi/transform-visualization-settings
-   :parameters             mi/transform-card-parameters-list
-   :parameter_mappings     mi/transform-parameters-list
+   :parameters             parameters/transform-parameters
+   :parameter_mappings     parameters/transform-parameter-mappings
    :type                   mi/transform-keyword})
 
 (doto :model/Card
@@ -139,19 +140,6 @@
   "Returns true if `card` is a model."
   [card]
   (= (keyword (:type card)) :model))
-
-(defn lib-query
-  "Given a card with at least its `:dataset_query` field, this returns the `metabase.lib` form of the query.
-
-  A `metadata-provider` may be passed as an optional first parameter, if the caller has one to hand."
-  ([{:keys [database_id dataset_query] :as card}]
-   (when dataset_query
-     (let [db-id (or database_id (:database dataset_query))
-           mp    (lib.metadata.jvm/application-database-metadata-provider db-id)]
-       (lib-query mp card))))
-  ([metadata-providerable {:keys [dataset_query] :as _card}]
-   (when dataset_query
-     (lib/query metadata-providerable dataset_query))))
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
@@ -211,25 +199,18 @@
    :id
    {:default []}))
 
-(defn- source-card-id
-  [query]
-  (when (map? query)
-    (let [query-type (lib/normalized-query-type query)]
-      (case query-type
-        :query      (-> query mbql.normalize/normalize #_{:clj-kondo/ignore [:deprecated-var]} qp.util/query->source-card-id)
-        :mbql/query (-> query lib/normalize lib.util/source-card-id)
-        nil))))
-
-(defn- card->integer-table-ids
+(mu/defn- card->integer-table-ids :- [:maybe [:set ::lib.schema.id/table]]
   "Return integer source table ids for card's :dataset_query."
-  [card]
-  (when-some [query (-> card :dataset_query :query)]
-    (not-empty (filter pos-int? (lib.util/collect-source-tables query)))))
+  [{query :dataset_query, :as _card} :- ::queries.schema/card]
+  (when (seq query)
+    (lib/all-source-table-ids query)))
 
 (defn- prefetch-tables-for-cards!
   "Collect tables from `dataset-cards` and prefetch metadata. Should be used only with metdata provider caching
   enabled, as per https://github.com/metabase/metabase/pull/45050. Returns `nil`."
   [dataset-cards]
+  (assert lib.metadata.jvm/*metadata-provider-cache*
+          "It doesn't make sense to prefetch Tables unless the metadata provider cache is enabled!")
   (let [db-id->table-ids (-> (group-by :database_id dataset-cards)
                              (update-vals (partial into #{} (comp (mapcat card->integer-table-ids)
                                                                   (remove nil?)))))]
@@ -244,7 +225,7 @@
   ;; TODO: for metrics, we can get (some-fn :source_model_id :source_question_id)
   (let [dataset-cards (filter (comp seq :dataset_query) cards)
         source-card-ids (into #{}
-                              (keep (comp source-card-id :dataset_query))
+                              (keep (comp lib/source-card-id :dataset_query))
                               dataset-cards)]
     ;; Prefetching code should not propagate any exceptions.
     (when lib.metadata.jvm/*metadata-provider-cache*
@@ -261,8 +242,8 @@
        (fn []
          (into {}
                (map
-                (fn [{card-id :id :keys [dataset_query]}]
-                  [card-id (query-perms/can-run-query? dataset_query)]))
+                (fn [{card-id :id, query :dataset_query}]
+                  [card-id (query-perms/can-run-query? query)]))
                dataset-cards))
        :id
        {:default false}))))
@@ -345,35 +326,33 @@
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
-(defn populate-query-fields
+(mu/defn populate-query-fields :- [:maybe :map]
   "Lift `database_id`, `table_id`, `query_type`, and `source_card_id` fields
   from query definition when inserting/updating a Card."
-  [{query :dataset_query, :as card}]
+  [{query :dataset_query, :as card} :- ::queries.schema/card]
   (merge
    card
-   (when-let [source-id (source-card-id query)]
-     {:source_card_id source-id})
    ;; mega HACK FIXME -- don't update this stuff when doing deserialization because it might differ from what's in the
    ;; YAML file and break tests like [[metabase-enterprise.serialization.v2.e2e.yaml-test/e2e-storage-ingestion-test]].
    ;; The root cause of this issue is that we're generating Cards that have a different Database ID or Table ID from
    ;; what's actually in their query -- we need to fix [[metabase.test.generate]], but I'm not sure how to do that
    (when (and (map? query)
+              (seq query)
               (not mi/*deserializing?*))
-     (when-let [{:keys [database-id table-id]} (query/query->database-and-table-ids query)]
-       ;; TODO -- not sure `query_type` is actually used for anything important anyway
-       (let [query-type (if (query/query-is-native? query)
-                          :native
-                          :query)]
-         (merge
-          {:query_type (keyword query-type)}
-          (when database-id
-            {:database_id database-id})
-          (when table-id
-            {:table_id table-id})))))))
-
-(defn- maybe-normalize-query [card]
-  (cond-> card
-    (seq (:dataset_query card)) (update :dataset_query #(mi/maybe-normalize-query :in %))))
+     (merge
+      (when-let [source-id (lib/source-card-id query)]
+        {:source_card_id source-id})
+      (when-let [{:keys [database-id table-id]} (query/query->database-and-table-id query)]
+        ;; TODO -- not sure `query_type` is actually used for anything important anyway
+        (let [query-type (if (query/query-is-native? query)
+                           :native
+                           :query)]
+          (merge
+           {:query_type (keyword query-type)}
+           (when database-id
+             {:database_id database-id})
+           (when table-id
+             {:table_id table-id}))))))))
 
 ;;; TODO -- move this to [[metabase.query-processor.card]] or MLv2 so the logic can be shared between the backend and
 ;;; frontend (?)
@@ -381,13 +360,14 @@
 ;;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase-lib/parameters/utils/template-tags.ts
 ;;; If this function moves you should update the comment that links to this one (#40013)
 ;;;
-;;; TODO -- does this belong HERE or in the `parameters` module?
-(defn template-tag-parameters
+;;; TODO -- does this belong HERE or in the `parameters` module? Or maybe even in Lib somewhere.
+(mu/defn template-tag-parameters
   "Transforms native query's `template-tags` into `parameters`.
   An older style was to not include `:template-tags` onto cards as parameters. I think this is a mistake and they
   should always be there. Apparently lots of e2e tests are sloppy about this so this is included as a convenience."
-  [card]
-  (for [[_ {tag-type :type, widget-type :widget-type, :as tag}] (get-in card [:dataset_query :native :template-tags])
+  [{query :dataset_query, :as _card} :- ::queries.schema/card]
+  (for [{tag-type :type, widget-type :widget-type, :as tag} (when (seq query)
+                                                              (lib/all-template-tags query))
         :when                         (and tag-type
                                            (or (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
                                                (and (= tag-type :dimension) widget-type (not= widget-type :none))))]
@@ -404,7 +384,7 @@
      :default  (:default tag)
      :required (boolean (:required tag))}))
 
-(defn- check-field-filter-fields-are-from-correct-database
+(mu/defn- check-field-filter-fields-are-from-correct-database
   "Check that all native query Field filter parameters reference Fields belonging to the Database the query points
   against. This is done when saving a Card. The goal here is to prevent people from saving Cards with invalid queries
   -- it's better to error now then to error down the road in Query Processor land.
@@ -412,9 +392,9 @@
   The usual way a user gets into the situation of having a mismatch between the Database and Field Filters is by
   creating a native query in the Query Builder UI, adding parameters, and *then* changing the Database that the query
   targets. See https://github.com/metabase/metabase/issues/14145 for more details."
-  [{{query-db-id :database, :as query} :dataset_query, :as card}]
+  [{{query-db-id :database, :as query} :dataset_query, :as card} :- [:maybe ::queries.schema/card]]
   ;; for updates if `query` isn't being updated we don't need to validate anything.
-  (when query
+  (when (seq query)
     (when-let [field-ids (not-empty (params/card->template-tag-field-ids card))]
       (doseq [{:keys [field-id field-name table-name field-db-id]} (app-db/query
                                                                     {:select    [[:field.id :field-id]
@@ -436,12 +416,12 @@
                            :query-database        query-db-id
                            :field-filter-database field-db-id})))))))
 
-(defn- assert-valid-type
+(mu/defn- assert-valid-type
   "Check that the card is a valid model if being saved as one. Throw an exception if not."
-  [{query :dataset_query, card-type :type, :as _card}]
-  (when (= (keyword card-type) :model)
-    (let [template-tag-types (->> (get-in query [:native :template-tags])
-                                  vals
+  [{query :dataset_query, card-type :type, :as _card} :- [:maybe ::queries.schema/card]]
+  (when (and (= (keyword card-type) :model)
+             (seq query))
+    (let [template-tag-types (->> (lib/all-template-tags query)
                                   (map (comp keyword :type)))]
       (when (some (complement #{:card :snippet}) template-tag-types)
         (throw (ex-info (tru "A model made from a native SQL question cannot have a variable or field filter.")
@@ -507,25 +487,6 @@
   (cond-> card
     (dashboard-internal-card? card) check-dashboard-internal-card-insert))
 
-;; TODO -- consider whether we should validate the Card query when you save/update it?? (#40013)
-;;
-;; TODO (Cam 7/18/25) -- weird/offputting to have half of the before-insert logic live here and then the other half live
-;; in `define-before-insert`... we should consolidate it so it all lives in one or the other.
-(defn- pre-insert [card]
-  (let [defaults {:parameters         []
-                  :parameter_mappings []
-                  :card_schema        current-schema-version}
-        card     (maybe-check-dashboard-internal-card
-                  (merge defaults card))]
-    (u/prog1 card
-      (check-field-filter-fields-are-from-correct-database card)
-      ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters (#40013)
-      (assert-valid-type card)
-
-      (params/assert-valid-parameters card)
-      (params/assert-valid-parameter-mappings card)
-      (collection/check-collection-namespace :model/Card (:collection_id card)))))
-
 (defenterprise pre-update-check-sandbox-constraints
   "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
   metabase-enterprise.sandbox.models.sandbox
@@ -575,15 +536,16 @@
           (when-not (= parameters new-parameters)
             (t2/update! model po-id {:parameters new-parameters})))))))
 
-(defn model-supports-implicit-actions?
+(mu/defn model-supports-implicit-actions?
   "A model with implicit action supported iff they are a raw table,
   meaning there are no clauses such as filter, limit, breakout...
 
-  It should be the opposite of [[metabase.lib.stage/has-clauses]] but for all stages."
-  [{dataset-query :dataset_query :as _card}]
-  (and (= :query (:type dataset-query))
-       (every? #(nil? (get-in dataset-query [:query %]))
-               [:expressions :filter :limit :breakout :aggregation :joins :order-by :fields])))
+  It should be the opposite of [[metabase.lib.stage/has-clauses?]] but for all stages."
+  [query :- ::lib.schema/query]
+  (every? (fn [stage-number]
+            (and (lib/mbql-stage? query stage-number)
+                 (not (lib/has-clauses? query stage-number))))
+          (range 0 (count (:stages query)))))
 
 (defn- disable-implicit-action-for-model!
   "Delete all implicit actions of a model if exists."
@@ -602,15 +564,14 @@
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
   ;; does that happen in the `PUT` endpoint? (#40013)
   (u/prog1 card
-    (let [;; Fetch old card data if necessary, and share the data between multiple checks.
-          old-card-info (when (or (contains? changes :type)
-                                  (:dataset_query changes)
-                                  (get-in changes [:dataset_query :native]))
+    ;; Fetch old card data if necessary, and share the data between multiple checks.
+    (let [old-card-info (when (or (contains? changes :type)
+                                  (:dataset_query changes))
                           (t2/select-one [:model/Card :dataset_query :type :result_metadata :card_schema]
                                          :id (u/the-id id)))]
       ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
       ;; On-Demand DB Fields
-      (when (get-in changes [:dataset_query :native])
+      (when (:dataset_query changes)
         (let [old-param-field-ids (params/card->template-tag-field-ids old-card-info)
               new-param-field-ids (params/card->template-tag-field-ids changes)]
           (when (and (seq new-param-field-ids)
@@ -624,7 +585,7 @@
       ;; updating a model dataset query to not support implicit actions will disable implicit actions if they exist
       (when (and (:dataset_query changes)
                  (= (:type old-card-info) :model)
-                 (not (model-supports-implicit-actions? changes)))
+                 (not (model-supports-implicit-actions? (:dataset_query changes))))
         (disable-implicit-action-for-model! id))
       ;; Changing from a Model to a Question: archive associated actions
       (when (and (= (:type changes) :question)
@@ -640,7 +601,7 @@
       (params/assert-valid-parameter-mappings changes)
       (update-parameters-using-card-as-values-source card changes)
       (when (:parameters changes)
-        (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes)))
+        (parameter-card/upsert-or-delete-from-parameters! :model/Card id (:parameters changes)))
       ;; additional checks (Enterprise Edition only)
       (pre-update-check-sandbox-constraints card changes)
       (assert-valid-type (merge old-card-info changes)))))
@@ -652,16 +613,16 @@
 
   This function is used in `t2/define-after-select :model/Card`. Metadata provider caching should be considered when
   fetching multiple metric cards having common database, as done in eg. dashboard API context."
-  [card]
-  (if-not (and (map? card)
-               (= :metric (:type card))
-               (-> card :dataset_query not-empty)
-               (-> card :database_id))
+  [{query :dataset_query, database-id :database_id, :as card}]
+  (if (or (not (map? card))
+          (not= (:type card) :metric)
+          (empty? query)
+          (not (pos-int? database-id)))
     card
-    (m/assoc-some card :query_description (some-> (lib.metadata.jvm/application-database-metadata-provider
-                                                   (:database_id card))
-                                                  (lib/query (:dataset_query card))
-                                                  lib/suggested-name))))
+    (do
+      (assert (= (lib/normalized-mbql-version query) :mbql-version/mbql5)
+              "Expected app DB to return an MBQL 5 query")
+      (m/assoc-some card :query_description (lib/suggested-name query)))))
 
 ;; Schema upgrade: 20 to 21 ==========================================================================================
 ;; Originally this backfilled `:ident`s on all columns in `:result_metadata`.
@@ -685,9 +646,7 @@
                                   (mapv #(dissoc % :ident :model/inner_ident) cols))))
 
 (mu/defn- upgrade-card-schema-to-latest :- [:map
-                                            [:result_metadata {:optional true} [:maybe
-                                                                                [:sequential
-                                                                                 ::lib.schema.metadata/lib-or-legacy-column]]]]
+                                            [:result_metadata {:optional true} [:maybe ::queries.schema/card.result-metadata]]]
   [card]
   (if (and (:id card)
            (or (:dataset_query card)
@@ -719,7 +678,7 @@
   ;; +===============================================================================================+
   (-> card
       (dissoc :dataset_query_metrics_v2_migration_backup)
-      (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
+      (m/assoc-some :source_card_id (-> card :dataset_query lib/source-card-id))
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled
       add-query-description-to-metric-card
       ;; At this point, the card should be at schema version 20 or higher.
@@ -728,14 +687,21 @@
 (t2/define-before-insert :model/Card
   [card]
   (-> card
+      queries.schema/normalize-card
       (assoc :metabase_version config/mb-version-string
              :card_schema current-schema-version)
-      maybe-normalize-query
-      ;; Must have an entity_id before populating the metadata. TODO (Cam 7/11/25) -- actually, this is no longer true,
-      ;; since we're removing `:ident`s; we can probably remove this now.
-      (u/assoc-default :entity_id (u/generate-nano-id))
       card.metadata/populate-result-metadata
-      pre-insert
+      (->> (merge {:parameters         []
+                   :parameter_mappings []
+                   :card_schema        current-schema-version}))
+      maybe-check-dashboard-internal-card
+      (u/prog1
+        (check-field-filter-fields-are-from-correct-database <>)
+        ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters (#40013)
+        (assert-valid-type <>)
+        (params/assert-valid-parameters <>)
+        (params/assert-valid-parameter-mappings <>)
+        (collection/check-collection-namespace :model/Card (:collection_id <>)))
       populate-query-fields))
 
 (t2/define-after-insert :model/Card
@@ -744,7 +710,7 @@
     (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
       (log/info "Card references Fields in params:" field-ids)
       (field-values/update-field-values-for-on-demand-dbs! field-ids))
-    (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
+    (parameter-card/upsert-or-delete-from-parameters! :model/Card (:id card) (:parameters card))))
 
 (defn- apply-dashboard-question-updates [card changes]
   (if-let [dashboard-id (:dashboard_id changes)]
@@ -752,9 +718,7 @@
     card))
 
 (mu/defn- populate-result-metadata :- [:map
-                                       [:result_metadata {:optional true} [:maybe
-                                                                           [:sequential
-                                                                            ::lib.schema.metadata/lib-or-legacy-column]]]]
+                                       [:result_metadata {:optional true} [:maybe ::queries.schema/card.result-metadata]]]
   "If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
   change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
   verified-result-metadata? flag (see #37009)."
@@ -764,26 +728,29 @@
             (not verified-result-metadata?)
             (contains? (t2/changes card) :type))
         (card.metadata/populate-result-metadata changes))
-      (m/update-existing :result_metadata #(some->> % (lib.normalize/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column])))))
+      (m/update-existing :result_metadata #(some->> % (lib/normalize ::queries.schema/card.result-metadata)))))
 
 (t2/define-before-update :model/Card
-  [{:keys [verified-result-metadata?] :as card}]
+  [{::keys [verified-result-metadata?] :as card}]
   (let [changes (t2/changes card)]
-    (-> card
-        (dissoc :verified-result-metadata?)
-        (assoc :card_schema current-schema-version)
-        (apply-dashboard-question-updates changes)
-        maybe-normalize-query
-        (populate-result-metadata changes verified-result-metadata?)
-        (pre-update changes)
-        populate-query-fields
-        maybe-populate-initially-published-at)))
+    (if (empty? changes)
+      {}
+      (let [card    (queries.schema/normalize-card card)
+            changes (queries.schema/normalize-card changes ::queries.schema/card.updates)]
+        (-> card
+            (dissoc ::verified-result-metadata?)
+            (assoc :card_schema current-schema-version)
+            (apply-dashboard-question-updates changes)
+            (populate-result-metadata changes verified-result-metadata?)
+            (pre-update changes)
+            populate-query-fields
+            maybe-populate-initially-published-at)))))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
   [{:keys [id] :as _card}]
   ;; delete any ParameterCard that the parameters on this card linked to
-  (parameter-card/delete-all-for-parameterized-object! "card" id)
+  (parameter-card/delete-all-for-parameterized-object! :model/Card id)
   ;; delete any ParameterCard linked to this card
   (t2/delete! :model/ParameterCard :card_id id)
   (t2/delete! :model/ModerationReview :moderated_item_type "card", :moderated_item_id id)
@@ -924,7 +891,8 @@
                                                  :entity_id (u/generate-nano-id))
                                                 (cond-> (nil? type)
                                                   (assoc :type :question))
-                                                maybe-normalize-query)
+                                                ;; TODO -- shouldn't this be happening way sooner?
+                                                queries.schema/normalize-card)
          {:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata
                                              {:query     (:dataset_query card-data)
                                               :metadata  result_metadata
@@ -988,12 +956,19 @@
     :query_type ;; these first three may not even be changeable
     :dataset_query})
 
-(defn- breakout-->identifier->refs
+(mu/defn- breakouts->identifier->refs :- [:map-of
+                                          [:tuple
+                                           [:enum :field :expression]
+                                           [:or ::lib.schema.id/field :string]]
+                                          [:set
+                                           ::lib.schema.ref/ref]]
   "Generate mapping of of _ref identifier_ -> #{_ref..._}.
 
-  _ref identifier_ is a vector of first 2 elements of ref, eg. [:expression \"xix\"] or [:field 10]"
-  [breakouts]
-  (-> (group-by #(subvec % 0 2) breakouts)
+  _ref identifier_ is a vector of the elements of a ref excluding options, eg. [:expression \"xix\"] or [:field 10]"
+  [breakouts :- [:maybe [:sequential ::lib.schema.ref/ref]]]
+  (-> (group-by (fn [[tag _opts id, :as _a-ref]]
+                  [tag id])
+                breakouts)
       (update-vals set)))
 
 (defn- action-for-identifier+refs
@@ -1003,23 +978,24 @@
   the [[update-associated-parameters!]]'s docstring.
 
   _Action_ has a form of [<action> & args]."
-  [after--identifier->refs identifier before--refs]
-  (let [after--refs (get after--identifier->refs identifier #{})]
-    (when (and (= 1 (count before--refs) (count after--refs))
-               (not= before--refs after--refs))
-      [:update (first after--refs)])))
+  [after-identifier->refs identifier before-refs]
+  (let [after-refs (get after-identifier->refs identifier #{})]
+    (when (and (= 1 (count before-refs) (count after-refs))
+               (not= (lib.schema.util/remove-lib-uuids before-refs)
+                     (lib.schema.util/remove-lib-uuids after-refs)))
+      [:update (first after-refs)])))
 
-(defn- breakouts-->identifier->action
+(defn- breakouts->identifier->action
   "Generate mapping of _identifier_ -> _action_.
 
   _identifier_ is is a vector of first 2 elements of ref, eg. [:expression \"xix\"] or [:field 10]. Action is generated
   in [[action-for-identifier+refs]] and performed later in [[update-mapping]]."
-  [breakout-before-update breakout-after-update]
-  (let [before--identifier->refs (breakout-->identifier->refs breakout-before-update)
-        after--identifier->refs  (breakout-->identifier->refs breakout-after-update)]
+  [breakouts-before-update breakouts-after-update]
+  (let [before-identifier->refs (breakouts->identifier->refs breakouts-before-update)
+        after-identifier->refs  (breakouts->identifier->refs breakouts-after-update)]
     ;; Remove no-ops to avoid redundant db calls in [[update-associated-parameters!]].
-    (->> before--identifier->refs
-         (m/map-kv-vals #(action-for-identifier+refs after--identifier->refs %1 %2))
+    (->> before-identifier->refs
+         (m/map-kv-vals #(action-for-identifier+refs after-identifier->refs %1 %2))
          (m/filter-vals some?)
          not-empty)))
 
@@ -1061,10 +1037,11 @@
   eg. in [[breakouts-->identifier->action]] docstring. Then, dashcards are fetched and updates are generated
   by [[updates-for-dashcards]]. Updates are then executed."
   [card-before card-after]
-  (let [card->breakout  #(-> % :dataset_query mbql.normalize/normalize :query :breakout)
-        breakout-before (card->breakout card-before)
-        breakout-after  (card->breakout card-after)]
-    (when-some [identifier->action (breakouts-->identifier->action breakout-before breakout-after)]
+  (let [card->breakouts  (fn [{query :dataset_query, :as _card}]
+                           (lib/breakouts query -1))
+        breakouts-before (card->breakouts card-before)
+        breakouts-after  (card->breakouts card-after)]
+    (when-some [identifier->action (breakouts->identifier->action breakouts-before breakouts-after)]
       (let [dashcards (t2/select :model/DashboardCard :card_id (some :id [card-after card-before]))
             updates   (updates-for-dashcards identifier->action dashcards)]
         ;; Beware. This can have negative impact on card update performance as queries are fired in sequence. I'm not
@@ -1105,7 +1082,7 @@
                                     :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id :document_id}
                                     :non-nil #{:dataset_query :display :name :visualization_settings :archived
                                                :enable_embedding :type :parameters :parameter_mappings :embedding_params
-                                               :result_metadata :collection_preview :verified-result-metadata?}))
+                                               :result_metadata :collection_preview ::verified-result-metadata?}))
     ;; ok, now update dependent dashcard parameters
     (try
       (update-associated-parameters! card-before-update card-updates)
@@ -1228,15 +1205,16 @@
 
 (defmethod serdes/descendants "Card" [_model-name id]
   (let [card               (t2/select-one :model/Card :id id)
-        source-table       (some->  card :dataset_query :query :source-table)
-        template-tags      (some->> card :dataset_query :native :template-tags vals (keep :card-id))
+        query              (not-empty (:dataset_query card))
+        source-card        (some-> query lib/source-card-id)
+        template-tags      (some-> query lib/all-template-tags)
         parameters-card-id (some->> card :parameters (keep (comp :card_id :values_source_config)))
-        snippets           (some->> card :dataset_query :native :template-tags vals (keep :snippet-id))]
+        snippets           (some->> template-tags (keep :snippet-id))]
     (into {} (concat
-              (when (and (string? source-table)
-                         (str/starts-with? source-table "card__"))
-                {["Card" (parse-long (subs source-table 6))] {"Card" id}})
-              (for [card-id template-tags]
+              (when source-card
+                {["Card" source-card] {"Card" id}})
+              (for [{:keys [card-id]} template-tags
+                    :when             card-id]
                 {["Card" card-id] {"Card" id}})
               (for [card-id parameters-card-id]
                 {["Card" card-id] {"Card" id}})
@@ -1245,26 +1223,22 @@
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
-(defn- dataset-query->dimensions
+(mu/defn- serialized-query->dimensions
   "Extract dimensions (non-aggregation columns) from a dataset query."
-  [dataset-query-str]
-  (when dataset-query-str
-    ;; In production the :database should be always present and correct. That is not the case for some test mocks.
-    ;; As e.g. in [[metabase-enterprise.semantic-search.test-util/do-with-indexable-documents!]]. Hence the thorough
-    ;; checking.
-    (when-some [dataset-query (not-empty ((:out mi/transform-metabase-query) dataset-query-str))]
-      (when (pos-int? (:database dataset-query))
-        (lib.metadata.jvm/with-metadata-provider-cache
-          (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
-                lib-query         (lib/query metadata-provider dataset-query)
-                columns           (lib/returned-columns lib-query)]
-            ;; Dimensions are columns that are not aggregations
-            (remove (comp #{:source/aggregations} :lib/source) columns)))))))
+  [serialized-query :- :string]
+  ;; In production the :database should be always present and correct. That is not the case for some test mocks.
+  ;; As e.g. in [[metabase-enterprise.semantic-search.test-util/do-with-indexable-documents!]]. Hence the thorough
+  ;; checking.
+  (when-some [query (not-empty ((:out lib-be/transform-query) serialized-query))]
+    (when (pos-int? (:database query))
+      (let [columns (lib/returned-columns query)]
+        ;; Dimensions are columns that are not aggregations
+        (remove (comp #{:source/aggregations} :lib/source) columns)))))
 
 (defn extract-non-temporal-dimension-ids
   "Extract list of nontemporal dimension field IDs, stored as JSON string. See PR 60912"
-  [{:keys [dataset_query]}]
-  (let [dimensions (dataset-query->dimensions dataset_query)
+  [{serialized-query :dataset_query, :as _card}]
+  (let [dimensions (serialized-query->dimensions serialized-query)
         dim-ids    (->> dimensions
                         (remove lib.types/temporal?)
                         (keep :id)
@@ -1273,8 +1247,8 @@
 
 (defn has-temporal-dimension?
   "Return true if the query has any temporal dimensions. See PR 60912"
-  [{:keys [dataset_query]}]
-  (let [dimensions (dataset-query->dimensions dataset_query)]
+  [{serialized-query :dataset_query, :as _card}]
+  (let [dimensions (serialized-query->dimensions serialized-query)]
     (boolean (some lib.types/temporal? dimensions))))
 
 (defn ^:private base-search-spec

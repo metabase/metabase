@@ -14,6 +14,7 @@
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as u.memo]
    [metabase.util.performance :as perf]
@@ -518,3 +519,9 @@
   (if-let [cache-atom *metadata-provider-cache*]
     (cache.wrapped/lookup-or-miss cache-atom database-id application-database-metadata-provider-factory)
     (application-database-metadata-provider-factory database-id)))
+
+;;; do not encode MetadataProviders to JSON, just generate `nil` instead.
+(json/add-encoder
+ UncachedApplicationDatabaseMetadataProvider
+ (fn [_mp json-generator]
+   (json/generate-nil nil json-generator)))

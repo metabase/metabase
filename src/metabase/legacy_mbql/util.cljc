@@ -1,5 +1,6 @@
 (ns metabase.legacy-mbql.util
   "Utilitiy functions for working with MBQL queries."
+  {:clj-kondo/config '{:linters {:deprecated-var {:level :off}}}}
   (:refer-clojure :exclude [replace])
   (:require
    #?@(:clj
@@ -59,7 +60,6 @@
 (defn- simplify-and-or-filter
   {:deprecated "0.57.0"}
   [op args]
-  #_{:clj-kondo/ignore [:deprecated-var]}
   (let [args (distinct (filter some? args))]
     (case (count args)
       ;; an empty filter, toss it
@@ -86,7 +86,6 @@
   Use [[metabase.lib.filter.simplify-compound/simplify-compound-filter]] going forward."
   {:deprecated "0.57.0"}
   [x]
-  #_{:clj-kondo/ignore [:deprecated-var]}
   (cond
     ;; look for filters in the values
     (map? x) (update-vals x simplify-compound-filter)
@@ -118,7 +117,6 @@
   DEPRECATED: This will be removed in the near future. Use lib utils going forward."
   {:deprecated "0.57.0"}
   [filter-clause & more-filter-clauses]
-  #_{:clj-kondo/ignore [:deprecated-var]}
   (simplify-compound-filter (cons :and (cons filter-clause more-filter-clauses))))
 
 ;;; TODO (Cam 7/16/25) -- why does the LEGACY MBQL UTILS have STAGE STUFF IN IT!
@@ -169,7 +167,6 @@
    non-`emptyable` types act as `:is-null`. If field has nil base type it is considered not emptyable expansion wise."
   {:deprecated "0.57.0"}
   [m]
-  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace m
     [:is-empty clause]
     (if (emptyable? clause)
@@ -185,7 +182,6 @@
   "Replace a field or expression inside :time-interval"
   {:deprecated "0.57.0"}
   [m unit]
-  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace m
     [:field id-or-name opts]
     [:field id-or-name (assoc opts :temporal-unit unit)]
@@ -198,7 +194,6 @@
   "Rewrite `:time-interval` filter clauses as simpler ones like `:=` or `:between`."
   {:deprecated "0.57.0"}
   [m]
-  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace m
     [:time-interval field-or-expression n unit] (recur [:time-interval field-or-expression n unit nil])
 
@@ -250,7 +245,6 @@
   "Transform `:relative-time-interval` to `:and` expression."
   {:deprecated "0.57.0"}
   [m]
-  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace
     m
     [:relative-time-interval col value bucket offset-value offset-bucket]
@@ -273,7 +267,6 @@
   "Transform a `:during` expression to an `:and` expression."
   {:deprecated "0.57.0"}
   [m]
-  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace
     m
     [:during col value unit]
@@ -290,7 +283,6 @@
   "Transform a `:if` expression to an `:case` expression."
   {:deprecated "0.57.0"}
   [m]
-  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace
     m
     [:if & args]
@@ -300,7 +292,6 @@
   "Transform `:in` and `:not-in` expressions to `:=` and `:!=` expressions."
   {:deprecated "0.57.0"}
   [m]
-  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace m
     [:in & args]
     (into [:=] args)
@@ -316,7 +307,6 @@
   `[:and [:not [:contains ...]] [:not [:contains ...]]]`."
   {:deprecated "0.57.0"}
   [m]
-  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace m
     [:does-not-contain & args]
     [:not (into [:contains] args)]))
@@ -335,7 +325,6 @@
   `[:contains {} field x y z]`."
   {:deprecated "0.57.0"}
   [m]
-  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace m
     [:= field x y & more]
     (apply vector :or (for [x (concat [x y] more)]
@@ -359,7 +348,6 @@
   `<unit>` is inferred from the `:field` the clause is being compared to (if any), otherwise falls back to `default.`"
   {:deprecated "0.57.0"}
   [m]
-  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace m
     [clause field & (args :guard (partial some (partial = [:relative-datetime :current])))]
     (let [temporal-unit (or (lib.util.match/match-lite-recursive field
@@ -387,7 +375,6 @@
    [:get-second      nil]       :second-of-minute})
 
 (def ^:private ^{:deprecated "0.57.0"} temporal-extract-ops
-  #_{:clj-kondo/ignore [:deprecated-var]}
   (->> (keys temporal-extract-ops->unit)
        (map first)
        set))
@@ -396,7 +383,6 @@
   "Replace datetime extractions clauses like `[:get-year field]` with `[:temporal-extract field :year]`."
   {:deprecated "0.57.0"}
   [m]
-  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace m
     [(op :guard temporal-extract-ops) field & args]
     [:temporal-extract field (temporal-extract-ops->unit [op (first args)])]))
@@ -427,7 +413,6 @@
   the query itself. Filtering should be done based on the number, rather than the name."
   {:deprecated "0.57.0"}
   [expression]
-  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace expression
     [:month-name column]
     (recur (temporal-case-expression column :month-of-year 12))
@@ -441,7 +426,6 @@
   to compile."
   {:deprecated "0.57.0"}
   [expression :- ::mbql.s/FieldOrExpressionDef]
-  #_{:clj-kondo/ignore [:deprecated-var]}
   ;; The `mbql.jvm-u/desugar-host-and-domain` is implemented only for jvm because regexes are not compatible with
   ;; Safari.
   (let [desugar-host-and-domain* #?(:clj  mbql.jvm-u/desugar-host-and-domain
@@ -456,7 +440,6 @@
 (defn- maybe-desugar-expression
   {:deprecated "0.57.0"}
   [clause]
-  #_{:clj-kondo/ignore [:deprecated-var]}
   (cond-> clause
     (mbql.preds/FieldOrExpressionDef? clause) desugar-expression))
 
@@ -470,7 +453,6 @@
   forward."
   {:deprecated "0.57.0"}
   [filter-clause :- mbql.s/Filter]
-  #_{:clj-kondo/ignore [:deprecated-var]}
   (-> filter-clause
       desugar-current-relative-datetime
       desugar-in
@@ -514,7 +496,6 @@
   filter clause types). Useful for generating highly optimized filter clauses and for drivers that do not support
   top-level `:not` filter clauses."
   [filter-clause :- mbql.s/Filter]
-  #_{:clj-kondo/ignore [:deprecated-var]}
   (-> filter-clause desugar-filter-clause negate* simplify-compound-filter))
 
 (mu/defn query->source-table-id :- [:maybe ::lib.schema.id/table]
@@ -867,14 +848,16 @@
   Also handles unwrapped integers for legacy compatibility.
 
     (unwrap-field-clause [:field 100 nil]) ; -> [:field 100 nil]"
+  {:deprecated "0.57.0"}
   [field-form]
   (if (integer? field-form)
     [:field field-form nil]
     (lib.util.match/match-lite-recursive field-form :field field-form)))
 
-(mu/defn unwrap-field-or-expression-clause :- mbql.s/Field
+(mu/defn unwrap-field-or-expression-clause :- mbql.s/FieldOrExpressionRef
   "Unwrap a `:field` clause or expression clause, such as a template tag. Also handles unwrapped integers for
   legacy compatibility."
+  {:deprecated "0.57.0"}
   [field-or-ref-form]
   (or (unwrap-field-clause field-or-ref-form)
       (lib.util.match/match-lite-recursive field-or-ref-form :expression field-or-ref-form)))

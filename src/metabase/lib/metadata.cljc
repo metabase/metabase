@@ -22,10 +22,23 @@
 
 (mu/defn ->metadata-provider :- ::lib.schema.metadata/metadata-provider
   "Get a MetadataProvider from something that can provide one."
-  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable]
-  (if (lib.metadata.protocols/metadata-provider? metadata-providerable)
-    metadata-providerable
-    (some-> metadata-providerable :lib/metadata ->metadata-provider)))
+  ([metadata-providerable]
+   (->metadata-provider metadata-providerable nil))
+
+  ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+    database-id           :- [:maybe ::lib.schema.id/database]]
+   (cond
+     (lib.metadata.protocols/metadata-provider? metadata-providerable)
+     metadata-providerable
+
+     (map? metadata-providerable)
+     (some-> metadata-providerable :lib/metadata ->metadata-provider)
+
+     ((some-fn fn? var?) metadata-providerable)
+     (if (pos-int? database-id)
+       (metadata-providerable database-id)
+       (throw (ex-info "Cannot initialize new metadata provider without a Database ID"
+                       {:f metadata-providerable}))))))
 
 (mu/defn database :- ::lib.schema.metadata/database
   "Get metadata about the Database we're querying."

@@ -298,16 +298,22 @@
    toucan2.tools.debug/debug                          {:message "Don't commit code using t2/debug"}}
 
   :discouraged-namespace
-  {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
-   cheshire.core          {:message "Use metabase.util.json instead of cheshire.core directly."}
-   clj-time.core          {:message "Use java-time.api or metabase.util.date-2 instead of clj-time"}
-   clojure.tools.logging  {:message "Use metabase.util.log instead of clojure.tools.logging directly"}
-   grouper.core           {:message "Use metabase.util.grouper instead of grouper.core"}
-   honeysql.core          {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
-   honeysql.format        {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
-   honeysql.helpers       {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
-   honeysql.types         {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
-   honeysql.util          {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}}
+  {camel-snake-kebab.core              {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
+   cheshire.core                       {:message "Use metabase.util.json instead of cheshire.core directly."}
+   clj-time.core                       {:message "Use java-time.api or metabase.util.date-2 instead of clj-time"}
+   clojure.tools.logging               {:message "Use metabase.util.log instead of clojure.tools.logging directly"}
+   grouper.core                        {:message "Use metabase.util.grouper instead of grouper.core"}
+   honeysql.core                       {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
+   honeysql.format                     {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
+   honeysql.helpers                    {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
+   honeysql.types                      {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
+   honeysql.util                       {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
+   metabase.legacy-mbql.normalize      {:message "Use Lib instead of the legacy MBQL utils"}
+   metabase.legacy-mbql.predicates     {:message "Use Lib instead of the legacy MBQL utils"}
+   metabase.legacy-mbql.schema         {:message "Use Lib instead of the legacy MBQL utils"}
+   metabase.legacy-mbql.schema.helpers {:message "Use Lib instead of the legacy MBQL utils"}
+   metabase.legacy-mbql.schema.macros  {:message "Use Lib instead of the legacy MBQL utils"}
+   metabase.legacy-mbql.util           {:message "Use Lib instead of the legacy MBQL utils"}}
 
   :discouraged-tag {p {:message "You can use it, but don't commit it."}}
 
@@ -712,6 +718,8 @@
    :name    metabase-lib}
   {:pattern "^metabase\\.lib\\..*"
    :name    metabase-lib-excluding-legacy-mbql}
+  {:pattern "^metabase\\.legacy-mbql\\..*"
+   :name    legacy-mbql-namespaces}
   ;;
   ;; QP and driver source namespaces: `metabase.query-processor.*`, `metabase-enterprise.sandbox.query-processor.*`,
   ;; and `metabase.driver.*`, excluding `-test` namespaces.
@@ -816,13 +824,18 @@
   metabase-lib-excluding-legacy-mbql
   {:linters
    {:discouraged-var
-    {metabase.legacy-mbql.util/unique-name-generator {:message "Use metabase.lib.util/unique-name-generator or non-truncating-unique-name-generator"}}}
+    {metabase.legacy-mbql.util/unique-name-generator {:message "Use metabase.lib.util/unique-name-generator or non-truncating-unique-name-generator"}}}}
 
-   :discouraged-namespace
-   {metabase.legacy-mbql.js         {:message "Avoid legacy MBQL utils in Lib; move things into Lib if needded."}
-    metabase.legacy-mbql.jvm-util   {:message "Avoid legacy MBQL utils in Lib; move things into Lib if needded."}
-    metabase.legacy-mbql.predicates {:message "Avoid legacy MBQL utils in Lib; move things into Lib if needded."}
-    metabase.legacy-mbql.util       {:message "Avoid legacy MBQL utils in Lib; move things into Lib if needded."}}}
+  legacy-mbql-namespaces
+  {:linters
+   {:discouraged-namespace
+    ;; it's ok to use legacy-mbql namespaces within the legacy MBQL module.
+    {metabase.legacy-mbql.normalize      {:level :off}
+     metabase.legacy-mbql.predicates     {:level :off}
+     metabase.legacy-mbql.schema         {:level :off}
+     metabase.legacy-mbql.schema.helpers {:level :off}
+     metabase.legacy-mbql.schema.macros  {:level :off}
+     metabase.legacy-mbql.util           {:level :off}}}}
 
   driver-namespaces
   {:linters

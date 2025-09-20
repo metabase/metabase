@@ -20,7 +20,7 @@
   [{:keys        [fields]
     breakouts    :breakout
     aggregations :aggregation, :as stage} :- ::lib.schema/stage]
-  (and (= (:lib/type stage) :mbql.stage/mbql)
+  (and (lib/mbql-stage? stage)
        (every? empty? [aggregations breakouts fields])))
 
 (mu/defn- add-implicit-fields :- [:maybe ::lib.schema/stage]

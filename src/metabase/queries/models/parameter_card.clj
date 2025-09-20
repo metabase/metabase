@@ -6,7 +6,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -40,25 +39,33 @@
     (when (:parameterized_object_type (t2/changes <>))
       (validate-parameterized-object-type <>))))
 
-(defn delete-all-for-parameterized-object!
+(mu/defn delete-all-for-parameterized-object!
   "Delete all ParameterCard for a give Parameterized Object and NOT listed in the optional
   `parameter-ids-still-in-use`."
   ([parameterized-object-type parameterized-object-id]
    (delete-all-for-parameterized-object! parameterized-object-type parameterized-object-id []))
 
-  ([parameterized-object-type parameterized-object-id parameter-ids-still-in-use]
-   (let [conditions (concat [:parameterized_object_type parameterized-object-type
+  ([parameterized-object-type :- [:enum :model/Dashboard :model/Card]
+    parameterized-object-id   :- pos-int?
+    parameter-ids-still-in-use]
+   (let [conditions (concat [:parameterized_object_type (case parameterized-object-type
+                                                          :model/Card      "card"
+                                                          :model/Dashboard "dashboard")
                              :parameterized_object_id parameterized-object-id]
                             (when (seq parameter-ids-still-in-use)
                               [:parameter_id [:not-in parameter-ids-still-in-use]]))]
      (apply t2/delete! :model/ParameterCard conditions))))
 
-(defn- upsert-from-parameters!
-  [parameterized-object-type parameterized-object-id parameters]
+(mu/defn- upsert-from-parameters!
+  [parameterized-object-type :- [:enum :model/Card :model/Dashboard]
+   parameterized-object-id   :- pos-int?
+   parameters]
   (doseq [{:keys [values_source_config id]} parameters]
     (let [card-id    (:card_id values_source_config)
           conditions {:parameterized_object_id   parameterized-object-id
-                      :parameterized_object_type parameterized-object-type
+                      :parameterized_object_type (case parameterized-object-type
+                                                   :model/Card      "card"
+                                                   :model/Dashboard "dashboard")
                       :parameter_id              id}]
       ;; TODO: Maybe update! should return different values for no rows to update vs
       ;; no changes to be made
@@ -69,12 +76,12 @@
 (mu/defn upsert-or-delete-from-parameters!
   "From a parameters list on card or dashboard, create, update,
   or delete appropriate ParameterCards for each parameter in the dashboard"
-  [parameterized-object-type :- ms/NonBlankString
-   parameterized-object-id   :- ms/PositiveInt
+  [parameterized-object-type :- [:enum :model/Card :model/Dashboard]
+   parameterized-object-id   :- pos-int?
    parameters                :- [:maybe [:sequential ::parameters.schema/parameter]]]
   (let [upsertable?           (fn [{:keys [values_source_type values_source_config id]}]
                                 (and values_source_type id (:card_id values_source_config)
-                                     (= values_source_type "card")))
+                                     (= (keyword values_source_type) :card)))
         upsertable-parameters (filter upsertable? parameters)]
     (upsert-from-parameters! parameterized-object-type parameterized-object-id upsertable-parameters)
     (delete-all-for-parameterized-object! parameterized-object-type parameterized-object-id (map :id upsertable-parameters))))
