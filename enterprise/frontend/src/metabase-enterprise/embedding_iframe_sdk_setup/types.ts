@@ -4,6 +4,7 @@ import type {
   SdkIframeEmbedStaticEmbeddingSettings,
   SdkIframeEmbedTemplateSettings,
 } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
+import type { SdkIframeEmbedSetupStaticEmbeddingType } from "metabase-enterprise/embedding_iframe_sdk_setup/enums";
 import type { BaseRecentItem } from "metabase-types/api";
 
 export type SdkIframeEmbedSetupExperience =
@@ -28,6 +29,11 @@ export type SdkIframeEmbedSetupRecentItem = Pick<
   "name" | "description"
 > & { id: string | number };
 
+export type SdkIframeEmbedSetupStaticEmbeddingSettings =
+  SdkIframeEmbedStaticEmbeddingSettings & {
+    staticEmbeddingType: SdkIframeEmbedSetupStaticEmbeddingType;
+  };
+
 /**
  * Settings used by the embed setup route.
  * Excludes `instanceUrl` as it is derived dynamically from site-url.
@@ -36,7 +42,7 @@ export type SdkIframeEmbedSetupSettings = Omit<
   SdkIframeEmbedBaseSettings,
   "instanceUrl"
 > &
-  SdkIframeEmbedStaticEmbeddingSettings &
+  Partial<SdkIframeEmbedSetupStaticEmbeddingSettings> &
   SdkIframeEmbedTemplateSettings;
 
 export type SdkIframeEmbedSetupEmbeddingType = "modular" | "static";

@@ -14,6 +14,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import { SdkIframeEmbedSetupStaticEmbeddingType } from "metabase-enterprise/embedding_iframe_sdk_setup/enums";
 import type { SettingKey } from "metabase-types/api";
 
 import { trackEmbedWizardCodeCopied } from "../analytics";
@@ -38,6 +39,7 @@ export const GetCodeStep = () => {
   const snippet = useSdkIframeEmbedSnippet();
 
   const authType = settings.useExistingUserSession ? "user-session" : "sso";
+  const staticEmbeddingType = settings.staticEmbeddingType;
 
   return (
     <Stack gap="md">
@@ -100,6 +102,41 @@ export const GetCodeStep = () => {
                 {t`Select this option if you have already set up SSO. This option relies on SSO to sign in your application users into the embedded iframe, and groups and permissions to enforce limits on what users can access. `}
               </Text>
             )}
+          </Stack>
+        </Card>
+      )}
+
+      {isStaticEmbedding && (
+        <Card p="md">
+          <Stack gap="md" p="xs">
+            <Text size="lg" fw="bold">
+              {t`Static embedding mode`}
+            </Text>
+
+            <Text size="sm" c="text-medium">
+              {t`Choose the static embedding mode:`}
+            </Text>
+
+            <Radio.Group
+              value={staticEmbeddingType}
+              onChange={(nextStaticEmbeddingType) =>
+                updateSettings({
+                  staticEmbeddingType:
+                    nextStaticEmbeddingType as SdkIframeEmbedSetupStaticEmbeddingType,
+                })
+              }
+            >
+              <Stack gap="sm">
+                <Radio
+                  value={SdkIframeEmbedSetupStaticEmbeddingType.ClientFetched}
+                  label={t`Client-fetched`}
+                />
+                <Radio
+                  value={SdkIframeEmbedSetupStaticEmbeddingType.ServerGenerated}
+                  label={t`Server-generated`}
+                />
+              </Stack>
+            </Radio.Group>
           </Stack>
         </Card>
       )}

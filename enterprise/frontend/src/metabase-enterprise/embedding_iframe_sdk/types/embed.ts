@@ -190,10 +190,7 @@ export type SdkIframeEmbedBaseSettings = {
   _isLocalhost?: boolean;
 };
 
-export type SdkIframeEmbedStaticEmbeddingSettings = Pick<
-  SdkIframeEmbedBaseSettings,
-  "useExistingUserSession"
-> & {
+export type SdkIframeEmbedStaticEmbeddingSettings = {
   isStatic: boolean;
   fetchStaticToken: MetabaseFetchStaticTokenFn;
 };
@@ -230,7 +227,3 @@ export type SdkIframeEmbedSettingKey =
   | keyof QuestionEmbedOptions
   | keyof ExplorationEmbedOptions
   | keyof BrowserEmbedOptions;
-
-export type CallFunctionFromParentFrameData<TData> = TData & {
-  messageId: string;
-};
