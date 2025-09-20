@@ -26,7 +26,7 @@ export function GlossaryContainer() {
       className={cx(CS.flexFull, CS.relative)}
       sidebar={<BaseSidebar />}
     >
-      <Stack w="100%">
+      <Stack w="100%" h="100%">
         <Group
           align="center"
           wrap="nowrap"
@@ -43,7 +43,7 @@ export function GlossaryContainer() {
           m={0}
           className={cx(CS.wrapper, CS.wrapperTrim)}
         >
-          <Card px="lg" className={cx(CS.bordered, S.card)}>
+          <Card px="lg" pb="sm" withBorder shadow="none" className={S.card}>
             <GlossaryTable
               className={S.table}
               glossary={glossary}

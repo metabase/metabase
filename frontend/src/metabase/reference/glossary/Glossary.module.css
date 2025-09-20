@@ -1,5 +1,5 @@
 .card {
-  box-shadow: 0 0.5rem 1.25rem var(--mb-color-shadow);
+  /* Card styling handled by Mantine Card props */
 }
 
 .table {
