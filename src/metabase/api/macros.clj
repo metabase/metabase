@@ -169,9 +169,7 @@
              (= (mc/type route-params-schema) :map))
     (some (fn [[k _options v-schema]]
             (when (= k route-param)
-              (or
-               (:api/regex (mc/properties v-schema))
-               (second (metabase.api.common.internal/->matching-regex v-schema)))))
+              (metabase.api.common.internal/->matching-regex v-schema)))
           (mc/children route-params-schema))))
 
 (mu/defn- inferred-route-regexes :- [:maybe [:map-of :keyword (ms/InstanceOfClass java.util.regex.Pattern)]]
