@@ -1028,24 +1028,6 @@ describe("scenarios > question > filter", () => {
     });
   });
 
-  // TODO: fixme!
-  it(
-    "should render custom expression helper near the custom expression field",
-    { tags: "@skip" },
-    () => {
-      H.openReviewsTable({ mode: "notebook" });
-      H.filter({ mode: "notebook" });
-
-      H.expressionEditorWidget().within(() => {
-        cy.findByText("Custom Expression").click();
-
-        H.enterCustomColumnDetails({ formula: "floor" });
-
-        H.checkExpressionEditorHelperPopoverPosition();
-      });
-    },
-  );
-
   it("should close the dropdown but not the popover on escape when the combobox is opened", () => {
     const optionName = "Abbey Satterfield";
     H.openPeopleTable({ mode: "notebook" });

@@ -843,22 +843,6 @@ describe("scenarios > question > custom column", () => {
     );
   });
 
-  // TODO: fixme!
-  it(
-    "should render custom expression helper near the custom expression field",
-    { tags: "@skip" },
-    () => {
-      H.openOrdersTable({ mode: "notebook" });
-      cy.findByLabelText("Custom column").click();
-
-      H.popover().within(() => {
-        H.enterCustomColumnDetails({ formula: "floor" });
-
-        H.checkExpressionEditorHelperPopoverPosition();
-      });
-    },
-  );
-
   it("should allow to use `if` function", () => {
     H.openProductsTable({ mode: "notebook" });
 
