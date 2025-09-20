@@ -27,7 +27,7 @@
       (-> (slurp (:body request))
           yaml/parse-string
           (assoc :collection collection-id)
-          rep/yaml->toucan
+          rep/validate
           rep/persist!)
       nil)
     (catch Throwable e
