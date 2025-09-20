@@ -181,12 +181,15 @@
                       {:legacy-query legacy-query}
                       e)))))
 
-(defmulti ^:private query-method
+(defmulti query-method
   "Implementation for [[query]]."
   {:arglists '([metadata-providerable x])}
   (fn [_metadata-providerable x]
     (or (lib.util/normalized-query-type x)
-        (lib.dispatch/dispatch-value x)))
+        (let [dispatch-value (lib.dispatch/dispatch-value x)]
+          (if (= dispatch-value :dispatch-type/*)
+            (type x)
+            dispatch-value))))
   :hierarchy lib.hierarchy/hierarchy)
 
 (defmethod query-method :query ; legacy MBQL query
