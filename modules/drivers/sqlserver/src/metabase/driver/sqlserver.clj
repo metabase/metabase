@@ -3,6 +3,7 @@
   (:require
    [clojure.data.xml :as xml]
    [clojure.java.io :as io]
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [honey.sql :as sql]
@@ -24,6 +25,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
    (java.sql
@@ -61,6 +63,7 @@
                               :regex                                  false
                               :test/jvm-timezone-setting              false
                               :metadata/table-existence-check         true
+                              :transforms/python                      true
                               :transforms/table                       true}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
@@ -118,6 +121,27 @@
     :varchar          :type/Text
     :xml              :type/*
     (keyword "int identity") :type/Integer} column-type)) ; auto-incrementing integer (ie pk) field
+
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for SQL Server that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+(defmethod type->database-type :type/Boolean [_] [:bit])
+(defmethod type->database-type :type/Date [_] [:date])
+(defmethod type->database-type :type/DateTime [_] [:datetime2])
+(defmethod type->database-type :type/DateTimeWithTZ [_] [:datetimeoffset])
+(defmethod type->database-type :type/Decimal [_] [:decimal])
+(defmethod type->database-type :type/Float [_] [:float])
+(defmethod type->database-type :type/Integer [_] [:int])
+(defmethod type->database-type :type/Number [_] [:bigint])
+(defmethod type->database-type :type/Text [_] [:text])
+(defmethod type->database-type :type/Time [_] [:time])
+(defmethod type->database-type :type/UUID [_] [:uniqueidentifier])
+
+(defmethod driver/type->database-type :sqlserver
+  [_driver base-type]
+  (type->database-type base-type))
 
 (defmethod sql-jdbc.conn/connection-details->spec :sqlserver
   [_ {:keys [user password db host port instance domain ssl]
@@ -941,6 +965,21 @@
   [_ e]
   (= (sql-jdbc/get-sql-state e) "S0002"))
 
+(defmethod driver/insert-from-source! [:sqlserver :jsonl-file]
+  [driver db-id {:keys [columns] :as table-definition} {:keys [file]}]
+  (with-open [rdr (io/reader file)]
+    (let [lines (line-seq rdr)
+          data-rows (map (fn [line]
+                           (let [m (json/decode line)]
+                             (mapv (fn [column]
+                                     (let [value (get m (:name column))]
+                                       (if (boolean? value)
+                                         (if value 1 0)
+                                         value)))
+                                   columns)))
+                         lines)]
+      (driver/insert-from-source! driver db-id table-definition {:type :rows :data data-rows}))))
+
 (defmethod driver/compile-transform :sqlserver
   [driver {:keys [query output-table]}]
   (let [^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))
@@ -969,3 +1008,13 @@
   [driver conn-spec schema]
   (let [sql [[(format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA [%s];');" schema schema)]]]
     (driver/execute-raw-queries! driver conn-spec sql)))
+
+(defmethod driver/rename-tables!* :sqlserver
+  [_driver db-id sorted-rename-map]
+  ;; TODO: QUE-2474. not atomic, use locks
+  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+    (with-open [stmt (.createStatement ^java.sql.Connection (:connection conn))]
+      (doseq [[old-table-name new-table-name] sorted-rename-map]
+        (let [sql (format "EXEC sp_rename '%s', '%s';" (name old-table-name) (name new-table-name))]
+          (.addBatch ^java.sql.Statement stmt ^String sql)))
+      (.executeBatch ^java.sql.Statement stmt))))

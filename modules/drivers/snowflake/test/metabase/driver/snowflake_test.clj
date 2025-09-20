@@ -1305,3 +1305,19 @@
               (is (true? details-changed?))
               (is (= original-priv-key priv-key-after-update))
               (is (not= priv-key-after-update priv-key-after-event)))))))))
+
+(deftest ^:parallel type->database-type-test
+  (testing "type->database-type multimethod returns correct Snowflake types"
+    (are [base-type expected] (= expected (driver/type->database-type :snowflake base-type))
+      :type/Array              [:ARRAY]
+      :type/Boolean            [:BOOLEAN]
+      :type/Date               [:DATE]
+      :type/DateTime           [:DATETIME]
+      :type/DateTimeWithLocalTZ [:TIMESTAMPTZ]
+      :type/DateTimeWithTZ     [:TIMESTAMPLTZ]
+      :type/Decimal            [:DECIMAL]
+      :type/Float              [:DOUBLE]
+      :type/Number             [:BIGINT]
+      :type/Integer            [:INTEGER]
+      :type/Text               [:TEXT]
+      :type/Time               [:TIME])))

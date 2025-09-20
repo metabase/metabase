@@ -1,5 +1,6 @@
 (ns metabase-enterprise.transforms.execute
   (:require
+   [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -54,7 +55,8 @@
          (transforms.util/run-cancelable-transform!
           run-id driver transform-details
           (fn [_cancel-chan] (driver/run-transform! driver transform-details opts)))
-         (transforms.util/sync-target! target database run-id)))
+         (transforms.instrumentation/with-stage-timing [run-id :table-sync]
+           (transforms.util/sync-target! target database run-id))))
      (catch Throwable t
        (log/error t "Error executing transform")
        (when start-promise

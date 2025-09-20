@@ -52,7 +52,7 @@
   (deferred-tru "S3 bucket name for storing Python execution artifacts.")
   :type       :string
   :visibility :admin
-  :default    (if (not config/is-prod?) "metabase-python-runner" "metabase-cloud-python-runner-staging")
+  :default    (when (not config/is-prod?) "metabase-python-runner")
   :feature    :transforms-python
   :doc        false
   :export?    false
@@ -64,7 +64,7 @@
   :type       :string
   :visibility :admin
   :feature    :transforms-python
-  :default    (if (not config/is-prod?) "test-prefix" "hosting-4b9351bb22b84791")
+  :default    (when (not config/is-prod?) "test-prefix")
   :doc        false
   :export?    false
   :encryption :no
