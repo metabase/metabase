@@ -210,7 +210,8 @@
                                                  :shallow                        shallow
                                                  :collection-id                  collection-id})
                             (let [load-static-collections (resolve 'metabase-enterprise.representations.core/collections)]
-                                (load-static-collections)))]
+                              (when load-static-collections
+                                (load-static-collections))))]
     (if shallow
       (shallow-tree-from-collection-id collections)
       (let [collection-type-ids (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
