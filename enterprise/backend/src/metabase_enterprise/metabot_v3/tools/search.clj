@@ -112,6 +112,7 @@
   (let [search-models (if (seq entity-types)
                         (set (distinct (keep entity-type->search-model entity-types)))
                         metabot-search-models)
+        _ (log/infof "[METABOT-SEARCH] Converted entity-types %s to search-models %s" entity-types search-models)
         all-queries   (distinct (concat (or term-queries []) (or semantic-queries [])))
         metabot (t2/select-one :model/Metabot :entity_id (get-in metabot-v3.config/metabot-config [metabot-id :entity-id] metabot-id))
         use-verified-content? (if metabot-id
@@ -136,8 +137,13 @@
                                             :offset 0}
                                            (when use-verified-content?
                                              {:verified true})))
-                          search-results (search/search search-context)]
-                      (:data search-results)))
+                          _ (log/infof "[METABOT-SEARCH] Search context models for query '%s': %s"
+                                       query (:models search-context))
+                          search-results (search/search search-context)
+                          data (:data search-results)
+                          result-models (frequencies (map :model data))]
+                      (log/infof "[METABOT-SEARCH] Query '%s' returned entity types: %s" query result-models)
+                      data))
         ;; Create futures for parallel execution
         futures (mapv #(future (search-fn %)) all-queries)
         result-lists (mapv deref futures)
