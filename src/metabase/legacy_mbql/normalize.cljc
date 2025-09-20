@@ -28,7 +28,7 @@
   Removing empty clauses like `{:aggregation nil}` or `{:breakout []}`.
 
   Token normalization occurs first, followed by canonicalization, followed by removing empty clauses."
-  (:refer-clojure :exclude [mapv every? some select-keys])
+  (:refer-clojure :exclude [mapv every? some select-keys first not-empty])
   (:require
    [clojure.set :as set]
    [medley.core :as m]
@@ -43,7 +43,8 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [mapv every? some select-keys]]
+   [metabase.util.performance :as perf :refer [mapv every? some select-keys
+                                               first not-empty]]
    [metabase.util.time :as u.time]))
 
 (defn- mbql-clause?
@@ -770,14 +771,9 @@
   "Walk an `mbql-query` an canonicalize non-top-level clauses like `:fk->`."
   [form]
   (cond
-    ;; Special handling for records so that they are not converted into plain maps.
-    ;; Only the values are canonicalized.
-    (record? form)
-    (reduce-kv (fn [r k x] (assoc r k (canonicalize-mbql-clauses x))) form form)
-
-    ;; Only the values are canonicalized.
-    (map? form)
-    (update-vals form canonicalize-mbql-clauses)
+    ;; Make sure that records are converted into plain maps. Only the values are canonicalized.
+    (or (record? form) (map? form))
+    (perf/update-vals form canonicalize-mbql-clauses)
 
     (mbql-clause? form)
     (let [top-canonical
@@ -790,18 +786,21 @@
                               e))))]
       ;; Canonical clauses are assumed to be sequential things conj'd at the end.
       ;; In fact, they should better be vectors.
-      (if (seq top-canonical)
-        (into (conj (empty top-canonical) (first top-canonical))
-              (map canonicalize-mbql-clauses)
-              (rest top-canonical))
-        top-canonical))
+      (cond (vector? top-canonical)
+            (perf/update-vals top-canonical canonicalize-mbql-clauses)
+
+            (seq top-canonical)
+            (into (conj (empty top-canonical) (first top-canonical))
+                  (map canonicalize-mbql-clauses)
+                  (rest top-canonical))
+
+            :else top-canonical))
 
     ;; ISeq instances (e.g., list and lazy sequences) are converted to vectors.
-    (seq? form)
+    (or (seq? form) (vector? form))
     (mapv canonicalize-mbql-clauses form)
 
-    ;; Other collections (e.g., vectors, sets, and queues) are assumed to be conj'd at the end
-    ;; and we keep their types.
+    ;; Other collections (e.g., sets, queues) are assumed to be conj'd at the end and we keep their types.
     (coll? form)
     (into (empty form) (map canonicalize-mbql-clauses) form)
 
