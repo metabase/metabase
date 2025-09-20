@@ -6,6 +6,7 @@ import type {
   ExplorationEmbedOptions,
   QuestionEmbedOptions,
 } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
+import { DEFAULT_STATIC_EMBEDDING_SETTINGS } from "metabase-enterprise/embedding_iframe_sdk_setup/constants";
 
 import type {
   SdkIframeEmbedSetupSettings,
@@ -62,5 +63,6 @@ export const getDefaultSdkIframeEmbedSettings = ({
   return {
     ...templateDefaults,
     useExistingUserSession: !isStaticEmbedding,
+    ...(isStaticEmbedding && DEFAULT_STATIC_EMBEDDING_SETTINGS),
   };
 };

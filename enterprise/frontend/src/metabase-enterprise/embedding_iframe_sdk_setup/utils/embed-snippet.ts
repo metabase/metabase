@@ -20,6 +20,8 @@ import { filterEmptySettings } from "./filter-empty-settings";
 
 type SettingKey = Exclude<keyof SdkIframeEmbedBaseSettings, "_isLocalhost">;
 
+const FETCH_STATIC_TOKEN_TEMPLATE = "{{FETCH_STATIC_TOKEN}}";
+
 export function getEmbedSnippet({
   embeddingType,
   settings,
@@ -146,9 +148,10 @@ export function getMetabaseConfigSnippet({
     // Append these settings that can't be controlled by users.
     instanceUrl,
 
-    ...(isStaticEmbedding && {
-      fetchStaticToken: "{{fetchStaticToken}}",
-    }),
+    ...(isStaticEmbedding &&
+      settings.staticEmbeddingType === "client-fetched" && {
+        fetchStaticToken: FETCH_STATIC_TOKEN_TEMPLATE,
+      }),
   };
 
   // filter out empty arrays, strings, objects, null and undefined.
@@ -160,7 +163,7 @@ export function getMetabaseConfigSnippet({
     .replace(/^{/, "")
     .replace(/}$/, "")
     .replace(
-      `"{{fetchStaticToken}}"`,
+      `"${FETCH_STATIC_TOKEN_TEMPLATE}"`,
       config.fetchStaticToken?.toString() ?? "",
     )
     .split("\n")

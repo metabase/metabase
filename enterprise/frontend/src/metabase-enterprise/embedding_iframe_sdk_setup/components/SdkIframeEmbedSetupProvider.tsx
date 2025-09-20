@@ -14,8 +14,8 @@ import { useUserSetting } from "metabase/common/hooks";
 
 import { trackEmbedWizardSettingsUpdated } from "../analytics";
 import {
+  DEFAULT_STATIC_EMBEDDING_SETTINGS,
   EMBED_FALLBACK_DASHBOARD_ID,
-  STATIC_EMBEDDING_SETTINGS,
   USER_SETTINGS_DEBOUNCE_MS,
 } from "../constants";
 import {
@@ -191,7 +191,11 @@ export const SdkIframeEmbedSetupProvider = ({
         ...(authMethodOverride !== null && {
           useExistingUserSession: authMethodOverride === "user_session",
         }),
-        ...(isStaticEmbedding && STATIC_EMBEDDING_SETTINGS),
+        // Override the persisted settings for static embedding
+        ...(isStaticEmbedding && {
+          useExistingUserSession:
+            DEFAULT_STATIC_EMBEDDING_SETTINGS.useExistingUserSession,
+        }),
       });
 
       setEmbedSettingsLoaded(true);

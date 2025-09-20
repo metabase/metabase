@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { SdkIframeEmbedStaticEmbeddingSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
+import { SdkIframeEmbedSetupStaticEmbeddingType } from "metabase-enterprise/embedding_iframe_sdk_setup/enums";
 
 import { GetCodeStep } from "./components/GetCodeStep";
 import { SelectEmbedExperienceStep } from "./components/SelectEmbedExperienceStep";
@@ -8,6 +8,8 @@ import { SelectEmbedOptionsStep } from "./components/SelectEmbedOptionsStep";
 import { SelectEmbedResourceStep } from "./components/SelectEmbedResourceStep";
 import type {
   SdkIframeEmbedSetupExperience,
+  SdkIframeEmbedSetupSettings,
+  SdkIframeEmbedSetupStaticEmbeddingSettings,
   SdkIframeEmbedSetupStep,
 } from "./types";
 
@@ -92,14 +94,15 @@ export const SET_INITIAL_PARAMETER_DEBOUNCE_MS = 500;
  */
 export const USER_SETTINGS_DEBOUNCE_MS = 800;
 
-export const STATIC_EMBEDDING_SETTINGS: SdkIframeEmbedStaticEmbeddingSettings =
-  {
-    isStatic: true,
-    useExistingUserSession: false,
-    fetchStaticToken: async () => {
-      // Implement your logic to fetch a static signed JWT token from your backend.
-      return {
-        jwt: "...",
-      };
-    },
-  };
+export const DEFAULT_STATIC_EMBEDDING_SETTINGS: SdkIframeEmbedSetupStaticEmbeddingSettings &
+  Pick<SdkIframeEmbedSetupSettings, "useExistingUserSession"> = {
+  isStatic: true,
+  staticEmbeddingType: SdkIframeEmbedSetupStaticEmbeddingType.ClientFetched,
+  useExistingUserSession: false,
+  fetchStaticToken: async () => {
+    // Implement your logic to fetch a static signed JWT token from your backend.
+    return {
+      jwt: "...",
+    };
+  },
+};
