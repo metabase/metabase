@@ -1,4 +1,4 @@
-(ns metabase.util.formatting.internal.date-builder
+(ns metabase.formatter.internal.date-builder
   "The formatting strings are not standardized.
   Rather than wrangling with strings, this library defines a data structure for describing the format of
   date/time strings.
@@ -18,7 +18,7 @@
   #?(:clj (:import
            java.time.format.DateTimeFormatter)))
 
-(def format-strings
+(def ^:private format-strings
   "This is the complete set of keys the formats can contain, mapped to the platform-specific magic string expected
   by Moment.js or java.time.format.DateTimeFormatter. Many are the same, but not all."
   {:year              #?(:cljs "YYYY" :clj "yyyy")  ; 2022

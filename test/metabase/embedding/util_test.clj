@@ -1,4 +1,4 @@
-(ns metabase.util.embed-test
+(ns metabase.embedding.util-test
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]

@@ -1,11 +1,11 @@
-(ns metabase.util.formatting.internal.numbers
+(ns metabase.formatter.internal.numbers
   "ClojureScript implementation of number formatting.
   Implements the [[NumberFormatter]] protocol from numbers_core, plus some helpers."
   (:require
    [clojure.string :as str]
+   [metabase.formatter.internal.numbers-core :as core]
    [metabase.util :as u]
-   [metabase.util.currency :as currency]
-   [metabase.util.formatting.internal.numbers-core :as core]))
+   [metabase.util.currency :as currency]))
 
 (def ^:private default-number-separators ".,")
 

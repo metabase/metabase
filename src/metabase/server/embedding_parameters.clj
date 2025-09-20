@@ -1,5 +1,4 @@
-(ns metabase.util.embed
-  "Utility functions for public links and embedding."
+(ns metabase.server.embedding-parameters
   (:require
    [hiccup.core :refer [html]]
    [metabase.system.core :as system]
@@ -34,10 +33,3 @@
   "Returns the `<meta>`/`<link>` tags for an embeddable public page."
   ^String [^String url]
   (str embedly-meta (oembed-link url)))
-
-(defn maybe-populate-initially-published-at
-  "Populate `initially_published_at` if embedding is set to true"
-  [{:keys [enable_embedding initially_published_at] :as card-or-dashboard}]
-  (cond-> card-or-dashboard
-    (and (true? enable_embedding) (nil? initially_published_at))
-    (assoc :initially_published_at :%now)))

@@ -1,8 +1,8 @@
-(ns metabase.util.markdown-test
+(ns metabase.channel.markdown-test
   (:require
    [clojure.test :refer :all]
-   [metabase.test.util :as tu]
-   [metabase.util.markdown :as markdown]))
+   [metabase.channel.markdown :as markdown]
+   [metabase.test.util :as tu]))
 
 (defn- slack
   [markdown]
