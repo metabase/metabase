@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (def ^:private metabot-search-models
@@ -98,7 +99,16 @@
   "Search for data sources (tables, models, cards, dashboards, metrics) in Metabase.
   Abstracted from the API endpoint logic."
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
-           entity-types limit metabot-id]}]
+           entity-types limit metabot-id] :as params}]
+  (log/infof "[METABOT-SEARCH] Starting search with params: %s"
+             {:term-queries term-queries
+              :semantic-queries semantic-queries
+              :database-id database-id
+              :created-at created-at
+              :last-edited-at last-edited-at
+              :entity-types entity-types
+              :limit limit
+              :metabot-id metabot-id})
   (let [search-models (if (seq entity-types)
                         (set (distinct (keep entity-type->search-model entity-types)))
                         metabot-search-models)
@@ -131,5 +141,10 @@
         ;; Create futures for parallel execution
         futures (mapv #(future (search-fn %)) all-queries)
         result-lists (mapv deref futures)
-        fused-results (reciprocal-rank-fusion result-lists)]
-    (map transform-search-result fused-results)))
+        fused-results (reciprocal-rank-fusion result-lists)
+        entity-type-counts (frequencies (map :model fused-results))
+        transformed-results (map transform-search-result fused-results)]
+    (log/infof "[METABOT-SEARCH] Entity type distribution: %s" entity-type-counts)
+    (log/infof "[METABOT-SEARCH] Fused results sample (first 3): %s"
+               (take 3 (map #(select-keys % [:id :model :name :table_name]) fused-results)))
+    transformed-results))
