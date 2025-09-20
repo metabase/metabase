@@ -599,7 +599,7 @@ export const PLUGIN_CONTENT_VERIFICATION = {
 
 export type InsightsLinkProps = (
   | {
-      question: Pick<Question, "id" | "collection">;
+      question: Pick<Question, "id" | "collection" | "type">;
       dashboard?: never;
     }
   | {
