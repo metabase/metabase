@@ -986,7 +986,9 @@ describe("metabot-streaming", () => {
 
       // adding messages this long via the ui's input makes the test hang
       act(() => {
-        store.dispatch(addUserMessage({ id: "1", message: longMsg }));
+        store.dispatch(
+          addUserMessage({ id: "1", type: "text", message: longMsg }),
+        );
       });
       expect(await screen.findByText(/xxxxxxx/)).toBeInTheDocument();
       expect(
@@ -994,7 +996,9 @@ describe("metabot-streaming", () => {
       ).not.toBeInTheDocument();
 
       act(() => {
-        store.dispatch(addUserMessage({ id: "2", message: longMsg }));
+        store.dispatch(
+          addUserMessage({ id: "2", type: "text", message: longMsg }),
+        );
       });
       expect(
         await screen.findByText(/This chat is getting long/),

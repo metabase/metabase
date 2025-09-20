@@ -1,15 +1,23 @@
+import { useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
+import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
+import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
+import {
+  getMetabotSuggestedTransform,
+  setSuggestedTransform,
+} from "metabase-enterprise/metabot/state";
 import type { DatasetQuery, Transform } from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
@@ -53,7 +61,50 @@ export function TransformQueryPageBody({
   const dispatch = useDispatch();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
-  const handleSave = async (query: DatasetQuery) => {
+  const metabot = useMetabotAgent();
+
+  const initialQuery = transform.source.query;
+  const [latestQuery, setLatestQuery] = useState<DatasetQuery>(initialQuery);
+
+  const suggestedTransform = useSelector(
+    (state) => getMetabotSuggestedTransform(state, transform.id) as any,
+  ) as ReturnType<typeof getMetabotSuggestedTransform>;
+  const proposedQuery = suggestedTransform?.source.query;
+
+  useRegisterMetabotContextProvider(async () => {
+    const viewedTransform = suggestedTransform ?? {
+      ...transform,
+      source: { ...transform.source, query: latestQuery },
+    };
+    return { user_is_viewing: [{ type: "transform", ...viewedTransform }] };
+  }, [transform, latestQuery, suggestedTransform]);
+
+  const onRejectProposed = () => {
+    dispatch(setSuggestedTransform(undefined));
+    metabot.submitInput({
+      type: "action",
+      message:
+        "HIDDEN MESSAGE: the user has rejected your changes, ask for clarification on what they'd like to do instead.",
+      // @ts-expect-error -- TODO
+      userMessage: "❌ You rejected the change",
+    });
+  };
+  const onAcceptProposed = async (query: DatasetQuery) => {
+    await handleSave(query, { leaveEditor: false });
+    dispatch(setSuggestedTransform(undefined));
+    metabot.submitInput({
+      type: "action",
+      message:
+        "HIDDEN MESSAGE: user has accepted your changes, move to the next step!",
+      // @ts-expect-error -- TODO
+      userMessage: "✅ You accepted the change",
+    });
+  };
+
+  const handleSave = async (
+    query: DatasetQuery,
+    { leaveEditor } = { leaveEditor: true },
+  ) => {
     const { error } = await updateTransform({
       id: transform.id,
       source: {
@@ -66,7 +117,9 @@ export function TransformQueryPageBody({
       sendErrorToast(t`Failed to update transform query`);
     } else {
       sendSuccessToast(t`Transform query updated`);
-      dispatch(push(getTransformUrl(transform.id)));
+      if (leaveEditor) {
+        dispatch(push(getTransformUrl(transform.id)));
+      }
     }
   };
 
@@ -75,12 +128,19 @@ export function TransformQueryPageBody({
   };
 
   return (
-    <QueryEditor
-      initialQuery={transform.source.query}
-      isNew={false}
-      isSaving={isLoading}
-      onSave={handleSave}
-      onCancel={handleCancel}
-    />
+    <AdminSettingsLayout fullWidthContent key={transform.id}>
+      <QueryEditor
+        initialQuery={initialQuery}
+        transform={transform}
+        isNew={false}
+        isSaving={isLoading}
+        onSave={handleSave}
+        onChange={setLatestQuery}
+        onCancel={handleCancel}
+        proposedQuery={proposedQuery}
+        onRejectProposed={onRejectProposed}
+        onAcceptProposed={onAcceptProposed}
+      />
+    </AdminSettingsLayout>
   );
 }

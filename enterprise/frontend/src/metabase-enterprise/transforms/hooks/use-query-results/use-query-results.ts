@@ -8,13 +8,18 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { DatasetQuery } from "metabase-types/api";
 
-export function useQueryResults(question: Question) {
+export function useQueryResults(
+  question: Question,
+  proposedQuestion?: Question,
+) {
   const metadata = useSelector(getMetadata);
   const [lastRunQuery, setLastRunQuery] = useState<DatasetQuery | null>(null);
 
+  const currentQuestion = proposedQuestion ?? question;
+
   const [{ value: results = null, loading: isRunning }, runQuery] = useAsyncFn(
-    () => runQuestionQuery(question),
-    [question],
+    () => runQuestionQuery(currentQuestion),
+    [currentQuestion],
   );
 
   const { result, rawSeries, isRunnable, isResultDirty } = useMemo(() => {
@@ -26,9 +31,13 @@ export function useQueryResults(question: Question) {
       lastRunQuestion && result
         ? [{ card: lastRunQuestion.card(), data: result.data }]
         : null;
-    const isRunnable = Lib.canRun(question.query(), question.type());
+    const isRunnable = Lib.canRun(
+      currentQuestion.query(),
+      currentQuestion.type(),
+    );
     const isResultDirty =
-      lastRunQuestion == null || question.isDirtyComparedTo(lastRunQuestion);
+      lastRunQuestion == null ||
+      currentQuestion.isDirtyComparedTo(lastRunQuestion);
 
     return {
       result,
@@ -36,12 +45,12 @@ export function useQueryResults(question: Question) {
       isRunnable,
       isResultDirty,
     };
-  }, [question, results, metadata, lastRunQuery]);
+  }, [currentQuestion, results, metadata, lastRunQuery]);
 
   const handleRunQuery = useCallback(async () => {
     await runQuery();
-    setLastRunQuery(question.datasetQuery());
-  }, [question, runQuery]);
+    setLastRunQuery(currentQuestion.datasetQuery());
+  }, [currentQuestion, runQuery]);
 
   const handleCancelQuery = useCallback(() => {
     return null;

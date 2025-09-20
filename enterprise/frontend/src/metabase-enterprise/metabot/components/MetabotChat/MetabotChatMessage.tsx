@@ -1,25 +1,36 @@
-import { useClipboard } from "@mantine/hooks";
+import { useClipboard, useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { useCallback, useState } from "react";
+import { match } from "ts-pattern";
+import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import { downloadObjectAsJson } from "metabase/lib/download";
 import {
   ActionIcon,
+  Collapse,
   Flex,
   type FlexProps,
+  Group,
   Icon,
   type IconName,
+  Paper,
+  Stack,
   Text,
 } from "metabase/ui";
+import { RingProgress } from "metabase/ui";
 import type {
+  MetabotAgentChatMessage,
+  MetabotAgentTextChatMessage,
   MetabotChatMessage,
   MetabotErrorMessage,
+  MetabotUserChatMessage,
 } from "metabase-enterprise/metabot/state";
-import type { MetabotFeedback } from "metabase-types/api";
+import type { MetabotFeedback, MetabotTodoItem } from "metabase-types/api";
 
 import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
 
+import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
 import Styles from "./MetabotChat.module.css";
 import { MetabotFeedbackModal } from "./MetabotFeedbackModal";
 
@@ -49,7 +60,8 @@ export const MessageContainer = ({
   />
 );
 
-interface UserMessageProps extends BaseMessageProps {
+interface UserMessageProps extends Omit<BaseMessageProps, "message"> {
+  message: MetabotUserChatMessage;
   onCopy: () => void;
 }
 
@@ -61,14 +73,22 @@ export const UserMessage = ({
   ...props
 }: UserMessageProps) => (
   <MessageContainer chatRole={message.role} {...props}>
-    <Text
-      className={cx(
-        Styles.message,
-        message.role === "user" && Styles.messageUser,
-      )}
-    >
-      {message.message}
-    </Text>
+    {message.type === "text" && (
+      <AIMarkdown className={cx(Styles.message, Styles.messageUser)}>
+        {message.message}
+      </AIMarkdown>
+    )}
+
+    {message.type === "action" && (
+      <Flex direction="column" gap="xs">
+        <Flex align="center" gap="xs">
+          <Text className={cx(Styles.message, Styles.messageUserAction)}>
+            {message.userMessage}
+          </Text>
+        </Flex>
+      </Flex>
+    )}
+
     <Flex className={Styles.messageActions}>
       {!hideActions && (
         <ActionIcon
@@ -104,7 +124,8 @@ const FeedbackButton = ({
   </ActionIcon>
 );
 
-interface AgentMessageProps extends BaseMessageProps {
+interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
+  message: MetabotAgentChatMessage;
   onRetry: (messageId: string) => void;
   onCopy: (messageId: string) => void;
   showFeedbackButtons: boolean;
@@ -112,6 +133,141 @@ interface AgentMessageProps extends BaseMessageProps {
   submittedFeedback: "positive" | "negative" | undefined;
   onInternalLinkClick?: (link: string) => void;
 }
+
+type TodoStatusConfig = {
+  icon: IconName;
+  iconColor: string;
+  color: string;
+  td?: string;
+};
+
+const todoStatusConfig: Record<MetabotTodoItem["status"], TodoStatusConfig> = {
+  completed: { icon: "check", iconColor: "success", color: "text-secondary" },
+  in_progress: { icon: "play", iconColor: "brand", color: "text-primary" },
+  cancelled: {
+    icon: "close",
+    iconColor: "text-light",
+    td: "line-through",
+    color: "text-secondary",
+  },
+  // TODO: Fix circle
+  pending: {
+    icon: "circle" as IconName,
+    iconColor: "text-medium",
+    color: "text-primary",
+  },
+};
+
+const AgentTodoListMessage = ({ todos }: { todos: MetabotTodoItem[] }) => {
+  const [opened, { toggle }] = useDisclosure(true);
+
+  return (
+    <Paper
+      shadow="none"
+      radius="md"
+      // eslint-disable-next-line no-color-literals
+      bg="rgba(5, 114, 210, 0.07)"
+      // eslint-disable-next-line no-color-literals
+      style={{ border: `1px solid rgba(5, 114, 210, 0.69)` }}
+      py="md"
+      px="1.25rem"
+    >
+      <Group align="center" justify="space-between" onClick={toggle}>
+        {/* eslint-disable-next-line no-color-literals */}
+        <Text fw="bold" c="rgba(5, 114, 210, 0.69)">{t`Todos`}</Text>
+        <Flex align="center" justify="center" h="md" w="md">
+          <Icon
+            name={opened ? "chevrondown" : "chevronup"}
+            size=".75rem"
+            // eslint-disable-next-line no-color-literals
+            c="rgba(5, 114, 210, 0.69)"
+          />
+        </Flex>
+      </Group>
+
+      <Collapse in={opened} pt="md" pb="sm">
+        <Stack gap="md" w="100%">
+          {todos.map((todo) => {
+            const config = todoStatusConfig[todo.status];
+
+            return (
+              <Flex
+                key={todo.id}
+                style={{ borderRadius: "2px" }}
+                align="flex-start"
+              >
+                {match(todo.status)
+                  .with("pending", () => (
+                    <RingProgress
+                      size={28}
+                      ml="-2px"
+                      mr=".25rem"
+                      thickness={1.5}
+                      sections={[{ value: 0, color: "white" }]}
+                      // eslint-disable-next-line no-color-literals
+                      rootColor="rgba(5, 114, 210, 0.45)"
+                    />
+                  ))
+                  .with("completed", () => (
+                    <Flex
+                      h="1.5rem"
+                      w="1.5rem"
+                      // eslint-disable-next-line no-color-literals
+                      bg="rgba(5, 114, 210, 0.69)"
+                      style={{ borderRadius: "50%", flexShrink: 0 }}
+                      align="center"
+                      justify="center"
+                      mr=".4rem"
+                    >
+                      <Icon name="check" size="1rem" c="white" />
+                    </Flex>
+                  ))
+                  .with("in_progress", () => (
+                    <RingProgress
+                      size={30}
+                      ml="-3px"
+                      mr="xs"
+                      thickness={3}
+                      sections={[
+                        // eslint-disable-next-line no-color-literals
+                        { value: 70, color: "rgba(5, 114, 210, 0.82)" },
+                      ]}
+                      // eslint-disable-next-line no-color-literals
+                      rootColor="rgba(5, 114, 210, 0.45)"
+                    />
+                  ))
+                  .with("cancelled", () => (
+                    <Flex
+                      h="1.5rem"
+                      w="1.5rem"
+                      // eslint-disable-next-line no-color-literals
+                      bg="rgba(5, 114, 210, 0.69)"
+                      style={{ borderRadius: "50%", flexShrink: 0 }}
+                      align="center"
+                      justify="center"
+                      mr="sm"
+                    >
+                      <Icon name="close" size="1rem" c="white" />
+                    </Flex>
+                  ))
+                  .exhaustive()}
+                <Text
+                  lh={1.2}
+                  size="md"
+                  mt=".4rem"
+                  td={config.td}
+                  c={config.color}
+                >
+                  {todo.content}
+                </Text>
+              </Flex>
+            );
+          })}
+        </Stack>
+      </Collapse>
+    </Paper>
+  );
+};
 
 export const AgentMessage = ({
   message,
@@ -124,66 +280,75 @@ export const AgentMessage = ({
   onInternalLinkClick,
   hideActions,
   ...props
-}: AgentMessageProps) => (
-  <MessageContainer chatRole={message.role} {...props}>
-    <AIMarkdown
-      className={Styles.message}
-      onInternalLinkClick={onInternalLinkClick}
-    >
-      {message.message}
-    </AIMarkdown>
-
-    <Flex className={Styles.messageActions}>
-      {!hideActions && (
-        <>
-          <ActionIcon
-            h="sm"
-            data-testid="metabot-chat-message-copy"
-            onClick={() => onCopy(message.id)}
-          >
-            <Icon name="copy" size="1rem" />
-          </ActionIcon>
-          {showFeedbackButtons && setFeedbackMessage && (
-            <>
-              <FeedbackButton
-                data-testid="metabot-chat-message-thumbs-up"
-                icon="thumbs_up"
-                hasBeenClicked={submittedFeedback === "positive"}
-                disabled={!!submittedFeedback}
-                onClick={() =>
-                  setFeedbackMessage({
-                    messageId: message.id,
-                    positive: true,
-                  })
-                }
-              />
-              <FeedbackButton
-                data-testid="metabot-chat-message-thumbs-down"
-                icon="thumbs_down"
-                hasBeenClicked={submittedFeedback === "negative"}
-                disabled={!!submittedFeedback}
-                onClick={() =>
-                  setFeedbackMessage({
-                    messageId: message.id,
-                    positive: false,
-                  })
-                }
-              />
-            </>
-          )}
-
-          <ActionIcon
-            onClick={() => onRetry(message.id)}
-            h="sm"
-            data-testid="metabot-chat-message-retry"
-          >
-            <Icon name="revert" size="1rem" />
-          </ActionIcon>
-        </>
+}: AgentMessageProps) => {
+  return (
+    <MessageContainer chatRole={message.role} {...props}>
+      {message.type === "text" && (
+        <AIMarkdown
+          className={Styles.message}
+          onInternalLinkClick={onInternalLinkClick}
+        >
+          {message.message}
+        </AIMarkdown>
       )}
-    </Flex>
-  </MessageContainer>
-);
+      {message.type === "edit_suggestion" && (
+        <AgentSuggestionMessage message={message} />
+      )}
+      {message.type === "todo_list" && (
+        <AgentTodoListMessage todos={message.payload} />
+      )}
+      <Flex className={Styles.messageActions}>
+        {!hideActions && (
+          <>
+            <ActionIcon
+              h="sm"
+              data-testid="metabot-chat-message-copy"
+              onClick={() => onCopy(message.id)}
+            >
+              <Icon name="copy" size="1rem" />
+            </ActionIcon>
+            {showFeedbackButtons && setFeedbackMessage && (
+              <>
+                <FeedbackButton
+                  data-testid="metabot-chat-message-thumbs-up"
+                  icon="thumbs_up"
+                  hasBeenClicked={submittedFeedback === "positive"}
+                  disabled={!!submittedFeedback}
+                  onClick={() =>
+                    setFeedbackMessage({
+                      messageId: message.id,
+                      positive: true,
+                    })
+                  }
+                />
+                <FeedbackButton
+                  data-testid="metabot-chat-message-thumbs-down"
+                  icon="thumbs_down"
+                  hasBeenClicked={submittedFeedback === "negative"}
+                  disabled={!!submittedFeedback}
+                  onClick={() =>
+                    setFeedbackMessage({
+                      messageId: message.id,
+                      positive: false,
+                    })
+                  }
+                />
+              </>
+            )}
+
+            <ActionIcon
+              onClick={() => onRetry(message.id)}
+              h="sm"
+              data-testid="metabot-chat-message-retry"
+            >
+              <Icon name="revert" size="1rem" />
+            </ActionIcon>
+          </>
+        )}
+      </Flex>
+    </MessageContainer>
+  );
+};
 
 export const AgentErrorMessage = ({
   message,
@@ -278,7 +443,11 @@ export const Messages = ({
   const onAgentMessageCopy = useCallback(
     (messageId: string) => {
       const allMessages = getFullAgentReply(messages, messageId);
-      clipboard.copy(allMessages.map((msg) => msg.message).join("\n\n"));
+      const textMessages = allMessages.filter(
+        (msg): msg is MetabotAgentTextChatMessage =>
+          msg.role === "agent" && msg.type === "text",
+      );
+      clipboard.copy(textMessages.map((msg) => msg.message).join("\n\n"));
     },
     [messages, clipboard],
   );
@@ -316,7 +485,13 @@ export const Messages = ({
             data-testid="metabot-chat-message"
             message={message}
             hideActions={isDoingScience && messages.length === index + 1}
-            onCopy={() => clipboard.copy(message.message)}
+            onCopy={() => {
+              const copyText =
+                message.type === "action"
+                  ? `${message.userMessage}: ${message.message}`
+                  : message.message;
+              clipboard.copy(copyText);
+            }}
           />
         ),
       )}

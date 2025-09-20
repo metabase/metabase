@@ -6,7 +6,7 @@ import type { SelectionRange } from "metabase/query_builder/components/NativeQue
 import { Center, Flex, Loader, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { DatasetQuery, NativeQuerySnippet } from "metabase-types/api";
+import type { DatasetQuery, NativeQuerySnippet, Transform } from "metabase-types/api";
 
 import { useQueryMetadata } from "../../hooks/use-query-metadata";
 import { useQueryResults } from "../../hooks/use-query-results";
@@ -20,21 +20,32 @@ import S from "./QueryEditor.module.css";
 import { useInsertSnippetHandler, useSelectedText } from "./util";
 
 type QueryEditorProps = {
+  transform?: Pick<Transform, "name">;
   initialQuery: DatasetQuery;
+  proposedQuery?: DatasetQuery;
   isNew?: boolean;
   isSaving?: boolean;
   onSave: (newQuery: DatasetQuery) => void;
+  onChange?: (newQuery: DatasetQuery) => void;
   onCancel: () => void;
+  onRejectProposed?: () => void;
+  onAcceptProposed?: (query: DatasetQuery) => void;
 };
 
 export function QueryEditor({
   initialQuery,
+  proposedQuery,
+  transform,
   isNew = true,
   isSaving = false,
   onSave,
+  onChange,
   onCancel,
+  onRejectProposed,
+  onAcceptProposed,
 }: QueryEditorProps) {
-  const { question, isQueryDirty, setQuestion } = useQueryState(initialQuery);
+  const { question, proposedQuestion, isQueryDirty, setQuestion } =
+    useQueryState(initialQuery, proposedQuery);
   const { isInitiallyLoaded } = useQueryMetadata(question);
   const {
     result,
@@ -44,12 +55,13 @@ export function QueryEditor({
     isResultDirty,
     runQuery,
     cancelQuery,
-  } = useQueryResults(question);
+  } = useQueryResults(question, proposedQuestion);
   const canSave = Lib.canSave(question.query(), question.type());
   const { isNative } = Lib.queryDisplayInfo(question.query());
 
   const handleChange = async (newQuestion: Question) => {
     setQuestion(newQuestion);
+    onChange?.(newQuestion.datasetQuery());
   };
 
   const handleSave = () => {
@@ -119,6 +131,7 @@ export function QueryEditor({
       gap={0}
     >
       <EditorHeader
+        name={transform?.name}
         isNew={isNew}
         isSaving={isSaving}
         canSave={canSave && (isNew || isQueryDirty)}
@@ -129,6 +142,7 @@ export function QueryEditor({
         <Stack flex="2 1 100%">
           <EditorBody
             question={question}
+            proposedQuestion={proposedQuestion}
             isNative={isNative}
             isRunnable={isRunnable}
             isRunning={isRunning}
@@ -138,6 +152,8 @@ export function QueryEditor({
             onChange={handleChange}
             onRunQuery={runQuery}
             onCancelQuery={cancelQuery}
+            onRejectProposed={onRejectProposed}
+            onAcceptProposed={onAcceptProposed}
             databases={databases?.data ?? []}
             onToggleDataReference={handleToggleDataReference}
             onToggleSnippetSidebar={handleToggleSnippetSidebar}

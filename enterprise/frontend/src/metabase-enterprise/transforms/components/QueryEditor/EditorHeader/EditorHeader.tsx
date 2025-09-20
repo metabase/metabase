@@ -4,6 +4,7 @@ import Button from "metabase/common/components/Button";
 import EditBar from "metabase/common/components/EditBar";
 
 type EditorHeaderProps = {
+  name?: string;
   canSave: boolean;
   isNew: boolean;
   isSaving: boolean;
@@ -12,6 +13,7 @@ type EditorHeaderProps = {
 };
 
 export function EditorHeader({
+  name,
   canSave,
   isNew,
   isSaving,
@@ -20,7 +22,7 @@ export function EditorHeader({
 }: EditorHeaderProps) {
   return (
     <EditBar
-      title={getTitle(isNew)}
+      title={getTitle(isNew, name)}
       admin
       buttons={[
         <Button key="cancel" small onClick={onCancel}>{t`Cancel`}</Button>,
@@ -38,11 +40,11 @@ export function EditorHeader({
   );
 }
 
-function getTitle(isNew: boolean) {
+function getTitle(isNew: boolean, name?: string) {
   if (isNew) {
     return t`You’re creating a new transform`;
   } else {
-    return t`You’re editing a transform`;
+    return t`You’re editing the "${name}" transform`;
   }
 }
 
