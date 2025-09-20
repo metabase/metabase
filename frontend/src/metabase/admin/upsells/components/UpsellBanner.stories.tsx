@@ -115,3 +115,8 @@ export const Dismissible = {
     onDismiss: action("dismiss"),
   },
 };
+
+export const Large = {
+  render: DefaultTemplate,
+  args: { ...args, large: true },
+};

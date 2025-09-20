@@ -2,8 +2,6 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
@@ -14,7 +12,7 @@
   (doseq [[table-key field-key binning-name expected-display-name]
           [[:orders :tax "50 bins" "Tax: 50 bins"]
            [:venues :longitude "Bin every 1 degree" "Longitude: 1°"]]]
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           query (as-> (lib/query mp (lib.metadata/table mp (mt/id table-key))) $
                   (lib/aggregate $ (lib/count))
                   (lib/breakout $ (lib/with-binning (lib.metadata/field mp (mt/id table-key field-key))
@@ -23,12 +21,19 @@
                                                                    $
                                                                    (lib.metadata/field mp (mt/id table-key field-key)))))))]
       (testing "Binning is suffixed to columns display name"
-        (is expected-display-name
-            (-> (qp/process-query query) mt/cols first :display_name)))
+        (is (= expected-display-name
+               (-> (qp/process-query query) mt/cols first :display_name))))
       (testing "Binning is visible on cards"
-        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib.convert/->legacy-MBQL query)}]
-          (is expected-display-name
-              (qp/process-query (lib/query mp (lib.metadata/card mp card-id)))))))))
+        (let [mp (lib.tu/mock-metadata-provider
+                  mp
+                  {:cards [{:id            1
+                            :dataset-query query}]})]
+          (is (= expected-display-name
+                 (-> (lib/query mp (lib.metadata/card mp 1))
+                     qp/process-query
+                     mt/cols
+                     first
+                     :display_name))))))))
 
 (deftest ^:parallel binning-on-nested-question-with-aggregation-test
   (testing "binning should work on nested question based on question that has aggregation (#16379)"
@@ -39,11 +44,10 @@
                               :data
                               :results_metadata
                               :columns)
-          _ (def %card-cols card-cols)
           _               (is (= 2
                                  (count card-cols)))
           mp              (lib.tu/mock-metadata-provider
-                           (mt/application-database-metadata-provider (mt/id))
+                           (mt/metadata-provider)
                            {:cards [{:id              1
                                      :dataset-query   card-query
                                      :result-metadata card-cols}]})
@@ -74,3 +78,27 @@
               [125.0 13]
               [137.5 6]]
              (mt/formatted-rows [2.0 int] (qp/process-query query')))))))
+
+(deftest ^:parallel multiple-bins-on-same-column-test
+  (let [query (lib/query
+               (mt/metadata-provider)
+               {:database (mt/id)
+                :type     :query
+                :query    {:source-query {:source-table (mt/id :orders)
+                                          :aggregation  [[:count]]
+                                          :breakout     [[:field
+                                                          (mt/id :orders :total)
+                                                          {:base-type :type/Float, :binning {:strategy :num-bins, :num-bins 10}}]
+                                                         [:field
+                                                          (mt/id :orders :total)
+                                                          {:base-type :type/Float, :binning {:strategy :num-bins, :num-bins 50}}]]}
+                           :expressions  {"Expression1" [:+ [:field "TOTAL" {:base-type :type/Float}] 100]
+                                          "Expression2" [:+ [:field "TOTAL" {:base-type :type/Float}] 200]}
+                           :order-by     [[:asc [:field "TOTAL" {:base-type :type/Float}]]
+                                          [:asc [:field "TOTAL_2" {:base-type :type/Float}]]
+                                          [:asc [:field "count" {:base-type :type/Integer}]]]
+                           :limit        3}})]
+    (is (= [[-60.0 -50.0 1  40 140]
+            [0.0   5.0   1 100 200]
+            [0.0   10.0  5 100 200]]
+           (mt/formatted-rows [1.0 1.0 int int int] (qp/process-query query))))))

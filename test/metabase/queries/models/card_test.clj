@@ -4,7 +4,6 @@
    [java-time.api :as t]
    [metabase.audit-app.impl :as audit]
    [metabase.config.core :as config]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -183,44 +182,6 @@
           (is (= 2 (t2/count :model/Action :id [:in [action-id-1 action-id-2]])))
           (is (= 2 (t2/count :model/ImplicitAction :action_id [:in [action-id-1 action-id-2]]))))))))
 
-;;; ------------------------------------------ Circular Reference Detection ------------------------------------------
-
-(defn- card-with-source-table
-  "Generate values for a Card with `source-table` for use with `with-temp`."
-  [source-table & {:as kvs}]
-  (merge {:dataset_query {:database (mt/id)
-                          :type     :query
-                          :query    {:source-table source-table}}}
-         kvs))
-
-(deftest circular-reference-test
-  (testing "Should throw an Exception if saving a Card that references itself"
-    (mt/with-temp [:model/Card card (card-with-source-table (mt/id :venues))]
-      ;; now try to make the Card reference itself. Should throw Exception
-      (is (thrown?
-           Exception
-           (t2/update! :model/Card (u/the-id card)
-                       (card-with-source-table (str "card__" (u/the-id card)))))))))
-
-(deftest circular-reference-test-2
-  (testing "Do the same stuff with circular reference between two Cards... (A -> B -> A)"
-    (mt/with-temp [:model/Card card-a (card-with-source-table (mt/id :venues))
-                   :model/Card card-b (card-with-source-table (str "card__" (u/the-id card-a)))]
-      (is (thrown?
-           Exception
-           (t2/update! :model/Card (u/the-id card-a)
-                       (card-with-source-table (str "card__" (u/the-id card-b)))))))))
-
-(deftest circular-reference-test-3
-  (testing "ok now try it with A -> C -> B -> A"
-    (mt/with-temp [:model/Card card-a (card-with-source-table (mt/id :venues))
-                   :model/Card card-b (card-with-source-table (str "card__" (u/the-id card-a)))
-                   :model/Card card-c (card-with-source-table (str "card__" (u/the-id card-b)))]
-      (is (thrown?
-           Exception
-           (t2/update! :model/Card (u/the-id card-a)
-                       (card-with-source-table (str "card__" (u/the-id card-c)))))))))
-
 (deftest validate-collection-namespace-test
   (mt/with-temp [:model/Collection {collection-id :id} {:namespace "currency"}]
     (testing "Shouldn't be able to create a Card in a non-normal Collection"
@@ -260,7 +221,6 @@
                                                                   :result_metadata (qp.preprocess/query->expected-cols (mt/mbql-query checkins))}]
                           (t2/update! :model/Card card-id changes)
                           (f (t2/select-one-fn :result_metadata :model/Card :id card-id))))}]
-
     (testing (format "When %s a Card\n" creating-or-updating)
       (testing "If result_metadata is empty, we should attempt to populate it"
         (f {:dataset_query (mt/mbql-query venues)}
@@ -275,7 +235,7 @@
                (is (= (mt/derecordize metadata)
                       (mt/derecordize new-metadata)))))))
       (testing "Shouldn't barf if query can't be run (e.g. if query is a SQL query); set metadata to nil"
-        (f {:dataset_query (mt/native-query {:native "SELECT * FROM VENUES"})}
+        (f {:dataset_query (mt/native-query {:query "SELECT * FROM VENUES"})}
            (fn [metadata]
              (is (= nil
                     metadata)))))
@@ -284,7 +244,7 @@
               metadata (-> (mt/mbql-query checkins)
                            qp.preprocess/query->expected-cols
                            mt/metadata->native-form)]
-          (f (cond-> {:dataset_query   (mt/native-query {:native "SELECT * FROM CHECKINS"})
+          (f (cond-> {:dataset_query   (mt/native-query {:query "SELECT * FROM CHECKINS"})
                       :result_metadata metadata
                       :entity_id       card-eid}
                (= creating-or-updating "updating")
@@ -363,7 +323,7 @@
       (testing varr
         (varr f)))))
 
-(deftest normalize-visualization-settings-test
+(deftest ^:parallel normalize-visualization-settings-test
   (test-visualization-settings-normalization
    (fn [original expected]
      (mt/with-temp [:model/Card card {:visualization_settings original}]
@@ -824,7 +784,7 @@
 
 (deftest save-mlv2-card-test
   (testing "App DB CRUD should work for a Card with an MLv2 query (#39024)"
-    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [metadata-provider (mt/metadata-provider)
           venues            (lib.metadata/table metadata-provider (mt/id :venues))
           query             (lib/query metadata-provider venues)]
       (mt/with-temp [:model/Card card {:dataset_query query}]
@@ -846,7 +806,7 @@
           (is (=? {:dataset_query {:lib/type     :mbql/query
                                    :database     (mt/id)
                                    :stages       [{:lib/type :mbql.stage/mbql, :source-table (mt/id :venues)}]
-                                   :lib/metadata (lib.metadata.jvm/application-database-metadata-provider (mt/id))}
+                                   :lib/metadata (mt/metadata-provider)}
                    :query_type    :query
                    :table_id      (mt/id :venues)
                    :database_id   (mt/id)}
@@ -859,14 +819,14 @@
             (is (=? {:dataset_query {:lib/type     :mbql/query
                                      :database     (mt/id)
                                      :stages       [{:lib/type :mbql.stage/mbql, :source-table (mt/id :orders)}]
-                                     :lib/metadata (lib.metadata.jvm/application-database-metadata-provider (mt/id))}
+                                     :lib/metadata (mt/metadata-provider)}
                      :query_type    :query
                      :table_id      (mt/id :orders)
                      :database_id   (mt/id)}
                     (t2/select-one :model/Card :id (u/the-id card))))))))))
 
 (deftest can-run-adhoc-query-test
-  (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [metadata-provider (mt/metadata-provider)
         venues            (lib.metadata/table metadata-provider (mt/id :venues))
         query             (lib/query metadata-provider venues)]
     (mt/with-current-user (mt/user->id :crowberto)
@@ -1030,7 +990,7 @@
 
 (deftest ^:parallel query-description-in-metric-cards-test
   (testing "Metric cards contain query_description key (#51303)"
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+    (let [mp (mt/metadata-provider)]
       (mt/with-temp
         [:model/Card
          {id :id}

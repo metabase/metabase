@@ -32,6 +32,7 @@
     :model/ContentTranslation
     :model/DashboardFavorite
     :model/DatabaseRouter
+    :model/PythonLibrary
     :model/Query
     :model/QueryCache
     :model/QueryExecution
@@ -39,6 +40,15 @@
     :model/QueryTable
     :model/SearchIndexMetadata
     :model/TaskHistory
+    ;; TODO we should remove these models from here once serialization is supported
+    :model/Transform
+    :model/TransformRun
+    :model/TransformRunCancelation
+    :model/TransformJob
+    :model/TransformJobRun
+    :model/TransformJobTransformTag
+    :model/TransformTag
+    :model/TransformTransformTag
     :model/Undo
     :model/UserKeyValue})
 

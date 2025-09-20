@@ -193,14 +193,14 @@
   {:in  json-in-with-eliding
    :out json-out-with-keywordization})
 
-(defn- serialize-mlv2-query
-  "Saving MLv2 queries​ we can assume MLv2 queries are normalized enough already, but remove the metadata provider before
-  saving it, because it's not something that lends itself well to serialization."
+(defn- serialize-mbql5-query
+  "Saving MBQL 5 queries​ we can assume MBQL 5 queries are normalized enough already, but remove the metadata provider
+  before saving it, because it's not something that lends itself well to serialization."
   [query]
   (dissoc query :lib/metadata))
 
-(defn- deserialize-mlv2-query
-  "Reading MLv2 queries​: normalize them, then attach a MetadataProvider based on their Database."
+(defn- deserialize-mbql5-query
+  "Reading MBQL 5 queries​: normalize them, then attach a MetadataProvider based on their Database."
   [query]
   (let [metadata-provider (if (lib.metadata.protocols/metadata-provider? (:lib/metadata query))
                             ;; in case someone passes in an already-normalized query to [[maybe-normalize-query]] below,
@@ -216,12 +216,12 @@
    query]
   (letfn [(normalize [query]
             (let [f (if (= (lib/normalized-query-type query) :mbql/query)
-                      ;; MLv2 queries
+                      ;; MBQL 5 queries
                       (case in-or-out
-                        :in  serialize-mlv2-query
-                        :out deserialize-mlv2-query)
+                        :in  serialize-mbql5-query
+                        :out deserialize-mbql5-query)
                       ;; legacy queries: just normalize them with the legacy normalization code for now... in the near
-                      ;; future we'll probably convert to MLv2 before saving so everything in the app DB is MLv2
+                      ;; future we'll probably convert to MBQL 5 before saving so everything in the app DB is MBQL 5
                       (case in-or-out
                         :in  mbql.normalize/normalize
                         :out mbql.normalize/normalize))]
@@ -376,7 +376,7 @@
 
 (defn normalize-visualization-settings
   "The frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`. This normalizes them
-   to modern MBQL clauses so things work correctly."
+   to MBQL 4 clauses so things work correctly."
   [viz-settings]
   (letfn [(normalize-column-settings-key [k]
             (some-> k u/qualified-name json/decode mbql.normalize/normalize json/encode))
@@ -385,29 +385,58 @@
                        [(normalize-column-settings-key k) (walk/keywordize-keys v)])))
           (mbql-field-clause? [form]
             (and (vector? form)
-                 (#{"field-id" "fk->" "datetime-field" "joined-field" "binning-strategy" "field"
-                    "aggregation" "expression"}
+                 (#{"field-id"
+                    "fk->"
+                    "datetime-field"
+                    "joined-field"
+                    "binning-strategy"
+                    "field"
+                    "aggregation"
+                    "expression"}
                   (first form))))
           (normalize-mbql-clauses [form]
-            (walk/postwalk
-             (fn [form]
-               (try
-                 (cond-> form
-                   (mbql-field-clause? form) mbql.normalize/normalize)
-                 (catch Exception e
-                   (log/warnf "Unable to normalize visualization-settings part %s: %s"
-                              (u/pprint-to-str 'red form)
-                              (ex-message e))
-                   form)))
-             form))]
-    (cond-> (walk/keywordize-keys (dissoc viz-settings "column_settings" "graph.metrics"))
-      ;; "key" is an old unused value
-      true                                 (m/update-existing :table.columns (fn [cols] (mapv #(dissoc % :key) cols)))
-      (get viz-settings "column_settings") (assoc :column_settings (normalize-column-settings (get viz-settings "column_settings")))
-      true                                 normalize-mbql-clauses
-      ;; exclude graph.metrics from normalization as it may start with
-      ;; the word "expression" but it is not MBQL (metabase#15882)
-      (get viz-settings "graph.metrics")   (assoc :graph.metrics (get viz-settings "graph.metrics")))))
+            (cond
+              (mbql-field-clause? form)
+              (try
+                (mbql.normalize/normalize form)
+                (catch Exception e
+                  (log/warnf "Unable to normalize visualization-settings part %s: %s"
+                             (u/pprint-to-str 'red form)
+                             (ex-message e))
+                  form))
+
+              (sequential? form)
+              (into (empty form) (map normalize-mbql-clauses) form)
+
+              (map? form)
+              (into (empty form)
+                    (map (fn [[k v]]
+                           ;; don't recurse into `:columns` if they are COLUMN NAMES! -- if the first column name is
+                           ;; something like "expression" then we don't want to accidentally treat it as an
+                           ;; `:expression` ref. Some `:columns` lists is viz settings do contain MBQL clauses
+                           ;; tho :unamused:
+                           (let [column-names? (and (= k :columns)
+                                                    (sequential? v)
+                                                    (every? (complement mbql-field-clause?) v))]
+                             [k (cond-> v
+                                  (not column-names?) normalize-mbql-clauses)])))
+                    form)
+
+              :else
+              form))]
+    (->
+     viz-settings
+     (dissoc "column_settings" "graph.metrics")
+     walk/keywordize-keys
+     ;; "key" is an old unused value
+     (m/update-existing :table.columns (fn [cols] (mapv #(dissoc % :key) cols)))
+     (cond-> (get viz-settings "column_settings")
+       (assoc :column_settings (normalize-column-settings (get viz-settings "column_settings"))))
+     normalize-mbql-clauses
+     ;; exclude graph.metrics from normalization as it may start with the word "expression" but it is not
+     ;; MBQL (metabase#15882)
+     (cond-> (get viz-settings "graph.metrics")
+       (assoc :graph.metrics (get viz-settings "graph.metrics"))))))
 
 (jm/def-json-migration migrate-viz-settings*)
 

@@ -1,21 +1,24 @@
 (ns ^:mb/driver-tests metabase.actions.actions-test
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.actions.actions :as actions]
+   [metabase.actions.error :as actions.error]
    [metabase.actions.execution :as actions.execution]
    [metabase.actions.models :as action]
    [metabase.api.common :refer [*current-user-permissions-set*]]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.test-util :as driver.tu]
    [metabase.query-processor :as qp]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
-  (:import
-   (org.apache.sshd.server SshServer)
-   (org.apache.sshd.server.forward AcceptAllForwardingFilter)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -283,6 +286,41 @@
           (is (= 77
                  (categories-row-count))))))))
 
+(defn- unset-entity-key! [table-id]
+  (t2/update! :model/Field
+              {:table_id      table-id
+               :semantic_type :type/PK}
+              {:semantic_type nil}))
+
+(deftest table-row-create-no-pk
+  (testing "table.row/create"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (with-actions-test-data-and-actions-permissively-enabled!
+        (let [db-id    (mt/id)
+              table-id (mt/id :categories)
+              name-col (format-field-name :name)]
+          (unset-entity-key! table-id)
+          (is (= 75
+                 (categories-row-count)))
+          (is (= {:status-code               400
+                  :errors                    [{:index 0, :error "Cannot edit a table without it having at least one entity key configured.", :type :data-editing/no-pk, :status-code 400, :table-id table-id}
+                                              {:index 1, :error "Cannot edit a table without it having at least one entity key configured.", :type :data-editing/no-pk, :status-code 400, :table-id table-id}]
+                  :results                   []
+                  :metabase.util.log/context {:action :table.row/create, :db-id db-id}}
+                 (try
+                   (actions/perform-action-v2! :table.row/create
+                                               test-scope
+                                               [{:database db-id, :table-id table-id, :row {name-col "NEW_A"}}
+                                                {:database db-id, :table-id table-id, :row {name-col "NEW_B"}}])
+                   ::did-not-throw
+                   (catch Exception e
+                     (or (ex-data e) ::did-not-throw-ex-info)))))
+          (is (= []
+                 (mt/rows (mt/run-mbql-query categories {:filter   [:starts-with $name "NEW"]
+                                                         :order-by [[:asc $id]]}))))
+          (is (= 75
+                 (categories-row-count))))))))
+
 (deftest table-row-create-failure-test
   (testing "table.row/create"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -345,6 +383,32 @@
                                                  :table-id table-id
                                                  :row      {(format-field-name :id) 74}}])))))
           (is (= 73 (categories-row-count))))))))
+
+(deftest table-row-delete-no-pk
+  (testing "table.row/delete"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (with-actions-test-data-and-actions-permissively-enabled!
+        (let [db-id    (mt/id)
+              table-id (mt/id :categories)]
+          (unset-entity-key! table-id)
+
+          (is (= 75 (categories-row-count)))
+          (is (= {:type                      :data-editing/no-pk
+                  :status-code               400
+                  :table-id                  table-id
+                  :metabase.util.log/context {:action :table.row/delete
+                                              :db-id  db-id}}
+                 (try
+                   (actions/perform-action-v2! :table.row/delete
+                                               test-scope
+                                               [{:database db-id
+                                                 :table-id table-id
+                                                 :row      {}}])
+                   ::did-not-throw
+                   (catch Exception e
+                     (or (ex-data e) ::did-not-throw-ex-info)))))
+          (testing "nothing was deleted"
+            (is (= 75 (categories-row-count)))))))))
 
 (deftest table-row-delete-failure-test
   (testing "table.row/delete"
@@ -440,6 +504,43 @@
                     [3 "Artisan"]]
                    (first-three-categories)))))))))
 
+(deftest table-row-update-no-pk
+  (testing "table.row/update"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (with-actions-test-data-and-actions-permissively-enabled!
+        (let [db-id    (mt/id)
+              table-id (mt/id :categories)]
+          (unset-entity-key! table-id)
+          (is (= [[1 "African"]
+                  [2 "American"]
+                  [3 "Artisan"]]
+                 (first-three-categories)))
+
+          (is (= {:type                      :data-editing/no-pk
+                  :status-code               400
+                  :table-id                  table-id
+                  :metabase.util.log/context {:action :table.row/update
+                                              :db-id  db-id}}
+                 (try
+                   (let [id   (format-field-name :id)
+                         name (format-field-name :name)]
+                     (actions/perform-action-v2! :table.row/update
+                                                 test-scope
+                                                 (for [row [{id 1, name "Seed Bowl"}
+                                                            {id 2, name "Millet Treat"}]]
+                                                   {:database db-id
+                                                    :table-id table-id
+                                                    :row      row})))
+                   ::did-not-throw
+                   (catch Exception e
+                     (or (ex-data e) ::did-not-throw-ex-info)))))
+
+          (testing "rows should NOT be updated in the DB"
+            (is (= [[1 "African"]
+                    [2 "American"]
+                    [3 "Artisan"]]
+                   (first-three-categories)))))))))
+
 (deftest table-row-update-failure-test
   (testing "table.row/update"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -499,26 +600,6 @@
                     [3 "Artisan"]]
                    (first-three-categories)))))))))
 
-(defn basic-auth-ssh-server ^java.io.Closeable [username password]
-  (try
-    (let [password-auth    (reify org.apache.sshd.server.auth.password.PasswordAuthenticator
-                             (authenticate [_ auth-username auth-password _session]
-                               (and
-                                (= auth-username username)
-                                (= auth-password password))))
-          keypair-provider (org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider.)
-          sshd             (doto (SshServer/setUpDefaultServer)
-                             (.setPort 0)
-                             (.setKeyPairProvider keypair-provider)
-                             (.setPasswordAuthenticator password-auth)
-                             (.setForwardingFilter AcceptAllForwardingFilter/INSTANCE)
-                             .start)]
-      sshd)
-    (catch Throwable e
-      (throw (ex-info (format "Error starting SSH mock server with password")
-                      {:username username :password password}
-                      e)))))
-
 (deftest actions-on-ssh-tunneled-db
   ;; testing actions against dbs with ssh tunnels. Use an in-memory ssh server that just forwards to the correct port
   ;; through localhost. Since it is local, it's possible for the application to ignore the ssh tunnel and just talk to
@@ -527,10 +608,10 @@
   ;; through the ssh tunnel
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions) :h2)
     (let [username "username", password "password"]
-      (with-open [ssh-server (basic-auth-ssh-server username password)]
+      (with-open [ssh-server (driver.tu/basic-auth-ssh-server username password)]
         (doseq [[correct-password? ssh-password] [[true password] [false "wrong-password"]]]
           (with-actions-test-data-and-actions-permissively-enabled!
-            (let [ssh-port (.getPort ^SshServer ssh-server)
+            (let [ssh-port (.getPort ssh-server)
                   table-id (mt/id :categories)]
               (let [details (t2/select-one-fn :details 'Database :id (mt/id))]
                 (t2/update! 'Database (mt/id)
@@ -664,3 +745,94 @@
         (is (= 2 (first (mt/first-row (mt/run-mbql-query ants {:aggregation [[:count]], :limit 1})))))
         (is (= [] (mt/rows (mt/run-mbql-query ants {:filter [:= $id "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]})))
             "Selecting for deleted rows should return an empty result")))))
+
+(deftest test-permission-denied-errors
+  (testing "Permission denied errors should return nice error messages"
+    ;; can't create users with restricted permissions in h2
+    (mt/with-actions-enabled
+      (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions) :h2)
+        (let [test-db-name   "permission_test"
+              test-user-name "test_user"]
+          ;; Create a test database with test data
+          (tx/drop-if-exists-and-create-db! driver/*driver* test-db-name)
+          (let [details    (mt/dbdef->connection-details driver/*driver* :db {:database-name test-db-name})
+                admin-spec (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
+            ;; Set up test data and user with limited permissions
+            (doseq [stmt (concat
+                          ;; Create the categories table with test data
+                          ["CREATE TABLE categories (id INTEGER PRIMARY KEY, name VARCHAR(255) NOT NULL);"
+                           "INSERT INTO categories (id, name) VALUES (1, 'Test Category');"
+                           "INSERT INTO categories (id, name) VALUES (2, 'Another Category');"]
+                          ;; Create test user with no password and only SELECT permissions
+                          [(format "DROP USER IF EXISTS %s" test-user-name)
+                           (case driver/*driver*
+                             :postgres (format "CREATE USER %s WITH PASSWORD '123456';" test-user-name)
+                             :mysql    (format "CREATE USER '%s'" test-user-name))
+                           (case driver/*driver*
+                             :postgres (format "GRANT SELECT ON TABLE categories TO %s" test-user-name)
+                             :mysql    (format "GRANT SELECT ON %s.categories TO '%s'" test-db-name test-user-name))])]
+              (when stmt
+                (jdbc/execute! admin-spec [stmt])))
+
+            ;; Create connection details for test user (no password)
+            (let [test-user-details (cond-> details
+                                      (= driver/*driver* :mysql)
+                                      (assoc :user test-user-name
+                                             :additional-options "useSSL=false&allowPublicKeyRetrieval=true")
+
+                                      (= driver/*driver* :postgres)
+                                      (assoc :user test-user-name
+                                             :password "123456"))]
+              ;; Create temporary database with test user credentials
+              (mt/with-temp [:model/Database test-database {:engine driver/*driver*, :details test-user-details :settings {:database-enable-actions true
+                                                                                                                           :database-enable-table-editing true}}]
+                ;; Sync the database to get table metadata
+                (sync/sync-database! test-database)
+                (let [table-id (t2/select-one-pk :model/Table :db_id (:id test-database) :name "categories")]
+                  (testing (str "INSERT permission denied for " driver/*driver*)
+                    (let [result (try
+                                   (actions/perform-action-v2!
+                                    :table.row/create
+                                    test-scope
+                                    [{:database (:id test-database)
+                                      :table-id table-id
+                                      :row      {"name" "New Test Category"}}])
+                                   nil
+                                   (catch Exception e
+                                     (ex-data e)))
+                          first-error (first (:errors result))]
+                      (is (= 400 (:status-code result)))
+                      (is (= actions.error/violate-permission-constraint (:type first-error)))
+                      (is (= "You don't have permission to add data to this table." (:message first-error)))))
+
+                  (testing (str "UPDATE permission denied for " driver/*driver*)
+                    (let [result (try
+                                   (actions/perform-action-v2!
+                                    :table.row/update
+                                    test-scope
+                                    [{:database (:id test-database)
+                                      :table-id table-id
+                                      :row      {"id" 1 "name" "Updated Category"}}])
+                                   nil
+                                   (catch Exception e
+                                     (ex-data e)))
+                          first-error (first (:errors result))]
+                      (is (= 400 (:status-code result)))
+                      (is (= actions.error/violate-permission-constraint (:type first-error)))
+                      (is (= "You don't have permission to update data in this table." (:message first-error)))))
+
+                  (testing (str "DELETE permission denied for " driver/*driver*)
+                    (let [result (try
+                                   (actions/perform-action-v2!
+                                    :table.row/delete
+                                    test-scope
+                                    [{:database (:id test-database)
+                                      :table-id table-id
+                                      :row      {"id" 1}}])
+                                   nil
+                                   (catch Exception e
+                                     (ex-data e)))
+                          first-error (first (:errors result))]
+                      (is (= 400 (:status-code result)))
+                      (is (= actions.error/violate-permission-constraint (:type first-error)))
+                      (is (= "You don't have permission to delete data from this table." (:message first-error))))))))))))))

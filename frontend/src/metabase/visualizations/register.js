@@ -1,4 +1,5 @@
 import ActionViz from "metabase/actions/components/ActionViz";
+import { ListViz } from "metabase/list-view/components/ListViz";
 import {
   registerVisualization,
   setDefaultVisualization,
@@ -54,6 +55,8 @@ export default function () {
   registerVisualization(LinkViz);
   registerVisualization(Text);
   registerVisualization(IFrameViz);
+
+  registerVisualization(ListViz);
 
   setDefaultVisualization(Table);
 }

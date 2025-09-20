@@ -29,8 +29,6 @@
 
   Token normalization occurs first, followed by canonicalization, followed by removing empty clauses."
   (:require
-   #?(:clj [metabase.util.performance :as perf]
-      :cljs [clojure.walk :as walk])
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.legacy-mbql.predicates :as mbql.preds]
@@ -38,11 +36,13 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
+   [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf]
    [metabase.util.time :as u.time]))
 
 (defn- mbql-clause?
@@ -112,10 +112,6 @@
                                   expression-name)]
         opts (->> opts
                   normalize-ref-opts
-                  ;; Only keep fields required for handling binned&datetime expressions (#33528)
-                  ;; Allowing added alias-info through here breaks
-                  ;; [[metabase.query-processor.util.nest-query-test/nest-expressions-ignore-source-queries-test]]
-                  (m/filter-keys #{:base-type :temporal-unit :binning})
                   not-empty)]
     (cond-> expression
       opts (conj opts))))
@@ -235,8 +231,8 @@
   [opts]
   (when opts
     (-> opts
-        (update-keys (fn [k]
-                       (keyword (u/->snake_case_en k))))
+        (perf/update-keys (fn [k]
+                            (keyword (u/->snake_case_en k))))
         (m/update-existing :base_type      keyword)
         (m/update-existing :effective_type keyword)
         (m/update-existing :semantic_type  keyword)
@@ -250,9 +246,9 @@
 
 (defmethod normalize-mbql-clause-tokens :offset
   [[_tag opts expr n, :as clause]]
-  {:pre [(= (count clause) 4)]}
-  (let [opts (lib.normalize/normalize :metabase.lib.schema.common/options (or opts {}))]
-    [:offset opts (normalize-tokens expr nil) n]))
+  (when (= (count clause) 4)
+    (let [opts (lib.normalize/normalize :metabase.lib.schema.common/options (or opts {}))]
+      [:offset opts (normalize-tokens expr nil) n])))
 
 (defmethod normalize-mbql-clause-tokens :default
   ;; MBQL clauses by default are recursively normalized.
@@ -368,7 +364,7 @@
     values_source_config (update-in [:values_source_config :value_field] #(normalize-tokens % nil))))
 
 (defn- normalize-source-query [source-query]
-  (let [{native? :native, :as source-query} (update-keys source-query maybe-normalize-token)]
+  (let [{native? :native, :as source-query} (perf/update-keys source-query maybe-normalize-token)]
     (if native?
       (-> source-query
           (set/rename-keys {:native :query})
@@ -397,6 +393,11 @@
   [clause]
   (-> clause normalize-tokens canonicalize-mbql-clauses))
 
+(mu/defn- normalize-fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]
+  [fingerprint :- [:maybe :map]]
+  (when fingerprint
+    (lib.normalize/normalize ::lib.schema.metadata.fingerprint/fingerprint fingerprint)))
+
 (mu/defn normalize-source-metadata
   "Normalize source/results metadata for a single column."
   [metadata :- :map]
@@ -409,10 +410,6 @@
                            k ((if (simple-keyword? k)
                                 u/->snake_case_en
                                 u/->kebab-case-en) k)
-                           _ (when (= k :fingerprint)
-                               (when-let [base-type (first (keys (:type v)))]
-                                 (assert (isa? base-type :type/*)
-                                         (str "BAD FINGERPRINT! " (pr-str v)))))
                            v (case k
                                (:base_type
                                 :effective_type
@@ -422,23 +419,24 @@
                                 :unit
                                 :lib/source) (keyword v)
                                :field_ref    (normalize-field-ref v)
-                               :fingerprint  (#?(:clj perf/keywordize-keys :cljs walk/keywordize-keys) v)
+                               :fingerprint  (normalize-fingerprint v)
                                :binning_info (m/update-existing v :binning_strategy keyword)
                                #_else
                                v)]
                        [k v]))))
         metadata))
 
-(defn- normalize-native-query
+(mu/defn- normalize-native-query :- [:maybe :map]
   "For native queries, normalize the top-level keys, and template tags, but nothing else."
-  [native-query]
-  (let [native-query (update-keys native-query maybe-normalize-token)]
+  [native-query :- [:maybe :map]]
+  (let [native-query (perf/update-keys native-query maybe-normalize-token)]
     (cond-> native-query
       (seq (:template-tags native-query)) (update :template-tags normalize-template-tags))))
 
 (defn- normalize-actions-row [row]
+
   (cond-> row
-    (map? row) (update-keys u/qualified-name)))
+    (map? row) (perf/update-keys u/qualified-name)))
 
 (def ^:private path->special-token-normalization-fn
   "Map of special functions that should be used to perform token normalization for a given path. For example, the
@@ -466,13 +464,13 @@
    ;; TODO -- when does query ever have a top-level `:context` key??
    :context         #(some-> % maybe-normalize-token)
    :source-metadata {::sequence normalize-source-metadata}
-   :viz-settings    maybe-normalize-token
+   :viz-settings    maybe-normalize-token ; TODO (Cam 8/8/25) -- we also have [[metabase.models.interface/normalize-visualization-settings]]
    :create-row      normalize-actions-row
    :update-row      normalize-actions-row
    ;;
    ;; HACK TODO (Cam 7/17/25) -- seems icky for the legacy MBQL schema to have to know about namespaced keys like
    ;; this. I guess this can go away once we stop converting back and forth between MBQL 4 and 5 inside the QP
-   :metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/original-metadata
+   :metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata
    identity})
 
 (defn normalize-tokens
@@ -608,6 +606,7 @@
     3
     (let [[_ field unit] clause]
       (-> (canonicalize-implicit-field-id field)
+          #_{:clj-kondo/ignore [:deprecated-var]}
           (mbql.u/with-temporal-unit unit)))
 
     4
@@ -628,6 +627,7 @@
 
 ;; For `and`/`or`/`not` compound filters, recurse on the arg(s), then simplify the whole thing.
 (defn- canonicalize-compound-filter-clause [[filter-name & args]]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (mbql.u/simplify-compound-filter
    (into [filter-name]
          ;; we need to canonicalize any other mbql clauses that might show up in args here because
@@ -1052,16 +1052,16 @@
 (defn- replace-legacy-filters
   "Replaces legacy filter clauses with modern alternatives."
   [query]
-  (try
-    (lib.util.match/replace query
-      (filter-clause :guard mbql.preds/Filter?)
+  (lib.util.match/replace query
+    (filter-clause :guard mbql.preds/Filter?)
+    (try
       (-> filter-clause
           replace-relative-date-filters
-          replace-exclude-date-filters))
-    (catch #?(:clj Throwable :cljs :default) e
-      (throw (ex-info (i18n/tru "Error replacing legacy filters")
-                      {:query query}
-                      e)))))
+          replace-exclude-date-filters)
+      (catch #?(:clj Throwable :cljs :default) e
+        (throw (ex-info (i18n/tru "Error replacing legacy filters")
+                        {:filter-clause filter-clause, :query query}
+                        e))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             REMOVING EMPTY CLAUSES                                             |
@@ -1121,7 +1121,7 @@
    :query        {:source-query remove-empty-clauses-in-source-query
                   :joins        {::sequence remove-empty-clauses-in-join}}
    :parameters   {::sequence remove-empty-clauses-in-parameter}
-   :viz-settings identity
+   :viz-settings identity ; TODO (Cam 8/8/25) -- we also have [[metabase.models.interface/normalize-visualization-settings]]
    :create-row   identity
    :update-row   identity})
 

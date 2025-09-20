@@ -215,7 +215,6 @@ describe("DatabaseConnectionModal", () => {
           "/admin/databases/1",
         );
       });
-      expect(history.getCurrentLocation().search).toContain("created=true");
 
       expect(
         screen.queryByTestId("leave-confirmation"),

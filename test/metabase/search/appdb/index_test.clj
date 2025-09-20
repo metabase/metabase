@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
@@ -364,7 +365,7 @@
                                                         :updated_at yesterday
                                                         ;; :archived = true
                                                         :archived true}
-                     :model/QueryAction _               {:dataset_query (mt/native-query "select * from metabase")
+                     :model/QueryAction _               {:dataset_query (mt/native-query {:query "select * from metabase"})
                                                          ;; :database_id = db-id
                                                          :database_id   db-id
                                                          :action_id     action-id}]
@@ -476,6 +477,24 @@
                          :collection_id coll-id})]
                       (fetch "indexed-entity" :model_id [:in [(model-id miv) (model-id miv2)]]))))))))))
 
+(deftest indexed-entity-last-test
+  (search.tu/with-temp-index-table
+    (mt/with-temp [:model/Collection      {coll-id :id} {}
+                   :model/Card            model         (assoc (mt/card-with-source-metadata-for-query
+                                                                (mt/mbql-query products {:fields [$id $title]
+                                                                                         :limit  1}))
+                                                               :type          "model"
+                                                               :database_id   (mt/id)
+                                                               :collection_id coll-id)
+                   :model/ModelIndex      model-index   {:model_id   (:id model)
+                                                         :pk_ref     (mt/$ids :products $id)
+                                                         :value_ref  (mt/$ids :products $title)
+                                                         :schedule   "0 0 0 * * *"
+                                                         :state      "initial"
+                                                         :creator_id (mt/user->id :rasta)}]
+      (model-index/add-values! model-index)
+      (is (= "dataset" (last (into [] (map :model) (search.ingestion/searchable-documents))))))))
+
 (deftest ^:synchronized table-cleanup-test
   (when (search/supports-index?)
     ;; this test destroys the actual current index, regrettably
@@ -508,10 +527,12 @@
 
 (def ^:private model->deleted-descendants
   ;; Note that these refer to the table names, not the search-model names.
-  {"core_user"         #{"action" "collection" "model_index_value" "report_card" "report_dashboard" "segment"}
+  {"core_user"         (cond-> #{"action" "collection" "model_index_value" "report_card" "report_dashboard" "segment"}
+                         config/ee-available? (conj "document"))
    "model_index"       #{"model_index_value"}
    "metabase_database" #{"action" "metabase_table" "model_index_value" "report_card" "segment"}
    "metabase_table"    #{"action" "model_index_value" "report_card" "segment"}
+   "document"          #{"action" "model_index_value" "report_card"}
    "report_card"       #{"action" "model_index_value" "report_card"}
    "report_dashboard"  #{"action" "model_index_value" "report_card"}})
 

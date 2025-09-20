@@ -42,6 +42,19 @@
             [admin-email-docs
              aggregated-query-row-limit-docs]))
 
+(deftest ^:parallel test-format-default
+  (testing "format-default correctly handles conversion of defaults to strings"
+    (let [keyword-default-var {:default :some-keyword}
+          string-default-var {:default "some-string"}
+          nil-default-var {:default nil}
+          false-default-var {:default false}
+          number-default-var {:default 42}]
+      (is (= "Default: `some-keyword`" (#'sut/format-default keyword-default-var)))
+      (is (= "Default: `some-string`" (#'sut/format-default string-default-var)))
+      (is (= "Default: `null`" (#'sut/format-default nil-default-var)))
+      (is (= "Default: `false`" (#'sut/format-default false-default-var)))
+      (is (= "Default: `42`" (#'sut/format-default number-default-var))))))
+
 (deftest ^:parallel test-env-var-docs
   (testing "Environment docs are formatted as expected."
     (let [generated-docs (sut/format-env-var-docs settings-filtered)]

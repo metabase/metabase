@@ -66,7 +66,7 @@ You can configure JWT group assignments through Metabase's Admin interface, or b
 
 You can use the following environment variables to configure JTW group mappings instead of configuring them in Metabase's Admin settings:
 
-- [`MB_JWT_ATTRIBUTE_GROUPS`](../configuring-metabase/environment-variables#mb_jwt_attribute_groups) to specify the key to retrieve the JWT user’s groups;
+- [`MB_JWT_ATTRIBUTE_GROUPS`](../configuring-metabase/environment-variables.md#mb_jwt_attribute_groups) to specify the key to retrieve the JWT user's groups;
 
 - [`MB_JWT_GROUP_SYNC`](../configuring-metabase/environment-variables.md#mb_jwt_group_sync) to turn group sync on or off (sync is off by default).
 

@@ -387,6 +387,21 @@ describe("command palette", () => {
       cy.findByText("Report an issue").should("be.visible");
     });
   });
+
+  describe("ee", () => {
+    beforeEach(() => {
+      H.activateToken("bleeding-edge");
+    });
+
+    it("should have a 'New document' item", () => {
+      cy.visit("/");
+      cy.findByRole("button", { name: /search/ }).click();
+      H.commandPalette().within(() => {
+        cy.findByText("New document").should("be.visible").click();
+        cy.location("pathname").should("eq", "/document/new");
+      });
+    });
+  });
 });
 
 H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
@@ -529,9 +544,9 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
 
     cy.findByTestId("site-name-setting").should("exist");
     cy.location("pathname").should("contain", "/admin/settings");
-    cy.realPress("3");
+    cy.realPress("4");
     cy.location("pathname").should("contain", "/admin/datamodel");
-    cy.realPress("7");
+    cy.realPress("8");
     cy.location("pathname").should("contain", "/admin/tools");
   });
 

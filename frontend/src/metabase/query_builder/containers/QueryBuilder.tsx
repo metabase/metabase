@@ -84,6 +84,7 @@ import {
   getVisibleTimelineEventIds,
   getVisibleTimelineEvents,
   getVisualizationSettings,
+  getZoomedObjectRowIndex,
   isResultsMetadataDirty,
 } from "../selectors";
 import { getIsObjectDetail, getMode } from "../selectors/mode";
@@ -184,6 +185,8 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     pageFavicon: getPageFavicon(state),
     isLoadingComplete: getIsLoadingComplete(state),
 
+    zoomedRowIndex: getZoomedObjectRowIndex(state),
+
     reportTimezone: getSetting(state, "report-timezone-long"),
     didFirstNonTableChartGenerated: getSetting(
       state,
@@ -229,7 +232,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     initializeQB,
     locationChanged,
     setUIControls,
-    runQuestionOrSelectedQuery,
+    runOrCancelQuestionOrSelectedQuery,
     cancelQuery,
     isBookmarked,
     createBookmark,
@@ -439,7 +442,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
 
   const handleCmdEnter = () => {
     if (queryBuilderMode !== "notebook") {
-      runQuestionOrSelectedQuery();
+      runOrCancelQuestionOrSelectedQuery();
     }
   };
 

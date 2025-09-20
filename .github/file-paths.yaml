@@ -30,6 +30,7 @@ frontend_configs: &frontend_configs
   - "postcss.config.js"
   - "rspack.config.js"
   - "rspack.main.config.js"
+  - "rspack.embedding-sdk-package.config.js"
   - "rspack.embedding-sdk-bundle.config.js"
   - "rspack.static-viz.config.js"
   - ".nvmrc"
@@ -40,9 +41,16 @@ frontend_sources: &frontend_sources
   - "enterprise/frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
   - "frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
 
+frontend_embedding_sources:
+  - "enterprise/frontend/src/{embedding,embedding-*}/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
+  - "enterprise/frontend/src/metabase-enterprise/{embedding,embedding-*}**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
+
 frontend_embedding_sdk_sources:
   - *frontend_configs
   - "enterprise/frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
+
+frontend_embedding_sdk_package_sources:
+  - "enterprise/frontend/src/embedding-sdk-package/**/!(*.spec).{js,jsx,ts,tsx,css}"
 
 frontend_specs: &frontend_specs
   - *shared_specs
@@ -137,16 +145,17 @@ e2e_embedding_sdk_compatibility:
   - "e2e/runner/embedding-sdk/**"
   - "e2e/test-host-app/**/*.cy.*.{js,ts}"
 
+snowplow: &snowplow
+  - ".github/workflows/snowplow.yml"
+  - "snowplow/**"
+
 e2e_all:
   - *default
   - *e2e_ci
   - *sources
   - *e2e_specs
   - "e2e/**"
-
-snowplow:
-  - ".github/workflows/snowplow.yml"
-  - "snowplow/**"
+  - *snowplow
 
 documentation:
   - "docs/**"

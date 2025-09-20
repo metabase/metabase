@@ -2,6 +2,8 @@ import { QA_MYSQL_PORT, QA_POSTGRES_PORT } from "e2e/support/cypress_data";
 
 import { waitForDbSync } from "./helpers/e2e-database-helpers";
 
+const { H } = cy;
+
 beforeEach(() => {
   cy.H.restore();
   cy.signInAsAdmin();
@@ -41,7 +43,7 @@ const databaseTestCases = [
     expectedFields: [
       { label: "Host", value: "localhost" },
       { label: "Port", value: "8443" },
-      { label: "Databases", value: "testdb" },
+      { label: "Databases", value: "All" },
       { label: "Display name", value: "testdb" },
       { label: "Username", value: "testuser" },
       { label: "Additional JDBC connection string options", value: "ssl=true" },
@@ -253,7 +255,7 @@ describe("Database connection strings", () => {
     );
 
     cy.findByLabelText("Port").should("have.value", "1111");
-    cy.findByLabelText("Database type").should("have.text", "PostgreSQL");
+    cy.findByLabelText("Database type").should("have.value", "PostgreSQL");
   });
 
   describe("actual database connections", { tags: "@external" }, () => {
@@ -289,12 +291,10 @@ describe("Database connection strings", () => {
       cy.url().should("match", /\/admin\/databases\/\d/);
       waitForDbSync();
 
-      cy.findByRole("dialog").within(() => {
-        cy.findByText(
-          "Your database was added! Want to configure permissions?",
-        ).should("exist");
-        cy.button("Maybe later").click();
-      });
+      cy.findByRole("link", { name: "Manage permissions" }).should(
+        "be.visible",
+      );
+      cy.findByRole("link", { name: /Browse data/ }).should("be.visible");
     });
 
     it("should successfully connect to PostgreSQL using connection string", () => {
@@ -331,12 +331,10 @@ describe("Database connection strings", () => {
       cy.url().should("match", /\/admin\/databases\/\d/);
       waitForDbSync();
 
-      cy.findByRole("dialog").within(() => {
-        cy.findByText(
-          "Your database was added! Want to configure permissions?",
-        ).should("exist");
-        cy.button("Maybe later").click();
-      });
+      cy.findByRole("link", { name: "Manage permissions" }).should(
+        "be.visible",
+      );
+      cy.findByRole("link", { name: /Browse data/ }).should("be.visible");
     });
 
     it("should handle connection failures gracefully", () => {
@@ -358,5 +356,61 @@ describe("Database connection strings", () => {
 
       cy.button("Failed").should("exist");
     });
+  });
+});
+
+H.describeWithSnowplow("Database connection strings events", () => {
+  beforeEach(() => {
+    H.resetSnowplow();
+    H.restore();
+    H.enableTracking();
+    cy.visit("/admin/databases/create?engine=mysql");
+  });
+
+  it("should track success events correctly", () => {
+    const successEvent = {
+      event: "connection_string_parsed_success",
+      triggered_from: "full-page",
+    };
+
+    cy.findByLabelText("Connection string (optional)")
+      .focus()
+      .paste("jdbc:mysql://testuser:testpass@host:3306/dbname?ssl=true")
+      .paste("jdbc:mysql://a:b@c:3/dbname?ssl=false");
+
+    cy.findByTextEnsureVisible("Connection details pre-filled below.").should(
+      "exist",
+    );
+
+    cy.findByLabelText("Display name").click();
+
+    H.expectUnstructuredSnowplowEvent(successEvent, 1);
+
+    cy.findByLabelText("Connection string (optional)").click();
+    cy.findByLabelText("Display name").click();
+
+    // Should not track the same event again
+    H.expectUnstructuredSnowplowEvent(successEvent, 1);
+  });
+
+  it("should track failure events correctly", () => {
+    cy.findByLabelText("Connection string (optional)")
+      .focus()
+      .paste("broken string")
+      .type("also not a valid string");
+
+    cy.findByTextEnsureVisible("Couldn’t use this connection string.").should(
+      "exist",
+    );
+
+    cy.findByLabelText("Display name").click();
+
+    H.expectUnstructuredSnowplowEvent(
+      {
+        event: "connection_string_parsed_failed",
+        triggered_from: "full-page",
+      },
+      1,
+    );
   });
 });

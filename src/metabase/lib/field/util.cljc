@@ -68,16 +68,19 @@
   `:lib/deduplicated-name` to a sequence of columns.
 
     (into [] (add-unique-names-xform) cols)"
-  [metadata-providerable :- ::lib.metadata.protocols/metadata-providerable]
-  (comp (add-deduplicated-names)
-        (let [unique-name-fn (lib.util/unique-name-generator)]
-          (map (fn [col]
-                 (let [source-alias  ((some-fn :lib/source-column-alias :name) col)
-                       desired-alias (unique-name-fn
-                                      (lib.join.util/desired-alias metadata-providerable col))]
-                   (assoc col
-                          :lib/source-column-alias  source-alias
-                          :lib/desired-column-alias desired-alias)))))))
+  ([metadata-providerable]
+   (add-source-and-desired-aliases-xform metadata-providerable (lib.util/unique-name-generator)))
+
+  ([metadata-providerable :- ::lib.metadata.protocols/metadata-providerable
+    unique-name-fn        :- ::lib.util/unique-name-generator]
+   (comp (add-deduplicated-names)
+         (map (fn [col]
+                (let [source-alias  ((some-fn :lib/source-column-alias :name) col)
+                      desired-alias (unique-name-fn
+                                     (lib.join.util/desired-alias metadata-providerable col))]
+                  (assoc col
+                         :lib/source-column-alias  source-alias
+                         :lib/desired-column-alias desired-alias)))))))
 
 (mu/defn update-keys-for-col-from-previous-stage :- [:map
                                                      [:lib/type [:= :metadata/column]]]

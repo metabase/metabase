@@ -10,6 +10,7 @@
    [metabase.core.initialization-status :as init-status]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.server.auth-wrapper :as auth-wrapper]
+   [metabase.server.middleware.embedding-sdk-bundle :as mw.embedding-sdk-bundle]
    [metabase.server.routes.index :as index]
    [metabase.system.core :as system]
    [metabase.util :as u]
@@ -59,6 +60,15 @@
   ([_request respond _raise]
    (respond (health-handler))))
 
+#_{:clj-kondo/ignore [:discouraged-var]}
+(defroutes ^:private static-files-handler
+  (GET "/embedding-sdk.js" request
+    ((mw.embedding-sdk-bundle/serve-bundle-handler) request))
+
+  ;; fall back to serving _all_ other files under /app
+  (route/resources "/" {:root "frontend_client/app"})
+  (route/not-found {:status 404 :body "Not found."}))
+
 (mu/defn- api-handler :- ::api.macros/handler
   [api-routes :- ::api.macros/handler]
   (fn api-handler* [request respond raise]
@@ -89,10 +99,7 @@
    ;; ^/api/ -> All other API routes
    (context "/api" [] (api-handler api-routes))
    ;; ^/app/ -> static files under frontend_client/app
-   (context "/app" []
-     (route/resources "/" {:root "frontend_client/app"})
-     ;; return 404 for anything else starting with ^/app/ that doesn't exist
-     (route/not-found {:status 404, :body "Not found."}))
+   (context "/app" [] static-files-handler)
    ;; ^/public/ -> Public frontend and download routes
    (context "/public" [] public-routes)
    ;; ^/emebed/ -> Embed frontend and download routes

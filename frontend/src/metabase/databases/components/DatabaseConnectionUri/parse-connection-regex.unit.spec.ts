@@ -1,6 +1,72 @@
 import { enginesConfig } from "./engines-config";
 import { parseConnectionUriRegex } from "./parse-connection-regex";
 
+describe("parseConnectionUri - whitespace and encoding", () => {
+  it("should parse a connection string with whitespace", () => {
+    const connectionString =
+      " jdbc:mysql://user:pass@host:3306/dbname?ssl=true  ";
+    const result = parseConnectionUriRegex(connectionString, "mysql");
+    expect(result).toEqual(
+      expect.objectContaining({
+        protocol: "mysql",
+        host: "host",
+        port: "3306",
+        database: "dbname",
+        params: {
+          ssl: "true",
+        },
+      }),
+    );
+  });
+
+  it("should parse a connection string with new lines", () => {
+    const connectionString =
+      "\n\njdbc:mysql://user:pass@host:3306/dbname?ssl=true\n";
+    const result = parseConnectionUriRegex(connectionString, "mysql");
+    expect(result).toEqual(
+      expect.objectContaining({
+        protocol: "mysql",
+        host: "host",
+        port: "3306",
+        database: "dbname",
+        params: {
+          ssl: "true",
+        },
+      }),
+    );
+  });
+
+  it("should handle special characters in username and password", () => {
+    const connectionString =
+      "postgres://me%40ry:pe%40ce%26lo%2F3@host:5432/dbname";
+    const result = parseConnectionUriRegex(connectionString, "postgres");
+    expect(result).toEqual(
+      expect.objectContaining({
+        protocol: "postgres",
+        host: "host",
+        port: "5432",
+        database: "dbname",
+        username: "me@ry",
+        password: "pe@ce&lo/3",
+      }),
+    );
+  });
+
+  it("should handle malformed uri component", () => {
+    const connectionString = "postgres://me%ZZry@host:5432/dbname";
+    const result = parseConnectionUriRegex(connectionString, "postgres");
+    expect(result).toEqual(
+      expect.objectContaining({
+        protocol: "postgres",
+        host: "host",
+        port: "5432",
+        database: "dbname",
+        username: "me%ZZry",
+      }),
+    );
+  });
+});
+
 describe("parseConnectionUriRegex - Amazon Athena", () => {
   it("should parse a basic Amazon Athena connection string", () => {
     const connectionString = enginesConfig["athena"];

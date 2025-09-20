@@ -25,7 +25,6 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -44,6 +43,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [metabase.warehouses.provider-detection :as provider-detection]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2])
   (:import
@@ -215,9 +215,9 @@
           (sync/sync-database! (mt/db) {:scan :schema})
           (is (= [[42]]
                  (mt/rows (qp/process-query
-                           {:database (u/the-id (mt/db))
+                           {:database (mt/id)
                             :type     :query
-                            :query    {:source-table (t2/select-one-pk :model/Table :db_id (:id (mt/db)))}})))))))))
+                            :query    {:source-table (t2/select-one-pk :model/Table :db_id (mt/id))}})))))))))
 
 (mt/defdataset duplicate-names
   [["birds"
@@ -520,7 +520,7 @@
                        :type     :query
                        :query    {:source-table "card__123"}})]
           (is (= ["SELECT"
-                  "  \"json_alias_test\" AS \"json_alias_test\","
+                  "  \"source\".\"json_alias_test\" AS \"json_alias_test\","
                   "  \"source\".\"count\" AS \"count\""
                   "FROM"
                   "  ("
@@ -1039,7 +1039,7 @@
                (mt/with-temp
                  [:model/Card {id :id} (mt/card-with-metadata {:dataset_query query
                                                                :type          card-type})]
-                 (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                 (let [mp (mt/metadata-provider)
                        query (as-> (lib/query mp (lib.metadata/card mp id)) $
                                (lib/filter $ (lib/= (m/find-first (comp #{"status"} :name)
                                                                   (lib/filterable-columns $))
@@ -1057,69 +1057,99 @@
 ;; API tests are in [[metabase.actions.api-test]]
 (deftest ^:parallel actions-maybe-parse-sql-violate-not-null-constraint-test
   (testing "violate not null constraint"
-    (is (= {:type :metabase.actions.error/violate-not-null-constraint,
-            :message "Ranking must have values."
-            :errors {"ranking" "You must provide a value."}}
-           (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/violate-not-null-constraint nil :model.row/created
-            "ERROR: null value in column \"ranking\" violates not-null constraint\n  Detail: Failing row contains (3, admin, null).")))))
+    (is (=? {:type :metabase.actions.error/violate-not-null-constraint,
+             :message "Ranking must have values."
+             :errors {"ranking" "You must provide a value."}}
+            (sql-jdbc.actions/maybe-parse-sql-error
+             :postgres actions.error/violate-not-null-constraint nil :model.row/created
+             "ERROR: null value in column \"ranking\" violates not-null constraint\n  Detail: Failing row contains (3, admin, null).")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-violate-not-null-constraint-test-2
   (testing "violate not null constraint"
-    (is (= {:type :metabase.actions.error/violate-not-null-constraint,
-            :message "Ranking must have values."
-            :errors {"ranking" "You must provide a value."}}
-           (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/violate-not-null-constraint nil :model.row/created
-            "ERROR: null value in column \"ranking\" of relation \"group\" violates not-null constraint\n  Detail: Failing row contains (57, admin, null).")))))
+    (is (=? {:type :metabase.actions.error/violate-not-null-constraint,
+             :message "Ranking must have values."
+             :errors {"ranking" "You must provide a value."}}
+            (sql-jdbc.actions/maybe-parse-sql-error
+             :postgres actions.error/violate-not-null-constraint nil :model.row/created
+             "ERROR: null value in column \"ranking\" of relation \"group\" violates not-null constraint\n  Detail: Failing row contains (57, admin, null).")))))
 
 (deftest actions-maybe-parse-sql-error-violate-unique-constraint-test
   (testing "violate unique constraint"
     (with-redefs [postgres.actions/constraint->column-names (constantly ["ranking"])]
-      (is (= {:type :metabase.actions.error/violate-unique-constraint,
-              :message "Ranking already exists.",
-              :errors {"ranking" "This Ranking value already exists."}}
-             (sql-jdbc.actions/maybe-parse-sql-error
-              :postgres actions.error/violate-unique-constraint nil nil
-              "Batch entry 0 UPDATE \"public\".\"group\" SET \"ranking\" = CAST(2 AS INTEGER) WHERE \"public\".\"group\".\"id\" = 1 was aborted: ERROR: duplicate key value violates unique constraint \"group_ranking_key\"\n  Detail: Key (ranking)=(2) already exists.  Call getNextException to see other errors in the batch."))))))
+      (is (=? {:type :metabase.actions.error/violate-unique-constraint,
+               :message "Ranking already exists.",
+               :errors {"ranking" "This Ranking value already exists."}}
+              (sql-jdbc.actions/maybe-parse-sql-error
+               :postgres actions.error/violate-unique-constraint nil nil
+               "Batch entry 0 UPDATE \"public\".\"group\" SET \"ranking\" = CAST(2 AS INTEGER) WHERE \"public\".\"group\".\"id\" = 1 was aborted: ERROR: duplicate key value violates unique constraint \"group_ranking_key\"\n  Detail: Key (ranking)=(2) already exists.  Call getNextException to see other errors in the batch."))))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-incorrect-type-test
   (testing "incorrect type"
-    (is (= {:type :metabase.actions.error/incorrect-value-type,
-            :message "Some of your values aren’t of the correct type for the database.",
-            :errors {}}
-           (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/incorrect-value-type nil nil
-            "Batch entry 0 UPDATE \"public\".\"group\" SET \"ranking\" = CAST('S' AS INTEGER) WHERE \"public\".\"group\".\"id\" = 1 was aborted: ERROR: invalid input syntax for type integer: \"S\"  Call getNextException to see other errors in the batch.")))))
+    (is (=? {:type :metabase.actions.error/incorrect-value-type,
+             :message "Some of your values aren’t of the correct type for the database.",
+             :errors {}}
+            (sql-jdbc.actions/maybe-parse-sql-error
+             :postgres actions.error/incorrect-value-type nil nil
+             "Batch entry 0 UPDATE \"public\".\"group\" SET \"ranking\" = CAST('S' AS INTEGER) WHERE \"public\".\"group\".\"id\" = 1 was aborted: ERROR: invalid input syntax for type integer: \"S\"  Call getNextException to see other errors in the batch.")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-violate-fk-constraints-test
   (testing "violate fk constraints"
-    (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
-            :message "Unable to create a new record.",
-            :errors {"group-id" "This Group-id does not exist."}}
-           (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/violate-foreign-key-constraint nil :model.row/create
-            "ERROR: insert or update on table \"user\" violates foreign key constraint \"user_group-id_group_-159406530\"\n  Detail: Key (group-id)=(999) is not present in table \"group\".")))))
+    (is (=? {:type    :metabase.actions.error/violate-foreign-key-constraint,
+             :message "Unable to create a new record."
+             :errors  {"group-id" "This value does not exist in table \"group\"."}}
+            (sql-jdbc.actions/maybe-parse-sql-error
+             :postgres actions.error/violate-foreign-key-constraint nil :model.row/create
+             "ERROR: insert or update on table \"user\" violates foreign key constraint \"user_group-id_group_-159406530\"\n  Detail: Key (group-id)=(999) is not present in table \"group\".")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-violate-fk-constraints-test-2
   (testing "violate fk constraints"
-    (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
-            :message "Unable to update the record.",
-            :errors {"id" "This Id does not exist."}}
-           (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/violate-foreign-key-constraint nil :model.row/update
-            "ERROR: update or delete on table \"group\" violates foreign key constraint \"user_group-id_group_-159406530\" on table \"user\"\n  Detail: Key (id)=(1) is still referenced from table \"user\".")))))
+    (is (=? {:type    :metabase.actions.error/violate-foreign-key-constraint,
+             :message "Other rows refer to this value so it cannot be changed."
+             :errors  {"id" "Referenced in table \"user\"."}}
+            (sql-jdbc.actions/maybe-parse-sql-error
+             :postgres actions.error/violate-foreign-key-constraint nil :model.row/update
+             "ERROR: update or delete on table \"group\" violates foreign key constraint \"user_group-id_group_-159406530\" on table \"user\"\n  Detail: Key (id)=(1) is still referenced from table \"user\".")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-violate-fk-constraints-test-3
   (testing "violate fk constraints"
-    (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
-            :message "Other tables rely on this row so it cannot be deleted.",
-            :errors {}}
-           (sql-jdbc.actions/maybe-parse-sql-error
-            :postgres actions.error/violate-foreign-key-constraint nil :model.row/delete
-            "ERROR: update or delete on table \"group\" violates foreign key constraint \"user_group-id_group_-159406530\" on table \"user\"\n  Detail: Key (id)=(1) is still referenced from table \"user\".")))))
+    (is (=? {:type :metabase.actions.error/violate-foreign-key-constraint,
+             :message "Other rows refer to this row so it cannot be deleted.",
+             :errors {}}
+            (sql-jdbc.actions/maybe-parse-sql-error
+             :postgres actions.error/violate-foreign-key-constraint nil :model.row/delete
+             "ERROR: update or delete on table \"group\" violates foreign key constraint \"user_group-id_group_-159406530\" on table \"user\"\n  Detail: Key (id)=(1) is still referenced from table \"user\".")))))
 
-;; this contains specical tests case for postgres
+;; this contains special tests case for postgres
+;; for generic tests, check [[metabase.driver.sql-jdbc.actions-test/action-error-handling-test]]
+(deftest check-constraint-test
+  (mt/test-driver :postgres
+    (testing "violate check constraints"
+      (tx/drop-if-exists-and-create-db! driver/*driver* "check-constraint-test")
+      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "check-constraint-test"})]
+        (doseq [stmt ["CREATE TABLE test_users (
+                        id serial PRIMARY KEY,
+                        email VARCHAR(255) NOT NULL,
+                        age INTEGER,
+                        CONSTRAINT email_format_check CHECK (email ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$')
+                      );"]]
+          (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details) [stmt]))
+        (mt/with-temp [:model/Database database {:engine driver/*driver* :details details}]
+          (mt/with-db database
+            (sync/sync-database! database)
+            (mt/with-actions-enabled
+              (testing "when creating with invalid email"
+                (is (=? {:errors      {}
+                         :message     "Some of your values violate the constraint: email_format_check"
+                         :status-code 400
+                         :type        actions.error/violate-check-constraint}
+                        (sql-jdbc.actions-test/perform-action-ex-data
+                         :model.row/create (mt/$ids {:create-row {"email" "invalid-email"
+                                                                  "age"   25}
+                                                     :database   (:id database)
+                                                     :query      {:source-table $$test_users}
+                                                     :type       :query}))))))))))))
+
+;; this contains special tests case for postgres
 ;; for generic tests, check [[metabase.driver.sql-jdbc.actions-test/action-error-handling-test]]
 (deftest action-error-handling-test
   (mt/test-driver :postgres
@@ -1139,31 +1169,31 @@
             (sync/sync-database! database)
             (mt/with-actions-enabled
               (testing "when creating"
-                (is (= {:errors      {"column1" "This Column1 value already exists."
-                                      "column2" "This Column2 value already exists."}
-                        :message     "Column1 and Column2 already exist."
-                        :status-code 400
-                        :type        actions.error/violate-unique-constraint}
-                       (sql-jdbc.actions-test/perform-action-ex-data
-                        :model.row/create (mt/$ids {:create-row {"id"      3
-                                                                 "column1" "A"
-                                                                 "column2" "A"}
-                                                    :database   (:id database)
-                                                    :query      {:source-table $$mytable}
-                                                    :type       :query})))))
+                (is (=? {:errors      {"column1" "This Column1 value already exists."
+                                       "column2" "This Column2 value already exists."}
+                         :message     "Column1 and Column2 already exist."
+                         :status-code 400
+                         :type        actions.error/violate-unique-constraint}
+                        (sql-jdbc.actions-test/perform-action-ex-data
+                         :model.row/create (mt/$ids {:create-row {"id"      3
+                                                                  "column1" "A"
+                                                                  "column2" "A"}
+                                                     :database   (:id database)
+                                                     :query      {:source-table $$mytable}
+                                                     :type       :query})))))
               (testing "when updating"
-                (is (= {:errors      {"column1" "This Column1 value already exists."
-                                      "column2" "This Column2 value already exists."}
-                        :message     "Column1 and Column2 already exist."
-                        :status-code 400
-                        :type        actions.error/violate-unique-constraint}
-                       (sql-jdbc.actions-test/perform-action-ex-data
-                        :model.row/update (mt/$ids {:update-row {"column1" "A"
-                                                                 "column2" "A"}
-                                                    :database   (:id database)
-                                                    :query      {:source-table $$mytable
-                                                                 :filter       [:= $mytable.id 2]}
-                                                    :type       :query}))))))))))))
+                (is (=? {:errors      {"column1" "This Column1 value already exists."
+                                       "column2" "This Column2 value already exists."}
+                         :message     "Column1 and Column2 already exist."
+                         :status-code 400
+                         :type        actions.error/violate-unique-constraint}
+                        (sql-jdbc.actions-test/perform-action-ex-data
+                         :model.row/update (mt/$ids {:update-row {"column1" "A"
+                                                                  "column2" "A"}
+                                                     :database   (:id database)
+                                                     :query      {:source-table $$mytable
+                                                                  :filter       [:= $mytable.id 2]}
+                                                     :type       :query}))))))))))))
 
 ;;; ------------------------------------------------ Timezone-related ------------------------------------------------
 
@@ -1177,8 +1207,8 @@
                                      :type     :native
                                      :native   {:query "SELECT current_setting('TIMEZONE') AS timezone;"}})))))]
       (testing "check that if we set report-timezone to US/Pacific that the session timezone is in fact US/Pacific"
-        (is  (= "US/Pacific"
-                (get-timezone-with-report-timezone "US/Pacific"))))
+        (is  (= "America/Los_Angeles"
+                (get-timezone-with-report-timezone "America/Los_Angeles"))))
       (testing "check that we can set it to something else: America/Chicago"
         (is (= "America/Chicago"
                (get-timezone-with-report-timezone "America/Chicago"))))
@@ -1730,3 +1760,86 @@
                (fn [^java.sql.Connection conn]
                  (is (true? (sql-jdbc.sync.interface/have-select-privilege?
                              driver/*driver* conn schema table-name))))))))))))
+
+(deftest sync-writable-test
+  (mt/test-driver :postgres
+    (testing "`sync-tables-and-database!` should set is_writable correctly based on table privileges"
+      (let [db-name "sync_writable_test"
+            details (tx/dbdef->connection-details :postgres :db {:database-name db-name})]
+        (tx/drop-if-exists-and-create-db! driver/*driver* db-name)
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
+          (try
+            (jdbc/execute! conn "CREATE SCHEMA IF NOT EXISTS sync_test_schema")
+
+            (doseq [stmt ["CREATE TABLE sync_test_schema.readonly_table (id INTEGER);"
+                          "CREATE TABLE sync_test_schema.readwrite_table (id INTEGER);"
+                          "CREATE TABLE sync_test_schema.fullaccess_table (id INTEGER);"]]
+              (jdbc/execute! conn stmt))
+
+            (jdbc/execute! conn "DROP USER IF EXISTS sync_writable_test_user")
+            (jdbc/execute! conn "CREATE USER sync_writable_test_user WITH PASSWORD 'password'")
+
+            (jdbc/execute! conn "GRANT USAGE ON SCHEMA sync_test_schema TO sync_writable_test_user")
+
+            (jdbc/execute! conn "GRANT SELECT ON sync_test_schema.readonly_table TO sync_writable_test_user")
+            (jdbc/execute! conn "GRANT SELECT, INSERT ON sync_test_schema.readwrite_table TO sync_writable_test_user")
+            (jdbc/execute! conn "GRANT SELECT, INSERT, UPDATE, DELETE ON sync_test_schema.fullaccess_table TO sync_writable_test_user")
+
+            (let [user-connection-details (assoc details
+                                                 :user "sync_writable_test_user"
+                                                 :password "password")]
+              (mt/with-temp [:model/Database database {:engine "postgres", :details user-connection-details}]
+                (sync/sync-database! database)
+                (testing "only fullaccess table has writeable permissions"
+                  (is (= {"readonly_table"   false
+                          "readwrite_table"  false
+                          "fullaccess_table" true}
+                         (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))))
+                (testing "After granting full access to all tables and re-syncing"
+                  (doseq [table-name ["readonly_table" "readwrite_table"]]
+                    (jdbc/execute! conn (format "GRANT INSERT, UPDATE, DELETE ON sync_test_schema.%s TO sync_writable_test_user" table-name)))
+                  (sync/sync-database! database)
+                  (is (= {"readonly_table"   true
+                          "readwrite_table"  true
+                          "fullaccess_table" true}
+                         (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))))))
+            (finally
+              (jdbc/execute! conn "DROP SCHEMA IF EXISTS sync_test_schema CASCADE")
+              (jdbc/execute! conn "DROP USER IF EXISTS sync_writable_test_user"))))))))
+
+(deftest ^:parallel null-array-query-test
+  (testing "queries with nulls in arrays should be returned in a readable format"
+    (mt/test-driver :postgres
+      (is (= [[[nil]
+               [nil nil]
+               [1 nil 3]
+               [[nil]]
+               [[nil] [nil]]
+               [[1 nil] [nil 2]]]]
+             (->> (mt/native-query {:query "select array[null], array[null, null],
+                                            array[1, null, 3], array[array[null]],
+                                            array[array[null], array[null]],
+                                            array[array[1, null], array[null, 2]]"})
+                  mt/process-query
+                  mt/rows))))))
+
+(deftest ^:parallel detect-provider-from-database-test
+  (let [tests [["Aiven" "mydb-project.aivencloud.com"]
+               ["Amazon RDS" "czrs8kj4isg7.us-east-1.rds.amazonaws.com"]
+               ["Azure" "production-flexible-server.postgres.database.azure.com"]
+               ["Crunchy Data" "p.vbjrfujv5beutaoelw725gvi3i.db.postgresbridge.com"]
+               ["DigitalOcean" "cluster-do-user-1234567-0.db.ondigitalocean.com"]
+               ["Fly.io" "db.fly.dev"]
+               ["Neon" "ep-autumn-frost-alwlmval-pooler.ap-southeast-1.aws.neon.tech"]
+               ["PlanetScale" "my-db.horizon.psdb.cloud"]
+               ["Railway" "nodejs-copy-production-7aa4.up.railway.app"]
+               ["Render" "your_host_name.your_region-postgres.render.com"]
+               ["Scaleway" "my-db.region-1.scw.cloud"]
+               ["Supabase" "db.apbkobhfnmcqqzqeeqss.supabase.co"]
+               ["Supabase" "aws-0-us-west-1.pooler.supabase.com"]
+               ["Timescale" "service.project.tsdb.cloud.timescale.com"]]]
+    (testing "full database entity detection with postgres engine"
+      (doseq [[provider host] tests]
+        (let [database {:details {:host host} :engine :postgres}]
+          (is (= provider (provider-detection/detect-provider-from-database database))))))))

@@ -5,6 +5,8 @@ export function dragTypeForItem(item: CollectionItem) {
   return item.model;
 }
 
+export const DND_IGNORE_CLASS_NAME = "dnd-ignore";
+
 export const DragTypes = {
   QUESTION: "card", // a.k.a. question
   DASHBOARD: "dashboard",

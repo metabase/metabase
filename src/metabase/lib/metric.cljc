@@ -1,6 +1,6 @@
 (ns metabase.lib.metric
-  "A Metric is a saved MBQL query stage snippet with EXACTLY ONE `:aggregation` and optionally a `:filter` (boolean)
-  expression. Can be passed into the `:aggregation`s list."
+  "A Metric is a special type of Card that you can do special metric stuff with. (Not sure exactly what said special
+  stuff is TBH.)"
   (:require
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
@@ -32,9 +32,8 @@
       (lib.util/query-stage normalized-definition -1))))
 
 (defmethod lib.ref/ref-method :metadata/metric
-  [{:keys [id ::lib.join/join-alias], :as metric-metadata}]
-  (let [effective-type (or (:effective-type metric-metadata)
-                           (:base-type metric-metadata)
+  [{:keys [id], join-alias ::lib.join/join-alias, :as metric-metadata}]
+  (let [effective-type (or ((some-fn :effective-type :base-type) metric-metadata)
                            (when-let [aggregation (first (:aggregation (metric-definition metric-metadata)))]
                              (let [ag-effective-type (lib.schema.expression/type-of aggregation)]
                                (when (isa? ag-effective-type :type/*)

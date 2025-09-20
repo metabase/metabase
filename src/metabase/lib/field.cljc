@@ -280,9 +280,9 @@
         original-temporal-unit ((some-fn ::original-temporal-unit ::temporal-unit) metadata)]
     (if unit
       (-> metadata
-          (assoc ::temporal-unit unit
-                 ::original-effective-type original-effective-type)
-          (m/assoc-some ::original-temporal-unit original-temporal-unit))
+          (assoc ::temporal-unit unit)
+          (m/assoc-some ::original-effective-type original-effective-type
+                        ::original-temporal-unit  original-temporal-unit))
       (cond-> (dissoc metadata ::temporal-unit ::original-effective-type)
         original-effective-type (assoc :effective-type original-effective-type)
         original-temporal-unit  (assoc ::original-temporal-unit original-temporal-unit)))))
@@ -361,8 +361,7 @@
                         (isa? semantic-type :type/Coordinate)        (lib.binning/coordinate-binning-strategies)
                         (and (isa? effective-type :type/Number)
                              (not (isa? semantic-type :Relation/*))) (lib.binning/numeric-binning-strategies))]
-      ;; TODO: Include the time and date binning strategies too;
-      ;; see [[metabase.warehouse-schema.api.table/assoc-field-dimension-options]].
+      ;; TODO: Include the time and date binning strategies too
       (for [strat strategies]
         (cond-> strat
           (or (:lib/original-binning field-metadata) existing) (dissoc :default)
@@ -387,7 +386,9 @@
      ::original-effective-type
      ::original-temporal-unit])
    {:metabase.lib.field/binning       :binning
-    :metabase.lib.field/temporal-unit :temporal-unit}))
+    :metabase.lib.field/temporal-unit :temporal-unit
+    :lib/ref-name                     :name
+    :lib/ref-display-name             :display-name}))
 
 (def ^:private field-ref-propagated-keys-for-non-inherited-columns
   "Keys that should get copied into `:field` ref options from column metadata ONLY when the column is not inherited.
@@ -434,7 +435,7 @@
                                  (when-not inherited-column?
                                    (select-renamed-keys metadata field-ref-propagated-keys-for-non-inherited-columns)))
         id-or-name        (or (lib.field.util/inherited-column-name metadata)
-                              ((some-fn :id :lib/deduplicated-name :lib/original-name :name) metadata))]
+                              ((some-fn :id :lib/source-column-alias :lib/deduplicated-name :lib/original-name :name) metadata))]
     [:field options id-or-name]))
 
 (mu/defmethod lib.ref/ref-method :metadata/column :- ::lib.schema.ref/ref

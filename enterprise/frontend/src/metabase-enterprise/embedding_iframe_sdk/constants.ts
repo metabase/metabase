@@ -1,4 +1,5 @@
 import type {
+  BrowserEmbedOptions,
   DashboardEmbedOptions,
   ExplorationEmbedOptions,
   QuestionEmbedOptions,
@@ -33,10 +34,12 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
   ] satisfies (keyof DashboardEmbedOptions)[],
   chart: [
     "questionId",
+    "isSaveEnabled",
     "withTitle",
     "withDownloads",
     "initialSqlParameters",
     "drills",
+    "entityTypes",
   ] satisfies (keyof QuestionEmbedOptions)[],
   exploration: [
     "template",
@@ -45,7 +48,17 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "targetCollection",
     "entityTypes",
   ] satisfies (keyof ExplorationEmbedOptions)[],
-};
+  browser: [
+    "initialCollection",
+    "readOnly",
+    "collectionVisibleColumns",
+    "collectionEntityTypes",
+    "collectionPageSize",
+    "dataPickerEntityTypes",
+    "withNewQuestion",
+    "withNewDashboard",
+  ] satisfies (keyof BrowserEmbedOptions)[],
+} as const;
 
 // This file is used by embed.js, so we shouldn't import external dependencies.
 const uniq = <T>(list: T[]): T[] => Array.from(new Set(list));
@@ -55,6 +68,7 @@ export const ALLOWED_EMBED_SETTING_KEYS = uniq([
   ...ALLOWED_EMBED_SETTING_KEYS_MAP.dashboard,
   ...ALLOWED_EMBED_SETTING_KEYS_MAP.chart,
   ...ALLOWED_EMBED_SETTING_KEYS_MAP.exploration,
+  ...ALLOWED_EMBED_SETTING_KEYS_MAP.browser,
 ]) satisfies SdkIframeEmbedSettingKey[];
 
 export type AllowedEmbedSettingKey =

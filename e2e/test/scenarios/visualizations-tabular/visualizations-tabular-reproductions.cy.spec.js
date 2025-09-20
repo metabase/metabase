@@ -1,4 +1,6 @@
 const { H } = cy;
+import { chunk } from "underscore";
+
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ADMIN_USER_ID } from "e2e/support/cypress_sample_instance_data";
@@ -250,7 +252,7 @@ describe("issue 18976, 18817", () => {
   });
 });
 
-describe.skip("issue 19373", () => {
+describe("issue 19373", { tags: "@skip" }, () => {
   const questiondDetails = {
     name: "Products, Distinct values of Rating, Grouped by Category and Created At (year)",
     query: {
@@ -638,7 +640,7 @@ describe("issue 37726", () => {
 });
 
 // unskip once metabase#42049 is addressed
-describe.skip("issue 42049", () => {
+describe("issue 42049", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -827,7 +829,7 @@ describe("issue 14148", { tags: "@external" }, () => {
   });
 });
 
-describe.skip("issue 25415", () => {
+describe("issue 25415", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -1089,12 +1091,9 @@ describe("issue 50346", () => {
     display: "pivot",
     visualization_settings: {
       "pivot_table.column_split": {
+        // mix field refs with and without `base-type` to make sure we support both cases
         rows: [
-          [
-            "field",
-            PRODUCTS.CATEGORY,
-            { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
-          ],
+          ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
           [
             "field",
             PRODUCTS.VENDOR,
@@ -1467,7 +1466,7 @@ WHERE NOT (
   });
 });
 
-describe("issue 55673", { tags: "@flaky" }, () => {
+describe("issue 55673", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
@@ -1506,5 +1505,46 @@ describe("issue 55637", () => {
 
     H.tableHeaderColumn("Tax").realHover();
     cy.findByTestId("column-info").should("not.exist");
+  });
+});
+
+describe("issue 63745", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should display correct data when toggling columns (metabase#63745)", () => {
+    H.visitQuestionAdhoc({
+      name: "63745",
+      display: "object",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          limit: 5,
+        },
+      },
+    });
+
+    H.openVizSettingsSidebar();
+    cy.findByTestId("chartsettings-sidebar")
+      .button("Add or remove columns")
+      .click();
+
+    cy.findAllByTestId("object-details-table-cell").should(($cells) => {
+      const cellsFlat = $cells.toArray().map((el) => el.textContent);
+      const map = new Map(chunk(cellsFlat, 2));
+      expect(map.get("User ID")).to.eq("1");
+    });
+
+    cy.findByTestId("orders-table-columns").findByLabelText("ID").click();
+
+    cy.findAllByTestId("object-details-table-cell").should(($cells) => {
+      const cellsFlat = $cells.toArray().map((el) => el.textContent);
+      const map = new Map(chunk(cellsFlat, 2));
+      expect(map.get("User ID")).to.eq("1");
+    });
   });
 });

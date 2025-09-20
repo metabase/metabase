@@ -107,7 +107,7 @@
     (str/replace s #"-" "_")))
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
-(defmethod driver/describe-database :sparksql
+(defmethod driver/describe-database* :sparksql
   [driver database]
   {:tables
    (sql-jdbc.execute/do-with-connection-with-options
@@ -158,7 +158,7 @@
   (let [inner-query (-> (assoc inner-query
                                :remark   (driver-api/query->remark :sparksql outer-query)
                                :query    sql
-                               :max-rows (driver-api/query->max-rows-limit outer-query))
+                               :max-rows #_{:clj-kondo/ignore [:deprecated-var]} (driver-api/query->max-rows-limit outer-query))
                         (dissoc :params))
         query       (assoc outer-query :native inner-query)]
     ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond)))

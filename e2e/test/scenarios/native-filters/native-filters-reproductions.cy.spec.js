@@ -234,7 +234,7 @@ describe("issue 12581", () => {
   });
 });
 
-describe.skip("issue 13961", () => {
+describe("issue 13961", { tags: "@skip" }, () => {
   const categoryFilter = {
     id: "00315d5e-4a41-99da-1a41-e5254dacff9d",
     name: "category",
@@ -771,24 +771,6 @@ describe("issue 17490", () => {
     H.restore();
     cy.signInAsAdmin();
   });
-
-  it.skip("nav bar shouldn't cut off the popover with the tables for field filter selection (metabase#17490)", () => {
-    H.startNewNativeQuestion();
-    SQLFilter.enterParameterizedQuery("{{f}}");
-
-    SQLFilter.openTypePickerFromDefaultFilterType();
-    SQLFilter.chooseType("Field Filter");
-
-    /**
-     * Although `.click()` isn't neccessary for Cypress to fill out this input field,
-     * it's something that we can use to assert that the input field is covered by another element.
-     * Cypress fails to click any element that is not "actionable" (for example - when it's covered).
-     * In other words, the `.click()` part is essential for this repro to work. Don't remove it.
-     */
-    cy.findByPlaceholderText("Find...").click().type("Orders").blur();
-
-    cy.findByDisplayValue("Orders");
-  });
 });
 
 describe("issue 21160", () => {
@@ -1251,6 +1233,43 @@ describe("issue 49577", () => {
       cy.findByText("foo").should("be.visible");
       cy.findByText("bar").should("be.visible");
       cy.findByText("baz").should("be.visible");
+    });
+  });
+});
+
+describe("issue 58061", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+  });
+
+  it("should allow to pass a field filter value for a date column in the URL when the column has a broken semantic type (metabase#58061)", () => {
+    cy.request("PUT", `/api/field/${PRODUCTS.CREATED_AT}`, {
+      semantic_type: "type/Category",
+    });
+
+    H.createNativeQuestion({
+      native: {
+        query: "SELECT * FROM PRODUCTS WHERE {{filter}}",
+        "template-tags": {
+          filter: {
+            id: "4b77cc1f-ea70-4ef6-84db-58432fce6928",
+            name: "filter",
+            type: "dimension",
+            "display-name": "date",
+            dimension: ["field", PRODUCTS.CREATED_AT, null],
+            "widget-type": "date/all-options",
+          },
+        },
+      },
+    }).then(({ body: card }) => {
+      cy.visit({
+        url: `/question/${card.id}`,
+        qs: { filter: "2024-09-08" },
+      });
+      cy.wait("@cardQuery");
+      H.assertQueryBuilderRowCount(1);
     });
   });
 });

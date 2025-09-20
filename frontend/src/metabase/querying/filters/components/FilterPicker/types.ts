@@ -12,6 +12,7 @@ export type FilterPickerWidgetProps = {
   withSubmitButton: boolean;
   onChange: (filter: Lib.ExpressionClause, opts: FilterChangeOpts) => void;
   onBack?: () => void;
+  readOnly?: boolean;
 };
 
 export type FilterChangeOpts = {

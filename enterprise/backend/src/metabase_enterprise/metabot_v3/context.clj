@@ -41,6 +41,18 @@
 (mr/def ::context
   [:map-of :keyword :any])
 
+(mr/def ::capabilities
+  [:set :string])
+
+(defn backend-metabot-capabilities
+  "Set of backend capabilities available to the AI service. Those are determined by the endpoints available to ai-service. When an endpoint would change in a non-backward compatible way, we should create a new version of this capability."
+  []
+  ;; 20 ns per call, safe to keep unmemoized
+  (for [[[_method url _params] _spec] (-> (the-ns 'metabase-enterprise.metabot-v3.tools.api)
+                                          meta
+                                          :api/endpoints)]
+    (str "backend:/api/ee/metabot-tools" url)))
+
 (def ^:private max-database-tables
   "If the number of tables in the database doesn't exceed this number, we send them all to the agent."
   100)
@@ -82,6 +94,11 @@
       (assoc context :user_is_viewing enhanced-viewing))
     context))
 
+(defn- add-backend-capabilities
+  "Add backend capabilities to context, merging with any existing capabilities."
+  [context]
+  (update context :capabilities (fnil into #{}) (backend-metabot-capabilities)))
+
 (defn- set-user-time
   [context {:keys [date-format] :or {date-format DateTimeFormatter/ISO_INSTANT}}]
   (let [offset-time (or (some-> context :current_time_with_timezone OffsetDateTime/parse)
@@ -98,4 +115,5 @@
     opts    :- [:maybe [:map-of :keyword :any]]]
    (-> context
        enhance-context-with-schema
+       add-backend-capabilities
        (set-user-time opts))))

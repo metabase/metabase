@@ -5,7 +5,6 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal/ConfirmMod
 
 interface Props {
   onConfirm?: () => void;
-  onCancel?: () => void;
   onClose?: () => void;
   opened: boolean | undefined;
 }

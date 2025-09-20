@@ -1,16 +1,21 @@
 import type { ReactNode } from "react";
 import { P, match } from "ts-pattern";
 
+import { PublicComponentStylesWrapper } from "embedding-sdk-bundle/components/private/PublicComponentStylesWrapper";
+import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { SdkBreadcrumbsProvider } from "embedding-sdk-bundle/components/private/SdkBreadcrumbs";
+import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
+import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
+import { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion";
 import {
   InteractiveDashboard,
-  InteractiveQuestion,
-  MetabaseProvider,
   StaticDashboard,
-  StaticQuestion,
-  defineMetabaseAuthConfig,
-} from "embedding-sdk";
-import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion";
+} from "embedding-sdk-bundle/components/public/dashboard";
+import { getSdkStore, useSdkSelector } from "embedding-sdk-bundle/store";
+import { getLoginStatus } from "embedding-sdk-bundle/store/selectors";
+import type { MetabaseAuthConfig } from "embedding-sdk-package";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
+import { createTracker } from "metabase/lib/analytics-untyped";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { Box } from "metabase/ui";
 
@@ -18,6 +23,7 @@ import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
 import type { SdkIframeEmbedSettings } from "../types/embed";
 
+import { MetabaseBrowser } from "./MetabaseBrowser";
 import {
   SdkIframeApiKeyInProductionError,
   SdkIframeExistingUserSessionInProductionError,
@@ -29,6 +35,9 @@ const onSettingsChanged = (settings: SdkIframeEmbedSettings) => {
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.useExistingUserSession =
     settings?.useExistingUserSession || false;
 };
+
+const store = getSdkStore();
+createTracker(store);
 
 export const SdkIframeEmbedRoute = () => {
   const { embedSettings } = useSdkIframeEmbedEventBus({ onSettingsChanged });
@@ -61,17 +70,22 @@ export const SdkIframeEmbedRoute = () => {
 
   const { theme, locale } = embedSettings;
 
-  const authConfig = defineMetabaseAuthConfig({
+  const authConfig: MetabaseAuthConfig = {
     metabaseInstanceUrl: embedSettings.instanceUrl,
     apiKey: embedSettings.apiKey,
-  });
+  };
 
   return (
-    <MetabaseProvider authConfig={authConfig} theme={theme} locale={locale}>
+    <ComponentProvider
+      authConfig={authConfig}
+      theme={theme}
+      locale={locale}
+      reduxStore={store}
+    >
       <Box h="100vh" bg={theme?.colors?.background}>
         <SdkIframeEmbedView settings={embedSettings} />
       </Box>
-    </MetabaseProvider>
+    </ComponentProvider>
   );
 };
 
@@ -81,25 +95,34 @@ const SdkIframeEmbedView = ({
   settings: SdkIframeEmbedSettings;
 }): ReactNode => {
   const rerenderKey = useParamRerenderKey(settings);
+  const loginStatus = useSdkSelector(getLoginStatus);
+
+  if (loginStatus?.status === "error") {
+    return (
+      <PublicComponentStylesWrapper>
+        <SdkError
+          error={loginStatus.error}
+          message={loginStatus.error.message}
+        />
+      </PublicComponentStylesWrapper>
+    );
+  }
 
   return match(settings)
     .with(
-      P.union({ template: "exploration" }, { questionId: "new" }),
+      {
+        componentName: "metabase-browser",
+      },
       (settings) => (
-        <InteractiveQuestion
-          questionId="new"
-          height="100%"
-          isSaveEnabled={settings.isSaveEnabled ?? false}
-          targetCollection={settings.targetCollection}
-          entityTypes={settings.entityTypes}
-          key={rerenderKey}
-        />
+        // re-mount breadcrumbs when initial collection changes
+        <SdkBreadcrumbsProvider key={settings.initialCollection}>
+          <MetabaseBrowser settings={settings} />
+        </SdkBreadcrumbsProvider>
       ),
     )
-    .with({ template: "curate-content" }, (_settings) => null)
-    .with({ template: "view-content" }, (_settings) => null)
     .with(
       {
+        componentName: "metabase-dashboard",
         dashboardId: P.nonNullable,
         drills: false,
       },
@@ -116,6 +139,7 @@ const SdkIframeEmbedView = ({
     )
     .with(
       {
+        componentName: "metabase-dashboard",
         dashboardId: P.nonNullable,
         drills: P.optional(true),
       },
@@ -134,6 +158,7 @@ const SdkIframeEmbedView = ({
     )
     .with(
       {
+        componentName: "metabase-question",
         questionId: P.nonNullable,
       },
       (settings) => {
@@ -145,7 +170,8 @@ const SdkIframeEmbedView = ({
           title: settings.withTitle ?? true, // defaulting title to true even if in the sdk it defaults to false for static
         };
 
-        if (settings.drills === false) {
+        // note: to create a new question we need to render InteractiveQuestion
+        if (settings.drills === false && settings.questionId !== "new") {
           // note: this disable drills but also removes the top toolbar
           return <StaticQuestion {...commonProps} key={rerenderKey} />;
         }
@@ -153,7 +179,7 @@ const SdkIframeEmbedView = ({
         return (
           <SdkQuestion
             {...commonProps}
-            isSaveEnabled={settings.isSaveEnabled}
+            isSaveEnabled={settings.isSaveEnabled ?? false}
             key={rerenderKey}
             targetCollection={settings.targetCollection}
             entityTypes={settings.entityTypes}

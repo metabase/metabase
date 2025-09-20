@@ -270,9 +270,9 @@ describe(
         cy.wait("@executeAction");
 
         cy.findByLabelText("User ID").should("not.exist");
-        cy.findByLabelText("User ID: This User_id does not exist.").should(
-          "exist",
-        );
+        cy.findByLabelText(
+          'User ID: This value does not exist in table "people".',
+        ).should("exist");
 
         cy.findByText("Unable to update the record.").should("exist");
       });

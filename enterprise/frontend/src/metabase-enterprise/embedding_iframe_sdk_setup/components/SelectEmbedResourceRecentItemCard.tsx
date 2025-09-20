@@ -53,4 +53,6 @@ const getCardIcon = (experience: SdkIframeEmbedSetupExperience): IconName =>
   match<SdkIframeEmbedSetupExperience, IconName>(experience)
     .with("chart", () => "bar")
     .with("dashboard", () => "dashboard")
-    .otherwise(() => "bar");
+    .with("browser", () => "collection")
+    .with("exploration", () => "question") // not possible
+    .exhaustive();

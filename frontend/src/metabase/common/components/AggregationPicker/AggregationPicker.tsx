@@ -46,6 +46,7 @@ export interface AggregationPickerProps {
   onClose?: () => void;
   onQueryChange: (query: Lib.Query) => void;
   onBack?: () => void;
+  readOnly?: boolean;
 }
 
 type OperatorListItem = Lib.AggregationOperatorDisplayInfo & {
@@ -81,6 +82,7 @@ export function AggregationPicker({
   onClose,
   onQueryChange,
   onBack,
+  readOnly,
 }: AggregationPickerProps) {
   const metadata = useSelector(getMetadata);
   const displayInfo = clause
@@ -93,7 +95,13 @@ export function AggregationPicker({
     isEditingExpression,
     { turnOn: openExpressionEditor, turnOff: closeExpressionEditor },
   ] = useToggle(
-    isExpressionEditorInitiallyOpen(query, stageIndex, clause, operators),
+    isExpressionEditorInitiallyOpen({
+      query,
+      stageIndex,
+      clause,
+      operators,
+      readOnly,
+    }),
   );
   const [initialExpressionClause, setInitialExpressionClause] =
     useState<DefinedClauseName | null>(null);
@@ -309,10 +317,15 @@ export function AggregationPicker({
         withName
         expressionMode="aggregation"
         expressionIndex={clauseIndex}
-        header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
+        header={
+          <ExpressionWidgetHeader
+            onBack={readOnly ? undefined : closeExpressionEditor}
+          />
+        }
         onChangeClause={handleClauseChange}
         onClose={closeExpressionEditor}
         initialExpressionClause={initialExpressionClause}
+        readOnly={readOnly}
       />
     );
   }
@@ -436,12 +449,23 @@ function getInitialOperator(
   return operator ?? null;
 }
 
-function isExpressionEditorInitiallyOpen(
-  query: Lib.Query,
-  stageIndex: number,
-  clause: Lib.AggregationClause | undefined,
-  operators: Lib.AggregationOperator[],
-): boolean {
+function isExpressionEditorInitiallyOpen({
+  query,
+  stageIndex,
+  clause,
+  operators,
+  readOnly,
+}: {
+  query: Lib.Query;
+  stageIndex: number;
+  clause: Lib.AggregationClause | undefined;
+  operators: Lib.AggregationOperator[];
+  readOnly?: boolean;
+}): boolean {
+  if (readOnly) {
+    return true;
+  }
+
   if (!clause) {
     return false;
   }

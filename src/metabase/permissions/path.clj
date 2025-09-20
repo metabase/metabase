@@ -1,5 +1,6 @@
 (ns metabase.permissions.path
   (:require
+   [clojure.string :as str]
    [metabase.permissions.util :as perms.u]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -17,6 +18,16 @@
     (if-let [collection-namespace (:namespace collection-or-id)]
       (format "/collection/namespace/%s/root/" (perms.u/escape-path-component (u/qualified-name collection-namespace)))
       "/collection/root/")))
+
+(mu/defn collection-path?
+  "Whether permissions `path` is any type of path for any Collection (1-arity) or for the Collection with
+  `collection-id` (2-arity)."
+  ([path :- [:maybe perms.u/PathSchema]]
+   (str/starts-with? path "/collection/"))
+
+  ([path          :- [:maybe perms.u/PathSchema]
+    collection-id :- pos-int?]
+   (str/starts-with? path (format "/collection/%d/" collection-id))))
 
 (mu/defn collection-read-path :- perms.u/PathSchema
   "Return the permissions path for *read* access for a `collection-or-id`."

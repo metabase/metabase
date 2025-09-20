@@ -1,5 +1,12 @@
 ;; The interface encapsulating the various search engine backends.
-(ns metabase.search.engine)
+(ns metabase.search.engine
+  (:require
+   [metabase.search.settings :as settings]))
+
+(def fallback-engine-priority
+  "Search engines in order of preference for fallback scenarios."
+  [:search.engine/appdb
+   :search.engine/in-place])
 
 (defmulti supported-engine?
   "Does this instance support the given engine?"
@@ -44,7 +51,8 @@
     search-engine))
 
 (defmulti init!
-  "Ensure that the search index exists, an is ready to take search queries."
+  "Ensure that the search index exists, and is ready to take search queries.
+   Returns a map of the number of documents indexed in each model"
   {:arglists '([engine opts])}
   (fn [engine _opts]
     engine))
@@ -66,9 +74,11 @@
   (keys (dissoc (methods supported-engine?) :default)))
 
 (defn active-engines
-  "List the search engines that are supported. Does not mention the legacy in-place engine."
+  "List the search engines that are supported. Does not mention the legacy in-place engine.
+   Default engine comes first."
   []
-  (for [[k p] (dissoc (methods supported-engine?) :default :search.engine/in-place) :when (p k)] k))
+  (->> (for [[k p] (dissoc (methods supported-engine?) :default :search.engine/in-place) :when (p k)] k)
+       (sort-by #(if (= (name %) (name (settings/search-engine))) 0 1))))
 
 (defn known-engine?
   "Is the given engine recognized?"

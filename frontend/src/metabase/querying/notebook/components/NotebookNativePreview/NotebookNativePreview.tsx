@@ -52,11 +52,15 @@ export const NotebookNativePreview = (): JSX.Element => {
   const showEmptySidebar = !canRun;
 
   const newQuestion = createNativeQuestion(question, data);
-  const newQuery = newQuestion.query();
+  const newQuery = newQuestion?.query();
 
   const handleConvertClick = useCallback(() => {
-    dispatch(updateQuestion(newQuestion, { shouldUpdateUrl: true, run: true }));
-    dispatch(setUIControls({ isNativeEditorOpen: true }));
+    if (newQuestion != null) {
+      dispatch(
+        updateQuestion(newQuestion, { shouldUpdateUrl: true, run: true }),
+      );
+      dispatch(setUIControls({ isNativeEditorOpen: true }));
+    }
   }, [newQuestion, dispatch]);
 
   const getErrorMessage = (error: unknown) =>
@@ -103,7 +107,7 @@ export const NotebookNativePreview = (): JSX.Element => {
             <Box mt="sm">{getErrorMessage(error)}</Box>
           </Flex>
         )}
-        {showQuery && <Editor query={newQuery} readOnly />}
+        {showQuery && newQuery != null && <Editor query={newQuery} readOnly />}
       </Flex>
       <Box ta="end" p="1.5rem">
         <Button

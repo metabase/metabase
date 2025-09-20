@@ -1,23 +1,24 @@
-import type { Location } from "history";
 import { type ComponentType, useEffect, useState } from "react";
 import { withRouter } from "react-router";
-import { replace } from "react-router-redux";
-import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useGetDatabaseQuery } from "metabase/api";
+import {
+  useGetDatabaseQuery,
+  useGetDatabaseSettingsAvailableQuery,
+} from "metabase/api";
 import Breadcrumbs from "metabase/common/components/Breadcrumbs";
 import { GenericError } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import title from "metabase/hoc/Title";
-import { connect, useDispatch, useSelector } from "metabase/lib/redux";
+import { connect, useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_DATABASE_REPLICATION,
   PLUGIN_DB_ROUTING,
+  PLUGIN_TABLE_EDITING,
 } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Divider, Flex } from "metabase/ui";
@@ -31,7 +32,6 @@ import { DatabaseConnectionInfoSection } from "../components/DatabaseConnectionI
 import { DatabaseDangerZoneSection } from "../components/DatabaseDangerZoneSection";
 import { DatabaseModelFeaturesSection } from "../components/DatabaseModelFeaturesSection";
 import { ExistingDatabaseHeader } from "../components/ExistingDatabaseHeader";
-import { NewDatabasePermissionsModal } from "../components/NewDatabasePermissionsModal";
 import { deleteDatabase, updateDatabase } from "../database";
 
 interface DatabaseEditAppProps {
@@ -41,7 +41,6 @@ interface DatabaseEditAppProps {
     database: { id: DatabaseId } & Partial<DatabaseType>,
   ) => Promise<void>;
   deleteDatabase: (databaseId: DatabaseId) => Promise<void>;
-  location: Location;
 }
 
 const mapDispatchToProps = {
@@ -54,9 +53,7 @@ function DatabaseEditAppInner({
   params,
   updateDatabase,
   deleteDatabase,
-  location,
 }: DatabaseEditAppProps) {
-  const dispatch = useDispatch();
   const isAdmin = useSelector(getUserIsAdmin);
   const isModelPersistenceEnabled = useSetting("persisted-models-enabled");
 
@@ -68,6 +65,9 @@ function DatabaseEditAppInner({
     isLoading,
     error,
   } = useGetDatabaseQuery({ id: databaseId }, { pollingInterval });
+
+  const { data: settingsAvailable } =
+    useGetDatabaseSettingsAvailableQuery(databaseId);
 
   useEffect(
     function pollDatabaseWhileSyncing() {
@@ -81,15 +81,6 @@ function DatabaseEditAppInner({
     [t`Databases`, "/admin/databases"],
     database?.name && [database?.name],
   ]);
-
-  const [isPermissionModalOpened, setIsPermissionModalOpened] = useState(false);
-  useMount(() => {
-    if (location.query.created) {
-      setIsPermissionModalOpened(true);
-      dispatch(replace(location.pathname));
-    }
-  });
-  const onPermissionModalClose = () => setIsPermissionModalOpened(false);
 
   PLUGIN_DB_ROUTING.useRedirectDestinationDatabase(database);
 
@@ -123,6 +114,12 @@ function DatabaseEditAppInner({
                     database={database}
                   />
 
+                  <PLUGIN_TABLE_EDITING.AdminDatabaseTableEditingSection
+                    database={database}
+                    settingsAvailable={settingsAvailable?.settings}
+                    updateDatabase={updateDatabase}
+                  />
+
                   <PLUGIN_DB_ROUTING.DatabaseRoutingSection
                     database={database}
                   />
@@ -133,12 +130,6 @@ function DatabaseEditAppInner({
                     deleteDatabase={deleteDatabase}
                   />
                 </Flex>
-
-                <NewDatabasePermissionsModal
-                  opened={isPermissionModalOpened}
-                  onClose={onPermissionModalClose}
-                  database={database}
-                />
               </>
             )}
           </LoadingAndErrorWrapper>

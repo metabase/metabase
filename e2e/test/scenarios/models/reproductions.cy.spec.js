@@ -280,7 +280,7 @@ describe("issue 20517", () => {
     H.createQuestion(modelDetails).then(({ body: { id } }) => {
       cy.intercept("POST", `/api/card/${id}/query`).as("modelQuery");
       cy.intercept("PUT", `/api/card/${id}`).as("updateModel");
-      cy.visit(`/model/${id}/metadata`);
+      cy.visit(`/model/${id}/columns`);
       cy.wait("@modelQuery");
     });
   });
@@ -304,7 +304,7 @@ describe("issue 20517", () => {
   });
 });
 
-describe.skip("issue 20624", () => {
+describe("issue 20624", { tags: "@skip" }, () => {
   const renamedColumn = "TITLE renamed";
 
   const questionDetails = {
@@ -423,34 +423,38 @@ describe("issue 22517", () => {
     cy.wait("@updateMetadata");
   });
 
-  it.skip("adding or removing a column should not drop previously edited metadata (metabase#22517)", () => {
-    H.openQuestionActions();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Edit query definition").click();
+  it(
+    "adding or removing a column should not drop previously edited metadata (metabase#22517)",
+    { tags: "@skip" },
+    () => {
+      H.openQuestionActions();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Edit query definition").click();
 
-    // Make sure previous metadata changes are reflected in the UI
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Foo");
+      // Make sure previous metadata changes are reflected in the UI
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Foo");
 
-    // This will edit the original query and add the `SIZE` column
-    // Updated query: `select *, case when quantity > 4 then 'large' else 'small' end size from orders`
-    H.NativeEditor.focus().type(
-      "{leftarrow}".repeat(" from orders".length) +
-        ", case when quantity > 4 then 'large' else 'small' end size ",
-    );
+      // This will edit the original query and add the `SIZE` column
+      // Updated query: `select *, case when quantity > 4 then 'large' else 'small' end size from orders`
+      H.NativeEditor.focus().type(
+        "{leftarrow}".repeat(" from orders".length) +
+          ", case when quantity > 4 then 'large' else 'small' end size ",
+      );
 
-    cy.findByTestId("native-query-editor-container").icon("play").click();
-    cy.wait("@dataset");
+      cy.findByTestId("native-query-editor-container").icon("play").click();
+      cy.wait("@dataset");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Foo");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Foo");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save changes").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Save changes").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Foo");
-  });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Foo");
+    },
+  );
 });
 
 describe("issue 22518", () => {
@@ -493,7 +497,7 @@ describe("issue 22518", () => {
   });
 });
 
-describe.skip("issue 22519", () => {
+describe("issue 22519", { tags: "@skip" }, () => {
   const questionDetails = {
     query: {
       "source-table": REVIEWS_ID,
@@ -559,7 +563,7 @@ describe(
         cy.request("PUT", `/api/card/${id}`, { type: "model" });
 
         // Let's go straight to the model metadata editor
-        cy.visit(`/model/${id}/metadata`);
+        cy.visit(`/model/${id}/columns`);
         cy.findByText("Database column this maps to").should("be.visible");
 
         // The first column `ID` is automatically selected
@@ -1035,7 +1039,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
       cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
         "schema",
       );
-      cy.visit(`/model/${id}/metadata`);
+      cy.visit(`/model/${id}/columns`);
       cy.wait("@schema");
 
       mapModelColumnToDatabase({ table: "Orders", field: "ID" });
@@ -1145,7 +1149,7 @@ describe("issue 53556 - nested question based on native model with remapped valu
       cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
         "schema",
       );
-      cy.visit(`/model/${id}/metadata`);
+      cy.visit(`/model/${id}/columns`);
       cy.wait("@schema");
 
       mapModelColumnToDatabase({ table: "Orders", field: "ID" });
@@ -1344,7 +1348,7 @@ FROM
       cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
         "schema",
       );
-      cy.visit(`/model/${id}/metadata`);
+      cy.visit(`/model/${id}/columns`);
       cy.wait("@schema");
 
       selectModelColumn("source orders");
@@ -1438,7 +1442,7 @@ describe("issue 53604 - nested native question with multiple breakouts on same c
     );
 
     cy.findByTestId("qb-filters-panel").findByText(
-      "CREATED_AT is Jan 1 – Dec 31, 2024",
+      "CREATED_AT: Year is Jan 1 – Dec 31, 2024",
     );
 
     H.assertQueryBuilderRowCount(520);
@@ -2113,7 +2117,7 @@ describe("issue 40252", () => {
       .should("be.enabled")
       .click();
 
-    cy.url().should("not.contain", "/metadata");
+    cy.url().should("not.contain", "/columns");
 
     cy.wait("@dataset");
 

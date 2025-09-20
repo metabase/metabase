@@ -8,8 +8,10 @@ import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
+import { PLUGIN_ENTITIES } from "metabase/plugins";
 import { addUndo } from "metabase/redux/undo";
 import { BookmarkSchema } from "metabase/schema";
+
 const REORDER_ACTION = `metabase/entities/bookmarks/REORDER_ACTION`;
 
 /**
@@ -148,6 +150,7 @@ function getEntityFor(type) {
     card: Questions,
     collection: Collections,
     dashboard: Dashboards,
+    document: PLUGIN_ENTITIES.entities["documents"],
   };
 
   return entities[type];

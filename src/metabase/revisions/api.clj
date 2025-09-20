@@ -11,6 +11,7 @@
 (def ^:private entity->model
   {"card"      :model/Card
    "dashboard" :model/Dashboard
+   "document"  :model/Document
    "segment"   :model/Segment})
 
 (def ^:private Entity

@@ -235,6 +235,275 @@ databaseChangeLog:
            SET login_attributes = jwt_attributes
            WHERE sso_source = 'jwt';
 
+  - changeSet:
+      id: v56.2025-07-30T10:35:00
+      author: bronsa
+      comment: Add deactivated_at column to metabase_table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_table
+                columnName: deactivated_at
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: deactivated_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp when the table was deactivated (active changed from true to false)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v56.2025-07-30T10:35:01
+      author: bronsa
+      comment: Add archived_at column to metabase_table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_table
+                columnName: archived_at
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: archived_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp when the table was marked for archiving
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v56.2025-07-30T10:41:00
+      author: bronsa
+      comment: Add composite index on metabase_table for unarchived deactivated tables by db_id (PostgreSQL)
+      dbms: postgresql
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: metabase_table
+                indexName: idx_metabase_table_db_deactivated
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_metabase_table_db_deactivated
+              ON metabase_table (db_id, deactivated_at)
+              WHERE active = false AND archived_at IS NULL AND deactivated_at IS NOT NULL;
+      rollback:
+        - dropIndex:
+            tableName: metabase_table
+            indexName: idx_metabase_table_db_deactivated
+
+  - changeSet:
+      id: v56.2025-07-30T10:43:00
+      author: bronsa
+      comment: Backfill deactivated_at for existing inactive tables
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET deactivated_at = updated_at
+              WHERE active = false
+                AND deactivated_at IS NULL;
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET deactivated_at = NULL;
+
+  - changeSet:
+      id: v56.2025-08-01T11:11:00
+      author: bronsa
+      comment: Migration to allow rollbacking of archived tables when possible
+      changes:
+        - empty: #no-op on forward migration
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE metabase_table
+              SET
+                name = REGEXP_REPLACE(name, '__mbarchiv__\d+$', ''),
+                archived_at = NULL
+              WHERE archived_at IS NOT NULL
+                AND active = false
+                AND name ~ '__mbarchiv__\d+$'
+                AND NOT EXISTS (
+                  SELECT 1 FROM metabase_table mt2
+                  WHERE mt2.db_id = metabase_table.db_id
+                    AND mt2.schema IS NOT DISTINCT FROM metabase_table.schema
+                    AND mt2.name = REGEXP_REPLACE(metabase_table.name, '__mbarchiv__\d+$', '')
+                    AND mt2.id != metabase_table.id);
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_table mt1
+              LEFT JOIN metabase_table mt2 ON (
+                mt2.db_id = mt1.db_id
+                AND (mt2.schema = mt1.schema OR (mt2.schema IS NULL AND mt1.schema IS NULL))
+                AND mt2.name = SUBSTRING(mt1.name, 1, POSITION('__mbarchiv__' IN mt1.name) - 1)
+                AND mt2.id != mt1.id
+              )
+              SET
+                mt1.name = SUBSTRING(mt1.name, 1, POSITION('__mbarchiv__' IN mt1.name) - 1),
+                mt1.archived_at = NULL
+              WHERE mt1.archived_at IS NOT NULL
+                AND mt1.active = false
+                AND mt1.name LIKE '%__mbarchiv__%'
+                AND mt2.id IS NULL;
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE metabase_table
+              SET
+                name = SUBSTRING(name, 1, POSITION('__mbarchiv__' IN name) - 1),
+                archived_at = NULL
+              WHERE archived_at IS NOT NULL
+                AND active = false
+                AND name LIKE '%__mbarchiv__%'
+                AND NOT EXISTS (
+                  SELECT 1 FROM metabase_table mt2
+                  WHERE mt2.db_id = metabase_table.db_id
+                    AND (mt2.schema = metabase_table.schema OR (mt2.schema IS NULL AND metabase_table.schema IS NULL))
+                    AND mt2.name = SUBSTRING(metabase_table.name, 1, POSITION('__mbarchiv__' IN metabase_table.name) - 1)
+                    AND mt2.id != metabase_table.id);
+
+  - changeSet:
+      id: v56.2025-09-03T17:15:00
+      author: piranha
+      comment: metabot_conversation table
+      changes:
+        - createTable:
+            tableName: metabot_conversation
+            remarks: Table to store metabot conversation messages
+            columns:
+              - column:
+                  name: id
+                  type: varchar(36)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                  remarks: 'Conversation UUID'
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+                  remarks: 'created_at'
+              - column:
+                  name: user_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_metabot_conversation_user_id
+                  remarks: 'Reference to user having the conversation'
+              - column:
+                  name: summary
+                  type: ${text.type}
+                  remarks: 'Auto-generated summary for the conversation'
+              - column:
+                  name: state
+                  type: ${text.type}
+                  remarks: 'Metabot conversation state'
+
+  - changeSet:
+      id: v56.2025-09-03T17:15:01
+      author: piranha
+      comment: Index on metabot_conversation.user_id
+      changes:
+        - createIndex:
+            indexName: idx_metabot_conversation_user_id
+            tableName: metabot_conversation
+            columns:
+              - column:
+                  name: user_id
+      rollback: # will be dropped with table
+
+  - changeSet:
+      id: v56.2025-09-03T17:16:00
+      author: piranha
+      comment: metabot_message table
+      changes:
+        - createTable:
+            tableName: metabot_message
+            remarks: Table to store metabot conversation messages
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                  remarks: 'Autoincrement PK'
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+                  remarks: 'created_at'
+              - column:
+                  name: profile_id
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+                  remarks: 'ai-service profile used to perform the conversation'
+              - column:
+                  name: role
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+                  remarks: 'Role of the sender'
+              - column:
+                  name: data
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+                  remarks: 'Full message content'
+              - column:
+                  name: usage
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+                  remarks: 'Can be null for user messages; {"<model-name>": {"prompt": 1, "completion": 2}}'
+              - column:
+                  name: total_tokens
+                  type: int
+                  constraints:
+                    nullable: false
+                  remarks: 'A sum of all prompt+completion from `usage`'
+              - column:
+                  name: conversation_id
+                  type: varchar(36)
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabot_conversation
+                    referencedColumnNames: id
+                    foreignKeyName: fk_metabot_message_conversation_id
+                  remarks: 'Reference to a conversation'
+
+  - changeSet:
+      id: v56.2025-09-03T17:16:01
+      author: piranha
+      comment: Index on metabot_message.conversation_id
+      changes:
+        - createIndex:
+            indexName: idx_metabot_message_conversation_id
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: conversation_id
+      rollback: # will be dropped with table
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

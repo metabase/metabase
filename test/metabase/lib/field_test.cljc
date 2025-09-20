@@ -1,7 +1,7 @@
 (ns metabase.lib.field-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [are deftest is testing use-fixtures]]
+   [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.core :as lib]
@@ -29,8 +29,32 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
-(use-fixtures :each (fn [thunk]
-                      (thunk)))
+(deftest ^:parallel ref-test
+  (is (=? [:field
+           {:base-type      :type/DateTime
+            :effective-type :type/Integer
+            :temporal-unit  :year
+            :lib/uuid       string?}
+           "CREATED_AT"]
+          (lib/ref {:base-type                                  :type/DateTime
+                    :database-type                              "TIMESTAMP"
+                    :display-name                               "CREATED_AT: Year"
+                    :effective-type                             :type/DateTime
+                    :inherited-temporal-unit                    :year
+                    :name                                       "CREATED_AT_2"
+                    :remapped-from-index                        nil
+                    :remapping                                  nil
+                    :semantic-type                              :type/CreationTimestamp
+                    :lib/breakout?                              true
+                    :lib/card-id                                1
+                    :lib/deduplicated-name                      "CREATED_AT_2"
+                    :lib/desired-column-alias                   "CREATED_AT_2"
+                    :lib/original-name                          "CREATED_AT"
+                    :lib/source-column-alias                    "CREATED_AT"
+                    :lib/type                                   :metadata/column
+                    :metabase.lib.field/original-effective-type :type/DateTime
+                    :metabase.lib.field/original-temporal-unit  :year
+                    :metabase.lib.field/temporal-unit           :year}))))
 
 (defn grandparent-parent-child-id [field]
   (+ (meta/id :venues :id)
@@ -1284,8 +1308,10 @@
             col (lib/visible-columns query)
             :let [col-ref (lib/ref col)]]
       (testing (str "ref " col-ref " of " (symbol query-var))
-        (is (= (dissoc col :lib/source-uuid :lib/original-ref)
-               (dissoc (lib/find-visible-column-for-ref query col-ref) :lib/source-uuid :lib/original-ref)))))))
+        (is (= (-> col
+                   (dissoc :lib/source-uuid))
+               (-> (lib/find-visible-column-for-ref query col-ref)
+                   (dissoc :lib/source-uuid))))))))
 
 (deftest ^:parallel find-visible-column-for-ref-test-2
   (testing "reference by ID instead of name"
@@ -1508,7 +1534,9 @@
 (deftest ^:parallel expression-ref-when-metadata-has-expression-name-test
   (testing "column metadata with :expression-name should generate :expression refs. Prefer :expression-name over :name (#34957)"
     (let [metadata (-> (meta/field-metadata :venues :name)
-                       (assoc :lib/expression-name "Custom Venue Name", :lib/source :source/expressions))]
+                       (assoc :lib/expression-name "Custom Venue Name"
+                              :lib/source          :source/expressions
+                              :lib/source-uuid     "00000000-0000-0000-0000-000000000000"))]
       (is (=? [:expression {} "Custom Venue Name"]
               (lib/ref metadata))))))
 

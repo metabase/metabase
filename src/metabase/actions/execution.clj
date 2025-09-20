@@ -23,21 +23,27 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(defn- execute-query-action!
+(mu/defn- execute-query-action!
   "Execute a `QueryAction` with parameters as passed in from an
   endpoint of shape `{<parameter-id> <value>}`.
 
   `action` should already be hydrated with its `:card`."
-  [{:keys [dataset_query model_id] :as action} request-parameters]
+  [{query :dataset_query, model-id :model_id, :as action} :- [:map
+                                                              [:model_id      ::lib.schema.id/card]
+                                                              [:dataset_query [:map
+                                                                               [:type   [:= :native]]
+                                                                               [:native [:map
+                                                                                         [:query :string]]]]]]
+   request-parameters]
   (log/tracef "Executing action\n\n%s" (u/pprint-to-str action))
   (try
     (let [parameters (for [parameter (:parameters action)]
                        (assoc parameter :value (get request-parameters (:id parameter))))
-          query (-> dataset_query
+          query (-> query
                     (update :type keyword)
                     (assoc :parameters parameters))]
       (log/debugf "Query (before preprocessing):\n\n%s" (u/pprint-to-str query))
-      (binding [qp.perms/*card-id* model_id]
+      (binding [qp.perms/*card-id* model-id]
         (qp.writeback/execute-write-query! query)))
     (catch Throwable e
       (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)

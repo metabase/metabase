@@ -59,7 +59,6 @@ dataset_query:
           - entity_qualified_id
         - base-type: type/Text
           join-alias: Content - Entity Qualified
-      ident: join_XIiIsCNMk9gg-eO2hkl8S@0__Content - Entity Qualified
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     - alias: Group Members - User
@@ -78,7 +77,6 @@ dataset_query:
           - user_id
         - base-type: type/Integer
           join-alias: Group Members - User
-      ident: join_XIiIsCNMk9gg-eO2hkl8S@0__Group Members - User
       source-table: lTp-ATFsCUFEr9I0fMEaO
       strategy: left-join
     source-table: P6Ityjj7igswKh4NgZZjz

@@ -513,6 +513,44 @@ describe("ObjectDetailView", () => {
       "Are you sure you want to delete this row?",
     );
   });
+
+  describe("keyboard bindings", () => {
+    it("should be added when showControls is true", async () => {
+      const mockViewPreviousObjectDetail = jest.fn();
+      const mockViewNextObjectDetail = jest.fn();
+
+      setup({
+        question: mockQuestion,
+        showControls: true,
+        viewPreviousObjectDetail: mockViewPreviousObjectDetail,
+        viewNextObjectDetail: mockViewNextObjectDetail,
+      });
+
+      await userEvent.keyboard("{ArrowUp}");
+      expect(mockViewPreviousObjectDetail).toHaveBeenCalledTimes(1);
+
+      await userEvent.keyboard("{ArrowDown}");
+      expect(mockViewNextObjectDetail).toHaveBeenCalledTimes(1);
+    });
+
+    it("should not be added when showControls is false", async () => {
+      const mockViewPreviousObjectDetail = jest.fn();
+      const mockViewNextObjectDetail = jest.fn();
+
+      setup({
+        question: mockQuestion,
+        showControls: false,
+        viewPreviousObjectDetail: mockViewPreviousObjectDetail,
+        viewNextObjectDetail: mockViewNextObjectDetail,
+      });
+
+      await userEvent.keyboard("{ArrowUp}");
+      expect(mockViewPreviousObjectDetail).not.toHaveBeenCalled();
+
+      await userEvent.keyboard("{ArrowDown}");
+      expect(mockViewNextObjectDetail).not.toHaveBeenCalled();
+    });
+  });
 });
 
 async function findActionInActionMenu({ name }: Pick<WritebackAction, "name">) {

@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding.jwt :as embed]
    [metabase.embedding.validation :as embedding.validation]
@@ -16,6 +15,7 @@
    [metabase.queries.core :as queries]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.parameters.operators :as params.ops]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -314,6 +314,12 @@
               :qp          qp
               options)))
 
+(defn unsigned-token->card-id
+  "Get the Card ID from an unsigned token."
+  [unsigned-token]
+  (->> (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
+       (eid-translation/->id :model/Card)))
+
 ;;; -------------------------- Dashboard Fns used by both /api/embed and /api/preview_embed --------------------------
 
 (defn- remove-locked-parameters [dashboard embedding-params]
@@ -479,7 +485,8 @@
                       (u/pprint-to-str (u/all-ex-data e)))
           (throw e))))))
 
-(defn- unsigned-token->dashboard-id
+(defn unsigned-token->dashboard-id
+  "Get the Dashboard ID from an unsigned token."
   [unsigned-token]
   (->> (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
        (eid-translation/->id :model/Dashboard)))

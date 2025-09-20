@@ -680,6 +680,6 @@
           (testing "an error in SQL will be caught and parsed to a readable erorr message"
 
             (is (= {:message "Unable to update the record."
-                    :errors {:user_id "This User_id does not exist."}}
+                    :errors {:user_id "This value does not exist in table \"users\"."}}
                    (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-action)
                                          {:parameters {"id" 1 "user_id" 99999}})))))))))

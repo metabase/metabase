@@ -3,12 +3,9 @@ import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
 
 import { createAsyncThunk } from "metabase/lib/redux";
+import { getIsEmbedding } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
-import {
-  EnterpriseApi,
-  metabotAgent,
-  metabotApi,
-} from "metabase-enterprise/api";
+import { EnterpriseApi } from "metabase-enterprise/api";
 import {
   type JSONValue,
   aiStreamingQuery,
@@ -33,7 +30,6 @@ import {
   getIsProcessing,
   getLastMessage,
   getMetabotConversationId,
-  getUseStreaming,
   getUserPromptForMessageId,
 } from "./selectors";
 import { createMessageId } from "./utils";
@@ -45,6 +41,7 @@ export const {
   addUserMessage,
   resetConversationId,
   setIsProcessing,
+  setNavigateToPath,
   toolCallStart,
   toolCallEnd,
 } = metabot.actions;
@@ -78,11 +75,6 @@ const handleResponseError = (error: unknown): PromptErrorOutcome => {
       },
       shouldRetry: true,
     }));
-};
-
-export const toggleStreaming = () => (dispatch: Dispatch) => {
-  dispatch(resetConversation());
-  dispatch(metabot.actions.toggleStreaming());
 };
 
 export const setVisible =
@@ -133,12 +125,8 @@ export const submitInput = createAsyncThunk<
       const agentMetadata = getAgentRequestMetadata(getState() as any);
       const messageId = createMessageId();
       dispatch(addUserMessage({ id: messageId, message: data.message }));
-      const useStreaming = getUseStreaming(getState() as any);
-      const sendRequestAction = useStreaming
-        ? sendStreamedAgentRequest
-        : sendAgentRequest;
       const sendMessageRequestPromise = dispatch(
-        sendRequestAction({
+        sendAgentRequest({
           ...data,
           ...agentMetadata,
         }),
@@ -169,46 +157,6 @@ export const submitInput = createAsyncThunk<
 );
 
 export const sendAgentRequest = createAsyncThunk<
-  MetabotAgentResponse,
-  Omit<MetabotAgentRequest, "conversation_id">,
-  { rejectValue: PromptErrorOutcome }
->(
-  "metabase-enterprise/metabot/sendAgentRequest",
-  async (
-    data: Omit<MetabotAgentRequest, "conversation_id">,
-    { dispatch, getState, rejectWithValue, fulfillWithValue },
-  ) => {
-    try {
-      // TODO: make enterprise store
-      let sessionId = getMetabotConversationId(getState() as any);
-      // should not be needed, but just in case the value got unset
-      if (!sessionId) {
-        console.warn(
-          "Metabot has no session id while open, this should never happen",
-        );
-        dispatch(resetConversationId());
-        sessionId = getMetabotConversationId(getState() as any) as string;
-      }
-
-      const metabotRequestPromise = dispatch(
-        metabotAgent.initiate({ ...data, conversation_id: sessionId }),
-      );
-      const result = await metabotRequestPromise;
-
-      if (result.data) {
-        await dispatch(processMetabotReactions(result.data?.reactions || []));
-        return fulfillWithValue(result.data);
-      } else {
-        throw result.error;
-      }
-    } catch (error) {
-      console.error(error);
-      return rejectWithValue(handleResponseError(error));
-    }
-  },
-);
-
-export const sendStreamedAgentRequest = createAsyncThunk<
   Omit<MetabotAgentResponse, "reactions">,
   Omit<MetabotAgentRequest, "conversation_id">,
   { rejectValue: PromptErrorOutcome }
@@ -218,6 +166,8 @@ export const sendStreamedAgentRequest = createAsyncThunk<
     req,
     { dispatch, getState, signal, rejectWithValue, fulfillWithValue },
   ) => {
+    const isEmbedding = getIsEmbedding(getState() as any);
+
     // TODO: make enterprise store
     let sessionId = getMetabotConversationId(getState() as any);
 
@@ -237,7 +187,7 @@ export const sendStreamedAgentRequest = createAsyncThunk<
 
       const response = await aiStreamingQuery(
         {
-          url: "/api/ee/metabot-v3/v2/agent-streaming",
+          url: "/api/ee/metabot-v3/agent-streaming",
           // NOTE: StructuredDatasetQuery as part of the EntityInfo in MetabotChatContext
           // is upsetting the types, casting for now
           body: body as JSONValue,
@@ -249,7 +199,11 @@ export const sendStreamedAgentRequest = createAsyncThunk<
               // only update the convo state if the request is successful
               .with({ type: "state" }, (part) => (state = part.value))
               .with({ type: "navigate_to" }, (part) => {
-                dispatch(push(part.value) as UnknownAction);
+                dispatch(setNavigateToPath(part.value));
+
+                if (!isEmbedding) {
+                  dispatch(push(part.value) as UnknownAction);
+                }
               })
               .exhaustive();
           },
@@ -280,16 +234,8 @@ export const sendStreamedAgentRequest = createAsyncThunk<
 
 export const cancelInflightAgentRequests = createAsyncThunk(
   "metabase-enterprise/metabot/cancelInflightAgentRequests",
-  (_args, { dispatch }) => {
-    // cancel rtkquery managed requests
-    const requests = dispatch(EnterpriseApi.util.getRunningMutationsThunk());
-    const agentRequests = requests.filter(
-      (req) => req.arg.endpointName === metabotApi.endpoints.metabotAgent.name,
-    );
-    agentRequests.forEach((req) => req.abort());
-
-    // cancel streamed requests
-    getInflightRequestsForUrl("/api/ee/metabot-v3/v2/agent-streaming").forEach(
+  (_args) => {
+    getInflightRequestsForUrl("/api/ee/metabot-v3/agent-streaming").forEach(
       (req) => req.abortController.abort(),
     );
   },

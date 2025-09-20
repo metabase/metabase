@@ -1,7 +1,8 @@
 import dayjs from "dayjs";
 
-const { H } = cy;
 import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+
+const { H } = cy;
 
 const WRITABLE_TEST_TABLE = "scoreboard_actions";
 const FIRST_SCORE_ROW_ID = 11;
@@ -126,6 +127,16 @@ describe(
                 objectDetailModal().within(() => {
                   assertActionsDropdownExists();
                 });
+
+                cy.log(
+                  "does not close object detail modal when pressing Esc while action modal is open",
+                );
+                openUpdateObjectModal();
+                cy.wait("@prefetchValues");
+                actionExecuteModal().should("be.visible");
+                cy.realPress("Escape");
+                actionExecuteModal().should("not.exist");
+                objectDetailModal().should("be.visible");
 
                 cy.log(`As ${name} user: verify update form gets prefilled`);
                 openUpdateObjectModal();

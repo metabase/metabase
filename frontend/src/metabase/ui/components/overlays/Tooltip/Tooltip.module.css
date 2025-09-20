@@ -4,6 +4,7 @@
   font-weight: bold;
   padding: 0.6rem 0.75rem;
   white-space: unset;
+  max-width: 320px;
 }
 
 .arrow {

@@ -3,6 +3,7 @@ import { updateQuestion } from "metabase/query_builder/actions/core";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Collection,
@@ -29,7 +30,6 @@ interface NativeQueryEditorTopBarProps {
   isShowingDataReference: boolean;
   isShowingTemplateTagsEditor: boolean;
   isNativeEditorOpen: boolean;
-  nativeEditorSelectedText?: string;
   canChangeDatabase: boolean;
   hasParametersList?: boolean;
   hasEditingSidebar: boolean;
@@ -40,22 +40,23 @@ interface NativeQueryEditorTopBarProps {
   snippetCollections?: Collection[];
   sidebarFeatures: SidebarFeatures;
 
-  toggleEditor: () => void;
+  toggleEditor?: () => void;
+  toggleDataReference?: () => void;
+  toggleSnippetSidebar?: () => void;
   setIsNativeEditorOpen?: (isOpen: boolean) => void;
   onFormatQuery?: () => void;
   onSetDatabaseId?: (id: DatabaseId) => void;
-  onOpenModal: (modalType: QueryModalType) => void;
-  onChange: (queryText: string) => void;
-  setParameterValue: (parameterId: ParameterId, value: string) => void;
+  onOpenModal?: (modalType: QueryModalType) => void;
+  setParameterValue?: (parameterId: ParameterId, value: string) => void;
   focus: () => void;
   setDatasetQuery: (query: NativeQuery) => Promise<Question>;
+  databaseIsDisabled?: (database: Database) => boolean;
 }
 
 const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
   const {
     query,
     question,
-    onChange,
     canChangeDatabase,
     isNativeEditorOpen,
     readOnly,
@@ -74,12 +75,14 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
     isShowingSnippetSidebar,
     onFormatQuery,
     onOpenModal,
-    nativeEditorSelectedText,
     setIsNativeEditorOpen,
     toggleEditor,
+    toggleDataReference,
+    toggleSnippetSidebar,
     onSetDatabaseId,
     hasParametersList = true,
     setDatasetQuery,
+    databaseIsDisabled,
   } = props;
 
   const dispatch = useDispatch();
@@ -127,11 +130,13 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
           setDatabaseId={setDatabaseId}
           setTableId={setTableId}
           editorContext={editorContext}
+          databaseIsDisabled={databaseIsDisabled}
         />
       )}
-      {hasParametersList && (
+      {hasParametersList && setParameterValue && (
         <ResponsiveParametersList
-          question={question}
+          cardId={question.id()}
+          dashboardId={question.getDashboardProps().dashboardId}
           parameters={parameters}
           setParameterValue={setParameterValue}
           setParameterIndex={setParameterIndex}
@@ -143,9 +148,7 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
           <NativeQueryEditorActionButtons
             features={sidebarFeatures}
             onFormatQuery={onFormatQuery}
-            onGenerateQuery={onChange}
             question={question}
-            nativeEditorSelectedText={nativeEditorSelectedText}
             snippetCollections={snippetCollections}
             snippets={snippets}
             isRunnable={isRunnable}
@@ -154,12 +157,15 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
             isShowingDataReference={isShowingDataReference}
             isShowingTemplateTagsEditor={isShowingTemplateTagsEditor}
             isShowingSnippetSidebar={isShowingSnippetSidebar}
+            toggleDataReference={toggleDataReference}
+            toggleSnippetSidebar={toggleSnippetSidebar}
             onOpenModal={onOpenModal}
           />
         )}
         {query.hasWritePermission() &&
           !question.isArchived() &&
-          setIsNativeEditorOpen && (
+          setIsNativeEditorOpen &&
+          toggleEditor && (
             <VisibilityToggler
               isOpen={isNativeEditorOpen}
               readOnly={!!readOnly}

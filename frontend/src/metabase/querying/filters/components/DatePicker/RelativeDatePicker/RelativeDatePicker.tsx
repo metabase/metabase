@@ -27,6 +27,7 @@ interface RelativeDatePickerProps {
   renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
   onChange: (value: RelativeDatePickerValue) => void;
   onBack: () => void;
+  readOnly?: boolean;
 }
 
 export function RelativeDatePicker({
@@ -35,6 +36,7 @@ export function RelativeDatePicker({
   renderSubmitButton = renderDefaultSubmitButton,
   onChange,
   onBack,
+  readOnly,
 }: RelativeDatePickerProps) {
   const [value, setValue] = useState<RelativeDatePickerValue | undefined>(
     initialValue ?? DEFAULT_VALUE,
@@ -57,7 +59,12 @@ export function RelativeDatePicker({
   return (
     <Tabs value={direction} onChange={handleTabChange}>
       <Flex>
-        <PopoverBackButton p="sm" onClick={onBack} />
+        <PopoverBackButton
+          p="sm"
+          onClick={onBack}
+          disabled={readOnly}
+          withArrow={!readOnly}
+        />
         <Tabs.List className={S.TabList}>
           {TABS.map((tab) => (
             <Tabs.Tab key={tab.direction} value={tab.direction}>

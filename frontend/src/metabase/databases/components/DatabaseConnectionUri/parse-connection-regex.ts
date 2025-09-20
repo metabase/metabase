@@ -9,7 +9,7 @@ export interface RegexFields {
   username?: string;
   password?: string;
   protocol?: string;
-  params?: Record<string, string> | undefined;
+  params?: Record<string, string | undefined> | undefined;
   path?: string;
   hasJdbcPrefix: boolean;
 }
@@ -30,7 +30,10 @@ const druidRegex = new RegExp(
   "i",
 );
 
-const connectionStringRegexes: Record<EngineKey, RegExp | RegExp[]> = {
+const connectionStringRegexes: Record<
+  EngineKey,
+  RegExp | RegExp[] | undefined
+> = {
   athena: new RegExp(
     "^" +
       jdbcPrefix +
@@ -83,6 +86,7 @@ const connectionStringRegexes: Record<EngineKey, RegExp | RegExp[]> = {
   ),
   druid: druidRegex,
   "druid-jdbc": druidRegex,
+  mongo: undefined,
   mysql: new RegExp(
     "^" +
       jdbcPrefix +
@@ -197,17 +201,23 @@ export function parseConnectionUriRegex(
   }
 
   const regex = connectionStringRegexes[engineKey];
+  const trimmedString = connectionUri.trim();
+
   if (!regex) {
     return null;
   }
+
+  // Some of engines have more than one matching regex
   const candidate: RegExp | undefined = Array.isArray(regex)
-    ? regex.find((r) => connectionUri.match(r))
+    ? regex.find((r) => trimmedString.match(r))
     : regex;
 
   if (!candidate) {
     return null;
   }
-  const match = connectionUri.match(candidate);
+
+  const match = trimmedString.match(candidate);
+
   if (match) {
     const params = match.groups?.params
       ? Object.fromEntries(new URLSearchParams(match.groups.params))
@@ -215,6 +225,8 @@ export function parseConnectionUriRegex(
     const semicolonParams = mapSemicolonParams(match.groups?.semicolonParams);
     return {
       ...match.groups,
+      username: safeDecode(match.groups?.username),
+      password: safeDecode(match.groups?.password),
       params: params ?? semicolonParams,
       hasJdbcPrefix: Boolean(match.groups?.hasJdbcPrefix),
     };
@@ -230,11 +242,23 @@ function mapSemicolonParams(semicolonParams: string | undefined) {
 
   return semicolonParams
     .split(";")
-    .reduce<Record<string, string>>((acc, param) => {
+    .reduce<Record<string, string | undefined>>((acc, param) => {
       const [key, value] = param.split("=");
       if (key !== "") {
-        acc[key] = decodeURIComponent(value);
+        acc[key] = safeDecode(value);
       }
       return acc;
     }, {});
+}
+
+function safeDecode(text: string | undefined) {
+  if (!text) {
+    return text;
+  }
+
+  try {
+    return decodeURIComponent(text);
+  } catch {
+    return text;
+  }
 }

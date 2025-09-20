@@ -47,11 +47,9 @@
    :access_key                    (tx/db-test-env-var-or-throw :athena :access-key)
    :secret_key                    (tx/db-test-env-var-or-throw :athena :secret-key)
    :s3_staging_dir                (tx/db-test-env-var-or-throw :athena :s3-staging-dir)
+   :dbname                        (some->> database-name (ddl.i/format-name driver))
    :catalog                       "AwsDataCatalog"
-   :workgroup                     "primary"
-   ;; HACK -- this is here so the Athena driver sync code only syncs the database in question -- see documentation
-   ;; for [[metabase.driver.athena/fast-active-tables]] for more information.
-   :metabase.driver.athena/schema (some->> database-name (ddl.i/format-name driver))})
+   :workgroup                     "primary"})
 
 ;; TODO: We need a better way to have an isolated test environment for Athena
 ;; If other tables exist, the tests start to query them for some reason,

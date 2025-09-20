@@ -19,11 +19,13 @@
                               :disable-password-login
                               :database-auth-providers
                               :development-mode
+                              :documents
                               :email-allow-list
                               :email-restrict-recipients
                               :embedding
                               :embedding-sdk
                               :embedding-simple
+                              :embedding-hub
                               :hosting
                               :llm-autodescription
                               :metabot-v3
@@ -31,10 +33,12 @@
                               :ai-sql-fixer
                               :ai-sql-generation
                               :no-upsell
+                              :offer-metabase-ai
                               :official-collections
                               :query-reference-validation
                               :sandboxes
                               :scim
+                              :semantic-search
                               :serialization
                               :session-timeout-config
                               :snippet-collections
@@ -42,6 +46,7 @@
                               :sso-jwt
                               :sso-ldap
                               :sso-saml
+                              :transforms
                               :upload-management
                               :whitelabel
                               :collection-cleanup
@@ -59,6 +64,7 @@
             :disable_password_login         true
             :database_auth_providers        true
             :development_mode               true
+            :documents                      true
             :email_allow_list               true
             :email_restrict_recipients      true
             :embedding                      true
@@ -70,10 +76,12 @@
             :ai_entity_analysis             true
             :ai_sql_fixer                   true
             :ai_sql_generation              true
+            :offer_metabase_ai              true
             :official_collections           true
             :query_reference_validation     true
             :sandboxes                      true
             :scim                           true
+            :semantic_search                true
             :serialization                  true
             :session_timeout_config         true
             :snippet_collections            true
@@ -82,6 +90,7 @@
             :sso_ldap                       true
             :sso_saml                       true
             :table_data_editing             false
+            :transforms                     true
             :upload_management              true
             :whitelabel                     true
             :collection_cleanup             true

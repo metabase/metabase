@@ -12,7 +12,8 @@
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.store :as qp.store]
+   ;; legacy usage -- don't do things like this going forward
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
@@ -112,14 +113,14 @@
 
 (defn check-actions-enabled-for-database!
   "Throws an appropriate error if actions are unsupported or disabled for a database, otherwise returns nil."
-  [{db-settings :settings db-id :id driver :engine db-name :name :as db}]
+  [{db-id :id driver :engine db-name :name :as db}]
   (when-not (driver.u/supports? driver :actions db)
     (throw (ex-info (i18n/tru "{0} Database {1} does not support actions."
                               (u/qualified-name driver)
                               (format "%d %s" db-id (pr-str db-name)))
                     {:status-code 400, :database-id db-id})))
 
-  (setting/with-database-local-values db-settings
+  (setting/with-database db
     (when-not (actions.settings/database-enable-actions)
       (throw (ex-info (i18n/tru "Actions are not enabled.")
                       {:status-code 400, :database-id db-id}))))
@@ -128,14 +129,14 @@
 
 (defn check-data-editing-enabled-for-database!
   "Throws an appropriate error if editing is unsupported or disabled for a database, otherwise returns nil."
-  [{db-settings :settings db-id :id driver :engine db-name :name :as db}]
+  [{db-id :id driver :engine db-name :name :as db}]
   (when-not (driver.u/supports? driver :actions/data-editing db)
     (throw (ex-info (i18n/tru "{0} Database {1} does not support data editing."
                               (u/qualified-name driver)
                               (format "%d %s" db-id (pr-str db-name)))
                     {:status-code 400, :database-id db-id})))
 
-  (setting/with-database-local-values db-settings
+  (setting/with-database db
     (when-not (actions.settings/database-enable-table-editing)
       (throw (ex-info (i18n/tru "Data editing is not enabled.")
                       {:status-code 400, :database-id db-id}))))

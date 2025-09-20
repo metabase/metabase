@@ -1,5 +1,6 @@
 (ns metabase-enterprise.metabot-v3.context-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.context :as context]
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]))
@@ -104,3 +105,12 @@
               "Should not add database_schema for MBQL queries")
           (is (= 0 @call-count)
               "Should not call database-tables-for-context for MBQL queries"))))))
+
+(deftest capabilities-signalling
+  (testing "We signal our capabilities to ai-service"
+    (is (= (count (-> (the-ns 'metabase-enterprise.metabot-v3.tools.api)
+                      meta
+                      :api/endpoints))
+           (count (->> (context/create-context {})
+                       :capabilities
+                       (filter #(str/starts-with? % "backend:"))))))))

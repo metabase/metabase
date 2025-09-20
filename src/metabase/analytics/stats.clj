@@ -142,8 +142,11 @@
    :embedding_app_origin_set             (boolean
                                           #_{:clj-kondo/ignore [:deprecated-var]}
                                           (setting/get :embedding-app-origin))
+   ;; We no longer add "localhost:*" as a default origin as of Metabase 56, as it is always allowed,
+   ;; but we still filter it out in stats for compatibility with migrated instances.
    :embedding_app_origin_sdk_set         (boolean (let [sdk-origins (setting/get :embedding-app-origins-sdk)]
-                                                    (and sdk-origins (not= "localhost:*" sdk-origins))))
+                                                    (and (not (str/blank? sdk-origins))
+                                                         (not= "localhost:*" sdk-origins))))
    :embedding_app_origin_interactive_set (setting/get :embedding-app-origins-interactive)
    :appearance_site_name                 (not= (appearance/site-name) "Metabase")
    :appearance_help_link                 (appearance/help-link)
@@ -347,6 +350,11 @@
   []
   {:segments (t2/count :model/Segment)})
 
+(defn- metric-metrics
+  "Get metrics based on Metrics."
+  []
+  {:metrics (t2/count :model/Card :type :metric :archived false)})
+
 ;;; Execution Metrics
 
 (defn- execution-metrics-sql []
@@ -474,6 +482,7 @@
                       :execution  (execution-metrics)
                       :field      (field-metrics)
                       :group      (group-metrics)
+                      :metric     (metric-metrics)
                       :pulse      (pulse-metrics)
                       :alert      (alert-metrics)
                       :question   (question-metrics)
@@ -736,7 +745,7 @@
 
 (defn- ee-snowplow-features-data'
   []
-  (let [features [:sso-jwt :sso-saml :scim :sandboxes :email-allow-list]]
+  (let [features [:sso-jwt :sso-saml :scim :sandboxes :email-allow-list :semantic-search]]
     (map
      (fn [feature]
        {:name      feature
@@ -819,6 +828,9 @@
     :enabled   (if (premium-features/enable-database-routing?)
                  (t2/exists? :model/DatabaseRouter)
                  false)}
+   {:name      :documents
+    :available (premium-features/enable-documents?)
+    :enabled   (premium-features/enable-documents?)}
    {:name      :config-text-file
     :available (premium-features/enable-config-text-file?)
     :enabled   (some? (get env/env :mb-config-file-path))}
@@ -868,7 +880,10 @@
                     boolean)}
    {:name      :table-data-editing
     :available (premium-features/table-data-editing?)
-    :enabled   (premium-features/table-data-editing?)}])
+    :enabled   (premium-features/table-data-editing?)}
+   {:name      :transforms
+    :available (premium-features/enable-transforms?)
+    :enabled   (premium-features/enable-transforms?)}])
 
 (defn- snowplow-features
   []

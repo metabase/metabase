@@ -13,6 +13,8 @@ Row and column security lets you give granular permissions for different groups 
 
 You can use row and column security to set up [self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics), so that each of your customers can only view the rows that match their customer ID. For example, if you have an Accounts table with information about your customers, you can add permissions to the table so that each customer only sees the data relevant to them.
 
+> Row and column security was formerly called data sandboxing. It's the same feature, it just now has a more descriptive name.
+
 ## Row and column security examples
 
 You can skip the theory and go [straight to examples of row and column security](row-and-column-security-examples.md).
@@ -31,7 +33,7 @@ You can define up to one row and column security policy for each table/group com
 Row and column security show specific data to each person based on their [user attributes](../people-and-groups/managing.md#adding-a-user-attribute). You can:
 
 - [Restrict **rows**](#row-level-security-filter-by-a-column-in-the-table)
-- [Restrict **columns** and rows](#custom-row-and-column-security-use-a-saved-question-to-create-a-custom-view-of-a-table) for specific people.
+- [Restrict **columns** and rows](#custom-row-and-column-security-use-a-sql-question-to-create-a-custom-view-of-a-table) for specific people.
 
 | Goal                                           | Row (filter by a column in the table) | Custom (use a saved SQL question) |
 | ---------------------------------------------- | ------------------------------------- | --------------------------------- |
@@ -59,7 +61,6 @@ You can use a question to filter tables to:
 
 - [Display an edited column instead of hiding the column](#displaying-edited-columns).
 - [Pass a user attribute to a SQL parameter](#restricting-rows-with-user-attributes-using-a-sql-variable).
-- [Pass a user attribute to a Markdown parameter](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/markdown#custom-url-with-a-sandboxing-attribute).
 
 ## Prerequisites for row security
 
@@ -85,7 +86,6 @@ Examples of user attributes in play:
 
 - [Row security](./row-and-column-security-examples.md#filtering-rows-based-on-user-attributes)
 - [Restricting rows and columns](./row-and-column-security-examples.md#custom-example-2-filtering-rows-and-columns)
-- [Displaying custom text in Markdown dashboard cards](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/markdown#custom-url-with-a-sandboxing-attribute)
 
 ## Adding row-level security
 
@@ -193,7 +193,7 @@ Learn more about [SQL parameters](../questions/native-editor/sql-parameters.md)
 
 Some Metabase permissions can conflict with row and column security to give more permissive or more restrictive data access than you intended.
 
-Say you've set up [column security](#custom-row-and-column-security-use-a-saved-question-to-create-a-custom-view-of-a-table) that hides the Email column from the Accounts table (for a particular group).
+Say you've set up [column security](#custom-row-and-column-security-use-a-sql-question-to-create-a-custom-view-of-a-table) that hides the Email column from the Accounts table (for a particular group).
 
 The Email column may get exposed to someone if:
 

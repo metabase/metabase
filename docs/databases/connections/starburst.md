@@ -21,6 +21,10 @@ Here you can [sync the database schema and rescan field values](../sync-scan.md)
 
 To access or modify your database connection settings, click the **Edit connection details** button.
 
+### Connection string
+
+Paste a connection string here to pre-fill the remaining fields below.
+
 ### Display name
 
 The display name for the database in the Metabase interface.
@@ -90,6 +94,12 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 ## Model features
 
 There aren't (yet) any model features for Starburst.
+
+## Database routing
+
+With database routing, an admin can build a question once using one database (data catalog), and the question will run its query against a different data catalog with the same schema depending on who is viewing the question.
+
+See [Database routing](../../permissions/database-routing.md).
 
 ## Danger zone
 

@@ -609,96 +609,100 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
     // TODO: Fix series have different colors in visualizer because of different
     // column names in original dashcard and visualizer ("avg" becomes "COLUMN_2" and the color has is different)
-    it.skip("should show updated column titles in tooltips after editing them via Visualization Options", () => {
-      // Checking the second datum since the first circle of one series is covered with a circle from the other series
-      const circleIndex = 1;
+    it(
+      "should show updated column titles in tooltips after editing them via Visualization Options",
+      { tags: "@skip" },
+      () => {
+        // Checking the second datum since the first circle of one series is covered with a circle from the other series
+        const circleIndex = 1;
 
-      const originalSeriesColors = ["#A989C5", "#88BF4D"];
-      const addedSeriesColors = ["#509EE3", "#98D9D9"];
-      const originalAvgSeriesName = "Q1: Average of Total";
-      const originalCumSumSeriesName = "Q1: Cumulative sum of Quantity";
-      const updatedOriginalAvgSeriesName = "Q1 Custom 1";
-      const updatedOriginalCumSumSeriesName = "Q1 Custom 2";
-      const addedAvgSeriesName = "Q2: Average of Discount";
-      const addedSumSeriesName = "Q2: Sum of Discount";
-      const updatedAddedAvgSeriesName = "Q2 Custom 1";
-      const updatedAddedSumSeriesName = "Q2 Custom 2";
+        const originalSeriesColors = ["#A989C5", "#88BF4D"];
+        const addedSeriesColors = ["#509EE3", "#98D9D9"];
+        const originalAvgSeriesName = "Q1: Average of Total";
+        const originalCumSumSeriesName = "Q1: Cumulative sum of Quantity";
+        const updatedOriginalAvgSeriesName = "Q1 Custom 1";
+        const updatedOriginalCumSumSeriesName = "Q1 Custom 2";
+        const addedAvgSeriesName = "Q2: Average of Discount";
+        const addedSumSeriesName = "Q2: Sum of Discount";
+        const updatedAddedAvgSeriesName = "Q2 Custom 1";
+        const updatedAddedSumSeriesName = "Q2 Custom 2";
 
-      [...originalSeriesColors, ...addedSeriesColors].forEach((color) => {
-        showTooltipForCircleInSeries(color, circleIndex);
-        H.assertEChartsTooltip({
-          header: "2023",
-          rows: [
-            {
-              color: originalSeriesColors[0],
-              name: originalAvgSeriesName,
-              value: "56.86",
-            },
-            {
-              color: originalSeriesColors[1],
-              name: originalCumSumSeriesName,
-              value: "17,587",
-            },
-            {
-              color: addedSeriesColors[0],
-              name: addedAvgSeriesName,
-              value: "5.41",
-            },
-            {
-              color: addedSeriesColors[1],
-              name: addedSumSeriesName,
-              value: "1,953.08",
-            },
-          ],
+        [...originalSeriesColors, ...addedSeriesColors].forEach((color) => {
+          showTooltipForCircleInSeries(color, circleIndex);
+          H.assertEChartsTooltip({
+            header: "2023",
+            rows: [
+              {
+                color: originalSeriesColors[0],
+                name: originalAvgSeriesName,
+                value: "56.86",
+              },
+              {
+                color: originalSeriesColors[1],
+                name: originalCumSumSeriesName,
+                value: "17,587",
+              },
+              {
+                color: addedSeriesColors[0],
+                name: addedAvgSeriesName,
+                value: "5.41",
+              },
+              {
+                color: addedSeriesColors[1],
+                name: addedSumSeriesName,
+                value: "1,953.08",
+              },
+            ],
+          });
         });
-      });
 
-      H.editDashboard();
-      H.showDashcardVisualizerModalSettings(0, {
-        isVisualizerCard: false,
-      });
-
-      updateColumnTitle(originalAvgSeriesName, updatedOriginalAvgSeriesName);
-      updateColumnTitle(
-        originalCumSumSeriesName,
-        updatedOriginalCumSumSeriesName,
-      );
-
-      updateColumnTitle(addedAvgSeriesName, updatedAddedAvgSeriesName);
-      updateColumnTitle(addedSumSeriesName, updatedAddedSumSeriesName);
-
-      H.saveDashcardVisualizerModalSettings();
-      H.saveDashboard();
-
-      [...originalSeriesColors, ...addedSeriesColors].forEach((color) => {
-        showTooltipForCircleInSeries(color, circleIndex);
-        H.assertEChartsTooltip({
-          header: "2023",
-          rows: [
-            {
-              color: originalSeriesColors[0],
-              name: updatedOriginalAvgSeriesName,
-              value: "56.86",
-            },
-            {
-              color: originalSeriesColors[1],
-              name: updatedOriginalCumSumSeriesName,
-              value: "17,587",
-            },
-            {
-              color: addedSeriesColors[0],
-              name: updatedAddedAvgSeriesName,
-              value: "5.41",
-            },
-            {
-              color: addedSeriesColors[1],
-              name: updatedAddedSumSeriesName,
-              value: "1,953.08",
-            },
-          ],
+        H.editDashboard();
+        H.showDashcardVisualizerModalSettings(0, {
+          isVisualizerCard: false,
         });
-      });
-    });
+
+        updateColumnTitle(originalAvgSeriesName, updatedOriginalAvgSeriesName);
+        updateColumnTitle(
+          originalCumSumSeriesName,
+          updatedOriginalCumSumSeriesName,
+        );
+
+        updateColumnTitle(addedAvgSeriesName, updatedAddedAvgSeriesName);
+        updateColumnTitle(addedSumSeriesName, updatedAddedSumSeriesName);
+
+        H.saveDashcardVisualizerModalSettings();
+        H.saveDashboard();
+
+        [...originalSeriesColors, ...addedSeriesColors].forEach((color) => {
+          showTooltipForCircleInSeries(color, circleIndex);
+          H.assertEChartsTooltip({
+            header: "2023",
+            rows: [
+              {
+                color: originalSeriesColors[0],
+                name: updatedOriginalAvgSeriesName,
+                value: "56.86",
+              },
+              {
+                color: originalSeriesColors[1],
+                name: updatedOriginalCumSumSeriesName,
+                value: "17,587",
+              },
+              {
+                color: addedSeriesColors[0],
+                name: updatedAddedAvgSeriesName,
+                value: "5.41",
+              },
+              {
+                color: addedSeriesColors[1],
+                name: updatedAddedSumSeriesName,
+                value: "1,953.08",
+              },
+            ],
+          });
+        });
+      },
+    );
 
     it("should show percent change in tooltip for timeseries axis", () => {
       testAvgTotalChange(showTooltipForCircleInSeries, "Q1: Average of Total");

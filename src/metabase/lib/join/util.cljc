@@ -43,12 +43,12 @@
 
 (mu/defn current-join-alias :- [:maybe ::lib.schema.join/alias]
   "Get the current join alias associated with something, if it has one."
-  [field-or-join :- [:maybe ::column-or-field-ref-or-partial-join]]
+  [field-or-join]
   (case (lib.dispatch/dispatch-value field-or-join)
-    :dispatch-type/nil nil
     :field             (:join-alias (lib.options/options field-or-join))
     :metadata/column   (:metabase.lib.join/join-alias field-or-join)
-    :mbql/join         (:alias field-or-join)))
+    :mbql/join         (:alias field-or-join)
+    nil))
 
 (mu/defn joined-field-desired-alias :- ::lib.schema.metadata/desired-column-alias
   "Desired alias for a Field that comes from a join, e.g.
@@ -98,8 +98,9 @@
   You should pass the results thru a unique name function."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    col                   :- ::lib.schema.metadata/column]
-  (let [source-alias ((some-fn :lib/source-column-alias :name) col)]
-    (if-let [join-alias (or (current-join-alias col)
-                            (implicit-join-name metadata-providerable col))]
-      (joined-field-desired-alias join-alias source-alias)
-      source-alias)))
+  (or (:lib/ref-name col)
+      (let [source-alias ((some-fn :lib/source-column-alias :name) col)]
+        (if-let [join-alias (or (current-join-alias col)
+                                (implicit-join-name metadata-providerable col))]
+          (joined-field-desired-alias join-alias source-alias)
+          source-alias))))

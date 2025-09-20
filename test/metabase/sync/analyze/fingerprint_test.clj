@@ -334,7 +334,7 @@
                      (:count (t2/query-one {:select [[:%count.* :count]]
                                             :from :metabase_field
                                             :join [[:metabase_table :table] [:= :table.id :table_id]]
-                                            :where [:= :table.db_id (:id (mt/db))]
+                                            :where [:= :table.db_id (mt/id)]
                                             :group-by [:table_id]
                                             :order-by [[:count :desc]]
                                             :limit 1}))))))))))

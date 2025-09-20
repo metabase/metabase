@@ -40,7 +40,7 @@ describe("issue 9339", () => {
   });
 });
 
-describe.skip("issue 12496", () => {
+describe("issue 12496", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -732,7 +732,7 @@ describe("issue 25994", () => {
   });
 });
 
-describe.skip("issue 26861", () => {
+describe("issue 26861", { tags: "@skip" }, () => {
   const filter = {
     id: "a3b95feb-b6d2-33b6-660b-bb656f59b1d7",
     name: "filter",
@@ -1045,7 +1045,7 @@ describe("metabase#32985", () => {
   });
 });
 
-describe.skip("metabase#44550", () => {
+describe("metabase#44550", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

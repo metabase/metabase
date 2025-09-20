@@ -120,6 +120,10 @@ Metabase's reference documentation.
 - [Dashboard subscriptions](./dashboards/subscriptions.md)
 - [Actions on dashboards](./dashboards/actions.md)
 
+### Documents
+
+- [Introduction to documents](./documents/introduction.md)
+
 ### Data modeling
 
 - [Data modeling overview](./data-modeling/start.md)
@@ -138,6 +142,12 @@ Metabase's reference documentation.
 - [Introduction to actions](./actions/introduction.md)
 - [Basic actions](./actions/basic.md)
 - [Custom actions](./actions/custom.md)
+
+### AI
+
+- [AI overview](./ai/start.md)
+- [Metabot](./ai/metabot.md)
+- [Setting up Metabot](./ai/settings.md)
 
 ### Exploration and organization
 

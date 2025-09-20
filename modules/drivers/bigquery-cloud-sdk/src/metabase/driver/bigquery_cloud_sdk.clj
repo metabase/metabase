@@ -3,6 +3,7 @@
    [clojure.core.async :as a]
    [clojure.set :as set]
    [clojure.string :as str]
+   [macaw.core :as macaw]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -10,6 +11,7 @@
    [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
@@ -133,6 +135,12 @@
 (def ^:private empty-table-options
   (u/varargs BigQuery$TableOption))
 
+(defn- get-table*
+  [^BigQuery client project-id dataset-id table-id]
+  (if project-id
+    (.getTable client (TableId/of project-id dataset-id table-id) empty-table-options)
+    (.getTable client dataset-id table-id empty-table-options)))
+
 (mu/defn- get-table :- (driver-api/instance-of-class Table)
   (^Table [{{:keys [project-id]} :details, :as database} dataset-id table-id]
    (get-table (database-details->client (:details database)) project-id dataset-id table-id))
@@ -141,9 +149,14 @@
            project-id       :- [:maybe driver-api/schema.common.non-blank-string]
            dataset-id       :- driver-api/schema.common.non-blank-string
            table-id         :- driver-api/schema.common.non-blank-string]
-   (if project-id
-     (.getTable client (TableId/of project-id dataset-id table-id) empty-table-options)
-     (.getTable client dataset-id table-id empty-table-options))))
+   (get-table* client project-id dataset-id table-id)))
+
+(defmethod driver/table-exists? :bigquery-cloud-sdk
+  [_ {:keys [details] :as _database} {table-id :name, dataset-id :schema :as _table}]
+  (let [client     (database-details->client details)
+        project-id (get-project-id details)]
+    (boolean
+     (get-table* client project-id dataset-id table-id))))
 
 (declare ^:dynamic *process-native*)
 
@@ -195,7 +208,7 @@
     (->> (list-datasets (:details database) :logging-schema-exclusions? true)
          (eduction (mapcat (fn [dataset-id] (eduction (map #(table-info dataset-id %)) (query-dataset dataset-id))))))))
 
-(defmethod driver/describe-database :bigquery-cloud-sdk
+(defmethod driver/describe-database* :bigquery-cloud-sdk
   [driver database]
   {:tables (into #{} (describe-database-tables driver database))})
 
@@ -715,27 +728,29 @@
 ;;; |                                           Other Driver Method Impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(doseq [[feature supported?] {:convert-timezone         true
-                              :describe-fields          true
-                              :nested-fields            true
-                              :datetime-diff            true
-                              :expressions              true
-                              :now                      true
-                              :percentile-aggregations  true
-                              :metadata/key-constraints false
-                              :identifiers-with-spaces  true
-                              :expressions/integer      true
-                              :expressions/float        true
-                              :expressions/date         true
-                              :expressions/text         true
-                              :split-part               true
+(doseq [[feature supported?] {:convert-timezone                 true
+                              :describe-fields                  true
+                              :nested-fields                    true
+                              :datetime-diff                    true
+                              :expressions                      true
+                              :now                              true
+                              :percentile-aggregations          true
+                              :metadata/key-constraints         false
+                              :identifiers-with-spaces          true
+                              :expressions/integer              true
+                              :expressions/float                true
+                              :expressions/date                 true
+                              :expressions/text                 true
+                              :split-part                       true
                               ;; BigQuery uses timezone operators and arguments on calls like extract() and
                               ;; timezone_trunc() rather than literally using SET TIMEZONE, but we need to flag it as
                               ;; supporting set-timezone anyway so that reporting timezones are returned and used, and
                               ;; tests expect the converted values.
-                              :set-timezone             true
-                              :expression-literals      true
-                              :database-routing         true}]
+                              :set-timezone                     true
+                              :expression-literals              true
+                              :database-routing                 true
+                              :metadata/table-existence-check   true
+                              :transforms/table                 true}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 ;; BigQuery is always in UTC
@@ -800,3 +815,91 @@
 (defmethod driver/prettify-native-form :bigquery-cloud-sdk
   [_ native-form]
   (sql.u/format-sql-and-fix-params :mysql native-form))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                Transforms Support                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- get-table-str [table]
+  (let [table-str (if (namespace table)
+                    (format "%s.%s" (namespace table) (name table))
+                    (name table))]
+    (sql.u/quote-name :bigquery-cloud-sdk :table table-str)))
+
+(defmethod driver/compile-transform :bigquery-cloud-sdk
+  [_driver {:keys [query output-table]}]
+  (let [table-str (get-table-str output-table)]
+    [(format "CREATE OR REPLACE TABLE %s AS %s" table-str query)]))
+
+(defmethod driver/compile-drop-table :bigquery-cloud-sdk
+  [_driver table]
+  (let [table-str (get-table-str table)]
+    [(str "DROP TABLE IF EXISTS " table-str)]))
+
+(defmethod driver/execute-raw-queries! :bigquery-cloud-sdk
+  [_driver connection-details queries]
+  ;; connection-details is either database details directly (from transforms)
+  ;; or a database map with :details key (from other contexts)
+  (let [details (get connection-details :details connection-details)
+        client (database-details->client details)]
+    (try
+      (doall
+       (for [query queries]
+         (let [sql (if (string? query) query (first query))
+               _ (log/debugf "Executing BigQuery DDL: %s" sql)
+               job-config (-> (QueryJobConfiguration/newBuilder sql)
+                              (.setUseLegacySql false)
+                              (.build))
+               table-result (.query client job-config (into-array BigQuery$JobOption []))]
+           (or (and table-result (.getTotalRows table-result))
+               0))))
+      (catch Exception e
+        (log/error e "Error executing BigQuery DDL")
+        (throw e)))))
+
+(defmethod driver/drop-transform-target! [:bigquery-cloud-sdk :table]
+  [driver database {:keys [name schema] :as _target}]
+  (let [qualified-name (if schema
+                         (keyword schema name)
+                         (keyword name))
+        drop-sql (first (driver/compile-drop-table driver qualified-name))]
+    (driver/execute-raw-queries! driver database [drop-sql])
+    nil))
+
+(defmethod driver/connection-spec :bigquery-cloud-sdk
+  [_driver database]
+  ;; Return the database details directly since we don't use a JDBC spec for bigquery
+  (:details database))
+
+(defmethod driver.sql/default-schema :bigquery-cloud-sdk
+  [_]
+  nil)
+
+(defmethod driver/native-query-deps :bigquery-cloud-sdk
+  [driver query]
+  (let [db-tables (driver-api/tables (driver-api/metadata-provider))
+        transforms (t2/select [:model/Transform :id :target])]
+    (into #{} (comp
+               (map :component)
+               (map #(assoc % :table (driver.sql/normalize-name driver (:table %))))
+               (map #(let [parts (str/split (:table %) #"\.")]
+                       {:schema (first parts) :table (second parts)}))
+               (keep #(driver.sql/find-table-or-transform driver db-tables transforms %)))
+          (-> query
+              macaw/parsed-query
+              macaw/query->components
+              :tables))))
+
+(defmethod driver/create-schema-if-needed! :bigquery-cloud-sdk
+  [driver conn-spec schema]
+  (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS `%s`;" schema)]]]
+    (driver/execute-raw-queries! driver conn-spec sql)))
+
+(defmethod driver/schema-exists? :bigquery-cloud-sdk
+  [_driver db-id schema]
+  (driver-api/with-metadata-provider db-id
+    (->> (driver-api/metadata-provider)
+         driver-api/database
+         :details
+         list-datasets
+         (some #{schema}))))

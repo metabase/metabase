@@ -130,7 +130,7 @@ describe("issue 14636", () => {
     stubPageResponses({ page: 1, alias: "second" });
   });
 
-  it("pagination should work (metabase#14636)", () => {
+  it("pagination should work (metabase#14636)", { tags: "@flaky" }, () => {
     cy.visit("/admin/tools/tasks");
     cy.wait("@first");
 
@@ -385,7 +385,7 @@ describe("scenarios > admin > tools > logs", () => {
 // We need to skip this completely! CI on `master` is almost constantly red.
 // TODO:
 // Once the underlying problem with H2 is solved, replace `describe.skip` with `describePremium`.
-describe("admin > tools > erroring questions ", { tags: "@quarantine" }, () => {
+describe("admin > tools > erroring questions ", { tags: "@skip" }, () => {
   const TOOLS_ERRORS_URL = "/admin/tools/errors";
   // The filter is required but doesn't have a default value set
   const brokenQuestionDetails = {
@@ -428,7 +428,7 @@ describe("admin > tools > erroring questions ", { tags: "@quarantine" }, () => {
       });
   }
 
-  describe.skip("when feature enabled", () => {
+  describe("when feature enabled", { tags: "@skip" }, () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
@@ -438,17 +438,21 @@ describe("admin > tools > erroring questions ", { tags: "@quarantine" }, () => {
     });
 
     describe("without broken questions", () => {
-      it.skip('should render the "Tools" tab and navigate to the "Erroring Questions" by clicking on it', () => {
-        // The sidebar has been taken out, because it looks awkward when there's only one elem on it: put it back in when there's more than one
-        cy.visit("/admin");
+      it(
+        'should render the "Tools" tab and navigate to the "Erroring Questions" by clicking on it',
+        { tags: "@skip" },
+        () => {
+          // The sidebar has been taken out, because it looks awkward when there's only one elem on it: put it back in when there's more than one
+          cy.visit("/admin");
 
-        cy.get("nav").contains("Tools").click();
+          cy.get("nav").contains("Tools").click();
 
-        cy.location("pathname").should("eq", TOOLS_ERRORS_URL);
-        cy.findByRole("link", { name: "Erroring Questions" })
-          .should("have.attr", "href")
-          .and("eq", TOOLS_ERRORS_URL);
-      });
+          cy.location("pathname").should("eq", TOOLS_ERRORS_URL);
+          cy.findByRole("link", { name: "Erroring Questions" })
+            .should("have.attr", "href")
+            .and("eq", TOOLS_ERRORS_URL);
+        },
+      );
 
       it("should disable search input fields (metabase#18050)", () => {
         cy.visit(TOOLS_ERRORS_URL);

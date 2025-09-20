@@ -60,36 +60,37 @@
 
 (defmethod driver/humanize-connection-error-message
   :mongo
-  [_ message]
-  (condp re-matches message
-    #"^Timed out after \d+ ms while waiting for a server .*$"
-    :cannot-connect-check-host-and-port
+  [_ messages]
+  (let [message (first messages)]
+    (condp re-matches message
+      #"^Timed out after \d+ ms while waiting for a server .*$"
+      :cannot-connect-check-host-and-port
 
-    #"^host and port should be specified in host:port format$"
-    :invalid-hostname
+      #"^host and port should be specified in host:port format$"
+      :invalid-hostname
 
-    #"^Password can not be null when the authentication mechanism is unspecified$"
-    :password-required
+      #"^Password can not be null when the authentication mechanism is unspecified$"
+      :password-required
 
-    #"^org.apache.sshd.common.SshException: No more authentication methods available$"
-    :ssh-tunnel-auth-fail
+      #"^org.apache.sshd.common.SshException: No more authentication methods available$"
+      :ssh-tunnel-auth-fail
 
-    #"^java.net.ConnectException: Connection refused$"
-    :ssh-tunnel-connection-fail
+      #"^java.net.ConnectException: Connection refused$"
+      :ssh-tunnel-connection-fail
 
-    #".*javax.net.ssl.SSLHandshakeException: PKIX path building failed.*"
-    :certificate-not-trusted
+      #".*javax.net.ssl.SSLHandshakeException: PKIX path building failed.*"
+      :certificate-not-trusted
 
-    #".*MongoSocketReadException: Prematurely reached end of stream.*"
-    :requires-ssl
+      #".*MongoSocketReadException: Prematurely reached end of stream.*"
+      :requires-ssl
 
-    #".* KeyFactory not available"
-    :unsupported-ssl-key-type
+      #".* KeyFactory not available"
+      :unsupported-ssl-key-type
 
-    #"java.security.InvalidKeyException: invalid key format"
-    :invalid-key-format
+      #"java.security.InvalidKeyException: invalid key format"
+      :invalid-key-format
 
-    message))
+      message)))
 
 ;;; ### Syncing
 
@@ -110,7 +111,7 @@
       {:version (get build-info "version")
        :semantic-version sanitized-version-array})))
 
-(defmethod driver/describe-database :mongo
+(defmethod driver/describe-database* :mongo
   [_ database]
   (mongo.connection/with-mongo-database [^MongoDatabase db database]
     {:tables (set (for [collection (mongo.util/list-collection-names db)
@@ -175,12 +176,12 @@
 (def ^:private unwind-stages
   "Sequence of stages repeated in _search_ phase of [[describe-table-pipeline]]
     for [[describe-table-query-depth]] times.
-  
+
     Each repetion $unwinds documents having `val` of type \"object\", so those are __swapped__ for sequence
     of their children.
-  
+
     Documents with non-object val are left untouched.
-  
+
     Each document that is processed has path from parent stored in `path`. `indices` represent indices of keys
     in the `path` in parent objects as per $objectToArray."
   [{"$addFields" {"kvs" {"$cond" [{"$eq" [{"$type" "$val"} "object"]} {"$objectToArray" "$val"} nil]}}}
@@ -359,7 +360,7 @@
   first.
 
   The resulting structure will hold at most [[driver.settings/sync-leaf-fields-limit]] leaf fields. That translates
-  to at most [[driver.settings/sync-leaf-fields-limit]] * [[describe-table-query-depth]]. That is 7K fields at the 
+  to at most [[driver.settings/sync-leaf-fields-limit]] * [[describe-table-query-depth]]. That is 7K fields at the
   time of writing hence safe to reside in memory for further operation."
   [dbfields]
   (-> dbfields dbfields->ftree* ftree-reconcile-nodes))

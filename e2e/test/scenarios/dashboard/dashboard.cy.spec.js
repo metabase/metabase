@@ -589,16 +589,14 @@ describe("scenarios > dashboard", () => {
         });
       });
 
-      const longTitle =
-        "a really really really really really really really really really really really really really really really really long title";
-
-      it("should prevent entering a title longer than 100 chars", () => {
+      it("should prevent entering a title longer than 254 chars", () => {
+        const longTitle = "A".repeat(256);
         cy.findByTestId("dashboard-name-heading")
           .as("dashboardInput")
           .clear()
           .type(longTitle, { delay: 0 })
           .blur();
-        cy.get("@dashboardInput").invoke("text").should("have.length", 100);
+        cy.get("@dashboardInput").invoke("text").should("have.length", 254);
       });
     });
 
@@ -1505,6 +1503,32 @@ H.describeWithSnowplow("scenarios > dashboard", () => {
       full_width: false,
     });
   });
+
+  it("should track reverting to an old version", () => {
+    H.createDashboard({ name: "Foo" }).then(({ body: { id } }) => {
+      cy.request("PUT", `/api/dashboard/${id}`, { name: "Bar" });
+      H.visitDashboard(id);
+
+      cy.intercept("GET", "/api/revision*").as("revisionHistory");
+
+      cy.findByTestId("dashboard-header")
+        .findByLabelText("More info")
+        .should("be.visible")
+        .click();
+
+      H.sidesheet().within(() => {
+        cy.findByRole("tab", { name: "History" }).click();
+        cy.wait("@revisionHistory");
+        cy.findByTestId("dashboard-history-list").should("be.visible");
+        cy.findByTestId("question-revert-button").click();
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "revert_version_clicked",
+        event_detail: "dashboard",
+      });
+    });
+  });
 });
 
 function checkOptionsForFilter(filter) {
@@ -1543,45 +1567,51 @@ describe("LOCAL TESTING ONLY > dashboard", () => {
    *        - Then start the server and Cypress tests
    */
 
-  it.skip("dashboard filter should not show placeholder for translated languages (metabase#15694)", () => {
-    cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
-      cy.request("PUT", `/api/user/${USER_ID}`, { locale: "fr" });
-    });
-    H.createQuestionAndDashboard({
-      questionDetails: {
-        name: "15694",
-        query: { "source-table": PEOPLE_ID },
-      },
-      dashboardDetails: {
-        parameters: [
-          {
-            name: "Location",
-            slug: "location",
-            id: "5aefc725",
-            type: "string/=",
-            sectionId: "location",
-          },
-        ],
-      },
-    }).then(({ body: { card_id, dashboard_id } }) => {
-      H.addOrUpdateDashboardCard({
-        card_id,
-        dashboard_id,
-        card: {
-          parameter_mappings: [
+  it(
+    "dashboard filter should not show placeholder for translated languages (metabase#15694)",
+    { tags: "@skip" },
+    () => {
+      cy.request("GET", "/api/user/current").then(
+        ({ body: { id: USER_ID } }) => {
+          cy.request("PUT", `/api/user/${USER_ID}`, { locale: "fr" });
+        },
+      );
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          name: "15694",
+          query: { "source-table": PEOPLE_ID },
+        },
+        dashboardDetails: {
+          parameters: [
             {
-              parameter_id: "5aefc725",
-              card_id,
-              target: ["dimension", ["field", PEOPLE.STATE, null]],
+              name: "Location",
+              slug: "location",
+              id: "5aefc725",
+              type: "string/=",
+              sectionId: "location",
             },
           ],
         },
-      });
+      }).then(({ body: { card_id, dashboard_id } }) => {
+        H.addOrUpdateDashboardCard({
+          card_id,
+          dashboard_id,
+          card: {
+            parameter_mappings: [
+              {
+                parameter_id: "5aefc725",
+                card_id,
+                target: ["dimension", ["field", PEOPLE.STATE, null]],
+              },
+            ],
+          },
+        });
 
-      cy.visit(`/dashboard/${dashboard_id}?location=AK&location=CA`);
-      H.filterWidget().contains(/\{0\}/).should("not.exist");
-    });
-  });
+        cy.visit(`/dashboard/${dashboard_id}?location=AK&location=CA`);
+        H.filterWidget().contains(/\{0\}/).should("not.exist");
+      });
+    },
+  );
 });
 
 describe("scenarios > dashboard > caching", () => {

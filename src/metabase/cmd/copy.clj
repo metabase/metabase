@@ -50,8 +50,9 @@
   `(do-step ~msg (fn [] ~@body)))
 
 (def entities
-  "Entities in the order they should be serialized/deserialized. This is done so we make sure that we load
-  instances of entities before others that might depend on them, e.g. `Databases` before `Tables` before `Fields`."
+  "Entities in the order they should be serialized/deserialized in `load-from-h2`. This is done so we make sure that
+   we load instances of entities before others that might depend on them, e.g. `Databases` before `Tables` before
+   `Fields`."
   (concat
    [:model/Channel
     :model/ChannelTemplate
@@ -111,13 +112,21 @@
     :model/NotificationSubscription
     :model/NotificationHandler
     :model/NotificationRecipient
-    :model/NotificationCard]
+    :model/NotificationCard
+    ;; 57+
+    :model/Glossary]
    (when config/ee-available?
-     [:model/GroupTableAccessPolicy
+     [:model/Sandbox
       :model/ConnectionImpersonation
       :model/Metabot
+      :model/MetabotConversation
       :model/MetabotEntity
-      :model/MetabotPrompt])))
+      :model/MetabotMessage
+      :model/MetabotPrompt
+      :model/Document
+      :model/DocumentBookmark
+      :model/Comment
+      :model/CommentReaction])))
 
 (defn- objects->colums+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`
@@ -349,6 +358,7 @@
     :model/HTTPAction
     :model/FieldUserSettings
     :model/QueryAction
+    :model/MetabotConversation
     :model/ModelIndexValue})
 
 (defmulti ^:private postgres-id-sequence-name
@@ -360,7 +370,7 @@
   (str (name (t2/table-name model)) "_id_seq"))
 
 ;;; we changed the table name to `sandboxes` but never updated the underlying ID sequences or constraint names.
-(defmethod postgres-id-sequence-name :model/GroupTableAccessPolicy
+(defmethod postgres-id-sequence-name :model/Sandbox
   [_model]
   "group_table_access_policy_id_seq")
 

@@ -307,7 +307,7 @@ const ParameterItem = ({
         <Button
           c={isCompatible ? "text-primary" : undefined}
           variant="subtle"
-          rightSection={isCompatible && <Icon name="chevrondown" />}
+          rightSection={isCompatible && <Icon name="chevrondown" aria-hidden />}
           disabled={!isCompatible}
           onClick={() => setIsExpanded(!isExpanded)}
         >

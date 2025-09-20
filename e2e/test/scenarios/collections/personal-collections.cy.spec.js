@@ -30,21 +30,25 @@ describe("personal collections", () => {
      *  - When the solution for this problem is ready, either adjust the test or completely remove it!
      */
 
-    it.skip("shouldn't get API response containing all other personal collections when visiting the home page (metabase#24330)", () => {
-      cy.intercept("GET", "/api/collection/tree*").as("getCollections");
+    it(
+      "shouldn't get API response containing all other personal collections when visiting the home page (metabase#24330)",
+      { tags: "@skip" },
+      () => {
+        cy.intercept("GET", "/api/collection/tree*").as("getCollections");
 
-      cy.visit("/");
+        cy.visit("/");
 
-      cy.wait("@getCollections").then(({ response: { body } }) => {
-        const personalCollections = body.filter(({ personal_owner_id }) => {
-          return personal_owner_id !== null;
+        cy.wait("@getCollections").then(({ response: { body } }) => {
+          const personalCollections = body.filter(({ personal_owner_id }) => {
+            return personal_owner_id !== null;
+          });
+
+          // Admin can only see their own personal collection, so this list should return only that
+          // Loading all other users' personal collections can lead to performance issues!
+          expect(personalCollections).to.have.lengthOf(1);
         });
-
-        // Admin can only see their own personal collection, so this list should return only that
-        // Loading all other users' personal collections can lead to performance issues!
-        expect(personalCollections).to.have.lengthOf(1);
-      });
-    });
+      },
+    );
 
     it("should see a link to other users' personal collections only if there are other users", () => {
       cy.intercept("GET", "/api/session/properties", (req) => {

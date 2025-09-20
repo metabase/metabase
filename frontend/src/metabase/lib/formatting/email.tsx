@@ -2,6 +2,7 @@ import ExternalLink from "metabase/common/components/ExternalLink";
 import { getDataFromClicked } from "metabase-lib/v1/parameters/utils/click-behavior";
 
 import { renderLinkTextForClick } from "./link";
+import { removeNewLines } from "./strings";
 import type { OptionsType } from "./types";
 
 // https://github.com/angular/angular.js/blob/v1.6.3/src/ng/directive/input.js#L27
@@ -10,7 +11,14 @@ const EMAIL_ALLOW_LIST_REGEX =
 
 export function formatEmail(
   value: string,
-  { jsx, rich, view_as = "auto", link_text, clicked }: OptionsType = {},
+  {
+    jsx,
+    rich,
+    view_as = "auto",
+    link_text,
+    clicked,
+    collapseNewlines,
+  }: OptionsType = {},
 ) {
   const email = String(value);
   const label =
@@ -24,10 +32,12 @@ export function formatEmail(
     (view_as === "email_link" || view_as === "auto") &&
     EMAIL_ALLOW_LIST_REGEX.test(email)
   ) {
-    return (
-      <ExternalLink href={"mailto:" + email}>{label || email}</ExternalLink>
-    );
+    let displayText = label || email;
+    if (collapseNewlines) {
+      displayText = removeNewLines(displayText);
+    }
+    return <ExternalLink href={"mailto:" + email}>{displayText}</ExternalLink>;
   } else {
-    return email;
+    return collapseNewlines ? removeNewLines(email) : email;
   }
 }

@@ -54,12 +54,29 @@
              :query    {:source-query {:source-table 1}
                         :fields       [[:field 2 nil]
                                        [:field 3 {:temporal-unit :month}]]
-                        :aggregation  [[:count]]}}))))
+                        :aggregation  [[:count]]}})))))
+
+(deftest ^:parallel ->pMBQL-idempotency-test-2
   (testing ":field clause"
     (are [clause expected] (=? expected
                                (lib.convert/->pMBQL (lib.convert/->pMBQL clause)))
       [:field 2 nil]                     [:field {:lib/uuid string?} 2]
       [:field 3 {:temporal-unit :month}] [:field {:lib/uuid string?, :temporal-unit :month} 3])))
+
+(deftest ^:parallel ->pMBQL-idempotency-test-3
+  (testing "Calling ->pMBQL on something already MBQL 5 should no-op instead of adding duplicate options maps"
+    (let [clause [[:=
+                   {:lib/uuid "1cb124b0-757f-4717-b8ee-9cf12a7c3f62"}
+                   [:field
+                    {:lib/uuid "a2eb96a0-420b-4465-817d-f3c9f789eff4"}
+                    (meta/id :users :id)]
+                   [:field
+                    {:base-type  :type/Integer
+                     :join-alias "checkins_by_user"
+                     :lib/uuid   "b23a769d-774a-4eb5-8fb8-1f6a33c9a8d5"}
+                    "USER_ID"]]]]
+      (is (= clause
+             (lib.convert/->pMBQL clause))))))
 
 (deftest ^:parallel ->pMBQL-joins-test
   (is (=? {:lib/type :mbql/query
@@ -268,11 +285,11 @@
     (is (= original
            (lib.convert/->legacy-MBQL (lib.convert/->pMBQL original))))))
 
-(defn- test-round-trip [query]
-  (testing (str "original =\n" (u/pprint-to-str query))
-    (let [converted (lib.convert/->pMBQL query)]
-      (testing (str "\npMBQL =\n" (u/pprint-to-str converted))
-        (is (= query
+(defn- test-round-trip [x]
+  (testing (str "original =\n" (u/pprint-to-str x))
+    (let [converted (lib.convert/->pMBQL x)]
+      (testing (str "\nMBQL 5 =\n" (u/pprint-to-str converted))
+        (is (= x
                (lib.convert/->legacy-MBQL converted)))))))
 
 (deftest ^:parallel round-trip-test
@@ -414,7 +431,7 @@
 
 (deftest ^:parallel round-trip-literal-expression-test
   ;; Some cases of literal expressions are already covered in round-trip-test, above.
-  (are [query] (test-round-trip query)
+  (are [x] (test-round-trip x)
     [:value false {:base_type :type/Boolean}]
 
     [:value true nil]
@@ -806,7 +823,7 @@
                               :display_name    "ID"
                               :base_type       :type/Integer}]}
 
-                 :metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/original-metadata
+                 :metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata
                  [{:base-type       :type/Text
                    :semantic-type   :type/Category
                    :table-id        32600
@@ -820,7 +837,7 @@
                    :field-ref       [:field 134551 {:source-field 134534}]
                    :fk-field-id     134534
                    :fingerprint     {:global {:distinct-count 4, :nil% 0.0}
-                                     :type   {:type/text {:percent-json   0.0
+                                     :type   {:type/Text {:percent-json   0.0
                                                           :percent-url    0.0
                                                           :percent-email  0.0
                                                           :percent-state  0.0
@@ -1130,7 +1147,7 @@
     (testing "native queries"
       (let [query {:type :native}]
         (testing "pass the legacy schema"
-          (is (mbql.s/valid-query? query)))
+          (is (mr/validate ::mbql.s/Query query)))
         (testing "pass the pMBQL schema after conversion"
           (is (nil? (->> query
                          lib.convert/->pMBQL
@@ -1141,7 +1158,7 @@
     (testing "MBQL queries"
       (let [query {:type :query}]
         (testing "pass the legacy schema"
-          (is (mbql.s/valid-query? query)))
+          (is (mr/validate ::mbql.s/Query query)))
         (testing "pass the pMBQL schema after conversion"
           (is (nil? (->> query
                          lib.convert/->pMBQL
@@ -1237,6 +1254,122 @@
     (is (= legacy-query
            (-> legacy-query lib.convert/->pMBQL lib.convert/->legacy-MBQL)))))
 
+(deftest ^:parallel join-native-source-query->legacy-test
+  (testing "join :source-query should rename :query to :native for native stages"
+    (let [query {:lib/type :mbql/query
+                 :stages   [{:lib/type :mbql.stage/mbql
+                             :joins    [{:lib/type   :mbql/join
+                                         :alias      "c"
+                                         :conditions [[:=
+                                                       {:lib/uuid "43813e7b-ebf7-4278-8ab4-af23be9ffc0d"}
+                                                       [:field
+                                                        {:lib/uuid "b8ad483b-1ff8-4979-bb3e-c006fe5caf46"}
+                                                        61325]
+                                                       [:field
+                                                        {:base-type :type/BigInteger, :join-alias "c", :lib/uuid "3000ef3f-a190-4f47-88df-404150748352"}
+                                                        "ID"]]]
+                                         :stages     [{:lib/type :mbql.stage/native
+                                                       :query    "SELECT * FROM categories WHERE name = ?;"
+                                                       :params   ["BBQ"]}
+                                                      {:lib/type :mbql.stage/mbql}]}]}]}]
+      (is (=? {:type  :query
+               :query {:joins [{:alias        "c"
+                                :condition    [:= [:field 61325 nil] [:field "ID" {:base-type :type/BigInteger, :join-alias "c"}]]
+                                :source-query {:native "SELECT * FROM categories WHERE name = ?;"
+                                               :params ["BBQ"]}}]}}
+              (lib.convert/->legacy-MBQL query))))))
+
+(deftest ^:parallel do-not-do-nasty-stuff-to-parameters-test
+  (let [query {:database 33001
+               :type     :query
+               :query    {:source-query {:source-table 33030
+                                         :expressions  {"date-column"   [:field 33302 nil]
+                                                        "number-column" [:field 33300 nil]}
+                                         :parameters   [{:type   :date/range
+                                                         :value  "2019-09-29~2023-09-29"
+                                                         :target [:dimension [:expression "date-column"]]}
+                                                        {:type   :category
+                                                         :value  1
+                                                         :target [:dimension [:expression "number-column"]]}]}}}]
+    (is (=? {:lib/type :mbql/query
+             :stages   [{:lib/type    :mbql.stage/mbql
+                         :expressions [[:field
+                                        {:lib/uuid            string?
+                                         :lib/expression-name "date-column"}
+                                        pos-int?]
+                                       [:field
+                                        {:lib/uuid            string?
+                                         :lib/expression-name "number-column"}
+                                        pos-int?]]
+                         :parameters  [{:type :date/range, :value "2019-09-29~2023-09-29", :target [:dimension [:expression "date-column"]]}
+                                       {:type :category, :value 1, :target [:dimension [:expression "number-column"]]}]}
+                        {:lib/type :mbql.stage/mbql}]}
+            (lib/->pMBQL query)))
+    (is (=? query
+            (-> query lib/->pMBQL lib/->legacy-MBQL)))))
+
+;;; TODO (Cam 8/8/25) -- mentioned in `->pMBQL` for `:mbql/join` but we don't even actually ever attach `:parameters`
+;;; to a join's top-level IRL, so this not something we ACTUALLY need to support.
+(deftest ^:parallel join-parameters-test
+  (let [query {:database 33001
+               :type     :query
+               :query    {:source-query {:source-table 33040}
+                          :aggregation  [[:count]]
+                          :joins        [{:source-table 33010
+                                          :alias        "c"
+                                          :condition    [:=
+                                                         [:field 33402 nil]
+                                                         [:field 33100 {:join-alias "c"}]]
+                                          :parameters   [{:type   :category
+                                                          :target [:field 33101 nil]
+                                                          :value  "BBQ"}]}]}}]
+    (is (=? {:stages   [{:source-table 33040}
+                        {:joins [{:alias      "c"
+                                  :parameters (symbol "nil #_\"key is not present.\"")
+                                  :conditions [[:=
+                                                {}
+                                                [:field {} 33402]
+                                                [:field {:join-alias "c"} 33100]]]
+                                  :lib/type   :mbql/join
+                                  :stages     [{:lib/type     :mbql.stage/mbql
+                                                :source-table 33010
+                                                :parameters   [{:type   :category
+                                                                :target [:field 33101 nil]
+                                                                :value  "BBQ"}]}]}]}]
+             :database 33001}
+            (lib/->pMBQL query)))
+    (testing "round-trip to legacy should leave join parameters in the :source-query"
+      (is (=? {:database 33001
+               :type     :query
+               :query    {:source-query {:source-table 33040}
+                          :aggregation  [[:count]]
+                          :joins        [{:source-query {:source-table 33010
+                                                         :parameters   [{:type   :category
+                                                                         :target [:field 33101 nil]
+                                                                         :value  "BBQ"}]}
+                                          :alias        "c"
+                                          :condition    [:=
+                                                         [:field 33402 nil]
+                                                         [:field 33100 {:join-alias "c"}]]}]}}
+              (-> query lib/->pMBQL lib/->legacy-MBQL))))))
+
+(deftest ^:parallel join-parameters-test-2
+  (testing "If join has top-level :parameters and its source query has :parameters, splice them together"
+    (let [query {:database 33001
+                 :type     :query
+                 :query    {:aggregation  [[:count]]
+                            :joins        [{:source-query {:source-table 33010
+                                                           :parameters   [{:name "id", :type :category, :target [:field 33100 nil], :value 5}]}
+                                            :alias        "c"
+                                            :condition    [:= [:field 33402 nil] [:field 33100 {:join-alias "c"}]]
+                                            :parameters   [{:type "category", :target [:field 33101 nil], :value "BBQ"}]}]
+                            :source-table 33040}}]
+      (is (=? {:stages [{:joins [{:alias      "c"
+                                  :stages     [{:parameters [{:name "id", :type :category, :target [:field 33100 nil], :value 5}
+                                                             {:type :category, :target [:field 33101 nil], :value "BBQ"}]}]
+                                  :parameters (symbol "nil #_\"key is not present.\"")}]}]}
+              (lib/->pMBQL query))))))
+
 (deftest ^:parallel convert-join-with-filters-test
   (testing "A join whose sole stage has :filters should get converted to a join with a :source-query (QUE-1566)"
     (let [query {:lib/type :mbql/query
@@ -1307,7 +1440,7 @@
                         :source-table 33040}}
             (lib/->legacy-MBQL query)))))
 
-(deftest ^:parallel join-native-source-query->legacy-test
+(deftest ^:parallel join-native-source-query->legacy-test-2
   (testing "join :source-query should rename :query to :native for native stages"
     (let [query {:lib/type :mbql/query
                  :stages   [{:lib/type :mbql.stage/mbql
@@ -1465,3 +1598,56 @@
                  :lib/metadata meta/metadata-provider}]
       (is (=? {:native {:projections [:count]}}
               (lib.convert/->legacy-MBQL query))))))
+
+(deftest ^:parallel between-with-options->legacy-test
+  (is (= [:between
+          [:field 72922 {:base-type :type/Text}]
+          [:relative-datetime -15 :day]
+          [:relative-datetime 0 :day]]
+         (lib.convert/->legacy-MBQL [:between
+                                     {:include-current true,
+                                      :lib/uuid        "b8991b40-d452-4922-8768-b07f6f2b1918"}
+                                     [:field
+                                      {:base-type :type/Text
+                                       :lib/uuid  "408cebeb-4511-4e3f-87c4-bc9d9cb84eca"}
+                                      72922]
+                                     [:relative-datetime
+                                      {:lib/uuid "4eeca5bb-1614-48d1-8bfd-30c91dd4f546"}
+                                      -15
+                                      :day]
+                                     [:relative-datetime
+                                      {:lib/uuid "85a69d68-a2df-4c22-8a45-2203c837d3bf"}
+                                      0
+                                      :day]]))))
+
+(deftest ^:parallel and-or-with-options->legacy-test
+  (doseq [tag [:and :or]]
+    (is (= [tag
+            [:starts-with [:field 243 {:base-type :type/Text}] "B" {:case-sensitive false}]
+            [:starts-with [:field 243 {:base-type :type/Text}] "C" {:case-sensitive false}]]
+           (lib.convert/->legacy-MBQL
+            [tag
+             {:lib/uuid "fd823910-ffc9-4508-a6af-fa37fe29514d", :case-sensitive false}
+             [:starts-with
+              {:case-sensitive false, :lib/uuid "dc413cb8-429d-4103-aaa4-06e3d3bf0a4d"}
+              [:field {:base-type :type/Text, :lib/uuid "b94a285d-32a5-45ad-a261-d4c67f1af8db", :effective-type :type/Text} 243]
+              "B"]
+             [:starts-with
+              {:case-sensitive false, :lib/uuid "92c8ee03-6bc6-45c9-865c-57d0c5d53e23"}
+              [:field {:base-type :type/Text, :lib/uuid "044811f6-9e30-4c42-b5b6-6afde5031675", :effective-type :type/Text} 243]
+              "C"]])))))
+
+(deftest ^:parallel field-name-ref-to-legacy-never-remove-base-type-test
+  (testing "never remove :base-type from a :field name ref regardless of :metabase.lib.query/transformation-added-base-type"
+    (is (= [:field "USER_ID" {:base-type :type/Integer, :join-alias "ord1"}]
+           (lib.convert/->legacy-MBQL [:field {:lib/uuid                                          "47afe974-396c-4213-8736-859399ba5e7e"
+                                               :base-type                                         :type/Integer
+                                               :join-alias                                        "ord1"
+                                               :metabase.lib.query/transformation-added-base-type true}
+                                       "USER_ID"])))))
+
+(deftest ^:parallel dimension->mbql5-test
+  (is (=? [:dimension
+           {:stage-number 0, :lib/uuid string?}
+           [:field {:base-type :type/BigInteger, :lib/uuid string?} 49]]
+          (lib.convert/->pMBQL [:dimension [:field 49 {:base-type :type/BigInteger}] {:stage-number 0}]))))

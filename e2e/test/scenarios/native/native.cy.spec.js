@@ -753,7 +753,7 @@ describe("scenarios > question > native", () => {
 });
 
 // causes error in cypress 13
-describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
+describe("no native access", { tags: ["@external", "@skip"] }, () => {
   beforeEach(() => {
     H.restore("postgres-12");
     cy.signInAsAdmin();

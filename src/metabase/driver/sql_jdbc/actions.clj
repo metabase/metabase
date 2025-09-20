@@ -17,6 +17,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -71,7 +72,7 @@
                                         ;; the columns in error message should match with columns
                                         ;; in the parameter. It's usually got from calling
                                         ;; GET /api/action/:id/execute, and in there all column names are slugified
-                                         (m/update-existing :errors update-keys u/slugify))
+                                         (m/update-existing :errors perf/update-keys u/slugify))
                                  (assoc (ex-data e) :message (ex-message e)))
                              {:status-code 400}))))))
 
@@ -287,7 +288,7 @@
                         (u/for-map [f field-names]
                           [(u/upper-case-en f) f]))
           remap  (fn [k] (get keymap k k))]
-      (map #(update-keys % remap) rows))))
+      (map #(perf/update-keys % remap) rows))))
 
 (defn- query-rows
   [driver conn query]
@@ -299,10 +300,34 @@
   [driver conn table-id query]
   (correct-columns-name table-id (query-rows driver conn query)))
 
+(mu/defn- table-id->pk-field-name->id :- [:map-of driver-api/schema.common.non-blank-string driver-api/schema.id.field]
+  "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
+  [database-id :- driver-api/schema.id.database
+   table-id :- driver-api/schema.id.table]
+  (driver-api/cached-value
+   [::table-id->pk-field-name->id table-id]
+   #(into {}
+          (comp (filter (fn [{:keys [semantic-type], :as _field}]
+                          (isa? semantic-type :type/PK)))
+                (map (juxt :name :id)))
+          (driver-api/with-metadata-provider database-id
+            (driver-api/fields
+             (driver-api/metadata-provider)
+             table-id)))))
+
+(defn- assert-pk! [db-id table-id]
+  (when (empty? (table-id->pk-field-name->id db-id table-id))
+    (throw (ex-info (tru "Cannot edit a table without it having at least one entity key configured.")
+                    {:type        :data-editing/no-pk
+                     :status-code 400
+                     :table-id    table-id}))))
+
 (defn- row-delete!* [action database query]
   (log/tracef "Deleting %s" query)
   (let [db-id      (u/the-id database)
         table-id   (-> query :query :source-table)
+        ;; We'd error anyway, about not having a filter, but this fails earlier with a more explicit error
+        _           (assert-pk! db-id table-id)
         row-before (atom nil)
         driver               (:engine database)
         {:keys [from where]} (mbql-query->raw-hsql driver query)
@@ -352,16 +377,19 @@
 
 (defn- row-update!* [action database {:keys [update-row] :as query}]
   (log/tracef "updating %s" query)
-  (let [driver               (:engine database)
-        source-table         (get-in query [:query :source-table])
+  (let [driver      (:engine database)
+        db-id       (u/the-id database)
+        table-id    (get-in query [:query :source-table])
+        ;; We'd error anyway, about not having a filter, but this fails earlier with a more explicit error
+        _           (assert-pk! db-id table-id)
         {:keys [from where]} (mbql-query->raw-hsql driver query)
-        update-hsql          (-> {:update (first from)
-                                  :set    (cast-values driver update-row (u/the-id database) source-table)
-                                  :where  where}
-                                 (prepare-query driver action))
-        sql-args             (sql.qp/format-honeysql driver update-hsql)]
+        update-hsql (-> {:update (first from)
+                         :set    (cast-values driver update-row db-id table-id)
+                         :where  where}
+                        (prepare-query driver action))
+        sql-args    (sql.qp/format-honeysql driver update-hsql)]
     (log/tracef "hsql: %s" (u/pprint-to-str update-hsql))
-    (with-jdbc-transaction [conn (u/the-id database)]
+    (with-jdbc-transaction [conn db-id]
       (let [table-id     (-> query :query :source-table)
             row-before   (->> (prepare-query {:select [:*] :from from :where where} driver action)
                               (query-rows-correct-name driver conn table-id)
@@ -378,7 +406,7 @@
                               (query-rows-correct-name driver conn table-id)
                               first)]
         {:table-id (-> query :query :source-table)
-         :db-id    (u/the-id database)
+         :db-id    db-id
          :before   row-before
          :after    row-after}))))
 
@@ -428,11 +456,14 @@
   (log/tracef "creating %s" query)
   (let [db-id       (u/the-id database)
         driver      (:engine database)
+        table-id    (get-in query [:query :source-table])
+        ;; Check that we have a PK before we insert thte data, because we'd need this to query the return data.
+        _           (assert-pk! db-id table-id)
         {:keys [from]} (mbql-query->raw-hsql driver query)
         create-hsql (-> {:insert-into (first from)
                          :values      (if-not (seq create-row)
                                         :default
-                                        [(cast-values driver create-row db-id (get-in query [:query :source-table]))])}
+                                        [(cast-values driver create-row db-id table-id)])}
                         (prepare-query driver action))
         sql-args    (sql.qp/format-honeysql driver create-hsql)]
     (log/tracef "hsql: %s" (u/pprint-to-str create-hsql))
@@ -558,21 +589,6 @@
   [action context inputs]
   (table-row-create! action context inputs))
 
-(mu/defn- table-id->pk-field-name->id :- [:map-of driver-api/schema.common.non-blank-string driver-api/schema.id.field]
-  "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
-  [database-id :- driver-api/schema.id.database
-   table-id :- driver-api/schema.id.table]
-  (driver-api/cached-value
-   [::table-id->pk-field-name->id table-id]
-   #(into {}
-          (comp (filter (fn [{:keys [semantic-type], :as _field}]
-                          (isa? semantic-type :type/PK)))
-                (map (juxt :name :id)))
-          (driver-api/with-metadata-provider database-id
-            (driver-api/fields
-             (driver-api/metadata-provider)
-             table-id)))))
-
 (mu/defn- row->mbql-filter-clause
   "Given [[field-name->id]] as returned by [[table-id->pk-field-name->id]] or similar and a `row` of column name to
   value build an appropriate MBQL filter clause."
@@ -580,7 +596,10 @@
    row :- driver-api/schema.actions.args.row]
   (when (empty? row)
     (throw (ex-info (tru "Cannot build filter clause: row cannot be empty.")
-                    {:field-name->id field-name->id, :row row, :status-code 400})))
+                    {:type           :data-editing/no-filter
+                     :status-code    400
+                     :field-name->id field-name->id
+                     :row            row})))
   (into [:and] (for [[field-name value] row
                      :let               [field-id (get field-name->id field-name)
                                         ;; if the field isn't in `field-name->id` then it's an error in our code. Not
@@ -653,7 +672,11 @@
                             :row-action   :model.row/delete
                             :row-fn       row-delete!*
                             :validate-fn  (fn [database table-id rows]
-                                            (let [pk-name->id (table-id->pk-field-name->id (:id database) table-id)]
+                                            (let [db-id        (u/the-id database)
+                                                  ;; We'd error anyway, about not having a filter, but this fails
+                                                  ;; earlier with a more explicit error
+                                                  _            (assert-pk! db-id table-id)
+                                                  pk-name->id  (table-id->pk-field-name->id db-id table-id)]
                                               (check-consistent-row-keys rows)
                                               (check-rows-have-expected-columns-and-no-other-keys rows (keys pk-name->id))
                                               (check-unique-rows rows)))
@@ -727,6 +750,7 @@
           :row-fn     row-update!*
           :validate-fn (fn [database table-id rows]
                          (let [db-id            (:id database)
+                               _                (assert-pk! db-id table-id)
                                pk-name->id      (table-id->pk-field-name->id db-id table-id)
                                pk-names         (set (keys pk-name->id))]
                            (doseq [row rows]

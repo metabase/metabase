@@ -66,3 +66,6 @@
 
 (mr/def ::native-query-snippet
   [:schema {:doc/title "Valid Native Query Snippet ID"} pos-int?])
+
+(mr/def ::collection
+  [:schema {:doc/title "Valid Collection ID"} pos-int?])

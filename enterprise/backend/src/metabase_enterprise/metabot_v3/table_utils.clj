@@ -9,6 +9,7 @@
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
   (:import
+   (java.io StringWriter Writer)
    (org.apache.commons.text.similarity LevenshteinDistance)))
 
 (set! *warn-on-reflection* true)
@@ -17,6 +18,10 @@
 (def ^:private max-database-tables
   "If the number of tables in the database doesn't exceed this number, we send them all to the agent."
   100)
+
+(def ^:private max-schema-sample-tables
+  "If the number of tables in the database doesn't exceed this number, we send them all to the agent."
+  10)
 
 (defn database-tables
   "Get database tables formatted for AI context, with proper permissions filtering.
@@ -153,3 +158,79 @@
         {recognized-tables true, unrecognized-tables false} (group-by t2/instance? queried-tables)]
     (concat recognized-tables
             (find-matching-tables database unrecognized-tables (map :id recognized-tables)))))
+
+(defn- format-escaped
+  [^String identifier ^Writer writer]
+  (if (re-matches #"[\p{Alpha}_][\p{Alnum}_]*" identifier)
+    (.append writer identifier)
+    (do
+      (.append writer \")
+      (doseq [^Character c identifier]
+        (when (= c \")
+          (.append writer c))
+        (.append writer c))
+      (.append writer \"))))
+
+(defn- format-field-ddl
+  [{:keys [^String database_type], fname :name} ^Writer writer]
+  (format-escaped fname writer)
+  (.append writer " ")
+  (.append writer database_type))
+
+(defn- format-column-ddl
+  [{:keys [^String data_type], fname :name} ^Writer writer]
+  (format-escaped fname writer)
+  (.append writer " ")
+  (.append writer data_type))
+
+(defn- format-table-ddl
+  [{:keys [schema fields columns], tname :name} ^Writer writer]
+  (.append writer "CREATE TABLE ")
+  (when (seq schema)
+    (format-escaped schema writer)
+    (.append writer \.))
+  (format-escaped tname writer)
+  (.append writer " (")
+  (when (seq fields)
+    (.append writer "\n  ")
+    (format-field-ddl (first fields) writer)
+    (doseq [field (rest fields)]
+      (.append writer ",\n  ")
+      (format-field-ddl field writer)))
+  (when (seq columns)
+    (.append writer "\n  ")
+    (format-column-ddl (first columns) writer)
+    (doseq [column (rest columns)]
+      (.append writer ",\n  ")
+      (format-column-ddl column writer)))
+  (.append writer "\n);"))
+
+(defn- format-schema-ddl
+  [tables]
+  (let [sw (StringWriter.)]
+    (doseq [table tables]
+      (format-table-ddl table sw)
+      (.append sw \newline))
+    (str sw)))
+
+(defn schema-sample
+  "Returns the DDL for the tables available in the given schema"
+  ([query]
+   (schema-sample query nil))
+  ([{:keys [database] :as query} {:keys [all-tables-limit] :or {all-tables-limit max-schema-sample-tables}}]
+   (let [tables (t2/select [:model/Table :id :name :schema]
+                           :db_id database
+                           :active true
+                           :visibility_type nil
+                           {:limit (inc all-tables-limit)})
+         tables (if (> (count tables) all-tables-limit)
+                  (used-tables query)
+                  tables)
+         tables (t2/hydrate tables :fields)]
+     (format-schema-ddl tables))))
+
+(defn schema-full
+  "Returns the DDL for all tables in a database."
+  [database-id]
+  (let [tables (database-tables database-id)]
+    (format-schema-ddl (t2/hydrate tables :fields))))

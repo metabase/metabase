@@ -88,7 +88,7 @@
             {:error/message "namespace-qualified symbol serialized as a string"}
             (fn [s]
               (try
-                (when-let [symb (symbol s)]
+                (when-let [symb (some-> s symbol)]
                   (qualified-symbol? symb))
                 (catch Throwable _)))]]]
    [:args {:optional true} [:sequential :any]]])

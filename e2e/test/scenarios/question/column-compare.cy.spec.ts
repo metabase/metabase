@@ -183,7 +183,7 @@ const CUSTOM_EXPRESSIONS_USED_MOVING_AVERAGE = [
 ];
 
 // TODO: reenable test when we reenable the "Compare to the past" components.
-describe.skip("scenarios > question", () => {
+describe("scenarios > question", { tags: "@skip" }, () => {
   H.describeWithSnowplow("column compare", () => {
     beforeEach(() => {
       H.restore();

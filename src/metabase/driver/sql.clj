@@ -2,6 +2,8 @@
   "Shared code for all drivers that use SQL under the hood."
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
+   [macaw.core :as macaw]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.parameters.parse :as params.parse]
@@ -10,8 +12,11 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [potemkin :as p]))
+   [potemkin :as p]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
+   [toucan2.core :as t2]))
 
 (comment sql.params.substitution/keep-me) ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
 
@@ -107,6 +112,86 @@
 (defmethod default-database-role :default
   [_ _database]
   nil)
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Transforms                                                        |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver/run-transform! [:sql :table]
+  [driver {:keys [conn-spec output-table] :as transform-details} {:keys [overwrite?]}]
+  (let [queries (cond->> [(driver/compile-transform driver transform-details)]
+                  overwrite? (cons (driver/compile-drop-table driver output-table)))]
+    {:rows-affected (last (driver/execute-raw-queries! driver conn-spec queries))}))
+
+(defn qualified-name
+  "Return the name of the target table of a transform as a possibly qualified symbol."
+  [{schema :schema, table-name :name}]
+  (if schema
+    (keyword schema table-name)
+    (keyword table-name)))
+
+(defmethod driver/drop-transform-target! [:sql :table]
+  [driver database target]
+  ;; driver/drop-table! takes table-name as a string, but the :sql-jdbc implementation uses
+  ;; honeysql, and accepts a keyword too. This way we delegate proper escaping and qualification to honeysql.
+  (driver/drop-table! driver (:id database) (qualified-name target)))
+
+(defn normalize-name
+  "Normalizes the (primarily table/column) name passed in.
+  Should return a value that matches the name listed in the appdb."
+  [driver name-str]
+  (let [quote-style (sql.qp/quote-style driver)
+        quote-char (if (= quote-style :mysql) \` \")]
+    (if (and (= (first name-str) quote-char)
+             (= (last name-str) quote-char))
+      (let [quote-quote (str quote-char quote-char)
+            quote (str quote-char)]
+        (-> name-str
+            (subs 1 (dec (count name-str)))
+            (str/replace quote-quote quote)))
+      (u/lower-case-en name-str))))
+
+(defmulti default-schema
+  "Returns the default schema for a given database driver.
+
+  Drivers that support any of the `:transforms/...` features must implement this method."
+  {:added "0.57.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod default-schema :sql
+  [_]
+  "public")
+
+(defn find-table-or-transform
+  "Given a table and schema that has been parsed out of a native query, finds either a matching table or a matching transform.
+   It will return either {:table table-id} or {:transform transform-id}, or nil if neither is found."
+  [driver tables transforms {:keys [table schema]}]
+  (let [normalized-table (normalize-name driver table)
+        normalized-schema (or (some->> schema (normalize-name driver))
+                              (default-schema driver))
+        matches? (fn [db-table db-schema]
+                   (and (= normalized-table db-table)
+                        (= normalized-schema db-schema)))]
+    (or (some (fn [{:keys [name schema id]}]
+                (when (matches? name schema)
+                  {:table id}))
+              tables)
+        (some (fn [{:keys [id] {:keys [name schema]} :target}]
+                (when (matches? name schema)
+                  {:transform id}))
+              transforms))))
+
+(defmethod driver/native-query-deps :sql
+  [driver query]
+  (let [db-tables (driver-api/tables (driver-api/metadata-provider))
+        transforms (t2/select [:model/Transform :id :target])]
+    (->> query
+         macaw/parsed-query
+         macaw/query->components
+         :tables
+         (map :component)
+         (into #{} (keep #(find-table-or-transform driver db-tables transforms %))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Convenience Imports                                               |

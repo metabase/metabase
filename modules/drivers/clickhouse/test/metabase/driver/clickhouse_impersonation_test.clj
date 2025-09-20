@@ -1,17 +1,21 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse-impersonation-test
   "SET ROLE (connection impersonation feature) tests with single node or on-premise cluster setups."
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
    [metabase-enterprise.impersonation.util-test :as impersonation.tu]
    [metabase.driver :as driver]
+   [metabase.driver.clickhouse-version :as clickhouse.version]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.test-util :as driver.tu]
    [metabase.query-processor.store :as qp.store]
    [metabase.sync.core :as sync.core]
    [metabase.test :as mt]
    [metabase.test.data.clickhouse :as ctd]
    [metabase.util :as u]
+   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import [java.sql SQLException]))
 
@@ -175,3 +179,41 @@
               (check-impersonation! "row_a,row_c" [["a"] ["c"]])
               (check-impersonation! "row_b,row_c" [["b"] ["c"]])
               (check-impersonation! "row_a,row_b,row_c" [["a"] ["b"] ["c"]]))))))))
+
+(defn- with-ssh-tunnel*! [tunnel-details f]
+  (let [base-details (t2/select-one-fn :details 'Database :id (mt/id))]
+    ;; Set up SSH tunnel
+    (t2/update! 'Database (mt/id) {:details (merge base-details tunnel-details)})
+    ;; Discard any existing connection pool to make sure the new one uses it.
+    (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
+    ;; Run the test body
+    (f)
+    ;; Clean up
+    (t2/update! 'Database (mt/id) {:details base-details})
+    (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))))
+
+(defmacro ^:private with-ssh-tunnel! [tunnel-details & body]
+  `(with-ssh-tunnel*! ~tunnel-details (^:once fn* [] ~@body)))
+
+(deftest impersonation-support-check-over-ssh-tunnel-test
+  (testing "driver-supports? :connection-impersonation should work through an SSH tunnel (#62377)"
+    ;; Use an in-memory SSH server that forwards to the correct port through localhost.
+    ;; Since the real database is still reachable locally, it's possible for the driver to ignore the SSH tunnel and
+    ;; still connect to the DB. So this test runs twice, once with all correct and once with an incorrect SSH
+    ;; password. The latter check should fail (returning false for `driver-supports?`) if the SSH tunnel is being
+    ;; respected.
+    (mt/test-driver :clickhouse
+      (let [username "username", password "password"]
+        (with-open [ssh-server (driver.tu/basic-auth-ssh-server username password)]
+          (doseq [[correct-password? ssh-password] [[true password] [false "wrong-password"]]]
+            (memoize/memo-clear! @#'clickhouse.version/get-clickhouse-version)
+            (let [ssh-port (.getPort ssh-server)]
+              (with-ssh-tunnel! {:tunnel-enabled true
+                                 :tunnel-host "localhost"
+                                 :tunnel-auth-option "password"
+                                 :tunnel-port ssh-port
+                                 :tunnel-user username
+                                 :tunnel-pass ssh-password}
+                (testing (str "using " ssh-password)
+                  (is (= correct-password?
+                         (driver/database-supports? :clickhouse :connection-impersonation (mt/id)))))))))))))

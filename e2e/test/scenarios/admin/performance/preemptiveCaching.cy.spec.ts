@@ -37,6 +37,10 @@ describe(
         });
       });
 
+      after(() => {
+        resetServerTime();
+      });
+
       function runPreemptiveCachingTest(questionId: string) {
         function visitCachedQuestion(questionId: string) {
           cy.log("Visiting the question");

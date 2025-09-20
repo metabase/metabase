@@ -1,6 +1,7 @@
 (ns metabase.search.config
   (:require
    [metabase.api.common :as api]
+   [metabase.config.core :as config]
    [metabase.permissions.core :as perms]
    [metabase.search.settings :as search.settings]
    [metabase.util :as u]
@@ -38,6 +39,11 @@
   "Show this many words of context before/after matches in long search results"
   2)
 
+(def model->db-model
+  "Mapping of model name to :db_model and :alias"
+  (cond-> api/model->db-model
+    config/ee-available? (assoc "document" {:db-model :model/Document :alias :document})))
+
 ;; We won't need this once fully migrated to specs, but kept for now in case legacy cod falls out of sync
 (def excluded-models
   "Set of models that should not be included in search results."
@@ -57,7 +63,7 @@
 ;; - We also need to provide an alias (and this must match the API one for legacy)
 (def model-to-db-model
   "Mapping from string model to the Toucan model backing it."
-  (apply dissoc api/model->db-model excluded-models))
+  (apply dissoc model->db-model excluded-models))
 
 (def all-models
   "Set of all valid models to search for. "
@@ -66,7 +72,9 @@
 (def models-search-order
   "The order of this list influences the order of the results: items earlier in the
   list will be ranked higher."
-  ["dashboard" "metric" "segment" "indexed-entity" "card" "dataset" "collection" "table" "action" "database"])
+  (cond-> ["dashboard" "metric" "segment" "indexed-entity" "card" "dataset" "collection" "table" "action"]
+    config/ee-available? (conj "document")
+    :always (conj "database")))
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 
@@ -85,7 +93,9 @@
     :text                5
     :mine                1
     :exact               5
-    :prefix              0}
+    :prefix              0
+    ;; RRF is the "Reciprocal Rank Fusion" score used by the semantic search backend to blend semantic and keyword scores
+    :rrf                 500}
    :command-palette
    {:prefix               5
     :model/collection     1
@@ -161,8 +171,9 @@
   {:default         {:archived               false
                      ;; keys will typically those in [[filters]], but this is an atypical filter.
                      ;; we plan to generify it, by precalculating it on the index.
-                     :personal-collection-id "all"}
-   :command-palette {:personal-collection-id "exclude-others"}})
+                     :filter-items-in-personal-collection "all"}
+   :search-app      {:filter-items-in-personal-collection "exclude-others"}
+   :command-palette {:filter-items-in-personal-collection "exclude-others"}})
 
 (defn filter-default
   "Get the default value for the given filter in the given context. Is non-contextual for legacy search."

@@ -116,19 +116,19 @@
         (chart-type :scalar "result has one row and one column")
 
         (#{:scalar
-           :row
-           :progress
            :gauge
            :table
            :funnel} display-type)
         (chart-type display-type "display-type is %s" display-type)
 
         (#{:smartscalar
+           :progress
            :sankey
            :scalar
            :pie
            :scatter
            :waterfall
+           :row
            :line
            :area
            :bar

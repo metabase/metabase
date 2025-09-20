@@ -24,7 +24,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.driver.util :as driver.u]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -1328,7 +1327,7 @@
 (deftest ^:parallel time-interval-expression-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
     (mt/dataset checkins:1-per-day
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (mt/metadata-provider)
             orders (lib.metadata/table metadata-provider (mt/id :checkins))
             query (lib/query metadata-provider orders)
             timestamp-col (m/find-first (comp #{(mt/id :checkins :timestamp)} :id) (lib/visible-columns query))
@@ -1628,7 +1627,7 @@
                    (mt/first-row
                     (qp/process-query query))))))))))
 
-(deftest temporal-unit-parameters-test
+(deftest ^:parallel temporal-unit-parameters-test
   (mt/dataset test-data
     (let [query-months (mt/query orders
                          {:type       :query
@@ -1649,23 +1648,23 @@
         (is (= [37019.52 32923.82 36592.60 35548.11 43556.61 39537.82
                 42292.10 42443.71 42077.35 45708.74 44498.55 46245.48]
                (unit-totals "month"))))
-
       (testing "quarterly"
         (is (= [106535.94 118642.54 126813.16 136452.77]
                (unit-totals "quarter"))))
-
       (testing "annual"
         (is (= [488444.41] (unit-totals "year")))))))
 
 (deftest ^:parallel incompatible-temporal-unit-parameter-test
   (testing "Incompatible time unit parameter yields expected error"
     (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo #"This chart can not be broken out by the selected unit of time: minute\."
+         clojure.lang.ExceptionInfo
+         #"\QThis chart can not be broken out by the selected unit of time: minute.\E"
          (qp.preprocess/preprocess
-          (mt/mbql-query
-            checkins
-            {:type       :query
-             :query      {:aggregation  [[:count]]
+          (mt/$ids checkins
+            {:database   (mt/id)
+             :type       :query
+             :query      {:source-table $$checkins
+                          :aggregation  [[:count]]
                           :breakout     [!day.date]}
              :parameters [{:type   :temporal-unit
                            :target [:dimension !day.date]
@@ -1709,7 +1708,7 @@
                      (mt/formatted-rows
                       [int int] (qp/process-query query)))))))))))
 
-(deftest filter-by-current-quarter-test
+(deftest ^:parallel filter-by-current-quarter-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Should be able to filter by current quarter (#20683)"
       (let [query (mt/mbql-query checkins
@@ -1722,12 +1721,11 @@
                  (mt/formatted-rows
                   [int] (qp/process-query query)))))))))
 
-(deftest filter-by-expression-time-interval-test
+(deftest ^:parallel filter-by-expression-time-interval-test
   (testing "Datetime expressions can filter to a date range (#33528)"
     (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
-      (mt/dataset
-        checkins:1-per-day
-        (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (mt/dataset checkins:1-per-day
+        (let [mp (mt/metadata-provider)
               query (as-> (lib/query mp (lib.metadata/table mp (mt/id :checkins))) $q
                       (lib/expression $q "customdate" (m/find-first (comp #{(mt/id :checkins :timestamp)} :id) (lib/visible-columns $q)))
                       (lib/filter $q (lib/time-interval (lib/expression-ref $q "customdate") :current :week)))
@@ -1744,12 +1742,12 @@
                  (get-in (qp/process-query (lib.convert/->pMBQL mbql-query)) [:data :native_form])
                  (get-in (qp/process-query query) [:data :native_form]))))))))
 
-(deftest filter-by-expression-relative-time-interval-test
+(deftest ^:parallel filter-by-expression-relative-time-interval-test
   (testing "Datetime expressions can filter to a date range"
     (mt/test-drivers
       (mt/normal-drivers-with-feature :date-arithmetics :test/dynamic-dataset-loading)
       (mt/dataset checkins:1-per-day:60
-        (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        (let [mp (mt/metadata-provider)
               query (as-> (lib/query mp (lib.metadata/table mp (mt/id :checkins))) $q
                       (lib/expression $q "customdate" (m/find-first (comp #{(mt/id :checkins :timestamp)} :id)
                                                                     (lib/visible-columns $q)))

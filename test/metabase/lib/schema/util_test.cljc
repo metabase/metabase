@@ -10,19 +10,19 @@
    :database 1
    :stages   [{:lib/type     :mbql.stage/mbql
                :source-table 2
-               :filter       [:=
-                              {:lib/uuid "00000000-0000-0000-0000-000000000010"}
-                              [:field
-                               {:lib/uuid uuid-1, :base-type :type/Text}
-                               3]
-                              4]}
+               :filters      [[:=
+                               {:lib/uuid "00000000-0000-0000-0000-000000000010"}
+                               [:field
+                                {:lib/uuid uuid-1, :base-type :type/Text}
+                                3]
+                               4]]}
               {:lib/type :mbql.stage/mbql
-               :filter   [:=
-                          {:lib/uuid "00000000-0000-0000-0000-000000000020"}
-                          [:field
-                           {:lib/uuid uuid-2, :base-type :type/Text}
-                           "my_field"]
-                          4]}]})
+               :filters  [[:=
+                           {:lib/uuid "00000000-0000-0000-0000-000000000020"}
+                           [:field
+                            {:lib/uuid uuid-2, :base-type :type/Text}
+                            "my_field"]
+                           4]]}]})
 
 (def query-with-no-duplicate-uuids
   (query "00000000-0000-0000-0000-000000000001"
@@ -77,6 +77,13 @@
      [:field {:lib/uuid "00000000-0000-0000-0000-000000000001", :effective-type :type/Number} 1]]
 
     [[:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Integer} 1]
+     [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]]
+
+    ;; do not consider (inherited-)temporal-unit = default and no temporal-unit to be distinct
+    [[:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :temporal-unit :default} 1]
+     [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]]
+
+    [[:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :inherited-temporal-unit :default} 1]
      [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]]))
 
 (deftest ^:parallel distinct-mbql-clauses-schema-test

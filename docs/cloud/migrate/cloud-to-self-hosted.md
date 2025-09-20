@@ -15,7 +15,7 @@ section: Migrate
 
 Migration from Metabase Cloud to self-hosted will keep all of your questions, dashboards, people, settings --- everything in your existing Metabase.
 
-To migrate, you'll need to [contact our success team](/help-premium) to get a snapshot of your Metabase's [application database](../../installation-and-operation/migrating-from-h2.md#metabases-application-database). This application database contains information about all the settings, questions, dashboards, models, users, etc from your Metabase Cloud instance. The application database is distinct from any of the databases you have connected to your Metabase. You'll need to host your own PostgreSQL database and import your data by restoring from this snapshot of your application database.
+To migrate, you'll need to [contact our success team](https://www.metabase.com/help-premium) to get a snapshot of your Metabase's [application database](../../installation-and-operation/migrating-from-h2.md#metabases-application-database). This application database contains information about all the settings, questions, dashboards, models, users, etc from your Metabase Cloud instance. The application database is distinct from any of the databases you have connected to your Metabase. You'll need to host your own PostgreSQL database and import your data by restoring from this snapshot of your application database.
 
 ## Preparing to migrate from cloud to self-hosted
 
@@ -31,7 +31,7 @@ A self-hosted Metabase comes with a built-in H2 application database (H2 is a fi
 
 We recommend using PostgreSQL as your application database, but you can use MySQL or MariaDB as well. Before starting the migration from Metabase Cloud, [configure the application database](../../installation-and-operation/configuring-application-database.md) for your self-hosted instance.
 
-For more on why you should use PostgreSQL as your application database, check out [How to run Metabase in production](/learn/metabase-basics/administration/administration-and-operation/metabase-in-production).
+For more on why you should use PostgreSQL as your application database, check out [How to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production).
 
 ### If you're on a Pro plan, you'll need to switch to a self-hosted Pro plan
 
@@ -42,7 +42,7 @@ If you're migrating from a Metabase Cloud Pro plan to a self-hosted Pro plan, yo
 
 ## How to migrate from Metabase Cloud to a self-hosted instance
 
-1. **Request a snapshot of your application database** for your Metabase Cloud instance by [contacting our Success Engineering team](/help-premium).
+1. **Request a snapshot of your application database** for your Metabase Cloud instance by [contacting our Success Engineering team](https://www.metabase.com/help-premium).
 
    Currently, you can't generate the snapshot yourself. A Metabase Success Engineer will generate a snapshot for you and email a link to download your snapshot from the Metabase Store.
 

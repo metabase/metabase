@@ -128,6 +128,7 @@ export interface VisualizationProps {
   isEmbeddingSdk: boolean;
   showTitle: boolean;
   isDashboard: boolean;
+  isDocument: boolean;
   isVisualizerViz: boolean;
   isEditing: boolean;
   isMobile: boolean;
@@ -192,6 +193,7 @@ export type VisualizationPassThroughProps = {
   isObjectDetail?: boolean;
   isQueryBuilder?: boolean;
   queryBuilderMode?: QueryBuilderMode;
+  zoomedRowIndex?: number;
   onDeselectTimelineEvents?: () => void;
   onOpenTimelines?: () => void;
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
@@ -236,6 +238,11 @@ export type VisualizationPassThroughProps = {
   // Public & Embedded questions, needed for pin maps to generate the correct tile URL
   uuid?: string;
   token?: string;
+
+  /**
+   * Extra buttons to be shown in the table footer (if the visualization is a table)
+   */
+  tableFooterExtraButtons?: React.ReactNode;
 };
 
 export type ColumnSettingDefinition<TValue, TProps = unknown> = {

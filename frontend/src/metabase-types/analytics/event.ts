@@ -1,9 +1,15 @@
+import type { FormLocation } from "metabase/databases/types";
 import type {
   ChecklistItemCTA,
   ChecklistItemValue,
 } from "metabase/home/components/Onboarding/types";
 import type { KeyboardShortcutId } from "metabase/palette/shortcuts";
-import type { Engine, VisualizationDisplay } from "metabase-types/api";
+import type {
+  Engine,
+  RelatedDashboardXRays,
+  TransformId,
+  VisualizationDisplay,
+} from "metabase-types/api";
 
 type SimpleEventSchema = {
   event: string;
@@ -86,7 +92,8 @@ export type MoveToTrashEvent = ValidateEvent<{
     | "collection"
     | "dataset"
     | "indexed-entity"
-    | "snippet";
+    | "snippet"
+    | "document";
 }>;
 
 export type ErrorDiagnosticModalOpenedEvent = ValidateEvent<{
@@ -214,7 +221,8 @@ export type DashboardFilterMovedEvent = ValidateEvent<{
 export type SdkIframeEmbedSetupExperience =
   | "dashboard"
   | "chart"
-  | "exploration";
+  | "exploration"
+  | "browser";
 
 export type EmbedWizardExperienceSelectedEvent = ValidateEvent<{
   event: "embed_wizard_experience_selected";
@@ -241,15 +249,128 @@ export type EmbedWizardCodeCopiedEvent = ValidateEvent<{
   event: "embed_wizard_code_copied";
 }>;
 
+export type TableEditingSettingsToggledEvent = ValidateEvent<{
+  event: "edit_data_settings_toggled";
+  event_detail: "on" | "off";
+  target_id: number;
+  triggered_from: "admin-settings-databases";
+}>;
+
+export type TableEditButtonClickedEvent = ValidateEvent<{
+  event: "edit_data_button_clicked";
+  target_id: number;
+  triggered_from: "table-browser";
+}>;
+
+export type TableEditingRecordModifiedEvent = ValidateEvent<{
+  event: "edit_data_record_modified";
+  event_detail: "create" | "update" | "delete";
+  target_id: number;
+  triggered_from: "inline" | "modal";
+  result: "success" | "error";
+}>;
+
 export type ConnectionStringParsedSuccessEvent = ValidateEvent<{
   event: "connection_string_parsed_success";
-  triggered_from: "admin" | "setup" | "embedding_setup";
+  triggered_from: FormLocation;
 }>;
 
 export type ConnectionStringParsedFailedEvent = ValidateEvent<{
   event: "connection_string_parsed_failed";
-  triggered_from: "admin" | "setup" | "embedding_setup";
+  triggered_from: FormLocation;
 }>;
+
+export type TransformTriggerManualRunEvent = ValidateEvent<{
+  event: "transform_trigger_manual_run";
+  triggered_from: "transform-page";
+  target_id: TransformId;
+}>;
+
+export type TransformJobTriggerManualRunEvent = ValidateEvent<{
+  event: "transform_job_trigger_manual_run";
+  triggered_from: "job-page";
+  target_id: TransformId;
+}>;
+
+export type TransformCreateEvent = ValidateEvent<{
+  event: "transform_create";
+  triggered_from: "transform-page-create-menu";
+  event_detail: "query" | "native" | "saved-question";
+}>;
+
+export type TransformCreatedEvent = ValidateEvent<{
+  event: "transform_created";
+  target_id: number;
+}>;
+
+export type DocumentCreatedEvent = ValidateEvent<{
+  event: "document_created";
+  target_id: number;
+}>;
+
+export type DocumentUpdatedEvent = ValidateEvent<{
+  event: "document_saved";
+  target_id: number;
+}>;
+
+export type DocumentAddCardEvent = ValidateEvent<{
+  event: "document_add_card";
+  target_id: number | null;
+}>;
+
+export type DocumentAddSmartLinkEvent = ValidateEvent<{
+  event: "document_add_smart_link";
+  target_id: number | null;
+}>;
+
+export type DocumentReplaceCardEvent = ValidateEvent<{
+  event: "document_replace_card";
+  target_id: number | null;
+}>;
+
+export type DocumentAskMetabotEvent = ValidateEvent<{
+  event: "document_ask_metabot";
+  target_id: number | null;
+}>;
+
+export type DocumentPrintEvent = ValidateEvent<{
+  event: "document_print";
+  target_id: number | null;
+}>;
+
+export type DatabaseHelpClickedEvent = ValidateEvent<{
+  event: "database_help_clicked";
+  triggered_from: "admin" | "setup";
+}>;
+
+export type XRayTableClickedEvent = ValidateEvent<{
+  event: "x-ray_clicked";
+  event_detail: "table";
+  triggered_from: "homepage" | "browse_database";
+}>;
+
+export type XRayDataReferenceClickedEvent = ValidateEvent<{
+  event: "x-ray_clicked";
+  event_detail: "table" | "field" | "segment";
+  triggered_from: "data_reference";
+}>;
+
+export type XRaySuggestionClickedEvent = ValidateEvent<{
+  event: "x-ray_clicked";
+  event_detail: keyof RelatedDashboardXRays;
+  triggered_from: "suggestion_sidebar";
+}>;
+
+export type XRayClickedEvent =
+  | XRayTableClickedEvent
+  | XRayDataReferenceClickedEvent
+  | XRaySuggestionClickedEvent;
+
+export type XRaySavedEvent = ValidateEvent<{
+  event: "x-ray_saved";
+}>;
+
+export type XRayEvent = XRayClickedEvent | XRaySavedEvent;
 
 export type EmbedWizardEvent =
   | EmbedWizardExperienceSelectedEvent
@@ -257,6 +378,47 @@ export type EmbedWizardEvent =
   | EmbedWizardOptionChangedEvent
   | EmbedWizardAuthSelectedEvent
   | EmbedWizardCodeCopiedEvent;
+
+export type TableEditingEvent =
+  | TableEditingSettingsToggledEvent
+  | TableEditButtonClickedEvent
+  | TableEditingRecordModifiedEvent;
+
+export type MetabotChatOpenedEvent = ValidateEvent<{
+  event: "metabot_chat_opened";
+  triggered_from:
+    | "search"
+    | "command_palette"
+    | "keyboard_shortcut"
+    | "native_editor";
+}>;
+
+export type MetabotRequestSentEvent = ValidateEvent<{
+  event: "metabot_request_sent";
+}>;
+
+export type MetabotFixQueryClickedEvent = ValidateEvent<{
+  event: "metabot_fix_query_clicked";
+}>;
+
+export type MetabotExplainChartClickedEvent = ValidateEvent<{
+  event: "metabot_explain_chart_clicked";
+}>;
+
+export type MetabotEvent =
+  | MetabotChatOpenedEvent
+  | MetabotRequestSentEvent
+  | MetabotFixQueryClickedEvent
+  | MetabotExplainChartClickedEvent;
+
+export type RevertVersionEvent = ValidateEvent<{
+  event: "revert_version_clicked";
+  event_detail: "card" | "dashboard";
+}>;
+
+export type LearnAboutDataClickedEvent = ValidateEvent<{
+  event: "learn_about_our_data_clicked";
+}>;
 
 export type SimpleEvent =
   | CustomSMTPSetupClickedEvent
@@ -288,5 +450,22 @@ export type SimpleEvent =
   | DashboardFilterCreatedEvent
   | DashboardFilterMovedEvent
   | EmbedWizardEvent
+  | TableEditingEvent
   | ConnectionStringParsedSuccessEvent
-  | ConnectionStringParsedFailedEvent;
+  | ConnectionStringParsedFailedEvent
+  | TransformTriggerManualRunEvent
+  | TransformJobTriggerManualRunEvent
+  | TransformCreatedEvent
+  | TransformCreateEvent
+  | DocumentAddCardEvent
+  | DocumentAddSmartLinkEvent
+  | DocumentAskMetabotEvent
+  | DocumentCreatedEvent
+  | DocumentReplaceCardEvent
+  | DocumentUpdatedEvent
+  | DocumentPrintEvent
+  | DatabaseHelpClickedEvent
+  | XRayEvent
+  | MetabotEvent
+  | RevertVersionEvent
+  | LearnAboutDataClickedEvent;

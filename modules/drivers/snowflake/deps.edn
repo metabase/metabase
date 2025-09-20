@@ -2,9 +2,15 @@
  ["src" "resources"]
 
  :deps
- {net.snowflake/snowflake-jdbc-thin {:mvn/version "3.25.1"
+ {net.snowflake/snowflake-jdbc-thin {:mvn/version "3.26.1"
                                      :exclusions  [com.nimbusds/nimbus-jose-jwt
-                                                   org.apache.commons/commons-lang3]}
+                                                   org.apache.commons/commons-lang3
+                                                   org.bouncycastle/bcpkix-jdk18on
+                                                   org.bouncycastle/bcprov-jdk18on
+                                                   org.bouncycastle/bcutil-jdk18on]}
   ;; drop when snowflake update driver to the one without the vulnerabilities
-  com.nimbusds/nimbus-jose-jwt      {:mvn/version "10.4"}
-  org.apache.commons/commons-lang3  {:mvn/version "3.18.0"}}}
+  com.nimbusds/nimbus-jose-jwt      {:mvn/version "10.4.2"}
+  org.apache.commons/commons-lang3  {:mvn/version "3.18.0"}
+  org.bouncycastle/bcpkix-jdk18on   {:mvn/version "1.81"}
+  org.bouncycastle/bcprov-jdk18on   {:mvn/version "1.81"}
+  org.bouncycastle/bcutil-jdk18on   {:mvn/version "1.81"}}}

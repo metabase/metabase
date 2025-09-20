@@ -6,12 +6,12 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [malli.core :as mc]
-   [malli.error :as me]
    [metabase.legacy-mbql.schema.helpers :as helpers :refer [is-clause?]]
    [metabase.legacy-mbql.schema.macros :refer [defclause one-of]]
    [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.constraints :as lib.schema.constraints]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
    [metabase.lib.schema.expression.window :as lib.schema.expression.window]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -20,9 +20,12 @@
    [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
+   [metabase.lib.schema.middleware-options :as lib.schema.middleware-options]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.schema.settings :as lib.schema.settings]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
 ;; A NOTE ABOUT METADATA:
@@ -41,6 +44,48 @@
 ;; *  Clauses marked `^{:requires-features #{feature+}}` require a certain set of features to be used. At some date in
 ;;    the future we will likely add middleware that uses this metadata to automatically validate that a driver has the
 ;;    features needed to run the query in question.
+
+(mr/def ::options-style
+  "For convenience of converting back and forth between MBQL 5, from now on we can record info about the options style
+  of a given clause you can do:
+
+    (defmethod options-style-method :field [_tag] ::options-style.last-always)"
+  [:enum
+   {:default ::options-style.none}
+   ;;
+   ;; this is the default style (options is unsupported)
+   ::options-style.none
+   ;;
+   ;; same style as MBQL 5; options map is always the first arg after the tag and we should use `{}` instead of `nil`
+   ;; for empty options. `:lib/uuid` should be preserved here I think.
+   ::options-style.mbql5
+   ;;
+   ;; like a `:field` ref, options are ALWAYS the last arg, but should be `nil` if the options map is empty.
+   ::options-style.last-always
+   ;;
+   ;; The same as but keys should be `snake_case` (`:value` uses this)
+   ::options-style.last-always.snake_case
+   ;;
+   ;; like a `:expression` ref, options is optional but should only be present if non-nil.
+   ::options-style.last-unless-empty
+   ;;
+   ;; for `:contains` and other string filters: style is `::options-style.last-unless-empty` if the clause has two
+   ;; args, otherwise it's basically the same as `::options-style.mbql-5` if it has > 3 args, altho `:lib/uuid`
+   ;; should not be kept on conversion to legacy
+   ::options-style.𝕨𝕚𝕝𝕕])
+
+(defmulti ^:private options-style-method
+  {:arglists '([tag])}
+  keyword)
+
+(defmethod options-style-method :default
+  [_tag]
+  ::options-style.none)
+
+(mu/defn options-style :- ::options-style
+  "The style of options a legacy MBQL clause supports."
+  [tag :- simple-keyword?]
+  (options-style-method tag))
 
 ;; `:day-of-week` depends on the [[metabase.lib-be.core/start-of-week]] Setting, by default Sunday.
 ;; 1 = first day of the week (e.g. Sunday)
@@ -210,6 +255,8 @@
   value    :any
   type-info [:maybe ::ValueTypeInfo])
 
+(defmethod options-style-method :value [_tag] ::options-style.last-always.snake_case)
+
 ;;; ----------------------------------------------------- Fields -----------------------------------------------------
 
 ;; Expression *references* refer to a something in the `:expressions` clause, e.g. something like
@@ -220,6 +267,8 @@
 (defclause ^{:requires-features #{:expressions}} expression
   expression-name ::lib.schema.common/non-blank-string
   options         (optional :map))
+
+(defmethod options-style-method :expression [_tag] ::options-style.last-unless-empty)
 
 (defn valid-temporal-unit-for-base-type?
   "Whether `temporal-unit` (e.g. `:day`) is valid for the given `base-type` (e.g. `:type/Date`). If either is `nil` this
@@ -245,10 +294,11 @@
    valid-temporal-unit-for-base-type?])
 
 (mr/def ::no-binning-options-at-top-level
-  [:fn
-   {:error/message ":binning keys like :strategy are not allowed at the top level of :field options."}
-   (complement :strategy)])
+  (lib.schema.common/disallowed-keys
+   {:strategy ":binning keys like :strategy are not allowed at the top level of :field options."}))
 
+;;; TODO (Cam 9/12/25) -- aren't these basically the same as MBQL 5, except Lib UUID isn't required? Maybe we should
+;;; unify these schemas.
 (mr/def ::FieldOptions
   [:and
    [:map
@@ -327,6 +377,8 @@
        base-type
        true))])
 
+(defmethod options-style-method :field [_tag] ::options-style.last-always)
+
 (mr/def ::field
   [:and
    {:doc/title [:span [:code ":field"] " clause"]}
@@ -340,18 +392,7 @@
 
 (def ^{:added "0.39.0"} field
   "Schema for a `:field` clause."
-  (with-meta [:ref ::field] {:clause-name :field}))
-
-(def ^{:added "0.39.0"} field:id
-  "Schema for a `:field` clause, with the added constraint that it must use an integer Field ID."
-  (with-meta
-   [:and
-    field
-    [:fn
-     {:error/message "Must be a :field with an integer Field ID."}
-     (fn [[_ id-or-name]]
-       (integer? id-or-name))]]
-   {:clause-name :field}))
+  ^{:clause-name :field} [:ref ::field])
 
 (mr/def ::field-or-expression-ref
   [:schema
@@ -382,6 +423,8 @@
   aggregation-clause-index :int
   options                  (optional :map))
 
+(defmethod options-style-method :aggregation [_tag] ::options-style.last-unless-empty)
+
 (mr/def ::Reference
   [:schema
    ;; this is provided for the convenience of Lib which uses this schema for `:field-ref` in results metadata
@@ -397,6 +440,8 @@
   opts [:ref ::lib.schema.common/options]
   expr [:or [:ref ::FieldOrExpressionDef] [:ref ::Aggregation]]
   n    ::lib.schema.expression.window/offset.n)
+
+(defmethod options-style-method :offset [_tag] ::options-style.mbql5)
 
 ;;; -------------------------------------------------- Expressions ---------------------------------------------------
 
@@ -736,6 +781,8 @@
   value  :any ;; normally a string, number, or bytes
   options (optional [:map [:mode {:optional true} LiteralDatetimeModeString]]))
 
+(defmethod options-style-method :datetime [_tag] ::options-style.last-unless-empty)
+
 (mr/def ::DatetimeExpression
   (one-of + datetime-add datetime-subtract convert-timezone now date datetime today))
 
@@ -844,9 +891,12 @@
 (defclause ^:sugar is-null,  field Field)
 (defclause ^:sugar not-null, field Field)
 
+(mr/def ::Emptyable
+  [:or StringExpressionArg Field])
+
 (def Emptyable
   "Schema for a valid is-empty or not-empty argument."
-  [:or StringExpressionArg Field])
+  [:ref ::Emptyable])
 
 ;; These are rewritten as `[:or [:= <field> nil] [:= <field> ""]]` and
 ;; `[:and [:not= <field> nil] [:not= <field> ""]]`
@@ -859,6 +909,7 @@
    [:case-sensitive {:optional true} :boolean]])
 
 (doseq [clause-keyword [::starts-with ::ends-with ::contains ::does-not-contain]]
+  (defmethod options-style-method (keyword (name clause-keyword)) [_tag] ::options-style.𝕨𝕚𝕝𝕕)
   (mr/def clause-keyword
     [:or
      ;; Binary form
@@ -877,9 +928,11 @@
 (def starts-with
   "Schema for a valid :starts-with clause."
   (with-meta [:ref ::starts-with] {:clause-name :starts-with}))
+
 (def ends-with
   "Schema for a valid :ends-with clause."
   (with-meta [:ref ::ends-with] {:clause-name :ends-with}))
+
 (def contains
   "Schema for a valid :contains clause."
   (with-meta [:ref ::contains] {:clause-name :contains}))
@@ -915,6 +968,8 @@
            [:enum :current :last :next]]
   unit    [:ref ::RelativeDatetimeUnit]
   options (optional TimeIntervalOptions))
+
+(defmethod options-style-method :time-interval [_tag] ::options-style.last-unless-empty)
 
 (defclause ^:sugar during
   field   Field
@@ -980,8 +1035,12 @@
 (defclause ^{:requires-features #{:basic-aggregations}} case
   clauses CaseClauses, options (optional CaseOptions))
 
+(defmethod options-style-method :case [_tag] ::options-style.last-unless-empty)
+
 (defclause ^:sugar ^{:requires-features #{:basic-aggregations}} [case:if if]
   clauses CaseClauses, options (optional CaseOptions))
+
+(defmethod options-style-method :if [_tag] ::options-style.last-unless-empty)
 
 (mr/def ::NumericExpression
   (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case case:if datetime-diff integer float
@@ -1102,6 +1161,8 @@
 (defclause aggregation-options
   aggregation UnnamedAggregation
   options     AggregationOptions)
+
+(defmethod options-style-method :aggregation-options [_tag] ::options-style.last-always)
 
 (mr/def ::Aggregation
   [:multi
@@ -1315,23 +1376,28 @@
               m))]])
 
 (def ^:private NativeQuery:Common
-  [:map
-   [:template-tags {:optional true} [:ref ::TemplateTagMap]]
-   ;; collection (table) this query should run against. Needed for MongoDB
-   [:collection    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
+  [:and
+   [:map
+    [:template-tags {:optional true} [:ref ::TemplateTagMap]]
+    ;; collection (table) this query should run against. Needed for MongoDB
+    [:collection    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]]
+   (lib.schema.common/disallowed-keys
+    {:type         "An inner query must not include :type, this will cause us to mix it up with an outer query"
+     :source-table ":source-table is only allowed in MBQL inner queries."
+     :fields       ":fields is only allowed in MBQL inner queries."})])
 
 (def NativeQuery
   "Schema for a valid, normalized native [inner] query."
   [:merge
    NativeQuery:Common
    [:map
-    [:query :any]]])
+    [:query :some]]])
 
 (mr/def ::NativeSourceQuery
   [:merge
    NativeQuery:Common
    [:map
-    [:native :any]]])
+    [:native :some]]])
 
 ;;; ----------------------------------------------- MBQL [Inner] Query -----------------------------------------------
 
@@ -1384,9 +1450,8 @@
     [:source             {:optional true} [:maybe [:ref ::lib.schema.metadata/column.legacy-source]]]
     [:unit               {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]
     [:visibility_type    {:optional true} [:maybe [:ref ::lib.schema.metadata/column.visibility-type]]]]
-   [:fn
-    {:error/message "Legacy results metadata should not have :lib/type, use :metabase.lib.schema.metadata/column for Lib metadata"}
-    (complement :lib/type)]
+   (lib.schema.common/disallowed-keys
+    {:lib/type "Legacy results metadata should not have :lib/type, use :metabase.lib.schema.metadata/column for Lib metadata"})
    (letfn [(disallowed-key? [k]
              (core/or (core/not (keyword? k))
                       (let [disallowed-char (if (qualified-keyword? k)
@@ -1524,13 +1589,13 @@
     (every-pred
      (some-fn :source-table :source-query)
      (complement (every-pred :source-table :source-query)))]
-   (let [disallowed-keys #{:filter :breakout :aggreggation :expressions :joins}]
-     [:fn
-      {:error/message "Join should not have top-level 'inner' query keys like :fields or :filter -- they should go in :source-query"
-       :error/fn      (fn [{join :value} _]
-                        (when (map? join)
-                          (str "join should not have top-level 'inner' query keys, found " (set/intersection (set (keys join)) disallowed-keys))))}
-      (complement (apply some-fn disallowed-keys))])])
+   (lib.schema.common/disallowed-keys
+    {:type         "A join should not include :type"
+     :filter       "A join should not have top-level 'inner' query keys like :filter"
+     :breakout     "A join should not have top-level 'inner' query keys like :breakout"
+     :aggreggation "A join should not have top-level 'inner' query keys like :aggreggation"
+     :expressions  "A join should not have top-level 'inner' query keys like :expressions"
+     :joins        "A join should not have top-level 'inner' query keys like :joins"})])
 
 (def Join
   "Alias for ::Join. Prefer that going forward."
@@ -1552,16 +1617,6 @@
 (mr/def ::OrderBys
   (helpers/distinct [:sequential {:min 1} [:ref ::OrderBy]]))
 
-(mr/def ::Page
-  "`page` = page num, starting with 1. `items` = number of items per page.
-  e.g.
-
-    {:page 1, :items 10} = items 1-10
-    {:page 2, :items 10} = items 11-20"
-  [:map
-   [:page  pos-int?]
-   [:items pos-int?]])
-
 (mr/def ::MBQLQuery
   [:and
    [:map
@@ -1574,7 +1629,7 @@
     [:filter       {:optional true} Filter]
     [:limit        {:optional true} ::lib.schema.common/int-greater-than-or-equal-to-zero]
     [:order-by     {:optional true} [:ref ::OrderBys]]
-    [:page         {:optional true} [:ref ::Page]]
+    [:page         {:optional true} [:ref :metabase.lib.schema/page]]
     [:joins        {:optional true} [:ref ::Joins]]
 
     [:source-metadata
@@ -1592,7 +1647,9 @@
    [:fn
     {:error/message "Fields specified in `:breakout` should not be specified in `:fields`; this is implied."}
     (fn [{:keys [breakout fields]}]
-      (empty? (set/intersection (set breakout) (set fields))))]])
+      (empty? (set/intersection (set breakout) (set fields))))]
+   (lib.schema.common/disallowed-keys
+    {:type "An inner query must not include :type, this will cause us to mix it up with an outer query"})])
 
 ;;; ----------------------------------------------------- Params -----------------------------------------------------
 
@@ -1621,129 +1678,10 @@
   "Schema for a valid dimension clause."
   (with-meta [:ref ::dimension] {:clause-name :dimension}))
 
+(defmethod options-style-method :dimension [_tag] ::options-style.last-unless-empty)
+
 (defclause variable
   target template-tag)
-
-(def ^:private ParameterTarget
-  "Schema for the value of `:target` in a [[Parameter]]."
-  ;; not 100% sure about this but `field` on its own comes from a Dashboard parameter and when it's wrapped in
-  ;; `dimension` it comes from a Field filter template tag parameter (don't quote me on this -- working theory)
-  [:or
-   Field
-   (one-of dimension variable)])
-
-(mr/def ::Parameter
-  "Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as
-  part of the `:parameters` list in a query."
-  [:merge
-   [:ref :metabase.lib.schema.parameter/parameter]
-   [:map
-    [:target {:optional true} ParameterTarget]]])
-
-(def Parameter
-  "Alias for ::Parameter. Prefer using that directly going forward."
-  [:ref ::Parameter])
-
-(mr/def ::ParameterList
-  [:maybe [:sequential Parameter]])
-
-(def ParameterList
-  "Schema for a list of `:parameters` as passed in to a query."
-  [:ref ::ParameterList])
-
-;;; ---------------------------------------------------- Options -----------------------------------------------------
-
-(mr/def ::Settings
-  "Options that tweak the behavior of the query processor."
-  [:map
-   [:report-timezone
-    {:optional    true
-     :description "The timezone the query should be ran in, overriding the default report timezone for the instance."}
-    TimezoneId]])
-
-(mr/def ::Constraints
-  "Additional constraints added to a query limiting the maximum number of rows that can be returned. Mostly useful
-  because native queries don't support the MBQL `:limit` clause. For MBQL queries, if `:limit` is set, it will
-  override these values."
-  [:and
-   [:map
-    [:max-results
-     {:optional true
-      :description
-      "Maximum number of results to allow for a query with aggregations. If `max-results-bare-rows` is unset, this
-  applies to all queries"}
-     ::lib.schema.common/int-greater-than-or-equal-to-zero]
-
-    [:max-results-bare-rows
-     {:optional true
-      :description
-      "Maximum number of results to allow for a query with no aggregations. If set, this should be LOWER than
-  `:max-results`."}
-     ::lib.schema.common/int-greater-than-or-equal-to-zero]]
-
-   [:fn
-    {:error/message "max-results-bare-rows must be less or equal to than max-results"}
-    (fn [{:keys [max-results max-results-bare-rows]}]
-      (if-not (core/and max-results max-results-bare-rows)
-        true
-        (core/>= max-results max-results-bare-rows)))]])
-
-(mr/def ::MiddlewareOptions
-  "Additional options that can be used to toggle middleware on or off."
-  [:map
-   [:skip-results-metadata?
-    {:optional true
-     :description
-     "Should we skip adding `results_metadata` to query results after running the query? Used by
-     `metabase.query-processor.middleware.results-metadata`; default `false`. (Note: we may change the name of this
-     column in the near future, to `result_metadata`, to fix inconsistencies in how we name things.)"}
-    :boolean]
-
-   [:format-rows?
-    {:optional true
-     :description
-     "Should we skip converting datetime types to ISO-8601 strings with appropriate timezone when post-processing
-     results? Used by `metabase.query-processor.middleware.format-rows`default `false`."}
-    :boolean]
-
-   [:disable-mbql->native?
-    {:optional true
-     :description
-     "Disable the MBQL->native middleware. If you do this, the query will not work at all, so there are no cases where
-  you should set this yourself. This is only used by the `metabase.query-processor.preprocess/preprocess` function to
-  get the fully pre-processed query without attempting to convert it to native."}
-    :boolean]
-
-   [:disable-max-results?
-    {:optional true
-     :description
-     "Disable applying a default limit on the query results. Handled in the `add-default-limit` middleware. If true,
-  this will override the `:max-results` and `:max-results-bare-rows` values in `Constraints`."}
-    :boolean]
-
-   [:userland-query?
-    {:optional true
-     :description
-     "Userland queries are ones ran as a result of an API call, Pulse, or the like. Special handling is done in
-  certain userland-only middleware for such queries -- results are returned in a slightly different format, and
-  QueryExecution entries are normally saved, unless you pass `:no-save` as the option."}
-    [:maybe :boolean]]
-
-   [:add-default-userland-constraints?
-    {:optional true
-     :description
-     "Whether to add some default `max-results` and `max-results-bare-rows` constraints. By default, none are added,
-  although the functions that ultimately power most API endpoints tend to set this to `true`. See
-  `add-constraints` middleware for more details."}
-    [:maybe :boolean]]
-
-   [:process-viz-settings?
-    {:optional true
-     :description
-     "Whether to process a question's visualization settings and include them in the result metadata so that they can
-  incorporated into an export. Used by `metabase.query-processor.middleware.visualization-settings`; default
-  `false`."}
-    [:maybe :boolean]]])
 
 ;;; --------------------------------------------- Metabase [Outer] Query ---------------------------------------------
 
@@ -1786,9 +1724,8 @@
 
   This should automatically be fixed by `normalize`; if we encounter it, it means some middleware is not functioning
   properly."
-  [:fn
-   {:error/message "`:source-metadata` should be added in the same level as `:source-query` (i.e., the 'inner' MBQL query.)"}
-   (complement :source-metadata)])
+  (lib.schema.common/disallowed-keys
+   {:source-metadata "`:source-metadata` should be added in the same level as `:source-query` (i.e., the 'inner' MBQL query.)"}))
 
 (def Query
   "Schema for an [outer] query, e.g. the sort of thing you'd pass to the query processor or save in `Card.dataset_query`."
@@ -1806,15 +1743,15 @@
 
     [:native     {:optional true} NativeQuery]
     [:query      {:optional true} MBQLQuery]
-    [:parameters {:optional true} ParameterList]
+    [:parameters {:optional true} [:maybe [:ref ::lib.schema.parameter/parameters]]]
     ;;
     ;; OPTIONS
     ;;
     ;; These keys are used to tweak behavior of the Query Processor.
     ;;
-    [:settings    {:optional true} [:maybe [:ref ::Settings]]]
-    [:constraints {:optional true} [:maybe [:ref ::Constraints]]]
-    [:middleware  {:optional true} [:maybe [:ref ::MiddlewareOptions]]]
+    [:settings    {:optional true} [:maybe [:ref ::lib.schema.settings/settings]]]
+    [:constraints {:optional true} [:maybe [:ref ::lib.schema.constraints/constraints]]]
+    [:middleware  {:optional true} [:maybe [:ref ::lib.schema.middleware-options/middleware-options]]]
     ;;
     ;; INFO
     ;;
@@ -1832,20 +1769,7 @@
    ;;
    ;; CONSTRAINTS
    [:ref ::check-keys-for-query-type]
-   [:ref ::check-query-does-not-have-source-metadata]])
-
-(def ^{:arglists '([query])} valid-query?
-  "Is this a valid outer query? (Pre-compling a validator is more efficient.)"
-  (mr/validator Query))
-
-(defn validate-query
-  "Validator for an outer query; throw an Exception explaining why the query is invalid if it is. Returns query if
-  valid."
-  [query]
-  (if (valid-query? query)
-    query
-    (let [error     (mr/explain Query query)
-          humanized (me/humanize error)]
-      (throw (ex-info (i18n/tru "Invalid query: {0}" (pr-str humanized))
-                      {:error    humanized
-                       :original error})))))
+   [:ref ::check-query-does-not-have-source-metadata]
+   (lib.schema.common/disallowed-keys
+    {:source-table "An outer query must not include inner-query keys like :source-table; this might cause us to confuse it with an inner query"
+     :source-query "An outer query must not include inner-query keys like :source-query; this might cause us to confuse it with an inner query"})])

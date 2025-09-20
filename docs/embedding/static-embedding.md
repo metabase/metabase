@@ -175,9 +175,9 @@ This key is shared across all static embeds. Whoever has access to this key coul
 Dashboards are a fixed aspect ratio, so if you'd like to ensure they're automatically sized vertically to fit their contents you can use the [iFrame Resizer](https://github.com/davidjbradshaw/iframe-resizer) script. Metabase serves a copy for convenience:
 
 ```html
-<script src="http://metabase.example.com/app/iframeResizer.js"></script>
+<script src="https://metabase.example.com/app/iframeResizer.js"></script>
 <iframe
-  src="http://metabase.example.com/embed/dashboard/TOKEN"
+  src="https://metabase.example.com/embed/dashboard/TOKEN"
   onload="iFrameResize({}, this)"
 ></iframe>
 ```

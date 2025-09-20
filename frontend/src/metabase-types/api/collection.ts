@@ -16,7 +16,8 @@ import type { SortingOptions } from "./sorting";
 import type { TableId } from "./table";
 import type { UserId } from "./user";
 
-export type RegularCollectionId = number;
+// Collection ID can be either a numeric or entity id
+export type RegularCollectionId = number | string;
 
 export type CollectionId =
   | RegularCollectionId
@@ -95,6 +96,7 @@ export const COLLECTION_ITEM_MODELS = [
   "snippet",
   "collection",
   "indexed-entity",
+  "document",
 ] as const;
 export type CollectionItemModel = (typeof COLLECTION_ITEM_MODELS)[number];
 

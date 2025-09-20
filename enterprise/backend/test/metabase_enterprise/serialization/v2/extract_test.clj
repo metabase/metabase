@@ -848,7 +848,7 @@
                            :database_id   db-id
                            :type          :model
                            :query_type    :native
-                           :dataset_query (mt/native-query {:native "select 1"})
+                           :dataset_query (mt/native-query {:query "select 1"})
                            :creator_id    ann-id}
 
                           {:keys [action-id]}
@@ -886,7 +886,7 @@
                            :database_id   db-id
                            :type          :model
                            :query_type    :native
-                           :dataset_query (mt/native-query {:native "select 1"})
+                           :dataset_query (mt/native-query {:query "select 1"})
                            :creator_id    ann-id}
 
                           {:keys [action-id]}
@@ -924,13 +924,13 @@
                            :database_id   db-id
                            :type          :model
                            :query_type    :native
-                           :dataset_query (mt/native-query {:native "select 1"})
+                           :dataset_query (mt/native-query {:query "select 1"})
                            :creator_id    ann-id}
 
                           {:keys [action-id]}
                           {:name          "My Action"
                            :type          :query
-                           :dataset_query {:type "native", :native {:native "select 1"}, :database db-id}
+                           :dataset_query {:type "native", :native {:query "select 1"}, :database db-id}
                            :database_id   db-id
                            :creator_id    ann-id
                            :model_id      card-id-1}]
@@ -944,8 +944,8 @@
                          :creator_id  "ann@heart.band"
                          :created_at  string?
                          :query       [{:dataset_query {:database "My Database"
-                                                        :type     "native"
-                                                        :native   {:native "select 1"}}}]
+                                                        :type     :native
+                                                        :native   {:query "select 1"}}}]
                          :model_id    card-eid-1}
                         ser))
                 (is (not (contains? ser :id)))
@@ -1832,6 +1832,70 @@
             (is (= #{[{:model "Collection" :id model-eid}] [{:model "Card" :id card-eid}]}
                    (set (serdes/dependencies ser))))))))))
 
+(deftest document-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/Collection collection {}
+                       :model/User user {:first_name "Mark"
+                                         :last_name  "Knopfler"
+                                         :email      "mark@direstrai.ts"}
+                       :model/Document document {:name "Test Document"
+                                                 :document {}
+                                                 :content_type "application/json+vnd.prose-mirror"
+                                                 :collection_id (:id collection)
+                                                 :creator_id (:id user)}
+                       :model/Card card {:name "Dependent Card"
+                                         :document_id (u/the-id document)}
+                       :model/Card linked-card {:name "Linked Card"}
+                       :model/Dashboard dashboard {:name "Smart Linked Dashboard"}
+                       :model/Table table {:name "linked_table"}]
+
+      (t2/update! :model/Document :id (u/the-id document) {:document {:type "doc"
+                                                                      :content [{:type "cardEmbed"
+                                                                                 :attrs {:id (u/the-id card)}}
+                                                                                {:type "smartLink"
+                                                                                 :attrs {:entityId (u/the-id linked-card)
+                                                                                         :model "card"}}
+                                                                                {:type "smartLink"
+                                                                                 :attrs {:entityId (u/the-id table)
+                                                                                         :model "table"}}
+                                                                                {:type "smartLink"
+                                                                                 :attrs {:entityId (u/the-id dashboard)
+                                                                                         :model "dashboard"}}]}})
+      (testing "document extraction"
+        (let [ser (ts/extract-one "Document" (u/the-id document))]
+          (is (=? {:serdes/meta [{:model "Document" :id (:entity_id document)}]
+                   :name "Test Document"
+                   :entity_id (:entity_id document)
+                   :document {:type "doc"
+                              :content [{:type "cardEmbed"
+                                         :attrs {:id [{:model "Card" :id (:entity_id card)}]}}
+                                        {:type "smartLink"
+                                         :attrs {:entityId [{:model "Card" :id (:entity_id linked-card)}]
+                                                 :model "card"}}
+                                        {:type "smartLink"
+                                         :attrs {:entityId (serdes/generate-path "Table" table)
+                                                 :model "table"}}
+                                        {:type "smartLink"
+                                         :attrs {:entityId [{:model "Dashboard" :id (:entity_id dashboard)}]
+                                                 :model "dashboard"}}]}
+                   :archived false
+                   :archived_directly false
+                   :creator_id (:email user)
+                   :collection_id (:entity_id collection)
+                   :content_type "application/json+vnd.prose-mirror"
+                   :updated_at string?
+                   :created_at string?}
+                  ser))
+          (is (not (contains? ser :id)))
+
+          (testing "depends on its collection, cardEmbeds and smarkLinks "
+            (is (= #{[{:model "Collection" :id (:entity_id collection)}]
+                     [{:model "Card" :id (:entity_id card)}]
+                     [{:model "Dashboard" :id (:entity_id dashboard)}]
+                     [{:model "Card" :id (:entity_id linked-card)}]
+                     (serdes/generate-path "Table" table)}
+                   (set (serdes/dependencies ser))))))))))
+
 (deftest visualizer-dashboard-card-settings-test
   (testing "visualizer settings transform entity IDs <-> card IDs"
     (let [card-entity-id "WcMlLFNVcy0iO49mKW3WH"
@@ -1871,3 +1935,12 @@
                             :DIMENSION [(str "$_card:" card-entity-id "_name")]}}}
                 result (serdes/export-visualizer-settings input)]
             (is (= expected result))))))))
+
+(deftest glossary-test
+  (testing "Glossary entries are extracted well"
+    (mt/with-temp [:model/Glossary _ {:term       "foobar"
+                                      :definition "It's foobar2000 actually"}]
+      (let [ser (serdes/extract-one "Glossary" {} (t2/select-one :model/Glossary :term "foobar"))]
+        (is (=? {:serdes/meta [{:model "Glossary" :id "foobar"}]
+                 :term        "foobar"}
+                ser))))))

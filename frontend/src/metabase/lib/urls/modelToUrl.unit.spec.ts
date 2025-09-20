@@ -62,4 +62,14 @@ describe("urls > modelToUrl", () => {
       }),
     ).toBe("/question#?db=22&table=33");
   });
+
+  it("should return a document URL for a document", () => {
+    expect(
+      modelToUrl({
+        model: "document",
+        name: "My Cool Document",
+        id: 123,
+      }),
+    ).toBe("/document/123");
+  });
 });

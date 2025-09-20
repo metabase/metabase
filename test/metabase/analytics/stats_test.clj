@@ -179,6 +179,20 @@
            (into #{} (map #(contains? system-stats %) [:java_version :java_runtime_name :max_memory]))))
       "Spot checking a few system stats to ensure conversion from property names and presence in the anonymous-usage-stats"))
 
+(deftest metrics-anonymous-usage-stats-test
+  (testing "should report the metric count"
+    (mt/with-temp [:model/Card _ {:type :metric}
+                   :model/Card _ {:type :metric :archived true}]
+      (is (=?
+           {:stats {:metric {:metrics 1}}}
+           (legacy-anonymous-usage-stats)))))
+  (testing "should correctly check for the card type"
+    (mt/with-temp [:model/Card _ {:type :question}
+                   :model/Card _ {:type :model}]
+      (is (=?
+           {:stats {:metric {:metrics 0}}}
+           (legacy-anonymous-usage-stats))))))
+
 (defn- bin-large-number
   "Return large bin number. Assumes positive inputs."
   [x]
@@ -544,13 +558,15 @@
     :embedding
     :embedding-sdk
     :embedding-simple
+    :embedding-hub
     :enhancements
     :etl-connections
     :etl-connections-pg
     :llm-autodescription
     :query-reference-validation
     :cloud-custom-smtp
-    :session-timeout-config})
+    :session-timeout-config
+    :offer-metabase-ai})
 
 (deftest every-feature-is-accounted-for-test
   (testing "Is every premium feature either tracked under the :features key, or intentionally excluded?"

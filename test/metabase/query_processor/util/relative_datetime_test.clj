@@ -102,7 +102,7 @@
                            :order-by [[:asc $last_login]]})
                         (mt/formatted-rows [int str str]))))))))))
 
-(deftest text-to-date-coercion-relative-time-filter-test
+(deftest ^:parallel text-to-date-coercion-relative-time-filter-test
   (testing "text fields that have been casted to dates can be filtered by relative time"
     (mt/with-clock #t "2025-01-30T12:00:00-00:00[UTC]"
       (mt/test-drivers (mt/normal-drivers-with-feature ::server-side-relative-datetime)

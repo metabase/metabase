@@ -79,9 +79,11 @@ jobs:
         uses: ./.github/actions/run-embedding-sdk-storybook
 
       - name: Retrieve uberjar artifact for ${{ inputs.edition }}
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/fetch-artifact
         with:
           name: metabase-${{ inputs.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          extract-path: "target/uberjar"
+          output-name: "metabase.jar"
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
@@ -129,7 +131,7 @@ jobs:
         run: |
           echo "Running tests with specs: $SPEC_PATH"
           node e2e/runner/run_cypress_ci.js e2e \
-            --env grepTags="-@mongo+-@flaky+-@OSS --@quarantine",grepOmitFiltered=true \
+            --env grepTags="-@mongo+-@flaky+-@OSS+-@skip",grepOmitFiltered=true \
             --spec "$SPEC_PATH" \
             --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
@@ -141,7 +143,7 @@ jobs:
         run: |
           echo "Running tests with specs: $SPEC_PATH"
           node e2e/runner/run_cypress_ci.js e2e \
-          --env grepTags="${{inputs.tags}} --@quarantine",grepOmitFiltered=true \
+          --env grepTags="${{inputs.tags && format('{0}+-@skip', inputs.tags) || '-@skip'}}",grepOmitFiltered=true \
           --spec "$SPEC_PATH" \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 

@@ -9,14 +9,64 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- check-print-help [{:keys [options usage-fn] :as current-task}]
-  (let [command-line-args *command-line-args*]
+(defn- arg-name
+  ([arg]
+   (arg-name nil arg))
+  ([idx arg]
+   ;; TODO: support `:maybe` as an optional argument?
+   (if-let [name (:arg/name (mc/properties arg))]
+     name
+     (cond-> "arg"
+       ;; Don't zero index generated argument names
+       idx (str (inc idx))))))
+
+(defn- seq-arg-name
+  [arg]
+  (str (arg-name arg) "..."))
+
+(defn- name-arguments
+  [arg-schema]
+  (case (mc/type arg-schema)
+    :or (map name-arguments (mc/children arg-schema))
+    :tuple (str/join " " (map-indexed arg-name (mc/children arg-schema)))
+    :sequential (seq-arg-name (first (mc/children arg-schema)))))
+
+(defn- desc-arguments
+  [arg-schema]
+  (case (mc/type arg-schema)
+    :or (reduce merge {} (map desc-arguments (mc/children arg-schema)))
+    :tuple (reduce (fn [acc [idx arg]]
+                     (let [desc (:desc (mc/properties arg))]
+                       (cond-> acc
+                         desc (assoc (arg-name idx arg) desc))))
+                   {} (map-indexed vector (mc/children arg-schema)))
+    :sequential (when-let [desc (-> arg-schema mc/children first :desc)]
+                  {(name-arguments arg-schema) desc})))
+
+(defn- check-print-help [{:keys [options usage-fn arg-schema] :as current-task}]
+  (let [command-line-args *command-line-args*
+        summary (:summary (tools.cli/parse-opts *command-line-args* options))
+        usage-name (str "  " (:name current-task) (when-not (str/blank? summary) " [OPTIONS]"))]
     (when (or (get (set command-line-args) "-h")
               (get (set command-line-args) "--help"))
       (println "Task Name:" (:name current-task))
-      (println (str " "  (c/green (:doc current-task))))
-      (println "Usages:")
-      (println (:summary (tools.cli/parse-opts *command-line-args* options)))
+      (println (str "  "  (c/green (:doc current-task))))
+      (println "\nUsages:")
+      (if-not arg-schema
+        (println usage-name)
+        (let [arg-usages (name-arguments (mc/schema arg-schema))
+              argument-descriptions (desc-arguments arg-schema)]
+          (if (seq? arg-usages)
+            (doseq [arg-usage arg-usages]
+              (println (str usage-name " " arg-usage)))
+            (println (str usage-name " " arg-usages)))
+          (when (seq argument-descriptions)
+            (println "\nArguments:")
+            (doseq [[name desc] argument-descriptions]
+              (println (str "  " name ": " desc))))))
+      (when-not (str/blank? summary)
+        (println "\nOptions:")
+        (println summary))
       (when-let [examples (:examples current-task)]
         (println "\nExamples:")
         (doseq [[cmd effect] examples]

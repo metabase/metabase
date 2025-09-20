@@ -27,6 +27,7 @@ type DatePickerProps = {
   renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
   renderBackButton?: () => ReactNode;
   onChange: (value: DatePickerValue) => void;
+  readOnly?: boolean;
 };
 
 export function DatePicker({
@@ -37,6 +38,7 @@ export function DatePicker({
   renderSubmitButton = renderDefaultSubmitButton,
   renderBackButton,
   onChange,
+  readOnly,
 }: DatePickerProps) {
   const [type, setType] = useState(value?.type);
 
@@ -54,6 +56,7 @@ export function DatePicker({
           renderSubmitButton={renderSubmitButton}
           onChange={onChange}
           onBack={handleBack}
+          readOnly={readOnly}
         />
       );
     case "relative":
@@ -64,6 +67,7 @@ export function DatePicker({
           renderSubmitButton={renderSubmitButton}
           onChange={onChange}
           onBack={handleBack}
+          readOnly={readOnly}
         />
       );
     case "exclude":
@@ -75,6 +79,7 @@ export function DatePicker({
           renderSubmitButton={renderSubmitButton}
           onChange={onChange}
           onBack={handleBack}
+          readOnly={readOnly}
         />
       );
     default:

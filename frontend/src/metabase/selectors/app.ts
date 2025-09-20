@@ -7,6 +7,7 @@ import {
   getDashboardId,
   getIsEditing as getIsEditingDashboard,
 } from "metabase/dashboard/selectors";
+import { PLUGIN_DOCUMENTS } from "metabase/plugins";
 import {
   getIsSavedQuestionChanged,
   getQuestion,
@@ -28,13 +29,16 @@ const PATHS_WITHOUT_NAVBAR = [
   /^\/setup/,
   /^\/auth/,
   /\/model\/.*\/query/,
+  /\/model\/.*\/columns/,
   /\/model\/.*\/metadata/,
   /\/model\/query/,
+  /\/model\/columns/,
   /\/model\/metadata/,
   /\/metric\/.*\/query/,
   /\/metric\/.*\/metadata/,
   /\/metric\/query/,
   /\/metric\/metadata/,
+  /\/transform\/new\/.*\/query/,
 ];
 
 const PATHS_WITH_COLLECTION_BREADCRUMBS = [
@@ -42,6 +46,7 @@ const PATHS_WITH_COLLECTION_BREADCRUMBS = [
   /\/model\//,
   /\/metric\//,
   /\/dashboard\//,
+  /\/document\//,
 ];
 const PATHS_WITH_QUESTION_LINEAGE = [/\/question/, /\/model/];
 
@@ -65,17 +70,25 @@ export const getIsCollectionPathVisible = createSelector(
   [
     getQuestion,
     getDashboard,
+    (state) => PLUGIN_DOCUMENTS.getCurrentDocument(state),
     getRouterPath,
     getIsEmbeddingIframe,
     getEmbedOptions,
   ],
-  (question, dashboard, path, isEmbedded, embedOptions) => {
+  (question, dashboard, document, path, isEmbedded, embedOptions) => {
     if (isEmbedded && !embedOptions.breadcrumbs) {
       return false;
     }
 
+    const isModelDetail = /\/model\/.*\/detail\/.*/.test(path);
+    if (isModelDetail) {
+      return true;
+    }
+
     return (
-      ((question != null && question.isSaved()) || dashboard != null) &&
+      ((question != null && question.isSaved()) ||
+        dashboard != null ||
+        document !== null) &&
       PATHS_WITH_COLLECTION_BREADCRUMBS.some((pattern) => pattern.test(path))
     );
   },
@@ -196,15 +209,38 @@ export const getErrorPage = (state: State) => {
   return state.app.errorPage;
 };
 
+export const getDetailViewState = (state: State) => {
+  return state.app.detailView;
+};
+
 export const getErrorMessage = (state: State) => {
   const errorPage = getErrorPage(state);
   return errorPage?.data?.message || errorPage?.data;
 };
 
 export const getCollectionId = createSelector(
-  [getQuestion, getDashboard, getDashboardId],
-  (question, dashboard, dashboardId) =>
-    dashboardId ? dashboard?.collection_id : question?.collectionId(),
+  [
+    getQuestion,
+    getDashboard,
+    getDashboardId,
+    (state) => PLUGIN_DOCUMENTS.getCurrentDocument(state),
+    getDetailViewState,
+  ],
+  (question, dashboard, dashboardId, document, detailView) => {
+    if (detailView) {
+      return detailView.collectionId;
+    }
+
+    if (document) {
+      return document.collection_id;
+    }
+
+    if (dashboardId) {
+      return dashboard?.collection_id;
+    }
+
+    return question?.collectionId();
+  },
 );
 
 export const getIsNavbarOpen: Selector<State, boolean> = createSelector(

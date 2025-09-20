@@ -53,7 +53,8 @@
                                       ;; todo figure out how to determine default schema from driver
                                       :schema (case (:engine db) :postgres "public" nil)
                                       :display_name table-name
-                                      :field_order  :database})]
+                                      :field_order  :database
+                                      :is_writable  true})]
     (sync/sync-fields-for-table! db table)
     (:id table)))
 

@@ -304,7 +304,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
   });
 
   // This was flaking. Example: https://dashboard.cypress.io/projects/a394u1/runs/2109/test-results/91a15b66-4b80-40bf-b569-de28abe21f42
-  it.skip("should handle cross-filter on a table", () => {
+  it("should handle cross-filter on a table", { tags: "@skip" }, () => {
     createDashboardWithQuestion({}, (dashboardId) =>
       H.visitDashboard(dashboardId),
     );

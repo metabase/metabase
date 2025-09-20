@@ -1,6 +1,10 @@
 import { t } from "ttag";
 
 import {
+  RelatedSettingsSection,
+  getInteractiveEmbeddingRelatedSettingItems,
+} from "metabase/admin/components/RelatedSettingsSection";
+import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
@@ -60,6 +64,10 @@ export function InteractiveEmbeddingSettings() {
 
         <SameSiteSelectWidget />
       </SettingsSection>
+
+      <RelatedSettingsSection
+        items={getInteractiveEmbeddingRelatedSettingItems()}
+      />
     </SettingsPageWrapper>
   );
 }

@@ -43,7 +43,7 @@ jobs:
         with:
           m2-cache-key: "cljs"
       - name: Build Embedding SDK package
-        run: yarn build-embedding-sdk
+        run: yarn build-embedding-sdk-package
       - name: Prepare Embedding SDK artifact
         uses: actions/upload-artifact@v4
         with:
@@ -137,7 +137,7 @@ jobs:
         if: ${{ steps.docs-generation.outcome == 'failure' }}
         run: exit 1
 
-  # See `Component e2e tests` in `enterprise/frontend/src/embedding-sdk/dev.md`
+  # See `Component e2e tests` in `enterprise/frontend/src/embedding-sdk-package/dev.md`
   sdk-e2e-tests:
     name: "SDK e2e tests"
     uses: ./.github/workflows/e2e-component-tests-embedding-sdk.yml
@@ -146,24 +146,13 @@ jobs:
     with:
       cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
 
-  e2e-component-tests-embedding-sdk-cross-version:
-    name: "[Backport only] SDK e2e cross version tests"
-    # run on: every push on release branches, and every pr that targets a release branch
-    if: ${{ startsWith(github.ref, 'refs/heads/release-x.') || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'release-x.')) }}
-    uses: ./.github/workflows/e2e-component-tests-embedding-sdk-cross-version.yml
+  e2e-component-tests-embedding-sdk-backward-compatibility:
+    name: "SDK e2e backward compatibility tests"
+    uses: ./.github/workflows/e2e-component-tests-embedding-sdk-backward-compatibility.yml
+    needs: [build]
     secrets: inherit
-
-  # Temporarily skipped because the cypress runner crashes
-  # See `bin/backward-compatibility-test.js` for the documentation of this workflow.
-  # cross-version-for-breaking-changes:
-  # name: "[NOT REQUIRED - Experimental - Backport only] detect breaking changes with cross versions tests"
-  #   # run on: every pr that targets a release branch, it does NOT run for pr targeting master
-  #   if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'release-x.') }}
-  #   uses: ./.github/workflows/e2e-cross-version-for-breaking-changes.yml
-  #   secrets: inherit
-  #   with:
-  #     fe-ref: ${{ github.base_ref }}
-  #     be-ref: ${{ github.head_ref }}
+    with:
+      cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
 
   embedding-sdk-tests-result:
     needs:
@@ -171,7 +160,7 @@ jobs:
       - embedding-sdk-docs-snippets-type-check
       - embedding-sdk-api-documentation-generation-validation
       - sdk-e2e-tests
-      - e2e-component-tests-embedding-sdk-cross-version
+      - e2e-component-tests-embedding-sdk-backward-compatibility
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     timeout-minutes: 5

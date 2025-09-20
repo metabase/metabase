@@ -5,11 +5,8 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
-   [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -37,8 +34,7 @@
           query (lib/join base (-> (lib/join-clause card-meta [(lib/= lhs (lib/with-join-alias rhs "j"))])
                                    (lib/with-join-fields :all)
                                    (lib/with-join-alias "j")))]
-      (mt/with-native-query-testing-context
-        query
+      (mt/with-native-query-testing-context query
         (testing "should return a single row with two columns"
           (is (= {:rows [[1 1]], :columns ["_ID" "_ID_2"]}
                  (mt/rows+column-names
@@ -46,192 +42,30 @@
 
 (deftest ^:parallel long-column-name-in-card-test
   (testing "Should be able to handle long column names in saved questions (#35252)"
-    (let [mp (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
-              [{:native   {:query "SELECT ID AS \"ID\", CATEGORY as \"This is a very very long column title that makes my saved question break when I want to use it elsewhere\" FROM PRODUCTS"}
-                :database (mt/id)
-                :type     :native}])
-          card-meta (lib.metadata/card mp 1)
-          base (lib/query mp card-meta)
+    (let [mp            (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                         [{:native   {:query "SELECT ID AS \"ID\", CATEGORY as \"This is a very very long column title that makes my saved question break when I want to use it elsewhere\" FROM PRODUCTS ORDER BY ID ASC"}
+                           :database (mt/id)
+                           :type     :native}])
+          card-meta     (lib.metadata/card mp 1)
+          base          (lib/query mp card-meta)
           long-name-col (second (lib/filterable-columns base))
-          query (lib/filter base (lib/contains long-name-col "a"))]
-      (mt/with-native-query-testing-context
-        query
-          ;; should return 53 rows with two columns, but fails instead
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Column \".*very very long column title.*\" not found"
-                              (mt/rows+column-names
-                               (qp/process-query query))))))))
-
-;; other than producing the metadata for the card, there is no  query processing here
-(deftest ^:parallel duplicate-names-selection-test
-  (testing "Should be able to distinguish columns with the same name from a card with self join (#27521)"
-    (let [mp (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
-              [(mt/mbql-query orders
-                 {:joins [{:source-table $$orders
-                           :alias "o"
-                           :fields [&o.orders.id]
-                           :condition [:= $id &o.orders.id]}]
-                  :fields [$id]})])
-          card-meta (lib.metadata/card mp 1)
-          id-col    (m/find-first (comp #{"ID"} :name)
-                                  (lib/returned-columns (lib/query mp card-meta)))
-          query     (-> (lib/query mp (lib.metadata/table mp (mt/id :reviews)))
-                        (lib/join (lib/join-clause card-meta
-                                                   [(lib/= (lib.metadata/field mp (mt/id :reviews :id))
-                                                           id-col)])))
-          visible   (lib.metadata.calculation/visible-columns query -1)
-          returned  (lib.metadata.calculation/returned-columns query -1)
-          marked    (lib.equality/mark-selected-columns query -1 visible returned)]
-      (is (=? [{:name "ID",         :display-name "ID"}
-               {:name "PRODUCT_ID", :display-name "Product ID"}
-               {:name "REVIEWER",   :display-name "Reviewer"}
-               {:name "RATING",     :display-name "Rating"}
-               {:name "BODY",       :display-name "Body"}
-               {:name "CREATED_AT", :display-name "Created At"}
-               {:name "ID",         :display-name "Card 1 → ID"}
-               {:name "ID_2",       :display-name "Card 1 → ID"}
-               {:name "ID",         :display-name "ID"}
-               {:name "EAN",        :display-name "Ean"}
-               {:name "TITLE",      :display-name "Title"}
-               {:name "CATEGORY",   :display-name "Category"}
-               {:name "VENDOR",     :display-name "Vendor"}
-               {:name "PRICE",      :display-name "Price"}
-               {:name "RATING",     :display-name "Rating"}
-               {:name "CREATED_AT", :display-name "Created At"}]
-              visible))
-      (is (=? [{:name "ID",         :display-name "ID"}
-               {:name "PRODUCT_ID", :display-name "Product ID"}
-               {:name "REVIEWER",   :display-name "Reviewer"}
-               {:name "RATING",     :display-name "Rating"}
-               {:name "BODY",       :display-name "Body"}
-               {:name "CREATED_AT", :display-name "Created At"}
-               {:name "ID_2",       :display-name "Card 1 → ID"}
-               {:name "ID_2_2",     :display-name "Card 1 → ID"}]
-              returned))
-      (is (=? [{:name "ID", :display-name "ID", :selected? true}
-               {:name "PRODUCT_ID", :display-name "Product ID", :selected? true}
-               {:name "REVIEWER", :display-name "Reviewer", :selected? true}
-               {:name "RATING", :display-name "Rating", :selected? true}
-               {:name "BODY", :display-name "Body", :selected? true}
-               {:name "CREATED_AT", :display-name "Created At", :selected? true}
-                     ;; the following two Card 1 → ID should have :selected? true
-               {:name "ID", :display-name "Card 1 → ID", :selected? false}
-               {:name "ID_2", :display-name "Card 1 → ID", :selected? false}
-                     ;; these are implicitly joinable fields, :selected? false is right
-               {:name "ID", :display-name "ID", :selected? false}
-               {:name "EAN", :display-name "Ean", :selected? false}
-               {:name "TITLE", :display-name "Title", :selected? false}
-               {:name "CATEGORY", :display-name "Category", :selected? false}
-               {:name "VENDOR", :display-name "Vendor", :selected? false}
-               {:name "PRICE", :display-name "Price", :selected? false}
-               {:name "RATING", :display-name "Rating", :selected? false}
-               {:name "CREATED_AT", :display-name "Created At", :selected? false}]
-              marked)))))
-
-;; other than producing the metadata for the card, there is no  query processing here
-(deftest ^:parallel multiple-breakouts-of-a-field-selection-test
-  (testing "Should be able to distinguish columns from multiple breakouts of a field from a card (#47734)"
-    (let [mp (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
-              [(mt/mbql-query orders
-                 {:aggregation [[:count]]
-                  :breakout    [!month.created_at !year.created_at]})])
-          card-meta (lib.metadata/card mp 1)
-          count-col (m/find-first (comp #{"count"} :name)
-                                  (lib/returned-columns (lib/query mp card-meta)))
-          query     (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                        (lib/join (lib/join-clause card-meta
-                                                   [(lib/= (lib.metadata/field mp (mt/id :orders :id))
-                                                           count-col)])))
-          visible   (lib.metadata.calculation/visible-columns query -1)
-          returned  (lib.metadata.calculation/returned-columns query -1)
-          marked    (lib.equality/mark-selected-columns query -1 visible returned)]
-      (is (=? [{:name "ID", :display-name "ID"}
-               {:name "USER_ID", :display-name "User ID"}
-               {:name "PRODUCT_ID", :display-name "Product ID"}
-               {:name "SUBTOTAL", :display-name "Subtotal"}
-               {:name "TAX", :display-name "Tax"}
-               {:name "TOTAL", :display-name "Total"}
-               {:name "DISCOUNT", :display-name "Discount"}
-               {:name "CREATED_AT", :display-name "Created At"}
-               {:name "QUANTITY", :display-name "Quantity"}
-               {:name "CREATED_AT", :display-name "Card 1 → Created At: Month"}
-               {:name "CREATED_AT_2", :display-name "Card 1 → Created At: Year"}
-               {:name "count", :display-name "Card 1 → Count"}
-               {:name "ID", :display-name "ID"}
-               {:name "ADDRESS", :display-name "Address"}
-               {:name "EMAIL", :display-name "Email"}
-               {:name "PASSWORD", :display-name "Password"}
-               {:name "NAME", :display-name "Name"}
-               {:name "CITY", :display-name "City"}
-               {:name "LONGITUDE", :display-name "Longitude"}
-               {:name "STATE", :display-name "State"}
-               {:name "SOURCE", :display-name "Source"}
-               {:name "BIRTH_DATE", :display-name "Birth Date"}
-               {:name "ZIP", :display-name "Zip"}
-               {:name "LATITUDE", :display-name "Latitude"}
-               {:name "CREATED_AT", :display-name "Created At"}
-               {:name "ID", :display-name "ID"}
-               {:name "EAN", :display-name "Ean"}
-               {:name "TITLE", :display-name "Title"}
-               {:name "CATEGORY", :display-name "Category"}
-               {:name "VENDOR", :display-name "Vendor"}
-               {:name "PRICE", :display-name "Price"}
-               {:name "RATING", :display-name "Rating"}
-               {:name "CREATED_AT", :display-name "Created At"}]
-              visible))
-      (is (=? [{:name "ID", :display-name "ID"}
-               {:name "USER_ID", :display-name "User ID"}
-               {:name "PRODUCT_ID", :display-name "Product ID"}
-               {:name "SUBTOTAL", :display-name "Subtotal"}
-               {:name "TAX", :display-name "Tax"}
-               {:name "TOTAL", :display-name "Total"}
-               {:name "DISCOUNT", :display-name "Discount"}
-               {:name "CREATED_AT", :display-name "Created At"}
-               {:name "QUANTITY", :display-name "Quantity"}
-               {:name "CREATED_AT_2", :display-name "Card 1 → Created At: Month"}
-               {:name "CREATED_AT_2_2", :display-name "Card 1 → Created At: Year"}
-               {:name "count", :display-name "Card 1 → Count"}]
-              returned))
-      (is (=? [{:name "ID", :display-name "ID", :selected? true}
-               {:name "USER_ID", :display-name "User ID", :selected? true}
-               {:name "PRODUCT_ID", :display-name "Product ID", :selected? true}
-               {:name "SUBTOTAL", :display-name "Subtotal", :selected? true}
-               {:name "TAX", :display-name "Tax", :selected? true}
-               {:name "TOTAL", :display-name "Total", :selected? true}
-               {:name "DISCOUNT", :display-name "Discount", :selected? true}
-               {:name "CREATED_AT", :display-name "Created At", :selected? true}
-               {:name "QUANTITY", :display-name "Quantity", :selected? true}
-                     ;; the following two Card 1 → Created At: ... fields should have :selected? true
-               {:name "CREATED_AT", :display-name "Card 1 → Created At: Month", :selected? false}
-               {:name "CREATED_AT_2", :display-name "Card 1 → Created At: Year", :selected? false}
-               {:name "count", :display-name "Card 1 → Count", :selected? true}
-                     ;; these are implicitly joinable fields, :selected? false is right
-               {:name "ID", :display-name "ID", :selected? false}
-               {:name "ADDRESS", :display-name "Address", :selected? false}
-               {:name "EMAIL", :display-name "Email", :selected? false}
-               {:name "PASSWORD", :display-name "Password", :selected? false}
-               {:name "NAME", :display-name "Name", :selected? false}
-               {:name "CITY", :display-name "City", :selected? false}
-               {:name "LONGITUDE", :display-name "Longitude", :selected? false}
-               {:name "STATE", :display-name "State", :selected? false}
-               {:name "SOURCE", :display-name "Source", :selected? false}
-               {:name "BIRTH_DATE", :display-name "Birth Date", :selected? false}
-               {:name "ZIP", :display-name "Zip", :selected? false}
-               {:name "LATITUDE", :display-name "Latitude", :selected? false}
-               {:name "CREATED_AT", :display-name "Created At", :selected? false}
-               {:name "ID", :display-name "ID", :selected? false}
-               {:name "EAN", :display-name "Ean", :selected? false}
-               {:name "TITLE", :display-name "Title", :selected? false}
-               {:name "CATEGORY", :display-name "Category", :selected? false}
-               {:name "VENDOR", :display-name "Vendor", :selected? false}
-               {:name "PRICE", :display-name "Price", :selected? false}
-               {:name "RATING", :display-name "Rating", :selected? false}
-               {:name "CREATED_AT", :display-name "Created At", :selected? false}]
-              marked)))))
+          query         (-> base
+                            (lib/filter (lib/contains long-name-col "a"))
+                            (lib/limit 3))]
+      (mt/with-native-query-testing-context query
+        ;; should return 53 rows with two columns
+        (is (= {:rows    [[5 "Gadget"]
+                          [11 "Gadget"]
+                          [16 "Gadget"]]
+                :columns ["ID"
+                          "This is a very very long column title that makes my saved question break when I want to use it elsewhere"]}
+               (mt/rows+column-names
+                (qp/process-query query))))))))
 
 (deftest ^:parallel breakout-on-nested-join-test
   (testing "Should handle breakout on nested join column (#59918)"
     (let [mp        (lib.tu/mock-metadata-provider
-                     (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                     (mt/metadata-provider)
                      {:cards [{:id            1
                                :dataset-query (mt/mbql-query orders
                                                 {:joins [{:source-table $$products
@@ -264,85 +98,9 @@
                 ["Widget"    5061]]
                (mt/rows results)))))))
 
-(deftest ^:parallel self-join-in-card-test
-  (testing "Should handle self joins in cards (#44767)"
-    (let [mp (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
-              [(mt/mbql-query orders
-                 {:joins [{:source-table $$orders
-                           :alias "j"
-                           :condition [:= $id &j.orders.id]
-                           :fields :all}]})])
-          card-meta (lib.metadata/card mp 1)
-          query     (lib/query mp card-meta)
-          visible   (lib.metadata.calculation/visible-columns query -1)
-          returned  (lib.metadata.calculation/returned-columns query -1)
-          marked    (lib.equality/mark-selected-columns query -1 visible returned)]
-      (is (=? [{:name "ID",           :display-name "ID",              :selected? true}
-               {:name "USER_ID",      :display-name "User ID",         :selected? true}
-               {:name "PRODUCT_ID",   :display-name "Product ID",      :selected? true}
-               {:name "SUBTOTAL",     :display-name "Subtotal",        :selected? true}
-               {:name "TAX",          :display-name "Tax",             :selected? true}
-               {:name "TOTAL",        :display-name "Total",           :selected? true}
-               {:name "DISCOUNT",     :display-name "Discount",        :selected? true}
-               {:name "CREATED_AT",   :display-name "Created At",      :selected? true}
-               {:name "QUANTITY",     :display-name "Quantity",        :selected? true}
-               {:name "ID_2",         :display-name "j → ID",          :selected? true}
-               {:name "USER_ID_2",    :display-name "j → User ID",     :selected? true}
-               {:name "PRODUCT_ID_2", :display-name "j → Product ID",  :selected? true}
-               {:name "SUBTOTAL_2",   :display-name "j → Subtotal",    :selected? true}
-               {:name "TAX_2",        :display-name "j → Tax",         :selected? true}
-               {:name "TOTAL_2",      :display-name "j → Total",       :selected? true}
-               {:name "DISCOUNT_2",   :display-name "j → Discount",    :selected? true}
-               {:name "CREATED_AT_2", :display-name "j → Created At",  :selected? true}
-               {:name "QUANTITY_2",   :display-name "j → Quantity",    :selected? true}
-               ;; implicitly joinable fields from both Orders not selected
-               {:name "ID",           :display-name "ID",              :selected? false}
-               {:name "ADDRESS",      :display-name "Address",         :selected? false}
-               {:name "EMAIL",        :display-name "Email",           :selected? false}
-               {:name "PASSWORD",     :display-name "Password",        :selected? false}
-               {:name "NAME",         :display-name "Name",            :selected? false}
-               {:name "CITY",         :display-name "City",            :selected? false}
-               {:name "LONGITUDE",    :display-name "Longitude",       :selected? false}
-               {:name "STATE",        :display-name "State",           :selected? false}
-               {:name "SOURCE",       :display-name "Source",          :selected? false}
-               {:name "BIRTH_DATE",   :display-name "Birth Date",      :selected? false}
-               {:name "ZIP",          :display-name "Zip",             :selected? false}
-               {:name "LATITUDE",     :display-name "Latitude",        :selected? false}
-               {:name "CREATED_AT",   :display-name "Created At",      :selected? false}
-               {:name "ID",           :display-name "ID",              :selected? false}
-               {:name "EAN",          :display-name "Ean",             :selected? false}
-               {:name "TITLE",        :display-name "Title",           :selected? false}
-               {:name "CATEGORY",     :display-name "Category",        :selected? false}
-               {:name "VENDOR",       :display-name "Vendor",          :selected? false}
-               {:name "PRICE",        :display-name "Price",           :selected? false}
-               {:name "RATING",       :display-name "Rating",          :selected? false}
-               {:name "CREATED_AT",   :display-name "Created At",      :selected? false}
-               {:name "ID",           :display-name "ID",              :selected? false}
-               {:name "ADDRESS",      :display-name "Address",         :selected? false}
-               {:name "EMAIL",        :display-name "Email",           :selected? false}
-               {:name "PASSWORD",     :display-name "Password",        :selected? false}
-               {:name "NAME",         :display-name "Name",            :selected? false}
-               {:name "CITY",         :display-name "City",            :selected? false}
-               {:name "LONGITUDE",    :display-name "Longitude",       :selected? false}
-               {:name "STATE",        :display-name "State",           :selected? false}
-               {:name "SOURCE",       :display-name "Source",          :selected? false}
-               {:name "BIRTH_DATE",   :display-name "Birth Date",      :selected? false}
-               {:name "ZIP",          :display-name "Zip",             :selected? false}
-               {:name "LATITUDE",     :display-name "Latitude",        :selected? false}
-               {:name "CREATED_AT",   :display-name "Created At",      :selected? false}
-               {:name "ID",           :display-name "ID",              :selected? false}
-               {:name "EAN",          :display-name "Ean",             :selected? false}
-               {:name "TITLE",        :display-name "Title",           :selected? false}
-               {:name "CATEGORY",     :display-name "Category",        :selected? false}
-               {:name "VENDOR",       :display-name "Vendor",          :selected? false}
-               {:name "PRICE",        :display-name "Price",           :selected? false}
-               {:name "RATING",       :display-name "Rating",          :selected? false}
-               {:name "CREATED_AT",   :display-name "Created At",      :selected? false}]
-              marked)))))
-
 (deftest ^:parallel stale-unsed-field-referenced-test
   (testing "Should handle missing unused field (#60498)"
-    (let [mp        (as-> (lib.metadata.jvm/application-database-metadata-provider (mt/id)) $mp
+    (let [mp        (as-> (mt/metadata-provider) $mp
                       (lib.tu/mock-metadata-provider
                        $mp
                        {:cards [(let [query (mt/mbql-query orders)]
@@ -395,7 +153,7 @@
   (testing "Should handle self joins with external remapping (#60444)"
     ;; see https://metaboat.slack.com/archives/C0645JP1W81/p1753208898063419 for further discussion
     (let [mp (lib.tu/remap-metadata-provider
-              (mt/application-database-metadata-provider (mt/id))
+              (mt/metadata-provider)
               (mt/id :orders :user_id) (mt/id :people :email))]
       (doseq [join-base [{:source-table (mt/id :orders)}
                          {:source-query {:source-table (mt/id :orders)
@@ -442,8 +200,8 @@
                       ;; The order of these columns seems to be 'flexible' (I would consider either to be correct), and
                       ;; I've seen both in two different branches of mine attempting to fix this bug. The order doesn't
                       ;; matter at all to the FE, so if this changes in the future it's ok. -- Cam
-                      "j__PEOPLE__via__USER_ID__EMAIL" #_"j__EMAIL"
-                      "PEOPLE__via__USER_ID__EMAIL"]
+                      "PEOPLE__via__USER_ID__EMAIL"
+                      "j__PEOPLE__via__USER_ID__EMAIL"]
                      (map :lib/desired-column-alias (mt/cols results))))
               (is (= [[1                ; <= orders.id
                        1                ; <= orders.user-id
@@ -463,8 +221,8 @@
                        nil
                        "2016-12-25T22:19:38.656Z"
                        2
-                       "labadie.lina@gmail.com"  ; (joined) orders.user-id --[remap]--> people.email (email of People row with ID = 1902)
-                       "borer-hudson@yahoo.com"] ; orders.user-id --[remap]--> people.email (email of People row with ID = 1)
+                       "borer-hudson@yahoo.com"  ; orders.user-id --[remap]--> people.email (email of People row with ID = 1)
+                       "labadie.lina@gmail.com"] ; (joined) orders.user-id --[remap]--> people.email (email of People row with ID = 1902)
                       [1
                        1
                        14
@@ -483,13 +241,13 @@
                        nil
                        "2017-02-04T10:16:00.936Z"
                        1
-                       "arne-o-hara@gmail.com"
-                       "borer-hudson@yahoo.com"]]
+                       "borer-hudson@yahoo.com"
+                       "arne-o-hara@gmail.com"]]
                      (mt/rows results))))))))))
 
 (deftest ^:parallel multi-stage-with-external-remapping-test
   (testing "Should handle multiple stages with external remapping (#60587)"
-    (let [mp    (lib.tu/remap-metadata-provider (mt/application-database-metadata-provider (mt/id))
+    (let [mp    (lib.tu/remap-metadata-provider (mt/metadata-provider)
                                                 (mt/id :orders :user_id)
                                                 (mt/id :people :email))
           query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
@@ -505,17 +263,25 @@
           (is (= [[1746]]
                  (mt/rows results))))))))
 
-(deftest model-with-implicit-join-and-external-remapping-test
+;;; This one is a really tricky one to solve, the problem is that the implicit join happens in the first stage (Card 1)
+;;; because of the remappped column, but the parameter asks to be applied to stage 3... it's too late to add a new
+;;; filter against `PEOPLE__via__USER_ID.STATE` at that point because it doesn't come back from stage 1 or 2 (this is
+;;; why resolution trips up and falls back to `source.STATE`. I think the only way to fix this would be to make the
+;;; parameter logic apply the parameter to the correct stage (ignoring `:stage-number` when it's wrong) or add another
+;;; duplicate implicit join in stage 3 to power the filter
+;;;
+;;; See
+;;; also [[metabase.lib.field.resolution-test/resolve-unreturned-column-from-reified-implicit-join-in-previous-stage-test]]
+(deftest ^:parallel model-with-implicit-join-and-external-remapping-test
   (testing "Should handle models with implicit join on externally remapped field (#57596)"
-    (qp.store/with-metadata-provider
-      (lib.tu/remap-metadata-provider
-       (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
-        [(mt/mbql-query orders)
-         (mt/mbql-query nil {:source-table (str "card__" 1)})])
-       (mt/id :orders :user_id)
-       (mt/id :people :email))
+    (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
+                                      (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                                       [(mt/mbql-query orders)
+                                        (mt/mbql-query nil {:source-table "card__1"})])
+                                      (mt/id :orders :user_id)
+                                      (mt/id :people :email))
       (let [query (-> (mt/mbql-query nil
-                        {:source-table (str "card__" 2)})
+                        {:source-table "card__2"})
                       (assoc :parameters [{:value ["CA"]
                                            :type :string/=
                                            :id "72622120"
@@ -527,7 +293,9 @@
                                               :source-field (mt/id :orders :user_id)
                                               :source-field-name "USER_ID"}]
                                             {:stage-number -1}]}]))]
-            ;; should return 613 rows
+        ;; should return 613 rows
         (mt/with-native-query-testing-context query
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Column .*STATE.* not found"
-                                (-> query qp/process-query mt/rows count))))))))
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Column \"source\.PEOPLE__via__USER_ID__STATE\" not found"
+               (-> query qp/process-query mt/rows count))))))))

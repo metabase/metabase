@@ -176,6 +176,8 @@
 
 (defn- with-temporal-unit-if-field
   [clause unit]
+  ;; legacy usages -- use Lib in new code going forward
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (cond-> clause
     (mbql.u/is-clause? :field clause) (mbql.u/with-temporal-unit unit)))
 

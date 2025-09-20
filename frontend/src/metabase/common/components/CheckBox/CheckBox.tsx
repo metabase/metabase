@@ -8,7 +8,7 @@ import type {
 } from "react";
 import { forwardRef, isValidElement, useRef } from "react";
 
-import { Tooltip } from "metabase/ui";
+import { Flex, Tooltip } from "metabase/ui";
 
 import {
   CheckBoxContainer,
@@ -85,7 +85,7 @@ const BaseCheckBox = forwardRef<HTMLLabelElement, CheckBoxProps>(
           hasTooltip={!!(labelEllipsis && hasLabelEllipsis)}
           tooltipLabel={label}
         >
-          <div>
+          <Flex>
             {/* the div is needed because CheckTooltip requires 1 child when hasTooltip is true */}
             <CheckBoxInput
               id={id ?? name}
@@ -126,7 +126,7 @@ const BaseCheckBox = forwardRef<HTMLLabelElement, CheckBoxProps>(
                   </CheckBoxLabel>
                 ))}
             </CheckBoxContainer>
-          </div>
+          </Flex>
         </CheckboxTooltip>
       </CheckBoxRoot>
     );

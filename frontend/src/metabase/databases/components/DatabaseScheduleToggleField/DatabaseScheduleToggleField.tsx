@@ -1,8 +1,8 @@
 import { useFormikContext } from "formik";
-import type { ReactNode } from "react";
+import type { ChangeEvent, ReactNode } from "react";
 import { useCallback } from "react";
 
-import FormToggle from "metabase/common/components/FormToggle";
+import { FormSwitch } from "metabase/forms";
 import type { DatabaseData } from "metabase-types/api";
 
 export interface DatabaseScheduleToggleFieldProps {
@@ -19,19 +19,30 @@ const DatabaseScheduleToggleField = ({
   const { setFieldValue } = useFormikContext<DatabaseData>();
 
   const handleChange = useCallback(
-    (value: boolean) => {
-      setFieldValue("is_full_sync", !value);
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setFieldValue("is_full_sync", !event.target.checked);
       setFieldValue("is_on_demand", false);
     },
     [setFieldValue],
   );
 
   return (
-    <FormToggle
+    <FormSwitch
       name={name}
-      title={title}
+      label={title}
       description={description}
       onChange={handleChange}
+      mb="md"
+      labelPosition="left"
+      styles={{
+        body: {
+          justifyContent: "space-between",
+        },
+        label: {
+          fontWeight: "bold",
+          fontSize: "var(--mantine-font-size-md)",
+        },
+      }}
     />
   );
 };

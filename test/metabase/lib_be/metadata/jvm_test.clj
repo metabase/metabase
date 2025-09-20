@@ -22,7 +22,7 @@
 
 (deftest ^:parallel fetch-database-test
   (is (=? {:lib/type :metadata/database, :features set?}
-          (lib.metadata/database (lib.metadata.jvm/application-database-metadata-provider (mt/id)))))
+          (lib.metadata/database (mt/metadata-provider))))
   (testing "Should return nil correctly"
     (is (nil? (lib.metadata.protocols/database (lib.metadata.jvm/application-database-metadata-provider Integer/MAX_VALUE))))))
 
@@ -32,7 +32,7 @@
                            :source-table $$categories
                            :condition    [:= $category_id &Cat.categories.id]
                            :alias        "Cat"}]})
-        query (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id)) query)]
+        query (lib/query (mt/metadata-provider) query)]
     (is (=? [{:lib/desired-column-alias "ID"}
              {:lib/desired-column-alias "NAME"}
              {:lib/desired-column-alias "CATEGORY_ID"}
@@ -53,7 +53,7 @@
                                 :fields       [&Orders.orders.product_id
                                                &Orders.*sum/Integer]}]
                       :fields [$id]})
-        mlv2-query (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        mlv2-query (lib/query (mt/metadata-provider)
                               (lib.convert/->pMBQL query))]
     (is (=? [{:base-type                :type/BigInteger
               :semantic-type            :type/PK
@@ -102,7 +102,7 @@
     (let [query      {:database (mt/id)
                       :type     :query
                       :query    {:source-card (u/the-id card)}}
-          mlv2-query (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          mlv2-query (lib/query (mt/metadata-provider)
                                 (lib.convert/->pMBQL query))
           breakouts  (lib/breakoutable-columns mlv2-query)
           agg-query  (-> mlv2-query
@@ -165,7 +165,7 @@
                                   :name     "ID [external remap]"
                                   :field-id (mt/id :categories :name)}}
             (lib.metadata/field
-             (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+             (mt/metadata-provider)
              (mt/id :venues :id))))))
 
 (deftest ^:synchronized internal-remap-metadata-test
@@ -178,7 +178,7 @@
                                   :values                [1 2 3 4]
                                   :human-readable-values ["African" "American" "Artisan" "BBQ"]}}
             (lib.metadata/field
-             (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+             (mt/metadata-provider)
              (mt/id :venues :id))))))
 
 (deftest ^:synchronized persisted-info-metadata-test
@@ -195,16 +195,16 @@
                                   :query-hash string?
                                   :table-name string?}}
             (lib.metadata/card
-             (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+             (mt/metadata-provider)
              card-id)))))
 
 (deftest ^:parallel equality-test
-  (is (= (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-         (lib.metadata.jvm/application-database-metadata-provider (mt/id)))))
+  (is (= (mt/metadata-provider)
+         (mt/metadata-provider))))
 
 (deftest ^:synchronized all-methods-call-go-through-invocation-tracker-first-test
   (binding [lib.metadata.invocation-tracker/*to-track-metadata-types* #{:metadata/column}]
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+    (let [mp (mt/metadata-provider)]
       (testing "sanity check"
         (is (empty? (lib.metadata/invoked-ids mp :metadata/column))))
       (testing "getting card should invoke the tracker"
@@ -216,7 +216,7 @@
 
 (deftest ^:parallel tables-present-test
   (testing "`tables` function returns visible tables (the call includes app db call)"
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           display-names ["Checkins" "Categories" "Orders" "People" "Products" "Reviews" "Users" "Venues"]
           metadata-fns (for [expected-display-name display-names]
                          (fn [{:keys [id display-name active visibility-type] :as _metadata}]
@@ -231,9 +231,31 @@
   (testing "Non-visible tables are not returned from `tables` function (includes app db call)"
     (doseq [visibility-type table/visibility-types]
       (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:visibility_type visibility-type}
-        (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+        (let [mp (mt/metadata-provider)]
           (testing visibility-type
             (is (not-any? (fn [{:keys [display-name] :as metadata}]
                             (when (= "Orders" display-name)
                               metadata))
                           (lib.metadata/tables mp)))))))))
+
+(deftest ^:parallel metadatas-sanity-check-test
+  (testing "Make sure various supported metadata specs compile to valid SQL and we are able to run a query against the app DB with them"
+    (let [mp (mt/metadata-provider)]
+      (are [metadata-spec] (sequential? (lib.metadata.protocols/metadatas mp metadata-spec))
+        {:lib/type :metadata/table}
+        {:lib/type :metadata/table, :id #{1}}
+        {:lib/type :metadata/table, :name #{"Table"}}
+        {:lib/type :metadata/column, :id #{1}}
+        {:lib/type :metadata/column, :name #{"Field"}}
+        {:lib/type :metadata/column, :table-id 1}
+        {:lib/type :metadata/card, :id #{1}}
+        {:lib/type :metadata/card, :name #{"Card"}}
+        {:lib/type :metadata/metric, :id #{1}}
+        {:lib/type :metadata/metric, :name #{"Metric"}}
+        {:lib/type :metadata/metric, :table-id 1}
+        {:lib/type :metadata/metric, :card-id 1}
+        {:lib/type :metadata/segment, :id #{1}}
+        {:lib/type :metadata/segment, :name #{"Segment"}}
+        {:lib/type :metadata/segment, :table-id 1}
+        {:lib/type :metadata/native-query-snippet, :id #{1}}
+        {:lib/type :metadata/native-query-snippet, :name #{"Snippet"}}))))

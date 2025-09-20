@@ -127,9 +127,9 @@
 
 (declare initialize!)
 
-(defn the-initialized-driver
+(mu/defn the-initialized-driver
   "Like [[the-driver]], but also initializes the driver if not already initialized."
-  [driver]
+  [driver :- [:or :keyword :string]]
   (let [driver (keyword driver)]
     ;; Fastpath: an initialized driver `driver` is always already registered. Checking for `initialized?` is faster
     ;; than doing the `registered?` check inside `load-driver-namespace-if-needed!`.
@@ -255,13 +255,37 @@
   [_ _]
   nil)
 
+(defmulti do-with-resilient-connection
+  "Execute function `f` within a context that may recover (on-demand) from connection failures.
+  `f` must be eager."
+  {:added "0.55.9" :arglists '([driver database f])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod do-with-resilient-connection
+  ::driver
+  [driver database f] (f driver database))
+
+(defmulti describe-database*
+  "Impl multimethod for [[describe-database]]"
+  {:added "0.56.3" :arglists '([driver database])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti describe-database
   "Return a map containing information that describes all of the tables in a `database`, an instance of the `Database`
   model. It is expected that this function will be peformant and avoid draining meaningful resources of the database.
-  Results should match the [[metabase.sync.interface/DatabaseMetadata]] schema."
+  Results should match the [[metabase.sync.interface/DatabaseMetadata]] schema.
+  Multimethod for backwards compatibility, but should not be extended directly, should instead implement [[describe-database*]].
+  Default impl invokes [[describe-database*]] wrapped in [[do-with-resilient-connection]]"
   {:added "0.32.0" :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmethod describe-database
+  ::driver
+  [driver database]
+  (do-with-resilient-connection driver database describe-database*))
 
 (defmulti describe-table
   "Return a map containing a single field `:fields` that describes the fields in a `table`. `database` will be an
@@ -705,6 +729,12 @@
     ;; Does this driver support "temporal-unit" template tags in native queries?
     :native-temporal-units
 
+    ;; Does this driver support transforms with a table as the target?
+    :transforms/table
+
+    ;; Does this driver properly support the table-exists? method for checking table existence?
+    :metadata/table-existence-check
+
     ;; Whether the driver supports loading dynamic test datasets on each test run. Eg. datasets with names like
     ;; `checkins:4-per-minute` are created dynamically in each test run. This should be truthy for every driver we test
     ;; against except for Athena and Databricks which currently require test data to be loaded separately.
@@ -725,7 +755,10 @@
     :database-routing
 
     ;; Does this driver support replication?
-    :database-replication})
+    :database-replication
+
+    ;; whether this driver supports checking table writeable permissions
+    :metadata/table-writable-check})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -768,7 +801,9 @@
                               :upload-with-auto-pk                    true
                               :saved-question-sandboxing              true
                               :test/dynamic-dataset-loading           true
-                              :test/uuids-in-create-table-statements  true}]
+                              :test/uuids-in-create-table-statements  true
+                              :metadata/table-existence-check         false
+                              :metadata/table-writable-check          false}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 ;;; By default a driver supports `:native-parameter-card-reference` if it supports `:native-parameters` AND
@@ -807,13 +842,14 @@
   as keywords whenever possible. This provides for both unified error messages and categories which let us point
   users to the erroneous input fields.
   Error messages can also be strings, or localized strings, as returned by [[metabase.util.i18n/trs]] and
-  `metabase.util.i18n/tru`."
-  {:added "0.32.0" :arglists '([this message])}
+  `metabase.util.i18n/tru`.
+  Passed a collection of all non-nil exception messages that were thrown during connection attempt."
+  {:added "0.32.0" :arglists '([this messages])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod humanize-connection-error-message ::driver [_ message]
-  message)
+(defmethod humanize-connection-error-message ::driver [_ messages]
+  (first messages))
 
 (defmulti mbql->native
   "Transpile an MBQL query into the appropriate native query form. `query` will match the schema for an MBQL query in
@@ -962,7 +998,7 @@
 (defmulti substitute-native-parameters
   "For drivers that support `:native-parameters`. Substitute parameters in a normalized 'inner' native query.
 
-    {:query \"SELECT count(*) FROM table WHERE id = {{param}}\"
+    {:query         \"SELECT count(*) FROM table WHERE id = {{param}}\"
      :template-tags {:param {:name \"param\", :display-name \"Param\", :type :number}}
      :parameters    [{:type   :number
                       :target [:variable [:template-tag \"param\"]]
@@ -974,7 +1010,7 @@
   `metabase.driver.common.parameters.*` namespaces. See the `:sql` and `:mongo` drivers for sample implementations of
   this method.`Driver-agnostic end-to-end native parameter tests live in
   [[metabase.query-processor-test.parameters-test]] and other namespaces."
-  {:added "0.34.0" :arglists '([driver inner-query])}
+  {:added "0.34.0" :arglists '([driver inner-native-query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -1094,6 +1130,82 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti compile-transform
+  "Compiles the sql for a transform statement, given an inner sql query and a destination."
+  {:added "0.57.0", :arglists '([driver {:keys [query output-table]}])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti compile-drop-table
+  "Compiles the sql for a drop table statement for a given table."
+  {:added "0.57.0", :arglists '([driver table])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti execute-raw-queries!
+  "Executes a series of 'raw' queries.  A raw query is a vector of a sql string and arguments, in the case of sql
+  drivers.
+
+  Drivers that support any of the `:transforms/...` features must implement this method."
+  {:added "0.57.0", :arglists '([driver conn-spec queries])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti run-transform!
+  "Runs a transform.
+
+  Drivers that support any of the `:transforms/...` features must implement this method for the appropriate transform
+  types."
+  {:added "0.57.0",
+   :arglists '([driver
+                {:keys [transform-type conn-spec query output-table] :as _transform-details}
+                {:keys [overwrite?] :as _opts}])}
+  (fn [driver transform-details _opts]
+    [(dispatch-on-initialized-driver driver) (:transform-type transform-details)])
+  :hierarchy #'hierarchy)
+
+(defmulti drop-transform-target!
+  "Drops the target of a transform.
+
+  Drivers that support any of the `:transforms/...` features must implement this method for the appropriate transform
+  types."
+  {:added "0.57.0",
+   :arglists '([driver database {:keys [type schema name] :as _transform-details}])}
+  (fn [driver _database transform-details]
+    [(dispatch-on-initialized-driver driver) (:type transform-details)])
+  :hierarchy #'hierarchy)
+
+(defmulti native-query-deps
+  "Gets the table dependencies of a given sql string (or equivalent).
+
+  Drivers that support any of the `:transforms/...` features must implement this method."
+  {:added "0.57.0" :arglists '([driver query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti schema-exists?
+  "Checks if a schema exists in the given database."
+  {:added "0.57.0" :arglists '([driver db-id schema])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod schema-exists? :default [_driver _db-id _schema] false)
+
+(defmulti create-schema-if-needed!
+  "Creates a schema if it does not already exist.
+   Used to create new schemas for transforms."
+  {:added "0.57.0" :arglists '([driver conn-spec schema])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod create-schema-if-needed! :default [_driver _conn-spec _schema] nil)
+
+(defmulti connection-spec
+  "Get connection details for a given driver and db object"
+  {:added "0.57.0", :arglists '([driver db])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti table-rows-sample
   "Processes a sample of rows produced by `driver`, from the `table`'s `fields`
   using the query result processing function `rff`.
@@ -1165,6 +1277,35 @@
   {:added "0.50.0", :arglists '([driver db-id table-name])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti rename-tables!*
+  "Driver-specific implementation of table renaming. Takes a pre-sorted map of {from-table to-table}.
+   The input map has already been topologically sorted by the public rename-tables! function.
+   Implementations should perform the actual rename operations atomically as supported by the database.
+   NOTE: Do not call this directly - use rename-tables! instead which handles the topological sort."
+  {:added "0.57.0", :arglists '([driver db-id sorted-rename-map])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defn rename-tables!
+  "Rename multiple tables atomically. Takes a map of {from-table to-table}.
+   Performs topological sort to determine correct rename order, then delegates to driver-specific implementation.
+   Implementations should use transactions, compound operations, or metadata locks as supported by the database.
+   Table names may be qualified by schema e.g. :schema/table"
+  {:added "0.57.0"}
+  [driver db-id rename-map]
+  (let [sorted-rename-map (-> rename-map
+                              (update-vals vector)
+                              u/topological-sort
+                              (update-vals first))]
+    (rename-tables!* driver db-id sorted-rename-map)))
+
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+(defn rename-table!
+  "Rename a single table."
+  {:added "0.57.0"}
+  [driver db-id from-table to-table]
+  (rename-tables!* driver db-id {from-table to-table}))
 
 (defmulti insert-into!
   "Insert `values` into a table named `table-name`. `values` is a lazy sequence of rows, where each row's order matches
@@ -1355,21 +1496,24 @@
 
 (defmethod table-known-to-not-exist? ::driver [_ _] false)
 
-(defmulti set-database-used!
-  "Sets the database to be used on a connection. Called prior to query execution for drivers that support USE DATABASE like commands."
-  {:added "0.56.0" :arglists '([driver conn db])}
+(defmulti table-exists?
+  "Check if a table exists in the database. Returns true if the table exists, false otherwise.
+
+   If you need proactively to check for table existence, this is the preferred method.
+   The default implementation uses describe-table and catches exceptions, but drivers can override
+   this with more efficient implementations for databases that support them.."
+  {:added "0.57.0" :arglists '([driver database table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod set-database-used! ::driver [_driver _conn _db] nil)
-
-(defmulti do-with-resilient-connection
-  "Execute function `f` within a context that may recover (on-demand) from connection failures.
-  `f` must be eager."
-  {:added "0.55.9" :arglists '([driver database f])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
-(defmethod do-with-resilient-connection
-  ::driver
-  [driver database f] (f driver database))
+(defmethod table-exists? ::driver
+  [driver database table]
+  (try
+    (let [table-info (describe-table driver database table)]
+      ;; Some drivers (e.g., BigQuery) return nil for non-existent tables. Others return a map with fields.
+      (boolean (seq (:fields table-info))))
+    (catch Exception e
+      ;; If an exception was thrown, check if it's because the table doesn't exist
+      (if (table-known-to-not-exist? driver e)
+        false
+        (throw e)))))

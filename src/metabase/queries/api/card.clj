@@ -263,7 +263,7 @@
 
 (defn- card-columns-from-names
   [card names]
-  (when-let [names (set names)]
+  (when-let [names (not-empty (set names))]
     (filter #(names (:name %)) (:result_metadata card))))
 
 (defn- cols->kebab-case
@@ -488,29 +488,33 @@
 
       :else nil)))
 
+(def CardCreateSchema
+  "Schema for creating a new card"
+  [:map
+   [:name                   ms/NonBlankString]
+   [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
+   [:dataset_query          ms/Map]
+                            ;; TODO: Make entity_id a NanoID regex schema?
+   [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
+   [:parameters             {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
+   [:parameter_mappings     {:optional true} [:maybe [:sequential ::parameters.schema/parameter-mapping]]]
+   [:description            {:optional true} [:maybe ms/NonBlankString]]
+   [:display                ms/NonBlankString]
+   [:visualization_settings ms/Map]
+   [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
+   [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
+   [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_tab_id {:optional true} [:maybe ms/PositiveInt]]])
+
 (api.macros/defendpoint :post "/"
   "Create a new `Card`. Card `type` can be `question`, `metric`, or `model`."
   [_route-params
    _query-params
    {query         :dataset_query
     card-type     :type
-    :as           body} :- [:map
-                            [:name                   ms/NonBlankString]
-                            [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
-                            [:dataset_query          ms/Map]
-                            ;; TODO: Make entity_id a NanoID regex schema?
-                            [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
-                            [:parameters             {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
-                            [:parameter_mappings     {:optional true} [:maybe [:sequential ::parameters.schema/parameter-mapping]]]
-                            [:description            {:optional true} [:maybe ms/NonBlankString]]
-                            [:display                ms/NonBlankString]
-                            [:visualization_settings ms/Map]
-                            [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
-                            [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
-                            [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
-                            [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
-                            [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
-                            [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]]]
+    :as           body} :- CardCreateSchema]
   (check-if-card-can-be-saved query card-type)
   ;; check that we have permissions to run the query that we're trying to save
   (query-perms/check-run-permissions-for-query query)
@@ -518,6 +522,10 @@
   ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
   (collection/check-write-perms-for-collection
    (actual-collection-id body))
+  (try
+    (lib/check-card-overwrite ::no-id (dataset-query->query query))
+    (catch clojure.lang.ExceptionInfo e
+      (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400)))))
   (let [body (cond-> body
                (string? (:type body)) (update :type keyword))]
     (-> (card/create-card! body @api/*current-user*)
@@ -583,7 +591,7 @@
    [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
    [:collection_preview     {:optional true} [:maybe :boolean]]
    [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
-   [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]])
+   [:dashboard_tab_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (defn- maybe-populate-collection-id
   "`card-updates` may contain either or both of a `collection_id` and a `dashboard_id`.
@@ -608,7 +616,7 @@
   (check-if-card-can-be-saved dataset_query type)
   (when-some [query (dataset-query->query dataset_query)]
     (try
-      (lib/check-overwrite id query)
+      (lib/check-card-overwrite id query)
       (catch clojure.lang.ExceptionInfo e
         (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400))))))
   (let [card-before-update     (t2/hydrate (api/write-check :model/Card id)
@@ -635,7 +643,9 @@
                                                                       (:entity_id card-before-update))})
           card-updates                       (merge card-updates
                                                     (when (and (some? type)
-                                                               is-model-after-update?)
+                                                               is-model-after-update?
+                                                               ;; leave display unchanged if explicitly set to "list"
+                                                               (not (= :list (keyword (get card-updates :display)))))
                                                       {:display :table})
                                                     (when (and
                                                            (api/column-will-change? :dashboard_id

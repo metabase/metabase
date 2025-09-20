@@ -164,7 +164,7 @@ export function ObjectDetailView({
   });
 
   useEffect(() => {
-    if (hasNotFoundError) {
+    if (hasNotFoundError || !showControls) {
       return;
     }
 
@@ -185,6 +185,7 @@ export function ObjectDetailView({
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [
     hasNotFoundError,
+    showControls,
     viewPreviousObjectDetail,
     viewNextObjectDetail,
     closeObjectDetail,
@@ -361,7 +362,7 @@ export function ObjectDetailView({
               />
             )}
             <ObjectDetailBody
-              data={data}
+              columns={passedData.cols}
               objectName={objectName}
               zoomedRow={zoomedRow ?? []}
               settings={settings}

@@ -1,6 +1,6 @@
 import cx from "classnames";
 import { useMemo } from "react";
-import { c, jt, t } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
@@ -15,19 +15,22 @@ import {
   Stack,
   Text,
   Textarea,
-  UnstyledButton,
+  Tooltip,
 } from "metabase/ui";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
+import { MetabotResetLongChatButton } from "metabase-enterprise/metabot/components/MetabotChat/MetabotResetLongChatButton";
 
-import { useMetabotAgent } from "../../hooks";
+import { useMetabotAgent, useMetabotChatHandlers } from "../../hooks";
 
 import Styles from "./MetabotChat.module.css";
-import { AgentErrorMessage, Message } from "./MetabotChatMessage";
+import { Messages } from "./MetabotChatMessage";
 import { MetabotThinking } from "./MetabotThinking";
 import { useScrollManager } from "./hooks";
 
 export const MetabotChat = () => {
   const metabot = useMetabotAgent();
+  const { handleSubmitInput, handleRetryMessage, handleResetInput } =
+    useMetabotChatHandlers();
 
   const hasMessages =
     metabot.messages.length > 0 || metabot.errorMessages.length > 0;
@@ -44,32 +47,8 @@ export const MetabotChat = () => {
     return suggestedPromptsReq.currentData?.prompts ?? [];
   }, [suggestedPromptsReq.currentData?.prompts]);
 
-  const handleSubmitInput = (input: string) => {
-    if (metabot.isDoingScience) {
-      return;
-    }
-
-    const trimmedInput = input.trim();
-    if (!trimmedInput.length || metabot.isDoingScience) {
-      return;
-    }
-    metabot.setPrompt("");
-    metabot.promptInputRef?.current?.focus();
-    metabot.submitInput(trimmedInput).catch((err) => console.error(err));
-  };
-
-  const handleRetryMessage = (messageId: string) => {
-    if (metabot.isDoingScience) {
-      return;
-    }
-
-    metabot.setPrompt("");
-    metabot.promptInputRef?.current?.focus();
-    metabot.retryMessage(messageId).catch((err) => console.error(err));
-  };
-
   const handleClose = () => {
-    metabot.setPrompt("");
+    handleResetInput();
     metabot.setVisible(false);
   };
 
@@ -90,12 +69,14 @@ export const MetabotChat = () => {
           </Flex>
 
           <Flex gap="sm">
-            <ActionIcon
-              onClick={() => metabot.resetConversation()}
-              data-testid="metabot-reset-chat"
-            >
-              <Icon c="text-primary" name="revert" />
-            </ActionIcon>
+            <Tooltip label={t`Clear conversation`} position="bottom">
+              <ActionIcon
+                onClick={() => metabot.resetConversation()}
+                data-testid="metabot-reset-chat"
+              >
+                <Icon c="text-primary" name="revert" />
+              </ActionIcon>
+            </Tooltip>
             <ActionIcon onClick={handleClose} data-testid="metabot-close-chat">
               <Icon c="text-primary" name="close" />
             </ActionIcon>
@@ -156,40 +137,18 @@ export const MetabotChat = () => {
               data-testid="metabot-chat-inner-messages"
             >
               {/* conversation messages */}
-              {metabot.messages.map((message, index) => {
-                const canRetry =
-                  metabot.useStreaming &&
-                  message.role === "agent" &&
-                  metabot.messages[index + 1]?.role !== "agent";
-
-                return (
-                  <Message
-                    key={"msg-" + index}
-                    data-testid="metabot-chat-message"
-                    message={message}
-                    onRetry={canRetry ? handleRetryMessage : undefined}
-                    hideActions={
-                      metabot.isDoingScience &&
-                      metabot.messages.length === index + 1 &&
-                      message.role === "agent"
-                    }
-                  />
-                );
-              })}
-
-              {/* error messages */}
-              {metabot.errorMessages.map((message, index) => (
-                <AgentErrorMessage
-                  key={"err-" + index}
-                  data-testid="metabot-chat-message"
-                  message={message}
-                />
-              ))}
+              <Messages
+                messages={metabot.messages}
+                errorMessages={metabot.errorMessages}
+                onRetryMessage={handleRetryMessage}
+                isDoingScience={metabot.isDoingScience}
+                showFeedbackButtons
+              />
 
               {/* loading */}
               {metabot.isDoingScience && (
                 <MetabotThinking
-                  toolCalls={metabot.useStreaming ? metabot.toolCalls : []}
+                  toolCalls={metabot.toolCalls}
                   hasStartedResponse={
                     _.last(metabot.messages)?.role === "agent"
                   }
@@ -200,21 +159,7 @@ export const MetabotChat = () => {
               <div ref={fillerRef} data-testid="metabot-message-filler" />
 
               {/* long convo warning */}
-              {metabot.isLongConversation && (
-                <Text lh={1} c="text-light" m={0} ta="center">
-                  {jt`This chat is getting long. You can ${(
-                    <UnstyledButton
-                      key="reset"
-                      data-testid="metabot-reset-long-chat"
-                      display="inline"
-                      c="brand"
-                      td="underline"
-                      onClick={() => metabot.resetConversation()}
-                    >{c("'it' refers to a chat with an AI agent")
-                      .t`clear it`}</UnstyledButton>
-                  )}.`}
-                </Text>
-              )}
+              {metabot.isLongConversation && <MetabotResetLongChatButton />}
             </Box>
           )}
         </Box>
@@ -231,11 +176,8 @@ export const MetabotChat = () => {
               data-testid="metabot-chat-input"
               w="100%"
               leftSection={
-                <Box h="100%" pt="11px" onDoubleClick={metabot.toggleStreaming}>
-                  <Icon
-                    name="metabot"
-                    c={metabot.useStreaming ? "brand" : "warning"}
-                  />
+                <Box h="100%" pt="11px">
+                  <Icon name="metabot" c="brand" />
                 </Box>
               }
               autosize

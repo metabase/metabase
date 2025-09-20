@@ -5,7 +5,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.card :as lib.card]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -13,7 +12,6 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
    [metabase.system.core :as system]
    [metabase.util :as u]
@@ -42,7 +40,7 @@
     (cons first-stage more)))
 
 (mu/defn normalize-card-query :- ::lib.schema.metadata/card
-  "Convert Card's query (`:datasaet-query`) to pMBQL as needed; splice in stage metadata and some extra keys."
+  "Convert Card's query (`:dataset-query`) to pMBQL as needed; splice in stage metadata and some extra keys."
   [metadata-providerable   :- ::lib.schema.metadata/metadata-providerable
    {card-id :id, :as card} :- ::lib.schema.metadata/card]
   (let [persisted-info (:lib/persisted-info card)
@@ -59,7 +57,7 @@
                                     ;; permissions enforcement
                                     (assoc stage :qp/stage-is-from-source-card card-id))
                     card-metadata (into [] (remove :remapped-from)
-                                        (lib.card/card-metadata-columns metadata-providerable card))
+                                        (lib.card/card-returned-columns metadata-providerable card))
                     last-stage    (cond-> (last stages)
                                     (seq card-metadata) (assoc :lib/stage-metadata {:lib/type :metadata/results, :columns card-metadata})
                                     ;; This will be applied, if still appropriate, by
@@ -125,8 +123,7 @@
                             ;; decide whether to "flow" the Card's metadata or not (whether to use it preferentially over
                             ;; the metadata associated with Fields themselves)
                             (assoc :qp/stage-had-source-card (:id card)
-                                   :source-query/model?      (= (:type card) :model)
-                                   :source-query/entity-id   (:entity-id card))
+                                   :source-query/model?      (= (:type card) :model))
                             (dissoc :source-card))]
       (into (vec card-stages) [stage']))))
 
@@ -166,9 +163,9 @@
 
   TODO -- we should remove remove the `:dataset` key and make sure nothing breaks, and make sure everything is looking
   at `:model` instead."
-  [{:qp/keys [source-card-id], :as _preprocessed-query} rff]
+  [{:qp/keys [source-card-id], :as preprocessed-query} rff]
   (if-not source-card-id
     rff
-    (let [model? (= (:type (lib.metadata.protocols/card (qp.store/metadata-provider) source-card-id)) :model)]
+    (let [model? (= (:type (lib.metadata/card preprocessed-query source-card-id)) :model)]
       (fn rff' [metadata]
         (rff (cond-> metadata model? (assoc :dataset model?, :model model?)))))))

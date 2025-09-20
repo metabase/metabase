@@ -381,7 +381,10 @@
          (some? default) (conj default))))))
 
 (defmacro match-lite
-  "Pattern matching macro, simplified version of `clojure.core.match`.
+  "Pattern matching macro, simplified version of [[clojure.core.match]].
+
+  TODO (Cam 9/16/25) -- what exactly is the difference between this and [[match]]? It doesn't recurse? Someone please
+  write an explanation here.
 
   Usage:
   (match-lite value
@@ -400,7 +403,7 @@
   (match-lite* value clauses false))
 
 (defmacro match-lite-recursive
-  "Like `match-lite`, but tries to match children recursively if the top-level match failed."
+  "Like [[match-lite]], but tries to match children recursively if the top-level match failed."
   {:style/indent :defn}
   [value & clauses]
   (match-lite* value clauses true))

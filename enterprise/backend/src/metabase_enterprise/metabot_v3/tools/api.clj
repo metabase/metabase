@@ -3,17 +3,15 @@
   (:require
    [buddy.core.hash :as buddy-hash]
    [buddy.sign.jwt :as jwt]
-   [clj-time.core :as time]
    [clojure.set :as set]
    [malli.core :as mc]
    [malli.transform :as mtx]
-   [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
-   [metabase-enterprise.metabot-v3.envelope :as envelope]
    [metabase-enterprise.metabot-v3.reactions]
    [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
+   [metabase-enterprise.metabot-v3.table-utils :as table-utils]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription
     :as metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.field-stats :as metabot-v3.tools.field-stats]
@@ -22,7 +20,6 @@
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
-   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.response :as api.response]
    [metabase.api.routes.common :as api.routes.common]
@@ -33,15 +30,8 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
-
-(defn- get-ai-service-token
-  [user-id metabot-id]
-  (let [secret (buddy-hash/sha256 (metabot-v3.settings/site-uuid-for-metabot-tools))
-        claims {:user user-id
-                :exp (time/plus (time/now) (time/seconds (metabot-v3.settings/metabot-ai-service-token-ttl)))
-                :metabot-id metabot-id}]
-    (jwt/encrypt claims secret {:alg :dir, :enc :a128cbc-hs256})))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (defn- decode-ai-service-token
   [token]
@@ -51,26 +41,6 @@
     (catch Exception e
       (log/error e "Bad AI service token")
       nil)))
-
-(defn handle-envelope
-  "Executes the AI loop in the context of a new session. Returns the response of the AI service."
-  [{:keys [metabot-id] :as e}]
-  (let [session-id (get-ai-service-token api/*current-user-id* metabot-id)]
-    (try
-      (metabot-v3.client/request (assoc e :session-id session-id))
-      (catch Exception ex
-        (let [d (ex-data ex)]
-          (if-let [assistant-message (:assistant-message d)]
-            (envelope/add-message (or (:envelope d) e)
-                                  {:role :assistant
-                                   :content assistant-message})
-            (throw ex)))))))
-
-(defn streaming-handle-envelope
-  "Executes the AI loop in the context of a new session. Returns the response of the AI service."
-  [{:keys [metabot-id] :as e}]
-  (let [session-id (get-ai-service-token api/*current-user-id* metabot-id)]
-    (metabot-v3.client/streaming-request (assoc e :session-id session-id))))
 
 (mr/def ::bucket
   (into [:enum {:error/message "Valid bucket"
@@ -540,6 +510,53 @@
                          [:result_columns ::columns]]]]
    [:map [:output :string]]])
 
+(mr/def ::get-document-details-arguments
+  [:and
+   [:map
+    [:document_id                                         :int]]
+   [:map {:encode/tool-api-request
+          #(set/rename-keys % {:document_id         :document-id})}]])
+
+(mr/def ::get-document-details-result
+  [:or
+   [:map
+    {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output [:map
+                         {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+                         [:id :int]
+                         [:name :string]
+                         [:document :string]]]]
+   [:map [:output :string]]])
+
+(mr/def ::get-tables-arguments
+  [:and
+   [:map
+    [:database_id                                         :int]]
+   [:map {:encode/tool-api-request
+          #(set/rename-keys % {:database_id         :database-id})}]])
+
+(mr/def ::get-tables-result
+  [:or
+   [:map
+    {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output [:map
+                         {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+                         [:database [:map
+                                     [:id :int]
+                                     [:engine :string]
+                                     [:name :string]
+                                     [:description :string]]]
+                         [:tables [:sequential [:map
+                                                [:id :int]
+                                                [:name :string]
+                                                [:description :string]
+                                                [:columns [:sequential [:map
+                                                                        [:id :int]
+                                                                        [:name :string]
+                                                                        [:description :string]
+                                                                        [:type :string]]]]]]]]]]
+   [:map [:output :string]]])
+
 (mr/def ::get-table-details-arguments
   [:and
    [:map
@@ -777,6 +794,21 @@
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
 
+(api.macros/defendpoint :post "/get-document-details" :- [:merge ::get-document-details-result ::tool-request]
+  "Get information about a given report."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments ::get-document-details-arguments]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log (assoc body :api :get-document-details) :llm.log/llm->be)
+  (let [arguments (mc/encode ::get-document-details-arguments arguments (mtx/transformer {:name :tool-api-request}))]
+    (doto (-> (mc/decode ::get-document-details-result
+                         (metabot-v3.dummy-tools/get-document-details arguments)
+                         (mtx/transformer {:name :tool-api-response}))
+              (assoc :conversation_id conversation_id))
+      (metabot-v3.context/log :llm.log/be->llm))))
+
 (api.macros/defendpoint :post "/get-table-details" :- [:merge ::get-table-details-result ::tool-request]
   "Get information about a given table or model."
   [_route-params
@@ -788,6 +820,23 @@
   (let [arguments (mc/encode ::get-table-details-arguments arguments (mtx/transformer {:name :tool-api-request}))]
     (doto (-> (mc/decode ::get-table-details-result
                          (metabot-v3.dummy-tools/get-table-details arguments)
+                         (mtx/transformer {:name :tool-api-response}))
+              (assoc :conversation_id conversation_id))
+      (metabot-v3.context/log :llm.log/be->llm))))
+
+(api.macros/defendpoint :post "/get-tables" :- [:merge ::get-tables-result ::tool-request]
+  "Get information about the tables in a given database."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments ::get-tables-arguments]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log (assoc body :api :get-tables) :llm.log/llm->be)
+  (let [arguments (mc/encode ::get-tables-arguments arguments (mtx/transformer {:name :tool-api-request}))
+        database-id (:database-id arguments)]
+    (doto (-> (mc/decode ::get-tables-result
+                         {:structured-output {:database (t2/select-one [:model/Database :id :name :description :engine] database-id)
+                                              :tables   (table-utils/database-tables database-id)}}
                          (mtx/transformer {:name :tool-api-response}))
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))

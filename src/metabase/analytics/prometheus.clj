@@ -276,7 +276,13 @@
       ;; 1ms -> 10minutes
                           :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
    (prometheus/gauge :metabase-search/appdb-index-size
-                     {:description "Number of rows in the active index table."})
+                     {:description "Number of rows in the active appdb index table."})
+   (prometheus/gauge :metabase-search/semantic-index-size
+                     {:description "Number of rows in the active semantic index table."})
+   (prometheus/gauge :metabase-search/semantic-dlq-size
+                     {:description "Number of rows in the active semantic index dead-letter-queue table."})
+   (prometheus/gauge :metabase-search/semantic-gate-size
+                     {:description "Number of rows in the semantic gate table"})
    (prometheus/gauge :metabase-search/queue-size
                      {:description "Number of updates on the search indexing queue."})
    (prometheus/counter :metabase-search/response-ok
@@ -289,7 +295,69 @@
    (prometheus/gauge :metabase-search/engine-active
                      {:description "Whether a given engine is active. This does NOT mean that it is the default."
                       :labels [:engine]})
-   ;; notification metrics
+   (prometheus/counter :metabase-search/semantic-embedding-tokens
+                       {:description (str "Number of tokens consumed by the given embedding model and provider. "
+                                          "Not all providers track token use.")
+                        :labels [:model :provider]})
+   (prometheus/counter :metabase-search/semantic-permission-filter-ms
+                       {:description "Total number of ms spent filtering readable docs"})
+   (prometheus/counter :metabase-search/semantic-collection-filter-ms
+                       {:description "Total number of ms spent filtering search results by collection"})
+   (prometheus/counter :metabase-search/semantic-search-ms
+                       {:description "Total number of ms spent performing a semantic search"
+                        :labels [:embedding-model]})
+   (prometheus/counter :metabase-search/semantic-embedding-ms
+                       {:description "Total number of ms spent calculating the embedding of the search string"
+                        :labels [:embedding-model]})
+   (prometheus/counter :metabase-search/semantic-db-query-ms
+                       {:description "Total number of ms spent querying the search index"
+                        :labels [:embedding-model]})
+   (prometheus/counter :metabase-search/semantic-appdb-scores-ms
+                       {:description "Total number of ms spent adding appdb-based scores"})
+   (prometheus/counter :metabase-search/semantic-fallback-triggered
+                       {:description "Number of times semantic search triggered fallback to appdb search due to insufficient results"
+                        :labels [:fallback-engine]})
+   (prometheus/histogram :metabase-search/semantic-results-before-fallback
+                         {:description "Distribution of result counts from semantic search when fallback is triggered"
+                          :buckets [0 1 5 10 20 50 100]})
+   (prometheus/histogram :metabase-search/semantic-fallback-results-usage
+                         {:description "Distribution of count of fallback results used to supplement semantic search"
+                          :buckets [0 1 5 10 20 50 100]})
+   (prometheus/histogram :metabase-search/semantic-gate-write-ms
+                         {:description "Distribution of semantic search gate write latency"
+                          :buckets [1 10 50 100 500 1000 2000 5000 10000 20000]})
+   (prometheus/histogram :metabase-search/semantic-gate-timeout-ms
+                         {:description "Distribution of caught semantic search gate timeout durations"
+                          :buckets     [4000 5000 6000 7000 8000 9000 10000 15000 30000 60000]})
+   (prometheus/counter :metabase-search/semantic-gate-write-documents
+                       {:description "Total number of gate documents issued to the semantic search gate table"})
+   (prometheus/counter :metabase-search/semantic-gate-write-modified
+                       {:description "Total number of records modified in the gate table"})
+   (prometheus/counter :metabase-search/semantic-indexer-loop-ms
+                       {:description "Total number of ms spent in the semantic search indexer loop"})
+   (prometheus/counter :metabase-search/semantic-indexer-sleep-ms
+                       {:description "Total number of ms the semantic indexer loop had control but was asleep"})
+   (prometheus/histogram :metabase-search/semantic-indexer-poll-to-poll-interval-ms
+                         {:description "Distribution of time elapsed between semantic search indexer polls (pg clock)"
+                          :buckets [10 100 1000 5000 10000 20000 60000 300000 600000]})
+   (prometheus/counter :metabase-search/semantic-indexer-read-gate-poll-ms
+                       {:description "Total number of ms the semantic search indexer spent polling the gate"})
+   (prometheus/counter :metabase-search/semantic-indexer-read-documents-ms
+                       {:description "Total number of ms the semantic search indexer spent looking up candidate document details"})
+   (prometheus/counter :metabase-search/semantic-indexer-write-indexing-ms
+                       {:description "Total number of ms the semantic search indexer spent actually indexing (includes embedding/hnsw indexing), NOTE 'normal' mode only"})
+   (prometheus/counter :metabase-search/semantic-indexer-write-metadata-ms
+                       {:description "Total number of ms the semantic indexer spent updating metadata (includes watermark/stall updates)"})
+   (prometheus/gauge   :metabase-search/semantic-indexer-stalled
+                       {:description "Whether or not the semantic search indexer is stalled - 0 = normal, 1 = stall"})
+   (prometheus/counter :metabase-search/semantic-indexer-dlq-loop-ms
+                       {:description "Total number of ms the semantic indexer spent in dead letter queue processing"})
+   (prometheus/counter :metabase-search/semantic-indexer-dlq-successes
+                       {:description "Number of successful semantic search DLQ retries"})
+   (prometheus/counter :metabase-search/semantic-indexer-dlq-failures
+                       {:description "Number of failed semantic search DLQ retries"})
+
+;; notification metrics
    (prometheus/counter :metabase-notification/send-ok
                        {:description "Number of successful notification sends."
                         :labels [:payload-type]})

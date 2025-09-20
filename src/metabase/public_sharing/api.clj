@@ -124,7 +124,7 @@
   "Create the `:make-run` function used for [[process-query-for-card-with-id]] and [[process-query-for-dashcard]]."
   [qp export-format]
   (fn run [query info]
-    (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]
+    (qp.streaming/streaming-response [rff export-format (qp.streaming/safe-filename-prefix (:card-name info))]
       (binding [qp.pipeline/*result* (comp qp.pipeline/*result* transform-qp-result)]
         (request/as-admin
           (qp (update query :info merge info) rff))))))

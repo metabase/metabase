@@ -69,7 +69,6 @@ dataset_query:
           - user_id
         - base-type: type/Integer
           join-alias: Group Members - Creator
-      ident: join_G7fFejjb7cgwYlUXSvf3K@0__Group Members - Creator
       source-table: lTp-ATFsCUFEr9I0fMEaO
       strategy: left-join
     source-table: AxSackBiyXVRUzM_TyyQY

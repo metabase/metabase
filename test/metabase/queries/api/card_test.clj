@@ -12,6 +12,7 @@
    [metabase.api.open-api :as open-api]
    [metabase.api.response :as api.response]
    [metabase.api.test-util :as api.test-util]
+   [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.driver :as driver]
@@ -607,7 +608,7 @@
 
 (deftest series-are-compatible-test
   (mt/dataset test-data
-    (let [database-id->metadata-provider {(mt/id) (lib.metadata.jvm/application-database-metadata-provider (mt/id))}]
+    (let [database-id->metadata-provider {(mt/id) (mt/metadata-provider)}]
       (testing "area-line-bar charts"
         (mt/with-temp
           [:model/Card datetime-card       (merge (mt/card-with-source-metadata-for-query
@@ -1268,6 +1269,26 @@
                :type    "metric"}
               (mt/user-http-request :crowberto :put 200 (str "card/" (:id card))
                                     {:dataset_query (mbql-count-query (mt/id) (mt/id :checkins))}))))))
+
+(deftest card-referencing-card-without-permission-should-fail
+  (testing "POST /api/card"
+    (testing "Make sure if we don't have access to table, creatings a query on query on the table should fail"
+      (mt/with-premium-features #{:advanced-permissions}
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-non-admin-groups-no-root-collection-perms
+            (mt/with-temp [:model/Card card {:database_id   (mt/id)
+                                             :dataset_query {:query    {:source-table (mt/id :venues)}
+                                                             :type     :query
+                                                             :database (mt/id)}}]
+              (mt/user-http-request :rasta :post 403 (format "card/%d/query" (u/the-id card)))
+              (mt/user-http-request :rasta :post 403 "card" {:name "DUPLICATE"
+                                                             :display "table"
+                                                             :visualization_settings {}
+                                                             :database_id (mt/id)
+                                                             :dataset_query {:query    {:source-table (format "card__%s" (u/the-id card))}
+                                                                             :type     :query
+                                                                             :database (mt/id)}
+                                                             :collection_id (-> :rasta mt/user->id collection/user->personal-collection u/the-id)}))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    COPYING A CARD (POST /api/card/:id/copy)                                    |
@@ -3423,7 +3444,7 @@
   (testing "POST /api/card"
     (testing "Should be able to save a Card with an MLv2 query (#39024)"
       (mt/with-model-cleanup [:model/Card]
-        (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        (let [metadata-provider (mt/metadata-provider)
               venues            (lib.metadata/table metadata-provider (mt/id :venues))
               query             (lib/query metadata-provider venues)
               response          (mt/user-http-request :crowberto :post 200 "card"
@@ -3441,7 +3462,7 @@
 (deftest ^:parallel run-mlv2-card-query-test
   (testing "POST /api/card/:id/query"
     (testing "Should be able to run a query for a Card with an MLv2 query (#39024)"
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
                                   (lib/order-by (lib.metadata/field metadata-provider (mt/id :venues :id)))
@@ -3512,7 +3533,7 @@
     (is (false? (:can_restore (mt/user-http-request :crowberto :get 200 (str "card/" card-id)))))))
 
 (deftest ^:parallel can-run-adhoc-query-test
-  (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [metadata-provider (mt/metadata-provider)
         venues            (lib.metadata/table metadata-provider (mt/id :venues))
         query             (lib/query metadata-provider venues)]
     (mt/with-temp [:model/Card card {:dataset_query query}
@@ -4299,6 +4320,130 @@
                      (mt/user-http-request :crowberto :put 400 (str "card/" id-a)
                                            {:dataset_query (lib/->legacy-MBQL query-cycle)
                                             :type          :question}))))))))))
+
+(deftest cannot-create-card-snippet-cycle-test
+  (testing "Cannot create card → snippet → card cycle"
+    (mt/with-temp [:model/NativeQuerySnippet snippet {:name "test-snippet"
+                                                      :content "WHERE true"
+                                                      :template_tags {}}
+                   :model/Card card {:dataset_query
+                                     {:database (mt/id)
+                                      :type :native
+                                      :native {:query "SELECT * FROM products"}}}]
+      ;; Update snippet to reference card (creates snippet → card)
+      (t2/update! :model/NativeQuerySnippet (:id snippet)
+                  {:content (str "WHERE id IN ({{#" (:id card) "}})")
+                   :template_tags {(str "card-" (:id card)) {:type :card
+                                                             :card-id (:id card)
+                                                             :name (str "card-" (:id card))
+                                                             :display-name "Card Reference"}}})
+
+      ;; Try to update card to reference snippet (would create card → snippet → card cycle)
+      (is (= "Cannot save card with cycles."
+             (mt/user-http-request :crowberto :put 400 (str "card/" (:id card))
+                                   {:dataset_query
+                                    {:database (mt/id)
+                                     :type :native
+                                     :native {:query (str "SELECT * FROM products {{snippet:" (:name snippet) "}}")
+                                              :template-tags {(str "snippet: " (:name snippet))
+                                                              {:type :snippet
+                                                               :snippet-id (:id snippet)
+                                                               :snippet-name (:name snippet)
+                                                               :name (str "snippet:" (:name snippet))
+                                                               :display-name "Test Snippet"}}}}}))))))
+
+(deftest cannot-create-multi-hop-card-snippet-cycle-test
+  (testing "Cannot create cycles through multiple cards and snippets"
+    (mt/with-temp [:model/NativeQuerySnippet snippet-1 {:name "snippet-1"
+                                                        :content "WHERE category = 'Electronics'"
+                                                        :template_tags {}}
+                   :model/NativeQuerySnippet snippet-2 {:name "snippet-2"
+                                                        :content "AND price > 100"
+                                                        :template_tags {}}
+                   :model/Card card-1 {:dataset_query
+                                       {:database (mt/id)
+                                        :type :native
+                                        :native {:query (str "SELECT * FROM products {{snippet:" "snippet-1" "}}")
+                                                 :template-tags {"snippet:snippet-1"
+                                                                 {:type :snippet
+                                                                  :snippet-id (:id snippet-1)
+                                                                  :snippet-name "snippet-1"
+                                                                  :name (str "snippet:" "snippet-1")
+                                                                  :display-name "Snippet 1"}}}}}
+                   :model/Card card-2 {:dataset_query
+                                       {:database (mt/id)
+                                        :type :native
+                                        :native {:query (format "SELECT * FROM {{#%d}}" (:id card-1))
+                                                 :template-tags {(str "#" (:id card-1))
+                                                                 {:type :card
+                                                                  :card-id (:id card-1)
+                                                                  :name (str "#" (:id card-1))
+                                                                  :display-name "Card 1"}}}}}]
+      ;; Update snippet-2 to reference card-2 (creates snippet-2 → card-2 → card-1 → snippet-1)
+      (t2/update! :model/NativeQuerySnippet (:id snippet-2)
+                  {:content (str "AND id IN ({{#" (:id card-2) "}})")
+                   :template_tags {(str "card-" (:id card-2)) {:type :card
+                                                               :card-id (:id card-2)
+                                                               :name (str "card-" (:id card-2))
+                                                               :display-name "Card 2"}}})
+
+      ;; Try to update card-1 to also reference snippet-2
+      ;; (would create card-1 → snippet-2 → card-2 → card-1 cycle)
+      (is (= "Cannot save card with cycles."
+             (mt/user-http-request :crowberto :put 400 (str "card/" (:id card-1))
+                                   {:dataset_query
+                                    {:database (mt/id)
+                                     :type :native
+                                     :native {:query (str "SELECT * FROM products {{snippet:" "snippet-1" "}} {{snippet:" "snippet-2" "}}")
+                                              :template-tags {(str "snippet:" "snippet-1")
+                                                              {:type :snippet
+                                                               :snippet-id (:id snippet-1)
+                                                               :snippet-name "snippet-1"
+                                                               :name "snippet:snippet-1"
+                                                               :display-name "Snippet 1"}
+                                                              (str "snippet:" "snippet-2")
+                                                              {:type :snippet
+                                                               :snippet-id (:id snippet-2)
+                                                               :snippet-name "snippet-2"
+                                                               :name (str "snippet:" "snippet-2")
+                                                               :display-name "Snippet 2"}}}}}))))))
+
+(deftest cannot-create-new-card-with-cyclic-snippets-test
+  (testing "Cannot create a new card that references snippets with existing cycles"
+    ;; Create two snippets that reference each other in a cycle
+    (mt/with-temp [:model/NativeQuerySnippet snippet-1 {:name          "snippet-1"
+                                                        :content       "WHERE category = 'Electronics'"
+                                                        :template_tags {"snippet:snippet-2"
+                                                                        {:type         :snippet
+                                                                         :snippet-name "snippet-2"
+                                                                         :name         "snippet:snippet-2"
+                                                                         :display-name "Snippet 2"}}}
+                   :model/NativeQuerySnippet _snippet-2 {:name          "snippet-2"
+                                                         :content       "AND price > 100 {{snippet: snippet-1}}"
+                                                         :template_tags {"snippet: snippet-1"
+                                                                         {:type         :snippet
+                                                                          :snippet-name "snippet-1"
+                                                                          :name         "snippet:snippet-1"
+                                                                          :display-name "Snippet 1"}}}]
+      (t2/update! :model/NativeQuerySnippet (:id snippet-1)
+                  {:content "WHERE category = 'Electronics' {{snippet: snippet-2}}"})
+      ;; Now try to create a NEW card that references snippet-1 (which has a cycle with snippet-2)
+      ;; This should fail even though the card doesn't exist yet
+      (is (= "Cannot save card with cycles."
+             (mt/user-http-request :crowberto :post 400 "card"
+                                   {:name                   "New Card with Cyclic Snippets"
+                                    :dataset_query
+                                    {:database (mt/id)
+                                     :type     :native
+                                     :native   {:query         "SELECT * FROM products {{snippet:snippet-1}}"
+                                                :template-tags {"snippet:snippet-1"
+                                                                {:type         :snippet
+                                                                 :snippet-id   (:id snippet-1)
+                                                                 :snippet-name "snippet-1"
+                                                                 :name         "snippet:snippet-1"
+                                                                 :display-name "Snippet 1"}}}}
+                                    :display                "table"
+                                    :visualization_settings {}}))))))
 
 (deftest e2e-card-update-invalidates-cache-test
   (testing "Card update invalidates card's cache (#55955)"

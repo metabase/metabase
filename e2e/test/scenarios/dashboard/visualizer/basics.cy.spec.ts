@@ -224,7 +224,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     H.modal().button("Save").should("be.disabled");
   });
 
-  it("should allow clicking on the title", () => {
+  it("should allow clicking on the title", { tags: "@flaky" }, () => {
     createDashboardWithVisualizerDashcards();
 
     // Click on both series of the first chart
@@ -343,6 +343,28 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     H.modal().within(() => {
       cy.findByTestId("visualizer-title").should("have.text", "");
     });
+  });
+
+  it("should allow adding description to a visualizer dashcard (metabase#61457)", () => {
+    createDashboardWithVisualizerDashcards();
+    H.editDashboard();
+
+    H.showDashcardVisualizerModal(0);
+    H.modal().within(() => {
+      cy.findByText("Settings").click();
+      cy.findByTestId("card.description").should("have.value", "");
+      cy.findByTestId("card.description").type("My description").blur();
+    });
+
+    H.saveDashcardVisualizerModal();
+    H.saveDashboard();
+
+    H.getDashboardCard(0)
+      .realHover()
+      .within(() => {
+        cy.icon("info").realHover();
+      });
+    H.tooltip().findByText("My description").should("exist");
   });
 
   it("should start in a pristine state and update dirtyness accordingly", () => {

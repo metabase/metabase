@@ -20,6 +20,7 @@ export const SelectEmbedOptionsStep = () => {
     (experience === "chart" && settings.questionId);
 
   const isExplorationEmbed = settings.template === "exploration";
+  const isBrowserEmbed = settings.componentName === "metabase-browser";
 
   const updateColors = useCallback(
     (nextColors: Partial<MetabaseColors>) => {
@@ -30,8 +31,7 @@ export const SelectEmbedOptionsStep = () => {
     [theme, updateSettings],
   );
 
-  const isDashboardOrInteractiveQuestion =
-    settings.dashboardId || (settings.questionId && settings.drills);
+  const isDashboardOrQuestion = settings.dashboardId || settings.questionId;
 
   return (
     <Stack gap="md">
@@ -42,13 +42,13 @@ export const SelectEmbedOptionsStep = () => {
         <Stack gap="md">
           {isQuestionOrDashboardEmbed && (
             <Checkbox
-              label={t`Allow users to drill through on data points`}
+              label={t`Allow people to drill through on data points`}
               checked={settings.drills}
               onChange={(e) => updateSettings({ drills: e.target.checked })}
             />
           )}
 
-          {isDashboardOrInteractiveQuestion && (
+          {isDashboardOrQuestion && (
             <Checkbox
               label={t`Allow downloads`}
               checked={settings.withDownloads}
@@ -65,6 +65,14 @@ export const SelectEmbedOptionsStep = () => {
               onChange={(e) =>
                 updateSettings({ isSaveEnabled: e.target.checked })
               }
+            />
+          )}
+
+          {isBrowserEmbed && (
+            <Checkbox
+              label={t`Allow editing dashboards and questions`}
+              checked={!settings.readOnly}
+              onChange={(e) => updateSettings({ readOnly: !e.target.checked })}
             />
           )}
         </Stack>
@@ -95,7 +103,7 @@ export const SelectEmbedOptionsStep = () => {
 
         {isQuestionOrDashboardEmbed && (
           <>
-            <Divider mb="md" />
+            <Divider mt="lg" mb="md" />
 
             <Checkbox
               label={t`Show ${experience} title`}

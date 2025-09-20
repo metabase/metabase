@@ -40,7 +40,8 @@
   [jdbc-url]
   ;; The H2 database version is indicated in the "format:" key of the MV file header, which is 4096 bytes
   ;; See: https://www.h2database.com/html/mvstore.html
-  (when-let [path (str (h2-base-path jdbc-url) ".mv.db")]
+  (when-let [path (some-> (h2-base-path jdbc-url)
+                          (str ".mv.db"))]
     (when (.exists (io/file path))
       (let [header     (str/join (map try-char (head path 4096)))
             format-key "format:"]

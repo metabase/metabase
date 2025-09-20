@@ -14,6 +14,7 @@ if (shouldLintCssModules) {
 }
 
 module.exports = {
+  ignorePatterns: ["!.storybook"],
   rules: {
     strict: [2, "never"],
     "no-undef": 2,
@@ -48,6 +49,7 @@ module.exports = {
     ],
     curly: [1, "all"],
     eqeqeq: [1, "smart"],
+    "import/no-duplicates": ["warn", { considerQueryString: true }],
     "import/no-default-export": 2,
     "import/no-named-as-default": 0,
     "import/no-commonjs": 1,
@@ -178,6 +180,7 @@ module.exports = {
     {
       files: ["*.js", "*.jsx", "*.ts", "*.tsx"],
       rules: {
+        "jtag-missing-key": "error",
         "no-unconditional-metabase-links-render": "error",
         "no-color-literals": "error",
         "no-literal-metabase-strings": "error",
@@ -202,12 +205,14 @@ module.exports = {
         "enterprise/frontend/src/metabase-enterprise/whitelabel/**/*",
         "frontend/lint/**/*",
         "*.stories.*",
+        "**/.storybook/*",
         "stories-data.*",
         "e2e/**/*",
         "**/tests/*",
         "release/**/*",
         "rspack.config.js",
         "rspack.main.config.js",
+        "rspack.embedding-sdk-package.config.js",
         "rspack.embedding-sdk-bundle.config.js",
       ],
       rules: {

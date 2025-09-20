@@ -1,8 +1,12 @@
 (ns metabase.query-processor.middleware.permissions-test
   "Tests for the middleware that checks whether the current user has permissions to run a given query."
+  {:clj-kondo/config '{:linters
+                       ;; allowing `with-temp` here for now since perms is mostly still app-DB based.
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.lib.test-metadata :as meta]
    [metabase.permissions.core :as perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -763,13 +767,13 @@
                #"You do not have permissions to run this query"
                (process-query))))))))
 
-(deftest e2e-ignore-user-supplied-gtapped-tables-test
-  (testing "You shouldn't be able to bypass security restrictions by passing in `:query-permissions/gtapped-table` in the query"
+(deftest e2e-ignore-user-supplied-sandboxed-tables-test
+  (testing "You shouldn't be able to bypass security restrictions by passing in `:query-permissions/sandboxed-table` in the query"
     (mt/with-no-data-perms-for-all-users!
       (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :no)
       (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
       (let [bad-query {:database (mt/id), :type :query, :query {:source-query {:native "SELECT * FROM VENUES LIMIT 1"
-                                                                               :query-permissions/gtapped-table (mt/id :venues)}}
+                                                                               :query-permissions/sandboxed-table (mt/id :venues)}}
                        :query-permissions/perms {:gtaps {:perms/view-data :unrestricted
                                                          :perms/create-queries :query-builder-and-native}}}]
         (mt/with-test-user :rasta
@@ -781,7 +785,7 @@
           (letfn [(process-query []
                     (qp/process-query bad-query))]
             (testing "Testing that we will still throw due to the :query-permissions/perms stripping"
-              (with-redefs [qp.perms/remove-gtapped-table-keys identity]
+              (with-redefs [qp.perms/remove-sandboxed-table-keys identity]
                 (is (thrown-with-msg?
                      clojure.lang.ExceptionInfo
                      #"You do not have permissions to run this query"
@@ -812,14 +816,19 @@
     (mt/with-temp [:model/User {user-id :id} {}
                    :model/Card {card-id :id} {:dataset_query {:database (mt/id)
                                                               :type :native
-                                                              :native {:query "SELECT * FROM venues"}}}]
+                                                              :native {:query "SELECT * FROM venues"}}
+                                              :result_metadata (for [field (meta/fields :venues)]
+                                                                 (-> (meta/field-metadata :venues field)
+                                                                     (dissoc :id :table-id)))}]
       (mt/with-no-data-perms-for-all-users!
         (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
         (let [query (mt/mbql-query checkins
-                      {:joins [{:fields [$id]
+                      {:joins [{:fields [[:field "ID" {:base-type :type/Integer, :join-alias "card"}]]
                                 :source-table (format "card__%d" card-id)
                                 :alias "card"
-                                :condition [:= $venue_id &card.venues.id]
+                                :condition [:=
+                                            $venue_id
+                                            [:field "ID" {:base-type :type/Integer, :join-alias "card"}]]
                                 :strategy :left-join}]
                        :order-by [[:asc $id]]
                        :limit 2})]

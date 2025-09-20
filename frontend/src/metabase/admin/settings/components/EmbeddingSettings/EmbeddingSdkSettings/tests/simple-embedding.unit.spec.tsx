@@ -21,7 +21,6 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
       isEmbeddingSdkEnabled: false,
       isEmbeddingSimpleEnabled: false,
       showSdkEmbedTerms: false,
-      showSimpleEmbedTerms: false,
     });
 
     const toggles = screen.getAllByRole("switch");
@@ -37,7 +36,6 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
       isEmbeddingSdkEnabled: false,
       isEmbeddingSimpleEnabled: false,
       showSdkEmbedTerms: false,
-      showSimpleEmbedTerms: true,
     });
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -58,7 +56,6 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
       isEmbeddingSdkEnabled: false,
       isEmbeddingSimpleEnabled: false,
       showSdkEmbedTerms: false,
-      showSimpleEmbedTerms: true,
     });
 
     const toggles = screen.getAllByRole("switch");
@@ -82,7 +79,6 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
         isEmbeddingSdkEnabled: false,
         isEmbeddingSimpleEnabled: false,
         showSdkEmbedTerms: false,
-        showSimpleEmbedTerms: false,
       });
 
       expect(
@@ -119,7 +115,6 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
           isEmbeddingSdkEnabled,
           isEmbeddingSimpleEnabled,
           showSdkEmbedTerms: false,
-          showSimpleEmbedTerms: false,
         });
 
         const originInput = screen.getByPlaceholderText(

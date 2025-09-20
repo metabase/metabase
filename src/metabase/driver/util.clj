@@ -138,7 +138,7 @@
       ;; first
       (catch Throwable e
         (log/error e "Failed to connect to Database")
-        (throw (if-let [humanized-message (some->> (.getMessage e)
+        (throw (if-let [humanized-message (some->> (u/all-ex-messages e)
                                                    (driver/humanize-connection-error-message driver))]
                  (let [error-data (cond
                                     (keyword? humanized-message)
@@ -232,9 +232,13 @@
   (let [f (if *memoize-supports?* memoized-supports?* supports?*)]
     (f driver feature database)))
 
+(def ^:private skip-internal-features
+  #{;; used intenrally during the sync process, does not really need to be hydrated
+    :metadata/table-writable-check})
+
 (defn- features* [driver database]
   (set (for [feature driver/features
-             :when (supports? driver feature database)]
+             :when (and (not (skip-internal-features feature)) (supports? driver feature database))]
          feature)))
 
 (def ^:private memoized-features*

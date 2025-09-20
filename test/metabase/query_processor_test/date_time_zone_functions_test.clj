@@ -704,7 +704,7 @@
         (mt/with-report-timezone-id! "UTC"
           (is (= "2022-10-03T14:10:20+07:00"
                  (->> (mt/run-mbql-query times
-                        {:expressions {"expr" [:convert-timezone "2022-10-03T07:10:20" "Asia/Saigon" "UTC"]}
+                        {:expressions {"expr" [:convert-timezone "2022-10-03T07:10:20" "Asia/Bangkok" "UTC"]}
                          :fields      [[:expression "expr"]]})
                       mt/rows
                       ffirst))))))))
@@ -780,9 +780,9 @@
                   "2004-03-19T18:19:09+09:00"] ;; at +09
                  (->> (mt/run-mbql-query
                         times
-                        {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Saigon" "UTC"]
+                        {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Bangkok" "UTC"]
                                        "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Seoul"
-                                                      "Asia/Saigon"]}
+                                                      "Asia/Bangkok"]}
                          :filter      [:= $times.index 1]
                          :fields      [$times.dt
                                        [:expression "to-07"]
@@ -839,11 +839,11 @@
       (mt/dataset times-mixed
         (testing "nested custom expression should works"
           (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
-                                            (mt/application-database-metadata-provider (mt/id))
+                                            (mt/metadata-provider)
                                             [(mt/mbql-query
                                                times
-                                               {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Saigon" "UTC"]
-                                                              "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Seoul" "Asia/Saigon"]}
+                                               {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Bangkok" "UTC"]
+                                                              "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Seoul" "Asia/Bangkok"]}
                                                 :filter      [:= $times.index 1]
                                                 :fields      [$times.dt
                                                               [:expression "to-07"]
@@ -854,19 +854,19 @@
                            (lib.metadata/card (qp.store/metadata-provider) 1))]
                 (testing `lib.metadata.result-metadata/returned-columns
                   (is (=? [{:name "dt"}
-                           {:name "to-07", :converted-timezone "Asia/Saigon"}
+                           {:name "to-07", :converted-timezone "Asia/Bangkok"}
                            {:name "to-07-to-09", :converted-timezone "Asia/Seoul"}]
                           (map #(select-keys % [:name :converted-timezone])
                                (lib.metadata.result-metadata/returned-columns query)))))
                 (testing `annotate/expected-cols
                   (is (=? [{:name "dt"}
-                           {:name "to-07", :converted_timezone "Asia/Saigon"}
+                           {:name "to-07", :converted_timezone "Asia/Bangkok"}
                            {:name "to-07-to-09", :converted_timezone "Asia/Seoul"}]
                           (map #(select-keys % [:name :converted_timezone])
                                (annotate/expected-cols query)))))
                 (testing `qp.preprocess/query->expected-cols
                   (is (=? [{:name "dt"}
-                           {:name "to-07", :converted_timezone "Asia/Saigon"}
+                           {:name "to-07", :converted_timezone "Asia/Bangkok"}
                            {:name "to-07-to-09", :converted_timezone "Asia/Seoul"}]
                           (map #(select-keys % [:name :converted_timezone])
                                (qp.preprocess/query->expected-cols query)))))))

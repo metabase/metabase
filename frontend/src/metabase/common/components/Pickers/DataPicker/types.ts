@@ -35,12 +35,14 @@ export type TableItem = {
   id: TableId;
   name: string;
   model: "table";
+  database_id?: DatabaseId;
 };
 
 export type QuestionItem = {
   id: CardId;
   name: string;
   model: "card";
+  database_id: DatabaseId;
 };
 
 export type DashboardItem = {
@@ -53,12 +55,14 @@ export type ModelItem = {
   id: CardId;
   name: string;
   model: "dataset";
+  database_id: DatabaseId;
 };
 
 export type MetricItem = {
   id: CardId;
   name: string;
   model: "metric";
+  database_id: DatabaseId;
 };
 
 export type TablePickerValue = {

@@ -44,11 +44,11 @@ jobs:
             echo "A relevant team label is present. Tier 3 driver tests will run."
           else
             echo "Checking for changes in relevant folders..."
-            CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }})
+            CHANGED_FILES=$(git diff --name-only $(git merge-base ${{ github.event.pull_request.base.sha }} ${{ github.sha }}) ${{ github.sha }})
 
             # Initialize an empty array to store folders with changes
             CHANGED_FOLDERS=()
-            for folder in "src/metabase/lib" "src/metabase/query_processor" "modules/drivers"; do
+            for folder in "src/metabase/lib" "src/metabase/query_processor" "modules/drivers" "src/metabase/driver"; do
               if echo "$CHANGED_FILES" | grep -q "$folder"; then
                 CHANGED_FOLDERS+=("$folder")
               fi
@@ -73,9 +73,11 @@ jobs:
       CI: 'true'
       DRIVERS: athena
       MB_ATHENA_TEST_REGION: us-east-1
+      MB_ATHENA_TEST_REGION_ROUTING: us-east-2
       MB_ATHENA_TEST_ACCESS_KEY: ${{ secrets.MB_ATHENA_TEST_ACCESS_KEY }}
       MB_ATHENA_TEST_SECRET_KEY: ${{ secrets.MB_ATHENA_TEST_SECRET_KEY }}
       MB_ATHENA_TEST_S3_STAGING_DIR: ${{ secrets.MB_ATHENA_TEST_S3_STAGING_DIR }}
+      MB_ATHENA_TEST_S3_STAGING_DIR_ROUTING: ${{ secrets.MB_ATHENA_TEST_S3_STAGING_DIR_ROUTING }}
       # These credentials are used to test the driver when the user does not have the athena:GetTableMetadata permission
       MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_ACCESS_KEY: ${{ secrets.MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_ACCESS_KEY }}
       MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_SECRET_KEY: ${{ secrets.MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_SECRET_KEY }}
@@ -1038,79 +1040,81 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
-  be-tests-starburst-ee:
-    needs: determine-driver-skips
-    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 60
-    env:
-      CI: 'true'
-      DRIVERS: starburst
-    services:
-      starburst:
-        image: trinodb/trino:latest
-        env:
-          CATALOG_MANAGEMENT: dynamic
-        ports:
-          - "8080:8080"
-    name: Starburst
-    steps:
-    - uses: actions/checkout@v4
-    - name: Make plugins directory
-      run: mkdir plugins
-    - name: Test Starburst driver
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-tests-starburst-ee'
-        test-args: >-
-          :only-tags [:mb/driver-tests]
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
-        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+  # TODO(dpsutton, 2025-08-20): Re-enable starburst when we figure out why it randomly dies in CI
+  # be-tests-starburst-ee:
+  #   needs: determine-driver-skips
+  #   if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+  #   runs-on: ubuntu-22.04
+  #   timeout-minutes: 60
+  #   env:
+  #     CI: 'true'
+  #     DRIVERS: starburst
+  #   services:
+  #     starburst:
+  #       image: trinodb/trino:latest
+  #       env:
+  #         CATALOG_MANAGEMENT: dynamic
+  #       ports:
+  #         - "8080:8080"
+  #   name: Starburst
+  #   steps:
+  #   - uses: actions/checkout@v4
+  #   - name: Make plugins directory
+  #     run: mkdir plugins
+  #   - name: Test Starburst driver
+  #     uses: ./.github/actions/test-driver
+  #     with:
+  #       junit-name: 'be-tests-starburst-ee'
+  #       test-args: >-
+  #         :only-tags [:mb/driver-tests]
+  #   - name: Upload Test Results
+  #     uses: ./.github/actions/upload-test-results
+  #     if: always()
+  #     with:
+  #       input-path: ./target/junit/
+  #       output-name: ${{ github.job }}
+  #       bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+  #       aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+  #       aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+  #       aws-region: ${{ vars.AWS_REGION }}
+  #       trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
-  be-tests-vertica-ee:
-    needs: determine-driver-skips
-    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 60
-    env:
-      CI: 'true'
-      DRIVERS: vertica
-    services:
-      vertica:
-        image: vertica/vertica-ce:12.0.2-0
-        ports:
-          - "5433:5433"
-    name: Vertica
-    steps:
-    - uses: actions/checkout@v4
-    - name: Make plugins directory
-      run: mkdir plugins
-    - name: Test Vertica driver
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-tests-vertica-ee'
-        test-args: >-
-          :only-tags [:mb/driver-tests]
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
-        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+  # TODO(rileythomp, 2025-08-20): Re-enable vertica tests once the docker image is updated
+  # be-tests-vertica-ee:
+  #   needs: determine-driver-skips
+  #   if: ${{ false && !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+  #   runs-on: ubuntu-22.04
+  #   timeout-minutes: 60
+  #   env:
+  #     CI: 'true'
+  #     DRIVERS: vertica
+  #   services:
+  #     vertica:
+  #       image: vertica/vertica-ce:12.0.2-0
+  #       ports:
+  #         - "5433:5433"
+  #   name: Vertica
+  #   steps:
+  #   - uses: actions/checkout@v4
+  #   - name: Make plugins directory
+  #     run: mkdir plugins
+  #   - name: Test Vertica driver
+  #     uses: ./.github/actions/test-driver
+  #     with:
+  #       junit-name: 'be-tests-vertica-ee'
+  #       test-args: >-
+  #         :only-tags [:mb/driver-tests]
+  #   - name: Upload Test Results
+  #     uses: ./.github/actions/upload-test-results
+  #     if: always()
+  #     with:
+  #       input-path: ./target/junit/
+  #       output-name: ${{ github.job }}
+  #       bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+  #       aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+  #       aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+  #       aws-region: ${{ vars.AWS_REGION }}
+  #       trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   drivers-tests-result:
     needs:
@@ -1133,8 +1137,9 @@ jobs:
       - be-tests-sparksql-ee
       - be-tests-sqlite-ee
       - be-tests-sqlserver
-      - be-tests-starburst-ee
-      - be-tests-vertica-ee
+      # - be-tests-starburst-ee
+      # TODO(rileythomp, 2025-08-20): Re-enable vertica tests once the docker image is updated
+      # - be-tests-vertica-ee
       - be-tests-clickhouse-ee
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1156,7 +1161,7 @@ jobs:
               }));
 
             // are all jobs skipped or successful?
-            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
+            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success' || job.name == 'be-tests-starburst-ee'))) {
                 console.log("");
                 console.log("        _------.        ");
                 console.log("       /  ,     \_      ");

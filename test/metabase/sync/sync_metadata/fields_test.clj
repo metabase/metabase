@@ -116,7 +116,7 @@
                               "(3, 'Colin Fowl');")]]
         (jdbc/execute! one-off-dbs/*conn* [statement]))
       (sync/sync-database! (mt/db))
-      (let [tables          (t2/select-pks-set :model/Table :db_id (u/the-id (mt/db)))
+      (let [tables          (t2/select-pks-set :model/Table :db_id (mt/id))
             get-field-to-update (fn []
                                   (t2/select-one
                                    :model/Field

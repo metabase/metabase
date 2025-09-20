@@ -8,6 +8,10 @@ export const FIXED_METABOT_IDS = {
   EMBEDDED: 2 as const,
 };
 
+export const METABOT_REQUEST_IDS = {
+  EMBEDDED: "c61bf5f5-1025-47b6-9298-bf1827105bb6",
+};
+
 export const METABOT_ERR_MSG = {
   get default() {
     return t`Sorry, I ran into an error. Could you please try that again?`;
@@ -16,9 +20,6 @@ export const METABOT_ERR_MSG = {
     return t`Metabot is currently offline. Please try again later.`;
   },
 };
-
-// We don't need to translate this yet, as it's from ai-service which isn't translated
-export const METABOT_RESULTS_MESSAGE = "Here are the results";
 
 export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
   get construct_notebook_query() {

@@ -391,7 +391,16 @@
   (contains? #{:oracle :redshift} driver))
 
 (defn nest-query
-  "Nest an MBQL/native query by `n-levels`. Useful for testing how nested queries behave."
+  "Nest an MBQL/native query by `n-levels`. Useful for testing how nested queries behave.
+
+  DEPRECATED: prefer MBQL 5 queries and [[metabase.lib.core/append-stage]] going forward.
+
+  You can do
+
+    (nth (iterate lib/append-stage query) n-levels)
+
+  to nest it multiple times."
+  {:deprecated "0.57.0"}
   [outer-query n-levels]
   (if-not (pos? n-levels)
     outer-query
@@ -406,6 +415,7 @@
                    (assoc outer-query :query {:source-query (:query outer-query)}))]
       (recur nested (dec n-levels)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (deftest ^:parallel nest-query-test
   (testing "MBQL"
     (is (= {:database 1, :type :query, :query {:source-table 2}}
@@ -511,6 +521,7 @@
     (lib.metadata.jvm/application-database-metadata-provider (data/id))
     queries
     transforms))
+
   ([parent-metadata-provider :- ::lib.schema.metadata/metadata-provider
     queries :- [:sequential {:min 1} :map]
     transforms :- [:maybe :map]]

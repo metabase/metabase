@@ -2,6 +2,7 @@
   "Tests for nested field access."
   (:require
    [clojure.test :refer :all]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]))
 
 (deftest ^:parallel filter-test
@@ -9,22 +10,22 @@
     (testing "Nested Field in FILTER"
       (mt/dataset geographical-tips
         ;; Get the first 10 tips where tip.venue.name == "Kyle's Low-Carb Grill"
-        (is (= [[8   "Kyle's Low-Carb Grill"]
-                [67  "Kyle's Low-Carb Grill"]
-                [80  "Kyle's Low-Carb Grill"]
-                [83  "Kyle's Low-Carb Grill"]
-                [295 "Kyle's Low-Carb Grill"]
-                [342 "Kyle's Low-Carb Grill"]
-                [417 "Kyle's Low-Carb Grill"]
-                [426 "Kyle's Low-Carb Grill"]
-                [470 "Kyle's Low-Carb Grill"]]
-               (mt/formatted-rows
-                [int str]
-                (mt/run-mbql-query tips
-                  {:fields   [$tips.id $tips.venue.name]
-                   :filter   [:= $tips.venue.name "Kyle's Low-Carb Grill"]
-                   :order-by [[:asc $id]]
-                   :limit    10}))))))))
+        (let [query (mt/mbql-query tips
+                      {:fields   [$tips.id $tips.venue.name]
+                       :filter   [:= $tips.venue.name "Kyle's Low-Carb Grill"]
+                       :order-by [[:asc $id]]
+                       :limit    10})]
+          (mt/with-native-query-testing-context query
+            (is (= [[8   "Kyle's Low-Carb Grill"]
+                    [67  "Kyle's Low-Carb Grill"]
+                    [80  "Kyle's Low-Carb Grill"]
+                    [83  "Kyle's Low-Carb Grill"]
+                    [295 "Kyle's Low-Carb Grill"]
+                    [342 "Kyle's Low-Carb Grill"]
+                    [417 "Kyle's Low-Carb Grill"]
+                    [426 "Kyle's Low-Carb Grill"]
+                    [470 "Kyle's Low-Carb Grill"]]
+                   (mt/formatted-rows [int str] (qp/process-query query))))))))))
 
 (deftest ^:parallel order-by-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
@@ -90,17 +91,21 @@
     (testing "Nested Field in BREAKOUT"
       ;; Let's see how many tips we have by source.service
       (mt/dataset geographical-tips
-        (is (= [["facebook"   107]
-                ["flare"      105]
-                ["foursquare" 100]
-                ["twitter"     98]
-                ["yelp"        90]]
-               (mt/formatted-rows
-                [str int]
-                (mt/run-mbql-query tips
-                  {:aggregation [[:count]]
-                   :breakout    [$tips.source.service]}))))
+        (let [query (mt/mbql-query tips
+                      {:aggregation [[:count]]
+                       :breakout    [$tips.source.service]})]
+          (mt/with-native-query-testing-context query
+            (is (= [["facebook"   107]
+                    ["flare"      105]
+                    ["foursquare" 100]
+                    ["twitter"     98]
+                    ["yelp"        90]]
+                   (mt/formatted-rows [str int] (qp/process-query query))))))))))
 
+(deftest ^:parallel breakout-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
+    (testing "Nested Field in BREAKOUT"
+      (mt/dataset geographical-tips
         (is (= [[nil 297]
                 ["amy" 20]
                 ["biggie" 11]

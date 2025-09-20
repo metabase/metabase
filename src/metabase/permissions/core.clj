@@ -89,7 +89,8 @@
  [metabase.permissions.path
   application-perms-path
   collection-read-path
-  collection-readwrite-path]
+  collection-readwrite-path
+  collection-path?]
  [metabase.permissions.user
   user-permissions-set]
  [metabase.permissions.util

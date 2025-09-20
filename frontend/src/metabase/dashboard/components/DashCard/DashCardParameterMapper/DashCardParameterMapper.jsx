@@ -38,6 +38,7 @@ export const DashCardParameterMapper = ({
       justify="space-around"
       maw="100%"
       m={compact ? undefined : "0 2rem"}
+      gap="sm"
       className={S.MapperSettingsContainer}
       data-testid="parameter-mapper-container"
     >

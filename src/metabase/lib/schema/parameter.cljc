@@ -22,6 +22,8 @@
   `:widget-type` in some cases. In these cases, the backend is just supposed to infer the actual type of the parameter
   value."
   (:require
+   #?@(:clj
+       ([flatland.ordered.map :as ordered-map]))
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli.registry :as mr]))
 
@@ -48,7 +50,7 @@
   Signifies this is one of the new 'operator' parameter types added in 0.39.0 or so. These parameters can only be used
   for [[TemplateTag:FieldFilter]]s or for Dashboard parameters mapped to MBQL queries. The value of this key is the
   arity for the parameter, either `:unary`, `:binary`, or `:variadic`. See
-  the [[metabase.driver.common.parameters.operators]] namespace for more information.
+  the [[metabase.query-processor.parameters.operators]] namespace for more information.
 
   ### `:allowed-for`
 
@@ -64,7 +66,8 @@
 
   Optional, specifies a function `(f clause-without-options options-map-or-nil) => clause-with-options` to be used for
   attaching the options. The default is to `conj` non-nil options on the end."
-  {;; the basic raw-value types. These can be used with [[TemplateTag:RawValue]] template tags as well as
+  (#?(:clj ordered-map/ordered-map :cljs hash-map) ; for REPL-friendliness
+   ;; the basic raw-value types. These can be used with [[TemplateTag:RawValue]] template tags as well as
    ;; [[TemplateTag:FieldFilter]] template tags.
    :number  {:type :numeric, :allowed-for #{:number :number/= :id :category :location/zip_code}}
    :text    {:type :string,  :allowed-for #{:text :string/= :id :category
@@ -103,7 +106,7 @@
    ;; time being. We'll only allow that if the widget type matches exactly, however.
    :location/city     {:allowed-for #{:location/city}}
    :location/state    {:allowed-for #{:location/state}}
-   :location/zip_code {:allowed-for #{:location/zip_code}}
+   :location/zip_code {:allowed-for #{:location/zip_code}} ; TODO (Cam 8/12/25) -- should use `kebab-case` like literally every other type
    :location/country  {:allowed-for #{:location/country}}
 
    ;; date range types -- these match a range of dates
@@ -137,7 +140,7 @@
    :string/does-not-contain {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/does-not-contain}}
    :string/ends-with        {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/ends-with}}
    :string/starts-with      {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/starts-with}}
-   :boolean/=               {:type :boolean, :operator :variadic, :allowed-for #{:boolean :boolean/=}}})
+   :boolean/=               {:type :boolean, :operator :variadic, :allowed-for #{:boolean :boolean/=}}))
 
 (mr/def ::type
   (into [:enum {:error/message    "valid parameter type"
@@ -193,25 +196,30 @@
 (mr/def ::dimension.target
   [:multi {:dispatch lib.schema.common/mbql-clause-tag
            :error/fn (fn [{:keys [value]} _]
-                       (str "Invalid :dimension target: must be either a :field or a :template-tag, got: "
+                       (str "Invalid :dimension target: must be a :field, :template-tag, or :expression, got: "
                             (pr-str value)))}
    [:field        [:ref ::legacy-field-ref]]
    [:expression   [:ref ::legacy-expression-ref]]
    [:template-tag [:ref ::template-tag]]])
 
-(mr/def ::DimensionOptions
+;;; TODO (Cam 8/8/25) -- is options supposed to be non-empty? It it supposed to be removed from `:dimension` if it's
+;;; empty? Unclear. I don't think it matters tho.
+(mr/def ::dimension.options
   [:map
    {:error/message "dimension options"}
    [:stage-number {:optional true} :int]])
 
+;;; TODO (Cam 8/8/25) -- seems really WACK to have dimension use MBQL 4 clause order even in Lib... I guess it's not a
+;;; real MBQL clause tho.
 (mr/def ::dimension
   [:catn
    [:tag     [:= {:decode/normalize lib.schema.common/normalize-keyword} :dimension]]
    [:target  ::dimension.target]
-   [:options [:? [:maybe ::DimensionOptions]]]])
-;;; this is the reference like [:template-tag <whatever>], not the schema for native query template tags -- that lives
-;;; in [[metabase.lib.schema.template-tag]]
+   [:options [:? [:maybe ::dimension.options]]]])
+
 (mr/def ::template-tag
+  "This is the reference like [:template-tag <whatever>], not the schema for native query template tags -- that lives
+  in [[metabase.lib.schema.template-tag]]."
   [:tuple
    #_tag      [:= {:decode/normalize lib.schema.common/normalize-keyword} :template-tag]
    #_tag-name [:multi {:dispatch map?}
@@ -219,38 +227,67 @@
                        [:id ::lib.schema.common/non-blank-string]]]
                [false ::lib.schema.common/non-blank-string]]])
 
+(mr/def ::variable.target
+  [:multi {:dispatch      lib.schema.common/mbql-clause-tag
+           :error/message "A :variable target must be a (legacy) :field or :template-tag"
+           :error/fn      (fn [{:keys [value]} _]
+                            (str "Invalid :variable target: must be a :field or :template-tag, got: " (pr-str value)))}
+   [:field        [:ref ::legacy-field-ref]]
+   [:template-tag [:ref ::template-tag]]])
+
 (mr/def ::variable
   [:tuple
    #_tag    [:= {:decode/normalize lib.schema.common/normalize-keyword} :variable]
-   #_target [:ref ::template-tag]])
+   #_target [:ref ::variable.target]])
 
 (mr/def ::target
   [:multi {:dispatch lib.schema.common/mbql-clause-tag
            :error/fn (fn [{:keys [value]} _]
                        (str "Invalid parameter :target, must be either :field, :dimension, or :variable; got: "
                             (pr-str value)))}
+   ;; TODO (Cam 9/12/25) -- the old legacy MBQL schema also said `:expression` refs where allowed here, but I don't
+   ;; know if we actually did allow that in practice.
    [:field     [:ref ::legacy-field-ref]]
    [:dimension [:ref ::dimension]]
    [:variable  [:ref ::variable]]])
 
+(defn- normalize-parameter
+  [param]
+  (when (map? param)
+    (let [param (lib.schema.common/normalize-map param)]
+      (case (keyword (:type param))
+        :number/between
+        (let [[l u] (:value param)]
+          (cond-> param
+            (nil? u) (assoc :type :number/>=, :value [l])
+            (nil? l) (assoc :type :number/<=, :value [u])))
+        param))))
+
 (mr/def ::parameter
-  [:map
-   [:type [:ref ::type]]
-   ;; TODO -- these definitely SHOULD NOT be optional but a ton of tests aren't passing them in like they should be.
-   ;; At some point we need to go fix those tests and then make these keys required
-   [:id       {:optional true} ::lib.schema.common/non-blank-string]
-   [:target   {:optional true} [:ref ::target]]
-   ;; not specified if the param has no value. TODO - make this stricter; type of `:value` should be validated based
-   ;; on the [[ParameterType]]
-   [:value    {:optional true} :any]
-   ;; the name of the parameter we're trying to set -- this is actually required now I think, or at least needs to get
-   ;; merged in appropriately
-   [:name     {:optional true} ::lib.schema.common/non-blank-string]
-   ;; The following are not used by the code in this namespace but may or may not be specified depending on what the
-   ;; code that constructs the query params is doing. We can go ahead and ignore these when present.
-   [:slug     {:optional true} ::lib.schema.common/non-blank-string]
-   [:default  {:optional true} :any]
-   [:required {:optional true} :any]])
+  "Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as
+  part of the `:parameters` list in a query."
+  [:and
+   [:map
+    {:decode/normalize normalize-parameter}
+    [:type [:ref ::type]]
+    ;; TODO -- these definitely SHOULD NOT be optional but a ton of tests aren't passing them in like they should be.
+    ;; At some point we need to go fix those tests and then make these keys required
+    [:id       {:optional true} ::lib.schema.common/non-blank-string]
+    [:target   {:optional true} [:ref ::target]]
+    ;; not specified if the param has no value. TODO - make this stricter; type of `:value` should be validated based
+    ;; on the [[ParameterType]]
+    [:value    {:optional true} :any]
+    ;; the name of the parameter we're trying to set -- this is actually required now I think, or at least needs to get
+    ;; merged in appropriately
+    [:name     {:optional true} ::lib.schema.common/non-blank-string]
+    ;; The following are not used by the code in this namespace but may or may not be specified depending on what the
+    ;; code that constructs the query params is doing. We can go ahead and ignore these when present.
+    [:slug     {:optional true} ::lib.schema.common/non-blank-string]
+    [:default  {:optional true} :any]
+    [:required {:optional true} :any]]
+   (lib.schema.common/disallowed-keys
+    {:dimension ":dimension is not allowed in a parameter, you probably meant to use :target [:dimension ...] instead."})])
 
 (mr/def ::parameters
+  "Schema for a list of `:parameters` as passed in to a query."
   [:sequential [:ref ::parameter]])

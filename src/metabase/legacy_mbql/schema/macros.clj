@@ -34,7 +34,7 @@
                                   clause-name
                                   [clause-name clause-name])
         clause-name-kw          (keyword clause-name)
-        clause-registry-name    (keyword "metabase.legacy-mbql.schema" (name symb-name))]
+        clause-registry-name    (keyword "metabase.legacy-mbql.schema" (name clause-name))]
     `(do
        (mr/register! ~clause-registry-name
                      (metabase.legacy-mbql.schema.helpers/clause ~clause-name-kw ~@(stringify-names arg-names-and-schemas)))

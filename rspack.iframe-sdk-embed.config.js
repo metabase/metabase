@@ -1,8 +1,11 @@
 /* eslint-disable import/no-commonjs */
 /* eslint-disable no-undef */
 
-const fs = require("fs");
 const path = require("path");
+
+const {
+  CopyJsFromTmpDirectoryPlugin,
+} = require("./frontend/build/shared/rspack/copy-js-from-tmp-directory-plugin");
 
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
@@ -14,7 +17,8 @@ const SCRIPT_TAG_PATH = path.resolve(
 
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const EMBEDDING_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding";
-const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
+const SDK_BUNDLE_SRC_PATH =
+  __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
 
 const OUT_FILE_NAME = "embed.js";
 const OUT_TEMP_PATH = path.resolve(BUILD_PATH, "tmp-embed-js");
@@ -61,28 +65,19 @@ module.exports = {
   optimization: { splitChunks: false, runtimeChunk: false },
   devtool: false,
   plugins: [
-    {
-      name: "copy-embed-js-to-app-path",
-      apply(compiler) {
-        compiler.hooks.afterEmit.tap("copy-embed-js-to-app-path", () => {
-          const tempPath = path.join(OUT_TEMP_PATH, OUT_FILE_NAME);
-          const appPath = path.join(BUILD_PATH, "app/", OUT_FILE_NAME);
-
-          // copy embed.js from the temp directory to the resources directory
-          fs.mkdirSync(path.dirname(appPath), { recursive: true });
-          fs.copyFileSync(tempPath, appPath);
-
-          // cleanup the temp directory to prevent bloat.
-          fs.rmSync(OUT_TEMP_PATH, { recursive: true });
-        });
-      },
-    },
+    CopyJsFromTmpDirectoryPlugin({
+      fileName: OUT_FILE_NAME,
+      tmpPath: OUT_TEMP_PATH,
+      outputPath: path.join(BUILD_PATH, "app/"),
+      copySourceMap: false,
+      cleanupInDevMode: true,
+    }),
   ],
   resolve: {
     extensions: [".js", ".ts"],
     alias: {
       embedding: EMBEDDING_SRC_PATH,
-      "embedding-sdk": SDK_SRC_PATH,
+      "embedding-sdk-bundle": SDK_BUNDLE_SRC_PATH,
     },
   },
 };

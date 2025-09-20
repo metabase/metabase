@@ -1,10 +1,9 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import { CronExpressionInput } from "metabase/common/components/CronExpressioInput";
 import { formatCronExpressionForUI } from "metabase/lib/cron";
 import { Group, Select, Stack, Text } from "metabase/ui";
-
-import { CronExpressionInput } from "./CronExpressionInput";
 
 interface ModelCachingScheduleWidgetProps {
   value: string;
@@ -65,9 +64,11 @@ export const ModelCachingScheduleWidget = ({
         {isCustom && customCronSchedule !== undefined && (
           <CronExpressionInput
             value={customCronSchedule}
+            getExplainMessage={(cronExplanation) =>
+              t`We will refresh your models ${cronExplanation}`
+            }
             onChange={setCustomCronSchedule}
             onBlurChange={onChange}
-            showExplainer
           />
         )}
       </Group>

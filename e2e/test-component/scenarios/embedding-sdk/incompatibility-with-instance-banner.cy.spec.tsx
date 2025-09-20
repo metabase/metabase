@@ -9,6 +9,18 @@ import { DEFAULT_SDK_AUTH_PROVIDER_CONFIG } from "e2e/support/helpers/embedding-
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 
+const mockIncompatibleMetabaseVersion = () => {
+  cy.intercept("POST", "*", (req) => {
+    req.reply({
+      statusCode: 500,
+      headers: {
+        "X-Metabase-Version": "v0.0.0", // incompatible version
+      },
+      body: req.body,
+    });
+  });
+};
+
 describe("scenarios > embedding-sdk > incompatibility-with-instance-banner", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
@@ -33,15 +45,49 @@ describe("scenarios > embedding-sdk > incompatibility-with-instance-banner", () 
       getSdkRoot().within(() => {
         cy.findByTestId("notebook-button").click();
 
-        cy.intercept("POST", "*", (req) => {
-          req.reply({
-            statusCode: 500,
-            headers: {
-              "X-Metabase-Version": "v0.0.0", // incompatible version
-            },
-            body: req.body,
-          });
-        });
+        mockIncompatibleMetabaseVersion();
+
+        cy.findByText("Visualize").click();
+      });
+
+      cy.findByTestId("sdk-error-container").should(
+        "contain.text",
+        "The analytics server is undergoing maintenance",
+      );
+
+      cy.findByTestId("sdk-error-container").within(() => {
+        cy.findByTestId("alert-close-button").click();
+
+        cy.findByTestId("sdk-error-container").should("not.exist");
+      });
+    });
+
+    it("should show an error after the SDK is re-mounted", () => {
+      cy.mount(
+        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+        </MetabaseProvider>,
+      );
+
+      getSdkRoot().within(() => {
+        // We wait for the text to ensure that the SDK is initialized
+        cy.findByText("Orders").should("exist");
+      });
+
+      // Unmount the SDK
+      cy.mount(<></>);
+
+      // Remount the SDK, the `api.onResponseError` handler that was set previously should properly work with the new reduxStore
+      cy.mount(
+        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+        </MetabaseProvider>,
+      );
+
+      getSdkRoot().within(() => {
+        cy.findByTestId("notebook-button").click();
+
+        mockIncompatibleMetabaseVersion();
 
         cy.findByText("Visualize").click();
       });
@@ -84,15 +130,7 @@ describe("scenarios > embedding-sdk > incompatibility-with-instance-banner", () 
       getSdkRoot().within(() => {
         cy.findByTestId("notebook-button").click();
 
-        cy.intercept("POST", "*", (req) => {
-          req.reply({
-            statusCode: 500,
-            headers: {
-              "X-Metabase-Version": "v0.0.0", // incompatible version
-            },
-            body: req.body,
-          });
-        });
+        mockIncompatibleMetabaseVersion();
 
         cy.findByText("Visualize").click();
       });

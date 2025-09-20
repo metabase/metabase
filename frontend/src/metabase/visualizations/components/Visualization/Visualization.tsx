@@ -1,6 +1,6 @@
 /* eslint-disable complexity */
 import cx from "classnames";
-import {
+import React, {
   type CSSProperties,
   type ComponentType,
   type ErrorInfo,
@@ -9,7 +9,6 @@ import {
   type Ref,
   forwardRef,
 } from "react";
-import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -140,6 +139,7 @@ type VisualizationOwnProps = {
   height?: number | null;
   isAction?: boolean;
   isDashboard?: boolean;
+  isDocument?: boolean;
   isMobile?: boolean;
   isShowingSummarySidebar?: boolean;
   isSlow?: CardSlownessStatus;
@@ -165,6 +165,7 @@ type VisualizationOwnProps = {
   tc?: ContentTranslationFunction;
   uuid?: string;
   token?: string;
+  zoomedRowIndex?: number;
   onOpenChartSettings?: (data: {
     initialChartSettings: { section: string };
     showSidebarTitle?: boolean;
@@ -257,6 +258,7 @@ class Visualization extends PureComponent<
     height: 0,
     isAction: false,
     isDashboard: false,
+    isDocument: false,
     isEditing: false,
     isEmbeddingSdk: false,
     isFullscreen: false,
@@ -351,7 +353,11 @@ class Visualization extends PureComponent<
     const { rawSeries = [] } = props;
 
     let warnings = state.warnings || [];
-    if (state.series && state.series[0].card.display !== "table") {
+    if (
+      state.series &&
+      state.series[0].card.display !== "table" &&
+      state.series[0].card.display !== "list"
+    ) {
       warnings = warnings.concat(
         rawSeries
           .filter(
@@ -586,6 +592,7 @@ class Visualization extends PureComponent<
       height: rawHeight,
       isAction,
       isDashboard,
+      isDocument,
       isEditing,
       isEmbeddingSdk,
       isFullscreen,
@@ -629,6 +636,8 @@ class Visualization extends PureComponent<
       onUpdateVisualizationSettings = () => {},
       onUpdateWarnings,
       titleMenuItems,
+      zoomedRowIndex,
+      tableFooterExtraButtons,
     } = this.props;
     const { width, height } = this.getNormalizedSizes();
 
@@ -812,7 +821,7 @@ class Visualization extends PureComponent<
               <div
                 data-card-key={getCardKey(series[0].card?.id)}
                 className={cx(CS.flex, CS.flexColumn, CS.flexFull)}
-                style={{ position: "relative" }}
+                style={{ position: hasDevWatermark ? "relative" : undefined }}
               >
                 <VisualizationRenderedWrapper
                   onRendered={this.handleVisualizationRendered}
@@ -841,6 +850,7 @@ class Visualization extends PureComponent<
                     height={rawHeight}
                     hovered={hovered}
                     isDashboard={!!isDashboard}
+                    isDocument={!!isDocument}
                     isEditing={!!isEditing}
                     isEmbeddingSdk={isEmbeddingSdk}
                     isFullscreen={!!isFullscreen}
@@ -874,6 +884,7 @@ class Visualization extends PureComponent<
                     width={rawWidth}
                     uuid={uuid}
                     token={token}
+                    zoomedRowIndex={zoomedRowIndex}
                     onActionDismissal={this.hideActions}
                     onChangeCardAndRun={
                       this.props.onChangeCardAndRun
@@ -894,6 +905,7 @@ class Visualization extends PureComponent<
                     onVisualizationClick={this.handleVisualizationClick}
                     onHeaderColumnReorder={this.props.onHeaderColumnReorder}
                     titleMenuItems={hasHeader ? undefined : titleMenuItems}
+                    tableFooterExtraButtons={tableFooterExtraButtons}
                   />
                 </VisualizationRenderedWrapper>
                 {hasDevWatermark && <Watermark card={series[0].card} />}

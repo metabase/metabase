@@ -34,15 +34,17 @@
 
 (driver/register! :redshift, :parent #{:postgres})
 
-(doseq [[feature supported?] {:connection-impersonation  true
-                              :describe-fields           true
-                              :describe-fks              true
-                              :expression-literals       true
-                              :identifiers-with-spaces   false
-                              :uuid-type                 false
-                              :nested-field-columns      false
-                              :test/jvm-timezone-setting false
-                              :database-routing          true}]
+(doseq [[feature supported?] {:connection-impersonation       true
+                              :describe-fields                true
+                              :describe-fks                   true
+                              :expression-literals            true
+                              :identifiers-with-spaces        false
+                              :uuid-type                      false
+                              :nested-field-columns           false
+                              :test/jvm-timezone-setting      false
+                              :database-routing               true
+                              :metadata/table-existence-check true
+                              :transforms/table               true}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -112,7 +114,7 @@
            (map #(dissoc % :type)))
      (sql-jdbc.execute/reducible-query database get-tables-sql))))
 
-(defmethod driver/describe-database :redshift
+(defmethod driver/describe-database* :redshift
   [driver database]
   ;; TODO: change this to return a reducible so we don't have to hold 100k tables in memory in a set like this
   ;;
@@ -164,8 +166,8 @@
                             [:= :c.column_name :pk.column_name]]]
                :where [:and
                        [:raw "c.table_schema !~ '^information_schema|catalog_history|pg_'"]
-                       (when schema-names [:in :c.table_schema schema-names])
-                       (when table-names [:in :c.table_name table-names])]
+                       (when schema-names [:in :c.table_schema (map u/lower-case-en schema-names)])
+                       (when table-names [:in :c.table_name (map u/lower-case-en table-names)])]
                :order-by [:table-schema :table-name :database-position]}
               :dialect (sql.qp/quote-style driver)))
 
@@ -624,4 +626,6 @@
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :redshift
   [_ e]
-  (= (sql-jdbc/get-sql-state e) "42P01"))
+  ;; https://docs.aws.amazon.com/redshift/latest/mgmt/rsql-query-tool-error-codes.html
+  ;; 42P01: undefined_table, 3F000: invalid_schema_name
+  (contains? #{"42P01" "3F000"} (sql-jdbc/get-sql-state e)))

@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [malli.error :as me]
-   [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.search.config :as search.config]
    [metabase.util :as u]
@@ -13,13 +12,17 @@
    [toucan2.tools.transformed :as t2.transformed]))
 
 (def search-models
-  "Set of search model string names."
-  #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "indexed-entity" "metric" "card"})
+  "Set of search model string names. Sorted by order to index based on importance and amount of time to index"
+  (cond->  ["collection" "dashboard" "segment" "database" "action"]
+    config/ee-available? (conj "document")
+    ;; metric/card/dataset moved to the end because they take a long time due to computing has_temporal_dim etc.
+    ;; table and indexed-entity moved to the end because there can be a large number of them
+    true (conj "table" "indexed-entity" "metric" "card" "dataset")))
 
 (def ^:private search-model->toucan-model
   (into {}
         (map (fn [search-model]
-               [search-model (-> search-model api/model->db-model :db-model)]))
+               [search-model (-> search-model search.config/model->db-model :db-model)]))
         search-models))
 
 (def ^:private SearchModel

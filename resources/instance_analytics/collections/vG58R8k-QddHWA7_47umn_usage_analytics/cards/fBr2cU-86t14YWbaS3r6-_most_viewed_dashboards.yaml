@@ -65,7 +65,6 @@ dataset_query:
           - user_id
         - base-type: type/Integer
           join-alias: Group Members - User
-      ident: join_fBr2cU-86t14YWbaS3r6-@0__Group Members - User
       source-table: lTp-ATFsCUFEr9I0fMEaO
       strategy: left-join
     - alias: Content - Entity Qualified
@@ -84,7 +83,6 @@ dataset_query:
           - entity_qualified_id
         - base-type: type/Text
           join-alias: Content - Entity Qualified
-      ident: join_fBr2cU-86t14YWbaS3r6-@0__Content - Entity Qualified
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     order-by:

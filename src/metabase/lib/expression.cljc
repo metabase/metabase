@@ -89,6 +89,8 @@
 (mu/defmethod lib.metadata.calculation/metadata-method :expression :- ::lib.metadata.calculation/visible-column
   [query stage-number [_expression opts expression-name, :as expression-ref-clause]]
   (merge {:lib/type                :metadata/column
+          ;; TODO (Cam 8/7/25) -- is the source UUID of an expression ref supposed to be the ID of the ref, or the ID
+          ;; of the expression definition??
           :lib/source-uuid         (:lib/uuid opts)
           :name                    expression-name
           :lib/expression-name     expression-name
@@ -390,8 +392,14 @@
    [:relative-datetime {:lib/uuid (str (random-uuid))} t])
 
   ([t    :- ::lib.schema.expression.temporal/relative-datetime.amount
-    unit :- ::lib.schema.temporal-bucketing/unit.date-time.interval]
+    unit :- ::lib.schema.expression.temporal/relative-datetime.unit]
    [:relative-datetime {:lib/uuid (str (random-uuid))} t unit]))
+
+(doseq [tag [:relative-datetime
+             :absolute-datetime]]
+  (defmethod lib.temporal-bucket/temporal-bucket-method tag
+    [[_tag _opts _t unit]]
+    unit))
 
 (mu/defn value :- ::lib.schema.expression/expression
   "Creates a `:value` clause for the `literal`. Converts bigint literals to strings for serialization purposes."
@@ -401,7 +409,8 @@
                               {:base-type base-type, :effective-type base-type}
                               (cond-> literal (u.number/bigint? literal) str)])))
 
-(mu/defn- expression-metadata :- ::lib.schema.metadata/column
+(mu/defn expression-metadata :- ::lib.schema.metadata/column
+  "Return column metadata for an `expression-definition` MBQL clause."
   [query                 :- ::lib.schema/query
    stage-number          :- :int
    expression-definition :- ::lib.schema.expression/expression]
@@ -415,6 +424,7 @@
         (select-keys [:base-type :effective-type :lib/desired-column-alias
                       :lib/source-column-alias :lib/source-uuid :lib/type])
         (assoc :lib/source          :source/expressions
+               :lib/source-uuid     (lib.options/uuid expression-definition)
                :lib/expression-name expression-name
                :name                expression-name
                :display-name        expression-name))))
@@ -538,7 +548,7 @@
   (mr/validator ::lib.schema.aggregation/aggregation))
 
 (def ^:private filter-validator
-  (mr/validator ::lib.schema/filterable))
+  (mr/validator ::lib.schema.expression/boolean))
 
 (defn- expression->name
   [expr]

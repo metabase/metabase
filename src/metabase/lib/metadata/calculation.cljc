@@ -591,7 +591,7 @@
 ;;; TODO (Cam 8/7/25) -- historically `visible-columns` worked on a bunch of stuff besides just a stage, but Braden
 ;;; pointed out that it really only makes any sense at all for a stage here
 ;;; https://metaboat.slack.com/archives/C0645JP1W81/p1754587431585559 . For historic reasons the main entrypoint to
-;;; the function still lives here, but it's now just a shim that calls [[metabase.lib.stage/visible-columns*]] -- we
+;;; the function still lives here, but it's now just a shim that calls [[metabase.lib.stage/-visible-columns]] -- we
 ;;; should combine these so there's no more indirection. It should probably live in [[metabase.lib.stage]] going
 ;;; forward, but we'd need to update a lot of code that calls this version of [[visible-columns]].
 (mu/defn visible-columns :- ::visible-columns
@@ -645,6 +645,7 @@
       (for [column source-cols
             :let   [remapped (lib.metadata/remapped-field query column)]
             :when  (and remapped
+                        (not (false? (:active remapped)))
                         (not (existing-ids (:id remapped))))]
         (merge
          remapped

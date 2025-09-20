@@ -1,24 +1,37 @@
 import FormFileInput from "metabase/common/components/FormFileInput";
-import FormInput from "metabase/common/components/FormInput";
-import FormNumericInput from "metabase/common/components/FormNumericInput";
-import FormSelect from "metabase/common/components/FormSelect";
-import FormTextArea from "metabase/common/components/FormTextArea";
-import FormToggle from "metabase/common/components/FormToggle";
-import type { EngineField } from "metabase-types/api";
+import {
+  FormNumberInput,
+  FormSelect,
+  FormSwitch,
+  FormTextInput,
+  FormTextarea,
+} from "metabase/forms";
+import { Icon, type SwitchProps, Tooltip } from "metabase/ui";
+import type {
+  Engine,
+  EngineField,
+  EngineFieldOption,
+  EngineKey,
+} from "metabase-types/api";
 
 import { FIELD_OVERRIDES } from "../../constants";
 import type { EngineFieldOverride } from "../../types";
+import { DatabaseHostnameWithProviderField } from "../DatabaseHostnameWithProviderField/DatabaseHostnameWithProviderField";
 import DatabaseInfoField from "../DatabaseInfoField";
 import DatabaseSectionField from "../DatabaseSectionField";
 
 export interface DatabaseDetailFieldProps {
   field: EngineField;
   autoFocus?: boolean;
+  engineKey: EngineKey | undefined;
+  engine: Engine | undefined;
 }
 
 const DatabaseDetailField = ({
   field,
   autoFocus,
+  engineKey,
+  engine,
 }: DatabaseDetailFieldProps): JSX.Element | null => {
   const override = FIELD_OVERRIDES[field.name];
   const type = getFieldType(field, override);
@@ -27,6 +40,16 @@ const DatabaseDetailField = ({
     ...getFieldProps(field, override),
   };
 
+  if (field.name === "host" && engineKey === "postgres") {
+    return (
+      <DatabaseHostnameWithProviderField
+        {...props}
+        {...getInputProps(field)}
+        nullable
+        providers={engine?.["extra-info"]?.providers}
+      />
+    );
+  }
   if (typeof type === "function") {
     const Component = type;
     return <Component {...props} />;
@@ -34,13 +57,13 @@ const DatabaseDetailField = ({
 
   switch (type) {
     case "password":
-      return <FormInput {...props} {...getPasswordProps(field)} nullable />;
+      return <FormTextInput {...props} {...getPasswordProps(field)} nullable />;
     case "text":
-      return <FormTextArea {...props} />;
+      return <FormTextarea {...props} />;
     case "integer":
-      return <FormNumericInput {...props} {...getInputProps(field)} nullable />;
+      return <FormNumberInput {...props} {...getInputProps(field)} nullable />;
     case "boolean":
-      return <FormToggle {...props} />;
+      return <FormSwitch {...props} {...getSwitchProps()} />;
     case "select":
       return <FormSelect {...props} {...getSelectProps(field, override)} />;
     case "textFile":
@@ -52,9 +75,22 @@ const DatabaseDetailField = ({
     case "hidden":
       return null;
     default:
-      return <FormInput {...props} {...getInputProps(field)} nullable />;
+      return <FormTextInput {...props} {...getInputProps(field)} nullable />;
   }
 };
+
+const getSwitchProps = (): SwitchProps => ({
+  labelPosition: "left" as const,
+  styles: {
+    body: {
+      justifyContent: "space-between",
+    },
+    label: {
+      fontWeight: "bold",
+      fontSize: "var(--mantine-font-size-md)",
+    },
+  },
+});
 
 const getFieldType = (field: EngineField, override?: EngineFieldOverride) => {
   return override?.type ?? field.type;
@@ -66,17 +102,30 @@ const getFieldProps = (field: EngineField, override?: EngineFieldOverride) => {
 
   return {
     name: override?.name ?? `details.${field.name}`,
+    label: override?.title ?? field["display-name"],
     title: override?.title ?? field["display-name"],
     description: override?.description ?? field.description,
     placeholder: placeholder != null ? String(placeholder) : undefined,
     encoding: field["treat-before-posting"],
+    mb: "md",
+    labelProps: {
+      mb: "sm",
+    },
   };
 };
 
 const getInputProps = (field: EngineField) => {
+  const icon = field["helper-text"] ? <Icon name="info" /> : undefined;
+
+  const rightSection =
+    field["helper-text"] && icon ? (
+      <Tooltip label={field["helper-text"]}>{icon}</Tooltip>
+    ) : (
+      icon
+    );
+
   return {
-    rightIcon: field["helper-text"] ? ("info" as const) : undefined,
-    rightIconTooltip: field["helper-text"],
+    rightSection,
   };
 };
 
@@ -89,8 +138,16 @@ const getPasswordProps = (field: EngineField) => {
 
 const getSelectProps = (field: EngineField, override?: EngineFieldOverride) => {
   return {
-    options: override?.options ?? field.options ?? [],
+    data: convertEnginFeildOptionsToSelectOptions(
+      override?.options ?? field.options ?? [],
+    ),
   };
+};
+
+const convertEnginFeildOptionsToSelectOptions = (
+  options: EngineFieldOption[],
+) => {
+  return options.map((option) => ({ label: option.name, value: option.value }));
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

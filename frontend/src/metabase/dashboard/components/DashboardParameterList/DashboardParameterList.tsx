@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type ComponentProps, forwardRef } from "react";
+import { type ComponentProps, forwardRef, useMemo } from "react";
 
 import {
   setEditingParameter,
@@ -12,6 +12,7 @@ import { useDashboardContext } from "metabase/dashboard/context";
 import { useDispatch } from "metabase/lib/redux";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 export interface DashboardParameterListProps
   extends Pick<
@@ -50,16 +51,28 @@ export const DashboardParameterList = forwardRef<
     isEditing,
     dashboard,
     hideParameters,
+    parameters: dashboardParameters,
+    parameterValues,
   } = useDashboardContext();
+
+  const linkedFilterParameters = useMemo(
+    () =>
+      getValuePopulatedParameters({
+        parameters: dashboardParameters,
+        values: parameterValues,
+      }),
+    [dashboardParameters, parameterValues],
+  );
 
   return (
     <ParametersList
       ref={ref}
       className={cx(DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME, className)}
       parameters={parameters}
+      linkedFilterParameters={linkedFilterParameters}
       editingParameter={editingParameter}
       hideParameters={hideParameters}
-      dashboard={dashboard}
+      dashboardId={dashboard?.id}
       isSortable={isSortable}
       isFullscreen={isFullscreen}
       isNightMode={shouldRenderAsNightMode}

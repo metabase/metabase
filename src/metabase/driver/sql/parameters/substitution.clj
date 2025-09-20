@@ -315,7 +315,8 @@
             (sql.qp/->honeysql driver form))]
     (cond
       (params.ops/operator? param-type)
-      (->> (assoc params :target [:template-tag (field->field-filter-clause driver field param-type value)])
+      #_{:clj-kondo/ignore [:deprecated-var]}
+      (->> (assoc params :target [:dimension (field->field-filter-clause driver field param-type value)])
            params.ops/to-clause
            driver-api/desugar-filter-clause
            driver-api/wrap-value-literals-in-mbql
@@ -324,6 +325,7 @@
 
       (params.dates/exclusion-date-type param-type value)
       (let [field-clause (field->field-filter-clause driver field param-type value)]
+        #_{:clj-kondo/ignore [:deprecated-var]}
         (->> (params.dates/date-string->filter value field-clause)
              driver-api/desugar-filter-clause
              driver-api/wrap-value-literals-in-mbql

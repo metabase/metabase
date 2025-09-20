@@ -29,15 +29,7 @@ export interface BaseEmbedTestPageOptions {
     locale?: string;
   };
 
-  // The element to embed
-  element: "metabase-dashboard" | "metabase-question";
-
-  // Attributes passed serialized to the element
-  attributes: {
-    dashboardId?: number | string;
-    questionId?: number | string;
-    [key: string]: any;
-  };
+  elements: MetabaseElement[];
 
   // Options for the test page
   origin?: string;
@@ -50,6 +42,17 @@ export interface BaseEmbedTestPageOptions {
   onVisitPage?(): void;
 }
 
+export interface MetabaseElement {
+  // The component to embed
+  component: "metabase-dashboard" | "metabase-question" | "metabase-browser";
+
+  // Attributes passed serialized to the element
+  attributes: {
+    dashboardId?: number | string;
+    questionId?: number | string;
+    [key: string]: any;
+  };
+}
 export const waitForSimpleEmbedIframesToLoad = (n: number = 1) => {
   cy.get("iframe[data-metabase-embed]").should("have.length", n);
   cy.get("iframe[data-iframe-loaded]").should("have.length", n, {
@@ -113,8 +116,7 @@ export function loadSdkIframeEmbedTestPage({
 function getSdkIframeEmbedHtml({
   insertHtml,
   metabaseConfig,
-  element,
-  attributes,
+  elements,
 }: BaseEmbedTestPageOptions) {
   return `
     <!DOCTYPE html>
@@ -138,8 +140,13 @@ function getSdkIframeEmbedHtml({
       ${getNewEmbedConfigurationScript(metabaseConfig)}
 
       ${insertHtml?.beforeEmbed ?? ""}
-
-      <${element} ${convertPropertiesToEmbedTagAttributes(attributes)} />
+      ${elements
+        .map(
+          ({ component, attributes }) => `
+        <${component} ${convertPropertiesToEmbedTagAttributes(attributes)} />
+      `,
+        )
+        .join("\n")}
 
       ${insertHtml?.afterEmbed ?? ""}
     </body>
@@ -148,7 +155,7 @@ function getSdkIframeEmbedHtml({
 }
 
 const convertPropertiesToEmbedTagAttributes = (
-  attributes: BaseEmbedTestPageOptions["attributes"],
+  attributes: MetabaseElement["attributes"],
 ) => {
   return Object.entries(attributes)
     .map(([key, value]) => {
@@ -315,7 +322,7 @@ export const visitCustomHtmlPage = (
  * This function checks if the rspack dev server is available and if so, it mocks the embed.js file
  * to point it to the rspack dev server.
  */
-const mockEmbedJsToDevServer = () => {
+export const mockEmbedJsToDevServer = () => {
   if (Cypress.env("CI")) {
     // we don't need this logic in CI, let's skip the check to avoid slowing down the tests
     return;

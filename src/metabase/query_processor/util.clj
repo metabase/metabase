@@ -7,6 +7,9 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver :as driver]
+   ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
+   ;; Lib only soon
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
@@ -20,27 +23,26 @@
 
 (set! *warn-on-reflection* true)
 
-;; TODO - I think most of the functions in this namespace that we don't remove could be moved to [[metabase.legacy-mbql.util]]
+;; TODO - I think most of the functions in this namespace that we don't remove could be moved
+;; to [[metabase.legacy-mbql.util]]
 
-(defn query-without-aggregations-or-limits?
-  "Is the given query an MBQL query without a `:limit`, `:aggregation`, or `:page` clause?"
-  [{{aggregations :aggregation, :keys [limit page]} :query}]
-  (and (not limit)
-       (not page)
-       (empty? aggregations)))
-
-(defn default-query->remark
+(mu/defn default-query->remark
   "Generates the default query remark. Exists as a separate function so that overrides of the query->remark multimethod
    can access the default value."
-  [{{:keys [executed-by query-hash], :as _info} :info, query-type :type}]
-  (str "Metabase" (when executed-by
-                    (assert (bytes? query-hash) "If info includes executed-by it should also include query-hash")
-                    (format ":: userID: %s queryType: %s queryHash: %s"
-                            executed-by
-                            (case (keyword query-type)
-                              :query  "MBQL"
-                              :native "native")
-                            (codecs/bytes->hex query-hash)))))
+  [{{:keys [executed-by query-hash], :as _info} :info, :as query} :- ::qp.schema/any-query]
+  (let [query-type (if (:lib/type query)
+                     (case (keyword (:lib/type (lib/query-stage query -1)))
+                       :mbql.stage/mbql   "MBQL"
+                       :mbql.stage/native "native")
+                     (case (keyword (:type query))
+                       :query  "MBQL"
+                       :native "native"))]
+    (str "Metabase" (when executed-by
+                      (assert (bytes? query-hash) "If info includes executed-by it should also include query-hash")
+                      (format ":: userID: %s queryType: %s queryHash: %s"
+                              executed-by
+                              query-type
+                              (codecs/bytes->hex query-hash))))))
 
 (defmulti query->remark
   "Generate an appropriate remark `^String` to be prepended to a query to give DBAs additional information about the query
@@ -130,6 +132,8 @@
                 ;; TODO: This is an unfortunate leak of lib internals but I can't see a clean way to fix it.
                 (binding [lib.schema.expression/*suppress-expression-type-check?* true]
                   (case (:type query)
+                    ;; TODO (Cam 8/20/25) -- [[lib/query]] is supposed to call [[mbql.normalize/normalize]] on legacy
+                    ;; queries automatically anyway but it seems like some tests break if I change this... investigate
                     ("query" "native") (lib/query (->metadata-provider query) (mbql.normalize/normalize query))
                     (:query :native)   (lib/query (->metadata-provider query) query)
                     query))
@@ -143,6 +147,7 @@
 
 (defn query->source-card-id
   "Return the ID of the Card used as the \"source\" query of this query, if applicable; otherwise return `nil`."
+  {:deprecated "0.57.0"}
   ^Integer [outer-query]
   (let [source-table (get-in outer-query [:query :source-table])]
     (when (string? source-table)
@@ -155,39 +160,46 @@
   "A standard and repeatable way to address a column. Names can collide and sometimes are not unique. Field refs should
   be stable, except we have to exclude the last part as extra information can be tucked in there. Names can be
   non-unique at times, numeric ids are not guaranteed."
+  {:deprecated "0.57.0"}
   [[tyype identifier]]
   [tyype identifier])
 
-(def ^:private field-options-for-identification
+(def ^:private ^{:deprecated "0.57.0"} field-options-for-identification
   "Set of FieldOptions that only mattered for identification purposes." ;; base-type is required for field that use name instead of id
-  #{:source-field :join-alias :base-type})
+  #{:source-field :join-alias})
 
 (defn- field-normalizer
+  {:deprecated "0.57.0"}
   [field]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (let [[type id-or-name options] (mbql.normalize/normalize-tokens field)]
     [type id-or-name (select-keys options field-options-for-identification)]))
 
+;;; TODO (Cam 9/10/25) -- this logic is all wrong and needs to use Lib instead
 (defn field->field-info
-  "Given a field and result_metadata, return a map of information about the field if result_metadata contains a matched field. "
-  [field result-metadata]
-  (let [[_ttype id-or-name options :as field] (field-normalizer field)]
+  "Given a field ref and result_metadata, return a map of information about the field if result_metadata contains a
+  matched field.
+
+  DEPRECATED -- this is broken, please use Lib instead going forward."
+  {:deprecated "0.57.0"}
+  [field-ref cols]
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (let [[_ttype id-or-name _options :as field-ref] (field-normalizer field-ref)]
     (or
-      ;; try match field_ref first
+     ;; try match field_ref first
      (first (filter (fn [field-info]
-                      (= field
+                      (= field-ref
                          (-> field-info
                              :field_ref
                              field-normalizer)))
-                    result-metadata))
-      ;; if not match name and base type for aggregation or field with string id
-     (first (filter (fn [field-info]
-                      (and (= (:name field-info)
-                              id-or-name)
-                           (= (:base-type options)
-                              (:base_type field-info))))
-                    result-metadata)))))
+                    cols))
+     ;; if not match name for aggregation or field with string id
+     (first (filter (fn [col]
+                      (= (:name col)
+                         id-or-name))
+                    cols)))))
 
-(def ^:private preserved-keys
+(def ^:private ^{:deprecated "0.57.0"} preserved-keys
   "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging
   metadata, the types returned should be authoritative. But things like semantic_type, display_name, and description
   can be merged on top."
@@ -202,7 +214,9 @@
   metadata in general, so need to blend the saved metadata on top of the computed metadata. First argument should be
   the metadata from a run from the query, and `pre-existing` should be the metadata from the database we wish to
   ensure survives."
+  {:deprecated "0.57.0"}
   [fresh pre-existing]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (let [by-name (m/index-by :name pre-existing)]
     (for [{:keys [source] :as col} fresh]
       (if-let [existing (and (not= :aggregation source)
@@ -230,10 +244,10 @@
 
 (mu/defn userland-query? :- :boolean
   "Returns true if the query is an userland query, else false."
-  [query :- ::qp.schema/qp]
+  [query :- ::qp.schema/any-query]
   (boolean (get-in query [:middleware :userland-query?])))
 
 (mu/defn internal-query? :- :boolean
   "Returns `true` if query is an internal query."
-  [{query-type :type} :- ::qp.schema/qp]
+  [{query-type :type} :- :map]
   (= :internal (keyword query-type)))

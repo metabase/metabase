@@ -10,6 +10,7 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.schema.helpers :as schema.helpers]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -24,21 +25,28 @@
   is-clause?
   check-clause])
 
-(mu/defn normalize-token :- :keyword
+(mu/defn normalize-token :- [:or :keyword :string]
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
-  [token :- schema.helpers/KeywordOrString]
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (-> (u/qualified-name token)
-      str/lower-case
-      (str/replace \_ \-)
-      keyword))
+  [token :- [:or :keyword :string]]
+  (let [s (u/qualified-name token)]
+    (if (str/starts-with? s "type/")
+      ;; TODO (Cam 8/12/25) -- there's tons of code using incorrect parameter types or normalizing base types
+      ;; incorrectly, for example [[metabase.actions.models/implicit-action-parameters]]. We need to actually start
+      ;; validating parameters against the `:metabase.lib.schema.parameter/parameter` schema. We should probably throw
+      ;; an error here instead of silently correcting it... I was going to do that but it broke too many things
+      (do
+        (log/error "normalize-token should not be getting called on a base type! This probably means we're using a base type in the wrong place, like as a parameter type")
+        (keyword s))
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (-> s
+          #?(:clj u/lower-case-en :cljs str/lower-case)
+          (str/replace \_ \-)
+          keyword))))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                       Functions for manipulating queries                                       |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- combine-compound-filters-of-type [compound-type subclauses]
+(defn- combine-compound-filters-of-type
+  {:deprecated "0.57.0"}
+  [compound-type subclauses]
   (mapcat #(lib.util.match/match-lite %
              [(t :guard (= t compound-type)) & args]
              args
@@ -49,7 +57,9 @@
 (declare simplify-compound-filter)
 
 (defn- simplify-and-or-filter
+  {:deprecated "0.57.0"}
   [op args]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (let [args (distinct (filter some? args))]
     (case (count args)
       ;; an empty filter, toss it
@@ -70,8 +80,13 @@
 (defn simplify-compound-filter
   "Simplify compound `:and`, `:or`, and `:not` compound filters, combining or eliminating them where possible. This
   also fixes theoretically disallowed compound filters like `:and` with only a single subclause, and eliminates `nils`
-  and duplicate subclauses from the clauses."
+  and duplicate subclauses from the clauses.
+
+  DEPRECATED: This will be removed in the near future.
+  Use [[metabase.lib.filter.simplify-compound/simplify-compound-filter]] going forward."
+  {:deprecated "0.57.0"}
   [x]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (cond
     ;; look for filters in the values
     (map? x) (update-vals x simplify-compound-filter)
@@ -98,12 +113,18 @@
 
 (mu/defn combine-filter-clauses :- mbql.s/Filter
   "Combine two filter clauses into a single clause in a way that minimizes slapping a bunch of `:and`s together if
-  possible."
+  possible.
+
+  DEPRECATED: This will be removed in the near future. Use lib utils going forward."
+  {:deprecated "0.57.0"}
   [filter-clause & more-filter-clauses]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (simplify-compound-filter (cons :and (cons filter-clause more-filter-clauses))))
 
+;;; TODO (Cam 7/16/25) -- why does the LEGACY MBQL UTILS have STAGE STUFF IN IT!
 (defn legacy-last-stage-number
   "Returns the canonical stage number of the last stage of the legacy `inner-query`."
+  {:deprecated "0.57.0"}
   [inner-query]
   (loop [{:keys [source-query qp/stage-had-source-card]} inner-query, n 0]
     (if (or (nil? source-query)
@@ -111,67 +132,9 @@
       n
       (recur source-query (inc n)))))
 
-(defn stage-path
-  "Returns a vector consisting of :source-query elements that address the stage of `inner-query`
-  specified by `stage-number`.
-
-  Stage numbers are used as described in [[add-filter-clause]]."
-  [inner-query stage-number]
-  (if-not stage-number
-    []
-    (let [elements (if (neg? stage-number)
-                     (dec (- stage-number))
-                     (- (legacy-last-stage-number inner-query) stage-number))]
-      (into [] (repeat elements :source-query)))))
-
-(mu/defn add-filter-clause-to-inner-query :- mbql.s/MBQLQuery
-  "Add a additional filter clause to an *inner* MBQL query, merging with the existing filter clause with `:and` if
-  needed.
-
-  Stage numbers work as in [[add-filter-clause]]."
-  [inner-query  :- mbql.s/MBQLQuery
-   stage-number :- [:maybe number?]
-   new-clause   :- [:maybe mbql.s/Filter]]
-  (if (not new-clause)
-    inner-query
-    (let [path (stage-path inner-query stage-number)]
-      (update-in inner-query (conj path :filter) combine-filter-clauses new-clause))))
-
-(mu/defn add-filter-clause :- mbql.s/Query
-  "Add an additional filter clause to an `outer-query` at stage `stage-number`
-  or at the last stage if `stage-number` is `nil`. If `new-clause` is `nil` this is a no-op.
-
-  Stage numbers can be negative: `-1` refers to the last stage, `-2` to the penultimate stage, etc."
-  [outer-query  :- mbql.s/Query
-   stage-number :- [:maybe number?]
-   new-clause   :- [:maybe mbql.s/Filter]]
-  (update outer-query :query add-filter-clause-to-inner-query stage-number new-clause))
-
-(defn- map-stages*
-  "Helper for [[map-stages]]; call that instead."
-  [f {:keys [source-query] :as inner-query}]
-  (if source-query
-    ;; Recursive case: Call `map-stages*` on the `:source-query`, then `f` on this stage. Increment the stage count.
-    (let [[new-source-query stage-count] (map-stages* f source-query)]
-      [(-> (assoc inner-query :source-query new-source-query)
-           (f stage-count))
-       (inc stage-count)])
-    ;; Base case: No `:source-query`, so just call `f` and return a `stage-count` of 1.
-    [(f inner-query 0) 1]))
-
-(defn map-stages
-  "Given a function `(f inner-query stage-number)`, recursively calls it on the stages of this (legacy MBQL)
-  `inner-query`.
-
-  The calls run postorder, that is the earliest/innermost stage first.
-
-  Returns the updated `inner-query`."
-  [f inner-query]
-  (let [[updated-inner-query _stage-count] (map-stages* f inner-query)]
-    updated-inner-query))
-
 (defn desugar-inside
   "Rewrite `:inside` filter clauses as a pair of `:between` clauses."
+  {:deprecated "0.57.0"}
   [m]
   (lib.util.match/replace m
     [:inside lat-field lon-field lat-max lon-min lat-min lon-max]
@@ -181,6 +144,7 @@
 
 (defn desugar-is-null-and-not-null
   "Rewrite `:is-null` and `:not-null` filter clauses as simpler `:=` and `:!=`, respectively."
+  {:deprecated "0.57.0"}
   [m]
   (lib.util.match/replace m
     [:is-null field]  [:=  field nil]
@@ -189,6 +153,7 @@
 (declare field-options)
 
 (defn- emptyable?
+  {:deprecated "0.57.0"}
   [clause]
   (if (is-clause? #{:field :expression :aggregation} clause)
     (-> clause
@@ -197,12 +162,14 @@
         (isa? :metabase.lib.schema.expression/emptyable))
     (mbql.preds/Emptyable? clause)))
 
-(defn desugar-is-empty-and-not-empty
+(defn- desugar-is-empty-and-not-empty
   "Rewrite `:is-empty` and `:not-empty` filter clauses as simpler `:=` and `:!=`, respectively.
 
    If `:not-empty` is called on `:metabase.lib.schema.expression/emptyable` type, expand check for empty string. For
    non-`emptyable` types act as `:is-null`. If field has nil base type it is considered not emptyable expansion wise."
+  {:deprecated "0.57.0"}
   [m]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace m
     [:is-empty clause]
     (if (emptyable? clause)
@@ -216,7 +183,9 @@
 
 (defn- replace-field-or-expression
   "Replace a field or expression inside :time-interval"
+  {:deprecated "0.57.0"}
   [m unit]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace m
     [:field id-or-name opts]
     [:field id-or-name (assoc opts :temporal-unit unit)]
@@ -225,9 +194,11 @@
     (let [[_expression expression-name opts] &match]
       [:expression expression-name (assoc opts :temporal-unit unit)])))
 
-(defn desugar-time-interval
+(defn- desugar-time-interval
   "Rewrite `:time-interval` filter clauses as simpler ones like `:=` or `:between`."
+  {:deprecated "0.57.0"}
   [m]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace m
     [:time-interval field-or-expression n unit] (recur [:time-interval field-or-expression n unit nil])
 
@@ -277,7 +248,9 @@
 
 (defn desugar-relative-time-interval
   "Transform `:relative-time-interval` to `:and` expression."
+  {:deprecated "0.57.0"}
   [m]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace
     m
     [:relative-time-interval col value bucket offset-value offset-bucket]
@@ -298,7 +271,9 @@
 
 (defn desugar-during
   "Transform a `:during` expression to an `:and` expression."
+  {:deprecated "0.57.0"}
   [m]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace
     m
     [:during col value unit]
@@ -313,7 +288,9 @@
 
 (defn desugar-if
   "Transform a `:if` expression to an `:case` expression."
+  {:deprecated "0.57.0"}
   [m]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace
     m
     [:if & args]
@@ -321,7 +298,9 @@
 
 (defn desugar-in
   "Transform `:in` and `:not-in` expressions to `:=` and `:!=` expressions."
+  {:deprecated "0.57.0"}
   [m]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace m
     [:in & args]
     (into [:=] args)
@@ -329,18 +308,20 @@
     [:not-in & args]
     (into [:!=] args)))
 
-(defn desugar-does-not-contain
+(defn- desugar-does-not-contain
   "Rewrite `:does-not-contain` filter clauses as simpler `[:not [:contains ...]]` clauses.
 
   Note that [[desugar-multi-argument-comparisons]] will have already desugared any 3+ argument `:does-not-contain` to
   several `[:and [:does-not-contain ...] [:does-not-contain ...] ...]` clauses, which then get rewritten here into
   `[:and [:not [:contains ...]] [:not [:contains ...]]]`."
+  {:deprecated "0.57.0"}
   [m]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace m
     [:does-not-contain & args]
     [:not (into [:contains] args)]))
 
-(defn desugar-multi-argument-comparisons
+(defn- desugar-multi-argument-comparisons
   "`:=`, `!=`, `:contains`, `:does-not-contain`, `:starts-with` and `:ends-with` clauses with more than 2 args
   automatically get rewritten as compound filters.
 
@@ -352,7 +333,9 @@
   `:ends-with` depending on the number of arguments. 2-argument forms use the legacy style `[:contains field x opts]`.
   Multi-argument forms use pMBQL style with the options at index 1, **even if there are no options**:
   `[:contains {} field x y z]`."
+  {:deprecated "0.57.0"}
   [m]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace m
     [:= field x y & more]
     (apply vector :or (for [x (concat [x y] more)]
@@ -374,7 +357,9 @@
 (defn desugar-current-relative-datetime
   "Replace `relative-datetime` clauses like `[:relative-datetime :current]` with `[:relative-datetime 0 <unit>]`.
   `<unit>` is inferred from the `:field` the clause is being compared to (if any), otherwise falls back to `default.`"
+  {:deprecated "0.57.0"}
   [m]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace m
     [clause field & (args :guard (partial some (partial = [:relative-datetime :current])))]
     (let [temporal-unit (or (lib.util.match/match-lite-recursive field
@@ -384,7 +369,7 @@
                              [:relative-datetime :current]
                              [:relative-datetime 0 temporal-unit])))))
 
-(def temporal-extract-ops->unit
+(def ^{:deprecated "0.57.0"} temporal-extract-ops->unit
   "Mapping from the sugar syntax to extract datetime to the unit."
   {[:get-year        nil]       :year-of-era
    [:get-quarter     nil]       :quarter-of-year
@@ -401,25 +386,31 @@
    [:get-minute      nil]       :minute-of-hour
    [:get-second      nil]       :second-of-minute})
 
-(def ^:private temporal-extract-ops
+(def ^:private ^{:deprecated "0.57.0"} temporal-extract-ops
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (->> (keys temporal-extract-ops->unit)
        (map first)
        set))
 
-(defn desugar-temporal-extract
+(defn- desugar-temporal-extract
   "Replace datetime extractions clauses like `[:get-year field]` with `[:temporal-extract field :year]`."
+  {:deprecated "0.57.0"}
   [m]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace m
     [(op :guard temporal-extract-ops) field & args]
     [:temporal-extract field (temporal-extract-ops->unit [op (first args)])]))
 
-(defn- desugar-divide-with-extra-args [expression]
+(defn- desugar-divide-with-extra-args
+  {:deprecated "0.57.0"}
+  [expression]
   (lib.util.match/replace expression
     [:/ x y z & more]
     (recur (into [:/ [:/ x y]] (cons z more)))))
 
 (defn- temporal-case-expression
   "Creates a `:case` expression with a condition for each value of the given unit."
+  {:deprecated "0.57.0"}
   [column unit n]
   (let [user-locale #?(:clj  (i18n/user-locale)
                        :cljs nil)]
@@ -434,7 +425,9 @@
 
   Uses the user's locale rather than the site locale, so the results will depend on the runner of the query, not just
   the query itself. Filtering should be done based on the number, rather than the name."
+  {:deprecated "0.57.0"}
   [expression]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace expression
     [:month-name column]
     (recur (temporal-case-expression column :month-of-year 12))
@@ -446,7 +439,9 @@
 (mu/defn desugar-expression :- ::mbql.s/FieldOrExpressionDef
   "Rewrite various 'syntactic sugar' expressions like `:/` with more than two args into something simpler for drivers
   to compile."
+  {:deprecated "0.57.0"}
   [expression :- ::mbql.s/FieldOrExpressionDef]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   ;; The `mbql.jvm-u/desugar-host-and-domain` is implemented only for jvm because regexes are not compatible with
   ;; Safari.
   (let [desugar-host-and-domain* #?(:clj  mbql.jvm-u/desugar-host-and-domain
@@ -458,7 +453,10 @@
         desugar-host-and-domain*
         desugar-temporal-names)))
 
-(defn- maybe-desugar-expression [clause]
+(defn- maybe-desugar-expression
+  {:deprecated "0.57.0"}
+  [clause]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (cond-> clause
     (mbql.preds/FieldOrExpressionDef? clause) desugar-expression))
 
@@ -466,8 +464,13 @@
   "Rewrite various 'syntatic sugar' filter clauses like `:time-interval` and `:inside` as simpler, logically
   equivalent clauses. This can be used to simplify the number of filter clauses that need to be supported by anything
   that needs to enumerate all the possible filter types (such as driver query processor implementations, or the
-  implementation [[negate-filter-clause]] below.)"
+  implementation [[negate-filter-clause]] below.)
+
+  DEPRECATED: This will be removed in a future release. Use [[metabase.lib.core/desugar-filter-clause]] instead going
+  forward."
+  {:deprecated "0.57.0"}
   [filter-clause :- mbql.s/Filter]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (-> filter-clause
       desugar-current-relative-datetime
       desugar-in
@@ -511,9 +514,10 @@
   filter clause types). Useful for generating highly optimized filter clauses and for drivers that do not support
   top-level `:not` filter clauses."
   [filter-clause :- mbql.s/Filter]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (-> filter-clause desugar-filter-clause negate* simplify-compound-filter))
 
-(mu/defn query->source-table-id :- [:maybe pos-int?]
+(mu/defn query->source-table-id :- [:maybe ::lib.schema.id/table]
   "Return the source Table ID associated with `query`, if applicable; handles nested queries as well. If `query` is
   `nil`, returns `nil`.
 
@@ -546,26 +550,6 @@
     :else
     source-table-id))
 
-(mu/defn join->source-table-id :- [:maybe pos-int?]
-  "Like `query->source-table-id`, but for a join."
-  [join]
-  (query->source-table-id {:type :query, :query join}))
-
-(mu/defn add-order-by-clause :- mbql.s/MBQLQuery
-  "Add a new `:order-by` clause to an MBQL `inner-query`. If the new order-by clause references a Field that is
-  already being used in another order-by clause, this function does nothing."
-  [inner-query     :- mbql.s/MBQLQuery
-   [dir orderable] :- ::mbql.s/OrderBy]
-  (let [existing-orderables (into #{}
-                                  (map (fn [[_dir orderable]]
-                                         orderable))
-                                  (:order-by inner-query))]
-    (if (existing-orderables orderable)
-      ;; Field already referenced, nothing to do
-      inner-query
-      ;; otherwise add new clause at the end
-      (update inner-query :order-by (comp vec distinct conj) [dir orderable]))))
-
 (defn dispatch-by-clause-name-or-class
   "Dispatch function perfect for use with multimethods that dispatch off elements of an MBQL query. If `x` is an MBQL
   clause, dispatches off the clause name; otherwise dispatches off `x`'s class."
@@ -589,23 +573,25 @@
 
 (mu/defn expression-with-name :- ::mbql.s/FieldOrExpressionDef
   "Return the expression referenced by a given `expression-name`."
-  [inner-query expression-name :- [:or :keyword ::lib.schema.common/non-blank-string]]
-  (let [allowed-names [(u/qualified-name expression-name) (keyword expression-name)]]
-    (loop [{:keys [expressions source-query]} inner-query, found #{}]
-      (or
-       ;; look for either string or keyword version of `expression-name` in `expressions`
-       (some (partial get expressions) allowed-names)
-       ;; otherwise, if we have a source query recursively look in that (do we allow that??)
-       (let [found (into found (keys expressions))]
-         (if source-query
-           (recur source-query found)
-           ;; failing that throw an Exception with detailed info about what we tried and what the actual expressions
-           ;; were
-           (throw (ex-info (i18n/tru "No expression named ''{0}''" (u/qualified-name expression-name))
-                           {:type            :invalid-query
-                            :expression-name expression-name
-                            :tried           allowed-names
-                            :found           found}))))))))
+  [inner-query expression-name :- ::lib.schema.common/non-blank-string]
+  (loop [{:keys [expressions source-query]} inner-query, found #{}]
+    (when (seq expressions)
+      (assert (every? string? (keys expressions))
+              (str ":expressions should always use string keys, got: " (pr-str expressions))))
+    (or
+     ;; look for`expression-name` in `expressions`
+     (get expressions expression-name)
+     ;; otherwise, if we have a source query recursively look in that (do we allow that??)
+     (let [found (into found (keys expressions))]
+       (if source-query
+         (recur source-query found)
+         ;; failing that throw an Exception with detailed info about what we tried and what the actual expressions
+         ;; were
+         (throw (ex-info (i18n/tru "No expression named ''{0}''" (u/qualified-name expression-name))
+                         {:type            :invalid-query
+                          :expression-name expression-name
+                          :tried           expression-name
+                          :found           found})))))))
 
 (mu/defn aggregation-at-index :- ::mbql.s/Aggregation
   "Fetch the aggregation at index. This is intended to power aggregate field references (e.g. [:aggregation 0]).
@@ -623,8 +609,6 @@
          (throw (ex-info (i18n/tru "No aggregation at index: {0}" index) {:index index})))
      ;; keep recursing deeper into the query until we get to the same level the aggregation reference was defined at
      (recur {:query (get-in query [:query :source-query])} index (dec nesting-level)))))
-
-;;; --------------------------------- Unique names & transforming ags to have names ----------------------------------
 
 (defn unique-name-generator
   "Return a function that can be used to uniquify string names. Function maintains an internal counter that will suffix
@@ -735,67 +719,6 @@
   [names :- [:sequential :string]]
   (map (unique-name-generator) names))
 
-(def ^:private NamedAggregation
-  [:and
-   mbql.s/aggregation-options
-   [:fn
-    {:error/message "`:aggregation-options` with a `:name`"}
-    #(:name (nth % 2))]])
-
-(def ^:private UniquelyNamedAggregations
-  [:and
-   [:sequential NamedAggregation]
-   [:fn
-    {:error/message "sequence of named aggregations with unique names"}
-    (fn [clauses]
-      (apply distinct? (for [[_tag _wrapped {ag-name :name}] clauses]
-                         ag-name)))]])
-
-(mu/defn uniquify-named-aggregations :- UniquelyNamedAggregations
-  "Make the names of a sequence of named aggregations unique by adding suffixes such as `_2`."
-  [named-aggregations :- [:sequential NamedAggregation]]
-  (let [unique-names (uniquify-names
-                      (for [[_ _wrapped-ag {ag-name :name}] named-aggregations]
-                        ag-name))]
-    (map
-     (fn [[_ wrapped-ag options] unique-name]
-       [:aggregation-options wrapped-ag (assoc options :name unique-name)])
-     named-aggregations
-     unique-names)))
-
-(mu/defn pre-alias-aggregations :- [:sequential NamedAggregation]
-  "Wrap every aggregation clause in an `:aggregation-options` clause, using the name returned
-  by `(aggregation->name-fn ag-clause)` as names for any clauses that do not already have a `:name` in
-  `:aggregation-options`.
-
-    (pre-alias-aggregations annotate/aggregation-name
-     [[:count] [:count] [:aggregation-options [:sum [:field 1 nil] {:name \"Sum-41\"}]])
-    ;; -> [[:aggregation-options [:count] {:name \"count\"}]
-           [:aggregation-options [:count] {:name \"count\"}]
-           [:aggregation-options [:sum [:field 1 nil]] {:name \"Sum-41\"}]]
-
-  Most often, `aggregation->name-fn` will be something like `annotate/aggregation-name`, but for purposes of keeping
-  the `metabase.legacy-mbql` module seperate from the `metabase.query-processor` code we'll let you pass that in yourself."
-  [aggregation->name-fn :- fn?
-   aggregations         :- [:sequential ::mbql.s/Aggregation]]
-  (lib.util.match/replace aggregations
-    [:aggregation-options _ (_ :guard :name)]
-    &match
-
-    [:aggregation-options wrapped-ag options]
-    [:aggregation-options wrapped-ag (assoc options :name (aggregation->name-fn wrapped-ag))]
-
-    [(_ :guard keyword?) & _]
-    [:aggregation-options &match {:name (aggregation->name-fn &match)}]))
-
-(mu/defn pre-alias-and-uniquify-aggregations :- UniquelyNamedAggregations
-  "Wrap every aggregation clause in a `:named` clause with a unique name. Combines `pre-alias-aggregations` with
-  `uniquify-named-aggregations`."
-  [aggregation->name-fn :- fn?
-   aggregations         :- [:sequential ::mbql.s/Aggregation]]
-  (-> (pre-alias-aggregations aggregation->name-fn aggregations)
-      uniquify-named-aggregations))
-
 (defn query->max-rows-limit
   "Calculate the absolute maximum number of results that should be returned by this query (MBQL or native), useful for
   doing the equivalent of
@@ -812,7 +735,10 @@
      *  `:max-results-bare-rows` is returned if set and Query does not have any aggregations
      *  `:max-results` is returned otherwise
   *  If none of the above are set, returns `nil`. In this case, you should use something like the Metabase QP's
-     `max-rows-limit`"
+     `max-rows-limit`
+
+  DEPRECATED: this will be removed in the near future. Prefer [[metabase.lib.limit/max-rows-limit]] for new code."
+  {:deprecated "0.57.0"}
   [{{:keys [max-results max-results-bare-rows]}                      :constraints
     {limit :limit, aggregations :aggregation, {:keys [items]} :page} :query
     query-type                                                       :type}]
@@ -862,7 +788,10 @@
   (apply update-field-options clause assoc kvs))
 
 (defn with-temporal-unit
-  "Set the `:temporal-unit` of a `:field` clause to `unit`."
+  "Set the `:temporal-unit` of a `:field` clause to `unit`.
+
+  DEPRECATED -- use [[metabase.lib.core/with-temporal-bucket]] in new code."
+  {:deprecated "0.57.0"}
   [[_ _ {:keys [base-type]} :as clause] unit]
   ;; it doesn't make sense to call this on an `:expression` or `:aggregation`.
   (assert (is-clause? :field clause))

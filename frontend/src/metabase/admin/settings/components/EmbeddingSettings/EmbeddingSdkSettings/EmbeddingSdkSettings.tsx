@@ -2,6 +2,10 @@ import cx from "classnames";
 import { match } from "ts-pattern";
 import { c, jt, t } from "ttag";
 
+import {
+  RelatedSettingsSection,
+  getModularEmbeddingRelatedSettingItems,
+} from "metabase/admin/components/RelatedSettingsSection";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import { UpsellEmbeddingButton } from "metabase/admin/upsells/UpsellEmbeddingButton";
@@ -22,13 +26,14 @@ import {
   Group,
   HoverCard,
   Icon,
+  Stack,
   Text,
 } from "metabase/ui";
 
 import { SettingHeader } from "../../SettingHeader";
 import { AdminSettingInput } from "../../widgets/AdminSettingInput";
-import { LinkButton } from "../EmbeddingOption/LinkButton";
 import { EmbeddingToggle } from "../EmbeddingToggle";
+import { LinkButton } from "../LinkButton";
 
 import S from "./EmbeddingSdkSettings.module.css";
 
@@ -44,6 +49,7 @@ export function EmbeddingSdkSettings() {
 
   const isReactSdkEnabled = useSetting("enable-embedding-sdk");
   const isReactSdkFeatureEnabled = PLUGIN_EMBEDDING_SDK.isEnabled();
+  const isLocalhostCorsDisabled = useSetting("disable-cors-on-localhost");
 
   const isSimpleEmbedEnabled = useSetting("enable-embedding-simple");
   const isSimpleEmbedFeatureEnabled =
@@ -67,12 +73,18 @@ export function EmbeddingSdkSettings() {
     utm: utmTags,
   });
 
-  const quickStartUrl = useUrlWithUtm(
+  const sdkQuickStartUrl = useUrlWithUtm(
     "https://metaba.se/sdk-quick-start",
     utmTags,
   );
 
-  const documentationUrl = useUrlWithUtm("https://metaba.se/sdk-docs", utmTags);
+  const sdkDocumentationUrl = useUrlWithUtm(
+    "https://metaba.se/sdk-docs",
+    utmTags,
+  );
+
+  // The quickstart is part of the documentation page, unlike the SDK, so we only need a single docs link.
+  const embedJsDocumentationUrl = useDocsUrl("embedding/embedded-analytics-js");
 
   const SwitchBinariesLink = (
     <ExternalLink
@@ -123,20 +135,27 @@ export function EmbeddingSdkSettings() {
     )
     .otherwise(() => null);
 
+  const corsHintText = isLocalhostCorsDisabled
+    ? t`Separate values with a space. Localhost is not allowed. Changes will take effect within one minute.`
+    : t`Separate values with a space. Localhost is automatically included. Changes will take effect within one minute.`;
+
   return (
     <SettingsPageWrapper title={t`Modular embedding`}>
       <UpsellDevInstances location="embedding-page" />
 
       <Flex direction="column" p="xl" className={S.SectionCard} gap="md">
-        <Group>
+        <Stack gap="xs">
           <Text fz="h3" fw={600} c="text-dark">
             {t`SDK for React`}
           </Text>
-        </Group>
+
+          <Text c="var(--mb-color-text-secondary)" lh="lg">
+            {t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`}
+          </Text>
+        </Stack>
 
         <Group gap="sm" align="center" justify="space-between" w="100%">
           <EmbeddingToggle
-            label={t`Enabled`}
             settingKey="enable-embedding-sdk"
             labelPosition="right"
             aria-label={t`SDK for React toggle`}
@@ -147,7 +166,7 @@ export function EmbeddingSdkSettings() {
               size="compact-xs"
               variant="outline"
               component={ExternalLink}
-              href={quickStartUrl}
+              href={sdkQuickStartUrl}
               rightSection={<Icon size={12} name="external" />}
               fz="sm"
             >
@@ -158,7 +177,7 @@ export function EmbeddingSdkSettings() {
               size="compact-xs"
               variant="outline"
               component={ExternalLink}
-              href={documentationUrl}
+              href={sdkDocumentationUrl}
               rightSection={<Icon size={12} name="external" />}
               fz="sm"
             >
@@ -170,15 +189,18 @@ export function EmbeddingSdkSettings() {
 
       <Box p="xl" className={S.SectionCard}>
         <Flex direction="column" gap="md">
-          <Group gap="sm">
+          <Stack gap="xs">
             <Text fz="h3" fw={600} c="text-dark">
               {t`Embedded Analytics JS`}
             </Text>
-          </Group>
+
+            <Text c="var(--mb-color-text-secondary)" lh="lg">
+              {t`An easy-to-use library that lets you embed Metabase entities like charts, dashboards, or even the query builder into your own application using customizable components.`}
+            </Text>
+          </Stack>
 
           <Group gap="sm" align="center" justify="space-between" w="100%">
             <EmbeddingToggle
-              label={t`Enabled`}
               labelPosition="right"
               settingKey="enable-embedding-simple"
               disabled={!isSimpleEmbedFeatureEnabled}
@@ -195,12 +217,24 @@ export function EmbeddingSdkSettings() {
                 >
                   {t`Try it out`}
                 </LinkButton>
+
+                <Button
+                  size="compact-xs"
+                  variant="outline"
+                  component={ExternalLink}
+                  href={embedJsDocumentationUrl?.url}
+                  rightSection={<Icon size={12} name="external" />}
+                  fz="sm"
+                >
+                  {t`Documentation`}
+                </Button>
               </Group>
             ) : (
               <UpsellEmbeddingButton
                 url="https://www.metabase.com/product/embedded-analytics"
                 campaign="embedded-analytics-js"
                 location="embedding-page"
+                size="default"
               />
             )}
           </Group>
@@ -227,7 +261,7 @@ export function EmbeddingSdkSettings() {
                   <HoverCard.Dropdown>
                     <Box p="md" w={270}>
                       <Text lh="lg" c="text-medium">
-                        {t`Separate values with a space. Localhost is automatically included. Changes will take effect within one minute.`}
+                        {corsHintText}
                       </Text>
                     </Box>
                   </HoverCard.Dropdown>
@@ -280,6 +314,10 @@ export function EmbeddingSdkSettings() {
           </Text>
         </Flex>
       </Alert>
+
+      <RelatedSettingsSection
+        items={getModularEmbeddingRelatedSettingItems()}
+      />
     </SettingsPageWrapper>
   );
 }

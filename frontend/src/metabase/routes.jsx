@@ -30,6 +30,7 @@ import { DashboardMoveModalConnected } from "metabase/dashboard/components/Dashb
 import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
 import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDashboardApp";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
+import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import { HomePage } from "metabase/home/components/HomePage";
@@ -39,9 +40,11 @@ import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
   PLUGIN_COLLECTIONS,
+  PLUGIN_DOCUMENTS,
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   PLUGIN_LANDING_PAGE,
   PLUGIN_METABOT,
+  PLUGIN_TABLE_EDITING,
 } from "metabase/plugins";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { loadCurrentUser } from "metabase/redux/user";
@@ -52,6 +55,7 @@ import FieldListContainer from "metabase/reference/databases/FieldListContainer"
 import TableDetailContainer from "metabase/reference/databases/TableDetailContainer";
 import TableListContainer from "metabase/reference/databases/TableListContainer";
 import TableQuestionsContainer from "metabase/reference/databases/TableQuestionsContainer";
+import { GlossaryContainer } from "metabase/reference/glossary/GlossaryContainer";
 import SegmentDetailContainer from "metabase/reference/segments/SegmentDetailContainer";
 import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer";
 import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer";
@@ -59,7 +63,6 @@ import SegmentListContainer from "metabase/reference/segments/SegmentListContain
 import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
 import SearchApp from "metabase/search/containers/SearchApp";
-import { EmbeddingSetup } from "metabase/setup/components/EmbeddingSetup/EmbeddingSetup";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
@@ -88,13 +91,6 @@ export const getRoutes = (store) => {
           if (hasUserSetup) {
             replace("/");
           }
-          const searchParams = new URLSearchParams(window.location.search);
-          if (
-            searchParams.get("use_case") === "embedding" &&
-            searchParams.get("new_embedding_flow") === "true"
-          ) {
-            replace("/setup/embedding" + window.location.search);
-          }
           trackPageView(location.pathname);
         }}
         onChange={(prevState, nextState) => {
@@ -103,19 +99,8 @@ export const getRoutes = (store) => {
         disableCommandPalette
       />
 
-      {/* EMBEDDING SETUP */}
-      <Route
-        path="/setup/embedding"
-        component={EmbeddingSetup}
-        onEnter={async (nextState, replace, done) => {
-          if (hasUserSetup) {
-            replace("/");
-          }
-          trackPageView(location.pathname);
-          done();
-        }}
-        disableCommandPalette
-      />
+      {/* For compatibility: use the standard setup for embedding */}
+      <Redirect from="/setup/embedding" to="/setup" />
 
       {/* APP */}
       <Route
@@ -177,6 +162,8 @@ export const getRoutes = (store) => {
             title={t`Trash`}
             component={TrashCollectionLanding}
           />
+
+          {PLUGIN_DOCUMENTS.getRoutes()}
 
           <Route
             path="embed-js"
@@ -278,6 +265,7 @@ export const getRoutes = (store) => {
             <Route path=":slug" component={QueryBuilder} />
             <Route path=":slug/notebook" component={QueryBuilder} />
             <Route path=":slug/query" component={QueryBuilder} />
+            <Route path=":slug/columns" component={QueryBuilder} />
             <Route path=":slug/metadata" component={QueryBuilder} />
             <Route path=":slug/metabot" component={QueryBuilder} />
             <Route path=":slug/:objectId" component={QueryBuilder} />
@@ -306,12 +294,18 @@ export const getRoutes = (store) => {
               component={BrowseTables}
             />
 
+            {PLUGIN_TABLE_EDITING.getRoutes()}
+
             {/* These two Redirects support legacy paths in v48 and earlier */}
             <Redirect from=":dbId-:slug" to="databases/:dbId-:slug" />
             <Redirect
               from=":dbId/schema/:schemaName"
               to="databases/:dbId/schema/:schemaName"
             />
+          </Route>
+
+          <Route path="table">
+            <Route path=":tableId/detail/:rowId" component={TableDetailPage} />
           </Route>
 
           {/* INDIVIDUAL DASHBOARDS */}
@@ -367,6 +361,7 @@ export const getRoutes = (store) => {
               path="databases/:databaseId/tables/:tableId/questions"
               component={TableQuestionsContainer}
             />
+            <Route path="glossary" component={GlossaryContainer} />
           </Route>
 
           {/* ACCOUNT */}

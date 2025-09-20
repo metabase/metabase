@@ -25,7 +25,8 @@
   keys to remove from the model so that we'll be able to successfully load it. You can remove keys in vectors using :* to
   indicate that all items in that vector should have a key removed."
   {"Dashboard" #{:dashcards}
-   "Card"      #{:dashboard_id}})
+   "Document"  #{:document}
+   "Card"      #{:dashboard_id :document_id}})
 
 (defn- keys-to-strip [ingested]
   (let [model (-> ingested :serdes/meta last :model)]
@@ -59,6 +60,8 @@
 (defn- path-error-data [error-type expanding path]
   (let [last-model (:model (last path))]
     {:path       (mapv (partial into {}) path)
+     :local-id   (when-let [entity (serdes/load-find-local path)]
+                   ((t2/select-pks-fn entity) entity))
      :deps-chain expanding
      :model      last-model
      :table      (some->> last-model (keyword "model") t2/table-name)
@@ -185,4 +188,4 @@
     ;;       this means that the corresponding entries would have been missing or stale when we indexed them.
     ;;       ideally, we would delay the indexing somehow, or only reindex what we've loaded.
     ;;       while we're figuring that out, here's a crude stopgap.
-    (search/reindex!)))
+    (search/reindex! {:async? false})))

@@ -109,11 +109,15 @@
   {:doc      "Starts the babashka nrepl: helpful for mage development"
    :requires [[babashka.nrepl.server :as nrepl.server]
               [mage.color :as c]]
-   :examples [["./bin/mage nrepl" "Starts the nrepl server"]]
+   :examples [["./bin/mage nrepl" "Starts the nrepl server"]
+              ["./bin/mage nrepl --port 50506" "Starts the nrepl server"]
+              ["./bin/mage nrepl -p 50506" "Starts the nrepl server"]]
+   :options  [["-p" "--port PORT" "optionally provide a port to run the nrepl server on" :default 1667 :parse-fn Integer/parseInt]]
    :task     (task!
-               (spit ".nrepl-port" 1667)
-               (nrepl.server/start-server!)
-               (deref (promise)))}
+              (let [{:keys [port]} (:options parsed)]
+                (spit ".nrepl-port" port)
+                (nrepl.server/start-server! {:port port})
+                (deref (promise))))}
 
   lint-migrations
   {:doc        "Lint migrations files"
@@ -155,6 +159,11 @@
    :examples [["./bin/mage connect-stats-repl" "Connects to the stats repl"]]
    :requires [[mage.stats-repl :as stats-repl]]
    :task     (stats-repl/connect (cli/parse! (current-task)))}
+
+  ls {:doc      "List all mage public and private tasks"
+      :examples [["./bin/mage ls" "List all tasks"]]
+      :requires [[mage.util :as u]]
+      :task     (task! (u/print-tasks parsed))}
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:
@@ -208,6 +217,8 @@
    :task     (let [{:keys [arguments]} (cli/parse! (current-task))]
                (apply readability/check arguments))}
 
+  ;; Uncomment this if you want to play with the example calculator task:
+  #_#_
   -example-calculator
   {;; `:doc` is a short docstring for the task, will be listed in `./bin/mage -h` and other help info.
    ;; Keep these short, they need to fit on one line in the output from `./bin/mage -h`.
@@ -260,4 +271,11 @@
   {:doc      "Print a day's PR summary for the metabase/metabase repo"
    :requires [[mage.escherize.pr-summary :as eps]]
    :examples [["./bin/mage -escherize-pr-summary | pbcopy" "Copy your daily"]]
-   :task     (task! (eps/summarize-prs parsed))}}}
+   :task     (task! (eps/summarize-prs parsed))}
+
+  -escherize-fix-whitespace
+  {:doc "Removes all lines like '^<space>+$' from files in glob pattern."
+   :requires [[mage.escherize.fix-whitespace :as fix-whitespace]]
+   :examples [["mage -escherize-fix-whitespace '**/*.clj'" "Removes all lines like '  ' from all clj files"]]
+   :arg-schema [:sequential [:string {:description "Glob pattern to match files"}]]
+   :task     (task! (fix-whitespace/run-clean parsed))}}}

@@ -54,6 +54,13 @@
     ;; We filter what we can (i.e., everything in a collection) out already when querying
     true))
 
+(defmethod check-permissions-for-model :document
+  [search-ctx instance]
+  (and (premium-features/enable-documents?)
+       (if (:archived? search-ctx)
+         (can-write? search-ctx instance)
+         true)))
+
 ;; TODO: remove this implementation now that we check permissions in the SQL, leaving it in for now to guard against
 ;; issue with new pure sql implementation
 (defmethod check-permissions-for-model :table
@@ -209,8 +216,7 @@
         ;; It would be good to have a warning on start up for this.
         :search.engine/in-place))
     (first (filter search.engine/supported-engine?
-                   [:search.engine/appdb
-                    :search.engine/in-place]))))
+                   search.engine/fallback-engine-priority))))
 
 (defn- parse-engine [value]
   (or (when-not (str/blank? value)
@@ -317,7 +323,7 @@
                         :current-user-id                     current-user-id
                         :current-user-perms                  current-user-perms
                         :filter-items-in-personal-collection (or filter-items-in-personal-collection
-                                                                 (fvalue :personal-collection-id))
+                                                                 (fvalue :filter-items-in-personal-collection))
                         :is-impersonated-user?               is-impersonated-user?
                         :is-sandboxed-user?                  is-sandboxed-user?
                         :is-superuser?                       is-superuser?
@@ -393,17 +399,16 @@
     ;; We get to do this slicing and dicing with the result data because
     ;; the pagination of search is for UI improvement, not for performance.
     ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
-    (cond->
-     {:data             (cond->> total-results
-                          (some? (:offset-int search-ctx)) (drop (:offset-int search-ctx))
-                          (some? (:limit-int search-ctx)) (take (:limit-int search-ctx))
-                          true (map add-perms-for-col))
-      :limit            (:limit-int search-ctx)
-      :models           (:models search-ctx)
-      :offset           (:offset-int search-ctx)
-      :table_db_id      (:table-db-id search-ctx)
-      :engine           (:search-engine search-ctx)
-      :total            (count total-results)}
+    (cond-> {:data             (cond->> total-results
+                                 (some? (:offset-int search-ctx)) (drop (:offset-int search-ctx))
+                                 (some? (:limit-int search-ctx)) (take (:limit-int search-ctx))
+                                 true (map add-perms-for-col))
+             :limit            (:limit-int search-ctx)
+             :models           (:models search-ctx)
+             :offset           (:offset-int search-ctx)
+             :table_db_id      (:table-db-id search-ctx)
+             :engine           (:search-engine search-ctx)
+             :total            (count total-results)}
 
       (:calculate-available-models? search-ctx)
       (assoc :available_models (model-set-fn search-ctx)))))

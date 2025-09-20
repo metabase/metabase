@@ -1,2 +1,2 @@
 // eslint-disable-next-line import/no-default-export -- legacy usage
-export { default } from "./DateTime";
+export { default, getFormattedTime } from "./DateTime";

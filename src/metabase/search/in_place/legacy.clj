@@ -367,6 +367,10 @@
         :result_metadata
         [:display :display_type]))
 
+(defmethod columns-for-model "document"
+  [_]
+  [:id :name :archived :created_at :updated_at :collection_id :creator_id])
+
 (defmethod columns-for-model "indexed-entity" [_]
   [[:model-index-value.name     :name]
    [:model-index-value.model_pk :id]
@@ -512,6 +516,15 @@
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
       (add-collection-join-and-where-clauses model search-ctx)))
 
+(defmethod search-query-for-model "document"
+  [model search-ctx]
+  (-> (base-query-for-model "document" search-ctx)
+      (sql.helpers/left-join [:document_bookmark :bookmark]
+                             [:and
+                              [:= :bookmark.document_id :document.id]
+                              [:= :bookmark.user_id (:current-user-id search-ctx)]])
+      (add-collection-join-and-where-clauses model search-ctx)))
+
 (defmethod search-query-for-model "database"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
@@ -595,14 +608,18 @@
        :limit    search.config/*db-max-results*})))
 
 ;; Return a reducible-query corresponding to searching the entities without an index.
-(defmethod search.engine/results
-  :search.engine/in-place
+(defn- results
   [search-ctx]
   (let [search-query (full-search-query search-ctx)]
     (log/tracef "Searching with query:\n%s\n%s"
                 (u/pprint-to-str search-query)
                 (mdb/format-sql (first (mdb/compile search-query))))
     (t2/reducible-query search-query)))
+
+(defmethod search.engine/results
+  :search.engine/in-place
+  [search-ctx]
+  (results search-ctx))
 
 (defmethod search.engine/score :search.engine/in-place [search-ctx result]
   (scoring/score-and-result result search-ctx))
