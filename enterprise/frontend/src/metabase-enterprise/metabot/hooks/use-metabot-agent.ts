@@ -15,6 +15,7 @@ import {
   getMetabotId,
   getMetabotRequestId,
   getMetabotVisible,
+  getProfileOverride,
   getToolCalls,
   resetConversation as resetConversationAction,
   retryPrompt,
@@ -66,6 +67,10 @@ export const useMetabotAgent = () => {
     (isVisible: boolean) => dispatch(setVisibleAction(isVisible)),
     [dispatch],
   );
+
+  const profile = useSelector(getProfileOverride as any) as ReturnType<
+    typeof getProfileOverride
+  >;
 
   const resetConversation = useCallback(
     () => dispatch(resetConversationAction()),
@@ -161,5 +166,6 @@ export const useMetabotAgent = () => {
     submitInput,
     retryMessage,
     toolCalls,
+    profile,
   };
 };

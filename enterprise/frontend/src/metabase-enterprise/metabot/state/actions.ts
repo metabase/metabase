@@ -3,6 +3,7 @@ import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
 
 import { createAsyncThunk } from "metabase/lib/redux";
+import { addUndo } from "metabase/redux/undo";
 import { getIsEmbedding } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
 import { EnterpriseApi } from "metabase-enterprise/api";
@@ -32,7 +33,8 @@ import {
   getMetabotConversationId,
   getUserPromptForMessageId,
 } from "./selectors";
-import { createMessageId } from "./utils";
+import type { SlashCommand } from "./types";
+import { createMessageId, parseSlashCommand } from "./utils";
 
 export const {
   addAgentTextDelta,
@@ -44,6 +46,8 @@ export const {
   setNavigateToPath,
   toolCallStart,
   toolCallEnd,
+  setProfileOverride,
+  setMetabotReqIdOverride,
 } = metabot.actions;
 
 type PromptErrorOutcome = {
@@ -90,6 +94,30 @@ export const setVisible =
     dispatch(metabot.actions.setVisible(isVisible));
   };
 
+export const executeSlashCommand = createAsyncThunk<void, SlashCommand>(
+  "metabase-enterprise/metabot/executeSlashCommand",
+  async (slashCommand, { dispatch }) => {
+    match(slashCommand)
+      .with({ cmd: "profile" }, ({ args }) => {
+        if (args.length <= 1) {
+          dispatch(setProfileOverride(args[0]));
+        } else {
+          dispatch(addUndo({ message: "/profile <name>" }));
+        }
+      })
+      .with({ cmd: "metabot" }, ({ args }) => {
+        if (args.length <= 1) {
+          dispatch(setMetabotReqIdOverride(args[0]));
+        } else {
+          dispatch(addUndo({ message: "/metabot <name>" }));
+        }
+      })
+      .otherwise(() => {
+        dispatch(addUndo({ message: "Unknown command" }));
+      });
+  },
+);
+
 export type MetabotPromptSubmissionResult =
   | { prompt: string; success: true; shouldRetry?: void }
   | { prompt: string; success: false; shouldRetry: false }
@@ -120,11 +148,18 @@ export const submitInput = createAsyncThunk<
         dispatch(rewindConversation(lastMessageId));
       }
 
+      const slashCommand = parseSlashCommand(data.message);
+      if (slashCommand) {
+        await dispatch(executeSlashCommand(slashCommand));
+        return { prompt: data.message, success: true };
+      }
+
       // it's important that we get the current metadata containing the history before
       // altering it by adding the current message the user is wanting to send
       const agentMetadata = getAgentRequestMetadata(getState() as any);
       const messageId = createMessageId();
       dispatch(addUserMessage({ id: messageId, message: data.message }));
+
       const sendMessageRequestPromise = dispatch(
         sendAgentRequest({
           ...data,

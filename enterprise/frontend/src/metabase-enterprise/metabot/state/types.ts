@@ -9,3 +9,8 @@ export interface MetabotStoreState extends EnterpriseState {
     metabotPlugin: MetabotState;
   };
 }
+
+export interface SlashCommand {
+  cmd: string;
+  args: string[];
+}

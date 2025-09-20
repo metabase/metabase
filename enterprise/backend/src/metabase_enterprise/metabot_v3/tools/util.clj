@@ -8,6 +8,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.lib.util :as lib.util]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -29,6 +31,15 @@
       (isa? (:effective-type column) :type/DateTime) :datetime
       (isa? (:effective-type column) :type/Time)     :time
       (lib.types.isa/temporal? column)               :date)))
+
+(defn add-table-reference
+  "Add table-reference to columns that have FK relationships."
+  [query col]
+  (cond-> col
+    (and (:fk-field-id col)
+         (:table-id col))
+    (assoc :table-reference (-> (lib/display-name query (lib.metadata/field query (:fk-field-id col)))
+                                lib.util/strip-id))))
 
 (defn table-field-id-prefix
   "Return the field ID prefix for `table-id`."
@@ -55,7 +66,8 @@
   [query column index field-id-prefix]
   (let [semantic-type (some-> (:semantic-type column) name u/->snake_case_en)]
     (-> {:field-id (str field-id-prefix index)
-         :name (lib/display-name query column)
+         :name (:name column)
+         :display_name (lib/display-name query column)
          :type (convert-field-type column)}
         (m/assoc-some :description (:description column)
                       :semantic-type semantic-type
@@ -121,74 +133,52 @@
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (:db_id table))]
       (lib/query mp (lib.metadata/table mp table-id)))))
 
-(defn metabot-scope-query
+(defn metabot-metrics-and-models-query
   "Return the metric and model cards in metabot scope visible to the current user.
 
-  If provided, the filter clause `metabot-entity-condition` is used to filter the metabot_entity table. The clause can
-  refer to that table using the :mbe alias. The cards are returned with an additional field called :metabot_entity_id
-  containing the ID of the metabot entity that brought the card in scope. (Situations in which several metabot
-  entities can bring a card into scope is not supported. It is expected that at some point this query will be extended
-  to deal with tables as well.)
-
-  For example,
-    [:in [:mbe.id [1 7 42]]] can be used to consider only specific entities,
-    [:= :mbe.metabot_id 1]   can be used to consider only entities of metabot 1."
-  ([]
-   (metabot-scope-query nil))
-  ([metabot-entity-condition]
-   {:select [:*]
-    :from   [[{:union-all
-               [{:select [:card.* [:mbe.id :metabot_entity_id]]
-                 :from   [[:report_card :card]]
-                 :join   [[:metabot_entity :mbe] (cond-> [:and [:= :mbe.model [:inline "collection"]]]
-                                                   metabot-entity-condition (conj metabot-entity-condition))
-                          [:collection :ecoll]   [:= :ecoll.id :mbe.model_id]
-                          [:collection :coll]    [:or
-                                                  [:= :coll.id :ecoll.id]
-                                                  [:like :coll.location [:concat :ecoll.location :ecoll.id [:inline "/%"]]]]]
-                 :where  [:= :card.collection_id :coll.id]}
-                {:select [:card.* [:mbe.id :metabot_entity_id]]
-                 :from   [[:report_card :card]]
-                 :join   [[:metabot_entity :mbe] (cond-> [:and
-                                                          [:in :mbe.model [:inline ["dataset"  "metric"]]]]
-                                                   metabot-entity-condition (conj metabot-entity-condition))]
-                 :where  [:= :card.id :mbe.model_id]}]}
-              :card]]
-    :where  [:and
-             [:in :card.type [:inline ["metric" "model"]]]
-             [:= :card.archived false]
-             ;; check that the current user can see the card
-             (collection/visible-collection-filter-clause :card.collection_id)]}))
+  Takes a metabot-id and returns all metric and model cards in that metabot's collection
+  and its subcollections. If the metabot has use_verified_content enabled, only verified
+  content is returned."
+  [metabot-id & {:keys [limit] :as _opts}]
+  (let [metabot (t2/select-one :model/Metabot :id metabot-id)
+        metabot-collection-id (:collection_id metabot)
+        use-verified-content? (:use_verified_content metabot)
+        collection-filter (if metabot-collection-id
+                            (let [collection (t2/select-one :model/Collection :id metabot-collection-id)
+                                  collection-ids (conj (collection/descendant-ids collection) metabot-collection-id)]
+                              [:in :collection_id collection-ids])
+                            [:and true])
+        base-query (merge {:select [:report_card.*]
+                           :from   [[:report_card]]
+                           :where [:and
+                                   collection-filter
+                                   [:in :type [:inline ["metric" "model"]]]
+                                   [:= :archived false]
+                                   (when api/*current-user-id*
+                                     (collection/visible-collection-filter-clause :collection_id))]}
+                          (when limit
+                            {:limit limit}))]
+    (if (and use-verified-content? (premium-features/has-feature? :content-verification))
+      (-> base-query
+          (assoc :left-join [[:moderation_review :mr] [:and
+                                                       [:= :mr.moderated_item_id :report_card.id]
+                                                       [:= :mr.moderated_item_type [:inline "card"]]
+                                                       [:= :mr.most_recent true]]])
+          (update :where conj [:= :mr.status [:inline "verified"]]))
+      base-query)))
 
 (comment
   (binding [api/*current-user-id* 2
             api/*is-superuser?* true]
-    (t2/select-fn-vec #(select-keys % [:id :name :type :metabot_entity_id])
+    (t2/select-fn-vec #(select-keys % [:id :name :type])
                       :model/Card
-                      (metabot-scope-query [:= :mbe.metabot_id 1])))
+                      (metabot-metrics-and-models-query 1)))
   -)
 
 (defn get-metrics-and-models
   "Retrieve the metric and model cards for the Metabot instance with ID `metabot-id` from the app DB.
 
-  Only card visible to the current user are returned."
-  [metabot-id]
-  (let [scope-query (metabot-scope-query [:= :mbe.metabot_id metabot-id])]
-    (t2/select :model/Card {:select   [:card.*]
-                            :from     [[scope-query :card]]
-                            :order-by [:card.id]})))
-
-(defn metabot-scope
-  "Return a map from cards (models or metrics) to the ID of metabot entity they belong to.
-
-  Warning: this function assumes that each card is bought by one entity into scope. This assumption holds
-  in the known special cases when there is but one collection entity, or when there are only dataset (model)
-  and metric type entities."
-  [entity-ids]
-  (when (seq entity-ids)
-    (let [cards (t2/select :model/Card
-                           (metabot-scope-query [:in :mbe.id entity-ids]))]
-      (reduce (fn [m c]
-                (assoc m (dissoc c :metabot_entity_id) (:metabot_entity_id c)))
-              {}
-              cards))))
+  Only cards visible to the current user are returned."
+  [metabot-id & {:as opts}]
+  (t2/select :model/Card (-> (metabot-metrics-and-models-query metabot-id opts)
+                             (assoc :order-by [:id]))))

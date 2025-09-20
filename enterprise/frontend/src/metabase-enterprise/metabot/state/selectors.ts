@@ -25,6 +25,11 @@ export const getMessages = createSelector(
   (metabot) => metabot.messages,
 );
 
+export const getToolCalls = createSelector(
+  getMetabot,
+  (metabot) => metabot.toolCalls,
+);
+
 export const getLastMessage = createSelector(getMessages, (messages) =>
   _.last(messages),
 );
@@ -66,11 +71,6 @@ export const getLastAgentMessagesByType = createSelector(
   },
 );
 
-export const getToolCalls = createSelector(
-  getMetabot,
-  (metabot) => metabot.toolCalls,
-);
-
 export const getIsProcessing = createSelector(
   getMetabot,
   (metabot) => metabot.isProcessing,
@@ -110,20 +110,35 @@ export const getMetabotId = createSelector(getIsEmbedding, (isEmbedding) =>
   isEmbedding ? FIXED_METABOT_IDS.EMBEDDED : FIXED_METABOT_IDS.DEFAULT,
 );
 
+export const getMetabotReqIdOverride = createSelector(
+  getMetabot,
+  (metabot) => metabot.experimental.metabotReqIdOverride,
+);
+
 export const getMetabotRequestId = createSelector(
+  getMetabotReqIdOverride,
   getIsEmbedding,
-  (isEmbedding) => (isEmbedding ? METABOT_REQUEST_IDS.EMBEDDED : undefined),
+  (metabotReqIdOverride, isEmbedding) =>
+    metabotReqIdOverride ??
+    (isEmbedding ? METABOT_REQUEST_IDS.EMBEDDED : undefined),
+);
+
+export const getProfileOverride = createSelector(
+  getMetabot,
+  (metabot) => metabot.experimental.profileOverride,
 );
 
 export const getAgentRequestMetadata = createSelector(
   getHistory,
   getMetabotState,
-  (history, state) => ({
+  getProfileOverride,
+  (history, state, profileId) => ({
     state,
     // NOTE: need end to end support for ids on messages as BE will error if ids are present
     history: history.map((h) =>
       h.id && h.id.startsWith(`msg_`) ? _.omit(h, "id") : h,
     ),
+    ...(profileId ? { profile_id: profileId } : {}),
   }),
 );
 

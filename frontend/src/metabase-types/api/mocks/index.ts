@@ -14,6 +14,7 @@ export * from "./field";
 export * from "./geojson";
 export * from "./group";
 export * from "./logger";
+export * from "./metabot";
 export * from "./modelIndexes";
 export * from "./models";
 export * from "./notification";
