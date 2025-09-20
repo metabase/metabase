@@ -504,6 +504,60 @@ databaseChangeLog:
                   name: conversation_id
       rollback: # will be dropped with table
 
+  - changeSet:
+      id: v56.2025-09-16T18:20:00
+      author: lbrdnk
+      comment: Semantic search token usage tracking
+      changes:
+        - createTable:
+            tableName: semantic_search_token_tracking
+            remarks: Token usage tracking info for semantic search
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID of a request
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: model_name
+                  remarks: Name of model used for embeddings generation
+                  type: varchar(256)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: request_type
+                  remarks: Type of request, possibly index or query
+                  type: varchar(32)
+              - column:
+                  name: created_at
+                  remarks: Datetime of insertion
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: total_tokens
+                  remarks: Total tokens value as per OpenAI compatible API
+                  type: int
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v56.2025-09-19T15:33:18
+      author: lbrdnk
+      comment: Semantic search token usage tracking
+      changes:
+        - createIndex:
+            tableName: semantic_search_token_tracking
+            indexName: idx_semantic_search_token_tracking_created_at
+            columns:
+              column:
+                name: created_at
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
