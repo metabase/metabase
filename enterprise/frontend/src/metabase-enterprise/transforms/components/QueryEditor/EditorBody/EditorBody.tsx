@@ -22,7 +22,7 @@ import type {
 import S from "./EditorBody.module.css";
 import { ResizableBoxHandle } from "./ResizableBoxHandle";
 
-const EDITOR_HEIGHT = 400;
+const EDITOR_HEIGHT = 550;
 
 const NATIVE_EDITOR_SIDEBAR_FEATURES = {
   dataReference: true,
