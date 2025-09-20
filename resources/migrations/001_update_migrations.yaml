@@ -3,7 +3,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v00.00-000
-      validCheckSum: 8:a59595109e74e7a2678a1b0dfd25f74a
+      validCheckSum: ANY
       author: qnkhuat
       comment: Initialze metabase
       preConditions:
