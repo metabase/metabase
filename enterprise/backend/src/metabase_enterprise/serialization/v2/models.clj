@@ -27,7 +27,12 @@
           content
           ["FieldValues"
            "Metabot"
-           "Setting"]))
+           "Setting"
+           "Transform"
+           "TransformTag"
+           "TransformJob"
+           "TransformJobTransformTag"
+           "TransformTransformTag"]))
 
 (def inlined-models
   "An additional list of models which are inlined into parent entities for serialization.
@@ -98,14 +103,9 @@
    "Secret"
    "Session"
    "TaskHistory"
-   "Transform"
-   "TransformJob"
    "TransformJobRun"
-   "TransformJobTransformTag"
    "TransformRun"
    "TransformRunCancelation"
-   "TransformTag"
-   "TransformTransformTag"
    "Undo"
    "User"
    "UserKeyValue"

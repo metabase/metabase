@@ -28,6 +28,7 @@
    [metabase-enterprise.metabot-v3.api]
    [metabase-enterprise.metabot-v3.tools.api]
    [metabase-enterprise.permission-debug.api]
+   [metabase-enterprise.remote-sync.api]
    [metabase-enterprise.sandbox.api.routes]
    [metabase-enterprise.scim.routes]
    [metabase-enterprise.semantic-search.api]
@@ -106,6 +107,7 @@
    "/database-routing"             (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
    "/document"                     (premium-handler metabase-enterprise.documents.api/routes :documents)
    "/email"                        (premium-handler metabase-enterprise.email.api/routes :cloud-custom-smtp)
+   "/remote-sync"                  (premium-handler metabase-enterprise.remote-sync.api/routes :serialization)
    "/embedding-hub"                (premium-handler metabase-enterprise.embedding-hub.api/routes :embedding)
    "/gsheets"                      (-> gsheets.api/routes ;; gsheets requires both features.
                                        (premium-handler :attached-dwh)

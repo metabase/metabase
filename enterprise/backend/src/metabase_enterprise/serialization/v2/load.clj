@@ -16,6 +16,13 @@
 
 (declare load-one!)
 
+(defn- filter-by-type-whitelist
+  "Filter a list of entity paths, keeping only those whose model type is in the whitelist."
+  [entity-paths type-whitelist]
+  (filter (fn [path]
+            (contains? type-whitelist (-> path peek :model)))
+          entity-paths))
+
 (def ^:private model->circular-dependency-keys
   "Sometimes models have circular dependencies. For example, a card for a Dashboard Question has a `dashboard_id`
   pointing to the dashboard it's in. But when we try to load that dashboard, we'll create all its dashcards, and one
@@ -155,10 +162,14 @@
                           e)))))))
 
 (defn load-metabase!
-  "Loads in a database export from an ingestion source, which is any Ingestable instance."
-  [ingestion & {:keys [backfill? continue-on-error]
-                :or   {backfill?         true
-                       continue-on-error false}}]
+  "Loads in a database export from an ingestion source, which is any Ingestable instance.
+
+  If `root-dependency-path` is passed, we will only load entities that are dependent upon (or dependencies of) the entity
+  described by that serdes path."
+  [ingestion & {:keys [backfill? continue-on-error root-dependency-path]
+                :or   {backfill?            true
+                       continue-on-error    false
+                       root-dependency-path nil}}]
   (u/prog1
     (t2/with-transaction [_tx]
       ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared dependencies
@@ -175,7 +186,16 @@
         (log/infof "Starting deserialization, total %s documents" (count contents))
         (reduce (fn [ctx item]
                   (try
-                    (load-one! ctx item)
+                    (if (or (nil? root-dependency-path)
+                            (contains? (u/traverse [item] #(try
+                                                             (zipmap (serdes/dependencies
+                                                                      (serdes.ingest/ingest-one ingestion %))
+                                                                     (repeat %))
+                                                             (catch Exception _
+                                                               nil)))
+                                       root-dependency-path))
+                      (load-one! ctx item)
+                      ctx)
                     (catch Exception e
                       (when-not continue-on-error
                         (throw e))
@@ -188,4 +208,42 @@
     ;;       this means that the corresponding entries would have been missing or stale when we indexed them.
     ;;       ideally, we would delay the indexing somehow, or only reindex what we've loaded.
     ;;       while we're figuring that out, here's a crude stopgap.
+    (search/reindex! {:async? false})))
+
+(defn load-selective!
+  "Loads entities from an ingestion source, but only those whose types are in the whitelist.
+
+   Parameters:
+   - ingestion: Any Ingestable instance (e.g., YamlIngestion)
+   - type-whitelist: Set of model names to load (e.g., #{\"Transform\"})
+   - opts: Options map (same as load-metabase!)"
+  [ingestion type-whitelist & {:keys [backfill? continue-on-error]
+                               :or   {backfill?         true
+                                      continue-on-error false}}]
+  (u/prog1
+    (t2/with-transaction [_tx]
+      (when backfill?
+        (serdes.backfill/backfill-ids!))
+
+      (let [all-contents (serdes.ingest/ingest-list ingestion)
+            ;; Filter to only load whitelisted types
+            filtered-contents (filter-by-type-whitelist all-contents type-whitelist)
+            ctx {:expanding #{}
+                 :seen      #{}
+                 :circular  #{}
+                 :ingestion ingestion
+                 :from-ids  (m/index-by :id filtered-contents)
+                 :errors    []}]
+        (log/infof "Starting selective deserialization for types %s, loading %s of %s total documents"
+                   type-whitelist (count filtered-contents) (count all-contents))
+        (reduce (fn [ctx item]
+                  (try
+                    (load-one! ctx item)
+                    (catch Exception e
+                      (when-not continue-on-error
+                        (throw e))
+                      (log/warnf (u/strip-error e "Skipping deserialization error"))
+                      (update ctx :errors conj e))))
+                ctx
+                filtered-contents)))
     (search/reindex! {:async? false})))

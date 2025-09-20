@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase-enterprise.transforms.models.job-run :as transforms.job-run]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
    [metabase.util.i18n :as i18n]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -122,3 +123,28 @@
                (t2/changes job))                     ;; user edits
         (update :name        str) ;; convert deferred to strings
         (update :description str))))
+
+;;; ------------------------------------------------- Serialization --------------------------------------------------
+
+(defmethod serdes/hash-fields :model/TransformJob
+  [_transform-job]
+  [:name :created_at])
+
+(defmethod serdes/make-spec "TransformJob"
+  [_model-name opts]
+  {:copy [:name :description :schedule :entity_id :built_in_type]
+   :skip []
+   :transform {:created_at (serdes/date)
+               :updated_at (serdes/date)
+               :tag_associations (serdes/nested :model/TransformJobTransformTag :job_id opts)}})
+
+(defmethod serdes/dependencies "TransformJob"
+  [_ingested]
+  ;; No direct dependencies - TransformTags will be loaded via the junction table dependencies
+  #{})
+
+(defmethod serdes/descendants "TransformJob"
+  [_model-name id]
+  ;; Include the junction table records that link this job to its tags
+  (into {} (for [junction-id (t2/select-pks-set :model/TransformJobTransformTag :job_id id)]
+             {["TransformJobTransformTag" junction-id] {"TransformJob" id}})))

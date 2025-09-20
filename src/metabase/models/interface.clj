@@ -32,6 +32,7 @@
    [toucan2.model :as t2.model]
    [toucan2.protocols :as t2.protocols]
    [toucan2.tools.before-insert :as t2.before-insert]
+   [toucan2.tools.before-update :as t2.before-update]
    [toucan2.tools.hydrate :as t2.hydrate]
    [toucan2.tools.identity-query :as t2.identity-query]
    [toucan2.util :as t2.u])
@@ -57,6 +58,10 @@
   deserialization. Most notably, we don't want to generate an `:entity_id`, as that would lead to duplicated entities
   on a future deserialization."
   false)
+
+(def ^:dynamic *syncing-source-of-truth-entities*
+  "This is dynamically bound to the set of entities that we are syncing when syncing the source of truth."
+  #{})
 
 (def ^{:arglists '([x & _args])} dispatch-on-model
   "Helper dispatch function for multimethods. Dispatches on the first arg, using [[models.dispatch/model]]."
@@ -579,9 +584,32 @@
   (-> instance
       add-entity-id))
 
+(defn- prevent-sync-protected-writes
+  "Prevents writes to entities that are synced to source of truth, unless explicitly allowed."
+  [instance]
+  (when (and (try ((requiring-resolve 'metabase-enterprise.remote-sync.settings/remote-sync-read-only))
+                  (catch Exception _ false))
+             (not *deserializing?*))
+    (throw (ex-info "Cannot modify entities synced to source of truth"
+                    {:entity-id (:entity_id instance)
+                     :model (model instance)})))
+  instance)
+
+(t2/define-before-insert :hook/remote-sync-protected
+  [instance]
+  (prevent-sync-protected-writes instance))
+
+(t2/define-before-update :hook/remote-sync-protected
+  [instance]
+  (prevent-sync-protected-writes instance))
+
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/entity-id)
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/entity-id :hook/remote-sync-protected)
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/remote-sync-protected)
+(methodical/prefer-method! #'t2.before-update/before-update :hook/entity-id :hook/remote-sync-protected)
+(methodical/prefer-method! #'t2.before-update/before-update :hook/timestamped? :hook/remote-sync-protected)
 
 ;; --- helper fns
 (defn changes-with-pk
@@ -647,6 +675,14 @@
       this)"
   {:arglists '([instance] [model pk])}
   dispatch-on-model)
+
+(defmethod can-write? :hook/remote-sync-protected
+  ([instance]
+   (try (false? ((requiring-resolve 'metabase-enterprise.remote-sync.settings/remote-sync-read-only)))
+        (catch Exception _ true)))
+  ([_model _pk]
+   (try (false? ((requiring-resolve 'metabase-enterprise.remote-sync.settings/remote-sync-read-only)))
+        (catch Exception _ true))))
 
 #_{:clj-kondo/ignore [:unused-private-var]}
 (define-simple-hydration-method ^:private hydrate-can-write
@@ -851,3 +887,13 @@
 (defmethod exclude-internal-content-hsql :default
   [_model & _]
   [:= [:inline 1] [:inline 1]])
+
+(methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_write]
+  [_model k models]
+  (instances-with-hydrated-data
+   models k
+   #(into {}
+          (map (juxt :id can-write?))
+          (t2/hydrate (remove nil? models) :collection))
+   :id
+   {:default false}))

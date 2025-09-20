@@ -243,7 +243,9 @@ export function MainNavbarView({
             </TrashSidebarSection>
           )}
         </div>
-        <WhatsNewNotification />
+        <div>
+          <WhatsNewNotification />
+        </div>
       </SidebarContentRoot>
 
       <AddDataModal opened={addDataModalOpened} onClose={closeAddDataModal} />

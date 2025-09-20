@@ -329,6 +329,7 @@ export const PLUGIN_COLLECTIONS = {
   },
   REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
   isRegularCollection: (_data: Partial<Collection> | Bookmark) => true,
+  isSyncedCollection: (_data: Partial<Collection>) => false,
   getCollectionType: (
     _collection: Partial<Collection>,
   ): CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig =>
@@ -836,4 +837,14 @@ export type TransformsPlugin = {
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
   getAdminPaths: () => [],
   getAdminRoutes: () => null,
+};
+
+export const PLUGIN_GIT_SYNC: {
+  LibraryNav: ComponentType;
+  GitSyncSettings: ComponentType;
+  SyncStatusBanner: ComponentType;
+} = {
+  LibraryNav: PluginPlaceholder,
+  GitSyncSettings: NotFoundPlaceholder,
+  SyncStatusBanner: PluginPlaceholder,
 };

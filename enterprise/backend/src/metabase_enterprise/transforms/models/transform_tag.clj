@@ -1,5 +1,6 @@
 (ns metabase-enterprise.transforms.models.transform-tag
   (:require
+   [metabase.models.serialization :as serdes]
    [metabase.util.i18n :as i18n]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -41,3 +42,23 @@
                {:built_in_type nil} ;; never translate this again
                (t2/changes tag))    ;; include user edits
         (update :name str)))) ;; convert deferred to string
+;;; ------------------------------------------------- Serialization --------------------------------------------------
+
+(defmethod serdes/hash-fields :model/TransformTag
+  [_transform-tag]
+  [:name :created_at])
+
+(defmethod serdes/make-spec "TransformTag"
+  [_model-name _opts]
+  {:copy [:name :entity_id :built_in_type]
+   :skip []
+   :transform {:created_at (serdes/date)
+               :updated_at (serdes/date)}})
+
+(defmethod serdes/dependencies "TransformTag"
+  [_ingested]
+  #{})
+
+(defmethod serdes/descendants "TransformTag"
+  [_model-name _id]
+  {})

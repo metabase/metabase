@@ -1400,6 +1400,97 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
 
   - changeSet:
+      id: v57.2025-09-11T16:00:00
+      author: johnswanson
+      comment: Create remote_sync_change_log table to track when syncs occur
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: remote_sync_change_log
+      changes:
+        - createTable:
+            tableName: remote_sync_change_log
+            remarks: Track when remote_sync syncs occur for detecting unsynced changes
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: sync_type
+                  type: varchar(50)
+                  remarks: Type of sync operation (import, export)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source_branch
+                  type: varchar(255)
+                  remarks: Git branch that was synced from
+                  constraints:
+                    nullable: true
+              - column:
+                  name: target_branch
+                  type: varchar(255)
+                  remarks: Git branch that was synced to
+                  constraints:
+                    nullable: true
+              - column:
+                  name: status
+                  type: varchar(50)
+                  remarks: Status of sync operation (success, error)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: message
+                  type: ${text.type}
+                  remarks: Optional message or error details
+                  constraints:
+                    nullable: true
+              - column:
+                  name: model_type
+                  type: varchar(50)
+                  remarks: Type of model that was changed (card, dashboard, collection, etc.)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: model_entity_id
+                  type: char(21)
+                  remarks: Entity ID of the model that was changed
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When the sync occurred
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: most_recent
+                  type: ${boolean.type}
+                  remarks: tracking if this is the most recent change log entry
+                  defaultValue: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-09-11T16:01:00
+      author: jds
+      comment: Add index on remote_sync_change_log.created_at for efficient sync time queries
+      changes:
+        - createIndex:
+            tableName: remote_sync_change_log
+            indexName: idx_remote_sync_change_log_created_at
+            columns:
+              - column:
+                  name: created_at
+
+  - changeSet:
       id: v57.2025-09-12T16:08:00
       author: piranha
       comment: Create glossary table

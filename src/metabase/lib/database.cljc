@@ -15,7 +15,8 @@
 
   we will attempt to resolve the correct Database ID by getting metadata for the source Card and returning its
   `:database-id`; if this is not available for one reason or another this will return `nil`."
-  [query :- ::lib.schema/query]
+  ;; TODO(johnswanson) wtf did I have to remove the query schema bit here
+  [query :- :any]
   (when-let [id (:database query)]
     (if (not= id lib.schema.id/saved-questions-virtual-database-id)
       id

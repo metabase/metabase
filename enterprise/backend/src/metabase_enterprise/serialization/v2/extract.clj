@@ -32,7 +32,10 @@
     (into serdes.models/data-model)
 
     (not (:no-settings opts))
-    (conj "Setting")))
+    (conj "Setting")
+
+    (not (:no-transforms opts))
+    (conj "Transform" "TransformTag" "TransformJob")))
 
 (defn targets-of-type
   "Returns target seq filtered on given model name"

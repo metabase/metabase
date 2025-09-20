@@ -2,6 +2,7 @@ import {
   isRootCollection,
   isRootPersonalCollection,
   isRootTrashCollection,
+  isSyncedCollection,
 } from "metabase/collections/utils";
 import { color } from "metabase/lib/colors";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
@@ -34,6 +35,10 @@ export function getCollectionIcon(
 
   if (isRootPersonalCollection(collection)) {
     return { name: "person" };
+  }
+
+  if (isSyncedCollection(collection)) {
+    return { name: "sync" };
   }
 
   const type = PLUGIN_COLLECTIONS.getCollectionType(collection);
