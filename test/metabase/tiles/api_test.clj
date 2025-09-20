@@ -6,8 +6,7 @@
    [metabase.test :as mt]
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
-   [metabase.util.json :as json]
-   [ring.util.codec :as codec]))
+   [metabase.util.json :as json]))
 
 ;; TODO: Assert on the contents of the response, not just the format
 (defn png? [s]
@@ -42,88 +41,85 @@
                                        :required     false}}}})
 
 (defn encoded-lat-field-ref
-  "URL-encoded latitude field ref for the People table"
+  "JSON-encoded latitude field ref for the People table"
   []
-  (codec/url-encode (json/encode (mt/$ids $people.latitude))))
+  (json/encode (mt/$ids $people.latitude)))
 
 (defn encoded-lon-field-ref
-  "URL-encoded longitude field ref for the People table"
+  "JSON-encoded longitude field ref for the People table"
   []
-  (codec/url-encode (json/encode (mt/$ids $people.longitude))))
+  (json/encode (mt/$ids $people.longitude)))
 
 (deftest ad-hoc-query-test
-  (testing "GET /api/tiles/:zoom/:x/:y/:lat-field/:lon-field"
+  (testing "GET /api/tiles/:zoom/:x/:y with latField and lonField query params"
     (is (png? (mt/user-http-request
-               :crowberto :get 200 (format "tiles/4/2/4/%s/%s"
-                                           (encoded-lat-field-ref)
-                                           (encoded-lon-field-ref))
-               :query (json/encode (venues-query))))))
+               :crowberto :get 200 "tiles/4/2/4"
+               :query (json/encode (venues-query))
+               :latField (encoded-lat-field-ref)
+               :lonField (encoded-lon-field-ref)))))
   (testing "Works on native queries"
     (is (png? (mt/user-http-request
-               :crowberto :get 200 (format "tiles/1/1/1/%s/%s"
-                                           (encoded-lat-field-ref)
-                                           (encoded-lon-field-ref))
-               :query (json/encode (native-query)))))))
+               :crowberto :get 200 "tiles/1/1/1"
+               :query (json/encode (native-query))
+               :latField (encoded-lat-field-ref)
+               :lonField (encoded-lon-field-ref))))))
 
 (deftest saved-card-test
-  (testing "GET /api/tiles/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+  (testing "GET /api/tiles/:card-id/:zoom/:x/:y with latField and lonField query params"
     (testing "MBQL saved card"
       (mt/with-temp [:model/Card card {:dataset_query (venues-query)}]
         (is (png? (mt/user-http-request
-                   :crowberto :get 200 (format "tiles/%d/1/1/1/%s/%s"
-                                               (u/id card)
-                                               (encoded-lat-field-ref)
-                                               (encoded-lon-field-ref)))))))
+                   :crowberto :get 200 (format "tiles/%d/1/1/1" (u/id card))
+                   :latField (encoded-lat-field-ref)
+                   :lonField (encoded-lon-field-ref))))))
 
     (testing "Native saved card"
       (mt/with-temp [:model/Card card {:dataset_query (native-query)}]
-        (testing "GET /api/tiles/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+        (testing "GET /api/tiles/:card-id/:zoom/:x/:y with latField and lonField query params"
           (is (png? (mt/user-http-request
-                     :crowberto :get 200 (format "tiles/%d/1/1/1/%s/%s"
-                                                 (u/id card)
-                                                 (encoded-lat-field-ref)
-                                                 (encoded-lon-field-ref))))))))
+                     :crowberto :get 200 (format "tiles/%d/1/1/1" (u/id card))
+                     :latField (encoded-lat-field-ref)
+                     :lonField (encoded-lon-field-ref)))))))
 
     (testing "Parameterized native saved card"
       (mt/with-temp [:model/Card card {:dataset_query (parameterized-native-query)}]
-        (testing "GET /api/tiles/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+        (testing "GET /api/tiles/:card-id/:zoom/:x/:y with latField and lonField query params"
           (is (png? (mt/user-http-request
-                     :crowberto :get 200 (format "tiles/%d/1/1/1/%s/%s"
-                                                 (u/id card)
-                                                 (encoded-lat-field-ref)
-                                                 (encoded-lon-field-ref))
+                     :crowberto :get 200 (format "tiles/%d/1/1/1" (u/id card))
+                     :latField (encoded-lat-field-ref)
+                     :lonField (encoded-lon-field-ref)
                      :parameters (json/encode [{:type :text
                                                 :target [:variable [:template-tag :state]]
                                                 :value "CA"}])))))))))
 
 (deftest dashcard-test
-  (testing "GET /api/tiles/:dashboard-id/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+  (testing "GET /api/tiles/:dashboard-id/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y with latField and lonField query params"
     (testing "MBQL dashcard"
       (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
                      :model/Card          {card-id :id}      {:dataset_query (venues-query)}
                      :model/DashboardCard {dashcard-id :id}  {:card_id card-id
                                                               :dashboard_id dashboard-id}]
         (is (png? (mt/user-http-request
-                   :crowberto :get 200 (format "tiles/%d/dashcard/%d/card/%d/1/1/1/%s/%s"
+                   :crowberto :get 200 (format "tiles/%d/dashcard/%d/card/%d/1/1/1"
                                                dashboard-id
                                                dashcard-id
-                                               card-id
-                                               (encoded-lat-field-ref)
-                                               (encoded-lon-field-ref)))))))
+                                               card-id)
+                   :latField (encoded-lat-field-ref)
+                   :lonField (encoded-lon-field-ref))))))
 
     (testing "Native dashcard"
       (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
                      :model/Card          {card-id :id}      {:dataset_query (native-query)}
                      :model/DashboardCard {dashcard-id :id}  {:card_id card-id
                                                               :dashboard_id dashboard-id}]
-        (testing "GET /api/tiles/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+        (testing "GET /api/tiles/:dashboard-id/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y with latField and lonField query params"
           (is (png? (mt/user-http-request
-                     :crowberto :get 200 (format "tiles/%d/dashcard/%d/card/%d/1/1/1/%s/%s"
+                     :crowberto :get 200 (format "tiles/%d/dashcard/%d/card/%d/1/1/1"
                                                  dashboard-id
                                                  dashcard-id
-                                                 card-id
-                                                 (encoded-lat-field-ref)
-                                                 (encoded-lon-field-ref))))))))))
+                                                 card-id)
+                     :latField (encoded-lat-field-ref)
+                     :lonField (encoded-lon-field-ref)))))))))
 
 (deftest parameterized-dashcard-test
   (testing "Parameterized mbql dashcard"
@@ -137,14 +133,14 @@
                                                             :parameter_mappings [{:parameter_id "_STATE_"
                                                                                   :card_id card-id
                                                                                   :target [:dimension (mt/$ids people $state)]}]}]
-      (testing "GET /api/tiles/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+      (testing "GET /api/tiles/:dashboard-id/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y with latField and lonField query params"
         (is (png? (mt/user-http-request
-                   :crowberto :get 200 (format "tiles/%d/dashcard/%d/card/%d/1/1/1/%s/%s"
+                   :crowberto :get 200 (format "tiles/%d/dashcard/%d/card/%d/1/1/1"
                                                dashboard-id
                                                dashcard-id
-                                               card-id
-                                               (encoded-lat-field-ref)
-                                               (encoded-lon-field-ref))
+                                               card-id)
+                   :latField (encoded-lat-field-ref)
+                   :lonField (encoded-lon-field-ref)
                    :parameters (json/encode [{:id "_STATE_"
                                               :value ["CA"]}]))))))))
 
@@ -160,14 +156,14 @@
                                                             :parameter_mappings [{:parameter_id "_STATE_"
                                                                                   :card_id card-id
                                                                                   :target [:variable ["template-tag" "state"]]}]}]
-      (testing "GET /api/tiles/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+      (testing "GET /api/tiles/:dashboard-id/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y with latField and lonField query params"
         (is (png? (mt/user-http-request
-                   :crowberto :get 200 (format "tiles/%d/dashcard/%d/card/%d/1/1/1/%s/%s"
+                   :crowberto :get 200 (format "tiles/%d/dashcard/%d/card/%d/1/1/1"
                                                dashboard-id
                                                dashcard-id
-                                               card-id
-                                               (encoded-lat-field-ref)
-                                               (encoded-lon-field-ref))
+                                               card-id)
+                   :latField (encoded-lat-field-ref)
+                   :lonField (encoded-lon-field-ref)
                    :parameters (json/encode [{:id "_STATE_"
                                               :value ["CA"]}]))))))))
 
@@ -219,9 +215,9 @@
       (with-redefs [api.tiles/create-tile (fn [_ points] points)
                     api.tiles/tile->byte-array identity]
         (let [result (mt/user-http-request
-                      :crowberto :get 200 (format "tiles/7/30/49/%s/%s"
-                                                  (encoded-lat-field-ref)
-                                                  (encoded-lon-field-ref))
+                      :crowberto :get 200 "tiles/7/30/49"
+                      :latField (encoded-lat-field-ref)
+                      :lonField (encoded-lon-field-ref)
                       :query (json/encode
                               (mt/mbql-query people
                                 {:breakout    [[:field (mt/id :people :latitude)]
@@ -236,7 +232,7 @@
   (testing "if the query fails, don't attempt to generate a map without any points -- the endpoint should return a 400"
     (is (=? {:status "failed"}
             (mt/user-http-request
-             :rasta :get 400 (format "tiles/1/1/1/%s/%s"
-                                     (encoded-lat-field-ref)
-                                     (encoded-lon-field-ref))
+             :rasta :get 400 "tiles/1/1/1"
+             :latField (encoded-lat-field-ref)
+             :lonField (encoded-lon-field-ref)
              :query (json/encode (mt/mbql-query venues {:filter [:= $users.id 1]})))))))
