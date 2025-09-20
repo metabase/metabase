@@ -216,9 +216,37 @@
   "Process column definitions from the representation into result_metadata format."
   [columns]
   (when (seq columns)
-    (mapv (fn [{:keys [name display_name description base_type effective_type
-                       semantic_type visibility currency] :as _col}]
-            (let [normalized-base (normalize-type-name base_type)
+    (mapv (fn [col]
+            (let [;; Extract all the fields
+                  {:keys [name display_name description base_type effective_type
+                          semantic_type visibility currency
+                          ;; New fields from enriched metadata
+                          database_type table_id active id position
+                          source source_alias field_ref
+                          fingerprint visibility_type
+                          unit inherited_temporal_unit]
+                   ;; Handle lib/* namespaced keys separately
+                   :as col-map} col
+                  ;; Extract lib/* keys and convert string values to keywords where appropriate
+                  lib-keys (into {}
+                                 (map (fn [[k v]]
+                                        [k (if (and (string? v)
+                                                    (or (str/starts-with? v "source/")
+                                                        (str/starts-with? v "type/")))
+                                             (keyword v)
+                                             v)])
+                                      (filter (fn [[k _]]
+                                                (and (keyword? k)
+                                                     (= "lib" (namespace k))))
+                                              col-map)))
+                  ;; Also handle qp/* keys
+                  qp-keys (into {}
+                                (filter (fn [[k _]]
+                                          (and (keyword? k)
+                                               (= "qp" (namespace k))))
+                                        col-map))
+                  ;; Normalize types
+                  normalized-base (normalize-type-name base_type)
                   normalized-eff (normalize-type-name effective_type)
                   normalized-sem (normalize-type-name semantic_type)
                   ;; For field_ref, we need a valid base type (not semantic/relation type)
@@ -231,16 +259,57 @@
                   field-base-type (cond
                                     (valid-base-type? normalized-base) normalized-base
                                     (valid-base-type? normalized-eff) normalized-eff
-                                    :else :type/Text)] ; Default fallback
-              (cond-> {:name name
-                       :display_name (or display_name name)
-                       :field_ref [:field name {:base-type field-base-type}]}
-                description (assoc :description description)
-                normalized-base (assoc :base_type normalized-base)
-                normalized-eff (assoc :effective_type normalized-eff)
-                normalized-sem (assoc :semantic_type normalized-sem)
-                visibility (assoc :visibility_type visibility)
-                currency (assoc :currency currency))))
+                                    :else :type/Text) ; Default fallback
+                  ;; Process provided field_ref, converting strings to keywords in the options map
+                  process-field-ref (fn [ref]
+                                      (when ref
+                                        (if (and (vector? ref) (= 3 (count ref)))
+                                          (let [[tag id-or-name opts] ref]
+                                            [tag id-or-name
+                                             (if (map? opts)
+                                               (into {} (map (fn [[k v]]
+                                                               [k (if (and (string? v)
+                                                                           (str/starts-with? v "type/"))
+                                                                    (keyword v)
+                                                                    v)])
+                                                             opts))
+                                               opts)])
+                                          ref)))
+                  ;; Use provided field_ref or construct one
+                  final-field-ref (or (process-field-ref field_ref)
+                                      [:field name {:base-type field-base-type}])]
+              (merge
+               ;; Base required fields
+               {:name name
+                :display_name (or display_name name)
+                :field_ref final-field-ref}
+               ;; Optional fields
+               (when description {:description description})
+               (when normalized-base {:base_type normalized-base})
+               (when normalized-eff {:effective_type normalized-eff})
+               (when normalized-sem {:semantic_type normalized-sem})
+               ;; Convert visibility_type to keyword
+               (when (or visibility visibility_type)
+                 {:visibility_type (keyword (or visibility_type visibility))})
+               (when currency {:currency currency})
+               ;; Additional metadata fields
+               (when database_type {:database_type database_type})
+               (when table_id {:table_id table_id})
+               (when (some? active) {:active active})
+               (when id {:id id})
+               (when position {:position position})
+               ;; Convert source to keyword
+               (when source {:source (keyword source)})
+               (when source_alias {:source_alias source_alias})
+               (when fingerprint {:fingerprint fingerprint})
+               ;; Convert unit to keyword
+               (when unit {:unit (keyword unit)})
+               ;; Convert inherited_temporal_unit to keyword
+               (when inherited_temporal_unit {:inherited_temporal_unit (keyword inherited_temporal_unit)})
+               ;; Add all lib/* namespaced keys (with converted values)
+               lib-keys
+               ;; Add all qp/* namespaced keys
+               qp-keys)))
           columns)))
 
 ;;; ------------------------------------ Public API ------------------------------------
@@ -257,7 +326,8 @@
    - Display is typically :table since models represent structured data"
   [{model-name :name
     :keys [type ref description database collection columns] :as representation}]
-  (let [database-id (v0-common/find-database-id database)]
+  (let [database-id (v0-common/find-database-id database)
+        dataset-query (v0-common/representation->dataset-query representation)]
     (when-not database-id
       (throw (ex-info (str "Database not found: " database)
                       {:database database})))
@@ -266,12 +336,11 @@
       :name model-name
       :description (or description "")
       :display :table                   ; Models are typically displayed as tables
-      :dataset_query (v0-common/representation->dataset-query representation)
+      :dataset_query dataset-query
       :visualization_settings {}
       :database_id database-id
-      :query_type :native               ; TODO: Support MBQL queries
-      :type :model                      ; This is what makes it a model instead of a question
-      }
+      :query_type (if (= (:type dataset-query) "native") :native :query)
+      :type :model}
      ;; Result metadata with column definitions
      (when columns
        {:result_metadata (process-column-metadata columns)})

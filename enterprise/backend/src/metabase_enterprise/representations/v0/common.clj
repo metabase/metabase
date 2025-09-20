@@ -46,16 +46,17 @@
        :native {:query query}
        :database database-id}
 
-      ;; STUB:
       ;; MBQL query - use serdes/import-mbql if it's already in MBQL format
       mbql_query
       (try
-        (serdes/import-mbql mbql_query)
-        (catch Exception e
+        (-> (serdes/import-mbql mbql_query)
+            (update :type keyword))
+        (catch Exception _e
           ;; Fall back to simple structure if import fails
-          (merge {:type :query
-                  :database database-id}
-                 mbql_query)))
+          (-> {:database database-id
+               :type     :query}
+              (merge mbql_query)
+              (update :type keyword))))
 
       :else
       (throw (ex-info "Question must have either 'query' or 'mbql_query'"
