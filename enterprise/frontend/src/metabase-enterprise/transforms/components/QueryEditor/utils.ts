@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 
 import type {
   Location,
@@ -7,6 +8,8 @@ import type {
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { NativeQuerySnippet } from "metabase-types/api";
+
+import type { QueryValidationResult } from "./types";
 
 const EMPTY_SELECTION_RANGE: SelectionRange = {
   start: { row: 0, column: 0 },
@@ -67,4 +70,19 @@ export function useInsertSnippetHandler({
 
     onChange(question.setQuery(newQuery));
   };
+}
+
+export function getValidationResult(query: Lib.Query): QueryValidationResult {
+  const { isNative } = Lib.queryDisplayInfo(query);
+  if (isNative) {
+    const tags = Object.values(Lib.templateTags(query));
+    if (tags.some((t) => t.type !== "card" && t.type !== "snippet")) {
+      return {
+        isValid: false,
+        errorMessage: t`In transforms, you can use snippets and question or model references, but not variables.`,
+      };
+    }
+  }
+
+  return { isValid: Lib.canSave(query, "question") };
 }
