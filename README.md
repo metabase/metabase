@@ -29,7 +29,7 @@ Take a [tour of Metabase](https://www.metabase.com/learn/getting-started/tour-of
 ## Supported databases
 
 - [Officially supported databases](./docs/databases/connecting.md#connecting-to-supported-databases)
-- [Community drivers](./docs/developers-guide/partner-and-community-drivers.md)
+- [Community drivers](./docs/developers-guide/community-drivers.md)
 
 ## Installation
 
