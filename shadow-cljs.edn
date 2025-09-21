@@ -16,6 +16,8 @@
                 :compiler-options {:reader-features #{:cljs-dev}}}
    :compiler-options {:reader-features #{:cljs-release}
                       :source-map      true}
+   :build-hooks [(shadow-fix-report-hook/hook)
+                 (shadow.cljs.build-report/hook)]
    :closure-defines {goog.debug.LOGGING_ENABLED true}
    :entries    [metabase.dashboards.constants
                 metabase.legacy-mbql.js
