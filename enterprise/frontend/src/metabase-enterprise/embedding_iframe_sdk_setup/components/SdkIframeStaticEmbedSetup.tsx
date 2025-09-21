@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useMemo } from "react";
+import { useMount } from "react-use";
 
 import { useSetting } from "metabase/common/hooks";
 import { EmbedModalContentStatusBar } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/EmbedModalContentStatusBar";
@@ -6,8 +7,9 @@ import type { StaticEmbedSetupPaneProps } from "metabase/public/components/Embed
 import { getDefaultEmbeddingParams } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-default-embedding-params";
 import { getHasSettingsChanges } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-has-settings-changes";
 import { getStaticEmbedSetupPublishHandlers } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-static-embed-setup-publish-handlers";
-import type { EmbeddingParameters } from "metabase/public/lib/types";
 import { Stack } from "metabase/ui";
+import { useEmbeddingParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/hooks/use-embedding-paramers";
+import { useSdkIframeEmbedSetupContext } from "metabase-enterprise/embedding_iframe_sdk_setup/context";
 
 import { SdkIframeEmbedSetupContent } from "./SdkIframeEmbedSetup";
 import { SdkIframeEmbedSetupProvider } from "./SdkIframeEmbedSetupProvider";
@@ -15,24 +17,35 @@ import { SdkIframeEmbedSetupProvider } from "./SdkIframeEmbedSetupProvider";
 export const SdkIframeStaticEmbedSetupInner = ({
   resource,
   resourceType,
-  resourceParameters,
+  resourceParameters: initialResourceParameters,
   onUpdateEnableEmbedding,
   onUpdateEmbeddingParams,
 }: StaticEmbedSetupPaneProps) => {
   const exampleDashboardId = useSetting("example-dashboard-id");
+  const { availableParameters: resourceParameters, isLoadingParameters } =
+    useSdkIframeEmbedSetupContext();
+  const { buildEmbeddedParameters, setEmbeddingParameters } =
+    useEmbeddingParameters();
 
-  const initialEmbeddingParams = getDefaultEmbeddingParams(
+  const initialEmbeddingParameters = getDefaultEmbeddingParams(
     resource,
-    resourceParameters,
+    initialResourceParameters,
   );
-  const [embeddingParams, setEmbeddingParams] = useState<EmbeddingParameters>(
-    initialEmbeddingParams,
+  const embeddingParameters = useMemo(
+    () => buildEmbeddedParameters(resourceParameters),
+    [buildEmbeddedParameters, resourceParameters],
   );
 
-  const hasSettingsChanges = getHasSettingsChanges({
-    initialEmbeddingParams,
-    embeddingParams,
+  useMount(() => {
+    setEmbeddingParameters(initialEmbeddingParameters);
   });
+
+  const hasSettingsChanges =
+    !isLoadingParameters &&
+    getHasSettingsChanges({
+      initialEmbeddingParams: initialEmbeddingParameters,
+      embeddingParams: embeddingParameters,
+    });
 
   const { handleSave, handleUnpublish, handleDiscard } =
     getStaticEmbedSetupPublishHandlers({
@@ -41,8 +54,8 @@ export const SdkIframeStaticEmbedSetupInner = ({
       resourceParameters,
       onUpdateEnableEmbedding,
       onUpdateEmbeddingParams,
-      embeddingParams,
-      setEmbeddingParams,
+      embeddingParams: embeddingParameters,
+      setEmbeddingParams: setEmbeddingParameters,
       exampleDashboardId,
     });
 

@@ -29,7 +29,11 @@ export interface ParametersSettingsProps {
   parameterValues: EmbeddingParametersValues;
 
   onChangeEmbeddingParameters: (parameters: EmbeddingParameters) => void;
-  onChangeParameterValue: (id: string, value: string) => void;
+  onChangeParameterValue: (data: {
+    id: string;
+    slug: string;
+    value: string;
+  }) => void;
 }
 
 export const ParametersSettings = ({
@@ -124,13 +128,18 @@ export const ParametersSettings = ({
                   parameter={parameter}
                   parameters={valuePopulatedLockedParameters}
                   setValue={(value: string) =>
-                    onChangeParameterValue(parameter.id, value)
+                    onChangeParameterValue({
+                      id: parameter.id,
+                      slug: parameter.slug,
+                      value,
+                    })
                   }
                   setParameterValueToDefault={() => {
-                    onChangeParameterValue(
-                      parameter.id,
-                      parameter.default as any,
-                    );
+                    onChangeParameterValue({
+                      id: parameter.id,
+                      slug: parameter.slug,
+                      value: parameter.default as any,
+                    });
                   }}
                   enableParameterRequiredBehavior
                 />

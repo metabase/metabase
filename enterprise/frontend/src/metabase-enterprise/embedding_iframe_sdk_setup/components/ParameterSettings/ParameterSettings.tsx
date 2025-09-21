@@ -5,7 +5,10 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { ParameterWidget } from "metabase/parameters/components/ParameterWidget";
+import { ParametersSettings } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/ParametersSettings";
+import { getLockedPreviewParameters } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-locked-preview-parameters";
 import { Group, Stack, Text } from "metabase/ui";
+import { useEmbeddingParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/hooks/use-embedding-paramers";
 import { SET_INITIAL_PARAMETER_DEBOUNCE_MS } from "metabase-enterprise/embedding_iframe_sdk_setup/constants";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -34,6 +37,7 @@ function mapValuesBySlugToById(
 
 export const ParameterSettings = () => {
   const {
+    embeddingType,
     experience,
     settings,
     updateSettings,
@@ -42,7 +46,10 @@ export const ParameterSettings = () => {
   } = useSdkIframeEmbedSetupContext();
 
   const { isParameterHidden, toggleParameterVisibility } = useHideParameter();
+  const { buildEmbeddedParameters, setEmbeddingParameters } =
+    useEmbeddingParameters();
 
+  const isStaticEmbedding = embeddingType === "static";
   const isQuestionOrDashboardEmbed =
     !!settings.questionId || !!settings.dashboardId;
 
@@ -106,6 +113,28 @@ export const ParameterSettings = () => {
       <Text size="sm" c="text-medium">
         {t`Loading parameters...`}
       </Text>
+    );
+  }
+
+  if (isStaticEmbedding) {
+    const embeddingParams = buildEmbeddedParameters(availableParameters);
+    const lockedParameters = getLockedPreviewParameters(
+      availableParameters,
+      embeddingParams,
+    );
+
+    return (
+      <ParametersSettings
+        resourceType={settings.dashboardId ? "dashboard" : "question"}
+        resourceParameters={availableParameters}
+        embeddingParams={embeddingParams}
+        lockedParameters={lockedParameters}
+        parameterValues={parameterValuesById}
+        onChangeEmbeddingParameters={setEmbeddingParameters}
+        onChangeParameterValue={({ slug, value }) =>
+          updateInitialParameterValue(slug, value)
+        }
+      />
     );
   }
 
