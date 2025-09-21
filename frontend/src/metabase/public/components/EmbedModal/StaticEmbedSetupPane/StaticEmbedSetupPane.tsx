@@ -35,6 +35,7 @@ import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
 import { getDefaultDisplayOptions } from "./config";
 import { getDefaultEmbeddingParams } from "./lib/get-default-embedding-params";
 import { getHasSettingsChanges } from "./lib/get-has-settings-changes";
+import { getLockedPreviewParameters } from "./lib/get-locked-preview-parameters";
 import { EMBED_MODAL_TABS } from "./tabs";
 import type { ActivePreviewPane, EmbedCodePaneVariant } from "./types";
 
@@ -271,7 +272,7 @@ export const StaticEmbedSetupPane = ({
                   lockedParameters={lockedParameters}
                   parameterValues={parameterValues}
                   onChangeEmbeddingParameters={setEmbeddingParams}
-                  onChangeParameterValue={(id: string, value: string) =>
+                  onChangeParameterValue={({ id, value }) =>
                     setParameterValues((state) => ({
                       ...state,
                       [id]: value,
@@ -360,15 +361,6 @@ function getPreviewParamsBySlug({
       const valueWithDefaultLockedParameterValue = value === null ? [] : value;
       return [parameter.slug, valueWithDefaultLockedParameterValue];
     }),
-  );
-}
-
-function getLockedPreviewParameters(
-  resourceParameters: EmbedResourceParameter[],
-  embeddingParams: EmbeddingParameters,
-) {
-  return resourceParameters.filter(
-    (parameter) => embeddingParams[parameter.slug] === "locked",
   );
 }
 

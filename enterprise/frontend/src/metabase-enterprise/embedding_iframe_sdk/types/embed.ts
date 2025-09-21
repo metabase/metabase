@@ -92,6 +92,7 @@ export interface DashboardEmbedOptions {
   withDownloads?: boolean;
 
   // parameters
+  lockedParameters?: string[];
   initialParameters?: ParameterValues;
   hiddenParameters?: string[];
 
@@ -112,6 +113,7 @@ export interface QuestionEmbedOptions {
   isSaveEnabled?: boolean;
 
   // parameters
+  lockedParameters?: string[];
   initialSqlParameters?: SqlParameterValues;
 
   // incompatible options
