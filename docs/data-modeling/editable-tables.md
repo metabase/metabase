@@ -5,7 +5,7 @@ summary: Admins can create, update, and delete data in tables right in Metabase.
 
 # Editable tables
 
-{% plans-blockquote.html feature="Editable table data"  %}
+{% include plans-blockquote.html feature="Editable table data"  %}
 
 Admins can enable editable table data in Metabase.
 

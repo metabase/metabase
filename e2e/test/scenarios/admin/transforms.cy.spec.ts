@@ -508,24 +508,23 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
   });
 
   describe("tags", () => {
-    it("should be able to add and remove tags", { tags: "@flaky" }, () => {
+    it("should be able to add and remove tags", () => {
       createMbqlTransform({ visitTransform: true });
       getTagsInput().click();
 
-      H.popover().findByRole("option", { name: "hourly" }).click();
+      H.popover().findByText("hourly").click();
       cy.wait("@updateTransform");
       assertOptionSelected("hourly");
       assertOptionNotSelected("daily");
 
-      H.popover().findByRole("option", { name: "daily" }).click();
+      H.popover().findByText("daily").click();
       cy.wait("@updateTransform");
       assertOptionSelected("hourly");
       assertOptionSelected("daily");
 
-      H.popover().findByRole("option", { name: "hourly" }).click();
-      cy.wait("@updateTransform");
-      assertOptionNotSelected("hourly");
-      assertOptionSelected("daily");
+      getTagsInput().type("{backspace}");
+      assertOptionSelected("hourly");
+      assertOptionNotSelected("daily");
     });
 
     it("should be able to create tags inline", () => {
@@ -542,7 +541,8 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
 
       getTagsInput().click();
       H.popover()
-        .findByRole("option", { name: "hourly" })
+        .findByText("hourly")
+        .parent()
         .findByLabelText("Rename tag")
         .click({ force: true });
       H.modal().within(() => {
@@ -560,7 +560,8 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
 
       getTagsInput().click();
       H.popover()
-        .findByRole("option", { name: "hourly" })
+        .findByText("hourly")
+        .parent()
         .findByLabelText("Delete tag")
         .click({ force: true });
       H.modal().within(() => {
@@ -596,7 +597,8 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       cy.log("Remove the new tag from transform B");
       getTagsInput().click();
       H.popover()
-        .findByRole("option", { name: "New tag" })
+        .findByText("New tag")
+        .parent()
         .findByLabelText("Delete tag")
         .click({ force: true });
       H.modal().within(() => {
@@ -1280,7 +1282,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
 
       getNavSidebar().findByText("Runs").click();
       getContentTable().within(() => {
-        cy.findByText("In-progress").should("be.visible");
+        cy.findByText("In progress").should("be.visible");
         cy.findByLabelText("Cancel run").click();
       });
 
@@ -1377,22 +1379,18 @@ describe("scenarios > admin > transforms > databases without :schemas", () => {
     cy.intercept("DELETE", "/api/ee/transform-tag/*").as("deleteTag");
   });
 
-  it(
-    "should be not be possible to create a new schema when updating a transform target",
-    { tags: "@flaky" },
-    () => {
-      createMbqlTransform({
-        databaseId: WRITABLE_DB_ID,
-        sourceTable: "ORDERS",
-        visitTransform: true,
-        targetSchema: null,
-      });
+  it("should be not be possible to create a new schema when updating a transform target", () => {
+    createMbqlTransform({
+      databaseId: WRITABLE_DB_ID,
+      sourceTable: "ORDERS",
+      visitTransform: true,
+      targetSchema: null,
+    });
 
-      getTransformPage().button("Change target").click();
+    getTransformPage().button("Change target").click();
 
-      H.modal().findByLabelText("Schema").should("not.exist");
-    },
-  );
+    H.modal().findByLabelText("Schema").should("not.exist");
+  });
 
   it("should be not be possible to create a new schema when the database does not support schemas", () => {
     cy.log("create a new transform");
@@ -1540,25 +1538,23 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("tags", () => {
-    // skipped because it's flaking so often
-    it("should be able to add and remove tags", { tags: "@skip" }, () => {
+    it("should be able to add and remove tags", () => {
       H.createTransformJob({ name: "New job" }, { visitTransformJob: true });
       getTagsInput().click();
 
-      H.popover().findByRole("option", { name: "hourly" }).click();
+      H.popover().findByText("hourly").click();
       cy.wait("@updateJob");
       assertOptionSelected("hourly");
       assertOptionNotSelected("daily");
 
-      H.popover().findByRole("option", { name: "daily" }).click();
+      H.popover().findByText("daily").click();
       cy.wait("@updateJob");
       assertOptionSelected("hourly");
       assertOptionSelected("daily");
 
-      H.popover().findByRole("option", { name: "hourly" }).click();
-      cy.wait("@updateJob");
-      assertOptionNotSelected("hourly");
-      assertOptionSelected("daily");
+      getTagsInput().type("{backspace}");
+      assertOptionSelected("hourly");
+      assertOptionNotSelected("daily");
     });
   });
 
@@ -1640,7 +1636,7 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("filtering", () => {
-    it("should be able to filter jobs ", { tags: "@flaky" }, () => {
+    it("should be able to filter jobs ", () => {
       cy.log("run hourly job so know that was recently run");
       visitJobListPage();
 
@@ -2040,7 +2036,7 @@ describe("scenarios > admin > transforms > runs", () => {
         cy.button("Update filter").click();
       });
       getRunMethodFilterWidget().findByText("Schedule").should("be.visible");
-      H.main().findByText("No runs yet").should("be.visible");
+      H.main().findByText("No runs found").should("be.visible");
 
       cy.log("run method filter - multiple options");
       getRunMethodFilterWidget().click();
@@ -2103,7 +2099,7 @@ describe("scenarios > admin > transforms > runs", () => {
       getStartAtFilterWidget().click();
       H.popover().findByText("Previous week").click();
       getStartAtFilterWidget().findByText("Previous week").should("be.visible");
-      H.main().findByText("No runs yet").should("be.visible");
+      H.main().findByText("No runs found").should("be.visible");
 
       getStartAtFilterWidget().button("Remove filter").click();
       getContentTable().within(() => {
@@ -2147,7 +2143,7 @@ describe("scenarios > admin > transforms > runs", () => {
       getEndAtFilterWidget().click();
       H.popover().findByText("Previous week").click();
       getEndAtFilterWidget().findByText("Previous week").should("be.visible");
-      H.main().findByText("No runs yet").should("be.visible");
+      H.main().findByText("No runs found").should("be.visible");
 
       getEndAtFilterWidget().button("Remove filter").click();
       getContentTable().within(() => {
@@ -2264,7 +2260,7 @@ function getTagFilterWidget() {
 }
 
 function getRunMethodFilterWidget() {
-  return cy.findByRole("group", { name: "Run method" });
+  return cy.findByRole("group", { name: "Trigger" });
 }
 
 function getStartAtFilterWidget() {
