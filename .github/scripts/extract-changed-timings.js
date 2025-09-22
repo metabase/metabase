@@ -1,10 +1,11 @@
 const extractChangedTimings = ({ oldTimings, newTimings }) => {
-  const oldTimingMap = {};
-  oldTimings.durations?.forEach((item) => {
-    if (item.spec) {
-      oldTimingMap[item.spec] = item.duration;
-    }
-  });
+  const oldTimingMap =
+    oldTimings.durations?.reduce((map, item) => {
+      if (item.spec) {
+        map[item.spec] = item.duration;
+      }
+      return map;
+    }, {}) || {};
 
   const changedTimings = { durations: [] };
 
