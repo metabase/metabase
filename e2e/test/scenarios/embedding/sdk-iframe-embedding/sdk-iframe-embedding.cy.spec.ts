@@ -315,13 +315,18 @@ H.describeWithSnowplowEE(
   () => {
     beforeEach(() => {
       H.resetSnowplow();
-      H.prepareSdkIframeEmbedTest({ signOut: false });
+      H.prepareSdkIframeEmbedTest({
+        enabledAuthMethods: ["jwt"],
+        signOut: false,
+      });
       H.enableTracking();
     });
 
     it("should send an Embedded Analytics JS usage event", () => {
       cy.signOut();
+      cy.visit("http://localhost:4000");
       const frame = H.loadSdkIframeEmbedTestPage({
+        origin: "http://different-than-metabase-instance.com",
         elements: [
           {
             component: "metabase-dashboard",
