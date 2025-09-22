@@ -11,7 +11,7 @@ import {
   type SelectProps,
 } from "metabase/ui";
 
-import { sharedFieldStyleProps } from "../styles";
+import { getSharedFieldStyleProps } from "../styles";
 
 const ICON_SIZE = 16;
 
@@ -46,7 +46,7 @@ export const DatabaseEngineSelect = ({
       searchable
       leftSection={<DatabaseIcon engineKey={engineKey} />}
       renderOption={renderSelectOption}
-      {...sharedFieldStyleProps}
+      {...getSharedFieldStyleProps()}
     />
   );
 };

@@ -6,7 +6,7 @@ import { PLUGIN_DB_ROUTING } from "metabase/plugins";
 import { Icon, Tooltip } from "metabase/ui";
 import type { Engine } from "metabase-types/api";
 
-import { sharedFieldStyleProps } from "../styles";
+import { getSharedFieldStyleProps } from "../styles";
 
 export interface DatabaseNameFieldProps {
   engine: Engine;
@@ -41,7 +41,7 @@ export const DatabaseNameField = ({
       }
       {...autoFocusProps}
       {...props}
-      {...sharedFieldStyleProps}
+      {...getSharedFieldStyleProps()}
     />
   );
 };

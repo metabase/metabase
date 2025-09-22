@@ -10,7 +10,7 @@ import { isEngineKey } from "metabase-types/guards";
 
 import type { FormLocation } from "../../types";
 import { setDatabaseFormValues } from "../../utils/schema";
-import { sharedFieldStyleProps } from "../styles";
+import { getSharedFieldStyleProps } from "../styles";
 
 import {
   connectionStringParsedFailed,
@@ -137,7 +137,7 @@ export function DatabaseConnectionStringField({
       placeholder={placeholder}
       name="connection-string"
       onBlur={handleBlur}
-      {...sharedFieldStyleProps}
+      {...getSharedFieldStyleProps()}
     />
   );
 }
