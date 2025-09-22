@@ -410,3 +410,61 @@ export const METRIC_COLUMN_WITH_SCALING: StaticChartProps = {
   },
   renderingContext,
 } as any;
+
+const MANY_CATEGORY_ROWS = Array.from({ length: 20 }, (_, index) => [
+  `Category ${index + 1}`,
+  100 - index * 3,
+]);
+
+const MANY_CATEGORY_COLS = [
+  {
+    base_type: "type/Text",
+    semantic_type: "type/Category",
+    name: "CATEGORY",
+    display_name: "Category",
+    source: "breakout",
+    field_ref: ["field", 1, null],
+  },
+  {
+    base_type: "type/Integer",
+    semantic_type: "type/Quantity",
+    name: "count",
+    display_name: "Count",
+    source: "aggregation",
+    field_ref: ["aggregation", 0],
+  },
+];
+
+const createManyCategorySeries = (
+  groupRemainingValues: boolean,
+): StaticChartProps => ({
+  rawSeries: [
+    {
+      card: {
+        id: groupRemainingValues ? 3 : 4,
+        name: groupRemainingValues
+          ? "Row Chart Grouped Overflow"
+          : "Row Chart Ungrouped Overflow",
+        display: "row",
+        visualization_settings: {
+          "graph.dimensions": ["CATEGORY"],
+          "graph.metrics": ["count"],
+          "graph.row_chart.group_remaining_values": groupRemainingValues,
+        },
+      },
+      data: {
+        rows: MANY_CATEGORY_ROWS,
+        cols: MANY_CATEGORY_COLS,
+      },
+    },
+  ],
+  settings: {
+    "graph.dimensions": ["CATEGORY"],
+    "graph.metrics": ["count"],
+    "graph.row_chart.group_remaining_values": groupRemainingValues,
+  },
+  renderingContext,
+});
+
+export const MANY_CATEGORY_GROUPED = createManyCategorySeries(true);
+export const MANY_CATEGORY_UNGROUPED = createManyCategorySeries(false);
