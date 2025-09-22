@@ -317,10 +317,10 @@ H.describeWithSnowplowEE(
       H.resetSnowplow();
       H.prepareSdkIframeEmbedTest({ signOut: false });
       H.enableTracking();
-      cy.signOut();
     });
 
     it("should send an Embedded Analytics JS usage event", () => {
+      cy.signOut();
       const frame = H.loadSdkIframeEmbedTestPage({
         elements: [
           {
@@ -404,6 +404,25 @@ H.describeWithSnowplowEE(
           },
         },
       });
+    });
+
+    it("should not send an Embedded Analytics JS usage event in the preview", () => {
+      cy.visit("/embed-js");
+
+      H.waitForSimpleEmbedIframesToLoad();
+      H.getSimpleEmbedIframeContent().within(() => {
+        cy.findByText("Orders in a dashboard").should("be.visible");
+      });
+
+      H.expectUnstructuredSnowplowEvent(
+        {
+          event: "setup",
+          global: {
+            auth_method: "session",
+          },
+        },
+        0,
+      );
     });
   },
 );
