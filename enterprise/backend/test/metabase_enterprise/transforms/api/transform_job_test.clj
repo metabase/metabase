@@ -17,8 +17,8 @@
                      :model/TransformTag tag2 {:name "test-tag-2"}]
         (testing "Creates job with valid data"
           (let [response (mt/user-http-request :crowberto :post 200 "ee/transform-job"
-                                               {:name                  "Test Job"
-                                                :description           "Test Description"
+                                               {:name            "Test Job"
+                                                :description     "Test Description"
                                                 :schedule        "0 0 0 * * ?"
                                                 :ui_display_type "cron/builder"
                                                 :tag_ids         [(:id tag1) (:id tag2)]})]
@@ -26,6 +26,7 @@
             (is (= "Test Job" (:name response)))
             (is (= "Test Description" (:description response)))
             (is (= "0 0 0 * * ?" (:schedule response)))
+            (is (= "cron/builder" (:ui_display_type response)))
             (is (= (set [(:id tag1) (:id tag2)]) (set (:tag_ids response))))))
 
         (testing "Validates cron expression"
