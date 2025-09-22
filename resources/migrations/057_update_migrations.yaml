@@ -1470,7 +1470,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: ui_display_type
-                  value: 'crow/builder'
+                  value: 'cron/builder'
             where: built_in_type IS NOT NULL
       rollback:
         - update:

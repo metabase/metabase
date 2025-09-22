@@ -336,7 +336,8 @@
    (fn [_]
      (default-timestamped
       {:name (str "Test Transform Job " (u/generate-nano-id))
-       :schedule "0 0 * * * ?"}))
+       :schedule "0 0 * * * ?"
+       :ui_display_type :cron/raw}))
 
    :model/TransformRun
    (fn [_]
@@ -348,7 +349,7 @@
    :model/TransformTag
    (fn [_]
      (default-timestamped
-      {:name (str "test-tag-" (u/generate-nano-id))}))
+      {:name            (str "test-tag-" (u/generate-nano-id))}))
 
    :model/User
    (fn [_] {:first_name (u.random/random-name)

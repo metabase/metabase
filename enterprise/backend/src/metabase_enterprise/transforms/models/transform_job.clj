@@ -15,13 +15,8 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
-(def ^:private transform-job-ui-display-types
-  #{:cron/raw
-    :cron/builder
-    nil})
-
 (t2/deftransforms :model/TransformJob
-  {:ui_display_type (mi/transform-validator mi/transform-keyword (partial mi/assert-enum transform-job-ui-display-types))})
+  {:ui_display_type mi/transform-keyword})
 
 (mi/define-batched-hydration-method tag-ids
   :tag_ids
