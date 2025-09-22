@@ -38,14 +38,14 @@
 
 (defn- python-runner-request
   "Helper function for making HTTP requests to the python runner service."
-  [server-url method endpoint & [request-options]]
+  [server-url method endpoint request-options & extra-args]
   (let [url          (str server-url "/v1" endpoint)
         base-options {:content-type     :json
                       :accept           :json
                       :throw-exceptions false
                       :as               :json
                       :headers          (authorization-headers)}]
-    (http/request (merge base-options request-options {:method method, :url url}))))
+    (apply http/request (merge base-options request-options {:method method, :url url}) extra-args)))
 
 (defn- write-jsonl-to-stream! [^OutputStream os col-names reducible-rows]
   (let [none? (volatile! true)
