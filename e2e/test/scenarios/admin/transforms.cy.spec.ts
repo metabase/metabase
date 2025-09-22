@@ -1534,6 +1534,24 @@ describe("scenarios > admin > transforms > jobs", () => {
         getScheduleFrequencyInput().should("have.value", "weekly");
       });
     });
+
+    it("should recognize built-in jobs in the cron builder", () => {
+      visitJobListPage();
+
+      const jobNameToFrequency = {
+        "Hourly job": "hourly",
+        "Daily job": "daily",
+        "Weekly job": "weekly",
+        "Monthly job": "monthly",
+      };
+      Object.entries(jobNameToFrequency).forEach(([jobName, frequency]) => {
+        getJobListPage().findByText(jobName).click();
+        getJobPage().within(() => {
+          getScheduleFrequencyInput().should("have.value", frequency);
+        });
+        cy.go("back");
+      });
+    });
   });
 
   describe("tags", () => {
