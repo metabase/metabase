@@ -37,3 +37,11 @@ function parseList<T>(
 function parseNumber(value: unknown) {
   return typeof value === "string" ? parseInt(value, 10) : undefined;
 }
+
+export function hasFilterParams(params: JobListParams) {
+  return (
+    params.lastRunStartTime != null ||
+    params.nextRunStartTime != null ||
+    params.transformTagIds != null
+  );
+}

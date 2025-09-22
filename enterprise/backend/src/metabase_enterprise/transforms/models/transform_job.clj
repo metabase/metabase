@@ -16,6 +16,9 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
+(t2/deftransforms :model/TransformJob
+  {:ui_display_type mi/transform-keyword})
+
 (mi/define-batched-hydration-method tag-ids
   :tag_ids
   "Hydrate tag IDs for jobs, preserving order defined by position"

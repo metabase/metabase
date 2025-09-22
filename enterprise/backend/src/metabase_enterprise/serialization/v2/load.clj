@@ -169,7 +169,8 @@
   [ingestion & {:keys [backfill? continue-on-error root-dependency-path]
                 :or   {backfill?            true
                        continue-on-error    false
-                       root-dependency-path nil}}]
+                       root-dependency-path nil
+                       reindex?          true}}]
   (u/prog1
     (t2/with-transaction [_tx]
       ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared dependencies
@@ -204,12 +205,12 @@
                       (update ctx :errors conj e))))
                 ctx
                 contents)))
+    (when reindex?
     ;; Hack: the transaction above typically takes much longer than our delay on the search indexing queue.
     ;;       this means that the corresponding entries would have been missing or stale when we indexed them.
     ;;       ideally, we would delay the indexing somehow, or only reindex what we've loaded.
     ;;       while we're figuring that out, here's a crude stopgap.
-   ;; (search/reindex! {:async? false})
-    ))
+      (search/reindex!))))
 
 (defn load-selective!
   "Loads entities from an ingestion source, but only those whose types are in the whitelist.

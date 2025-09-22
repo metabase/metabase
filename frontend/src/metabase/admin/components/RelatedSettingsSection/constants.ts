@@ -87,7 +87,7 @@ export const getInteractiveEmbeddingRelatedSettingItems =
     },
     {
       icon: "metabot",
-      name: t`Metabot`,
+      name: t`Embedded Metabot`,
       to: "/admin/metabot/2",
     },
     {
