@@ -5,8 +5,7 @@
    [metabase-enterprise.remote-sync.events :as lib.events]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
-   [metabase-enterprise.serialization.v2.extract :as v2.extract]
-   [metabase-enterprise.serialization.v2.load :as v2.load]
+   [metabase-enterprise.serialization.core :as serialization]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
@@ -96,10 +95,10 @@
                             (if (seq collections)
                               (reduce (fn [accum collection]
                                         (merge-with conj accum
-                                                    (v2.load/load-metabase! (source/ingestable-source source (or branch (settings/remote-sync-branch)))
-                                                                            :root-dependency-path [{:id collection :model "Collection"}])))
+                                                    (serialization/load-metabase! (source/ingestable-source source (or branch (settings/remote-sync-branch)))
+                                                                                  :root-dependency-path [{:id collection :model "Collection"}])))
                                       {} collections)
-                              (v2.load/load-metabase! (source/ingestable-source source (or branch (settings/remote-sync-branch))))))
+                              (serialization/load-metabase! (source/ingestable-source source (or branch (settings/remote-sync-branch))))))
               ;; Extract entity_ids by model from the :seen paths
               imported-entities (->> (:seen load-result)
                                      (map last) ; Get the last element of each path (the entity itself)
@@ -136,13 +135,13 @@
      (let [collections (or (seq collections) (t2/select-fn-set :entity_id :model/Collection :type "remote-synced" :location "/"))]
        (try
          (serdes/with-cache
-           (-> (v2.extract/extract (cond-> {:targets                  (mapv #(vector "Collection" %) collections)
-                                            :no-collections           false
-                                            :no-data-model            true
-                                            :no-settings              true
-                                            :include-field-values     :false
-                                            :include-database-secrets :false
-                                            :continue-on-error        false}))
+           (-> (serialization/extract (cond-> {:targets                  (mapv #(vector "Collection" %) collections)
+                                               :no-collections           false
+                                               :no-data-model            true
+                                               :no-settings              true
+                                               :include-field-values     :false
+                                               :include-database-secrets :false
+                                               :continue-on-error        false}))
                (source/store! source branch message)))
          (doseq [collection collections]
            (lib.events/publish-remote-sync! "export" nil api/*current-user-id*

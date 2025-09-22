@@ -328,6 +328,7 @@
   collections
   {:team "UX West"
    :api  #{metabase.collections.api
+           metabase.collections.core
            metabase.collections.models.collection
            metabase.collections.models.collection.root}
    :uses #{api
@@ -345,6 +346,7 @@
            permissions
            premium-features
            queries
+           remote-sync
            request
            revisions
            search
@@ -799,6 +801,7 @@
            lib
            models
            premium-features
+           remote-sync
            request
            settings
            util
@@ -1012,6 +1015,11 @@
            types
            users
            util}}
+
+  remote-sync
+  {:team "UX West"
+   :api  #{metabase.remote-sync.core}
+   :uses #{premium-features}}
 
   request
   {:team "UX West"
@@ -1848,6 +1856,21 @@
    :uses #{premium-features
            util}}
 
+  enterprise/remote-sync
+  {:team "UX West"
+   :api  #{metabase-enterprise.remote-sync.api
+           metabase-enterprise.remote-sync.core
+           metabase-enterprise.remote-sync.init}
+   :uses #{api
+           collections
+           events
+           models
+           premium-features
+           settings
+           task
+           util
+           enterprise/serialization}}
+
   enterprise/sandbox
   {:team "UX West"
    :api  #{metabase-enterprise.sandbox.api.routes
@@ -1919,6 +1942,7 @@
   {:team "Workflows"
    :api  #{metabase-enterprise.serialization.api
            metabase-enterprise.serialization.cmd
+           metabase-enterprise.serialization.core
            metabase-enterprise.serialization.v2.backfill-ids}
    :uses #{analytics
            api

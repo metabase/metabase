@@ -1,5 +1,6 @@
 (ns metabase-enterprise.remote-sync.impl-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.source :as source]
