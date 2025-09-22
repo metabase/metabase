@@ -12,7 +12,7 @@ redirect_from:
 
 Metabase's data reference section is a way to browse your metadata.
 
-The data reference includes sections on:
+The data reference includes:
 
 - [Databases](#databases)
 - [Glossary](#glossary)
