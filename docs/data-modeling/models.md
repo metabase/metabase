@@ -47,13 +47,13 @@ Now choose either the query builder or a native query (if you want to use SQL). 
 
 Next, select your data, create your query, and save it.
 
+Models you create are automatically [pinned to the current collection](../exploration-and-organization/collections.md#pinned-items).
+
 ### Create a model from a saved question
 
 1. [Ask a question][question] using either the query builder or the SQL editor, or select an existing saved question that you want to convert to a model.
 2. Save the question.
 3. Click on the **...** > **Turn this into a model**.
-
-Models you create are automatically [pinned to the current collection](../exploration-and-organization/collections.md#pinned-items).
 
 ![Turn a saved question into a model](./images/turn-into-a-model.png)
 
