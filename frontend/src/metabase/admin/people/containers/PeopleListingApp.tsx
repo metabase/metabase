@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -5,12 +6,12 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { useListPermissionsGroupsQuery } from "metabase/api";
-import { AdminPaneLayout } from "metabase/common/components/AdminPaneLayout";
+import Button from "metabase/common/components/Button";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import { Flex, Group, Icon, Input, Radio } from "metabase/ui";
+import { Box, Flex, Group, Icon, Input, Radio } from "metabase/ui";
 
 import { PeopleList } from "../components/PeopleList";
 import { USER_STATUS } from "../constants";
@@ -89,11 +90,18 @@ export function PeopleListingApp({ children }: { children: React.ReactNode }) {
           error={error}
           loading={isLoading || !currentUser}
         >
-          <AdminPaneLayout
-            headingContent={headingContent}
-            buttonText={buttonText}
-            buttonLink={Urls.newUser()}
-          >
+          <div data-testid="admin-panel">
+            <Box px="md">
+              <Flex wrap="wrap" gap="md" justify="space-between">
+                <Box>{headingContent && <>{headingContent}</>}</Box>
+                <Box>
+                  <Link to={Urls.newUser()}>
+                    <Button primary>{buttonText}</Button>
+                  </Link>
+                </Box>
+              </Flex>
+            </Box>
+
             {currentUser && (
               <PeopleList
                 groups={groups}
@@ -104,8 +112,9 @@ export function PeopleListingApp({ children }: { children: React.ReactNode }) {
                 onPreviousPage={handlePreviousPage}
               />
             )}
+
             {children}
-          </AdminPaneLayout>
+          </div>
         </LoadingAndErrorWrapper>
       </SettingsSection>
     </SettingsPageWrapper>
