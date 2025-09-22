@@ -362,7 +362,7 @@ export function ObjectDetailView({
               />
             )}
             <ObjectDetailBody
-              data={data}
+              columns={passedData.cols}
               objectName={objectName}
               zoomedRow={zoomedRow ?? []}
               settings={settings}

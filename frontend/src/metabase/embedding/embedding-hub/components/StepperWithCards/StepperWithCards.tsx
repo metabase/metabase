@@ -41,6 +41,21 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
     return null;
   }
 
+  // Find the next actionable card (first undone, unlocked card in the first incomplete step)
+  const nextCard = (() => {
+    const firstIncompleteStep = steps.find(
+      (step) => !step.cards.every((card) => card.done || card.optional),
+    );
+
+    if (!firstIncompleteStep) {
+      return null;
+    }
+
+    return firstIncompleteStep.cards.find(
+      (card) => !card.done && !card.locked && !card.optional,
+    );
+  })();
+
   return (
     <Stepper
       active={0}
@@ -72,17 +87,21 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                       ? card.clickAction.onClick
                       : undefined;
 
+                  const isNextCard = nextCard && nextCard.id === card.id;
+
                   return (
                     <CardAction card={card} key={card.id}>
                       <Card
                         className={cx(S.stepCard, {
                           [S.optionalStepCard]: card.optional,
                           [S.lockedStepCard]: card.locked,
+                          [S.nextStepCard]: isNextCard,
                         })}
                         component={onClick ? "button" : undefined}
                         onClick={onClick}
                         disabled={card.locked}
                         data-testid={`step-card-${card.id}`}
+                        data-next-step={isNextCard}
                       >
                         <Stack justify="space-between" h="100%">
                           <Stack gap="xs" h="100%">
