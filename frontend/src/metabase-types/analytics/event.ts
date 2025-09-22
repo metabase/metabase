@@ -427,6 +427,50 @@ export type MetadataEditEvent = ValidateEvent<{
   triggered_from: "admin";
 }>;
 
+export type BookmarkQuestionEvent = ValidateEvent<{
+  event: "bookmark_added";
+  event_detail: "question";
+  triggered_from: "qb_action_panel" | "collection_list";
+}>;
+
+export type BookmarkModelEvent = ValidateEvent<{
+  event: "bookmark_added";
+  event_detail: "model";
+  triggered_from: "qb_action_panel" | "collection_list";
+}>;
+
+export type BookmarkMetricEvent = ValidateEvent<{
+  event: "bookmark_added";
+  event_detail: "metric";
+  triggered_from: "qb_action_panel" | "collection_list" | "browse_metrics";
+}>;
+
+export type BookmarkDashboardEvent = ValidateEvent<{
+  event: "bookmark_added";
+  event_detail: "dashboard";
+  triggered_from: "dashboard_header" | "collection_list";
+}>;
+
+export type BookmarkCollectionEvent = ValidateEvent<{
+  event: "bookmark_added";
+  event_detail: "collection";
+  triggered_from: "collection_header" | "collection_list";
+}>;
+
+export type BookmarkDocumentEvent = ValidateEvent<{
+  event: "bookmark_added";
+  event_detail: "document";
+  triggered_from: "collection_list" | "document_header";
+}>;
+
+export type BookmarkEvent =
+  | BookmarkQuestionEvent
+  | BookmarkModelEvent
+  | BookmarkMetricEvent
+  | BookmarkDashboardEvent
+  | BookmarkCollectionEvent
+  | BookmarkDocumentEvent;
+
 export type SimpleEvent =
   | CustomSMTPSetupClickedEvent
   | CustomSMTPSetupSuccessEvent
@@ -476,4 +520,5 @@ export type SimpleEvent =
   | MetabotEvent
   | RevertVersionEvent
   | LearnAboutDataClickedEvent
-  | MetadataEditEvent;
+  | MetadataEditEvent
+  | BookmarkEvent;
