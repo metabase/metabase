@@ -8,7 +8,7 @@
               <img width="35.55" height="45" src="{{context.application_logo_url}}" alt="Metabase logo"/>
             </div>
 
-            <h1 style="text-align: center; font-size: 27px; line-height: 36px; font-weight: 400; margin: 0 0 12px 0; color: #2F3C45;">
+            <h1 style="text-align: center; font-size: 27px; line-height: 36px; font-weight: 400; margin: 0 0 8px 0; color: #2F3C45;">
               {{#if payload.event_info.parent_comment}}
                 {{payload.event_info.author}} replied to a thread
               {{else}}
@@ -28,30 +28,30 @@
             </div>
 
             {{!-- Comment block --}}
-            <div style="background-color: #FAFAFB; border-radius: 12px; padding: 16px; margin: 0 auto 20px auto;">
+            <div style="background-color: #FAFAFB; border-radius: 12px; padding: 24px; margin: 0 auto 32px auto;">
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse;">
                 {{#if payload.event_info.parent_comment}}
-                <tr style="opacity: 0.5;">
-                  <td width="40" valign="top" style="padding-right: 12px;">
+                <tr style="opacity: 0.5;" class="comment-row">
+                  <td width="40" valign="top" style="padding-right: 16px;">
                     <div style="width: 36px; height: 36px; border-radius: 50%; background: #A989C5; color: #ffffff; font-weight: 700; font-size: 12px; line-height: 36px; text-align: center; text-transform: uppercase; overflow: hidden;">
                       {{initials payload.event_info.parent_author}}
                     </div>
                   </td>
-                  <td valign="top" style="padding-bottom: 16px;">
-                    <div style="font-weight: 700; font-size: 0.875rem; color: {{payload.event_info.style.color_text_secondary}}; margin-bottom: 6px;">{{payload.event_info.parent_author}}</div>
-                    <div style="font-size: 0.875rem; color: {{payload.event_info.style.color_text_secondary}}; line-height: 20px;">{{{email-reset-html payload.event_info.parent_comment}}}</div>
+                  <td valign="top" style="padding-bottom: 24px;">
+                    <div style="font-weight: 700; font-size: 0.875rem; color: #656F76; margin-bottom: 6px; padding-top: 9px;">{{payload.event_info.parent_author}}</div>
+                    <div style="font-size: 0.875rem; color: #656F76; line-height: 20px;">{{{payload.event_info.parent_comment}}}</div>
                   </td>
                 </tr>
                 {{/if}}
                 <tr class="comment-row">
-                  <td width="40" valign="top" style="padding-right: 12px;">
+                  <td width="40" valign="top" style="padding-right: 16px;">
                     <div style="width: 36px; height: 36px; border-radius: 50%; background: #A6CF57; color: #ffffff; font-weight: 700; font-size: 12px; line-height: 36px; text-align: center; text-transform: uppercase; overflow: hidden;">
                       {{initials payload.event_info.author}}
                     </div>
                   </td>
                   <td valign="top">
-                    <div style="font-weight: 700; font-size: 0.875rem; color: {{payload.event_info.style.color_text_primary}}; margin-bottom: 6px;">{{payload.event_info.author}}</div>
-                    <div style="font-size: 0.875rem; color: {{payload.event_info.style.color_text_primary}}; line-height: 20px;">{{{email-reset-html payload.event_info.comment}}}</div>
+                    <div style="font-weight: 700; font-size: 0.875rem; color: #2F3C45; margin-bottom: 6px; padding-top: 9px;">{{payload.event_info.author}}</div>
+                    <div style="font-size: 0.875rem; color: #2F3C45; line-height: 20px;">{{{payload.event_info.comment}}}</div>
                   </td>
                 </tr>
               </table>
