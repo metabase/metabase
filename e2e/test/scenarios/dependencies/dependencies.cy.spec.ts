@@ -41,6 +41,7 @@ H.describeWithSnowplowEE("documents", () => {
       H.modal().button("Save").click();
       H.modal().within(() => {
         cy.findByText("Question with fields").should("be.visible");
+        cy.findByText("Question without fields").should("not.exist");
         cy.button("Cancel").click();
       });
       cy.get("@updateCard.all").should("have.length", 0);
@@ -103,6 +104,7 @@ H.describeWithSnowplowEE("documents", () => {
       H.datasetEditBar().button("Save changes").click();
       H.modal().within(() => {
         cy.findByText("Question with fields").should("be.visible");
+        cy.findByText("Question without fields").should("not.exist");
         cy.button("Cancel").click();
       });
       cy.get("@updateCard.all").should("have.length", 0);
