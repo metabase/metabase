@@ -20,6 +20,8 @@
 
 (comment transform-job/keep-me)
 
+(def ^:private ui-display-types [:cron/raw :cron/builder])
+
 (api.macros/defendpoint :post "/"
   "Create a new transform job."
   [_route-params
@@ -29,8 +31,8 @@
                                                                    [:description {:optional true} [:maybe ms/NonBlankString]]
                                                                    [:schedule ms/NonBlankString]
                                                                    [:ui_display_type
-                                                                    {:optional true, :default "cron/raw"}
-                                                                    [:maybe [:enum "cron/raw" "cron/builder"]]]
+                                                                    {:default :cron/raw}
+                                                                    (ms/enum-decode-keyword ui-display-types)]
                                                                    [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Creating transform job:" name "with schedule:" schedule)
   (api/check-superuser)
@@ -70,8 +72,8 @@
                                                            [:description {:optional true} [:maybe ms/NonBlankString]]
                                                            [:schedule {:optional true} ms/NonBlankString]
                                                            [:ui_display_type
-                                                            {:optional true, :default "cron/raw"}
-                                                            [:maybe [:enum "cron/raw" "cron/builder"]]]
+                                                            {:optional true}
+                                                            (ms/enum-decode-keyword ui-display-types)]
                                                            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Updating transform job" job-id)
   (api/check-superuser)
