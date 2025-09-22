@@ -18,7 +18,7 @@ export function createTransformJob(
     name = "New transform",
     description = null,
     schedule = "0 0 0 * * ? *",
-    ui_display_type = "cron/builder",
+    ui_display_type = "cron/raw",
     tag_ids,
   }: TransformJobDetails = {},
   {
