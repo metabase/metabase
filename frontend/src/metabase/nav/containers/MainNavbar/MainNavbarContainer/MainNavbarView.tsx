@@ -8,6 +8,7 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   isExamplesCollection,
   isRootTrashCollection,
+  isSyncedCollection,
 } from "metabase/collections/utils";
 import { Tree } from "metabase/common/components/tree";
 import { useSetting, useUserSetting } from "metabase/common/hooks";
@@ -22,10 +23,12 @@ import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
 import {
   ActionIcon,
+  Button,
   Flex,
   Icon,
   type IconName,
   type IconProps,
+  Menu,
   Tooltip,
 } from "metabase/ui";
 import type { Bookmark, Collection } from "metabase-types/api";
@@ -88,6 +91,7 @@ export function MainNavbarView({
   );
 
   const isAtHomepageDashboard = useIsAtHomepageDashboard();
+  const showSyncGroup = useSetting("remote-sync-type") === "export";
 
   const [
     addDataModalOpened,
@@ -119,16 +123,26 @@ export function MainNavbarView({
     [isAtHomepageDashboard, onItemSelect],
   );
 
-  const [regularCollections, trashCollection, examplesCollection] =
-    useMemo(() => {
-      return [
-        collections.filter(
-          (c) => !isRootTrashCollection(c) && !isExamplesCollection(c),
-        ),
-        collections.find(isRootTrashCollection),
-        collections.find(isExamplesCollection),
-      ];
-    }, [collections]);
+  const [
+    regularCollections,
+    trashCollection,
+    examplesCollection,
+    syncedCollections,
+  ] = useMemo(() => {
+    return [
+      collections.filter((c) => {
+        const isNormalCollection =
+          !isRootTrashCollection(c) && !isExamplesCollection(c);
+        if (!showSyncGroup) {
+          return isNormalCollection;
+        }
+        return isNormalCollection && !isSyncedCollection(c);
+      }),
+      collections.find(isRootTrashCollection),
+      collections.find(isExamplesCollection),
+      collections.filter(isSyncedCollection),
+    ];
+  }, [collections, showSyncGroup]);
 
   const isNewInstance = useSelector(getIsNewInstance);
   const canAccessOnboarding = useSelector(getCanAccessOnboardingPage);
@@ -188,6 +202,48 @@ export function MainNavbarView({
                   reorderBookmarks={reorderBookmarks}
                   onToggle={setExpandBookmarks}
                   initialState={expandBookmarks ? "expanded" : "collapsed"}
+                />
+              </ErrorBoundary>
+            </SidebarSection>
+          )}
+
+          {/* FIXME move to plugin */}
+          {showSyncGroup && (
+            <SidebarSection>
+              <ErrorBoundary>
+                <Flex align="center" justify="space-between">
+                  <SidebarHeading>{t`Synced Collections`}</SidebarHeading>
+                  <Menu>
+                    <Menu.Target>
+                      <Button
+                        variant="subtle"
+                        leftSection={<Icon name="schema" size={12} />}
+                        rightSection={<Icon name="chevrondown" size={12} />}
+                        size="sm"
+                      >
+                        {t`main`}
+                      </Button>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      {["main", "dev", "staging"].map((branch) => (
+                        <Menu.Item
+                          key={branch}
+                          leftSection={<Icon name="schema" size={12} />}
+                        >
+                          {branch}
+                        </Menu.Item>
+                      ))}
+                    </Menu.Dropdown>
+                  </Menu>
+                </Flex>
+
+                <Tree
+                  data={syncedCollections}
+                  selectedId={collectionItem?.id}
+                  onSelect={onItemSelect}
+                  TreeNode={SidebarCollectionLink}
+                  role="tree"
+                  aria-label="collection-tree"
                 />
               </ErrorBoundary>
             </SidebarSection>

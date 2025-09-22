@@ -19,6 +19,7 @@ import {
   FormProvider,
   FormRadioGroup,
   FormSubmitButton,
+  FormSwitch,
   FormTextInput,
 } from "metabase/forms";
 import { isNotNull } from "metabase/lib/types";
@@ -252,13 +253,18 @@ export const GitSyncSettings = (): JSX.Element => {
                   </FormRadioGroup>
 
                   {values?.[TYPE_KEY] === "import" && (
-                    <FormTextInput
-                      name={BRANCH_KEY}
-                      ml="1.875rem"
-                      label={t`Auto-sync branch`}
-                      placeholder="main"
-                      {...getEnvSettingProps(settingDetails?.[BRANCH_KEY])}
-                    />
+                    <Stack ml="1.875rem">
+                      <FormTextInput
+                        name={BRANCH_KEY}
+                        label={t`Sync branch`}
+                        placeholder="main"
+                        {...getEnvSettingProps(settingDetails?.[BRANCH_KEY])}
+                      />
+                      <FormSwitch
+                        name="remote-sync-enabled"
+                        label={t`Auto-sync with git`}
+                      />
+                    </Stack>
                   )}
 
                   <Flex justify="end" align="center" gap="md">
@@ -280,7 +286,7 @@ export const GitSyncSettings = (): JSX.Element => {
         </Box>
       </SettingsSection>
 
-      {isGitSyncConfigured && syncMode != null ? (
+      {isGitSyncEnabled && syncMode != null ? (
         <SettingsSection
           title={t`Collections`}
           description={
