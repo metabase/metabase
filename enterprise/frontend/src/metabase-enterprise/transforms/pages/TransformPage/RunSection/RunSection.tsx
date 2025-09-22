@@ -1,9 +1,8 @@
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Anchor, Box, Divider, Group, Icon, Stack } from "metabase/ui";
+import { Anchor, Box, Divider, Group, Stack } from "metabase/ui";
 import {
   useRunTransformMutation,
   useUpdateTransformMutation,
@@ -12,11 +11,10 @@ import { trackTranformTriggerManualRun } from "metabase-enterprise/transforms/an
 import type { Transform, TransformTagId } from "metabase-types/api";
 
 import { RunButton } from "../../../components/RunButton";
-import { RunErrorInfo } from "../../../components/RunErrorInfo";
+import { RunStatus } from "../../../components/RunStatus";
 import { SplitSection } from "../../../components/SplitSection";
 import { TagMultiSelect } from "../../../components/TagMultiSelect";
 import { getRunListUrl } from "../../../urls";
-import { parseTimestampWithTimezone } from "../../../utils";
 
 type RunSectionProps = {
   transform: Transform;
@@ -50,89 +48,22 @@ type RunStatusSectionProps = {
 
 function RunStatusSection({ transform }: RunStatusSectionProps) {
   const { id, last_run } = transform;
-  const systemTimezone = useSetting("system-timezone");
 
-  if (last_run == null) {
-    return (
-      <Group gap="sm">
-        <Icon c="text-secondary" name="calendar" />
-        <Box>{t`This transform hasn’t been run before.`}</Box>
-      </Group>
-    );
-  }
-
-  const { status, end_time, message } = last_run;
-  const endTime =
-    end_time != null
-      ? parseTimestampWithTimezone(end_time, systemTimezone)
-      : null;
-  const endTimeText = endTime != null ? endTime.fromNow() : null;
-
-  const runsInfo = (
-    <Anchor
-      key="link"
-      component={Link}
-      to={getRunListUrl({ transformIds: [id] })}
-    >
-      {t`See all runs`}
-    </Anchor>
+  return (
+    <RunStatus
+      run={last_run ?? null}
+      neverRunMessage={t`This transform hasn’t been run before.`}
+      runInfo={
+        <Anchor
+          key="link"
+          component={Link}
+          to={getRunListUrl({ transformIds: [id] })}
+        >
+          {t`See all runs`}
+        </Anchor>
+      }
+    />
   );
-
-  const errorInfo =
-    message != null ? (
-      <RunErrorInfo
-        message={message}
-        endTime={endTime ? endTime.toDate() : null}
-      />
-    ) : null;
-
-  switch (status) {
-    case "started":
-      return (
-        <Group gap="sm">
-          <Icon c="text-primary" name="sync" />
-          <Box>{t`Run in progress…`}</Box>
-        </Group>
-      );
-    case "succeeded":
-      return (
-        <Group gap="sm">
-          <Icon c="success" name="check_filled" />
-          <Box>
-            {endTimeText
-              ? t`Last ran ${endTimeText} successfully.`
-              : t`Last ran successfully.`}
-          </Box>
-          {runsInfo}
-        </Group>
-      );
-    case "failed":
-      return (
-        <Group gap={0}>
-          <Icon c="error" name="warning" mr="sm" />
-          <Box mr={errorInfo ? "xs" : "sm"}>
-            {endTimeText
-              ? t`Last run failed ${endTimeText}.`
-              : t`Last run failed.`}
-          </Box>
-          {errorInfo ?? runsInfo}
-        </Group>
-      );
-    case "timeout":
-      return (
-        <Group gap={0}>
-          <Icon c="error" name="warning" mr="sm" />
-          <Box mr={errorInfo ? "xs" : "sm"}>
-            {endTimeText
-              ? t`Last run timed out ${endTimeText}.`
-              : t`Last run timed out.`}
-          </Box>
-          {errorInfo ?? runsInfo}
-        </Group>
-      );
-    default:
-      return null;
-  }
 }
 
 type RunButtonSectionProps = {
