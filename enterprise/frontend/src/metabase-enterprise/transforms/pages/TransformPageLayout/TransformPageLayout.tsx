@@ -8,6 +8,7 @@ import {
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { useSelector } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms/constants";
 
 import {
@@ -55,6 +56,8 @@ function TransformSidebar({ params }: TransformSidebarProps) {
   const transformListUrl = getTransformListUrl();
   const jobListUrl = getJobListUrl();
 
+  const hasPythonTransforms = hasPremiumFeature("transforms-python");
+
   return (
     <AdminNavWrapper data-testid="transform-sidebar">
       <AdminNavItem
@@ -70,11 +73,13 @@ function TransformSidebar({ params }: TransformSidebarProps) {
         active={pathname?.startsWith(jobListUrl)}
       />
       <AdminNavItem label={t`Runs`} path={getRunListUrl()} icon="list" />
-      <AdminNavItem
-        label={t`Python library`}
-        path={getPythonLibraryUrl({ path: SHARED_LIB_IMPORT_PATH })}
-        icon="code_block"
-      />
+      {hasPythonTransforms && (
+        <AdminNavItem
+          label={t`Python library`}
+          path={getPythonLibraryUrl({ path: SHARED_LIB_IMPORT_PATH })}
+          icon="code_block"
+        />
+      )}
     </AdminNavWrapper>
   );
 }
