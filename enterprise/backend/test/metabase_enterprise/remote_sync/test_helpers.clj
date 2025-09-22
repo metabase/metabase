@@ -2,9 +2,20 @@
   "Test helpers for remote sync functionality, including MockLibrarySource implementation."
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.remote-sync.source.protocol :as source.p]))
+   [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase.util :as u]))
 
-(defn generate-collection-yaml [entity-id name & {:keys [parent-id]}]
+(defn generate-collection-yaml
+  "Generates YAML content for a collection.
+
+  Args:
+    entity-id: The unique identifier for the collection.
+    name: The name of the collection.
+    parent-id: Optional parent collection ID.
+
+  Returns:
+    A string containing the YAML representation of the collection."
+  [entity-id name & {:keys [parent-id]}]
   (format "name: %s
 description: null
 entity_id: %s
@@ -24,10 +35,20 @@ archive_operation_id: null
 archived_directly: null
 is_sample: false
 "
-          name entity-id (str/replace (str/lower-case name) #"\s+" "_")
-          (or parent-id "null") entity-id (str/replace (str/lower-case name) #"\s+" "_")))
+          name entity-id (str/replace (u/lower-case-en name) #"\s+" "_")
+          (or parent-id "null") entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))
 
-(defn generate-card-yaml [entity-id name collection-id]
+(defn generate-card-yaml
+  "Generates YAML content for a card.
+
+  Args:
+    entity-id: The unique identifier for the card.
+    name: The name of the card.
+    collection-id: The ID of the collection containing this card.
+
+  Returns:
+    A string containing the YAML representation of the card."
+  [entity-id name collection-id]
   (format "name: %s
 description: null
 entity_id: %s
@@ -63,9 +84,20 @@ source_card_id: null
 type: question
 document_id: null
 "
-          name entity-id collection-id entity-id (str/replace (str/lower-case name) #"\s+" "_")))
+          name entity-id collection-id entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))
 
-(defn generate-dashboard-yaml [entity-id name collection-id & {:keys [dashcards]}]
+(defn generate-dashboard-yaml
+  "Generates YAML content for a dashboard.
+
+  Args:
+    entity-id: The unique identifier for the dashboard.
+    name: The name of the dashboard.
+    collection-id: The ID of the collection containing this dashboard.
+    dashcards: Optional collection of dashboard cards to include.
+
+  Returns:
+    A string containing the YAML representation of the dashboard."
+  [entity-id name collection-id & {:keys [dashcards]}]
   (let [dashcards-yaml (if dashcards
                          (str/join "\n" (map (fn [dc]
                                                (format "- entity_id: %s
@@ -119,7 +151,7 @@ initially_published_at: null
 tabs: []
 width: fixed
 "
-            name entity-id collection-id entity-id (str/replace (str/lower-case name) #"\s+" "_") dashcards-yaml)))
+            name entity-id collection-id entity-id (str/replace (u/lower-case-en name) #"\s+" "_") dashcards-yaml)))
 
 (defrecord MockLibrarySource [source-id base-url fail-mode files-atom]
   source.p/LibrarySource

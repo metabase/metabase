@@ -9,8 +9,7 @@
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml])
   (:import
-   (java.io File)
-   (org.eclipse.jgit.api.errors GitAPIException InvalidRemoteException TransportException)))
+   (java.io File)))
 
 (set! *warn-on-reflection* true)
 
@@ -53,6 +52,14 @@
       (throw (ex-info "Cannot find file" {:abs-path abs-path})))))
 
 (defn ingestable-source
+  "Creates an ingestable source for remote sync operations.
+
+  Args:
+    source: The source configuration for remote sync.
+    branch: The branch to synchronize from.
+
+  Returns:
+    An IngestableSource instance with the provided source, branch, and empty atom state."
   [source branch]
   (->IngestableSource source branch (atom nil)))
 
@@ -83,13 +90,3 @@
   []
   (git/git-source (setting/get :remote-sync-url)
                   (setting/get :remote-sync-token)))
-
-(defn can-access-branch-in-source?
-  "Return true if we can access the given branch in the remote git repository, false otherwise."
-  [source branch]
-  (try
-    (boolean (get (set (source.p/branches source)) branch))
-
-    (catch InvalidRemoteException _ false)
-    (catch TransportException _ false)
-    (catch GitAPIException _ false)))

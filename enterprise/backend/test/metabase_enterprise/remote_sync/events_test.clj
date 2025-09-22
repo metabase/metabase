@@ -16,7 +16,7 @@
 
 ;;; Helper Functions Tests
 
-(deftest ^:parallel model-in-remote-synced-collection?-test
+(deftest model-in-remote-synced-collection?-test
   (testing "model-in-remote-synced-collection? detects remote-synced collections correctly"
     (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
                    :model/Collection normal-collection {:name "Normal"}]
@@ -367,7 +367,7 @@
                     (first entries)))
             (is (re-find #"create Dashboard by user .*" (:message (first entries))))))))))
 
-(deftest ^:parallel event-derivation-test
+(deftest event-derivation-test
   (testing "events properly derive from :metabase/event"
     (testing "remote-sync events"
       (is (isa? ::lib.events/remote-sync-event :metabase/event))

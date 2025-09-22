@@ -1801,8 +1801,8 @@
     (mt/with-temp [:model/Collection {regular-coll-id :id} {:name "Regular Collection"}
                    :model/Card {card-in-regular-id :id} {:name "Card in Regular"
                                                          :collection_id regular-coll-id}
-                   :model/Card {card-no-collection-id :id} {:name "Card No Collection"
-                                                            :collection_id nil}
+                   :model/Card _ {:name "Card No Collection"
+                                  :collection_id nil}
                    :model/Card {dependent-card-id :id} {:name "Dependent Card"
                                                         :query_type :native
                                                         :dataset_query (mt/native-query {:query "SELECT * FROM {{snippet}}"
@@ -1847,7 +1847,7 @@
     (testing "Expected behavior documentation (actual dependency tracking requires serdes setup)"
       ;; Note: The actual implementation relies on serdes/descendants to track dependencies.
       ;; In a real scenario with properly set up dependencies:
-      ;; 
+      ;;
       ;; Scenario 1: Card in child-1 depends on Card in root-1 (same hierarchy)
       ;; - Both are under remote-synced root-1
       ;; - Result: Should return empty set (no non-remote-synced dependencies)
@@ -1876,12 +1876,12 @@
   (testing "when model has mixed card dependencies (some in remote-synced, some outside)"
     (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:name "Remote-Synced Collection" :type "remote-synced"}
                    :model/Collection {regular-coll-id :id} {:name "Regular Collection"}
-                   :model/Card {card-in-remote-synced-id :id} {:name "Card in Library"
-                                                               :collection_id remote-synced-coll-id}
-                   :model/Card {card-in-regular-id :id} {:name "Card in Regular"
-                                                         :collection_id regular-coll-id}
-                   :model/Card {card-no-collection-id :id} {:name "Card No Collection"
-                                                            :collection_id nil}]
+                   :model/Card _ {:name "Card in Library"
+                                  :collection_id remote-synced-coll-id}
+                   :model/Card _ {:name "Card in Regular"
+                                  :collection_id regular-coll-id}
+                   :model/Card _ {:name "Card No Collection"
+                                  :collection_id nil}]
       ;; Test with a dashboard that references cards in different locations
       ;; The function now only returns Card IDs that are outside the remote-synced collection
       (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}]
@@ -1911,8 +1911,8 @@
                                                                    :location (format "/%d/" remote-synced-coll-id)}
                    :model/Card {card-in-remote-synced-child :id} {:name "Card in Remote-Synced Child"
                                                                   :collection_id remote-synced-child-id}
-                   :model/Card {card-in-regular :id} {:name "Card in Regular"
-                                                      :collection_id regular-coll-id}]
+                   :model/Card _ {:name "Card in Regular"
+                                  :collection_id regular-coll-id}]
       ;; Test that cards in remote-synced collection descendant collections are properly excluded
       (let [result (collection/non-remote-synced-dependencies (t2/instance :model/Card {:id card-in-remote-synced-child}))]
         (is (set? result)
@@ -1940,9 +1940,9 @@
   (testing "function behavior with model Cards"
     (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:name "Remote-Synced Collection" :type "remote-synced"}
                    :model/Collection {regular-coll-id :id} {:name "Regular Collection"}
-                   :model/Card {model-in-remote-synced-id :id} {:name "Model in Library"
-                                                                :collection_id remote-synced-coll-id
-                                                                :type :model}
+                   :model/Card _ {:name "Model in Library"
+                                  :collection_id remote-synced-coll-id
+                                  :type :model}
                    :model/Card {model-in-regular-id :id} {:name "Model in Regular"
                                                           :collection_id regular-coll-id
                                                           :type :model}]
@@ -1973,22 +1973,22 @@
                                                                           :namespace "snippets"}
                    :model/Collection {snippet-regular-coll-id :id} {:name "Regular Snippets"
                                                                     :namespace "snippets"}
-                   :model/NativeQuerySnippet {snippet-in-remote-synced-id :id} {:name "Snippet in Library"
-                                                                                :collection_id snippet-remote-synced-coll-id}
-                   :model/NativeQuerySnippet {snippet-in-regular-id :id} {:name "Snippet in Regular"
-                                                                          :collection_id snippet-regular-coll-id}
+                   :model/NativeQuerySnippet _ {:name "Snippet in Library"
+                                                :collection_id snippet-remote-synced-coll-id}
+                   :model/NativeQuerySnippet _ {:name "Snippet in Regular"
+                                                :collection_id snippet-regular-coll-id}
                    :model/Card {card-in-remote-synced-id :id} {:name "Model Card in Library"
                                                                :collection_id (t2/select-one-pk :model/Collection :entity_id "remotesyncremosyncremo")
                                                                :type :model}
                    :model/Card {card-in-regular-id :id} {:name "Model Card in Regular"
                                                          :collection_id regular-coll-id
                                                          :type :model}
-                   :model/Action {action-in-remote-synced-id :id} {:name "Action in Library"
-                                                                   :model_id card-in-remote-synced-id
-                                                                   :type "query"}
-                   :model/Action {action-in-regular-id :id} {:name "Action in Regular"
-                                                             :model_id card-in-regular-id
-                                                             :type "query"}]
+                   :model/Action _ {:name "Action in Library"
+                                    :model_id card-in-remote-synced-id
+                                    :type "query"}
+                   :model/Action _ {:name "Action in Regular"
+                                    :model_id card-in-regular-id
+                                    :type "query"}]
       ;; The new implementation only returns Card IDs, not other model types
       (mt/with-temp [:model/Card {test-card-id :id} {:name "Test Card"}]
         (let [result (collection/non-remote-synced-dependencies (t2/instance :model/Card {:id test-card-id}))]
@@ -2007,22 +2007,22 @@
                                                                           :namespace "snippets"}
                    :model/Collection {snippet-regular-coll-id :id} {:name "Regular Snippets"
                                                                     :namespace "snippets"}
-                   :model/NativeQuerySnippet {snippet-in-remote-synced-id :id} {:name "Snippet in Library"
-                                                                                :collection_id snippet-remote-synced-coll-id}
-                   :model/NativeQuerySnippet {snippet-in-regular-id :id} {:name "Snippet in Regular"
-                                                                          :collection_id snippet-regular-coll-id}
+                   :model/NativeQuerySnippet _ {:name "Snippet in Library"
+                                                :collection_id snippet-remote-synced-coll-id}
+                   :model/NativeQuerySnippet _ {:name "Snippet in Regular"
+                                                :collection_id snippet-regular-coll-id}
                    :model/Card {card-in-remote-synced-id :id} {:name "Model Card in Library"
                                                                :collection_id remote-synced-child-id
                                                                :type :model}
                    :model/Card {card-in-regular-id :id} {:name "Model Card in Regular"
                                                          :collection_id regular-coll-id
                                                          :type :model}
-                   :model/Action {action-in-remote-synced-id :id} {:name "Action in Library"
-                                                                   :model_id card-in-remote-synced-id
-                                                                   :type "query"}
-                   :model/Action {action-in-regular-id :id} {:name "Action in Regular"
-                                                             :model_id card-in-regular-id
-                                                             :type "query"}]
+                   :model/Action _ {:name "Action in Library"
+                                    :model_id card-in-remote-synced-id
+                                    :type "query"}
+                   :model/Action _ {:name "Action in Regular"
+                                    :model_id card-in-regular-id
+                                    :type "query"}]
       ;; Test that only Card IDs outside remote-synced collection are returned
       (mt/with-temp [:model/Card {test-card-id :id} {:name "Test Card"}]
         (let [result (collection/non-remote-synced-dependencies (t2/instance :model/Card {:id test-card-id}))]
@@ -2193,9 +2193,9 @@
                    :model/Card {remote-synced-card-id :id} {:name "Remote-Synced Card"
                                                             :collection_id remote-synced-id
                                                             :dataset_query (mt/native-query {:query "SELECT 1"})}
-                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
-                                                        :collection_id coll-id
-                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-card-id)})}]
+                   :model/Card _ {:name "Dependent Card"
+                                  :collection_id coll-id
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-card-id)})}]
       ;; This should succeed because the dependency (remote-synced-card) is in a remote-synced collection
       (collection/move-collection! coll (format "/%d/" parent-id) true)
 
@@ -2216,9 +2216,9 @@
                    :model/Card {non-remote-synced-card-id :id} {:name "Non-Library Card"
                                                                 :collection_id non-remote-synced-id
                                                                 :dataset_query (mt/native-query {:query "SELECT 1"})}
-                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
-                                                        :collection_id coll-id
-                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-remote-synced-card-id)})}]
+                   :model/Card _ {:name "Dependent Card"
+                                  :collection_id coll-id
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-remote-synced-card-id)})}]
         ;; This should throw an exception because the dependency (non-remote-synced-card) is not in a remote-synced collection
       (let [ex (is (thrown? Exception
                             (collection/move-collection! coll (format "/%d/" parent-id) true))
@@ -2239,7 +2239,7 @@
         (is (= "/" (:location unchanged-coll))
             "Collection location should remain unchanged after failed move")))))
 
-(deftest ^:parallel move-collection!-dependency-checking-transaction-rollback-test
+(deftest move-collection!-dependency-checking-transaction-rollback-test
   (testing "move-collection! transaction rollback when dependency check fails after updates"
     (mt/with-temp [:model/Collection {non-remote-synced-id :id} {:name "Non-Remote-Synced" :location "/" :type nil}
                    :model/Collection {parent-id :id} {:name "Parent" :location "/"}
@@ -2252,9 +2252,9 @@
                    :model/Card {non-remote-synced-card-id :id} {:name "Non-Library Card"
                                                                 :collection_id non-remote-synced-id
                                                                 :dataset_query (mt/native-query {:query "SELECT 1"})}
-                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
-                                                        :collection_id coll-id
-                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-remote-synced-card-id)})}]
+                   :model/Card _ {:name "Dependent Card"
+                                  :collection_id coll-id
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-remote-synced-card-id)})}]
         ;; This should throw an exception after updates are made but before transaction commits
       (is (thrown? Exception
                    (collection/move-collection! coll (format "/%d/" parent-id) true))
@@ -2273,7 +2273,7 @@
         (is (= (format "/%d/" coll-id) (:location unchanged-child))
             "Child collection location should remain unchanged after transaction rollback")))))
 
-(deftest ^:parallel move-collection!-no-dependency-checking-without-remote-synced-flag-test
+(deftest move-collection!-no-dependency-checking-without-remote-synced-flag-test
   (testing "move-collection! without into-remote-synced? flag does not check dependencies"
     (mt/with-temp [:model/Collection {non-remote-synced-id :id} {:name "Non-Remote-Synced" :location "/" :type nil}
                    :model/Collection {parent-id :id} {:name "Parent" :location "/"}
@@ -2283,9 +2283,9 @@
                    :model/Card {non-remote-synced-card-id :id} {:name "Non-Library Card"
                                                                 :collection_id non-remote-synced-id
                                                                 :dataset_query (mt/native-query {:query "SELECT 1"})}
-                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
-                                                        :collection_id coll-id
-                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-remote-synced-card-id)})}]
+                   :model/Card _ {:name "Dependent Card"
+                                  :collection_id coll-id
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-remote-synced-card-id)})}]
         ;; This should succeed because we're not converting to remote-synced
       (collection/move-collection! coll (format "/%d/" parent-id))
 
@@ -2342,9 +2342,8 @@
                                               :collection_id remote-synced-id
                                               :database_id (mt/id)
                                               :dataset_query (mt/mbql-query venues)}]
-      (let [remote-synced-coll (t2/select-one :model/Collection :id remote-synced-id)]
-        (is (= [] (collection/remote-synced-dependents remote-synced-id (t2/instance :model/Card {:id card-id})))
-            "Should return empty seq when card has no dependents")))))
+      (is (= [] (collection/remote-synced-dependents remote-synced-id (t2/instance :model/Card {:id card-id})))
+          "Should return empty seq when card has no dependents"))))
 
 (deftest ^:parallel remote-synced-dependents-in-remote-synced-test
   (testing "when card has dependents in remote-synced collection"
@@ -2353,12 +2352,11 @@
                                                    :collection_id remote-synced-id
                                                    :database_id (mt/id)
                                                    :dataset_query (mt/mbql-query venues)}
-                   :model/Card {dep-card :id :as dep-card-obj} {:name "Dependent Card"
-                                                                :collection_id remote-synced-id
-                                                                :database_id (mt/id)
-                                                                :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
-      (let [remote-synced-coll (t2/select-one :model/Collection :id remote-synced-id)
-            dependents (collection/remote-synced-dependents remote-synced-id (t2/instance :model/Card {:id base-card-id}))]
+                   :model/Card {dep-card :id} {:name "Dependent Card"
+                                               :collection_id remote-synced-id
+                                               :database_id (mt/id)
+                                               :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
+      (let [dependents (collection/remote-synced-dependents remote-synced-id (t2/instance :model/Card {:id base-card-id}))]
         (is (= 1 (count dependents))
             "Should find one dependent")
         (is (= dep-card (:id (first dependents)))
@@ -2372,13 +2370,12 @@
                                                    :collection_id remote-synced-id
                                                    :database_id (mt/id)
                                                    :dataset_query (mt/mbql-query venues)}
-                   :model/Card {outside-card :id} {:name "Outside Card"
-                                                   :collection_id regular-id
-                                                   :database_id (mt/id)
-                                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
-      (let [remote-synced-coll (t2/select-one :model/Collection :id remote-synced-id)]
-        (is (= [] (collection/remote-synced-dependents remote-synced-id (t2/instance :model/Card {:id base-card-id})))
-            "Should not return dependents outside the remote-synced collection")))))
+                   :model/Card _ {:name "Outside Card"
+                                  :collection_id regular-id
+                                  :database_id (mt/id)
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
+      (is (= [] (collection/remote-synced-dependents remote-synced-id (t2/instance :model/Card {:id base-card-id})))
+          "Should not return dependents outside the remote-synced collection"))))
 
 (deftest ^:parallel remote-synced-dependents-archived-test
   (testing "when dependents are archived"
@@ -2387,14 +2384,13 @@
                                                    :collection_id remote-synced-id
                                                    :database_id (mt/id)
                                                    :dataset_query (mt/mbql-query venues)}
-                   :model/Card {archived-card :id} {:name "Archived Card"
-                                                    :collection_id remote-synced-id
-                                                    :database_id (mt/id)
-                                                    :archived true
-                                                    :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
-      (let [remote-synced-coll (t2/select-one :model/Collection :id remote-synced-id)]
-        (is (= [] (collection/remote-synced-dependents remote-synced-id (t2/instance :model/Card {:id base-card-id})))
-            "Should not return archived dependents")))))
+                   :model/Card _ {:name "Archived Card"
+                                  :collection_id remote-synced-id
+                                  :database_id (mt/id)
+                                  :archived true
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
+      (is (= [] (collection/remote-synced-dependents remote-synced-id (t2/instance :model/Card {:id base-card-id})))
+          "Should not return archived dependents"))))
 
 (deftest ^:parallel remote-synced-dependents-non-card-models-test
   (testing "for non-card models"
@@ -2418,8 +2414,7 @@
                                                                 :card-id base-card-id}]}]
       ;; Create a card with parameters, then update it to have the correct JSON format
       ;; The parameters should be stored as JSON with "card-id" (hyphenated)
-      (let [remote-synced-coll (t2/select-one :model/Collection :id remote-synced-id)
-            dependents (collection/remote-synced-dependents remote-synced-id (t2/instance :model/Card {:id base-card-id}))]
+      (let [dependents (collection/remote-synced-dependents remote-synced-id (t2/instance :model/Card {:id base-card-id}))]
         (is (= 1 (count dependents))
             "Should find one dependent using parameters")
         (is (= dep-card-id (:id (first dependents)))
@@ -2441,8 +2436,7 @@
                                                                                                           :card-id base-card-id}}})}]
       ;; Create a card with template tags
       ;; The dataset_query should contain "card-id" in the template tags
-      (let [remote-synced-coll (t2/select-one :model/Collection :id remote-synced-id)
-            dependents (collection/remote-synced-dependents remote-synced-id (t2/instance :model/Card {:id base-card-id}))]
+      (let [dependents (collection/remote-synced-dependents remote-synced-id (t2/instance :model/Card {:id base-card-id}))]
         (is (= 1 (count dependents))
             "Should find one dependent using template tags")
         (is (= dep-card-id (:id (first dependents)))
@@ -2586,10 +2580,10 @@
                                                    :collection_id source-coll-id
                                                    :database_id (mt/id)
                                                    :dataset_query (mt/mbql-query venues)}
-                   :model/Card {dep-card-id :id} {:name "Dependent Card"
-                                                  :collection_id remote-synced-id
-                                                  :database_id (mt/id)
-                                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
+                   :model/Card _ {:name "Dependent Card"
+                                  :collection_id remote-synced-id
+                                  :database_id (mt/id)
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Model has remote-synced dependents"
                             (collection/check-remote-synced-dependents remote-synced-id (t2/instance :model/Collection {:id source-coll-id})))
@@ -2615,8 +2609,7 @@
                                            :size_x 4 :size_y 4}]
 
       (testing "Returns only dashboards in remote-synced collections"
-        (let [remote-synced-coll (t2/select-one :model/Collection :id remote-synced-coll-id)
-              dependents (collection/remote-synced-dependents remote-synced-coll-id (t2/instance :model/Card {:id remote-synced-card-id}))]
+        (let [dependents (collection/remote-synced-dependents remote-synced-coll-id (t2/instance :model/Card {:id remote-synced-card-id}))]
           (is (some #(and (= :model/Dashboard (t2/model %)) (= remote-synced-dashboard-id (:id %))) dependents)
               "Should include dashboard in remote-synced collection")
           (is (not (some #(and (= :model/Dashboard (t2/model %)) (= regular-dashboard-id (:id %))) dependents))
@@ -2637,8 +2630,7 @@
                                            :size_x 4 :size_y 4}]
 
       (testing "Returns dashboards from nested remote-synced collections"
-        (let [remote-synced-coll (t2/select-one :model/Collection :id remote-synced-coll-id)
-              dependents (collection/remote-synced-dependents remote-synced-coll-id (t2/instance :model/Card {:id remote-synced-card-id}))]
+        (let [dependents (collection/remote-synced-dependents remote-synced-coll-id (t2/instance :model/Card {:id remote-synced-card-id}))]
           (is (some #(and (= :model/Dashboard (t2/model %)) (= nested-dashboard-id (:id %))) dependents)
               "Should include dashboard in nested remote-synced collection"))))))
 
@@ -2656,8 +2648,7 @@
                                            :size_x 4 :size_y 4}]
 
       (testing "Does not return archived dashboards"
-        (let [remote-synced-coll (t2/select-one :model/Collection :id remote-synced-coll-id)
-              dependents (collection/remote-synced-dependents remote-synced-coll-id (t2/instance :model/Card {:id remote-synced-card-id}))]
+        (let [dependents (collection/remote-synced-dependents remote-synced-coll-id (t2/instance :model/Card {:id remote-synced-card-id}))]
           (is (not (some #(and (= :model/Dashboard (t2/model %)) (= archived-dashboard-id (:id %))) dependents))
               "Should not include archived dashboard even if in remote-synced collection"))))))
 
@@ -2679,8 +2670,7 @@
                                                  :position 0}]
 
       (testing "Returns dashboards that reference cards through series"
-        (let [remote-synced-coll (t2/select-one :model/Collection :id remote-synced-coll-id)
-              dependents (collection/remote-synced-dependents remote-synced-coll-id (t2/instance :model/Card {:id remote-synced-card-id}))]
+        (let [dependents (collection/remote-synced-dependents remote-synced-coll-id (t2/instance :model/Card {:id remote-synced-card-id}))]
           (is (some #(and (= :model/Dashboard (t2/model %)) (= remote-synced-dashboard-id (:id %))) dependents)
               "Should include dashboard that references card through series"))))))
 
@@ -2689,9 +2679,9 @@
     (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:type "remote-synced"}
                    :model/Card {source-card-id :id} {:collection_id remote-synced-coll-id
                                                      :name "Source card"}
-                   :model/Card {dependent-card-id :id} {:collection_id remote-synced-coll-id
-                                                        :name "Dependent card"
-                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}
+                   :model/Card _ {:collection_id remote-synced-coll-id
+                                  :name "Dependent card"
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}
                    :model/Dashboard {remote-synced-dashboard-id :id} {:collection_id remote-synced-coll-id
                                                                       :name "Library dashboard"}
                    :model/DashboardCard _ {:card_id source-card-id
@@ -2700,15 +2690,14 @@
                                            :size_x 4 :size_y 4}]
 
       (testing "Returns both card and dashboard dependencies"
-        (let [remote-synced-coll (t2/select-one :model/Collection :id remote-synced-coll-id)
-              dependents (collection/remote-synced-dependents remote-synced-coll-id (t2/instance :model/Card {:id source-card-id}))
+        (let [dependents (collection/remote-synced-dependents remote-synced-coll-id (t2/instance :model/Card {:id source-card-id}))
               dependent-models (map t2/model dependents)]
           (is (some #(= :model/Card %) dependent-models)
               "Should include dependent cards")
           (is (some #(= :model/Dashboard %) dependent-models)
               "Should include dependent dashboards"))))))
 
-(deftest ^:parallel move-collection!-from-remote-synced-with-dependents-prevents-move-test
+(deftest move-collection!-from-remote-synced-with-dependents-prevents-move-test
   (testing "move-collection! prevents moving a collection from remote-synced collection when it has remote-synced dependents"
     (mt/with-temp [:model/Collection {remote-synced-parent-id :id} {:name "Remote-Synced Parent"
                                                                     :location "/"
@@ -2722,9 +2711,9 @@
                    :model/Card {remote-synced-card-id :id} {:name "Remote-Synced Card"
                                                             :collection_id child-remote-synced-id
                                                             :dataset_query (mt/native-query {:query "SELECT 1"})}
-                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
-                                                        :collection_id remote-synced-parent-id
-                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-card-id)})}]
+                   :model/Card _ {:name "Dependent Card"
+                                  :collection_id remote-synced-parent-id
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-card-id)})}]
 
       (testing "Throws exception when trying to move collection with remote-synced dependents"
         (let [ex (is (thrown? Exception
@@ -2745,7 +2734,7 @@
           (is (= (format "/%d/" remote-synced-parent-id) (:location unchanged-coll))
               "Collection location should remain unchanged after failed move"))))))
 
-(deftest ^:parallel move-collection!-from-remote-synced-with-dashboard-dependents-prevents-move-test
+(deftest move-collection!-from-remote-synced-with-dashboard-dependents-prevents-move-test
   (testing "move-collection! prevents moving a collection from remote-synced collection when it has dashboard dependents"
     (mt/with-temp [:model/Collection {remote-synced-parent-id :id} {:name "Remote-Synced Parent"
                                                                     :location "/"
@@ -2785,7 +2774,7 @@
           (is (= (format "/%d/" remote-synced-parent-id) (:location unchanged-coll))
               "Collection location should remain unchanged after failed move"))))))
 
-(deftest ^:parallel move-collection!-from-remote-synced-no-dependents-allows-move-test
+(deftest move-collection!-from-remote-synced-no-dependents-allows-move-test
   (testing "move-collection! allows moving a collection from remote-synced collection when it has no remote-synced dependents"
     (mt/with-temp [:model/Collection {remote-synced-parent-id :id} {:name "Remote-Synced Parent"
                                                                     :location "/"
@@ -2796,9 +2785,9 @@
                    :model/Collection {regular-parent-id :id} {:name "Regular Parent"
                                                               :location "/"
                                                               :type nil}
-                   :model/Card {remote-synced-card-id :id} {:name "Remote-Synced Card"
-                                                            :collection_id child-remote-synced-id
-                                                            :dataset_query (mt/native-query {:query "SELECT 1"})}]
+                   :model/Card _ {:name "Remote-Synced Card"
+                                  :collection_id child-remote-synced-id
+                                  :dataset_query (mt/native-query {:query "SELECT 1"})}]
 
       (testing "Successfully moves collection when no dependents exist"
         (collection/move-collection! child-remote-synced-collection (format "/%d/" regular-parent-id))
@@ -2825,9 +2814,9 @@
                    :model/Card {remote-synced-card-id :id} {:name "Remote-Synced Card"
                                                             :collection_id child-remote-synced-id
                                                             :dataset_query (mt/native-query {:query "SELECT 1"})}
-                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
-                                                        :collection_id regular-id
-                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-card-id)})}]
+                   :model/Card _ {:name "Dependent Card"
+                                  :collection_id regular-id
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-card-id)})}]
       (testing "allows moving a collection from one remote-synced collection to another"
         (collection/move-collection! child-remote-synced-collection (format "/%d/" remote-synced-parent2-id))
         (is (= (format "/%d/" remote-synced-parent2-id)
@@ -2847,9 +2836,9 @@
                    :model/Card {remote-synced-card-id :id} {:name "Remote-Synced Card"
                                                             :collection_id child-remote-synced-id
                                                             :dataset_query (mt/native-query {:query "SELECT 1"})}
-                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
-                                                        :collection_id remote-synced-parent1-id
-                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-card-id)})}]
+                   :model/Card _ {:name "Dependent Card"
+                                  :collection_id remote-synced-parent1-id
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-card-id)})}]
       (testing "Errors on moves collection from one remote-synced collection to another"
         (is (thrown? Exception (collection/move-collection! child-remote-synced-collection (format "/%d/" remote-synced-parent2-id))))))))
 
@@ -2870,9 +2859,9 @@
                    :model/Card {remote-synced-card-id :id} {:name "Remote-Synced Card"
                                                             :collection_id grandchild-remote-synced-id
                                                             :dataset_query (mt/native-query {:query "SELECT 1"})}
-                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
-                                                        :collection_id remote-synced-parent-id
-                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-card-id)})}]
+                   :model/Card _ {:name "Dependent Card"
+                                  :collection_id remote-synced-parent-id
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-card-id)})}]
 
       (testing "Throws exception when trying to move collection with nested dependents"
         (let [ex (is (thrown? Exception

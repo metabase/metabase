@@ -112,7 +112,7 @@
     the count of dirty objects in this collection"
   [col-id select-options]
   (when-let [{:keys [location] :as col} (t2/select-one :model/Collection :id col-id)]
-    (let [last-sync #p (last-sync-at col)
+    (let [last-sync (last-sync-at col)
           queries (mapv (fn [[table entity-type]]
                           (let [entity-id-col (keyword (str (name table) ".entity_id"))]
                             {:select (select-options table)

@@ -76,11 +76,11 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [message branch collection_id force-sync]}] :- [:map
-                                                          [:message {:optional true} ms/NonBlankString]
-                                                          [:branch {:optional true} ms/NonBlankString]
-                                                          [:collection_id {:optional true} pos-int?]
-                                                          [:force-sync {:optional true} :boolean]]
+   {:keys [message branch collection_id _force-sync]}] :- [:map
+                                                           [:message {:optional true} ms/NonBlankString]
+                                                           [:branch {:optional true} ms/NonBlankString]
+                                                           [:collection_id {:optional true} pos-int?]
+                                                           [:force-sync {:optional true} :boolean]]
   (api/check-superuser)
   (when-not (settings/remote-sync-enabled)
     (throw (ex-info "Git sync is paused. Please resume it to perform export operations."
@@ -121,7 +121,7 @@
     (catch Exception e
       (throw (ex-info "Invalid git settings"
                       {:error (.getMessage e)
-                       :status-code  400}))))
+                       :status-code 400}))))
   {:success true})
 
 (api.macros/defendpoint :get "/branches"

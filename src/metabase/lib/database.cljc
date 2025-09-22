@@ -1,7 +1,6 @@
 (ns metabase.lib.database
   (:require
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))

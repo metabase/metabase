@@ -779,14 +779,14 @@
 (deftest hydrate-parameter-usage-count-test
   (testing "cards used as parameter sources by multiple dashboards"
     (mt/with-temp [:model/Card {card-id :id} {}
-                   :model/Dashboard {dashboard-id-1 :id} {:parameters [{:id "param-1"
-                                                                        :type "category"
-                                                                        :values_source_type "card"
-                                                                        :values_source_config {:card_id card-id}}]}
-                   :model/Dashboard {dashboard-id-2 :id} {:parameters [{:id "param-2"
-                                                                        :type "category"
-                                                                        :values_source_type "card"
-                                                                        :values_source_config {:card_id card-id}}]}]
+                   :model/Dashboard _ {:parameters [{:id "param-1"
+                                                     :type "category"
+                                                     :values_source_type "card"
+                                                     :values_source_config {:card_id card-id}}]}
+                   :model/Dashboard _ {:parameters [{:id "param-2"
+                                                     :type "category"
+                                                     :values_source_type "card"
+                                                     :values_source_config {:card_id card-id}}]}]
       (let [card-with-usage-count (t2/hydrate (t2/select-one :model/Card :id card-id) :parameter_usage_count)]
         (testing "parameter_usage_count is equal to 2"
           (is (= 2 (:parameter_usage_count card-with-usage-count)))))))
@@ -1093,11 +1093,9 @@
                    :model/Collection {regular-coll-id :id} {}
                    :model/Card {source-card-id :id} {:collection_id regular-coll-id
                                                      :name "Non-library source card"}
-                   :model/Card {card-id :id :as card} {:collection_id regular-coll-id
-                                                       :name "Card with dependency"
-                                                       :dataset_query {:database (mt/id)
-                                                                       :type :query
-                                                                       :query {:source-table (str "card__" source-card-id)}}}]
+                   :model/Card card {:collection_id regular-coll-id
+                                     :name "Card with dependency"
+                                     :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}]
       (testing "Card with non-library dependencies cannot be moved to library collection"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
@@ -1111,11 +1109,9 @@
         (mt/with-temp [:model/Collection {another-library-coll-id :id} {:type "remote-synced"}
                        :model/Card {library-source-card-id :id} {:collection_id another-library-coll-id
                                                                  :name "Library source card"}
-                       :model/Card {movable-card-id :id :as movable-card} {:collection_id regular-coll-id
-                                                                           :name "Card with library dependency"
-                                                                           :dataset_query {:database (mt/id)
-                                                                                           :type :query
-                                                                                           :query {:source-table (str "card__" library-source-card-id)}}}]
+                       :model/Card movable-card {:collection_id regular-coll-id
+                                                 :name "Card with library dependency"
+                                                 :dataset_query (mt/mbql-query nil {:source-table (str "card__" library-source-card-id)})}]
           (let [updated-card (card/update-card!
                               {:card-before-update movable-card
                                :card-updates {:collection_id library-coll-id}
@@ -1129,18 +1125,16 @@
                    :model/Collection {regular-coll-id :id} {}
                    :model/Card {non-library-source-id :id} {:collection_id regular-coll-id
                                                             :name "Non-library source"}
-                   :model/Card {card-id :id :as card} {:collection_id library-coll-id
-                                                       :name "Library card"
-                                                       :dataset_query (mt/mbql-query venues)}]
+                   :model/Card card {:collection_id library-coll-id
+                                     :name "Library card"
+                                     :dataset_query (mt/mbql-query venues)}]
       (testing "Cannot update library card to have non-library dependencies"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Model has non-remote-synced dependencies"
              (card/update-card!
               {:card-before-update card
-               :card-updates {:dataset_query {:database (mt/id)
-                                              :type :query
-                                              :query {:source-table (str "card__" non-library-source-id)}}}
+               :card-updates {:dataset_query (mt/mbql-query nil {:source-table (str "card__" non-library-source-id)})}
                :actor {:id (mt/user->id :rasta)}})))))))
 
 (deftest update-card-library-dependents-prevents-move-from-library-test
@@ -1178,11 +1172,11 @@
                    :model/Collection {regular-coll-id :id} {}
                    :model/Card {library-card-id :id :as library-card} {:collection_id library-coll-id
                                                                        :name "Library card"}
-                   :model/Card {dependent-card-id :id} {:collection_id library-coll-id
-                                                        :name "Card with parameter reference"
-                                                        :parameters [{:id "test-param"
-                                                                      :type :category
-                                                                      :card_id library-card-id}]}]
+                   :model/Card _ {:collection_id library-coll-id
+                                  :name "Card with parameter reference"
+                                  :parameters [{:id "test-param"
+                                                :type :category
+                                                :card_id library-card-id}]}]
       (testing "Cannot move library card when dependents reference it via parameters"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
@@ -1198,16 +1192,16 @@
                    :model/Collection {regular-coll-id :id} {}
                    :model/Card {library-card-id :id :as library-card} {:collection_id library-coll-id
                                                                        :name "Library card"}
-                   :model/Card {dependent-card-id :id} {:collection_id library-coll-id
-                                                        :name "Card with template tag reference"
-                                                        :dataset_query {:database (mt/id)
-                                                                        :type :native
-                                                                        :native {:query "SELECT * FROM {{#123-abc}}"
-                                                                                 :template-tags {"123-abc" {:id "123-abc"
-                                                                                                            :name "123-abc"
-                                                                                                            :display-name "Test Template Tag"
-                                                                                                            :type :card
-                                                                                                            :card-id library-card-id}}}}}]
+                   :model/Card _ {:collection_id library-coll-id
+                                  :name "Card with template tag reference"
+                                  :dataset_query {:database (mt/id)
+                                                  :type :native
+                                                  :native {:query "SELECT * FROM {{#123-abc}}"
+                                                           :template-tags {"123-abc" {:id "123-abc"
+                                                                                      :name "123-abc"
+                                                                                      :display-name "Test Template Tag"
+                                                                                      :type :card
+                                                                                      :card-id library-card-id}}}}}]
       (testing "Cannot move library card when dependents reference it via template tags"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
@@ -1223,11 +1217,11 @@
                    :model/Collection {library-coll-2-id :id} {:type "remote-synced"}
                    :model/Card {library-card-id :id :as library-card} {:collection_id library-coll-1-id
                                                                        :name "Library card"}
-                   :model/Card {dependent-card-id :id} {:collection_id library-coll-1-id
-                                                        :name "Card dependent on library card"
-                                                        :dataset_query {:database (mt/id)
-                                                                        :type :query
-                                                                        :query {:source-table (str "card__" library-card-id)}}}]
+                   :model/Card _ {:collection_id library-coll-1-id
+                                  :name "Card dependent on library card"
+                                  :dataset_query {:database (mt/id)
+                                                  :type :query
+                                                  :query {:source-table (str "card__" library-card-id)}}}]
       (testing "Can move library card between library collections"
         (let [updated-card (card/update-card!
                             {:card-before-update library-card
@@ -1241,11 +1235,11 @@
     (mt/with-temp [:model/Collection {library-coll-id :id} {:type "remote-synced"}
                    :model/Card {library-card-id :id :as library-card} {:collection_id library-coll-id
                                                                        :name "Library card"}
-                   :model/Card {dependent-card-id :id} {:collection_id library-coll-id
-                                                        :name "Card dependent on library card"
-                                                        :dataset_query {:database (mt/id)
-                                                                        :type :query
-                                                                        :query {:source-table (str "card__" library-card-id)}}}]
+                   :model/Card _ {:collection_id library-coll-id
+                                  :name "Card dependent on library card"
+                                  :dataset_query {:database (mt/id)
+                                                  :type :query
+                                                  :query {:source-table (str "card__" library-card-id)}}}]
       (testing "Can update name and description of library card with dependents"
         (let [updated-card (card/update-card!
                             {:card-before-update library-card

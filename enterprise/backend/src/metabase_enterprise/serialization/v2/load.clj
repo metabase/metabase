@@ -194,7 +194,7 @@
                                                              (catch Exception _
                                                                nil)))
                                        root-dependency-path))
-                      (load-one! ctx #p item)
+                      (load-one! ctx item)
                       ctx)
                     (catch Exception e
                       (when-not continue-on-error

@@ -7,7 +7,6 @@
    [metabase.collections.api :as api.collection]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
-   [metabase.models.interface :as mi]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -2218,12 +2217,12 @@
   (testing "GET /api/collection/root/items"
     (testing "collection_type parameter filters collections to only those with matching type"
       (testing "collection_type=remote-synced returns only remote-synced collections"
-        (mt/with-temp [:model/Collection normal-coll {:name "Normal Collection"}
-                       :model/Collection remote-coll {:name "Remote Synced Collection"
-                                                      :type "remote-synced"}
-                       :model/Collection other-remote {:name "Another Remote Collection"
-                                                       :type "remote-synced"}
-                       :model/Collection normal-2 {:name "Second Normal Collection"}]
+        (mt/with-temp [:model/Collection _ {:name "Normal Collection"}
+                       :model/Collection _ {:name "Remote Synced Collection"
+                                            :type "remote-synced"}
+                       :model/Collection _ {:name "Another Remote Collection"
+                                            :type "remote-synced"}
+                       :model/Collection _ {:name "Second Normal Collection"}]
           (let [response (mt/user-http-request :crowberto :get 200 "collection/root/items"
                                                :collection_type "remote-synced")
                 collection-names (->> (:data response)
@@ -2238,45 +2237,9 @@
               (is (not (contains? collection-names "Second Normal Collection")))))))
 
       (testing "without collection_type parameter, all collections are returned"
-        (mt/with-temp [:model/Collection normal-coll {:name "Normal Collection Test"}
-                       :model/Collection remote-coll {:name "Remote Synced Collection Test"
-                                                      :type "remote-synced"}]
-          (let [response (mt/user-http-request :crowberto :get 200 "collection/root/items")
-                collection-names (->> (:data response)
-                                      (filter #(= (:model %) "collection"))
-                                      (map :name)
-                                      set)]
-            (testing "should include both normal and remote-synced collections"
-              (is (contains? collection-names "Normal Collection Test"))
-              (is (contains? collection-names "Remote Synced Collection Test")))))))))
-
-(deftest fetch-root-items-collection-type-filter-test
-  (testing "GET /api/collection/root/items"
-    (testing "collection_type parameter filters collections to only those with matching type"
-      (testing "collection_type=remote-synced returns only remote-synced collections"
-        (mt/with-temp [:model/Collection normal-coll {:name "Normal Collection"}
-                       :model/Collection remote-coll {:name "Remote Synced Collection"
-                                                      :type "remote-synced"}
-                       :model/Collection other-remote {:name "Another Remote Collection"
-                                                       :type "remote-synced"}
-                       :model/Collection normal-2 {:name "Second Normal Collection"}]
-          (let [response (mt/user-http-request :crowberto :get 200 "collection/root/items"
-                                               :collection_type "remote-synced")
-                collection-names (->> (:data response)
-                                      (filter #(= (:model %) "collection"))
-                                      (map :name)
-                                      set)]
-            (testing "should include remote-synced collections"
-              (is (contains? collection-names "Remote Synced Collection"))
-              (is (contains? collection-names "Another Remote Collection")))
-            (testing "should not include normal collections"
-              (is (not (contains? collection-names "Normal Collection")))
-              (is (not (contains? collection-names "Second Normal Collection")))))))
-
-      (testing "without collection_type parameter, all collections are returned"
-        (mt/with-temp [:model/Collection normal-coll {:name "Normal Collection Test"}
-                       :model/Collection remote-coll {:name "Remote Synced Collection Test"
-                                                      :type "remote-synced"}]
+        (mt/with-temp [:model/Collection _ {:name "Normal Collection Test"}
+                       :model/Collection _ {:name "Remote Synced Collection Test"
+                                            :type "remote-synced"}]
           (let [response (mt/user-http-request :crowberto :get 200 "collection/root/items")
                 collection-names (->> (:data response)
                                       (filter #(= (:model %) "collection"))
@@ -3220,9 +3183,9 @@
                    :model/Card {library-card-id :id} {:name "Library Card"
                                                       :collection_id library-id
                                                       :dataset_query (mt/native-query {:query "SELECT 1"})}
-                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
-                                                        :collection_id coll-id
-                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" library-card-id)})}]
+                   :model/Card _ {:name "Dependent Card"
+                                  :collection_id coll-id
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" library-card-id)})}]
       ;; This should succeed because the dependency (library-card) is in a library collection
       (let [response (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id)
                                            {:parent_id parent-id})]
@@ -3243,9 +3206,9 @@
                    :model/Card {non-library-card-id :id} {:name "Non-Library Card"
                                                           :collection_id non-library-id
                                                           :dataset_query (mt/native-query {:query "SELECT 1"})}
-                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
-                                                        :collection_id coll-id
-                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-library-card-id)})}]
+                   :model/Card _ {:name "Dependent Card"
+                                  :collection_id coll-id
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-library-card-id)})}]
       ;; This should return 400 because the dependency (non-library-card) is not in a library collection
       (let [response (mt/user-http-request :crowberto :put 400 (str "collection/" coll-id)
                                            {:parent_id parent-id})]
@@ -3274,9 +3237,9 @@
                    :model/Card {non-library-card-id :id} {:name "Non-Library Card"
                                                           :collection_id non-library-id
                                                           :dataset_query (mt/native-query {:query "SELECT 1"})}
-                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
-                                                        :collection_id coll-id
-                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-library-card-id)})}]
+                   :model/Card _ {:name "Dependent Card"
+                                  :collection_id coll-id
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-library-card-id)})}]
       ;; This should return 400 with transaction rollback
       (mt/user-http-request :crowberto :put 400 (str "collection/" coll-id)
                             {:parent_id parent-id})
@@ -3304,9 +3267,9 @@
                    :model/Card {non-library-card-id :id} {:name "Non-Library Card"
                                                           :collection_id non-library-id
                                                           :dataset_query (mt/native-query {:query "SELECT 1"})}
-                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
-                                                        :collection_id coll-id
-                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-library-card-id)})}]
+                   :model/Card _ {:name "Dependent Card"
+                                  :collection_id coll-id
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-library-card-id)})}]
       ;; This should succeed because we're not moving into a library collection
       (let [response (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id)
                                            {:parent_id parent-id})]

@@ -19,6 +19,17 @@
   (-> transform :source :query lib/database-id))
 
 (defn error-or-obj
+  "Validates an object and throws an exception if it's falsy.
+
+  Args:
+    obj-or-falsey: The object to validate, which may be falsy.
+    message: The error message to include in the exception if validation fails.
+
+  Returns:
+    The original object if it's truthy.
+
+  Raises:
+    ExceptionInfo: If obj-or-falsey is falsy, with the provided message and :validate-transform type."
   [obj-or-falsey message]
   (when-not obj-or-falsey
     (throw (ex-info (str message) {:type :validate-transform})))

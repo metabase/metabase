@@ -49,7 +49,7 @@
 
 (defn- handle-import-exception
   [e collections sync-timestamp branch]
-  (log/errorf e "Failed to reload from git repository: %s" (ex-message #p e))
+  (log/errorf e "Failed to reload from git repository: %s" (ex-message e))
   (let [error-msg (cond
                     (or (instance? java.net.UnknownHostException e)
                         (instance? java.net.UnknownHostException (ex-cause e)))
@@ -135,13 +135,13 @@
      (let [collections (or (seq collections) (t2/select-fn-set :entity_id :model/Collection :type "remote-synced" :location "/"))]
        (try
          (serdes/with-cache
-           (-> (serialization/extract (cond-> {:targets                  (mapv #(vector "Collection" %) collections)
-                                               :no-collections           false
-                                               :no-data-model            true
-                                               :no-settings              true
-                                               :include-field-values     :false
-                                               :include-database-secrets :false
-                                               :continue-on-error        false}))
+           (-> (serialization/extract {:targets                  (mapv #(vector "Collection" %) collections)
+                                       :no-collections           false
+                                       :no-data-model            true
+                                       :no-settings              true
+                                       :include-field-values     :false
+                                       :include-database-secrets :false
+                                       :continue-on-error        false})
                (source/store! source branch message)))
          (doseq [collection collections]
            (lib.events/publish-remote-sync! "export" nil api/*current-user-id*

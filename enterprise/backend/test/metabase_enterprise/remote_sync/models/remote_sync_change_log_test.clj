@@ -8,6 +8,8 @@
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db))
 
 ;;; ------------------------------------------------------------------------------------------------
@@ -229,11 +231,11 @@
       (mt/with-temp
         [:model/Collection collection {:name "Collection"
                                        :location "/"}
-         :model/Card card {:name "Card"
-                           :collection_id (:id collection)
-                           :creator_id (mt/user->id :rasta)
-                           :display "table"
-                           :dataset_query (mt/native-query {:query "SELECT 1"})}]
+         :model/Card _ {:name "Card"
+                        :collection_id (:id collection)
+                        :creator_id (mt/user->id :rasta)
+                        :display "table"
+                        :dataset_query (mt/native-query {:query "SELECT 1"})}]
         (is (false? (change-log/dirty-collection? (:id collection))))))
 
     (testing "collection with failed sync status"
@@ -510,11 +512,11 @@
                           :creator_id (mt/user->id :rasta)
                           :display "table"
                           :dataset_query (mt/native-query {:query "SELECT 1"})}
-       :model/Card card2 {:name "Card 2"
-                          :collection_id (:id collection)
-                          :creator_id (mt/user->id :rasta)
-                          :display "table"
-                          :dataset_query (mt/native-query {:query "SELECT 1"})}
+       :model/Card _card2 {:name "Card 2"
+                           :collection_id (:id collection)
+                           :creator_id (mt/user->id :rasta)
+                           :display "table"
+                           :dataset_query (mt/native-query {:query "SELECT 1"})}
        :model/Dashboard dashboard {:name "Dashboard"
                                    :collection_id (:id collection)
                                    :creator_id (mt/user->id :rasta)}]
@@ -566,11 +568,11 @@
                           :creator_id (mt/user->id :rasta)
                           :display "table"
                           :dataset_query (mt/native-query {:query "SELECT 1"})}
-       :model/Card card2 {:name "Card 2"
-                          :collection_id (:id collection2)
-                          :creator_id (mt/user->id :rasta)
-                          :display "table"
-                          :dataset_query (mt/native-query {:query "SELECT 1"})}
+       :model/Card _card2 {:name "Card 2"
+                           :collection_id (:id collection2)
+                           :creator_id (mt/user->id :rasta)
+                           :display "table"
+                           :dataset_query (mt/native-query {:query "SELECT 1"})}
        :model/RemoteSyncChangeLog _ {:model_type "Collection"
                                      :model_entity_id (:entity_id collection1)
                                      :sync_type "import"

@@ -1,6 +1,5 @@
 (ns metabase-enterprise.remote-sync.settings
   (:require
-   [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase.settings.core :as setting :refer [defsetting]]
@@ -9,11 +8,11 @@
 
 (defsetting remote-sync-enabled
   (deferred-tru "Is Git sync currently enabled?")
-  :type       :boolean
+  :type :boolean
   :visibility :authenticated
-  :export?    false
+  :export? false
   :encryption :no
-  :default    true)
+  :default true)
 
 (defsetting remote-sync-branch
   (deferred-tru "The remote branch to sync with, e.g. `main`")
@@ -34,10 +33,10 @@
 
 (defsetting remote-sync-url
   (deferred-tru "The location of your git repository, e.g. https://github.com/acme-inco/metabase.git")
-  :type       :string
+  :type :string
   :visibility :admin
   :encryption :no
-  :export?    false)
+  :export? false)
 
 (defsetting remote-sync-type
   (deferred-tru "Git synchronization type - import or export")
@@ -48,7 +47,7 @@
   :default "import")
 
 (defsetting remote-sync-auto-import
-  (deferred-tru "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is 'import'.")
+  (deferred-tru "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is ''import''.")
   :type :boolean
   :visibility :authenticated
   :export? false
@@ -56,7 +55,7 @@
   :default false)
 
 (defsetting remote-sync-auto-import-rate
-  (deferred-tru "If remote-sync-type is 'import' and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5.")
+  (deferred-tru "If remote-sync-type is ''import'' and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5.")
   :type :integer
   :visibility :authenticated
   :export? false

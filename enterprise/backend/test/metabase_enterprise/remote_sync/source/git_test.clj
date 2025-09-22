@@ -159,10 +159,10 @@
         (is (nil? (source.p/read-file source "invalid-branch" "master.txt")))))))
 
 (deftest write-files
-  (let [subdir-path (str "collections/" (str "r" (subs (u/generate-nano-id "a") 1)) "_subdir/")
-        otherdir-path (str "collections/" (str "o" (subs (u/generate-nano-id "b") 1)) "_otherdir/")
-        thirddir-path (str "collections/" (str "s" (subs (u/generate-nano-id "c") 1)) "_thirddir/")
-        branched-path (str "collections/" (str "b" (subs (u/generate-nano-id "d") 1)) "_branched/")]
+  (let [subdir-path (str "collections/" "r" (subs (u/generate-nano-id "a") 1) "_subdir/")
+        otherdir-path (str "collections/" "o" (subs (u/generate-nano-id "b") 1) "_otherdir/")
+        thirddir-path (str "collections/" "s" (subs (u/generate-nano-id "c") 1) "_thirddir/")
+        branched-path (str "collections/" "b" (subs (u/generate-nano-id "d") 1) "_branched/")]
     (mt/with-temp-dir [remote-dir nil]
       (let [[source remote] (init-source! remote-dir
                                           :files {"master.txt"                    "File in master"
@@ -271,13 +271,13 @@
             (is (= ["Updating Branch" "New Branch" "Update 2" "Update 1" "Initial commit"] (map :message (git/log remote "new-branch"))))))))))
 
 (deftest write-special-collections
-  (let [subdir-path (str "collections/" (str "r" (subs (u/generate-nano-id "a") 1)) "_subdir/")
+  (let [subdir-path (str "collections/" "r" (subs (u/generate-nano-id "a") 1) "_subdir/")
         transformtags-path "collections/transformtags/"
         transformjobs-path "collections/transformjobs/"]
     (mt/with-temp-dir [remote-dir nil]
-      (let [[source remote] (init-source! remote-dir
-                                          :files {"master.txt"                 "File in master"
-                                                  (str subdir-path "path.txt") "File in subdir"})]
+      (let [[source _remote] (init-source! remote-dir
+                                           :files {"master.txt"                 "File in master"
+                                                   (str subdir-path "path.txt") "File in subdir"})]
         (testing "Special collections"
           (source.p/write-files! source "transform-branch" "Add transforms" [{:path (str transformtags-path "tag1.yaml") :content "tag1"}
                                                                              {:path (str transformtags-path "tag2.yaml") :content "tag2"}
@@ -292,7 +292,7 @@
                   "master.txt"]
                  (source.p/list-files source "transform-branch")))
 
-          (testing #p "Can update transforms"
+          (testing "Can update transforms"
             (source.p/write-files! source "transform-branch" "Update transforms" [{:path (str transformtags-path "tag1.yaml") :content "updated tag1"}
                                                                                   {:path (str transformtags-path "tag2.yaml") :content "updated tag2"}
                                                                                   {:path (str transformtags-path "tag3.yaml") :content "updated tag3"}
@@ -313,9 +313,7 @@
                    (source.p/list-files source "transform-branch")))))))))
 
 (deftest concurrent-access
-  (let [subdir-path (str "collections/" (u/generate-nano-id "a") "_subdir")
-        otherdir-path (str "collections/" (u/generate-nano-id "b") "_otherdir")
-        thirddir-path (str "collections/" (u/generate-nano-id "c") "_thirddir")]
+  (let [subdir-path (str "collections/" (u/generate-nano-id "a") "_subdir")]
     (mt/with-temp-dir [remote-dir nil]
       (let [[source remote] (init-source! remote-dir
                                           :files {"master.txt"                 "File in master"

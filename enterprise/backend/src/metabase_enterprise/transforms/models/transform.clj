@@ -3,7 +3,6 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
-   [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [methodical.core :as methodical]
@@ -17,8 +16,8 @@
   (derive :model/Transform trait))
 
 (t2/deftransforms :model/Transform
-  {:source      mi/transform-json
-   :target      mi/transform-json
+  {:source mi/transform-json
+   :target mi/transform-json
    :run_trigger mi/transform-keyword})
 
 (mi/define-batched-hydration-method with-transform
@@ -39,7 +38,7 @@
   (if-not (seq transforms)
     transforms
     (let [transform-ids (into #{} (map :id) transforms)
-          last-runs     (m/index-by :transform_id (transform-run/latest-runs transform-ids))]
+          last-runs (m/index-by :transform_id (transform-run/latest-runs transform-ids))]
       (for [transform transforms]
         (assoc transform :last_run (get last-runs (:id transform)))))))
 
@@ -49,11 +48,11 @@
   [transforms]
   (if-not (seq transforms)
     transforms
-    (let [transform-ids         (into #{} (map :id) transforms)
-          tag-associations      (when (seq transform-ids)
-                                  (t2/select [:model/TransformTransformTag :transform_id :tag_id :position]
-                                             :transform_id [:in transform-ids]
-                                             {:order-by [[:position :asc]]}))
+    (let [transform-ids (into #{} (map :id) transforms)
+          tag-associations (when (seq transform-ids)
+                             (t2/select [:model/TransformTransformTag :transform_id :tag_id :position]
+                                        :transform_id [:in transform-ids]
+                                        {:order-by [[:position :asc]]}))
           transform-id->tag-ids (reduce (fn [acc {:keys [transform_id tag_id]}]
                                           (update acc transform_id (fnil conj []) tag_id))
                                         {}
@@ -69,27 +68,27 @@
   (when transform-id
     (t2/with-transaction [_conn]
       (let [;; Deduplicate while preserving order of first occurrence
-            deduped-tag-ids      (vec (distinct tag-ids))
+            deduped-tag-ids (vec (distinct tag-ids))
             ;; Get current associations
             current-associations (t2/select [:model/TransformTransformTag :tag_id :position]
                                             :transform_id transform-id
                                             {:order-by [[:position :asc]]})
-            current-tag-ids      (mapv :tag_id current-associations)
+            current-tag-ids (mapv :tag_id current-associations)
             ;; Validate that new tag IDs exist
-            valid-tag-ids        (when (seq deduped-tag-ids)
-                                   (into #{} (t2/select-fn-set :id :model/TransformTag
-                                                               :id [:in deduped-tag-ids])))
+            valid-tag-ids (when (seq deduped-tag-ids)
+                            (into #{} (t2/select-fn-set :id :model/TransformTag
+                                                        :id [:in deduped-tag-ids])))
             ;; Filter to only valid tags, preserving order
-            new-tag-ids          (if valid-tag-ids
-                                   (filterv valid-tag-ids deduped-tag-ids)
-                                   [])
+            new-tag-ids (if valid-tag-ids
+                          (filterv valid-tag-ids deduped-tag-ids)
+                          [])
             ;; Calculate what needs to change
-            current-set          (set current-tag-ids)
-            new-set              (set new-tag-ids)
-            to-delete            (set/difference current-set new-set)
-            to-insert            (set/difference new-set current-set)
+            current-set (set current-tag-ids)
+            new-set (set new-tag-ids)
+            to-delete (set/difference current-set new-set)
+            to-insert (set/difference new-set current-set)
             ;; Build position map for new ordering
-            new-positions        (zipmap new-tag-ids (range))]
+            new-positions (zipmap new-tag-ids (range))]
 
         ;; Delete removed associations
         (when (seq to-delete)
@@ -109,26 +108,14 @@
           (t2/insert! :model/TransformTransformTag
                       (for [tag-id to-insert]
                         {:transform_id transform-id
-                         :tag_id       tag-id
-                         :position     (get new-positions tag-id)})))))))
+                         :tag_id tag-id
+                         :position (get new-positions tag-id)})))))))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defmethod serdes/hash-fields :model/Transform
   [_transform]
   [:name :created_at])
-
-(defn- extract-database-ids-from-target
-  "Extract database IDs from target configuration."
-  [target]
-  (when (map? target)
-    (cond
-      ;; Direct database reference
-      (:database target) #{(:database target)}
-      ;; Nested database references
-      (:databases target) (set (:databases target))
-      ;; Other potential patterns - extend as needed
-      :else #{})))
 
 (defn- transform-target-export
   "Transform target JSON for export, replacing database IDs with portable names."
@@ -155,13 +142,13 @@
    :transform
    {:created_at (serdes/date)
     :updated_at (serdes/date)
-    :source     {:export serdes/export-mbql :import serdes/import-mbql}
-    :target     {:export transform-target-export
-                 :import transform-target-import}
+    :source {:export serdes/export-mbql :import serdes/import-mbql}
+    :target {:export transform-target-export
+             :import transform-target-import}
     :tag_associations (serdes/nested :model/TransformTransformTag :transform_id opts)}})
 
 (defmethod serdes/dependencies "Transform"
-  [{:keys [source target]}]
+  [{:keys [source _target]}]
   (set (serdes/mbql-deps source)))
 
 (defmethod serdes/descendants "Transform"

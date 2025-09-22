@@ -2,11 +2,8 @@
   (:require
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
-   [metabase-enterprise.remote-sync.source.git :as git]
    [metabase.collections.core :as collections]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util :as u]
-   [metabase.util.log :as log]
    [potemkin :as p]))
 
 (comment

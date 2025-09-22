@@ -1,15 +1,13 @@
 (ns metabase-enterprise.remote-sync.api-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-change-log :as change-log]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]))
+   [metabase.test.fixtures :as fixtures]))
 
 (defn mock-git-source
   "Create a mock git source for testing"

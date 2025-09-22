@@ -24,7 +24,7 @@
 (deftest import!-successful-with-specific-collections-test
   (testing "import! successful with specific collections"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}
-                   :model/Card {card-id :id} {:name "Test Card" :collection_id coll-id :entity_id "test-card-1xxxxxxxxxx"}]
+                   :model/Card {_card-id :id} {:name "Test Card" :collection_id coll-id :entity_id "test-card-1xxxxxxxxxx"}]
       (let [mock-source (test-helpers/create-mock-source)]
         (with-redefs [source/source-from-settings (constantly mock-source)]
           (let [result (impl/import! "test-branch" ["test-collection-1xxxx"])]
@@ -33,7 +33,7 @@
 
 (deftest import!-successful-without-collections-test
   (testing "import! successful without collections (imports all remote-synced)"
-    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
+    (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
       (let [mock-source (test-helpers/create-mock-source)]
         (with-redefs [source/source-from-settings (constantly mock-source)]
           (let [result (impl/import! "test-branch")]
@@ -106,7 +106,7 @@
 
 (deftest export!-successful-with-specific-collections-test
   (testing "export! successful with specific collections"
-    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
+    (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
       (let [mock-source (test-helpers/create-mock-source)]
         (with-redefs [source/source-from-settings (constantly mock-source)]
           (let [result (impl/export! "test-branch" "Test commit message" ["test-collection-1xxxx"])]
@@ -114,7 +114,7 @@
 
 (deftest export!-successful-with-default-collections-test
   (testing "export! successful with default collections"
-    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
+    (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
       (let [mock-source (test-helpers/create-mock-source)]
         (with-redefs [source/source-from-settings (constantly mock-source)]
           (let [result (impl/export! "test-branch" "Test commit message")]
@@ -133,7 +133,7 @@
 
 (deftest export!-handles-store-failure-test
   (testing "export! handles store failure"
-    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
+    (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
       (let [mock-source (test-helpers/create-mock-source :fail-mode :store-error)]
         (with-redefs [source/source-from-settings (constantly mock-source)]
           (let [result (impl/export! "test-branch" "Test commit message" ["test-collection-1xxxx"])]
@@ -142,7 +142,7 @@
 
 (deftest export!-handles-network-errors-during-write-test
   (testing "export! handles network errors during write"
-    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
+    (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
       (let [mock-source (test-helpers/create-mock-source :fail-mode :network-error)]
         (with-redefs [source/source-from-settings (constantly mock-source)]
           (let [result (impl/export! "test-branch" "Test commit message" ["test-collection-1xxxx"])]
