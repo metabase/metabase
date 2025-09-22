@@ -363,10 +363,16 @@ export type XRaySuggestionClickedEvent = ValidateEvent<{
   triggered_from: "suggestion_sidebar";
 }>;
 
+export type XRayAutoInsightsClicked = ValidateEvent<{
+  event: "x-ray_automatic_insights_clicked";
+  event_detail: "x-ray" | "compare_to_rest";
+}>;
+
 export type XRayClickedEvent =
   | XRayTableClickedEvent
   | XRayDataReferenceClickedEvent
-  | XRaySuggestionClickedEvent;
+  | XRaySuggestionClickedEvent
+  | XRayAutoInsightsClicked;
 
 export type XRaySavedEvent = ValidateEvent<{
   event: "x-ray_saved";

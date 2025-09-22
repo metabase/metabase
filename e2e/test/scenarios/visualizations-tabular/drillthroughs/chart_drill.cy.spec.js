@@ -906,6 +906,16 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       });
 
       H.cartesianChartCircle().eq(1).should("be.visible").click();
+      H.popover().findByText(">").click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "click_action",
+        triggered_from: "filter",
+      });
+
+      cy.go("back");
+
+      H.cartesianChartCircle().eq(1).should("be.visible").click();
       H.popover()
         .findByText(/^Automatic insights/)
         .click();
@@ -915,12 +925,22 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         triggered_from: "auto",
       });
 
-      H.cartesianChartCircle().eq(1).should("be.visible").click();
-      H.popover().findByText(">").click();
-
+      H.popover().findByText("X-ray").click();
       H.expectUnstructuredSnowplowEvent({
-        event: "click_action",
-        triggered_from: "filter",
+        event: "x-ray_automatic_insights_clicked",
+        event_detail: "x-ray",
+      });
+
+      cy.go("back");
+
+      H.cartesianChartCircle().eq(1).should("be.visible").click();
+      H.popover()
+        .findByText(/^Automatic insights/)
+        .click();
+      H.popover().findByText("Compare to the rest").click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "x-ray_automatic_insights_clicked",
+        event_detail: "compare_to_rest",
       });
     });
   });
