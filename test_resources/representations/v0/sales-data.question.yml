@@ -1,0 +1,46 @@
+type: question
+ref: sales-data
+name: Sales Data
+description: Sales analysis with product categories and monthly averages
+database: Sample Database
+mbql_query:
+  database: 1
+  type: query
+  query:
+    source-table: 2
+    joins:
+      - fields: all
+        strategy: left-join
+        alias: Products
+        condition:
+          - "="
+          - - field
+            - 14
+            - base-type: type/Integer
+          - - field
+            - 8
+            - base-type: type/BigInteger
+              join-alias: Products
+        source-table: 3
+    breakout:
+      - - field
+        - 18
+        - base-type: type/Text
+          join-alias: Products
+      - - field
+        - 13
+        - base-type: type/DateTime
+          temporal-unit: month
+    aggregation:
+      - - avg
+        - - field
+          - 5
+          - base-type: type/Float
+      - - avg
+        - - field
+          - 2
+          - base-type: type/Integer
+      - - avg
+        - - field
+          - 6
+          - base-type: type/Float

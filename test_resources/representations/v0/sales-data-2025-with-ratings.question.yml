@@ -1,0 +1,28 @@
+type: question
+ref: sales-data-2025-with-ratings
+name: Sales Data 2025 with Ratings
+description: Sales data from 2025 model with product ratings
+database: Sample Database
+mbql_query:
+  database: 1
+  type: query
+  query:
+    source-table: "card__119"
+    joins:
+      - fields:
+          - - field
+            - 16
+            - base-type: type/Float
+              join-alias: "Products - Products → Category"
+        strategy: left-join
+        alias: "Products - Products → Category"
+        condition:
+          - "="
+          - - field
+            - Products__CATEGORY
+            - base-type: type/Text
+          - - field
+            - 18
+            - base-type: type/Text
+              join-alias: "Products - Products → Category"
+        source-table: 3

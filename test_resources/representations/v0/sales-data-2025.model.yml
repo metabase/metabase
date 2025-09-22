@@ -1,0 +1,46 @@
+type: v0/model
+ref: sales-data-2025
+name: Sales Data 2025
+description: Monthly sales analysis for 2025 with product categories and financial metrics
+database: Sample Database
+mbql_query:
+  database: 1
+  type: query
+  query:
+    source-table: "card__117"
+    filter:
+      - time-interval
+      - - field
+        - CREATED_AT
+        - base-type: type/DateTime
+          inherited-temporal-unit: month
+      - -12
+      - month
+columns:
+  - name: category
+    display_name: Products → Category
+    description: "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget"
+    base_type: type/Text
+    semantic_type: type/Category
+
+  - name: created_at_month
+    display_name: Created At Month
+    description: The date and time an order was submitted
+    base_type: type/DateTime
+    semantic_type: type/CreationTimestamp
+
+  - name: avg_total
+    display_name: Average of Total
+    description: Average total price
+    base_type: type/Float
+
+  - name: avg_quantity
+    display_name: Average of Quantity
+    description: Average quantity ordered
+    base_type: type/Float
+    semantic_type: type/Quantity
+
+  - name: avg_tax
+    display_name: Average of Tax
+    description: Average tax amount
+    base_type: type/Float

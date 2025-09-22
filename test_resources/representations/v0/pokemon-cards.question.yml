@@ -1,0 +1,10 @@
+type: question
+ref: pokemon-cards
+name: Pokemon Cards
+description: Complete Pokemon card collection data
+database: Postgres
+mbql_query:
+  database: 2
+  type: query
+  query:
+    source-table: 35

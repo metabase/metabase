@@ -1,0 +1,39 @@
+name: Sales Data
+type: question
+ref: question-117
+mbql_query:
+  source-table: [Sample Database, PUBLIC, ORDERS]
+  joins:
+  - fields: all
+    strategy: left-join
+    alias: Products
+    condition:
+    - =
+    - - field
+      - [Sample Database, PUBLIC, ORDERS, PRODUCT_ID]
+      - {base-type: type/Integer}
+    - - field
+      - [Sample Database, PUBLIC, PRODUCTS, ID]
+      - {base-type: type/BigInteger, join-alias: Products}
+    source-table: [Sample Database, PUBLIC, PRODUCTS]
+  breakout:
+  - - field
+    - [Sample Database, PUBLIC, PRODUCTS, CATEGORY]
+    - {base-type: type/Text, join-alias: Products}
+  - - field
+    - [Sample Database, PUBLIC, ORDERS, CREATED_AT]
+    - {base-type: type/DateTime, temporal-unit: month}
+  aggregation:
+  - - avg
+    - - field
+      - [Sample Database, PUBLIC, ORDERS, TOTAL]
+      - {base-type: type/Float}
+  - - avg
+    - - field
+      - [Sample Database, PUBLIC, ORDERS, QUANTITY]
+      - {base-type: type/Integer}
+  - - avg
+    - - field
+      - [Sample Database, PUBLIC, ORDERS, TAX]
+      - {base-type: type/Float}
+database: Sample Database

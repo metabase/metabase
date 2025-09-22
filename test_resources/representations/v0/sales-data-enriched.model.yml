@@ -58,31 +58,10 @@ columns:
     database_type: TIMESTAMP
     table_id: 2
     qp/implicit-field?: true
-    lib/deduplicated-name: CREATED_AT
-    lib/original-name: CREATED_AT
-    lib/breakout?: false
-    unit: month
-    lib/card-id: 117
-    lib/source: source/previous-stage
-    lib/source-column-alias: CREATED_AT
-    lib/original-display-name: Created At
-    source: fields
-    field_ref: ["field", 13, null]
-    effective_type: type/DateTime
-    active: true
-    id: 13
-    lib/desired-column-alias: CREATED_AT
-    position: 7
-    visibility_type: normal
-    inherited_temporal_unit: month
-    fingerprint:
-      global:
-        distinct-count: 10001
-        nil%: 0
-      type:
-        type/DateTime:
-          earliest: "2022-04-30T18:56:13.352Z"
-          latest: "2026-04-19T14:07:15.657Z"
+    # lib/deduplicated-name: CREATED_AT # YES with id
+    # lib/source-column-alias: CREATED_AT # YES with id
+    id: 13 # <-- REQUIRED FOR NAME
+    # lib/desired-column-alias: CREATED_AT # YES with id
 
   - name: avg_price
     display_name: Price
@@ -91,61 +70,14 @@ columns:
     semantic_type: type/Currency
     currency: USD
     # Additional fields from reference-model.json
-    database_type: DECFLOAT
-    qp/implicit-field?: true
     lib/deduplicated-name: avg
-    lib/original-name: avg
-    lib/breakout?: false
-    lib/card-id: 117
-    lib/source: source/previous-stage
-    lib/source-column-alias: avg
-    source: fields
-    field_ref: ["field", "avg", {"base-type": "type/Float"}]
-    effective_type: type/Float
-    lib/desired-column-alias: avg
-    fingerprint:
-      global:
-        distinct-count: 193
-        nil%: 0
-      type:
-        type/Number:
-          min: 44.58274363307868
-          q1: 57.600806124373236
-          q3: 88.09271147203903
-          max: 96.64621371736679
-          sd: 15.8631975962918
-          avg: 74.58862603950313
 
   - name: avg_quantity
     display_name: Quantity
     description: Average quantity ordered
     base_type: type/Float
     semantic_type: type/Quantity
-    # Additional fields from reference-model.json
-    database_type: DOUBLE PRECISION
-    qp/implicit-field?: true
-    lib/deduplicated-name: avg_2
-    lib/original-name: avg
-    lib/breakout?: false
-    lib/card-id: 117
-    lib/source: source/previous-stage
-    lib/source-column-alias: avg_2
-    source: fields
-    field_ref: ["field", "avg_2", {"base-type": "type/Float"}]
-    effective_type: type/Float
     lib/desired-column-alias: avg_2
-    fingerprint:
-      global:
-        distinct-count: 188
-        nil%: 0
-      type:
-        type/Number:
-          min: 0.9473684210526315
-          q1: 1.952519905145135
-          q3: 5.366328067372997
-          max: 10.6
-          sd: 1.9943042998281337
-          avg: 3.845225507005692
 
   - name: avg_tax
     display_name: Tax
@@ -153,28 +85,6 @@ columns:
     base_type: type/Float
     semantic_type: type/Currency
     currency: USD
-    # Additional fields from reference-model.json
-    database_type: DECFLOAT
-    qp/implicit-field?: true
-    lib/deduplicated-name: avg_3
-    lib/original-name: avg
-    lib/breakout?: false
-    lib/card-id: 117
-    lib/source: source/previous-stage
+    # lib/deduplicated-name: avg_3 # <--- This would work too
+    # lib/desired-column-alias: avg_3 # <--- This would work too
     lib/source-column-alias: avg_3
-    source: fields
-    field_ref: ["field", "avg_3", {"base-type": "type/Float"}]
-    effective_type: type/Float
-    lib/desired-column-alias: avg_3
-    fingerprint:
-      global:
-        distinct-count: 193
-        nil%: 0
-      type:
-        type/Number:
-          min: 1.715
-          q1: 2.7945478408368567
-          q3: 4.233460390752219
-          max: 4.972888888888889
-          sd: 0.7772569669948295
-          avg: 3.5730384974402205
