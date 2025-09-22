@@ -4,6 +4,7 @@ import { runQuestionQuery } from "metabase/services";
 import { getSensibleDisplays } from "metabase/visualizations";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 interface RunQuestionQueryParams {
   question: Question;
@@ -37,6 +38,16 @@ export async function runQuestionQuerySdk(
       cancelDeferred,
       ignoreCache: false,
       isDirty: isQueryDirty,
+      ...(isStaticEmbedding && {
+        queryParamsOverride: {
+          parameters: JSON.stringify(
+            getParameterValuesBySlug(
+              question.card().parameters,
+              question._parameterValues,
+            ),
+          ),
+        },
+      }),
     });
 
     // Default values for rows/cols are needed because the `data` is missing in the case of Static Embedding

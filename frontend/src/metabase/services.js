@@ -93,6 +93,7 @@ export async function runQuestionQuery(
     isDirty = false,
     ignoreCache = false,
     collectionPreview = false,
+    queryParamsOverride = {},
   } = {},
 ) {
   const canUseCardApiEndpoint = !isDirty && question.isSaved();
@@ -111,6 +112,7 @@ export async function runQuestionQuery(
       ignore_cache: ignoreCache,
       collection_preview: collectionPreview,
       parameters,
+      ...queryParamsOverride,
     };
 
     return [
@@ -389,13 +391,11 @@ function setCardEndpoints({ base, encodedToken }) {
     "cardId",
     "ignore_cache",
     "collection_preview",
-    "parameters",
   ]);
   CardApi.query_pivot = GET_with(`${base}/pivot/card/${encodedToken}/query`, [
     "cardId",
     "ignore_cache",
     "collection_preview",
-    "parameters",
   ]);
   CardApi.parameterValues = GET_with(`${prefix}/params/:paramId/values`, [
     "cardId",

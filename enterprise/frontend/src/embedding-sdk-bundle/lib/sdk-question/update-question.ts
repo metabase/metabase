@@ -65,7 +65,7 @@ export const updateQuestionSdk =
       shouldStartAdHocQuestion,
     });
 
-    if (!nextQuestion.canAutoRun()) {
+    if (!isStaticEmbedding && !nextQuestion.canAutoRun()) {
       shouldRunQueryOnQuestionChange = false;
     }
 
