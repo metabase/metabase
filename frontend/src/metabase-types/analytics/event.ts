@@ -3,6 +3,7 @@ import type {
   ChecklistItemCTA,
   ChecklistItemValue,
 } from "metabase/home/components/Onboarding/types";
+import type { MetadataEditAnalyticsDetail } from "metabase/metadata/pages/DataModel/types";
 import type { KeyboardShortcutId } from "metabase/palette/shortcuts";
 import type {
   Engine,
@@ -420,6 +421,56 @@ export type LearnAboutDataClickedEvent = ValidateEvent<{
   event: "learn_about_our_data_clicked";
 }>;
 
+export type MetadataEditEvent = ValidateEvent<{
+  event: "metadata_edited";
+  event_detail: MetadataEditAnalyticsDetail;
+  triggered_from: "admin";
+}>;
+
+export type BookmarkQuestionEvent = ValidateEvent<{
+  event: "bookmark_added";
+  event_detail: "question";
+  triggered_from: "qb_action_panel" | "collection_list";
+}>;
+
+export type BookmarkModelEvent = ValidateEvent<{
+  event: "bookmark_added";
+  event_detail: "model";
+  triggered_from: "qb_action_panel" | "collection_list";
+}>;
+
+export type BookmarkMetricEvent = ValidateEvent<{
+  event: "bookmark_added";
+  event_detail: "metric";
+  triggered_from: "qb_action_panel" | "collection_list" | "browse_metrics";
+}>;
+
+export type BookmarkDashboardEvent = ValidateEvent<{
+  event: "bookmark_added";
+  event_detail: "dashboard";
+  triggered_from: "dashboard_header" | "collection_list";
+}>;
+
+export type BookmarkCollectionEvent = ValidateEvent<{
+  event: "bookmark_added";
+  event_detail: "collection";
+  triggered_from: "collection_header" | "collection_list";
+}>;
+
+export type BookmarkDocumentEvent = ValidateEvent<{
+  event: "bookmark_added";
+  event_detail: "document";
+  triggered_from: "collection_list" | "document_header";
+}>;
+
+export type BookmarkEvent =
+  | BookmarkQuestionEvent
+  | BookmarkModelEvent
+  | BookmarkMetricEvent
+  | BookmarkDashboardEvent
+  | BookmarkCollectionEvent
+  | BookmarkDocumentEvent;
+
 export type SimpleEvent =
   | CustomSMTPSetupClickedEvent
   | CustomSMTPSetupSuccessEvent
@@ -468,4 +519,6 @@ export type SimpleEvent =
   | XRayEvent
   | MetabotEvent
   | RevertVersionEvent
-  | LearnAboutDataClickedEvent;
+  | LearnAboutDataClickedEvent
+  | MetadataEditEvent
+  | BookmarkEvent;

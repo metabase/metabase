@@ -15,6 +15,7 @@ import type { RunListParams } from "../../../types";
 import { getRunListUrl, getTransformUrl } from "../../../urls";
 import { formatRunMethod, parseTimestampWithTimezone } from "../../../utils";
 import { PAGE_SIZE } from "../constants";
+import { hasFilterParams } from "../utils";
 
 import S from "./RunList.module.css";
 
@@ -29,7 +30,10 @@ export function RunList({ runs, totalCount, params }: RunListProps) {
   const hasPagination = totalCount > PAGE_SIZE;
 
   if (runs.length === 0) {
-    return <ListEmptyState label={t`No runs yet`} />;
+    const hasFilters = hasFilterParams(params);
+    return (
+      <ListEmptyState label={hasFilters ? t`No runs found` : t`No runs yet`} />
+    );
   }
 
   return (
