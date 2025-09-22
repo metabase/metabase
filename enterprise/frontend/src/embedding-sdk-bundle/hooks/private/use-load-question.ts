@@ -167,6 +167,7 @@ export function useLoadQuestion({
     deserializedCard,
     rawQuestionId,
     isStaticEmbedding,
+    customFetchStaticTokenFn,
     sqlParameterKey,
     targetDashboardId,
   ]);
