@@ -40,7 +40,7 @@ export function PythonEditorBody({
 }: PythonEditorBodyProps) {
   return (
     <MaybeResizableBox resizable={withDebugger}>
-      <Flex h="100%" align="end" bg="bg-light">
+      <Flex h="100%" align="end" bg="bg-light" pos="relative">
         <PythonEditor
           value={source}
           onChange={onChange}
@@ -60,8 +60,8 @@ export function PythonEditorBody({
             />
           </Box>
         )}
+        <SharedLibraryActions source={source} onChange={onChange} />
       </Flex>
-      <SharedLibraryActions source={source} onChange={onChange} />
     </MaybeResizableBox>
   );
 }

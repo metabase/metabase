@@ -1489,10 +1489,19 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       H.PythonEditor.value().should("contain", "import common");
 
       cy.findByTestId("python-data-picker")
-        .findByPlaceholderText("Select a table")
+        .findByText("Select a database")
         .click();
 
-      H.popover().findByText("Orders").click();
+      H.popover().findByText(DB_NAME).click();
+
+      cy.findByTestId("python-data-picker")
+        .findByText("Select a table…")
+        .click();
+
+      H.entityPickerModal().within(() => {
+        cy.findByText("Schema a").click();
+        cy.findByText("Animals").click();
+      });
 
       getQueryEditor().button("Save").click();
 
