@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.models.dependency :as deps.graph]
+   [metabase.lib.core :as lib]
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -99,24 +100,41 @@
                                    deps.graph/transitive-dependents
                                    :card))))))))))
 
-#_(defn- sql-card [sql]
-    {:name                   "SQL card"
-     :database_id            (mt/id)
-     :display                :table
-     :query_type             :query
-     :type                   :question
-     :dataset_query          (mt/native-query {:query sql})
-     :visualization_settings {}})
+(defn- sql-card [metadata-provider sql]
+  {:name                   "SQL card"
+   :database_id            (mt/id)
+   :display                :table
+   :query_type             :query
+   :type                   :question
+   :dataset_query          (-> (lib/native-query metadata-provider sql)
+                               lib/->legacy-MBQL)
+   :visualization_settings {}})
 
 ;; FIXME: This should work, I think? But the deps are not actually getting created.
-#_(deftest ^:sequential card-deps-graph-test-2-native-card-chain
-    (testing "deps graph is connected properly for a chain of native cards"
-      (mt/dataset test-data
-        (mt/with-temp [:model/User user {:email "me@wherever.com"}]
-          (let [{id1 :id :as card1} (card/create-card! (sql-card "SELECT * FROM orders;") user)
-                {id2 :id :as card2} (card/create-card! (sql-card (str "SELECT * FROM {{#" id1 "}}")) user)
-                {id3 :id :as card3} (card/create-card! (sql-card (str "SELECT * FROM {{#" id2 "}}")) user)]
-            (testing "raw deps are recorded correctly"
-              (is (=? #{(depends-on-> :card id1 :table (mt/id :orders))} (upstream-of :card id1)))
-              (is (=? #{(depends-on-> :card id2 :card  id1)}             (upstream-of :card id2)))
-              (is (=? #{(depends-on-> :card id3 :card  id2)}             (upstream-of :card id3)))))))))
+(deftest ^:sequential card-deps-graph-test-2-native-card-chain
+  (testing "deps graph is connected properly for a chain of native cards"
+    (mt/dataset test-data
+      (mt/with-temp [:model/User user {:email "me@wherever.com"}]
+        (let [mp                  (mt/metadata-provider)
+              {id1 :id :as card1} (card/create-card! (sql-card mp "SELECT * FROM orders;") user)
+              {id2 :id :as card2} (card/create-card! (sql-card mp (str "SELECT * FROM {{#" id1 "}}")) user)
+              {id3 :id :as card3} (card/create-card! (sql-card mp (str "SELECT * FROM {{#" id2 "}}")) user)]
+          (testing "raw deps are recorded correctly"
+            (is (=? #{(depends-on-> :card id1 :table (mt/id :orders))} (upstream-of :card id1)))
+            (is (=? #{(depends-on-> :card id2 :table (mt/id :orders))
+                      (depends-on-> :card id2 :card  id1)}             (upstream-of :card id2)))
+            (is (=? #{(depends-on-> :card id3 :table (mt/id :orders))
+                      (depends-on-> :card id3 :card  id2)}             (upstream-of :card id3))))
+          (testing "transitive deps are computed correctly"
+            (testing "for each card"
+              (is (=? {:card #{id2 id3}}
+                      (deps.graph/transitive-dependents {:card [card1]})))
+              (is (=? {:card #{id3}}
+                      (deps.graph/transitive-dependents {:card [card2]})))
+              (is (=? {}
+                      (deps.graph/transitive-dependents {:card [card3]}))))
+            (testing "for the table"
+              (is (set/subset? #{id1 id2 id3}
+                               (-> {:table [{:id (mt/id :orders)}]}
+                                   deps.graph/transitive-dependents
+                                   :card))))))))))

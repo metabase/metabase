@@ -88,18 +88,21 @@
   "Given a map of updated entities `{entity-type [{:id 1, ...} ...]}`, return a map of its transitive dependents
   as `{entity-type #{4 5 6}}` - that is, a map from downstream entity type to a set of IDs.
 
+  Uses the provided `graph`, or defaults to the `:model/Dependency` table in AppDB.
+
   The inputs must be maps containing `:id`; anything without an `:id` is skipped. They could be Toucan entities,
   `MetadataProvider` entities, user input, etc.
 
   **Excludes** the input entities from the list of dependents!"
-  [updated-entities]
-  (let [starters (for [[entity-type updates] updated-entities
-                       entity                updates
-                       :when (:id entity)]
-                   [entity-type (:id entity)])
-        graph    (graph-dependents)]
-    (->> (graph/transitive graph starters) ; This returns a flat list.
-         (u/group-by first second conj #{}))))
+  ([updated-entities] (transitive-dependents nil updated-entities))
+  ([graph updated-entities]
+   (let [graph    (or graph (graph-dependents))
+         starters (for [[entity-type updates] updated-entities
+                        entity                updates
+                        :when (:id entity)]
+                    [entity-type (:id entity)])]
+     (->> (graph/transitive graph starters) ; This returns a flat list.
+          (u/group-by first second conj #{})))))
 
 (defn replace-dependencies
   "Replace the dependencies of the entity of type `entity-type` with id `entity-id` with

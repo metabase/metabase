@@ -9,6 +9,7 @@
   Each graph defines an arbitrary **key**. This can be any map key, such as a number, a `[type id]` pair, etc."
   (:require
    #?@(:cljs ([flatland.ordered.set :as oset]))
+   [metabase.util.malli.registry :as mr]
    [potemkin :as p])
   #?@(:clj ((:import java.util.LinkedHashSet))))
 
@@ -58,6 +59,18 @@
           (insert-many! new-children)
           (recur new-children))
         (drop (count key-seq) (->iterable))))))
+
+(defn graph?
+  "Whether `x` is a valid `Graph`."
+  [x]
+  #?(:clj  (extends? Graph (class x))
+     :cljs (satisfies? Graph x)))
+
+(mr/def ::graph
+  "Schema for anything that satisfies the [[Graph]] protocol."
+  [:fn
+   {:error/message "Valid Graph instance"}
+   #'graph?])
 
 ;; ## In-memory Graphs
 (p/deftype+ InMemoryGraph [adjacency-map]

@@ -39,6 +39,8 @@
     [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/segment :metadata/segment)]]]
    [:native-query-snippets {:optional true}
     [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/native-query-snippet :metadata/native-query-snippet)]]]
+   [:transforms {:optional true}
+    [:maybe [:sequential (with-optional-lib-type :map :metadata/transform)]]]
    [:settings {:optional true}
     [:maybe [:map-of :keyword any?]]]])
 

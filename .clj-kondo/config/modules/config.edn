@@ -555,7 +555,7 @@
   graph
   {:team "Querying"
    :api  #{metabase.graph.core}
-   :uses #{}}
+   :uses #{util}}
 
   indexed-entities
   {:team "UX West"

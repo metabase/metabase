@@ -36,18 +36,17 @@
           (and (= metadata-type :metadata/column)
                (seq id)))
       (let [overrides       (if (seq id)
-                              (into [] (comp (keep #(get type-overrides %))
-                                             (map deref))
-                                    id)
+                              (select-keys type-overrides id)
 
-                              (into [] (comp (map deref)
-                                             (filter (comp name :name)))
+                              (into {} (keep #(when-let [x (deref %)]
+                                                (when (name (:name x))
+                                                  [(:name x) %])))
                                     (vals type-overrides)))
             override-key    (if (seq id) :id :name)
-            overridden-keys (into #{} (map override-key) overrides)
+            overridden-keys (set (keys overrides))
             missing-keys    (remove overridden-keys metadata-keys)]
         (log/tracef "Overridden keys %s; missing keys %s" (sort overridden-keys) (sort missing-keys))
-        (cond-> overrides
+        (cond-> (map deref (vals overrides))
           (seq missing-keys)
           (concat (lib.metadata.protocols/metadatas delegate {:lib/type    metadata-type
                                                               override-key (set missing-keys)}))))
@@ -96,7 +95,7 @@
 
   pretty/PrettyPrintable
   (pretty [this]
-    (list `overriding-metadata-provider (all-overrides this))))
+    (list `overriding-metadata-provider (all-overrides this) delegate)))
 
 (defmulti add-override
   "Given an `OverridingMetadataProvider`, an `entity-type` and that entity, add this entity as an override."

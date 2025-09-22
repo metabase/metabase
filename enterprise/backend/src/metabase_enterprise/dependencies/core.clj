@@ -7,6 +7,7 @@
    [metabase-enterprise.dependencies.metadata-provider :as deps.provider]
    [metabase-enterprise.dependencies.models.dependency :as deps.graph]
    [metabase-enterprise.dependencies.native-validation :as deps.native]
+   [metabase.graph.core :as graph]
    [metabase.lib-be.metadata.jvm :as lib-be.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -34,12 +35,10 @@
   actually useful is with a native query which has been executed, so the caller has driver metadata to give us. Any
   old, pre-update `:result-metadata` should be dropped from any other cards in `updated-entities`."
   ([base-provider    :- ::lib.schema.metadata/metadata-provider
-    updated-entities :- ::updates-map]
-   (metadata-provider base-provider updated-entities (deps.graph/transitive-dependents updated-entities)))
-  ([base-provider    :- ::lib.schema.metadata/metadata-provider
     updated-entities :- ::updates-map
-    dependents       :- ::deps.calculation/upstream-deps]
-   (deps.provider/override-metadata-provider base-provider updated-entities dependents)))
+    & {:keys [graph dependents]}]
+   (let [dependents (or dependents (deps.graph/transitive-dependents graph updated-entities))]
+     (deps.provider/override-metadata-provider base-provider updated-entities dependents))))
 
 (mu/defn- check-query-soundness ;; :- [:map-of ::lib.schema.id/card [:sequential ::lib.schema.mbql-clause/clause]]
   "Given a `MetadataProvider` as returned by [[metadata-provider]], scan all its updated entities and their dependents
@@ -102,8 +101,7 @@
   "Given a regular `MetadataProvider`, and a map of entity types (`:card`, `:transform`, `:snippet`) to lists of
   updated entities, this returns a map of `{entity-type {entity-id [bad-ref ...]}}`.
 
-  If called without a `base-provider`, groups all the dependents by which Database they are part of, and calls the
-  2-arity with a [[lib-be.metadata.jvm/application-database-metadata-provider]] for each one in turn.
+  The 1-arity groups all the dependents by which Database they are part of, and runs the analysis for each of them.
 
   The output is a map: `{entity-type {id [errors...]}}`; an empty map is returned when there are no errors
   detected."
@@ -112,15 +110,20 @@
          by-db    (group-by-db all-deps)]
      (reduce (fn [errors [db-id deps]]
                (-> (lib-be.metadata.jvm/application-database-metadata-provider db-id)
-                   (metadata-provider edits deps)
+                   (metadata-provider edits :dependents deps)
                    check-query-soundness
                    (merge errors)))
              {} by-db)))
 
   ([base-provider :- ::lib.schema.metadata/metadata-provider
     edits         :- ::updates-map]
+   (errors-from-proposed-edits base-provider nil edits))
+
+  ([base-provider :- ::lib.schema.metadata/metadata-provider
+    graph         :- [:maybe ::graph/graph]
+    edits         :- ::updates-map]
    (-> base-provider
-       (metadata-provider edits)
+       (metadata-provider edits :graph graph)
        check-query-soundness)))
 
 #_{:clj-kondo/ignore [:unresolved-namespace]}
