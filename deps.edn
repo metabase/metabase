@@ -74,7 +74,7 @@
                                              :exclusions  [commons-beanutils/commons-beanutils
                                                            commons-digester/commons-digester
                                                            commons-logging/commons-logging]}
-  compojure/compojure                       {:mvn/version "1.7.1"               ; HTTP Routing library built on Ring
+  compojure/compojure                       {:mvn/version "1.7.2"               ; HTTP Routing library built on Ring
                                              :exclusions  [ring/ring-codec]}
   crypto-random/crypto-random               {:mvn/version "1.2.1"}              ; library for generating cryptographically secure random bytes and strings
   diehard/diehard                           {:mvn/version "0.12.0"}
