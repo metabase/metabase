@@ -333,7 +333,8 @@
   "Add a `:param_fields` map (Field ID -> Field) for all of the Fields referenced by the parameters of a Dashboard."
   [_model k dashboards]
   (mapv (fn [dashboard]
-          (let [param-fields (-> :dashcards
+          (let [param-fields (-> dashboard
+                                 :dashcards
                                  dashcards->param-id->field-ids
                                  param-field-ids->fields)]
             (assoc dashboard k param-fields)))
