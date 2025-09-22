@@ -19,6 +19,8 @@ import { TransformPageLayout } from "./pages/TransformPageLayout";
 import { TransformQueryPage } from "./pages/TransformQueryPage";
 
 if (hasPremiumFeature("transforms")) {
+  const hasPythonTransforms = hasPremiumFeature("transforms-python");
+
   PLUGIN_TRANSFORMS.getAdminPaths = () => [
     { key: "transforms", name: t`Transforms`, path: "/admin/transforms" },
   ];
@@ -34,11 +36,13 @@ if (hasPremiumFeature("transforms")) {
           <Route path="runs" component={RunListPage} />
           <Route path=":transformId" component={TransformPage} />
         </Route>
-        <Route
-          component={(props) => <TransformPageLayout {...props} fullWidth />}
-        >
-          <Route path="library/:path" component={PythonLibraryEditorPage} />
-        </Route>
+        {hasPythonTransforms && (
+          <Route
+            component={(props) => <TransformPageLayout {...props} fullWidth />}
+          >
+            <Route path="library/:path" component={PythonLibraryEditorPage} />
+          </Route>
+        )}
         <Route path="new/:type" component={NewTransformPage} />
         <Route path="new/card/:cardId" component={NewTransformPage} />
         <Route path=":transformId/query" component={TransformQueryPage} />
@@ -46,7 +50,7 @@ if (hasPremiumFeature("transforms")) {
     </Route>
   );
 
-  if (hasPremiumFeature("transforms-python")) {
+  if (hasPythonTransforms) {
     PLUGIN_TRANSFORMS.PythonRunnerSettingsPage = PythonRunnerSettingsPage;
   }
 }

@@ -11,6 +11,7 @@ import {
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { useDispatch } from "metabase/lib/redux";
 import { Button, Center, Icon, Loader, Menu } from "metabase/ui";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { trackTransformCreate } from "metabase-enterprise/transforms/analytics";
 import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/utils";
 
@@ -21,6 +22,7 @@ import {
 
 export function CreateTransformMenu() {
   const dispatch = useDispatch();
+  const hasPythonTransforms = hasPremiumFeature("transforms-python");
   const [isPickerOpened, { open: openPicker, close: closePicker }] =
     useDisclosure();
 
@@ -85,19 +87,21 @@ export function CreateTransformMenu() {
               >
                 {t`SQL query`}
               </Menu.Item>
-              <Menu.Item
-                component={ForwardRefLink}
-                to={getNewTransformFromTypeUrl("python")}
-                leftSection={<Icon name="code_block" />}
-                onClick={() => {
-                  trackTransformCreate({
-                    triggeredFrom: "transform-page-create-menu",
-                    creationType: "python",
-                  });
-                }}
-              >
-                {t`Python script`}
-              </Menu.Item>
+              {hasPythonTransforms && (
+                <Menu.Item
+                  component={ForwardRefLink}
+                  to={getNewTransformFromTypeUrl("python")}
+                  leftSection={<Icon name="code_block" />}
+                  onClick={() => {
+                    trackTransformCreate({
+                      triggeredFrom: "transform-page-create-menu",
+                      creationType: "python",
+                    });
+                  }}
+                >
+                  {t`Python script`}
+                </Menu.Item>
+              )}
               <Menu.Item
                 leftSection={<Icon name="copy" />}
                 onClick={handleSavedQuestionClick}
