@@ -3,6 +3,7 @@ import type {
   ChecklistItemCTA,
   ChecklistItemValue,
 } from "metabase/home/components/Onboarding/types";
+import type { MetadataEditAnalyticsDetail } from "metabase/metadata/pages/DataModel/types";
 import type { KeyboardShortcutId } from "metabase/palette/shortcuts";
 import type {
   Engine,
@@ -420,6 +421,12 @@ export type LearnAboutDataClickedEvent = ValidateEvent<{
   event: "learn_about_our_data_clicked";
 }>;
 
+export type MetadataEditEvent = ValidateEvent<{
+  event: "metadata_edited";
+  event_detail: MetadataEditAnalyticsDetail;
+  triggered_from: "admin";
+}>;
+
 export type SimpleEvent =
   | CustomSMTPSetupClickedEvent
   | CustomSMTPSetupSuccessEvent
@@ -468,4 +475,5 @@ export type SimpleEvent =
   | XRayEvent
   | MetabotEvent
   | RevertVersionEvent
-  | LearnAboutDataClickedEvent;
+  | LearnAboutDataClickedEvent
+  | MetadataEditEvent;
