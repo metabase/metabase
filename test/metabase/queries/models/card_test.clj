@@ -1070,9 +1070,7 @@
               {:name "Card with non-library dependency"
                :display "table"
                :visualization_settings {}
-               :dataset_query {:database (mt/id)
-                               :type :query
-                               :query {:source-table (str "card__" source-card-id)}}
+               :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})
                :collection_id library-coll-id}
               {:id (mt/user->id :rasta)}))))
 
@@ -1145,9 +1143,7 @@
                                                                        :name "Library card"}
                    :model/Card {dependent-card-id :id} {:collection_id library-coll-id
                                                         :name "Card dependent on library card"
-                                                        :dataset_query {:database (mt/id)
-                                                                        :type :query
-                                                                        :query {:source-table (str "card__" library-card-id)}}}]
+                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" library-card-id)})}]
       (testing "Cannot move library card to regular collection when library dependents exist"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
@@ -1194,14 +1190,12 @@
                                                                        :name "Library card"}
                    :model/Card _ {:collection_id library-coll-id
                                   :name "Card with template tag reference"
-                                  :dataset_query {:database (mt/id)
-                                                  :type :native
-                                                  :native {:query "SELECT * FROM {{#123-abc}}"
-                                                           :template-tags {"123-abc" {:id "123-abc"
-                                                                                      :name "123-abc"
-                                                                                      :display-name "Test Template Tag"
-                                                                                      :type :card
-                                                                                      :card-id library-card-id}}}}}]
+                                  :dataset_query (mt/native-query {:query "SELECT * FROM {{#123-abc}}"
+                                                                   :template-tags {"123-abc" {:id "123-abc"
+                                                                                              :name "123-abc"
+                                                                                              :display-name "Test Template Tag"
+                                                                                              :type :card
+                                                                                              :card-id library-card-id}}})}]
       (testing "Cannot move library card when dependents reference it via template tags"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
@@ -1219,9 +1213,7 @@
                                                                        :name "Library card"}
                    :model/Card _ {:collection_id library-coll-1-id
                                   :name "Card dependent on library card"
-                                  :dataset_query {:database (mt/id)
-                                                  :type :query
-                                                  :query {:source-table (str "card__" library-card-id)}}}]
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" library-card-id)})}]
       (testing "Can move library card between library collections"
         (let [updated-card (card/update-card!
                             {:card-before-update library-card
@@ -1237,9 +1229,7 @@
                                                                        :name "Library card"}
                    :model/Card _ {:collection_id library-coll-id
                                   :name "Card dependent on library card"
-                                  :dataset_query {:database (mt/id)
-                                                  :type :query
-                                                  :query {:source-table (str "card__" library-card-id)}}}]
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" library-card-id)})}]
       (testing "Can update name and description of library card with dependents"
         (let [updated-card (card/update-card!
                             {:card-before-update library-card

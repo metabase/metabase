@@ -166,11 +166,11 @@
 
   If `root-dependency-path` is passed, we will only load entities that are dependent upon (or dependencies of) the entity
   described by that serdes path."
-  [ingestion & {:keys [backfill? continue-on-error root-dependency-path]
+  [ingestion & {:keys [backfill? continue-on-error root-dependency-path reindex?]
                 :or   {backfill?            true
                        continue-on-error    false
                        root-dependency-path nil
-                       reindex?          true}}]
+                       reindex?             true}}]
   (u/prog1
     (t2/with-transaction [_tx]
       ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared dependencies

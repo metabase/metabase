@@ -1077,7 +1077,7 @@
    (cons (perms/collection-readwrite-path new-parent)
          (perms-for-collection-and-descendants collection))))
 
-(mu/defn collection->descendant-ids
+(mu/defn collection->descendant-ids :- [:maybe [:set ms/PositiveInt]]
   "Gets the IDs of all descendant collections for a given collection.
 
   Args:
@@ -1086,7 +1086,6 @@
 
   Returns:
     A set of positive integers representing descendant collection IDs, or nil if none exist."
-  :- [:maybe [:set ms/PositiveInt]]
   [collection :- CollectionWithLocationAndIDOrRoot, & additional-conditions]
   (apply t2/select-pks-set :model/Collection
          :location [:like (str (children-location collection) "%")]
