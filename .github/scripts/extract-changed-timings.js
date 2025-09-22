@@ -7,30 +7,24 @@ const extractChangedTimings = ({ oldTimings, newTimings }) => {
       return map;
     }, {}) || {};
 
-  const changedTimings = { durations: [] };
-
-  if (newTimings.durations) {
-    newTimings.durations.forEach((item) => {
-      if (!item.spec || typeof item.duration !== "number") {
-        return;
+  const changedDurations = newTimings.durations
+    .filter((item) => {
+      if (!item || !item.spec || typeof item.duration !== "number") {
+        return false;
       }
-
       const newSpec = convertPathFormat(item.spec);
       const oldDuration = oldTimingMap[newSpec] || oldTimingMap[item.spec];
-
       // Include if it's a new spec or the duration has changed
-      if (oldDuration === undefined || oldDuration !== item.duration) {
-        changedTimings.durations.push({
-          spec: newSpec,
-          duration: item.duration,
-        });
-      }
-    });
-  }
+      return oldDuration === undefined || oldDuration !== item.duration;
+    })
+    .map((item) => ({
+      spec: convertPathFormat(item.spec),
+      duration: item.duration,
+    }));
 
   return {
-    changedTimings: changedTimings,
-    hasChanges: changedTimings.durations.length > 0,
+    changedTimings: { durations: changedDurations },
+    hasChanges: changedDurations.length > 0,
   };
 };
 
