@@ -174,7 +174,7 @@ export function QueryEditor({
         {!isNative && isShowingNativeQueryPreview && (
           <NativeQuerySidebar
             question={question}
-            onConvertToSQLClick={(newQuestion) => {
+            onConvertToNativeClick={(newQuestion) => {
               toggleNativeQueryPreview(false);
               setQuestion(newQuestion);
             }}

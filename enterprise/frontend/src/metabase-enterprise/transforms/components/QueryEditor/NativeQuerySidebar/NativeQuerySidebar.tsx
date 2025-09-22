@@ -36,10 +36,10 @@ export function NativeQuerySidebarToggle({
 
 export function NativeQuerySidebar({
   question,
-  onConvertToSQLClick,
+  onConvertToNativeClick,
 }: {
   question: Question;
-  onConvertToSQLClick: (newQuestion: Question) => void;
+  onConvertToNativeClick: (newQuestion: Question) => void;
 }) {
   const { width: windowWidth } = useWindowSize();
 
@@ -62,7 +62,7 @@ export function NativeQuerySidebar({
     >
       <NotebookNativePreview
         question={question}
-        onConvertClick={onConvertToSQLClick}
+        onConvertClick={onConvertToNativeClick}
         buttonTitle={t`Convert this transform to SQL`}
       />
     </ResizableBox>
