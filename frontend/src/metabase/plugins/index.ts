@@ -830,9 +830,11 @@ export const PLUGIN_SEMANTIC_SEARCH = {
 export type TransformsPlugin = {
   getAdminPaths(): AdminPath[];
   getAdminRoutes(): ReactNode;
+  PythonRunnerSettingsPage: ComponentType;
 };
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
   getAdminPaths: () => [],
   getAdminRoutes: () => null,
+  PythonRunnerSettingsPage: NotFoundPlaceholder,
 };

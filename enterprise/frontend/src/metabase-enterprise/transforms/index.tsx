@@ -6,6 +6,7 @@ import { Route } from "metabase/hoc/Title";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
+import { PythonRunnerSettingsPage } from "./components/PythonRunnerSettingsPage/PythonRunnerSettingsPage";
 import { JobListPage } from "./pages/JobListPage";
 import { JobPage } from "./pages/JobPage";
 import { NewJobPage } from "./pages/NewJobPage";
@@ -44,4 +45,8 @@ if (hasPremiumFeature("transforms")) {
       </Route>
     </Route>
   );
+
+  if (hasPremiumFeature("transforms-python")) {
+    PLUGIN_TRANSFORMS.PythonRunnerSettingsPage = PythonRunnerSettingsPage;
+  }
 }
