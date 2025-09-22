@@ -2625,7 +2625,7 @@ function editorSidebar() {
 }
 
 function getRunSection() {
-  return getTransformPage.findByTestId("run-section");
+  return getTransformPage().findByTestId("run-section");
 }
 
 function getPythonDataPicker() {
