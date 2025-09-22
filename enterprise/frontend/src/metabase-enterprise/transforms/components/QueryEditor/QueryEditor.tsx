@@ -163,16 +163,16 @@ export function QueryEditor({
             onCancelQuery={() => undefined}
           />
 
-          <NativeQuerySidebarToggle
-            canConvertToNative={!isNative}
-            isShowingNativeQueryPreview={isShowingNativeQueryPreview}
-            onToggleNativeQueryPreview={toggleNativeQueryPreview}
-          />
+          {!isNative && (
+            <NativeQuerySidebarToggle
+              isShowingNativeQueryPreview={isShowingNativeQueryPreview}
+              onToggleNativeQueryPreview={toggleNativeQueryPreview}
+            />
+          )}
         </Stack>
 
-        {isShowingNativeQueryPreview && (
+        {!isNative && isShowingNativeQueryPreview && (
           <NativeQuerySidebar
-            canConvertToNative={!isNative}
             question={question}
             onConvertToSQLClick={(newQuestion) => {
               toggleNativeQueryPreview(false);

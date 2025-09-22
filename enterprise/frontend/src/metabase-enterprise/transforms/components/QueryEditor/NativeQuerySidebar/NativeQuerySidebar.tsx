@@ -11,17 +11,13 @@ import { ResizeHandle } from "../ResizeHandle";
 import S from "./NativeQuerySidebar.module.css";
 
 export function NativeQuerySidebarToggle({
-  canConvertToNative,
   isShowingNativeQueryPreview,
   onToggleNativeQueryPreview,
 }: {
-  canConvertToNative?: boolean;
+  isNative?: boolean;
   isShowingNativeQueryPreview: boolean;
   onToggleNativeQueryPreview: () => void;
 }) {
-  if (!canConvertToNative) {
-    return null;
-  }
   return (
     <Tooltip label={isShowingNativeQueryPreview ? t`Hide SQL` : t`View SQL`}>
       <ActionIcon
@@ -41,21 +37,15 @@ export function NativeQuerySidebarToggle({
 export function NativeQuerySidebar({
   question,
   onConvertToSQLClick,
-  canConvertToNative,
 }: {
   question: Question;
   onConvertToSQLClick: (newQuestion: Question) => void;
-  canConvertToNative?: boolean;
 }) {
   const { width: windowWidth } = useWindowSize();
 
   const minSidebarWidth = 428;
   const minNotebookWidth = 640;
   const maxSidebarWidth = windowWidth - minNotebookWidth;
-
-  if (!canConvertToNative) {
-    return null;
-  }
 
   return (
     <ResizableBox
