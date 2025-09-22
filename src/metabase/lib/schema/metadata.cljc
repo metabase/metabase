@@ -538,7 +538,8 @@
    [:definition {:optional true} [:maybe [:ref ::persisted-info.definition]]]
    [:query-hash {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
-(def ^:private card-types
+(def card-types
+  "Valid Card `:type`s."
   #{:question :model :metric})
 
 (mr/def ::card.type
