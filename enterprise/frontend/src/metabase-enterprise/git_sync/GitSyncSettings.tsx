@@ -26,7 +26,6 @@ import {
   ActionIcon,
   Box,
   Flex,
-  Group,
   Icon,
   Menu,
   Radio,
@@ -209,7 +208,7 @@ export const GitSyncSettings = (): JSX.Element => {
             validationContext={settingValues}
             onSubmit={onSubmit}
           >
-            {({ dirty }) => (
+            {({ dirty, values }) => (
               <Form disabled={!dirty}>
                 <Stack gap="md">
                   {!isGitSyncConfigured && (
@@ -237,24 +236,30 @@ export const GitSyncSettings = (): JSX.Element => {
                     {...getEnvSettingProps(settingDetails?.[TOKEN_KEY])}
                   />
 
-                  <FormRadioGroup
-                    name={TYPE_KEY}
-                    label={t`How do you want to sync?`}
-                    description={t`Import makes collections read-only and syncs from Git. Export lets you make changes here and push them to Git.`}
-                  >
-                    <Group mt="sm">
-                      <Radio value="import" label={t`Import from Git`} />
-                      <Radio value="export" label={t`Export to Git`} />
-                    </Group>
+                  <FormRadioGroup name={TYPE_KEY} label={t`Remote Sync Mode`}>
+                    <Stack mt="sm">
+                      <Radio
+                        value="export"
+                        label={t`Development`}
+                        description={t`In development mode, you can make changes to synced collections and pull and push from any git branch`}
+                      />
+                      <Radio
+                        value="import"
+                        label={t`Production`}
+                        description={t`In production mode, synced collections are read-only, and automatically sync with the specified branch`}
+                      />
+                    </Stack>
                   </FormRadioGroup>
 
-                  <FormTextInput
-                    name={BRANCH_KEY}
-                    label={t`Branch`}
-                    description={t`Which branch to sync with`}
-                    placeholder="main"
-                    {...getEnvSettingProps(settingDetails?.[BRANCH_KEY])}
-                  />
+                  {values?.[TYPE_KEY] === "import" && (
+                    <FormTextInput
+                      name={BRANCH_KEY}
+                      ml="1.875rem"
+                      label={t`Auto-sync branch`}
+                      placeholder="main"
+                      {...getEnvSettingProps(settingDetails?.[BRANCH_KEY])}
+                    />
+                  )}
 
                   <Flex justify="end" align="center" gap="md">
                     <FormErrorMessage />
