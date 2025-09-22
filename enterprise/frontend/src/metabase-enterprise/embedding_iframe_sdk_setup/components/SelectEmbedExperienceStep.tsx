@@ -59,7 +59,7 @@ export const SelectEmbedExperienceStep = () => {
 
       // these settings are overridden when the embed type changes
       ...getDefaultSdkIframeEmbedSettings({
-        embeddingType: "modular",
+        embeddingType: "simple",
         resourceType: experience,
         resourceId: defaultResourceId,
       }),

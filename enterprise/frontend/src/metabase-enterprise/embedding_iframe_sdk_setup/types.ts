@@ -45,7 +45,7 @@ export type SdkIframeEmbedSetupSettings = Omit<
   Partial<SdkIframeEmbedSetupStaticEmbeddingSettings> &
   SdkIframeEmbedTemplateSettings;
 
-export type SdkIframeEmbedSetupEmbeddingType = "modular" | "static";
+export type SdkIframeEmbedSetupEmbeddingType = "simple" | "static";
 
 export type SdkIframeEmbedSetupStartWith = {
   embeddingType: SdkIframeEmbedSetupEmbeddingType;
