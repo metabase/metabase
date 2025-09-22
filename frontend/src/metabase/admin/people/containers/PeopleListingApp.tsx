@@ -6,12 +6,11 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { useListPermissionsGroupsQuery } from "metabase/api";
-import Button from "metabase/common/components/Button";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import { Box, Flex, Group, Icon, Input, Radio } from "metabase/ui";
+import { Box, Button, Flex, Group, Icon, Input, Radio } from "metabase/ui";
 
 import { PeopleList } from "../components/PeopleList";
 import { USER_STATUS } from "../constants";
@@ -98,7 +97,7 @@ export function PeopleListingApp({ children }: { children: React.ReactNode }) {
                 {buttonText && (
                   <Box>
                     <Link to={Urls.newUser()}>
-                      <Button primary>{buttonText}</Button>
+                      <Button variant="filled">{buttonText}</Button>
                     </Link>
                   </Box>
                 )}
