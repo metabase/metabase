@@ -1,15 +1,8 @@
 import { trackSimpleEvent } from "metabase/lib/analytics";
 
-export const trackMetadataChange = (
-  detail:
-    | "type_casting"
-    | "semantic_type_change"
-    | "visibility_change"
-    | "filtering_change"
-    | "display_values"
-    | "json_unfolding"
-    | "formatting",
-) => {
+import type { MetadataEditAnalyticsDetail } from "./types";
+
+export const trackMetadataChange = (detail: MetadataEditAnalyticsDetail) => {
   trackSimpleEvent({
     event: "metadata_edited",
     event_detail: detail,
