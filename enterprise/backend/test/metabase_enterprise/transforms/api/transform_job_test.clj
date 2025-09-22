@@ -158,6 +158,17 @@
               (is (string? response))
               (is (re-find #"Invalid cron expression" response)))))))))
 
+(deftest update-job-remove-tags-test
+  (testing "PUT /api/ee/transform-job/:id"
+    (mt/with-premium-features #{:transforms}
+      (testing "should be able to remove all tags from a job"
+        (mt/with-temp [:model/TransformTag tag {:name "tag-1"}
+                       :model/TransformJob job {}
+                       :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}]
+          (let [response (mt/user-http-request :crowberto :put 200 (str "ee/transform-job/" (:id job))
+                                               {:tag_ids []})]
+            (is (= [] (:tag_ids response)))))))))
+
 (deftest delete-job-test
   (testing "DELETE /api/ee/transform-job/:id"
     (mt/with-premium-features #{:transforms}

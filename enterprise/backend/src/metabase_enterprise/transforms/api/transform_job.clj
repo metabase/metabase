@@ -74,7 +74,7 @@
     (api/check-400 (transforms.schedule/validate-cron-expression schedule)
                    (deferred-tru "Invalid cron expression: {0}" schedule)))
   ;; Validate tag IDs if provided
-  (when tag-ids
+  (when (seq tag-ids)
     (let [existing-tags (set (t2/select-pks-vec :model/TransformTag :id [:in tag-ids]))]
       (api/check-400 (= (set tag-ids) existing-tags)
                      (deferred-tru "Some tag IDs do not exist"))))
