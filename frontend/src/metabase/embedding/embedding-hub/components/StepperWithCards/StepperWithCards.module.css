@@ -58,12 +58,12 @@
   box-shadow: none;
 }
 
-.stepCard:not(.optionalStepCard) {
+.stepCardLink {
   width: 100%;
 }
 
 .optionalStepCard,
-.optionalStepCard .stepCardLink {
+.stepCardLink:has(.optionalStepCard) {
   max-width: 15.625rem;
 }
 

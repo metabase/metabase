@@ -145,10 +145,20 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                                   </Flex>
                                 ))
                                 .with({ locked: true }, () => (
-                                  <Icon
-                                    name="lock"
-                                    c="var(--mb-color-text-secondary)"
-                                  />
+                                  <Group gap="xs">
+                                    <Icon
+                                      name="lock"
+                                      c="var(--mb-color-text-secondary)"
+                                      size={12}
+                                    />
+
+                                    <Text
+                                      c="var(--mb-color-text-secondary)"
+                                      fz={12}
+                                    >
+                                      {t`Complete the other steps to unlock`}
+                                    </Text>
+                                  </Group>
                                 ))
                                 .with({ optional: true }, () => (
                                   <Text
