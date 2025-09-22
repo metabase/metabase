@@ -96,6 +96,7 @@ function ScheduleWidget({ job, onChangeSchedule }: ScheduleWidgetProps) {
       timezone={systemTimezone}
       isCustomSchedule={job.schedule_display_type === "cron/raw"}
       renderScheduleDescription={renderScheduleDescription}
+      data-testid="schedule-picker"
       onScheduleChange={handleChange}
     />
   );
