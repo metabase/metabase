@@ -246,6 +246,40 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       testCardSource({ type: "model", label: "Models" });
     });
 
+    it("should be possible to convert an MBQL transform to a SQL transform", () => {
+      const EXPECTED_QUERY = `SELECT
+  "Schema Q"."Animals"."name" AS "name",
+  "Schema Q"."Animals"."score" AS "score"
+FROM
+  "Schema Q"."Animals"
+LIMIT
+  5`;
+
+      createMbqlTransform({ visitTransform: true });
+      getTransformPage().findByText("Edit query").click();
+
+      getQueryEditor().icon("sql").click();
+      H.sidebar().should("be.visible");
+      H.NativeEditor.value().should("eq", EXPECTED_QUERY);
+
+      H.sidebar().findByText("Convert this transform to SQL").click();
+      H.sidebar().should("be.visible");
+
+      H.NativeEditor.value().should("eq", EXPECTED_QUERY);
+      getQueryEditor().button("Save changes").click();
+
+      cy.log("run the transform and make sure its table can be queried");
+      runTransformAndWaitForSuccess();
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_trigger_manual_run",
+        triggered_from: "transform-page",
+      });
+
+      getTableLink().click();
+      H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
+      H.assertQueryBuilderRowCount(3);
+    });
+
     it("should not allow to overwrite an existing table when creating a transform", () => {
       cy.log("open the new transform page");
       visitTransformListPage();
@@ -1432,10 +1466,8 @@ describe("scenarios > admin > transforms > jobs", () => {
       getJobPage().within(() => {
         cy.findByPlaceholderText("Name").should("have.value", "New job");
         cy.findByPlaceholderText("No description yet").should("have.value", "");
-        getCronInput().should("have.value", "0 0 * * ?");
-        cy.findByText("This job will run at 12:00 AM, UTC-07:00").should(
-          "be.visible",
-        );
+        getScheduleFrequencyInput().should("have.value", "daily");
+        getScheduleTimeInput().should("have.value", "12:00");
       });
     });
 
@@ -1448,6 +1480,10 @@ describe("scenarios > admin > transforms > jobs", () => {
         cy.findByPlaceholderText("No description yet")
           .clear()
           .type("Description");
+        getScheduleFrequencyInput().click();
+      });
+      H.popover().findByText("custom").click();
+      getJobPage().within(() => {
         getCronInput().clear().type("0 * * * ?");
         getTagsInput().click();
       });
@@ -1463,9 +1499,7 @@ describe("scenarios > admin > transforms > jobs", () => {
           "Description",
         );
         getCronInput().should("have.value", "0 * * * ?");
-        cy.findByText("This job will run every hour, UTC-07:00").should(
-          "be.visible",
-        );
+        cy.findByText(/This job will run every hour/).should("be.visible");
         cy.findByText("daily").should("be.visible");
       });
     });
@@ -1525,14 +1559,30 @@ describe("scenarios > admin > transforms > jobs", () => {
     it("should be able to change the schedule after creation", () => {
       H.createTransformJob({ name: "New job" }, { visitTransformJob: true });
       getJobPage().within(() => {
-        getCronInput().clear().type("0 * * * ?").blur();
-        cy.findByText("This job will run every hour, UTC-07:00").should(
-          "be.visible",
-        );
+        getScheduleFrequencyInput().click();
       });
+      H.popover().findByText("weekly").click();
       H.undoToast().findByText("Job schedule updated").should("be.visible");
       getJobPage().within(() => {
-        getCronInput().should("have.value", "0 * * * ?");
+        getScheduleFrequencyInput().should("have.value", "weekly");
+      });
+    });
+
+    it("should recognize built-in jobs in the cron builder", () => {
+      visitJobListPage();
+
+      const jobNameToFrequency = {
+        "Hourly job": "hourly",
+        "Daily job": "daily",
+        "Weekly job": "weekly",
+        "Monthly job": "monthly",
+      };
+      Object.entries(jobNameToFrequency).forEach(([jobName, frequency]) => {
+        getJobListPage().findByText(jobName).click();
+        getJobPage().within(() => {
+          getScheduleFrequencyInput().should("have.value", frequency);
+        });
+        cy.go("back");
       });
     });
   });
@@ -2217,6 +2267,18 @@ function getSchemaLink() {
 
 function getQueryVisualization() {
   return cy.findByTestId("query-visualization-root");
+}
+
+function getSchedulePicker() {
+  return cy.findByTestId("schedule-picker");
+}
+
+function getScheduleFrequencyInput() {
+  return getSchedulePicker().findByLabelText("Frequency");
+}
+
+function getScheduleTimeInput() {
+  return getSchedulePicker().findByLabelText("Time");
 }
 
 function getCronInput() {
