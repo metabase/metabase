@@ -91,7 +91,20 @@
           (is (= (repeat 2 {:errors 0, :created 0, :updated 1, :deleted 0})
                  (sync-database!' "update-field-values" (data/db))))
           (is (partial= {:values [[1] [2] [3] [4]]}
-                        (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price))))))))))
+                        (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))))
+      (testing "If only advanced fields have been used recently, still sync"
+        (t2/update! :model/FieldValues
+                    (t2/select-one-pk :model/FieldValues :field_id (mt/id :venues :price) :type :full)
+                    {:last_used_at (t/minus (t/offset-date-time) (t/days 20))
+                     :values       [1 2 3]})
+        (t2/insert! :model/FieldValues {:field_id     (mt/id :venues :price)
+                                        :type         :advanced
+                                        :hash_key     "random-key"
+                                        :last_used_at (t/instant)})
+
+        (is (= (repeat 2 {:errors 0, :created 0, :updated 1, :deleted 0})
+               (sync-database!' "update-field-values" (data/db)))))
+      (is (= [1 2 3 4] (venues-price-field-values))))))
 
 (deftest sync-should-delete-expired-advanced-field-values-test
   (testing "Test that the expired Advanced FieldValues should be removed"

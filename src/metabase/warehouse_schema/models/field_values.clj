@@ -233,8 +233,15 @@
 (defn inactive?
   "If FieldValues have not been accessed recently they are considered inactive."
   [field-values]
-  (and field-values (t/before? (:last_used_at field-values)
-                               (t/minus (t/offset-date-time) active-field-values-cutoff))))
+  (let [cutoff (t/minus (t/offset-date-time) active-field-values-cutoff)]
+    (and
+     field-values
+     (not (or
+           (t/after? (:last_used_at field-values)
+                     cutoff)
+           (t/after? (t2/select-one-fn :max-last-used-at [:model/FieldValues [[:max :last_used_at] :max-last-used-at]]
+                                       {:where [:= :field_id (:field_id field-values)]})
+                     cutoff))))))
 
 (defn field-should-have-field-values?
   "Should this `field` be backed by a corresponding FieldValues object?"
