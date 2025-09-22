@@ -17,6 +17,7 @@ interface ResponsiveParametersListProps {
   setParameterValue: (parameterId: string, value: string) => void;
   setParameterIndex: (parameterId: string, parameterIndex: number) => void;
   enableParameterRequiredBehavior: boolean;
+  commitImmediately?: boolean;
 }
 
 export const ResponsiveParametersList = ({
@@ -26,6 +27,7 @@ export const ResponsiveParametersList = ({
   setParameterValue,
   setParameterIndex,
   enableParameterRequiredBehavior,
+  commitImmediately = true,
 }: ResponsiveParametersListProps) => {
   const [mobileShowParameterList, setShowMobileParameterList] = useState(false);
   const isSmallScreen = useIsSmallScreen();
@@ -87,7 +89,7 @@ export const ResponsiveParametersList = ({
           setParameterIndex={setParameterIndex}
           enableParameterRequiredBehavior={enableParameterRequiredBehavior}
           isEditing
-          commitImmediately
+          commitImmediately={commitImmediately}
         />
       </Box>
     </Box>

@@ -34,18 +34,21 @@ export async function runQuestionQuerySdk(
   let queryResults;
 
   if (shouldRunCardQuery(question, isStaticEmbedding)) {
+    const parameters = getParameterValuesBySlug(
+      question.card().parameters,
+      question._parameterValues,
+    );
+    const filteredParameters = Object.fromEntries(
+      Object.entries(parameters).filter(([_key, value]) => value !== null),
+    );
+
     queryResults = await runQuestionQuery(question, {
       cancelDeferred,
       ignoreCache: false,
       isDirty: isQueryDirty,
       ...(isStaticEmbedding && {
         queryParamsOverride: {
-          parameters: JSON.stringify(
-            getParameterValuesBySlug(
-              question.card().parameters,
-              question._parameterValues,
-            ),
-          ),
+          parameters: JSON.stringify(filteredParameters),
         },
       }),
     });

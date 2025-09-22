@@ -23,7 +23,7 @@ import {
   SdkQuestion,
   type SdkQuestionProps,
 } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
-import { Group, Stack } from "metabase/ui";
+import { Box, Group, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkStaticMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkStaticMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
@@ -46,6 +46,7 @@ export type StaticQuestionProps = PropsWithChildren<
     | "className"
     | "style"
     | "initialSqlParameters"
+    | "hiddenParameters"
     | "withDownloads"
     | "title"
   >
@@ -80,6 +81,7 @@ const _StaticQuestion = ({
   className,
   style,
   initialSqlParameters,
+  hiddenParameters,
   withDownloads,
   title = false, // Hidden by default for backwards-compatibility.
   children,
@@ -104,6 +106,7 @@ const _StaticQuestion = ({
       getClickActionMode={getClickActionMode}
       navigateToNewCard={null}
       initialSqlParameters={initialSqlParameters}
+      hiddenParameters={hiddenParameters}
       withDownloads={withDownloads}
     >
       {children ?? (
@@ -122,6 +125,12 @@ const _StaticQuestion = ({
                 {withDownloads && <SdkQuestion.DownloadWidgetDropdown />}
               </Group>
             )}
+
+            <Group>
+              <Box w="100%">
+                <SdkQuestion.ParametersList />
+              </Box>
+            </Group>
 
             <SdkQuestion.QuestionVisualization
               height={height}
