@@ -83,9 +83,9 @@ export function PeopleListingApp({ children }: { children: React.ReactNode }) {
               </Tabs>
             )}
 
-            <Box>
+            <Box mb="xl">
               <Flex wrap="wrap" gap="md" justify="space-between">
-                <Flex align="center" mb="xl">
+                <Flex align="center">
                   <Input
                     miw="14rem"
                     mr="xl"
