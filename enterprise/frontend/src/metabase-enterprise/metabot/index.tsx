@@ -10,6 +10,7 @@ import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
 import { MetabotPurchasePage } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotPurchasePage";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
+import { trackMetabotChatOpened } from "./analytics";
 import { Metabot } from "./components/Metabot";
 import { MetabotAdminPage } from "./components/MetabotAdmin/MetabotAdminPage";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
@@ -49,7 +50,7 @@ if (hasPremiumFeature("metabot_v3")) {
   PLUGIN_METABOT.getMetabotVisible =
     getMetabotVisible as unknown as typeof PLUGIN_METABOT.getMetabotVisible;
   PLUGIN_METABOT.useMetabotPalletteActions = (searchText: string) => {
-    const { startNewConversation } = useMetabotAgent();
+    const { startNewConversation, visible } = useMetabotAgent();
 
     return useMemo(() => {
       const ret: PaletteAction[] = [
@@ -61,11 +62,16 @@ if (hasPremiumFeature("metabot_v3")) {
           section: "metabot",
           keywords: searchText,
           icon: "metabot",
-          perform: () => startNewConversation(searchText),
+          perform: () => {
+            if (!visible) {
+              trackMetabotChatOpened("command_palette");
+            }
+            startNewConversation(searchText);
+          },
         },
       ];
       return ret;
-    }, [searchText, startNewConversation]);
+    }, [searchText, startNewConversation, visible]);
   };
 
   PLUGIN_METABOT.SearchButton = MetabotSearchButton;
