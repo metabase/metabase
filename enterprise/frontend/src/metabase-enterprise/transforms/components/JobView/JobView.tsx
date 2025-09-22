@@ -16,7 +16,7 @@ type JobPageProps = {
   onDescriptionChange: (description: string | null) => void;
   onScheduleChange: (
     schedule: string,
-    scheduleDisplayType: ScheduleDisplayType,
+    uiDisplayType: ScheduleDisplayType,
   ) => void;
   onTagListChange: (tagIds: TransformTagId[]) => void;
 };

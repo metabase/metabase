@@ -21,7 +21,7 @@ type ScheduleSectionProps = {
   job: TransformJobInfo;
   onScheduleChange: (
     schedule: string,
-    scheduleDisplayType: ScheduleDisplayType,
+    uiDisplayType: ScheduleDisplayType,
   ) => void;
 };
 
@@ -49,7 +49,7 @@ type ScheduleWidgetProps = {
   job: TransformJobInfo;
   onChangeSchedule: (
     schedule: string,
-    scheduleDisplayType: ScheduleDisplayType,
+    uiDisplayType: ScheduleDisplayType,
   ) => void;
 };
 
@@ -94,7 +94,7 @@ function ScheduleWidget({ job, onChangeSchedule }: ScheduleWidgetProps) {
       scheduleOptions={SCHEDULE_OPTIONS}
       verb={verb}
       timezone={systemTimezone}
-      isCustomSchedule={job.schedule_display_type === "cron/raw"}
+      isCustomSchedule={job.ui_display_type === "cron/raw"}
       renderScheduleDescription={renderScheduleDescription}
       data-testid="schedule-picker"
       onScheduleChange={handleChange}

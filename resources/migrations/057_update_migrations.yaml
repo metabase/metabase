@@ -1447,18 +1447,39 @@ databaseChangeLog:
   - changeSet:
       id: v57.2025-09-19T11:30:20
       author: ranquild
-      comment: Add transform_job.schedule_display_type
+      comment: Add transform_job.ui_display_type
       changes:
         - addColumn:
             tableName: transform_job
             columns:
               - column:
-                  name: schedule_display_type
-                  remarks: Either "cron/raw" or "cron/builder"
-                  type: varchar(255)
-                  defaultValue: "cron/builder"
+                  name: ui_display_type
+                  remarks: The display of the subscription, used for the UI only; "cron/raw" or "cron/builder".
+                  type: varchar(32)
+                  defaultValue: 'cron/raw'
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v57.2025-09-19T12:30:20
+      author: ranquild
+      comment: Set transform_job.ui_display_type for built-in jobs
+      changes:
+        - update:
+            tableName: transform_job
+            columns:
+              - column:
+                  name: ui_display_type
+                  value: 'crow/builder'
+            where: built_in_type IS NOT NULL
+      rollback:
+        - update:
+            tableName: transform_job
+            columns:
+              - column:
+                  name: ui_display_type
+                  value: NULL
+            where: built_in_type IS NOT NULL
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

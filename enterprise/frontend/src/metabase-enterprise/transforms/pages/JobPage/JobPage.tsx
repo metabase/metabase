@@ -106,12 +106,12 @@ function JobPageBody({ job }: JobPageBodyProps) {
 
   const handleScheduleChange = async (
     schedule: string,
-    scheduleDisplayType: ScheduleDisplayType,
+    uiDisplayType: ScheduleDisplayType,
   ) => {
     const { error } = await updateJob({
       id: job.id,
       schedule,
-      schedule_display_type: scheduleDisplayType,
+      ui_display_type: uiDisplayType,
     });
 
     if (error) {

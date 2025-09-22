@@ -18,9 +18,9 @@ export function NewJobPage() {
 
   const handleScheduleChange = (
     schedule: string,
-    scheduleDisplayType: ScheduleDisplayType,
+    uiDisplayType: ScheduleDisplayType,
   ) => {
-    setJob({ ...job, schedule, schedule_display_type: scheduleDisplayType });
+    setJob({ ...job, schedule, ui_display_type: uiDisplayType });
   };
 
   const handleTagListChange = (tagIds: TransformTagId[]) => {
@@ -43,7 +43,7 @@ function getNewJobInfo(): TransformJobInfo {
     name: t`New job`,
     description: null,
     schedule: "0 0 0 * * ? *",
-    schedule_display_type: "cron/builder",
+    ui_display_type: "cron/builder",
     tag_ids: [],
   };
 }

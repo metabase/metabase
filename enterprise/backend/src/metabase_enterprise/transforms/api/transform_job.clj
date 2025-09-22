@@ -27,12 +27,12 @@
    {:keys [name
            description
            schedule
-           schedule_display_type
+           ui_display_type
            tag_ids]} :- [:map
                          [:name ms/NonBlankString]
                          [:description {:optional true} [:maybe ms/NonBlankString]]
                          [:schedule ms/NonBlankString]
-                         [:schedule_display_type ms/NonBlankString]
+                         [:ui_display_type {:optional true, :default "cron/raw"} ms/NonBlankString]
                          [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Creating transform job:" name "with schedule:" schedule)
   (api/check-superuser)
@@ -48,7 +48,7 @@
                                            {:name name
                                             :description description
                                             :schedule schedule
-                                            :schedule_display_type schedule_display_type})]
+                                            :ui_display_type ui_display_type})]
     (transforms.schedule/initialize-job! job)
     ;; Add tag associations if provided
     (when (seq tag_ids)
@@ -70,12 +70,12 @@
     :keys [name
            description
            schedule
-           schedule_display_type]} :- [:map
-                                       [:name {:optional true} ms/NonBlankString]
-                                       [:description {:optional true} [:maybe ms/NonBlankString]]
-                                       [:schedule {:optional true} ms/NonBlankString]
-                                       [:schedule_display_type {:optional true} ms/NonBlankString]
-                                       [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
+           ui_display_type]} :- [:map
+                                 [:name {:optional true} ms/NonBlankString]
+                                 [:description {:optional true} [:maybe ms/NonBlankString]]
+                                 [:schedule {:optional true} ms/NonBlankString]
+                                 [:ui_display_type {:optional true} ms/NonBlankString]
+                                 [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Updating transform job" job-id)
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/TransformJob :id job-id))
@@ -93,7 +93,7 @@
                                      :name name
                                      :description description
                                      :schedule schedule
-                                     :schedule_display_type schedule_display_type)]
+                                     :ui_display_type ui_display_type)]
       (t2/update! :model/TransformJob job-id updates))
     (when schedule
       (transforms.schedule/update-job! job-id schedule))
