@@ -1,5 +1,7 @@
 (ns metabase-enterprise.dependencies.core
-  "API namespace for the `metabase-enterprise.dependencies` module."
+  "API namespace for the `metabase-enterprise.dependencies` module.
+
+  Call [[errors-from-proposed-edits]] to find out what things will break downstream of a set of new/updated entities."
   (:require
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.metadata-provider :as deps.provider]
@@ -22,7 +24,7 @@
   ;; TODO: Make this more specific.
   [:map-of ::entity-type [:sequential [:map [:id {:optional true} :int]]]])
 
-(mu/defn metadata-provider :- ::lib.schema.metadata/metadata-provider
+(mu/defn- metadata-provider :- ::lib.schema.metadata/metadata-provider
   "Constructs a `MetadataProvider` with some pending edits applied.
 
   The edits are *transitive*! Since a card's output columns can depend on its (possibly updated) inputs, all dependents
@@ -39,7 +41,7 @@
     dependents       :- ::deps.calculation/upstream-deps]
    (deps.provider/override-metadata-provider base-provider updated-entities dependents)))
 
-(mu/defn check-query-soundness ;; :- [:map-of ::lib.schema.id/card [:sequential ::lib.schema.mbql-clause/clause]]
+(mu/defn- check-query-soundness ;; :- [:map-of ::lib.schema.id/card [:sequential ::lib.schema.mbql-clause/clause]]
   "Given a `MetadataProvider` as returned by [[metadata-provider]], scan all its updated entities and their dependents
   to check that everything is still sound.
 
@@ -51,7 +53,7 @@
 
   Returns a map `{:card {card-id [bad-ref ...]}, :transform {...}}`. It will be empty, if there are no bad refs
   detected."
-  [provider  :- ::lib.schema.metadata/metadata-provider]
+  [provider :- ::lib.schema.metadata/metadata-provider]
   (let [overrides (deps.provider/all-overrides provider)
         errors    (volatile! {})]
     (doseq [[entity-type ->query] [[:card      (fn [card-id]
@@ -93,15 +95,19 @@
 
     @by-db))
 
-(defn errors-from-proposed-edits
+;; TODO: (Braden 09/22/2025) More precise schemas for the errors this function returns. Currently they're pretty
+;; opaque, since the consumers of this function really care about "working/broken" and not the details of what's wrong
+;; with any particular card.
+(mu/defn errors-from-proposed-edits :- [:map-of ::entity-type [:map-of :int [:sequential :any]]]
   "Given a regular `MetadataProvider`, and a map of entity types (`:card`, `:transform`, `:snippet`) to lists of
   updated entities, this returns a map of `{entity-type {entity-id [bad-ref ...]}}`.
 
   If called without a `base-provider`, groups all the dependents by which Database they are part of, and calls the
   2-arity with a [[lib-be.metadata.jvm/application-database-metadata-provider]] for each one in turn.
 
-  See [[check-query-soundness]] for more details."
-  ([edits]
+  The output is a map: `{entity-type {id [errors...]}}`; an empty map is returned when there are no errors
+  detected."
+  ([edits :- ::updates-map]
    (let [all-deps (deps.graph/transitive-dependents edits)
          by-db    (group-by-db all-deps)]
      (reduce (fn [errors [db-id deps]]
@@ -111,7 +117,8 @@
                    (merge errors)))
              {} by-db)))
 
-  ([base-provider edits]
+  ([base-provider :- ::lib.schema.metadata/metadata-provider
+    edits         :- ::updates-map]
    (-> base-provider
        (metadata-provider edits)
        check-query-soundness)))
