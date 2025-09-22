@@ -36,7 +36,7 @@
                         {:error-type :configuration-error}))
         {}))))
 
-(defn python-runner-request
+(defn- python-runner-request
   "Helper function for making HTTP requests to the python runner service."
   [server-url method endpoint & [request-options]]
   (let [url          (str server-url "/v1" endpoint)
