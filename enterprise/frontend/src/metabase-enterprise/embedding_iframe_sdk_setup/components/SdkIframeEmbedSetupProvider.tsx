@@ -23,6 +23,7 @@ import {
 } from "../context";
 import { useParameterList, useRecentItems } from "../hooks";
 import type {
+  SdkIframeEmbedSetupEmbeddingType,
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupSettings,
   SdkIframeEmbedSetupStartWith,
@@ -42,7 +43,8 @@ export const SdkIframeEmbedSetupProvider = ({
   const location = useLocation();
   const [isEmbedSettingsLoaded, setEmbedSettingsLoaded] = useState(false);
 
-  const embeddingType = startWith?.embeddingType ?? "modular";
+  const embeddingType: SdkIframeEmbedSetupEmbeddingType =
+    startWith?.embeddingType ?? "simple";
   const isStaticEmbedding = embeddingType === "static";
 
   const [rawSettings, setRawSettings] = useState<SdkIframeEmbedSetupSettings>();
@@ -88,21 +90,21 @@ export const SdkIframeEmbedSetupProvider = ({
     return match([urlParams.resourceType, urlParams.resourceId])
       .with(["dashboard", P.nonNullable], ([, id]) =>
         getDefaultSdkIframeEmbedSettings({
-          embeddingType: "modular",
+          embeddingType: "simple",
           resourceType: "dashboard",
           resourceId: id,
         }),
       )
       .with(["question", P.nonNullable], ([, id]) =>
         getDefaultSdkIframeEmbedSettings({
-          embeddingType: "modular",
+          embeddingType: "simple",
           resourceType: "chart",
           resourceId: id,
         }),
       )
       .otherwise(() =>
         getDefaultSdkIframeEmbedSettings({
-          embeddingType: "modular",
+          embeddingType: "simple",
           resourceType: "dashboard",
           resourceId: recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
         }),
