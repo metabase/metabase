@@ -455,14 +455,14 @@
                      :model/Card model-1 (assoc (mt/card-with-source-metadata-for-query
                                                  (mt/mbql-query products {:fields [$id $title]
                                                                           :limit 1}))
-                                                :type "model"
+                                                :type :model
                                                 :name "Readable Model"
                                                 :database_id (mt/id)
                                                 :collection_id coll-id)
                      :model/Card model-2 (assoc (mt/card-with-source-metadata-for-query
                                                  (mt/mbql-query products {:fields [$id $title]
                                                                           :limit 1}))
-                                                :type "model"
+                                                :type :model
                                                 :name "Unreadable Model"
                                                 :database_id (mt/id)
                                                 :collection_id coll-id)
@@ -573,7 +573,7 @@
                    :model/Card model-1 (assoc (mt/card-with-source-metadata-for-query
                                                (mt/mbql-query products {:fields [$id $title]
                                                                         :limit 1}))
-                                              :type "model"
+                                              :type :model
                                               :name "Fish Tank Setup"
                                               :database_id (mt/id)
                                               :collection_id coll-id)

@@ -36,7 +36,7 @@
 
 (mr/def ::card
   [:map
-   [:id          {:optional true}   ::lib.schema.id/card]
-   [:database_id {:optional true}   ::lib.schema.id/database]
-   [:type        {:optional true}   [:ref ::lib.schema.metadata/card.type]]
+   [:id            {:optional true} ::lib.schema.id/card]
+   [:database_id   {:optional true} ::lib.schema.id/database]
+   [:type          {:optional true} [:ref ::lib.schema.metadata/card.type]]
    [:dataset_query {:optional true} [:ref ::query]]])
