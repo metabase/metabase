@@ -22,6 +22,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
@@ -140,18 +141,12 @@
   [card]
   (= (keyword (:type card)) :model))
 
-(defn lib-query
+(mu/defn card->mbql5-query :- [:maybe ::lib.schema/query]
   "Given a card with at least its `:dataset_query` field, this returns the `metabase.lib` form of the query.
 
   A `metadata-provider` may be passed as an optional first parameter, if the caller has one to hand."
-  ([{:keys [database_id dataset_query] :as card}]
-   (when dataset_query
-     (let [db-id (or database_id (:database dataset_query))
-           mp    (lib-be/application-database-metadata-provider db-id)]
-       (lib-query mp card))))
-  ([metadata-providerable {:keys [dataset_query] :as _card}]
-   (when dataset_query
-     (lib/query metadata-providerable dataset_query))))
+  [card :- [:maybe :map]]
+  (some-> card :dataset_query lib-be/normalize-query))
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
@@ -213,26 +208,21 @@
 
 (mu/defn- source-card-id :- [:maybe ::lib.schema.id/table]
   [query :- [:maybe :map]]
-  (when-let [query (not-empty query)]
-    (-> query lib-be/normalize-query lib/source-card-id)))
+  (some-> query lib-be/normalize-query lib/source-card-id))
 
-(mu/defn- card->integer-table-ids :- [:maybe [:set ::lib.schema.id/table]]
+(mu/defn- query->all-source-table-ids :- [:maybe [:set ::lib.schema.id/table]]
   "Return integer source table ids for card's :dataset_query."
-  [card :- [:maybe
-            [:map
-             [:dataset_query {:optional true} [:maybe :map]]]]]
-  (when-let [query (some-> card :dataset_query not-empty lib-be/normalize-query)]
-    (lib/all-source-table-ids query)))
+  [query :- [:maybe :map]]
+  (some-> query lib-be/normalize-query lib/all-source-table-ids))
 
 (defn- prefetch-tables-for-cards!
   "Collect tables from `dataset-cards` and prefetch metadata. Should be used only with metdata provider caching
   enabled, as per https://github.com/metabase/metabase/pull/45050. Returns `nil`."
   [dataset-cards]
-  (assert (lib-be/metadata-provider-cache)
-          "It doesn't make sense to prefetch tables with no metadata provider cache bound!")
+  (assert (lib-be/metadata-provider-cache) "It doesn't make sense to prefetch tables with no metadata provider cache bound!")
   (let [db-id->table-ids (-> (group-by :database_id dataset-cards)
-                             (update-vals (partial into #{} (comp (mapcat card->integer-table-ids)
-                                                                  (remove nil?)))))]
+                             (update-vals (partial into #{} (comp (map :dataset_query)
+                                                                  (mapcat query->all-source-table-ids)))))]
     (doseq [[db-id table-ids] db-id->table-ids
             :let  [mp (lib-be/application-database-metadata-provider db-id)]
             :when (seq table-ids)]
@@ -244,7 +234,8 @@
   ;; TODO: for metrics, we can get (some-fn :source_model_id :source_question_id)
   (let [dataset-cards (filter (comp seq :dataset_query) cards)
         source-card-ids (into #{}
-                              (keep (comp source-card-id :dataset_query))
+                              (comp (map :dataset_query)
+                                    (keep source-card-id))
                               dataset-cards)]
     ;; Prefetching code should not propagate any exceptions.
     (when (lib-be/metadata-provider-cache)
@@ -711,7 +702,7 @@
     card))
 
 (t2/define-after-select :model/Card
-  [card]
+  [{query :dataset_query, :as card}]
   ;; +===============================================================================================+
   ;; |   DO NOT EDIT THIS FUNCTION DIRECTLY!                                                         |
   ;; |   Future revisions to the shapes of cards should be handled via [[upgrade-card-schema-to]].   |
@@ -719,7 +710,7 @@
   ;; +===============================================================================================+
   (-> card
       (dissoc :dataset_query_metrics_v2_migration_backup)
-      (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
+      (m/assoc-some :source_card_id (some-> query source-card-id))
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled
       add-query-description-to-metric-card
       ;; At this point, the card should be at schema version 20 or higher.

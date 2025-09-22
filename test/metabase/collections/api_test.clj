@@ -2096,13 +2096,21 @@
   (testing "GET /api/collection/root/items"
     (testing "fully_parameterized of a card can be false"
       (mt/with-temp [:model/Card card {:name          "Business Card"
-                                       :dataset_query {:native {:template-tags {:param0 {:default 0}
-                                                                                :param1 {:required false}
-                                                                                :param2 {:required false}}
-                                                                :query         "select {{param0}}, {{param1}} [[ , {{param2}} ]]"}}}]
-        (is (partial= [{:name               "Business Card"
-                        :entity_id          (:entity_id card)
-                        :model              "card"
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :native
+                                                       :native   {:template-tags {:param0 {:type         :number
+                                                                                           :display-name "Param 0"
+                                                                                           :default      0}
+                                                                                  :param1 {:type         :number
+                                                                                           :display-name "Param 1"
+                                                                                           :required     false}
+                                                                                  :param2 {:type         :number
+                                                                                           :display-name "Param 2"
+                                                                                           :required     false}}
+                                                                  :query         "select {{param0}}, {{param1}} [[ , {{param2}} ]]"}}}]
+        (is (partial= [{:name                "Business Card"
+                        :entity_id           (:entity_id card)
+                        :model               "card"
                         :fully_parameterized false}]
                       (-> (mt/user-http-request :crowberto :get 200 "collection/root/items")
                           :data
@@ -2112,12 +2120,19 @@
   (testing "GET /api/collection/root/items"
     (testing "fully_parameterized is false even if a required field-filter parameter has no default"
       (mt/with-temp [:model/Card card {:name          "Business Card"
-                                       :dataset_query {:native {:template-tags {:param0 {:default 0}
-                                                                                :param1 {:type "dimension", :required true}}
-                                                                :query         "select {{param0}}, {{param1}}"}}}]
-        (is (partial= [{:name               "Business Card"
-                        :entity_id          (:entity_id card)
-                        :model              "card"
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :native
+                                                       :native   {:template-tags {:param0 {:type         :number
+                                                                                           :display-name "Param 0"
+                                                                                           :default      0}
+                                                                                  :param1 {:type         "dimension"
+                                                                                           :display-name "Param 1"
+                                                                                           :required     true
+                                                                                           :dimension    [:field 1 nil]}}
+                                                                  :query         "select {{param0}}, {{param1}}"}}}]
+        (is (partial= [{:name                "Business Card"
+                        :entity_id           (:entity_id card)
+                        :model               "card"
                         :fully_parameterized false}]
                       (-> (mt/user-http-request :crowberto :get 200 "collection/root/items")
                           :data
@@ -2127,12 +2142,18 @@
   (testing "GET /api/collection/root/items"
     (testing "fully_parameterized is false even if an optional required parameter has no default"
       (mt/with-temp [:model/Card card {:name          "Business Card"
-                                       :dataset_query {:native {:template-tags {:param0 {:default 0}
-                                                                                :param1 {:required true}}
-                                                                :query         "select {{param0}}, [[ , {{param1}} ]]"}}}]
-        (is (partial= [{:name               "Business Card"
-                        :entity_id          (:entity_id card)
-                        :model              "card"
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :native
+                                                       :native   {:template-tags {:param0 {:type         :number
+                                                                                           :display-name "Param 0"
+                                                                                           :default      0}
+                                                                                  :param1 {:type         :number
+                                                                                           :display-name "Param 1"
+                                                                                           :required     true}}
+                                                                  :query         "select {{param0}}, [[ , {{param1}} ]]"}}}]
+        (is (partial= [{:name                "Business Card"
+                        :entity_id           (:entity_id card)
+                        :model               "card"
                         :fully_parameterized false}]
                       (-> (mt/user-http-request :crowberto :get 200 "collection/root/items")
                           :data
@@ -2142,10 +2163,12 @@
   (testing "GET /api/collection/root/items"
     (testing "fully_parameterized is true if invalid parameter syntax causes a parsing exception to be thrown"
       (mt/with-temp [:model/Card card {:name          "Business Card"
-                                       :dataset_query {:native {:query "select [[]]"}}}]
-        (is (partial= [{:name               "Business Card"
-                        :entity_id          (:entity_id card)
-                        :model              "card"
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :native
+                                                       :native   {:query "select [[]]"}}}]
+        (is (partial= [{:name                "Business Card"
+                        :entity_id           (:entity_id card)
+                        :model               "card"
                         :fully_parameterized true}]
                       (-> (mt/user-http-request :crowberto :get 200 "collection/root/items")
                           :data
@@ -2155,14 +2178,25 @@
   (testing "GET /api/collection/root/items"
     (testing "fully_parameterized is true if all obligatory parameters have defaults"
       (mt/with-temp [:model/Card card {:name          "Business Card"
-                                       :dataset_query {:native {:template-tags {:param0 {:required false, :default 0}
-                                                                                :param1 {:required true, :default 1}
-                                                                                :param2 {}
-                                                                                :param3 {:type "dimension"}}
-                                                                :query "select {{param0}}, {{param1}} [[ , {{param2}} ]] from t {{param3}}"}}}]
-        (is (partial= [{:name               "Business Card"
-                        :entity_id          (:entity_id card)
-                        :model              "card"
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :native
+                                                       :native   {:template-tags {:param0 {:type         :number
+                                                                                           :display-name "Param 0"
+                                                                                           :required     false
+                                                                                           :default      0}
+                                                                                  :param1 {:type         :number
+                                                                                           :display-name "Param 1"
+                                                                                           :required     true
+                                                                                           :default      1}
+                                                                                  :param2 {:type         :number
+                                                                                           :display-name "Param 2"}
+                                                                                  :param3 {:type         "dimension"
+                                                                                           :dimension    [:field (mt/id :venues :id) nil]
+                                                                                           :display-name "Param 3"}}
+                                                                  :query         "select {{param0}}, {{param1}} [[ , {{param2}} ]] from t {{param3}}"}}}]
+        (is (partial= [{:name                "Business Card"
+                        :entity_id           (:entity_id card)
+                        :model               "card"
                         :fully_parameterized true}]
                       (-> (mt/user-http-request :crowberto :get 200 "collection/root/items")
                           :data
@@ -2175,16 +2209,21 @@
                                                         :creator_id (mt/user->id :crowberto)
                                                         :name       "snippet"}
                      :model/Card card {:name          "Business Card"
-                                       :dataset_query {:native {:template-tags {:param0  {:required false
-                                                                                          :default  0}
-                                                                                :snippet {:name         "snippet"
-                                                                                          :type         :snippet
-                                                                                          :snippet-name "snippet"
-                                                                                          :snippet-id   (:id snippet)}}
-                                                                :query "select {{param0}} from {{snippet}}"}}}]
-        (is (partial= [{:name               "Business Card"
-                        :entity_id          (:entity_id card)
-                        :model              "card"
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :native
+                                                       :native   {:template-tags {:param0  {:type         :number
+                                                                                            :display-name "Param 0"
+                                                                                            :required     false
+                                                                                            :default      0}
+                                                                                  :snippet {:name         "snippet"
+                                                                                            :display-name "Snippet"
+                                                                                            :type         :snippet
+                                                                                            :snippet-name "snippet"
+                                                                                            :snippet-id   (:id snippet)}}
+                                                                  :query         "select {{param0}} from {{snippet}}"}}}]
+        (is (partial= [{:name                "Business Card"
+                        :entity_id           (:entity_id card)
+                        :model               "card"
                         :fully_parameterized true}]
                       (-> (mt/user-http-request :crowberto :get 200 "collection/root/items")
                           :data

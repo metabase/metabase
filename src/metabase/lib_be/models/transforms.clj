@@ -1,5 +1,6 @@
 (ns metabase.lib-be.models.transforms
   (:require
+   [metabase.lib-be.metadata.bootstrap :as lib-be.bootstrap]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
@@ -16,7 +17,9 @@
     query
 
     :else
-    (lib/query lib.metadata.jvm/application-database-metadata-provider query)))
+    (->> query
+         lib-be.bootstrap/resolve-database
+         (lib/query lib.metadata.jvm/application-database-metadata-provider))))
 
 (def transform-query
   "Toucan 2 transform spec for Card `dataset_query` and other columns that store MBQL."

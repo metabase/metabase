@@ -112,22 +112,25 @@
   (not-empty
    (into {}
          (comp (filter :dimension)
+               (filter :id)
                (map (fn [template-tag]
                       [(:id template-tag) (all-field-ids (:dimension template-tag))])))
          (all-template-tags query))))
 
-(mu/defn all-template-tag-field-ids :- [:set ::lib.schema.id/field]
+(mu/defn all-template-tag-field-ids :- [:maybe [:set {:min 1} ::lib.schema.id/field]]
   "Set of all `:field` IDs used in template tags."
-  [query]
-  (into #{}
-        (comp (keep :dimension)
-              (mapcat all-field-ids))
-        (all-template-tags query)))
+  [query :- ::lib.schema/query]
+  (not-empty
+   (into #{}
+         (comp (keep :dimension)
+               (mapcat all-field-ids))
+         (all-template-tags query))))
 
-(mu/defn all-template-tag-snippet-ids :- [:set ::lib.schema.id/snippet]
+(mu/defn all-template-tag-snippet-ids :- [:maybe [:set {:min 1} ::lib.schema.id/snippet]]
   "Set of all Native Query Snippet IDs used in template tags."
-  [query]
-  (into #{}
-        (comp (filter #(= (:type %) :snippet))
-              (keep :snippet-id))
-        (all-template-tags query)))
+  [query :- ::lib.schema/query]
+  (not-empty
+   (into #{}
+         (comp (filter #(= (:type %) :snippet))
+               (keep :snippet-id))
+         (all-template-tags query))))

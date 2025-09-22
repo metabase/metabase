@@ -87,7 +87,10 @@
   [[java.sql.Connection]] to the database. [[toucan.db/*db-connection*]] is also bound, which means Toucan functions
   like `select` or `update!` will operate against this database.
 
-  Made public as of x.41."
+  Made public as of x.41.
+
+  Note that this creates a completely empty application database, with no migrations run in it (and thus no tables) if
+  you want an empty app DB with tables, use [[metabase.test/with-empty-h2-app-db!]] instead."
   [[conn-binding db-type] & body]
   `(do-with-temp-empty-app-db ~db-type (fn [~(vary-meta conn-binding assoc :tag 'java.sql.Connection)] ~@body)))
 

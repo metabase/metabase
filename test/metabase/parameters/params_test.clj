@@ -191,11 +191,6 @@
                                                                        :id           "aaaaaaaa"
                                                                        :type         :dimension
                                                                        :dimension    [:field "name" {:base-type :type/Text}]}}})}]
-    (testing "card->template-tag-param-id->field-clauses"
-      (is (= {"11111111" #{[:field (mt/id :venues :id) nil]}
-              "aaaaaaaa" #{[:field "name" {:base-type :type/Text}]}}
-             (#'params/card->template-tag-param-id->field-clauses card))))
-
     (testing "card->template-tag-param-id->field-ids"
       (is (= {"11111111" #{(mt/id :venues :id)}
               "aaaaaaaa" #{}}
@@ -252,16 +247,10 @@
                                                             :id           "aaaaaaaa"
                                                             :type         :dimension
                                                             :dimension    [:field (mt/id :products :id) nil]}}})}]
-        (testing "card->template-tag-param-id->field-clauses"
-          (is (= {"11111111" #{[:field (mt/id :orders :id) nil]}
-                  "aaaaaaaa" #{[:field (mt/id :products :id) nil]}}
-                 (#'params/card->template-tag-param-id->field-clauses card))))
-
         (testing "card->template-tag-param-id->field-ids"
           (is (= {"11111111" #{(mt/id :orders :id)}
                   "aaaaaaaa" #{(mt/id :products :id)}}
                  (#'params/card->template-tag-param-id->field-ids card))))
-
         (testing "card->template-tag-field-ids"
           (is (= #{(mt/id :orders :id)
                    (mt/id :products :id)}

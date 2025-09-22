@@ -1163,7 +1163,7 @@
       (m/update-existing entity :database (fn [db-id]
                                             (if (= db-id lib.schema.id/saved-questions-virtual-database-id)
                                               "database/__virtual"
-                                              (t2/select-one-fn :name 'Database :id db-id))))
+                                              (t2/select-one-fn :name :model/Database :id db-id))))
       (m/update-existing entity :card_id #(*export-fk* % 'Card)) ; attibutes that refer to db fields use _
       (m/update-existing entity :card-id #(*export-fk* % 'Card)) ; template-tags use dash
       (m/update-existing entity :source-table export-source-table)
@@ -1186,6 +1186,7 @@
   "Given an MBQL expression, convert it to an EDN structure and turn the non-portable Database, Table and Field IDs
   inside it into portable references."
   [encoded]
+  (assert (not= (:lib/type encoded) :mbql/query) "SerDes does not yet support MBQL 5")
   (ids->fully-qualified-names encoded))
 
 (defn- portable-id?

@@ -29,7 +29,11 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib-be.core :as lib-be]
+   [methodical.core :as methodical]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     SHARED                                                     |
@@ -158,19 +162,6 @@
                                               remove-dimensions-nonpublic-columns)))]
     (->> param-id->field-ids
          (m/map-vals #(into [] (keep field-id->field) %)))))
-
-(defmulti ^:private ^{:hydrate :param_fields} param-fields
-  "Add a `:param_fields` map (Field ID -> Field) for all of the Fields referenced by the parameters of a Card or
-  Dashboard. Implementations are below in respective sections."
-  {:arglists '([instance])}
-  t2/model)
-
-#_{:clj-kondo/ignore [:unused-private-var]}
-(mi/define-simple-hydration-method ^:private hydrate-param-fields
-  :param_fields
-  "Hydration method for `:param_fields`."
-  [instance]
-  (param-fields instance))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               DASHBOARD-SPECIFIC                                               |
@@ -340,48 +331,39 @@
          (mapv (fn [{params :parameter_mappings card :card}] (targets params card)))
          (apply merge-with into {}))))
 
-(defmethod param-fields :model/Dashboard [dashboard]
-  (-> (t2/hydrate dashboard [:dashcards :card])
-      :dashcards
-      dashcards->param-id->field-ids
-      param-field-ids->fields))
+(methodical/defmethod t2/batched-hydrate [:model/Dashboard :param_fields]
+  "Add a `:param_fields` map (Field ID -> Field) for all of the Fields referenced by the parameters of a Dashboard."
+  [_model k dashboards]
+  (mapv (fn [dashboard]
+          (let [param-fields (-> :dashcards
+                                 dashcards->param-id->field-ids
+                                 param-field-ids->fields)]
+            (assoc dashboard k param-fields)))
+        (t2/hydrate dashboards [:dashcards :card])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 CARD-SPECIFIC                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn- card->template-tag-param-id->field-clauses :- [:map-of
-                                                         ::lib.schema.common/non-blank-string
-                                                         [:set mbql.s/field]]
-  "Return a set of `:field` clauses referenced in template tag parameters in `card`."
-  [card]
-  (into {} (for [[_ {param-id  :id
-                     dimension :dimension}] (get-in card [:dataset_query :native :template-tags])
-                 :when                      dimension
-                 :let                       [field (mbql.u/unwrap-field-clause dimension)]
-                 :when                      field]
-             [param-id #{field}])))
-
-(mu/defn- card->template-tag-param-id->field-ids :- [:map-of
-                                                     ::lib.schema.common/non-blank-string
-                                                     [:set ::lib.schema.id/field]]
+(mu/defn- card->template-tag-param-id->field-ids :- [:maybe [:map-of
+                                                             ::lib.schema.template-tag/id
+                                                             [:set ::lib.schema.id/field]]]
   "Return a map of Param IDs to sets of Field IDs referenced by each template tag parameter in this `card`.
 
   Mostly used for determining Fields referenced by Cards for purposes other than processing queries. Filters out
   `:field` clauses which use names."
-  [card]
-  (-> card
-      card->template-tag-param-id->field-clauses
-      (update-vals #(set (lib.util.match/match (seq %)
-                           [:field (id :guard integer?) _]
-                           id)))))
+  [card :- [:maybe :map]]
+  (some-> card :dataset_query not-empty lib-be/normalize-query lib/all-template-tags-id->field-ids))
 
-(defmethod param-fields :model/Card [card]
-  (-> card card->template-tag-param-id->field-ids param-field-ids->fields))
+(methodical/defmethod t2/simple-hydrate [:model/Card :param_fields]
+  "Add a `:param_fields` map (Field ID -> Field) for all of the Fields referenced by the parameters of a Card."
+  [_model k card]
+  (let [param-fields (-> card card->template-tag-param-id->field-ids param-field-ids->fields)]
+    (assoc card k param-fields)))
 
-(mu/defn card->template-tag-field-ids :- [:maybe [:set ::lib.schema.id/field]]
+(mu/defn card->template-tag-field-ids :- [:maybe [:set {:min 1} ::lib.schema.id/field]]
   "Returns a set of all Field IDs referenced by template tags on this card.
 
   To get these IDs broken out by the Param ID that references them, use [[card->template-tag-param-id->field-ids]]."
   [card]
-  (not-empty (into #{} cat (vals (card->template-tag-param-id->field-ids card)))))
+  (some-> card :dataset_query not-empty lib-be/normalize-query lib/all-template-tag-field-ids not-empty))
