@@ -1,15 +1,20 @@
+import { useCallback } from "react";
+
 import { useSdkIframeEmbedSetupContext } from "../../../context";
 
 export function useLockParameter() {
   const { settings } = useSdkIframeEmbedSetupContext();
 
-  const isLockedParameter = (parameterName: string) => {
-    if (settings.dashboardId || settings.questionId) {
-      return (settings.lockedParameters ?? []).includes(parameterName);
-    }
+  const isLockedParameter = useCallback(
+    (parameterName: string) => {
+      if (settings.dashboardId || settings.questionId) {
+        return (settings.lockedParameters ?? []).includes(parameterName);
+      }
 
-    return false;
-  };
+      return false;
+    },
+    [settings],
+  );
 
   return {
     isLockedParameter,

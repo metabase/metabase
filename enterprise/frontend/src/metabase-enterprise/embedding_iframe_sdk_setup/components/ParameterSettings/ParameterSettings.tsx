@@ -1,6 +1,5 @@
 import { useDebouncedCallback } from "@mantine/hooks";
 import { useCallback, useMemo } from "react";
-import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -8,7 +7,8 @@ import { ParameterWidget } from "metabase/parameters/components/ParameterWidget"
 import { ParametersSettings } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/ParametersSettings";
 import { getLockedPreviewParameters } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-locked-preview-parameters";
 import { Group, Stack, Text } from "metabase/ui";
-import { useEmbeddingParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/hooks/use-embedding-paramers";
+import { useParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/hooks/use-parameters";
+import { useStaticEmbeddingParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/hooks/use-static-embedding-paramers";
 import { SET_INITIAL_PARAMETER_DEBOUNCE_MS } from "metabase-enterprise/embedding_iframe_sdk_setup/constants";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -18,22 +18,6 @@ import { useSdkIframeEmbedSetupContext } from "../../context";
 
 import { ParameterVisibilityToggle } from "./ParameterVisibilityToggle";
 import { useHideParameter } from "./hooks/use-hide-parameter";
-
-function mapValuesBySlugToById(
-  valuesBySlug: Record<string, any> | undefined,
-  params: { id: string; slug: string }[],
-) {
-  if (!valuesBySlug) {
-    return {};
-  }
-
-  return params.reduce<Record<string, any>>((byId, param) => {
-    if (param.slug in valuesBySlug) {
-      byId[param.id] = valuesBySlug[param.slug];
-    }
-    return byId;
-  }, {});
-}
 
 export const ParameterSettings = () => {
   const {
@@ -45,9 +29,10 @@ export const ParameterSettings = () => {
     isLoadingParameters,
   } = useSdkIframeEmbedSetupContext();
 
+  const { getParameterValuesById } = useParameters();
   const { isParameterHidden, toggleParameterVisibility } = useHideParameter();
   const { buildEmbeddedParameters, setEmbeddingParameters } =
-    useEmbeddingParameters();
+    useStaticEmbeddingParameters();
 
   const isStaticEmbedding = embeddingType === "static";
   const isQuestionOrDashboardEmbed =
@@ -77,21 +62,7 @@ export const ParameterSettings = () => {
     SET_INITIAL_PARAMETER_DEBOUNCE_MS,
   );
 
-  /**
-   * Widgets (and most of metabase logic) expect parameter values keyed by
-   * **parameter.id**, but in the embed flow settings we store them by
-   * **parameter.slug**, as the public API of embeds wants them by slug
-   *
-   * Here we convert them to "by-id" to make widgets work properly.
-   */
-  const parameterValuesById = useMemo(() => {
-    const valuesBySlug = match(settings)
-      .with({ dashboardId: P.nonNullable }, (s) => s.initialParameters)
-      .with({ questionId: P.nonNullable }, (s) => s.initialSqlParameters)
-      .otherwise(() => ({}));
-
-    return mapValuesBySlugToById(valuesBySlug, availableParameters);
-  }, [settings, availableParameters]);
+  const parameterValuesById = getParameterValuesById();
 
   const uiParameters = useMemo(
     () =>
@@ -130,6 +101,7 @@ export const ParameterSettings = () => {
         embeddingParams={embeddingParams}
         lockedParameters={lockedParameters}
         parameterValues={parameterValuesById}
+        allowEditable={!!settings.dashboardId}
         onChangeEmbeddingParameters={setEmbeddingParameters}
         onChangeParameterValue={({ slug, value }) =>
           updateInitialParameterValue(slug, value)

@@ -29,9 +29,11 @@ import { SdkIframeEmbedSetupProvider } from "./SdkIframeEmbedSetupProvider";
 
 export const SdkIframeEmbedSetupContent = () => {
   const [updateSettings] = useUpdateSettingsMutation();
-  const { currentStep, settings } = useSdkIframeEmbedSetupContext();
+  const { embeddingType, currentStep, settings } =
+    useSdkIframeEmbedSetupContext();
 
   const isSimpleEmbeddingEnabled = useSetting("enable-embedding-simple");
+  const isStaticEmbedding = embeddingType === "static";
 
   const { handleNext, handleBack, canGoBack, StepContent } =
     useSdkIframeEmbedNavigation();
@@ -96,7 +98,7 @@ export const SdkIframeEmbedSetupContent = () => {
 
       <Box className={S.PreviewPanel}>
         <Stack h="100%">
-          {isSimpleEmbeddingEnabled ? (
+          {isSimpleEmbeddingEnabled || isStaticEmbedding ? (
             <SdkIframeEmbedPreview />
           ) : (
             <Card h="100%">

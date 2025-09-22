@@ -24,6 +24,7 @@ import { getDerivedDefaultColorsForEmbedFlow } from "../utils/derived-colors-for
 import { getConfigurableThemeColors } from "../utils/theme-colors";
 
 import { EmbedPreviewLoadingOverlay } from "./EmbedPreviewLoadingOverlay";
+import { useGetStaticEmbeddingPreviewSignedToken } from "./Preview/hooks/use-get-static-embedding-preview-signed-token";
 import S from "./SdkIframeEmbedPreview.module.css";
 
 declare global {
@@ -35,8 +36,10 @@ declare global {
 }
 
 export const SdkIframeEmbedPreview = () => {
-  const { settings } = useSdkIframeEmbedSetupContext();
+  const { settings, embeddingType } = useSdkIframeEmbedSetupContext();
   const [isLoading, setIsLoading] = useState(true);
+
+  const isStaticEmbedding = embeddingType === "static";
 
   const localeOverride = useSearchParam("locale");
 
@@ -84,11 +87,18 @@ export const SdkIframeEmbedPreview = () => {
   const metabaseConfig = useMemo(
     () => ({
       instanceUrl,
-      useExistingUserSession: true,
       theme: derivedTheme,
       ...(localeOverride ? { locale: localeOverride } : {}),
+      useExistingUserSession: settings.useExistingUserSession,
+      isStatic: settings.isStatic,
     }),
-    [instanceUrl, localeOverride, derivedTheme],
+    [
+      instanceUrl,
+      derivedTheme,
+      localeOverride,
+      settings.useExistingUserSession,
+      settings.isStatic,
+    ],
   );
 
   // initial configuration, needed so that the element finds the config on first render
@@ -125,6 +135,8 @@ export const SdkIframeEmbedPreview = () => {
     }
   }, [settings.componentName]);
 
+  const { signedToken } = useGetStaticEmbeddingPreviewSignedToken();
+
   return (
     <Card
       className={S.EmbedPreviewIframe}
@@ -149,7 +161,7 @@ export const SdkIframeEmbedPreview = () => {
         )
         .with({ componentName: "metabase-question" }, (s) =>
           createElement("metabase-question", {
-            "question-id": s.questionId,
+            "question-id": !isStaticEmbedding ? s.questionId : signedToken,
             drills: s.drills,
             "with-title": s.withTitle,
             "with-downloads": s.withDownloads,
@@ -165,7 +177,7 @@ export const SdkIframeEmbedPreview = () => {
         )
         .with({ componentName: "metabase-dashboard" }, (s) =>
           createElement("metabase-dashboard", {
-            "dashboard-id": s.dashboardId,
+            "dashboard-id": !isStaticEmbedding ? s.dashboardId : signedToken,
             drills: s.drills,
             "with-title": s.withTitle,
             "with-downloads": s.withDownloads,

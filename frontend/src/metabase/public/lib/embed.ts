@@ -7,7 +7,7 @@ import type {
   EmbeddingParametersValues,
 } from "./types";
 
-async function getSignedToken(
+export async function getSignedToken(
   resourceType: EmbedResourceType,
   resourceId: EmbedResource["id"],
   params: EmbeddingParametersValues = {},

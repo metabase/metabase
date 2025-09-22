@@ -194,7 +194,7 @@ export type SdkIframeEmbedBaseSettings = {
 
 export type SdkIframeEmbedStaticEmbeddingSettings = {
   isStatic: boolean;
-  fetchStaticToken: MetabaseFetchStaticTokenFn;
+  fetchStaticToken?: MetabaseFetchStaticTokenFn;
 };
 
 export type SdkIframeEmbedTemplateSettings =
