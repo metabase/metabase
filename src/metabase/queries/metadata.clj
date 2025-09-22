@@ -5,9 +5,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.field :as schema.field]
    [metabase.warehouse-schema.table :as schema.table]
@@ -24,16 +22,6 @@
   (if (seq field-ids)
     (t2/select-fn-set :table_id :model/Field :id [:in field-ids])
     #{}))
-
-(defn- ^:deprecated split-tables-and-legacy-card-refs [source-ids]
-  (-> (reduce (fn [m src]
-                (if-let [card-id (lib.util/legacy-string-table-id->card-id src)]
-                  (update m :cards conj! card-id)
-                  (update m :tables conj! src)))
-              {:cards  (transient #{})
-               :tables (transient #{})}
-              source-ids)
-      (update-vals persistent!)))
 
 (defn- collect-recursive-snippets
   ([initial-snippet-ids]

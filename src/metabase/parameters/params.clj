@@ -352,9 +352,7 @@
 
   Mostly used for determining Fields referenced by Cards for purposes other than processing queries. Filters out
   `:field` clauses which use names."
-  [card #_:- #_[:maybe [:ref :metabase.queries.schema/card]]]
-  (when-not (mr/validate :metabase.queries.schema/card card)
-    (println (ex-info "NOCOMMIT" {:card card})))
+  [card :- [:maybe :map]]
   (some-> card :dataset_query not-empty lib-be/normalize-query lib/all-template-tags-id->field-ids))
 
 (methodical/defmethod t2/simple-hydrate [:model/Card :param_fields]
@@ -368,5 +366,5 @@
   "Returns a set of all Field IDs referenced by template tags on this card.
 
   To get these IDs broken out by the Param ID that references them, use [[card->template-tag-param-id->field-ids]]."
-  [card :- [:maybe [:ref :metabase.queries.schema/card]]]
+  [card :- [:maybe :map]]
   (some-> card :dataset_query not-empty lib-be/normalize-query lib/all-template-tag-field-ids not-empty))
