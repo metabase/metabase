@@ -91,22 +91,42 @@ H.describeWithSnowplowEE("documents", () => {
       H.datasetEditBar().button("Save changes").click();
       cy.wait("@updateCard");
     });
+
+    it("should be able to confirm or cancel breaking changes to a model", () => {
+      createModelContent();
+      cy.get<number>("@modelId").then(H.visitModel);
+      H.openQuestionActions("Edit query definition");
+      H.NativeEditor.clear().type("SELECT ID, TITLE FROM PRODUCTS");
+      H.runNativeQuery();
+
+      cy.log("cancel breaking changes");
+      H.datasetEditBar().button("Save changes").click();
+      H.modal().within(() => {
+        cy.findByText("Question with fields").should("be.visible");
+        cy.button("Cancel").click();
+      });
+      cy.get("@updateCard.all").should("have.length", 0);
+
+      cy.log("confirm breaking changes");
+      H.datasetEditBar().button("Save changes").click();
+      H.modal().button("Save anyway").click();
+      cy.wait("@updateCard");
+    });
   });
 });
 
 function createQuestionContent() {
-  H.createQuestion(
-    {
-      name: "Base question",
-      query: {
-        "source-table": PRODUCTS_ID,
-        expressions: {
-          Expr: ["+", 1, 1],
-        },
+  H.createQuestion({
+    name: "Base question",
+    query: {
+      "source-table": PRODUCTS_ID,
+      expressions: {
+        Expr: ["+", 1, 1],
       },
     },
-    { wrapId: true },
-  ).then(({ body: card }) => {
+  }).then(({ body: card }) => {
+    cy.wrap(card.id).as("questionId");
+
     H.createQuestion({
       name: "Question with fields",
       query: {
@@ -124,17 +144,15 @@ function createQuestionContent() {
 }
 
 function createModelContent() {
-  H.createNativeQuestion(
-    {
-      name: "Base model",
-      type: "model",
-      native: {
-        query: "SELECT ID, TITLE, CATEGORY FROM PRODUCTS",
-        "template-tags": {},
-      },
+  H.createNativeQuestion({
+    name: "Base model",
+    type: "model",
+    native: {
+      query: "SELECT ID, TITLE, CATEGORY FROM PRODUCTS",
+      "template-tags": {},
     },
-    { wrapId: true, idAlias: "modelId" },
-  ).then(({ body: card }) => {
+  }).then(({ body: card }) => {
+    cy.wrap(card.id).as("modelId");
     cy.request("POST", `/api/card/${card.id}/query`);
 
     const tagName = `#${card.id}`;
