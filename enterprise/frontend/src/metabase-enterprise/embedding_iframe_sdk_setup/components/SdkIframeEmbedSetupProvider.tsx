@@ -14,7 +14,6 @@ import { useUserSetting } from "metabase/common/hooks";
 
 import { trackEmbedWizardSettingsUpdated } from "../analytics";
 import {
-  DEFAULT_STATIC_EMBEDDING_SETTINGS,
   EMBED_FALLBACK_DASHBOARD_ID,
   USER_SETTINGS_DEBOUNCE_MS,
 } from "../constants";
@@ -43,12 +42,14 @@ export const SdkIframeEmbedSetupProvider = ({
   const location = useLocation();
   const [isEmbedSettingsLoaded, setEmbedSettingsLoaded] = useState(false);
 
-  const [rawSettings, setRawSettings] = useState<SdkIframeEmbedSetupSettings>();
-
-  const [persistedSettings, persistSettings] = usePersistedSettings();
-
   const embeddingType = startWith?.embeddingType ?? "modular";
   const isStaticEmbedding = embeddingType === "static";
+
+  const [rawSettings, setRawSettings] = useState<SdkIframeEmbedSetupSettings>();
+
+  const [persistedSettings, persistSettings] = usePersistedSettings({
+    isStaticEmbedding,
+  });
 
   // We don't want to re-fetch the recent items every time we switch between
   // steps, therefore we load recent items once in the provider.
@@ -230,11 +231,6 @@ export const SdkIframeEmbedSetupProvider = ({
         ...(urlParams.authMethod !== null && {
           useExistingUserSession: urlParams.authMethod === "user_session",
         }),
-        // Override the persisted settings for static embedding
-        ...(isStaticEmbedding && {
-          useExistingUserSession:
-            DEFAULT_STATIC_EMBEDDING_SETTINGS.useExistingUserSession,
-        }),
       });
 
       setEmbedSettingsLoaded(true);
@@ -257,26 +253,46 @@ export const SdkIframeEmbedSetupProvider = ({
 
 const getSettingsToPersist = (
   settings: Partial<SdkIframeEmbedSetupSettings>,
+  isStaticEmbedding: boolean,
 ) => {
-  return _.pick(settings, ["theme", "useExistingUserSession"]);
+  const keys: (keyof Pick<
+    SdkIframeEmbedSetupSettings,
+    "theme" | "useExistingUserSession"
+  >)[] = ["theme"];
+
+  // Don't persist it for static embedding, because it is always `false` in that case.
+  if (!isStaticEmbedding) {
+    keys.push("useExistingUserSession");
+  }
+
+  return _.pick(settings, keys);
 };
 
-const usePersistedSettings = () => {
+const usePersistedSettings = ({
+  isStaticEmbedding,
+}: {
+  isStaticEmbedding: boolean;
+}) => {
   const [rawPersisted, rawPersistSettings] = useUserSetting(
     "sdk-iframe-embed-setup-settings",
     { debounceTimeout: USER_SETTINGS_DEBOUNCE_MS },
   );
 
   const persistedSettings = useMemo(
-    () => getSettingsToPersist(rawPersisted || {}),
-    [rawPersisted],
+    () => getSettingsToPersist(rawPersisted || {}, isStaticEmbedding),
+    [isStaticEmbedding, rawPersisted],
   );
 
   const persistSettings = useCallback(
     (settings: Partial<SdkIframeEmbedSetupSettings>) => {
-      rawPersistSettings(getSettingsToPersist(settings));
+      // TODO: it causes an additional loader after the `persist` request. Figure out why it happens.
+      if (isStaticEmbedding) {
+        return;
+      }
+
+      rawPersistSettings(getSettingsToPersist(settings, isStaticEmbedding));
     },
-    [rawPersistSettings],
+    [isStaticEmbedding, rawPersistSettings],
   );
 
   return [persistedSettings, persistSettings] as const;
