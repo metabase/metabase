@@ -156,41 +156,47 @@ export const SdkIframeEmbedPreview = () => {
           (s) =>
             createElement("metabase-question", {
               "question-id": "new",
-              "is-save-enabled": s.isSaveEnabled,
               "target-collection": s.targetCollection,
               "entity-types": s.entityTypes
                 ? JSON.stringify(s.entityTypes)
                 : undefined,
+              ...(!isStaticEmbedding && {
+                "is-save-enabled": s.isSaveEnabled,
+              }),
             }),
         )
         .with({ componentName: "metabase-question" }, (s) =>
           createElement("metabase-question", {
             "question-id": !isStaticEmbedding ? s.questionId : signedToken,
-            drills: s.drills,
             "with-title": s.withTitle,
             "with-downloads": s.withDownloads,
-            "initial-sql-parameters": s.initialSqlParameters
-              ? JSON.stringify(s.initialSqlParameters)
-              : undefined,
-            "is-save-enabled": s.isSaveEnabled,
             "target-collection": s.targetCollection,
             "entity-types": s.entityTypes
               ? JSON.stringify(s.entityTypes)
               : undefined,
+            ...(!isStaticEmbedding && {
+              drills: s.drills,
+              "initial-sql-parameters": s.initialSqlParameters
+                ? JSON.stringify(s.initialSqlParameters)
+                : undefined,
+              "is-save-enabled": s.isSaveEnabled,
+            }),
           }),
         )
         .with({ componentName: "metabase-dashboard" }, (s) =>
           createElement("metabase-dashboard", {
             "dashboard-id": !isStaticEmbedding ? s.dashboardId : signedToken,
-            drills: s.drills,
             "with-title": s.withTitle,
             "with-downloads": s.withDownloads,
-            "initial-parameters": s.initialParameters
-              ? JSON.stringify(s.initialParameters)
-              : undefined,
-            "hidden-parameters": s.hiddenParameters
-              ? JSON.stringify(s.hiddenParameters)
-              : undefined,
+            ...(!isStaticEmbedding && {
+              drills: s.drills,
+              "initial-parameters": s.initialParameters
+                ? JSON.stringify(s.initialParameters)
+                : undefined,
+              "hidden-parameters": s.hiddenParameters
+                ? JSON.stringify(s.hiddenParameters)
+                : undefined,
+            }),
           }),
         )
         .with({ componentName: "metabase-browser" }, (s) =>

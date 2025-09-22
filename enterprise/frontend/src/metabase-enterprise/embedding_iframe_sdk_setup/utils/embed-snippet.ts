@@ -3,6 +3,7 @@ import _ from "underscore";
 
 import {
   ALLOWED_EMBED_SETTING_KEYS_MAP,
+  ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP,
   type AllowedEmbedSettingKey,
 } from "metabase-enterprise/embedding_iframe_sdk/constants";
 import type {
@@ -51,16 +52,20 @@ function defineMetabaseConfig(config) {
   });
 </script>
 
-${getEmbedCustomElementSnippet({ settings, experience })}`;
+${getEmbedCustomElementSnippet({ embeddingType, settings, experience })}`;
 }
 
 export function getEmbedCustomElementSnippet({
+  embeddingType,
   settings,
   experience,
 }: {
+  embeddingType: SdkIframeEmbedSetupEmbeddingType;
   settings: SdkIframeEmbedSetupSettings;
   experience: SdkIframeEmbedSetupExperience;
 }): string {
+  const isStaticEmbedding = embeddingType === "static";
+
   const elementName = match(experience)
     .with("dashboard", () => "metabase-dashboard")
     .with("chart", () => "metabase-question")
@@ -82,7 +87,9 @@ export function getEmbedCustomElementSnippet({
 
   const attributes = transformEmbedSettingsToAttributes(
     settingsWithExplorationOverride,
-    ALLOWED_EMBED_SETTING_KEYS_MAP[experience],
+    isStaticEmbedding
+      ? ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP[experience]
+      : ALLOWED_EMBED_SETTING_KEYS_MAP[experience],
   );
 
   return `<${elementName} ${attributes}></${elementName}>`;
@@ -137,7 +144,12 @@ export function getMetabaseConfigSnippet({
 }): string {
   const isStaticEmbedding = embeddingType === "static";
 
-  const config = _.pick(settings, ALLOWED_EMBED_SETTING_KEYS_MAP.base);
+  const config = _.pick(
+    settings,
+    isStaticEmbedding
+      ? ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP.base
+      : ALLOWED_EMBED_SETTING_KEYS_MAP.base,
+  );
 
   const cleanedConfig = {
     ..._.omit(config, ["useExistingUserSession"]),

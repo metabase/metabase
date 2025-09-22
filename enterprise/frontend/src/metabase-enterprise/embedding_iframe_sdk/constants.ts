@@ -62,6 +62,28 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "withNewDashboard",
   ] satisfies (keyof BrowserEmbedOptions)[],
 } as const;
+export const ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP = {
+  base: [
+    "apiKey",
+    "instanceUrl",
+    "theme",
+    "locale",
+    "isStatic",
+  ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
+  dashboard: [
+    "dashboardId",
+    "withTitle",
+    "withDownloads",
+  ] satisfies (keyof DashboardEmbedOptions)[],
+  chart: [
+    "questionId",
+    "withTitle",
+    "withDownloads",
+    "entityTypes",
+  ] satisfies (keyof QuestionEmbedOptions)[],
+  exploration: [] satisfies (keyof ExplorationEmbedOptions)[],
+  browser: [] satisfies (keyof BrowserEmbedOptions)[],
+} as const;
 
 // This file is used by embed.js, so we shouldn't import external dependencies.
 const uniq = <T>(list: T[]): T[] => Array.from(new Set(list));
