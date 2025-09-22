@@ -24,7 +24,7 @@ import {
   SdkQuestion,
   type SdkQuestionProps,
 } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
-import { Group, Stack } from "metabase/ui";
+import { Box, Group, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkStaticMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkStaticMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
@@ -127,6 +127,12 @@ const _StaticQuestion = ({
                 {withDownloads && <SdkQuestion.DownloadWidgetDropdown />}
               </Group>
             )}
+
+            <Group>
+              <Box w="100%">
+                <SdkQuestion.ParametersList />
+              </Box>
+            </Group>
 
             <SdkQuestion.QuestionVisualization
               height={height}

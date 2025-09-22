@@ -569,6 +569,7 @@ const MetabaseQuestionElement = createCustomElement("metabase-question", [
   "with-downloads",
   "drills",
   "initial-sql-parameters",
+  "hidden-parameters",
   "is-save-enabled",
   "target-collection",
   "entity-types",

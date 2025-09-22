@@ -47,8 +47,6 @@ export const SdkIframeEmbedSetupProvider = ({
     startWith?.embeddingType ?? "simple";
   const isStaticEmbedding = embeddingType === "static";
 
-  const [rawSettings, setRawSettings] = useState<SdkIframeEmbedSetupSettings>();
-
   const [persistedSettings, persistSettings] = usePersistedSettings({
     isStaticEmbedding,
   });
@@ -125,15 +123,15 @@ export const SdkIframeEmbedSetupProvider = ({
     return "select-embed-experience";
   }, [startWith, urlParams]);
 
+  const [rawSettings, setRawSettings] =
+    useState<SdkIframeEmbedSetupSettings>(defaultSettings);
   const [currentStep, setCurrentStep] =
     useState<SdkIframeEmbedSetupStep>(defaultStep);
 
   const settings = useMemo(() => {
-    const latestSettings = rawSettings ?? defaultSettings;
-
     // Append entity-types=model if there are more than 2 models in the instance.
     if (modelCount > 2) {
-      return match(latestSettings)
+      return match(rawSettings)
         .with({ componentName: "metabase-question" }, (settings) => ({
           ...settings,
           entityTypes: ["model" as const],
@@ -145,8 +143,8 @@ export const SdkIframeEmbedSetupProvider = ({
         .otherwise((settings) => settings);
     }
 
-    return latestSettings;
-  }, [defaultSettings, modelCount, rawSettings]);
+    return rawSettings;
+  }, [modelCount, rawSettings]);
 
   // Which embed experience are we setting up?
   const experience = useMemo(
@@ -223,6 +221,11 @@ export const SdkIframeEmbedSetupProvider = ({
   // Once the persisted settings are loaded, check if they are valid.
   // If they are, set them as the current settings.
   useEffect(() => {
+    // Ignore persisted settings for static embedding.
+    if (isStaticEmbedding) {
+      return;
+    }
+
     if (!isEmbedSettingsLoaded && !isRecentsLoading) {
       setRawSettings({
         ...settings,
@@ -255,19 +258,8 @@ export const SdkIframeEmbedSetupProvider = ({
 
 const getSettingsToPersist = (
   settings: Partial<SdkIframeEmbedSetupSettings>,
-  isStaticEmbedding: boolean,
 ) => {
-  const keys: (keyof Pick<
-    SdkIframeEmbedSetupSettings,
-    "theme" | "useExistingUserSession"
-  >)[] = ["theme"];
-
-  // Don't persist it for static embedding, because it is always `false` in that case.
-  if (!isStaticEmbedding) {
-    keys.push("useExistingUserSession");
-  }
-
-  return _.pick(settings, keys);
+  return _.pick(settings, ["theme", "useExistingUserSession"]);
 };
 
 const usePersistedSettings = ({
@@ -281,18 +273,18 @@ const usePersistedSettings = ({
   );
 
   const persistedSettings = useMemo(
-    () => getSettingsToPersist(rawPersisted || {}, isStaticEmbedding),
-    [isStaticEmbedding, rawPersisted],
+    () => getSettingsToPersist(rawPersisted || {}),
+    [rawPersisted],
   );
 
   const persistSettings = useCallback(
     (settings: Partial<SdkIframeEmbedSetupSettings>) => {
-      // TODO: it causes an additional loader after the `persist` request. Figure out why it happens.
+      // Don't persist settings for static embedding
       if (isStaticEmbedding) {
         return;
       }
 
-      rawPersistSettings(getSettingsToPersist(settings, isStaticEmbedding));
+      rawPersistSettings(getSettingsToPersist(settings));
     },
     [isStaticEmbedding, rawPersistSettings],
   );

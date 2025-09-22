@@ -116,6 +116,7 @@ export interface QuestionEmbedOptions {
   // parameters
   lockedParameters?: string[];
   initialSqlParameters?: SqlParameterValues;
+  hiddenParameters?: string[];
 
   // incompatible options
   template?: never;

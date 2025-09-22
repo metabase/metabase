@@ -40,19 +40,19 @@ export const ParameterSettings = () => {
 
   const updateInitialParameterValue = useDebouncedCallback(
     useCallback(
-      (paramId: string, value: ParameterValueOrArray | null | undefined) => {
+      (slug: string, value: ParameterValueOrArray | null | undefined) => {
         if (settings.dashboardId) {
           updateSettings({
-            initialParameters: {
-              ...settings.initialParameters,
-              [paramId]: value,
+            parameters: {
+              ...settings.parameters,
+              [slug]: value,
             },
           });
         } else if (settings.questionId) {
           updateSettings({
-            initialSqlParameters: {
-              ...settings.initialSqlParameters,
-              [paramId]: value,
+            sqlParameters: {
+              ...settings.sqlParameters,
+              [slug]: value,
             },
           });
         }
@@ -104,7 +104,7 @@ export const ParameterSettings = () => {
         embeddingParams={embeddingParams}
         lockedParameters={lockedParameters}
         parameterValues={parameterValuesById}
-        allowEditable={!!settings.dashboardId}
+        allowEditable
         onChangeEmbeddingParameters={setEmbeddingParameters}
         onChangeParameterValue={({ slug, value }) =>
           updateInitialParameterValue(slug, value)

@@ -1,0 +1,78 @@
+import { useMemo } from "react";
+
+import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
+import { ResponsiveParametersList } from "metabase/query_builder/components/ResponsiveParametersList";
+import * as Lib from "metabase-lib";
+import type { ParameterId } from "metabase-types/api";
+/**
+ * Parameters list for SQL questions
+ *
+ * @function
+ * @category InteractiveQuestion
+ */
+export const QuestionParametersList = () => {
+  const { question, updateQuestion, hiddenParameters } =
+    useSdkQuestionContext();
+
+  const isNativeQuestion = useMemo(() => {
+    if (!question) {
+      return false;
+    }
+
+    const { isNative } = Lib.queryDisplayInfo(question.query());
+
+    return isNative;
+  }, [question]);
+
+  const query = useMemo(() => question?.legacyNativeQuery(), [question]);
+
+  const parameters = useMemo(() => {
+    if (!question) {
+      return [];
+    }
+
+    const allParameters = question.parameters();
+
+    if (!hiddenParameters || !hiddenParameters.length) {
+      return allParameters;
+    }
+
+    return allParameters.filter(
+      (parameter) => !hiddenParameters.includes(parameter.slug),
+    );
+  }, [hiddenParameters, question]);
+
+  if (!question || !query || !isNativeQuestion) {
+    return null;
+  }
+
+  const setParameterValue = (parameterId: ParameterId, value: string) => {
+    const questionWithParams = question?.setParameterValues({
+      ...question._parameterValues,
+      [parameterId]: value,
+    });
+
+    updateQuestion(questionWithParams, { run: true });
+  };
+
+  const setParameterIndex = (
+    parameterId: ParameterId,
+    parameterIndex: number,
+  ) => {
+    const newQuery = query.setParameterIndex(parameterId, parameterIndex);
+
+    updateQuestion(question.setDatasetQuery(newQuery.datasetQuery()));
+  };
+
+  return (
+    <ResponsiveParametersList
+      cardId={question?.id()}
+      dashboardId={question.dashboardId() ?? undefined}
+      parameters={parameters}
+      setParameterValue={setParameterValue}
+      setParameterIndex={setParameterIndex}
+      enableParameterRequiredBehavior
+      commitImmediately={false}
+    />
+  );
+};

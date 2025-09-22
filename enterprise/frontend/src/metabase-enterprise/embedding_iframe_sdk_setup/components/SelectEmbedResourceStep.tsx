@@ -76,7 +76,7 @@ export const SelectEmbedResourceStep = () => {
         dashboardId: id,
 
         // Clear parameters
-        initialParameters: {},
+        parameters: {},
         hiddenParameters: [],
       });
     } else if (experience === "chart") {
@@ -84,7 +84,7 @@ export const SelectEmbedResourceStep = () => {
         questionId: id,
 
         // Clear parameters
-        initialSqlParameters: {},
+        sqlParameters: {},
       });
     } else if (experience === "browser") {
       updateSettings({

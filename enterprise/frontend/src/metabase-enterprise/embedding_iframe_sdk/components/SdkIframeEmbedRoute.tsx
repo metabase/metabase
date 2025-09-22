@@ -198,6 +198,7 @@ const SdkIframeEmbedView = ({
           withDownloads: settings.withDownloads,
           height: "100%",
           initialSqlParameters: settings.initialSqlParameters,
+          hiddenParameters: settings.hiddenParameters,
           title: settings.withTitle ?? true, // defaulting title to true even if in the sdk it defaults to false for static
         };
 

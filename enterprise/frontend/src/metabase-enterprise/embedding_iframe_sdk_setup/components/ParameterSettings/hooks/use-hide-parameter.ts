@@ -7,9 +7,7 @@ export function useHideParameter() {
 
   const toggleParameterVisibility = useCallback(
     (parameterName: string) => {
-      // Dashboard parameters are shown by default and can be hidden,
-      // while question parameters are always hidden in the SDK and cannot be shown.
-      if (!settings.dashboardId) {
+      if (!settings.dashboardId && !settings.questionId) {
         return;
       }
 
@@ -26,9 +24,7 @@ export function useHideParameter() {
 
   const isParameterHidden = useCallback(
     (parameterName: string) => {
-      // Dashboard parameters are shown by default and can be hidden,
-      // while question parameters are always hidden in the SDK and cannot be shown.
-      if (!settings.dashboardId) {
+      if (!settings.dashboardId && !settings.questionId) {
         return true;
       }
 

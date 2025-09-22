@@ -18,6 +18,7 @@ import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase-enterprise/embeddi
 // by appending the script
 import { setupConfigWatcher } from "metabase-enterprise/embedding_iframe_sdk/embed";
 import type { SdkIframeEmbedBaseSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
+import { getInitialSqlParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/utils/get-initial-sql-parameters";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 import { getDerivedDefaultColorsForEmbedFlow } from "../utils/derived-colors-for-embed-flow";
@@ -108,11 +109,14 @@ export const SdkIframeEmbedPreview = () => {
 
   useEffect(() => {
     defineMetabaseConfig(metabaseConfig);
+  }, [metabaseConfig, defineMetabaseConfig]);
 
-    return () => {
+  useEffect(
+    () => () => {
       cleanupMetabaseConfig();
-    };
-  }, [metabaseConfig, defineMetabaseConfig, cleanupMetabaseConfig]);
+    },
+    [cleanupMetabaseConfig],
+  );
 
   useEffect(
     () => () => {
@@ -174,11 +178,16 @@ export const SdkIframeEmbedPreview = () => {
             "entity-types": s.entityTypes
               ? JSON.stringify(s.entityTypes)
               : undefined,
+            "initial-sql-parameters": s.sqlParameters
+              ? JSON.stringify(
+                  getInitialSqlParameters(s.sqlParameters, s.lockedParameters),
+                )
+              : undefined,
+            "hidden-parameters": s.hiddenParameters
+              ? JSON.stringify(s.hiddenParameters)
+              : undefined,
             ...(!isStaticEmbedding && {
               drills: s.drills,
-              "initial-sql-parameters": s.initialSqlParameters
-                ? JSON.stringify(s.initialSqlParameters)
-                : undefined,
               "is-save-enabled": s.isSaveEnabled,
             }),
           }),
@@ -188,14 +197,14 @@ export const SdkIframeEmbedPreview = () => {
             "dashboard-id": !isStaticEmbedding ? s.dashboardId : signedToken,
             "with-title": s.withTitle,
             "with-downloads": s.withDownloads,
+            "initial-parameters": s.parameters
+              ? JSON.stringify(s.parameters)
+              : undefined,
+            "hidden-parameters": s.hiddenParameters
+              ? JSON.stringify(s.hiddenParameters)
+              : undefined,
             ...(!isStaticEmbedding && {
               drills: s.drills,
-              "initial-parameters": s.initialParameters
-                ? JSON.stringify(s.initialParameters)
-                : undefined,
-              "hidden-parameters": s.hiddenParameters
-                ? JSON.stringify(s.hiddenParameters)
-                : undefined,
             }),
           }),
         )

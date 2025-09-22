@@ -1,8 +1,16 @@
-import type { SdkDashboardId, SdkQuestionId } from "embedding-sdk-bundle/types";
 import type {
+  SdkDashboardId,
+  SdkQuestionId,
+  SqlParameterValues,
+} from "embedding-sdk-bundle/types";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
+import type {
+  BrowserEmbedOptions,
+  DashboardEmbedOptions,
+  ExplorationEmbedOptions,
+  QuestionEmbedOptions,
   SdkIframeEmbedBaseSettings,
   SdkIframeEmbedStaticEmbeddingSettings,
-  SdkIframeEmbedTemplateSettings,
 } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 import type { SdkIframeEmbedSetupStaticEmbeddingType } from "metabase-enterprise/embedding_iframe_sdk_setup/enums";
 import type { BaseRecentItem } from "metabase-types/api";
@@ -34,6 +42,26 @@ export type SdkIframeEmbedSetupStaticEmbeddingSettings =
     staticEmbeddingType: SdkIframeEmbedSetupStaticEmbeddingType;
   };
 
+export type SdkIframeDashboardEmbedSettings = Omit<
+  DashboardEmbedOptions,
+  "initialParameters"
+> & {
+  parameters?: ParameterValues;
+};
+
+export type SdkIframeQuestionEmbedSettings = Omit<
+  QuestionEmbedOptions,
+  "initialSqlParameters"
+> & {
+  sqlParameters?: SqlParameterValues;
+};
+
+export type SdkIframeEmbedSetupTemplateSettings =
+  | SdkIframeDashboardEmbedSettings
+  | SdkIframeQuestionEmbedSettings
+  | ExplorationEmbedOptions
+  | BrowserEmbedOptions;
+
 /**
  * Settings used by the embed setup route.
  * Excludes `instanceUrl` as it is derived dynamically from site-url.
@@ -43,7 +71,7 @@ export type SdkIframeEmbedSetupSettings = Omit<
   "instanceUrl"
 > &
   Partial<SdkIframeEmbedSetupStaticEmbeddingSettings> &
-  SdkIframeEmbedTemplateSettings;
+  SdkIframeEmbedSetupTemplateSettings;
 
 export type SdkIframeEmbedSetupEmbeddingType = "simple" | "static";
 
