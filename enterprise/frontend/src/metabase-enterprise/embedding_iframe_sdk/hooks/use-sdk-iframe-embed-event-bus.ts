@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { match } from "ts-pattern";
 
-import { trackSchemaEvent } from "metabase/lib/analytics";
 import { isWithinIframe } from "metabase/lib/dom";
+import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 
 import type {
   SdkIframeEmbedMessage,
@@ -11,15 +11,24 @@ import type {
 
 type Handler = (event: MessageEvent<SdkIframeEmbedMessage>) => void;
 
+type UsageAnalytics = {
+  usage: EmbeddedAnalyticsJsEventSchema;
+  embedHostUrl: string;
+};
+
 export function useSdkIframeEmbedEventBus({
   onSettingsChanged,
 }: {
   onSettingsChanged?: (settings: SdkIframeEmbedSettings) => void;
 }): {
   embedSettings: SdkIframeEmbedSettings | null;
+  usageAnalytics: UsageAnalytics | null;
 } {
   const [embedSettings, setEmbedSettings] =
     useState<SdkIframeEmbedSettings | null>(null);
+  const [usageAnalytics, setUsageAnalytics] = useState<UsageAnalytics | null>(
+    null,
+  );
 
   useEffect(() => {
     const messageHandler: Handler = (event) => {
@@ -33,7 +42,10 @@ export function useSdkIframeEmbedEventBus({
           onSettingsChanged?.(data);
         })
         .with({ type: "metabase.embed.reportAnalytics" }, ({ data }) => {
-          trackSchemaEvent("embedded_analytics_js", data);
+          setUsageAnalytics({
+            usage: data.usageAnalytics,
+            embedHostUrl: data.embedHostUrl,
+          });
         });
     };
 
@@ -47,5 +59,5 @@ export function useSdkIframeEmbedEventBus({
     };
   }, [onSettingsChanged]);
 
-  return { embedSettings };
+  return { embedSettings, usageAnalytics };
 }

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { P, match } from "ts-pattern";
 
 import { PublicComponentStylesWrapper } from "embedding-sdk-bundle/components/private/PublicComponentStylesWrapper";
@@ -14,10 +14,13 @@ import {
 import { getSdkStore, useSdkSelector } from "embedding-sdk-bundle/store";
 import { getLoginStatus } from "embedding-sdk-bundle/store/selectors";
 import type { MetabaseAuthConfig } from "embedding-sdk-package";
+import { useSetting } from "metabase/common/hooks";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
+import { trackSchemaEvent } from "metabase/lib/analytics";
 import { createTracker } from "metabase/lib/analytics-untyped";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { Box } from "metabase/ui";
+import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 
 import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
@@ -40,7 +43,9 @@ const store = getSdkStore();
 createTracker(store);
 
 export const SdkIframeEmbedRoute = () => {
-  const { embedSettings } = useSdkIframeEmbedEventBus({ onSettingsChanged });
+  const { embedSettings, usageAnalytics } = useSdkIframeEmbedEventBus({
+    onSettingsChanged,
+  });
 
   // The embed settings won't be available until the parent sends it via postMessage.
   // The SDK will show its own loading indicator, so we don't need to show it twice.
@@ -84,10 +89,30 @@ export const SdkIframeEmbedRoute = () => {
     >
       <Box h="100vh" bg={theme?.colors?.background}>
         <SdkIframeEmbedView settings={embedSettings} />
+        <AnalyticsReporter usageAnalytics={usageAnalytics} />
       </Box>
     </ComponentProvider>
   );
 };
+
+interface AnalyticsReporterProps {
+  usageAnalytics: {
+    usage: EmbeddedAnalyticsJsEventSchema;
+    embedHostUrl: string;
+  } | null;
+}
+function AnalyticsReporter({ usageAnalytics }: AnalyticsReporterProps) {
+  const instanceUrl = useSetting("site-url");
+  useEffect(() => {
+    const isEmbeddedAnalyticsJsPreview =
+      usageAnalytics && usageAnalytics.embedHostUrl?.startsWith(instanceUrl);
+    if (usageAnalytics && !isEmbeddedAnalyticsJsPreview) {
+      trackSchemaEvent("embedded_analytics_js", usageAnalytics.usage);
+    }
+  }, [instanceUrl, usageAnalytics]);
+
+  return null;
+}
 
 const SdkIframeEmbedView = ({
   settings,

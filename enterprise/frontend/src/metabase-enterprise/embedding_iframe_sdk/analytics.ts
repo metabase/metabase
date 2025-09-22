@@ -58,10 +58,10 @@ function reportAnalyticsOnce(activeEmbeds: Set<MetabaseEmbedElement>) {
   if (!isAnalyticsReported) {
     isAnalyticsReported = true;
     const [firstEmbed] = activeEmbeds;
-    firstEmbed.sendMessage(
-      "metabase.embed.reportAnalytics",
-      createEmbeddedAnalyticsJsUsage(activeEmbeds),
-    );
+    firstEmbed.sendMessage("metabase.embed.reportAnalytics", {
+      usageAnalytics: createEmbeddedAnalyticsJsUsage(activeEmbeds),
+      embedHostUrl: window.location.href,
+    });
   }
 }
 
