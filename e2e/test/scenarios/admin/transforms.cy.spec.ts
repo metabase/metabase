@@ -1481,16 +1481,13 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       "should be possible to use the common library",
       { tags: ["@transforms-python"] },
       () => {
-        visitCommonLibrary();
-
-        cy.log("updating the library should be possible");
-        H.PythonEditor.clear().type(
+        createPythonLibrary(
+          "common.py",
           dedent`
           def useful_calculation(a, b):
           return a + b
       `,
         );
-        getLibraryEditorHeader().findByText("Save").click();
 
         visitTransformListPage();
         getTransformListPage().button("Create a transform").click();
@@ -2629,4 +2626,10 @@ function editorSidebar() {
 
 function getPythonDataPicker() {
   return cy.findByTestId("python-data-picker");
+}
+
+function createPythonLibrary(path: string, source: string) {
+  cy.request("PUT", `/api/ee/transforms-python/library/${path}`, {
+    source,
+  });
 }
