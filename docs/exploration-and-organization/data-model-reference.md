@@ -22,13 +22,13 @@ You can open the data reference from:
 
 - The left sidebar > **Data** > **Databases** > **Learn about our data** (in the upper right).
 - Hovering over a table in the data browser and clicking on the book icon.
-- The native/SQL > **Book** icon.
+- The native/SQL editor > **Book** icon.
 
 You can also visit `https://[your metabase here]/reference`.
 
 ## Databases
 
-The data reference is a collection of pages organized by database, then tables in that database (the same structure you use to [pick data](../questions/query-builder/editor.md#picking-data)). The data reference section is a great place to find information about the [data types](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview) of columns in your data.
+The data reference is a collection of pages organized by database, then schemas in that database (if you have several schemas), and finally tables in that database - the same structure you use to [pick data](../questions/query-builder/editor.md#picking-data). The data reference section is a great place to find information about the [data types](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview) of columns in your data.
 
 ### Database details
 
