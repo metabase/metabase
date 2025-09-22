@@ -1035,3 +1035,8 @@
          :details
          list-datasets
          (some #{schema}))))
+
+(defmethod driver/table-name-length-limit :bigquery-cloud-sdk
+  [_driver]
+  ;; https://cloud.google.com/bigquery/docs/tables
+  1024)
