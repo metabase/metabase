@@ -7,6 +7,7 @@ import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
+import { getPreviewParamsBySlug } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-preview-params-by-slug";
 import { getStaticEmbedSetupPublishHandlers } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-static-embed-setup-publish-handlers";
 import { trackStaticEmbedCodeCopied } from "metabase/public/lib/analytics";
 import { getEmbedServerCodeExampleOptions } from "metabase/public/lib/code";
@@ -22,7 +23,6 @@ import type {
 } from "metabase/public/lib/types";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { Stack, Tabs } from "metabase/ui";
-import { getParameterValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import { EmbedModalContentStatusBar } from "./EmbedModalContentStatusBar";
 import { LookAndFeelSettings } from "./LookAndFeelSettings";
@@ -336,34 +336,6 @@ export const StaticEmbedSetupPane = ({
     </Stack>
   );
 };
-
-function getPreviewParamsBySlug({
-  resourceParameters,
-  embeddingParams,
-  parameterValues,
-}: {
-  resourceParameters: EmbedResourceParameter[];
-  embeddingParams: EmbeddingParameters;
-  parameterValues: EmbeddingParametersValues;
-}) {
-  const lockedParameters = getLockedPreviewParameters(
-    resourceParameters,
-    embeddingParams,
-  );
-
-  return Object.fromEntries(
-    lockedParameters.map((parameter) => {
-      const value = getParameterValue({
-        parameter,
-        values: parameterValues,
-        defaultRequired: true,
-      });
-      // metabase#47570
-      const valueWithDefaultLockedParameterValue = value === null ? [] : value;
-      return [parameter.slug, valueWithDefaultLockedParameterValue];
-    }),
-  );
-}
 
 function getBackgroundType(
   displayOptions: Pick<EmbeddingDisplayOptions, "background" | "theme">,

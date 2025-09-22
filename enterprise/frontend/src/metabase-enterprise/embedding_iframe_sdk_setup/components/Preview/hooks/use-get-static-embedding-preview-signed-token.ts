@@ -3,6 +3,7 @@ import { useAsync } from "react-use";
 
 import { useSetting } from "metabase/common/hooks";
 import { checkNotNull } from "metabase/lib/types";
+import { getPreviewParamsBySlug } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-preview-params-by-slug";
 import { getSignedToken } from "metabase/public/lib/embed";
 import { useParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/hooks/use-parameters";
 import { useStaticEmbeddingParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/hooks/use-static-embedding-paramers";
@@ -14,7 +15,7 @@ export const useGetStaticEmbeddingPreviewSignedToken = () => {
 
   const { settings, availableParameters } = useSdkIframeEmbedSetupContext();
 
-  const { getParameterValuesBySlug } = useParameters();
+  const { getParameterValuesById } = useParameters();
   const { buildEmbeddedParameters } = useStaticEmbeddingParameters();
 
   const resourceType = settings.dashboardId ? "dashboard" : "question";
@@ -24,8 +25,18 @@ export const useGetStaticEmbeddingPreviewSignedToken = () => {
   );
 
   const parameterValues = useMemo(
-    () => getParameterValuesBySlug(),
-    [getParameterValuesBySlug],
+    () => getParameterValuesById(),
+    [getParameterValuesById],
+  );
+
+  const previewParamsBySlug = useMemo(
+    () =>
+      getPreviewParamsBySlug({
+        resourceParameters: availableParameters,
+        embeddingParams,
+        parameterValues,
+      }),
+    [availableParameters, embeddingParams, parameterValues],
   );
 
   const { value: signedToken = "" } = useAsync(
@@ -33,13 +44,13 @@ export const useGetStaticEmbeddingPreviewSignedToken = () => {
       getSignedToken(
         resourceType,
         settings.dashboardId ?? settings.questionId ?? "",
-        parameterValues,
+        previewParamsBySlug,
         secretKey,
         embeddingParams,
       ),
     [
       siteUrl,
-      parameterValues,
+      previewParamsBySlug,
       resourceType,
       settings.dashboardId,
       settings.questionId,

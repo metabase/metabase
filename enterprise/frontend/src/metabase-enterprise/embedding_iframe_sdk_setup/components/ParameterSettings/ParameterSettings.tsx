@@ -62,7 +62,10 @@ export const ParameterSettings = () => {
     SET_INITIAL_PARAMETER_DEBOUNCE_MS,
   );
 
-  const parameterValuesById = getParameterValuesById();
+  const parameterValuesById = useMemo(
+    () => getParameterValuesById(),
+    [getParameterValuesById],
+  );
 
   const uiParameters = useMemo(
     () =>
