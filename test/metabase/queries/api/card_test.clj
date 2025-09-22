@@ -695,30 +695,27 @@
 
 (deftest ^:parallel doc-test
   (testing "Make sure generated docstring resolves Malli schemas in the registry correctly (#46799)"
-    (let [openapi-object             (open-api/open-api-spec (api.macros/ns-handler 'metabase.queries.api.card) "/api/card")
-          schemas                    (get-in openapi-object [:components :schemas])
-          body-properties            (get-in openapi-object [:paths "/api/card/" :post :requestBody :content "application/json" :schema :properties])
-          _                          (is (some? body-properties))
-          type-schema-ref            (some-> (get-in body-properties ["type" :$ref])
-                                             (str/replace #"^#/components/schemas/" "")
-                                             (str/replace #"\Q~1\E" "/"))
-          _                          (is (some? type-schema-ref))
-          type-schema                (get schemas type-schema-ref)
-          result-metadata-schema-ref (some-> (get-in body-properties ["result_metadata" :$ref])
-                                             (str/replace #"^#/components/schemas/" "")
-                                             (str/replace #"\Q~1\E" "/"))
-          _                          (is (some? result-metadata-schema-ref))
-          result-metadata-schema     (get schemas result-metadata-schema-ref)]
+    (let [openapi-object         (open-api/open-api-spec (api.macros/ns-handler 'metabase.queries.api.card) "/api/card")
+          schemas                (get-in openapi-object [:components :schemas])
+          body-properties        (get-in openapi-object [:paths "/api/card/" :post :requestBody :content "application/json" :schema :properties])
+          _                      (is (some? body-properties))
+          resolve-schema         (fn resolve-schema [schema]
+                                   (or (some-> schema
+                                               :$ref
+                                               (str/replace #"^#/components/schemas/" "")
+                                               (->> (get schemas))
+                                               resolve-schema)
+                                       schema))
+          type-schema            (resolve-schema (get body-properties "type"))
+          result-metadata-schema (resolve-schema (get body-properties "result_metadata"))]
       (testing 'type
-        (testing (pr-str type-schema-ref)
-          (is (=? {:type :string, :enum [:question :metric :model]}
-                  type-schema))))
+        (is (=? {:type :string, :enum [:question :metric :model]}
+                type-schema)))
       (testing 'result_metadata
-        (testing (pr-str result-metadata-schema-ref)
-          (is (=? {:type        :array
-                   :description "value must be an array of valid results column metadata maps."
-                   :optional    true}
-                  result-metadata-schema)))))))
+        (is (=? {:type        :array
+                 :description "value must be an array of valid results column metadata maps."
+                 :optional    true}
+                result-metadata-schema))))))
 
 (deftest create-a-card
   (testing "POST /api/card"

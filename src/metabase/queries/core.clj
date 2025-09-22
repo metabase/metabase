@@ -6,6 +6,7 @@
    [metabase.queries.models.card.metadata]
    [metabase.queries.models.parameter-card]
    [metabase.queries.models.query]
+   [metabase.queries.schema]
    [potemkin :as p]))
 
 (comment metabase.queries.card/keep-me
@@ -13,7 +14,8 @@
          metabase.queries.models.card/keep-me
          metabase.queries.models.card.metadata/keep-me
          metabase.queries.models.parameter-card/keep-me
-         metabase.queries.models.query/keep-me)
+         metabase.queries.models.query/keep-me
+         metabase.queries.schema/keep-me)
 
 (p/import-vars
  [metabase.queries.card

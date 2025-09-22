@@ -188,13 +188,14 @@
   {:enable_embedding true
    :dataset_query    {:database (mt/id)
                       :type     :native
-                      :native   {:template-tags {:a {:type "date", :name "a", :display_name "a" :id "a" :default "A TAG"}
+                      :native   {:query         "SELECT 1"
+                                 :template-tags {:a {:type "date", :name "a", :display_name "a" :id "a" :default "A TAG"}
                                                  :b {:type "date", :name "b", :display_name "b" :id "b" :default "B TAG"}
                                                  :c {:type "date", :name "c", :display_name "c" :id "c" :default "C TAG"}
                                                  :d {:type "date", :name "d", :display_name "d" :id "d" :default "D TAG"}}}}
    :parameters       [{:type "date", :name "a", :display_name "a" :id "a" :default "A param"}
                       {:type "date", :name "b", :display_name "b" :id "b" :default "B param"}
-                      {:type "date", :name "c", :display_name "c" :id "c" :default "C param"
+                      {:type               "date",       :name                 "c", :display_name "c" :id "c" :default "C param"
                        :values_source_type "static-list" :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
    :embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}})
 

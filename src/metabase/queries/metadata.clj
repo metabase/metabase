@@ -1,10 +1,9 @@
 (ns metabase.queries.metadata
   (:require
    [clojure.set :as set]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
@@ -26,7 +25,7 @@
     (t2/select-fn-set :table_id :model/Field :id [:in field-ids])
     #{}))
 
-(defn- split-tables-and-legacy-card-refs [source-ids]
+(defn- ^:deprecated split-tables-and-legacy-card-refs [source-ids]
   (-> (reduce (fn [m src]
                 (if-let [card-id (lib.util/legacy-string-table-id->card-id src)]
                   (update m :cards conj! card-id)
@@ -35,26 +34,6 @@
                :tables (transient #{})}
               source-ids)
       (update-vals persistent!)))
-
-(defn- query->template-tags
-  [query]
-  (-> query :native :template-tags vals))
-
-(defn- query->template-tag-field-ids [query]
-  (when-let [template-tags (query->template-tags query)]
-    (for [{tag-type :type, [dim-tag id _opts] :dimension} template-tags
-          :when (and (#{:dimension :temporal-unit} tag-type)
-                     (= dim-tag :field)
-                     (integer? id))]
-      id)))
-
-(defn- query->template-tag-snippet-ids
-  "Extract snippet IDs from template tags in a native query."
-  [query]
-  (some->> (query->template-tags query)
-           (into #{}
-                 (comp (filter #(= :snippet (:type %)))
-                       (keep :snippet-id)))))
 
 (defn- collect-recursive-snippets
   ([initial-snippet-ids]
@@ -98,35 +77,32 @@
                       (integer? field-id))]
      field-id)))
 
-(mu/defn- batch-fetch-query-metadata*
+(mu/defn batch-fetch-query-metadata
   "Fetch dependent metadata for ad-hoc queries."
-  [queries :- [:sequential ::mbql.s/Query]]
-  (let [source-ids                (into #{}
-                                        (comp (map lib-be/normalize-query)
-                                              (mapcat lib/all-source-table-ids))
-                                        queries)
-        {source-table-ids :tables
-         source-card-ids  :cards} (split-tables-and-legacy-card-refs source-ids)
-        source-tables             (concat (schema.table/batch-fetch-table-query-metadatas source-table-ids)
-                                          (schema.table/batch-fetch-card-query-metadatas source-card-ids
-                                                                                         {:include-database? false}))
-        fk-target-field-ids       (into #{} (comp (mapcat :fields)
-                                                  (keep :fk_target_field_id))
-                                        source-tables)
-        fk-target-table-ids       (into #{} (remove source-table-ids)
-                                        (field-ids->table-ids fk-target-field-ids))
-        fk-target-tables          (schema.table/batch-fetch-table-query-metadatas fk-target-table-ids)
-        tables                    (concat source-tables fk-target-tables)
-        template-tag-field-ids    (into #{} (mapcat query->template-tag-field-ids) queries)
-        direct-snippet-ids        (into #{} (mapcat query->template-tag-snippet-ids) queries)
-        snippets                  (collect-recursive-snippets direct-snippet-ids)
-        snippet-field-ids         (collect-snippet-field-ids snippets)
+  [queries :- [:sequential :map]]
+  (let [queries                (mapv lib-be/normalize-query queries)
+        source-table-ids       (into #{} (mapcat lib/all-source-table-ids) queries)
+        source-card-ids        (into #{} (mapcat lib/all-source-card-ids) queries)
+        source-tables          (concat (schema.table/batch-fetch-table-query-metadatas source-table-ids)
+                                       (schema.table/batch-fetch-card-query-metadatas source-card-ids
+                                                                                      {:include-database? false}))
+        fk-target-field-ids    (into #{} (comp (mapcat :fields)
+                                               (keep :fk_target_field_id))
+                                     source-tables)
+        fk-target-table-ids    (into #{} (remove source-table-ids)
+                                     (field-ids->table-ids fk-target-field-ids))
+        fk-target-tables       (schema.table/batch-fetch-table-query-metadatas fk-target-table-ids)
+        tables                 (concat source-tables fk-target-tables)
+        template-tag-field-ids (into #{} (mapcat lib/all-template-tag-field-ids) queries)
+        direct-snippet-ids     (into #{} (mapcat lib/all-template-tag-snippet-ids) queries)
+        snippets               (collect-recursive-snippets direct-snippet-ids)
+        snippet-field-ids      (collect-snippet-field-ids snippets)
         ;; Combine all field IDs
-        all-field-ids             (set/union template-tag-field-ids snippet-field-ids)
-        query-database-ids        (into #{} (keep :database) queries)
-        database-ids              (into query-database-ids
-                                        (keep :db_id)
-                                        tables)]
+        all-field-ids          (set/union template-tag-field-ids snippet-field-ids)
+        query-database-ids     (into #{} (keep :database) queries)
+        database-ids           (into query-database-ids
+                                     (keep :db_id)
+                                     tables)]
     {;; TODO: This is naive and issues multiple queries currently. That's probably okay for most dashboards,
      ;; since they tend to query only a handful of databases at most.
      :databases (sort-by :id (get-databases database-ids))
@@ -144,21 +120,20 @@
      ;; Add snippets to the response
      :snippets  (sort-by :id snippets)}))
 
-(defn batch-fetch-query-metadata
-  "Fetch dependent metadata for ad-hoc queries."
-  [queries]
-  (batch-fetch-query-metadata* (map mbql.normalize/normalize queries)))
-
 (defn batch-fetch-card-metadata
   "Fetch dependent metadata for cards.
 
   Models and native queries need their definitions walked as well as their own, card-level metadata."
   [cards]
-  (let [queries (into (vec (keep :dataset_query cards)) ; All the queries on all the cards
-                      ;; Plus the card-level metadata of each model and native query
-                      (comp (filter (fn [card] (or (= :model (:type card))
-                                                   (= :native (-> card :dataset_query :type)))))
-                            (map (fn [card] {:query {:source-table (str "card__" (u/the-id card))}})))
+  (let [queries (into []
+                      (comp (map #(update % :dataset_query lib-be/normalize-query))
+                            (mapcat (fn [{query :dataset_query, card-type :type, card-id :id, :as _card}]
+                                      (if (or (= card-type :model)
+                                              (lib/native-only-query? query))
+                                        [query
+                                         (let [mp (lib/->metadata-provider query)]
+                                           (lib/query mp (lib.metadata/card mp card-id)))]
+                                        [query]))))
                       cards)]
     (batch-fetch-query-metadata queries)))
 

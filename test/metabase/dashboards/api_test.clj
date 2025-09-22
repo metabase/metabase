@@ -4735,9 +4735,8 @@
                                     {:id (mt/id :products)
                                      :fields sequential?}
                                     {:id (mt/id :venues)}])
-                          (sort-by :id
-                                   [{:id (str "card__" card-id-2)
-                                     :fields sequential?}]))
+                          [{:id (str "card__" card-id-2)
+                            :fields sequential?}])
           :cards [{:id link-card}]
           :databases [{:id (mt/id) :engine string?}]
           :dashboards [{:id link-dash}]}
@@ -4747,7 +4746,8 @@
   (testing "Don't throw an error if source card is deleted (#48461)"
     (mt/with-temp
       [:model/Card          {card-id-1 :id}    {:dataset_query (mt/mbql-query products)}
-       :model/Card          {card-id-2 :id}    {:dataset_query {:type     :query
+       :model/Card          {card-id-2 :id}    {:dataset_query {:database (mt/id)
+                                                                :type     :query
                                                                 :query    {:source-table (str "card__" card-id-1)}}}
        :model/Dashboard     {dashboard-id :id} {}
        :model/DashboardCard _                  {:card_id      card-id-2
@@ -4816,22 +4816,22 @@
             (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/params/%s/values" (:id dash) "_CATEGORY_NAME_"))))))
 
 (deftest ^:synchronized dashboard-query-metadata-cached-test
-  (let [original-admp   @#'lib.metadata.jvm/application-database-metadata-provider-factory
-        uncached-calls  (atom -1)
-        expected        [{:name "Some dashboard"}
-                         {:tables     [{} {}]
-                          :databases  [{}]
-                          :fields     []
-                          :cards      []
-                          :dashboards []}]]
+  (let [original-admp  @#'lib.metadata.jvm/application-database-metadata-provider-factory
+        uncached-calls (atom -1)
+        expected       [{:name "Some dashboard"}
+                        {:tables     [{} {}]
+                         :databases  [{}]
+                         :fields     []
+                         :cards      []
+                         :dashboards []}]]
     (mt/with-temp [:model/Dashboard     dash      {:name "Some dashboard"}
-                   :model/Card          card      {:name "Card attached to dashcard"
+                   :model/Card          card      {:name          "Card attached to dashcard"
                                                    :dataset_query {:database (mt/id)
                                                                    :type     :query
                                                                    :query    {:source-table (mt/id :categories)}}
-                                                   :type :model}
-                   :model/DashboardCard _         {:dashboard_id       (:id dash)
-                                                   :card_id            (:id card)}]
+                                                   :type          :model}
+                   :model/DashboardCard _         {:dashboard_id (:id dash)
+                                                   :card_id      (:id card)}]
       (testing "uncached request - get the baseline call count"
         (t2/with-call-count [call-count-fn]
           (is (=? expected

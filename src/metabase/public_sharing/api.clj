@@ -17,6 +17,7 @@
    [metabase.parameters.params :as params]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -46,7 +47,7 @@
 
 ;;; -------------------------------------------------- Public Cards --------------------------------------------------
 
-(defn combine-parameters-and-template-tags
+(mu/defn combine-parameters-and-template-tags :- ::queries.schema/card
   "Update `card.parameters` to include parameters from template-tags.
 
   On native queries parameters exists in 2 forms:
@@ -57,19 +58,18 @@
   However, since card.parameters is a recently added feature, there may be instances where a template-tag
   is not present in the parameters.
   This function ensures that all template-tags are converted to parameters and added to card.parameters."
-  [card]
+  [card :- ::queries.schema/card]
   (assoc card :parameters (qp.card/combined-parameters-and-template-tags card)))
 
-(defn- remove-card-non-public-columns
+(mu/defn- remove-card-non-public-columns :- ::queries.schema/card
   "Remove everyting from public `card` that shouldn't be visible to the general public."
-  [card]
+  [card :- ::queries.schema/card]
   ;; We need to check this to resolve params - we set `request/as-admin` there
   (if qp.perms/*param-values-query*
     card
     (mi/instance
      :model/Card
-     (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters :entity_id
-                                 [:dataset_query :type [:native :template-tags]]]))))
+     (select-keys card [:id :name :description :display :visualization_settings :parameters :entity_id :dataset_query]))))
 
 (defn public-card
   "Return a public Card matching key-value `conditions`, removing all columns that should not be visible to the general

@@ -4,6 +4,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.util.honey-sql-2 :as h2x]
@@ -99,8 +100,11 @@
   [query :- [:maybe :map]]
   (when (seq query)
     (let [query (lib-be/normalize-query query)]
-      {:database-id (:database query)
-       :table-id    (lib/source-table-id query)})))
+      (if-let [source-card-id (lib/source-card-id query)]
+        (let [card (lib.metadata/card query source-card-id)]
+          (merge {:table-id nil} (select-keys card [:database-id :table-id])))
+        {:database-id (:database query)
+         :table-id    (lib/source-table-id query)}))))
 
 (defn collect-card-ids
   "Return a sequence of `:source-card` ids and template tag `:card-id`s referenced in the MBQL `query`."

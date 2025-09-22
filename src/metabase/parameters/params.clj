@@ -21,6 +21,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
@@ -151,7 +152,7 @@
   "Get the Fields (as a map of Parameter ID -> Fields) that should be returned for hydrated `:param_fields` for a Card
   or Dashboard. These only contain the minimal amount of information necessary needed to power public or embedded
   parameter widgets."
-  [param-id->field-ids :- [:map-of ms/NonBlankString [:set ::lib.schema.id/field]]]
+  [param-id->field-ids :- [:maybe [:map-of ::lib.schema.parameter/id [:set ::lib.schema.id/field]]]]
   (let [field-ids       (into #{} cat (vals param-id->field-ids))
         field-id->field (when (seq field-ids)
                           (m/index-by :id (-> (t2/select Field:params-columns-only :id [:in field-ids])
@@ -351,18 +352,21 @@
 
   Mostly used for determining Fields referenced by Cards for purposes other than processing queries. Filters out
   `:field` clauses which use names."
-  [card :- [:maybe :map]]
+  [card #_:- #_[:maybe [:ref :metabase.queries.schema/card]]]
+  (when-not (mr/validate :metabase.queries.schema/card card)
+    (println (ex-info "NOCOMMIT" {:card card})))
   (some-> card :dataset_query not-empty lib-be/normalize-query lib/all-template-tags-id->field-ids))
 
 (methodical/defmethod t2/simple-hydrate [:model/Card :param_fields]
   "Add a `:param_fields` map (Field ID -> Field) for all of the Fields referenced by the parameters of a Card."
   [_model k card]
-  (let [param-fields (-> card card->template-tag-param-id->field-ids param-field-ids->fields)]
+  (let [param-fields (or (some-> card card->template-tag-param-id->field-ids param-field-ids->fields)
+                         {})]
     (assoc card k param-fields)))
 
 (mu/defn card->template-tag-field-ids :- [:maybe [:set {:min 1} ::lib.schema.id/field]]
   "Returns a set of all Field IDs referenced by template tags on this card.
 
   To get these IDs broken out by the Param ID that references them, use [[card->template-tag-param-id->field-ids]]."
-  [card]
+  [card :- [:maybe [:ref :metabase.queries.schema/card]]]
   (some-> card :dataset_query not-empty lib-be/normalize-query lib/all-template-tag-field-ids not-empty))

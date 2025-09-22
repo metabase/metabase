@@ -38,6 +38,7 @@
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.models.query :as query]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
@@ -373,15 +374,19 @@
 ;;; If this function moves you should update the comment that links to this one (#40013)
 ;;;
 ;;; TODO -- does this belong HERE or in the `parameters` module?
-(defn template-tag-parameters
+(mu/defn template-tag-parameters
   "Transforms native query's `template-tags` into `parameters`.
   An older style was to not include `:template-tags` onto cards as parameters. I think this is a mistake and they
   should always be there. Apparently lots of e2e tests are sloppy about this so this is included as a convenience."
-  [card]
-  (for [[_ {tag-type :type, widget-type :widget-type, :as tag}] (get-in card [:dataset_query :native :template-tags])
-        :when                         (and tag-type
-                                           (or (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
-                                               (and (= tag-type :dimension) widget-type (not= widget-type :none))))]
+  [card :- [:maybe ::queries.schema/card]]
+  (for [{tag-type :type, widget-type :widget-type, :as tag} (some-> card
+                                                                    :dataset_query
+                                                                    not-empty
+                                                                    lib-be/normalize-query
+                                                                    lib/all-template-tags)
+        :when                                               (and tag-type
+                                                                 (or (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
+                                                                     (and (= tag-type :dimension) widget-type (not= widget-type :none))))]
     {:id       (:id tag)
      :type     (or widget-type (cond (= tag-type :date)   :date/single
                                      (= tag-type :string) :string/=
@@ -395,7 +400,7 @@
      :default  (:default tag)
      :required (boolean (:required tag))}))
 
-(defn- check-field-filter-fields-are-from-correct-database
+(mu/defn- check-field-filter-fields-are-from-correct-database
   "Check that all native query Field filter parameters reference Fields belonging to the Database the query points
   against. This is done when saving a Card. The goal here is to prevent people from saving Cards with invalid queries
   -- it's better to error now then to error down the road in Query Processor land.
@@ -403,7 +408,7 @@
   The usual way a user gets into the situation of having a mismatch between the Database and Field Filters is by
   creating a native query in the Query Builder UI, adding parameters, and *then* changing the Database that the query
   targets. See https://github.com/metabase/metabase/issues/14145 for more details."
-  [{{query-db-id :database, :as query} :dataset_query, :as card}]
+  [{{query-db-id :database, :as query} :dataset_query, :as card} :- [:maybe ::queries.schema/card]]
   ;; for updates if `query` isn't being updated we don't need to validate anything.
   (when query
     (when-let [field-ids (not-empty (params/card->template-tag-field-ids card))]
@@ -589,7 +594,9 @@
 ;;; TODO (Cam 7/21/25) -- icky to have some of the before-update stuff live in the before-update method below and then
 ;;; some but not all of it live in this `pre-update` function... all of the before-update stuff should live in a single
 ;;; function. We should move it all here or move it all there. Weird to split it up between two places.
-(defn- pre-update [{id :id :as card} changes]
+(mu/defn- pre-update
+  [{id :id :as card} :- [:maybe ::queries.schema/card]
+   changes           :- [:maybe ::queries.schema/card]]
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
   ;; does that happen in the `PUT` endpoint? (#40013)
   (u/prog1 card
@@ -601,7 +608,7 @@
                                          :id (u/the-id id)))]
       ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
       ;; On-Demand DB Fields
-      (when (get-in changes [:dataset_query :native])
+      (when (some-> changes :dataset_query lib-be/normalize-query lib/native-only-query?)
         (let [old-param-field-ids (params/card->template-tag-field-ids old-card-info)
               new-param-field-ids (params/card->template-tag-field-ids changes)]
           (when (and (seq new-param-field-ids)

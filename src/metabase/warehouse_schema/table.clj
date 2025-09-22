@@ -2,6 +2,8 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
@@ -191,7 +193,7 @@
       (for [card readable-cards]
         ;; a native model can have columns with keys as semantic types only if a user configured them
         (let [trust-semantic-keys? (and (= (:type card) :model)
-                                        (= (-> card :dataset_query :type) :native))]
+                                        (some-> card :dataset_query not-empty lib-be/normalize-query lib/native-only-query?))]
           (-> card
               (card->virtual-table :include-database? include-database?
                                    :include-fields? true

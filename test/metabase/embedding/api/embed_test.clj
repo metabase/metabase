@@ -167,9 +167,9 @@
 (deftest it-should-be-possible-to-use-this-endpoint-successfully-if-all-the-conditions-are-met
   (with-embedding-enabled-and-new-secret-key!
     (with-temp-card [card {:enable_embedding true}]
-      (is (= successful-card-info
-             (dissoc-id-and-name
-              (client/client :get 200 (card-url card))))))))
+      (is (=? successful-card-info
+              (dissoc-id-and-name
+               (client/client :get 200 (card-url card))))))))
 
 (deftest we-should-fail-when-attempting-to-use-an-expired-token
   (with-embedding-enabled-and-new-secret-key!
