@@ -70,8 +70,7 @@ You can choose between the following file formats:
 
 - .csv
 - .xlsx
-- .json
-
+- 
 #### Use unformatted values in attachments
 
 If you check this box, Metabase will drop any visualization settings applied to the questions' results (e.g., date formatting) and send only the raw, unformatted results.
