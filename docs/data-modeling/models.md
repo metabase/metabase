@@ -31,25 +31,13 @@ The idea with models is to give other people a good "starting point table" that 
 
 ## Create a model
 
-First, search for models that already exist. If you can't find one that meets your needs, you can create a model:
-
-- [from scratch](#create-a-model-from-scratch), or
-- [from a saved question](#create-a-model-from-a-saved-question).
-
-Models you create are automatically [pinned to the current collection](../exploration-and-organization/collections.md#pinned-items).
-
-### Create a model from scratch
-
-1. In the upper right, click **New +** > **Model**.
-2. Choose either the query builder or a native query (if you want to use SQL). The advantage of using the query builder is that Metabase will be able to fill out some of the metadata for you; if you use SQL, you'll have to fill out that metadata manually.
-3. Select your data.
-4. Create and save your query.
-
-### Create a model from a saved question
+First, search for models that already exist. If you can't find one that meets your needs, you can create a model from a saved question:
 
 1. [Ask a question][question] using either the query builder or the SQL editor, or select an existing saved question that you want to convert to a model.
 2. Save the question.
 3. Click on the **...** > **Turn this into a model**.
+
+Models you create are automatically [pinned to the current collection](../exploration-and-organization/collections.md#pinned-items).
 
 ![Turn a saved question into a model](./images/turn-into-a-model.png)
 
