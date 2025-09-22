@@ -20,6 +20,7 @@ import { ListEmptyState } from "../../../components/ListEmptyState";
 import { TagList } from "../../../components/TagList";
 import { getJobUrl } from "../../../urls";
 import { parseTimestampWithTimezone } from "../../../utils";
+import { hasFilterParams } from "../utils";
 
 import S from "./JobList.module.css";
 
@@ -52,7 +53,10 @@ export function JobList({ params }: { params: JobListParams }) {
   }
 
   if (jobs.length === 0) {
-    return <ListEmptyState label={t`No jobs yet`} />;
+    const hasFilters = hasFilterParams(params);
+    return (
+      <ListEmptyState label={hasFilters ? t`No jobs found` : t`No jobs yet`} />
+    );
   }
 
   return (

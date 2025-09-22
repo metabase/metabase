@@ -9,8 +9,8 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     icon: "test_tube",
     actions: [
       {
-        title: t`Create an embed`,
-        description: t`Create an embed by using Embedded Analytics JS.`,
+        title: t`Embed in your code`,
+        description: t`Embed a dashboard, question, the query builder or the collection browser.`,
         to: "/embed-js?auth_method=user_session",
         variant: "outline",
       },

@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.test :as met]
    [metabase.notification.seed :as notification.seed]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -289,13 +290,20 @@
                    (mt/user-http-request :lucky :post 403 (str "ee/comment/" restricted-comment-id "/reaction")
                                          {:emoji "👍"})))))))))
 
-;; (deftest mention-entities-test
-;;   (testing "We can get users to mention"
-;;     (is (=? {:data   [{:id int? :common_name "Crowberto Corv" :model "user"}
-;;                       {:id int? :common_name "Lucky Pigeon" :model "user"}
-;;                       {:id int? :common_name "Rasta Toucan" :model "user"}]
-;;              :total  int?
-;;              :limit  50
-;;              :offset 0}
-;;             (-> (mt/user-http-request :rasta :get 200 "ee/comment/mentions" :limit 50)
-;;                 (update :data #(filter mt/test-user? %)))))))
+(deftest mention-entities-test
+  (testing "We can get users to mention"
+    (is (=? {:data   [{:id int? :common_name "Crowberto Corv" :model "user"}
+                      {:id int? :common_name "Lucky Pigeon" :model "user"}
+                      {:id int? :common_name "Rasta Toucan" :model "user"}]
+             :total  int?
+             :limit  50
+             :offset 0}
+            (-> (mt/user-http-request :rasta :get 200 "ee/comment/mentions" :limit 50)
+                (update :data #(filter mt/test-user? %))))))
+  (testing "Sandboxed users don't get to see other users"
+    (met/with-gtaps-for-user! :rasta {:gtaps {:venues {}}}
+      (is (=? {:data   [{:id int? :common_name "Rasta Toucan" :model "user"}]
+               :total  1
+               :limit  50
+               :offset 0}
+              (mt/user-http-request :rasta :get 200 "ee/comment/mentions" :limit 50))))))
