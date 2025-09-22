@@ -98,7 +98,7 @@
 
 (defn- session-data
   [jwt {{redirect :return_to} :params, :as request}]
-  (let [redirect-url (or redirect (URLEncoder/encode "/"))]
+  (let [redirect-url (or redirect "/")]
     (sso-utils/check-sso-redirect redirect-url)
     (let [jwt-data     (try
                          (jwt/unsign jwt (sso-settings/jwt-shared-secret)
