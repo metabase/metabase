@@ -20,6 +20,7 @@ export type NumberParameterType =
 export type DateParameterType =
   | "date/single"
   | "date/range"
+  | "date/extended-range"
   | "date/relative"
   | "date/month-year"
   | "date/quarter-year"

@@ -1,0 +1,264 @@
+.container {
+  min-width: 320px;
+  max-width: 800px;
+}
+
+.quarterSection {
+  margin-bottom: 24px;
+  padding: 16px;
+}
+
+.quarterTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mb-color-text-dark);
+  margin-bottom: 12px;
+}
+
+.dropdownRow {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.yearDropdown {
+  flex: 1;
+}
+
+.quarterDropdown {
+  flex: 1;
+}
+
+.yearSelect,
+.quarterSelect {
+  width: 100%;
+}
+
+.manualDateSection {
+  margin-bottom: 24px;
+}
+
+.manualDateTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mb-color-text-dark);
+  margin-bottom: 12px;
+}
+
+.manualDateRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.dateInput {
+  flex: 1;
+}
+
+.FlexDateInput {
+  flex: 1;
+}
+
+.dateSeparator {
+  font-size: 14px;
+  color: var(--mb-color-text-medium);
+  padding: 0 8px;
+}
+
+.periodSection {
+  margin-bottom: 24px;
+  padding: 0 16px;
+}
+
+.periodTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mb-color-text-dark);
+  margin-bottom: 12px;
+}
+
+.periodGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.periodOption {
+  padding: 8px 12px;
+  border: 1px solid var(--mb-color-border);
+  border-radius: 6px;
+  background: var(--mb-color-bg-white);
+  cursor: pointer;
+  text-align: center;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.periodOption:hover {
+  border-color: var(--mb-color-brand);
+  background: var(--mb-color-bg-light);
+}
+
+.periodOption.selected {
+  border-color: var(--mb-color-brand);
+  background: var(--mb-color-brand);
+  color: white;
+}
+
+.periodOption.selected:hover {
+  background: var(--mb-color-brand-dark);
+}
+
+.calendarSection {
+  margin-bottom: 24px;
+  padding: 0 16px;
+}
+
+.calendarTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mb-color-text-dark);
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dateRangeInfo {
+  font-size: 12px;
+  color: var(--mb-color-text-medium);
+  font-weight: normal;
+}
+
+.calendarGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.monthCalendar {
+  border: 1px solid var(--mb-color-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.monthHeader {
+  background: var(--mb-color-bg-light);
+  padding: 8px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mb-color-text-dark);
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.weekdayHeader {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: var(--mb-color-bg-medium);
+}
+
+.weekday {
+  padding: 4px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mb-color-text-medium);
+}
+
+.calendarDays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.day {
+  padding: 6px;
+  text-align: center;
+  font-size: 12px;
+  cursor: pointer;
+  border: none;
+  background: var(--mb-color-bg-white);
+  color: var(--mb-color-text-dark);
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.day:hover {
+  background: var(--mb-color-bg-light);
+}
+
+.day.otherMonth {
+  color: var(--mb-color-text-light);
+}
+
+.day.selected {
+  background: var(--mb-color-brand);
+  color: white;
+}
+
+.day.inRange {
+  background: var(--mb-color-brand-light);
+  color: var(--mb-color-brand-dark);
+}
+
+.day.rangeStart {
+  background: var(--mb-color-brand);
+  color: white;
+  border-radius: 4px 0 0 4px;
+}
+
+.day.rangeEnd {
+  background: var(--mb-color-brand);
+  color: white;
+  border-radius: 0 4px 4px 0;
+}
+
+.day.rangeStart.rangeEnd {
+  border-radius: 4px;
+}
+
+.day.today {
+  font-weight: 600;
+}
+
+.day.today::after {
+  content: "";
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  background: var(--mb-color-brand);
+  border-radius: 50%;
+}
+
+.day.selected.today::after {
+  background: white;
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--mb-color-border);
+}
+
+.backButton {
+  color: var(--mb-color-text-medium);
+}
+
+.submitButton {
+  background: var(--mb-color-brand);
+  color: white;
+}
+
+.submitButton:disabled {
+  background: var(--mb-color-bg-medium);
+  color: var(--mb-color-text-light);
+  cursor: not-allowed;
+}
