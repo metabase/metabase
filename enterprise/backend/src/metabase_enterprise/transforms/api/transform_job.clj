@@ -28,7 +28,9 @@
                                                                    [:name ms/NonBlankString]
                                                                    [:description {:optional true} [:maybe ms/NonBlankString]]
                                                                    [:schedule ms/NonBlankString]
-                                                                   [:ui_display_type {:optional true, :default "cron/raw"} ms/NonBlankString]
+                                                                   [:ui_display_type
+                                                                    {:optional true, :default "cron/raw"}
+                                                                    [:maybe [:enum "cron/raw" "cron/builder"]]]
                                                                    [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Creating transform job:" name "with schedule:" schedule)
   (api/check-superuser)
@@ -67,7 +69,9 @@
                                                            [:name {:optional true} ms/NonBlankString]
                                                            [:description {:optional true} [:maybe ms/NonBlankString]]
                                                            [:schedule {:optional true} ms/NonBlankString]
-                                                           [:ui_display_type {:optional true} ms/NonBlankString]
+                                                           [:ui_display_type
+                                                            {:optional true, :default "cron/raw"}
+                                                            [:maybe [:enum "cron/raw" "cron/builder"]]]
                                                            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Updating transform job" job-id)
   (api/check-superuser)
