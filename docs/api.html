@@ -14628,6 +14628,62 @@ redirect_from:
         "tags" : [ "/api/ee/metabot-tools" ]
       }
     },
+    "/api/ee/metabot-v3/agent-streaming" : {
+      "post" : {
+        "summary" : "POST /api/ee/metabot-v3/agent-streaming",
+        "description" : "Send a chat message to the LLM via the AI Proxy.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "context" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.context.context"
+                  },
+                  "conversation_id" : {
+                    "description" : "value must be a valid UUID.",
+                    "type" : "string",
+                    "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "history" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.client.schema.messages"
+                  },
+                  "message" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "metabot_id" : {
+                    "type" : "string"
+                  },
+                  "profile_id" : {
+                    "type" : "string"
+                  },
+                  "state" : {
+                    "type" : "object",
+                    "properties" : { }
+                  }
+                },
+                "required" : [ "message", "context", "conversation_id", "state" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/metabot-v3" ]
+      }
+    },
     "/api/ee/metabot-v3/document/generate-content" : {
       "post" : {
         "summary" : "POST /api/ee/metabot-v3/document/generate-content",
@@ -14973,62 +15029,6 @@ redirect_from:
           }
         },
         "tags" : [ "/api/ee/metabot-v3/metabot" ]
-      }
-    },
-    "/api/ee/metabot-v3/v2/agent-streaming" : {
-      "post" : {
-        "summary" : "POST /api/ee/metabot-v3/v2/agent-streaming",
-        "description" : "Send a chat message to the LLM via the AI Proxy.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "context" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.context.context"
-                  },
-                  "conversation_id" : {
-                    "description" : "value must be a valid UUID.",
-                    "type" : "string",
-                    "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-                  },
-                  "history" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.client.schema.messages"
-                  },
-                  "message" : {
-                    "type" : "string",
-                    "minLength" : 1
-                  },
-                  "metabot_id" : {
-                    "type" : "string"
-                  },
-                  "profile_id" : {
-                    "type" : "string"
-                  },
-                  "state" : {
-                    "type" : "object",
-                    "properties" : { }
-                  }
-                },
-                "required" : [ "message", "context", "conversation_id", "state" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/metabot-v3" ]
       }
     },
     "/api/ee/permission_debug/" : {

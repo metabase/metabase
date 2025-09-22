@@ -54,6 +54,18 @@ H.describeWithSnowplowEE("documents", () => {
     H.expectUnstructuredSnowplowEvent({ event: "document_created" });
     cy.wrap(getDocumentStub).should("not.have.been.called");
 
+    cy.findByLabelText("More options").click();
+    H.popover().findByText("Bookmark").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "bookmark_added",
+      event_detail: "document",
+      triggered_from: "document_header",
+    });
+
+    // Delete the bookmark because we need to bookmark the doc again in the test
+    cy.request("DELETE", "/api/bookmark/document/1");
+
     H.appBar()
       .findByRole("link", { name: /First collection/ })
       .click();
@@ -80,6 +92,11 @@ H.describeWithSnowplowEE("documents", () => {
     H.openCollectionItemMenu("Test Document");
 
     H.popover().findByText("Bookmark").click();
+    H.expectUnstructuredSnowplowEvent({
+      event: "bookmark_added",
+      event_detail: "document",
+      triggered_from: "collection_list",
+    });
 
     H.navigationSidebar()
       .findByRole("tab", { name: "Bookmarks" })
