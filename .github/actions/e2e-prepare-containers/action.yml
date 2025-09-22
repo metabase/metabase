@@ -19,10 +19,6 @@ inputs:
     description: Postgres container
     required: true
     default: false
-  python-runner:
-    description: Python transform runner
-    required: false
-    default: false
   mysql:
     description: MySQL container
     required: true
@@ -66,7 +62,6 @@ runs:
           $([ ${{ inputs.openldap }} = true ] && echo "ldap") \
           $([ ${{ inputs.webhook }} = true ] && echo "webhook-tester") \
           $([ ${{ inputs.snowplow }} = true ] && echo "snowplow-micro") \
-          $([ ${{ inputs.python-runner }} = true ] && echo "python-runner") \
           -d
 
         if ${{ inputs.maildev }}; then
