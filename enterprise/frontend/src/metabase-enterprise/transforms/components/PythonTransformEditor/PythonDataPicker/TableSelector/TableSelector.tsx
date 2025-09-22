@@ -90,7 +90,11 @@ export function TableSelector({
         </Button>
 
         <Tooltip label={t`Remove this table`}>
-          <ActionIcon onClick={onRemove} pr="sm">
+          <ActionIcon
+            onClick={onRemove}
+            pr="sm"
+            aria-label={t`Remove this table`}
+          >
             <Icon name="close" c="text-dark" />
           </ActionIcon>
         </Tooltip>
