@@ -798,7 +798,8 @@
   (testing "GET /api/table/card__:id/query_metadata for deleted cards (#48461)"
     (mt/with-temp
       [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)}
-       :model/Card {card-id-2 :id} {:dataset_query {:type     :query
+       :model/Card {card-id-2 :id} {:dataset_query {:database (mt/id)
+                                                    :type     :query
                                                     :query    {:source-table (str "card__" card-id-1)}}}]
       (letfn [(query-metadata [expected-status card-id]
                 (->> (format "table/card__%d/query_metadata" card-id)
@@ -807,9 +808,9 @@
          card-id-1
          #(testing "Before delete"
             (doseq [card-id [card-id-1 card-id-2]]
-              (is (=? {:db_id             (mt/id)
-                       :id                (str "card__" card-id)
-                       :type              "question"}
+              (is (=? {:db_id (mt/id)
+                       :id    (str "card__" card-id)
+                       :type  "question"}
                       (query-metadata 200 card-id)))))
          #(testing "After delete"
             (doseq [card-id [card-id-1 card-id-2]]
