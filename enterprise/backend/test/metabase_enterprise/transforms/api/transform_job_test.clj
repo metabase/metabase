@@ -162,7 +162,7 @@
   (testing "PUT /api/ee/transform-job/:id"
     (mt/with-premium-features #{:transforms}
       (testing "should be able to remove all tags from a job"
-        (mt/with-temp [:model/TransformTag tag {:name "tag-1"}
+        (mt/with-temp [:model/TransformTag tag {}
                        :model/TransformJob job {}
                        :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}]
           (let [response (mt/user-http-request :crowberto :put 200 (str "ee/transform-job/" (:id job))
