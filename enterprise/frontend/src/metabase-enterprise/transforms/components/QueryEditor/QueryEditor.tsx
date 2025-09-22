@@ -15,13 +15,18 @@ import { useQueryState } from "../../hooks/use-query-state";
 import { EditorBody } from "./EditorBody";
 import { EditorHeader } from "./EditorHeader";
 import { EditorSidebar } from "./EditorSidebar";
+import { EditorValidationCard } from "./EditorValidationCard";
 import { EditorVisualization } from "./EditorVisualization";
 import {
   NativeQuerySidebar,
   NativeQuerySidebarToggle,
 } from "./NativeQuerySidebar";
 import S from "./QueryEditor.module.css";
-import { useInsertSnippetHandler, useSelectedText } from "./util";
+import {
+  getValidationResult,
+  useInsertSnippetHandler,
+  useSelectedText,
+} from "./utils";
 
 type QueryEditorProps = {
   initialQuery: DatasetQuery;
@@ -49,9 +54,9 @@ export function QueryEditor({
     runQuery,
     cancelQuery,
   } = useQueryResults(question);
-  const canSave = Lib.canSave(question.query(), question.type());
   const { isNative } = Lib.queryDisplayInfo(question.query());
   const [isShowingNativeQueryPreview, toggleNativeQueryPreview] = useToggle();
+  const validationResult = getValidationResult(question.query());
 
   const handleChange = async (newQuestion: Question) => {
     setQuestion(newQuestion);
@@ -117,6 +122,7 @@ export function QueryEditor({
   return (
     <Stack
       className={S.root}
+      pos="relative"
       w="100%"
       h="100%"
       bg="bg-white"
@@ -124,9 +130,10 @@ export function QueryEditor({
       gap={0}
     >
       <EditorHeader
+        validationResult={validationResult}
         isNew={isNew}
         isSaving={isSaving}
-        canSave={canSave && (isNew || isQueryDirty)}
+        isQueryDirty={isQueryDirty}
         onSave={handleSave}
         onCancel={onCancel}
       />
@@ -192,6 +199,7 @@ export function QueryEditor({
           onInsertSnippet={handleInsertSnippet}
         />
       </Flex>
+      <EditorValidationCard validationResult={validationResult} />
     </Stack>
   );
 }
