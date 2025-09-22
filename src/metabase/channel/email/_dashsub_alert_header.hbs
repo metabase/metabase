@@ -31,6 +31,45 @@
          text-decoration: underline;
       }
 
+      {{!-- Scoped reset for injected HTML blocks (e.g., rich-text comments) --}}
+      .comment-html {
+        font-size: 14px;
+        line-height: 20px;
+        color: inherit;
+      }
+      .comment-html p,
+      .comment-html h1,
+      .comment-html h2,
+      .comment-html h3,
+      .comment-html h4,
+      .comment-html h5,
+      .comment-html h6 {
+        margin: 0;
+        padding: 0;
+      }
+      .comment-html ul,
+      .comment-html ol {
+        margin: 0;
+        padding-left: 20px;
+      }
+      .comment-html li {
+        margin: 0;
+        padding: 0;
+      }
+      .comment-html img {
+        max-width: 100%;
+        height: auto;
+      }
+
+      .comment-html pre {
+        margin: 0;
+      }
+
+      .comment-html blockquote {
+        margin-top: 0;
+        margin-bottom: 0;
+      }
+
       {{!-- Formatting for header elements of Markdown cards --}}
       h1, h2, h3, h4, h5, h6 {
         color: {{payload.style.color_text_dark}};
