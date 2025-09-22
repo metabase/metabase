@@ -187,6 +187,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       "should be possible to create and run a Python transform",
       { tags: ["@transforms-python"] },
       () => {
+        setPythonRunnerSettings();
         cy.log("create a new transform");
         visitTransformListPage();
         getTransformListPage().button("Create a transform").click();
@@ -2638,4 +2639,20 @@ function createPythonLibrary(path: string, source: string) {
   cy.request("PUT", `/api/ee/transforms-python/library/${path}`, {
     source,
   });
+}
+
+function setPythonRunnerSettings() {
+  H.updateSetting("python-runner-url", "http://localhost:5001");
+  H.updateSetting("python-runner-api-token", "dev-token-12345");
+  H.updateSetting("python-storage-s-3-endpoint", "http://localhost:4566");
+  H.updateSetting("python-storage-s-3-region", "us-east-1");
+  H.updateSetting("python-storage-s-3-bucket", "metabase-python-runner");
+  H.updateSetting("python-storage-s-3-prefix", "test-prefix");
+  H.updateSetting("python-storage-s-3-access-key", "test");
+  H.updateSetting("python-storage-s-3-secret-key", "test");
+  H.updateSetting(
+    "python-storage-s-3-container-endpoint",
+    "http://localhost:4566",
+  );
+  H.updateSetting("python-storage-s-3-path-style-access", true);
 }
