@@ -41,7 +41,7 @@ export const DatabaseEngineSelect = ({
       data={options}
       disabled={disabled}
       onChange={handleChange}
-      mb="md"
+      mb="xl"
       searchable
       leftSection={<DatabaseIcon engineKey={engineKey} />}
       renderOption={renderSelectOption}

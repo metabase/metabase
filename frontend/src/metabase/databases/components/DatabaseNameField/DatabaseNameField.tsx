@@ -37,7 +37,7 @@ export const DatabaseNameField = ({
           <Icon name="info" />
         </Tooltip>
       }
-      mb="md"
+      mb="xl"
       {...autoFocusProps}
       {...props}
       labelProps={{

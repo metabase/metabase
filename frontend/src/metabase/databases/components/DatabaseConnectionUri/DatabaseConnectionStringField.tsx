@@ -133,7 +133,7 @@ export function DatabaseConnectionStringField({
       onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => {
         setConnectionString(event.target.value);
       }}
-      mb="md"
+      mb="xl"
       placeholder={placeholder}
       name="connection-string"
       labelProps={{

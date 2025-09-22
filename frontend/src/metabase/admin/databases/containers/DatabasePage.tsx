@@ -66,8 +66,8 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
         <Box
           w="100%"
           maw={{
-            base: `calc(28.5rem + 2rem)`,
-            md: `calc(28.5rem + 4rem)`,
+            base: `calc(48rem + 2rem)`,
+            md: `calc(46rem + 4rem)`,
           }}
           mx="auto"
           p={{
