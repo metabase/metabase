@@ -59,6 +59,7 @@
  "net.thisptr"                 {"jackson-jq" {:resource "apache2_0.txt"}}
  "org.antlr"                   {"antlr-runtime"  {:resource "BSD.txt"}
                                 "antlr4-runtime" {:resource "BSD.txt"}}
+ "org.eclipse.jgit"            {"org.eclipse.jgit" {:resource "BSD.txt"}}
  "org.eclipse.jetty"           {"jetty-webapp" {:resource "EPL.txt"}}
  "org.eclipse.jetty.toolchain" {"jetty-jakarta-servlet-api" {:resource "EPL.txt"}}
  "org.eclipse.jetty.ee9.websocket" {"jetty-ee9-websocket-jetty-api" {:resource "EPL.txt"}
