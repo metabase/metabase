@@ -99,14 +99,14 @@
                                    deps.graph/transitive-dependents
                                    :card))))))))))
 
-(defn- sql-card [sql]
-  {:name                   "SQL card"
-   :database_id            (mt/id)
-   :display                :table
-   :query_type             :query
-   :type                   :question
-   :dataset_query          (mt/native-query {:query sql})
-   :visualization_settings {}})
+#_(defn- sql-card [sql]
+    {:name                   "SQL card"
+     :database_id            (mt/id)
+     :display                :table
+     :query_type             :query
+     :type                   :question
+     :dataset_query          (mt/native-query {:query sql})
+     :visualization_settings {}})
 
 ;; FIXME: This should work, I think? But the deps are not actually getting created.
 #_(deftest ^:sequential card-deps-graph-test-2-native-card-chain

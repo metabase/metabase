@@ -552,6 +552,11 @@
            settings
            util}}
 
+  graph
+  {:team "Querying"
+   :api  #{metabase.graph.core}
+   :uses #{}}
+
   indexed-entities
   {:team "UX West"
    :api  #{metabase.indexed-entities.api
@@ -1705,6 +1710,7 @@
            collections
            driver
            events
+           graph
            lib
            lib-be
            models
