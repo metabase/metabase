@@ -112,9 +112,36 @@ H.describeWithSnowplowEE("documents", () => {
 
     H.openCollectionItemMenu("Test Document");
 
-    H.popover().findByText("Move to trash").click();
+    H.popover().findByText("Duplicate").click();
+    cy.findByRole("heading", { name: 'Duplicate "Test Document"' }).should(
+      "exist",
+    );
+
+    cy.findByTestId("collection-picker-button").click();
+    H.entityPickerModalTab("Collections").click();
+    H.entityPickerModalItem(0, /Personal Collection/).click();
+    H.entityPickerModal().findByRole("button", { name: "Select" }).click();
+    H.modal().findByRole("button", { name: "Copy" }).click();
+    H.openNavigationSidebar();
+    H.navigationSidebar().findByText("Your personal collection").click();
+
+    cy.findByTestId("collection-table")
+      .findByText("Test Document - Duplicate")
+      .click();
+
+    cy.findByRole("textbox", { name: "Document Title" }).should(
+      "have.value",
+      "Test Document - Duplicate",
+    );
+
+    H.documentContent().should("contain.text", "This is a paragraph");
 
     H.openNavigationSidebar();
+    H.navigationSidebar().findByText("Our analytics").click();
+
+    H.openCollectionItemMenu("Test Document");
+
+    H.popover().findByText("Move to trash").click();
 
     // Force the click since this is hidden behind a toast notification
     H.navigationSidebar().findByText("Trash").click({ force: true });
