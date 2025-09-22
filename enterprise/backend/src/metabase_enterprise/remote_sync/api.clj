@@ -26,7 +26,8 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [branch]} :- [:map [:branch {:optional true} ms/NonBlankString]]]
+   {:keys [branch]} :- [:map [:branch {:optional true} ms/NonBlankString]
+                        [:collection_id {:optional true} pos-int?]]]
   (api/check-superuser)
   (when-not (settings/remote-sync-enabled)
     (throw (ex-info "Git sync is paused. Please resume it to perform import operations."
@@ -75,18 +76,18 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [message branch collection force-sync]}] :- [:map
-                                                       [:message {:optional true} ms/NonBlankString]
-                                                       [:branch {:optional true} ms/NonBlankString]
-                                                       [:collection {:optional true} pos-int?]
-                                                       [:force-sync {:optional true} :boolean]]
+   {:keys [message branch collection_id force-sync]}] :- [:map
+                                                          [:message {:optional true} ms/NonBlankString]
+                                                          [:branch {:optional true} ms/NonBlankString]
+                                                          [:collection_id {:optional true} pos-int?]
+                                                          [:force-sync {:optional true} :boolean]]
   (api/check-superuser)
   (when-not (settings/remote-sync-enabled)
     (throw (ex-info "Git sync is paused. Please resume it to perform export operations."
                     {:status-code 400})))
   (let [result (impl/export! (or branch (settings/remote-sync-branch))
                              (or message "Exported from Metabase")
-                             (if (some? collection) [(t2/select-one-fn :entity_id [:model/Collection :entity_id] :id collection)] nil))]
+                             (if (some? collection_id) [(t2/select-one-fn :entity_id [:model/Collection :entity_id] :id collection_id)] nil))]
     (case (:status result)
       :success "Success"
 

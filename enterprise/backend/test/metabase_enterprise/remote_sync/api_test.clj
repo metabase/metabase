@@ -138,7 +138,7 @@
             (with-redefs [source/source-from-settings (constantly mock-source)]
               (is (= "Success"
                      (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export"
-                                           {:collection coll-id}))))))))
+                                           {:collection_id coll-id}))))))))
 
     (testing "requires superuser permissions"
       (mt/with-temporary-setting-values [remote-sync-enabled true]
