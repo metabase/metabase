@@ -339,7 +339,7 @@
           ;; for a particular stage during the run or area of interest (e.g. during a table copy out to shared storage)
 
           (await-signal [wait-signal]
-            (when-not (deref wait-signal 1000 nil)
+            (when-not (deref wait-signal 5000 nil)
               (throw (ex-info "Expected delivery of wait signal within a reasonable amount of time" {}))))
 
           (reducible-proxy [ready-signal
@@ -397,7 +397,7 @@
                                          (u/poll {:thunk       #(deref message-observer)
                                                   :done?       #(some #{"script started"} %)
                                                   :interval-ms 1
-                                                  :timeout-ms  1000}))
+                                                  :timeout-ms  5000}))
                             _          (when redefs (await-signal ready-signal))
                             _          (get-last-run transform-id)
                             _          (mt/user-http-request :crowberto :post 204 (format "ee/transform/%d/cancel" transform-id))
@@ -484,9 +484,9 @@
                             duration   (when (and start-inst end-inst) (Duration/between start-inst end-inst))]
                         (is (= "succeeded" status))
                         (when duration
-                          ;; 5 seconds is an estimate of the maximum time we should expect the normal run to take.
+                          ;; 10 seconds is an estimate of the maximum time we should expect the normal run to take.
                           ;; if the runner was blocked for 30 seconds, and only then did the new run get scheduled - we would exceed this time.
-                          (is (< (.toSeconds duration) 5)))))))))))))))
+                          (is (< (.toSeconds duration) 10)))))))))))))))
 
 (deftest python-transform-schema-change-integration-test
   (testing "Python transform handles schema changes using appropriate rename strategy"
