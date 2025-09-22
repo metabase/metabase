@@ -112,13 +112,15 @@
 
 (defn- stats-for-token-request
   []
+  ;; NOTE: beware, if you use `defenterprise` here which uses any other `:feature` other than `:none`, it will
+  ;; recursively trigger token check and will die
   (let [users                     (premium-features.settings/active-users-count)
         ext-users                 (internal-stats/external-users-count)
         embedding-dashboard-count (internal-stats/embedding-dashboard-count)
         embedding-question-count  (internal-stats/embedding-question-count)
         stats                     (merge (internal-stats/query-execution-last-utc-day)
                                          (embedding-settings embedding-dashboard-count embedding-question-count)
-                                         #_(metabot-stats)
+                                         (metabot-stats)
                                          {:users                     users
                                           :embedding-dashboard-count embedding-dashboard-count
                                           :embedding-question-count  embedding-question-count
@@ -282,12 +284,18 @@
            :status        "invalid"
            :error-details (trs "Token should be a valid 64 hexadecimal character token or an airgap token.")})))
 
+(def ^:dynamic *token-check-happening* "Var to prevent recursive calls to `fetch-token-status`" false)
+
 (let [lock (Object.)]
   (defn- fetch-token-status
     "Locked version of `fetch-token-status*` allowing one request at a time."
     [token]
+    (when *token-check-happening*
+      (throw (ex-info "Token check is being called recursively, there is a good chance some `defenterprise` is causing this"
+                      {:pass-thru true})))
     (locking lock
-      (fetch-token-status* token))))
+      (binding [*token-check-happening* true]
+        (fetch-token-status* token)))))
 
 (declare token-valid-now?)
 
@@ -354,6 +362,8 @@
       (or (some-> (premium-features.settings/premium-embedding-token) valid-token->features)
           #{})
       (catch Throwable e
+        (when (:pass-thru (ex-data e))
+          (throw e))
         (cached-logger (premium-features.settings/premium-embedding-token) e)
         #{}))))
 

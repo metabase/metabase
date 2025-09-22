@@ -76,6 +76,25 @@ export function RunStatus({
           {errorInfo ?? runInfo}
         </Group>
       );
+    case "canceling":
+      return (
+        <Group gap="sm" data-testid="run-status">
+          <Icon c="text-secondary" name="close" />
+          <Box>{t`Canceling…`}</Box>
+        </Group>
+      );
+    case "canceled":
+      return (
+        <Group gap="sm" data-testid="run-status">
+          <Icon c="text-secondary" name="close" />
+          <Box>
+            {endTimeText
+              ? t`Last run was canceled ${endTimeText}.`
+              : t`Last run was canceled.`}
+          </Box>
+          {runInfo}
+        </Group>
+      );
     case "timeout":
       return (
         <Group gap={0}>

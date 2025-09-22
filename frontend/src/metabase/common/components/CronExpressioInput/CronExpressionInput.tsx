@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { jt, msgid, ngettext, t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
@@ -22,7 +22,7 @@ type CronExpressionInputProps = Omit<FlexProps, "onChange"> & {
   value: string;
   onChange: (value: string) => void;
   onBlurChange: (value: string) => void;
-  getExplainMessage?: (cronExplanation: string) => ReactNode;
+  getExplainMessage?: (cronExplanation: string) => string;
 };
 
 export function CronExpressionInput({
@@ -137,7 +137,7 @@ function CronFormatTooltip() {
 
 interface ScheduleExplanationProps {
   cronExpression: string;
-  getExplainMessage: (cronExplanation: string) => ReactNode;
+  getExplainMessage: (cronExplanation: string) => string;
 }
 
 function CustomScheduleExplainer({
@@ -154,11 +154,5 @@ function CustomScheduleExplainer({
     return null;
   }
 
-  const message = getExplainMessage(explanation);
-
-  if (typeof message === "string") {
-    return <Text {...props}>{getExplainMessage(explanation)}</Text>;
-  }
-
-  return message;
+  return <Text {...props}>{getExplainMessage(explanation)}</Text>;
 }

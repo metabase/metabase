@@ -87,6 +87,67 @@ jobs:
       name: Flaky
       tags: "@flaky"
 
+  collect-timings:
+    name: Collect E2E Timings
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    needs: e2e-tests
+    if: always() && !cancelled() && github.ref == 'refs/heads/master'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github
+            e2e/support
+          sparse-checkout-cone-mode: false
+
+      - name: Download all timing artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: timing-data-*
+          path: timing-files
+          merge-multiple: false
+        continue-on-error: true
+
+      - name: Merge split timings
+        id: merge
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const glob = require('glob');
+
+            const chunkFiles = glob.sync('timing-files/*/chunkTimings.json');
+
+            const specs = new Map();
+            chunkFiles.forEach(file => {
+              const { durations = [] } = JSON.parse(fs.readFileSync(file, 'utf8'));
+              durations.forEach(({ spec, duration }) => specs.set(spec, duration));
+            });
+
+            if (specs.size === 0) {
+              throw new Error('No timing data found - no specs had timing changes');
+            }
+
+            const outputPath = 'e2e/support/runTimings.json';
+            fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+
+            const runTimings = {
+              durations: [...specs].map(([spec, duration]) => ({ spec, duration }))
+            };
+
+            fs.writeFileSync(outputPath, JSON.stringify(runTimings, null, 2));
+            console.log(`Merged timing data for ${specs.size} specs`);
+
+      - name: Upload merged timing files
+        if: steps.merge.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: merged-e2e-timings
+          path: e2e/support/runTimings.json
+          retention-days: 7
+
   e2e-tests-result:
     needs:
       - e2e-tests

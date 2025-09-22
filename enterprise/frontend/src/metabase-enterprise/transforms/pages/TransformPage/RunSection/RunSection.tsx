@@ -1,13 +1,18 @@
+import { useDisclosure } from "@mantine/hooks";
 import { Link } from "react-router";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { isResourceNotFoundError } from "metabase/lib/errors";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Anchor, Box, Divider, Group, Stack } from "metabase/ui";
 import {
+  useCancelCurrentTransformRunMutation,
   useRunTransformMutation,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import { trackTranformTriggerManualRun } from "metabase-enterprise/transforms/analytics";
+import { trackTransformTriggerManualRun } from "metabase-enterprise/transforms/analytics";
 import type { Transform, TransformTagId } from "metabase-types/api";
 
 import { RunButton } from "../../../components/RunButton";
@@ -25,6 +30,7 @@ export function RunSection({ transform }: RunSectionProps) {
     <SplitSection
       label={t`Run this transform`}
       description={t`This transform will be run whenever the jobs it belongs to are scheduled.`}
+      data-testid="run-section"
     >
       <Group p="lg" justify="space-between">
         <RunStatusSection transform={transform} />
@@ -49,20 +55,33 @@ type RunStatusSectionProps = {
 function RunStatusSection({ transform }: RunStatusSectionProps) {
   const { id, last_run } = transform;
 
+  const status = last_run?.status;
+  const previousStatus = usePrevious(status);
+
+  const runExtra = status === "succeeded" && previousStatus === "canceling" && (
+    <Box
+      c="text-light"
+      ml="lg"
+    >{t`This run succeeded before it had a chance to cancel.`}</Box>
+  );
+
   return (
-    <RunStatus
-      run={last_run ?? null}
-      neverRunMessage={t`This transform hasn’t been run before.`}
-      runInfo={
-        <Anchor
-          key="link"
-          component={Link}
-          to={getRunListUrl({ transformIds: [id] })}
-        >
-          {t`See all runs`}
-        </Anchor>
-      }
-    />
+    <Stack gap={0}>
+      <RunStatus
+        run={last_run ?? null}
+        neverRunMessage={t`This transform hasn’t been run before.`}
+        runInfo={
+          <Anchor
+            key="link"
+            component={Link}
+            to={getRunListUrl({ transformIds: [id] })}
+          >
+            {t`See all runs`}
+          </Anchor>
+        }
+      />
+      {runExtra}
+    </Stack>
   );
 }
 
@@ -72,22 +91,51 @@ type RunButtonSectionProps = {
 
 function RunButtonSection({ transform }: RunButtonSectionProps) {
   const [runTransform] = useRunTransformMutation();
+  const [cancelTransform] = useCancelCurrentTransformRunMutation();
   const { sendErrorToast } = useMetadataToasts();
+  const [
+    isConfirmCancellationModalOpen,
+    { close: closeConfirmModal, open: openConfirmModal },
+  ] = useDisclosure(false);
 
   const handleRun = async () => {
-    trackTranformTriggerManualRun({
+    trackTransformTriggerManualRun({
       transformId: transform.id,
       triggeredFrom: "transform-page",
     });
-
     const { error } = await runTransform(transform.id);
     if (error) {
       sendErrorToast(t`Failed to run transform`);
     }
-    return { error };
   };
 
-  return <RunButton run={transform.last_run} onRun={handleRun} />;
+  const handleCancel = async () => {
+    const { error } = await cancelTransform(transform.id);
+    if (error && !isResourceNotFoundError(error)) {
+      sendErrorToast(t`Failed to cancel transform`);
+    }
+  };
+
+  return (
+    <>
+      <RunButton
+        allowCancellation
+        run={transform.last_run}
+        onRun={handleRun}
+        onCancel={openConfirmModal}
+      />
+      <ConfirmModal
+        title={t`Cancel this run?`}
+        opened={isConfirmCancellationModalOpen}
+        onClose={closeConfirmModal}
+        onConfirm={() => {
+          void handleCancel();
+          closeConfirmModal();
+        }}
+        closeButtonText={t`No`}
+      />
+    </>
+  );
 }
 
 type TagSectionProps = {
