@@ -8,7 +8,7 @@ import { getDefaultEmbeddingParams } from "metabase/public/components/EmbedModal
 import { getHasSettingsChanges } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-has-settings-changes";
 import { getStaticEmbedSetupPublishHandlers } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-static-embed-setup-publish-handlers";
 import { Stack } from "metabase/ui";
-import { useEmbeddingParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/hooks/use-embedding-paramers";
+import { useStaticEmbeddingParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/hooks/use-static-embedding-paramers";
 import { useSdkIframeEmbedSetupContext } from "metabase-enterprise/embedding_iframe_sdk_setup/context";
 
 import { SdkIframeEmbedSetupContent } from "./SdkIframeEmbedSetup";
@@ -25,7 +25,7 @@ export const SdkIframeStaticEmbedSetupInner = ({
   const { availableParameters: resourceParameters, isLoadingParameters } =
     useSdkIframeEmbedSetupContext();
   const { buildEmbeddedParameters, setEmbeddingParameters } =
-    useEmbeddingParameters();
+    useStaticEmbeddingParameters();
 
   const initialEmbeddingParameters = getDefaultEmbeddingParams(
     resource,
