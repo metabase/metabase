@@ -24,6 +24,8 @@ export interface ParametersSettingsProps {
   resourceType: EmbedResourceType;
   resourceParameters: EmbedResourceParameter[];
 
+  allowEditable: boolean;
+
   embeddingParams: EmbeddingParameters;
   lockedParameters: EmbedResourceParameter[];
   parameterValues: EmbeddingParametersValues;
@@ -39,6 +41,7 @@ export interface ParametersSettingsProps {
 export const ParametersSettings = ({
   resourceType,
   resourceParameters,
+  allowEditable,
   embeddingParams,
   lockedParameters,
   parameterValues,
@@ -97,7 +100,11 @@ export const ParametersSettings = ({
                   value="disabled"
                   disabled={parameter.required}
                 >{t`Disabled`}</Option>
-                <Option icon="pencil" value="enabled">{t`Editable`}</Option>
+
+                {allowEditable ? (
+                  <Option icon="pencil" value="enabled">{t`Editable`}</Option>
+                ) : null}
+
                 <Option icon="lock" value="locked">{t`Locked`}</Option>
               </Select>
             </div>
