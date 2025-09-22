@@ -13,18 +13,18 @@ import { AdminSettingInput } from "../widgets/AdminSettingInput";
 export function PythonRunnerSettingsPage() {
   // it seems we don't need to wire in _settingValues to the inputs - what is this magic??
   const { data: _settingValues, isLoading } = useGetSettingsQuery();
-  const hasTransformsFeature = useHasTokenFeature("transforms");
+  const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
 
   if (isLoading) {
     return <LoadingAndErrorWrapper loading />;
   }
 
-  if (!hasTransformsFeature) {
+  if (!hasPythonTransformsFeature) {
     return (
       <SettingsPageWrapper title={t`Python Runner`}>
         <SettingsSection>
           <div className="text-medium">
-            {t`Python Runner configuration requires the transforms feature.`}
+            {t`Python Runner configuration requires the transforms-python feature.`}
           </div>
         </SettingsSection>
       </SettingsPageWrapper>
