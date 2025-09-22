@@ -90,12 +90,12 @@ const HomeXrayView = ({ database, candidates = [] }: HomeXrayViewProps) => {
           {t`schema in`}
           <DatabaseInfo database={database} />
         </HomeCaption>
-      ) : (
+      ) : (candidate?.tables.length ?? 0) > 0 ? (
         <HomeCaption primary>
           {t`Here are some explorations of`}
           <DatabaseInfo database={database} />
         </HomeCaption>
-      )}
+      ) : null}
       <SectionBody>
         {candidate?.tables.map((table, index) => (
           <HomeXrayCard
