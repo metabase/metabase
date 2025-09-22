@@ -82,6 +82,7 @@ export const DISABLE_UPDATE_FOR_KEYS = [
   "instanceUrl",
   "useExistingUserSession",
   "fetchRequestToken",
+  "isStatic",
 ] as const satisfies AllowedEmbedSettingKey[];
 
 export const METABASE_CONFIG_IS_PROXY_FIELD_NAME = "__isProxy";

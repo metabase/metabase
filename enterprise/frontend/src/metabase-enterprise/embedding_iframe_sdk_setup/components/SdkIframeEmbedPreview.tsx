@@ -108,7 +108,11 @@ export const SdkIframeEmbedPreview = () => {
 
   useEffect(() => {
     defineMetabaseConfig(metabaseConfig);
-  }, [metabaseConfig, defineMetabaseConfig]);
+
+    return () => {
+      cleanupMetabaseConfig();
+    };
+  }, [metabaseConfig, defineMetabaseConfig, cleanupMetabaseConfig]);
 
   useEffect(
     () => () => {
