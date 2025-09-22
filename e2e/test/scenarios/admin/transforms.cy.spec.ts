@@ -1464,7 +1464,9 @@ describe("scenarios > admin > transforms > jobs", () => {
         triggered_from: "job-page",
       });
 
-      getJobPage().findByText("Last ran a few seconds ago successfully.");
+      getJobPage()
+        .findByText("Last ran a few seconds ago successfully.")
+        .should("be.visible");
 
       getNavSidebar().findByText("Runs").click();
       getContentTable().within(() => {
