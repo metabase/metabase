@@ -4,6 +4,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]))
 
@@ -47,3 +48,29 @@
                                 (mapcat :template-tags)
                                 (map (fn [[template-tag-name template-tag]]
                                        (assoc template-tag :lib.walk/template-tag-name template-tag-name))))))
+
+(mu/defn any-native-stage?
+  "Returns true if any stage of this query is native."
+  [query :- ::lib.schema/query]
+  (let [has-native-stage? (volatile! false)]
+    (lib.walk/walk-stages
+     query
+     (fn [_query _path stage]
+       (when (and (not @has-native-stage?)
+                  (= (:lib/type stage) :mbql.stage/native))
+         (vreset! has-native-stage? true))
+       nil))
+    @has-native-stage?))
+
+(mu/defn all-field-ids :- [:set ::lib.schema.id/field]
+  "Set of all Field IDs referenced in `:field` refs in `query`."
+  [query :- ::lib.schema/query]
+  (let [field-ids (volatile! (transient #{}))]
+    (lib.walk/walk-clauses
+     query
+     (fn [_query _path-type _stage-or-join-path clause]
+       (lib.util.match/match-lite clause
+         [:field _opts (id :guard pos-int?)]
+         (vswap! field-ids conj! id))
+       nil))
+    (persistent! @field-ids)))

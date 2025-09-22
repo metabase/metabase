@@ -42,7 +42,7 @@ export function JobPage({ params }: JobPageProps) {
   });
 
   if (isPolling !== isPollingNeeded(job)) {
-    setIsPolling(!isPolling);
+    setIsPolling(isPollingNeeded(job));
   }
 
   if (isLoading || error != null) {
@@ -152,12 +152,14 @@ function JobPageBody({ job }: JobPageBodyProps) {
   );
 }
 
-export function getParsedParams({ jobId }: JobPageParams): JobPageParsedParams {
+function getParsedParams({ jobId }: JobPageParams): JobPageParsedParams {
   return {
     jobId: Urls.extractEntityId(jobId),
   };
 }
 
 export function isPollingNeeded(job?: TransformJob) {
-  return job?.last_run?.status === "started";
+  return (
+    job?.last_run?.status === "started" || job?.last_run?.status === "canceling"
+  );
 }

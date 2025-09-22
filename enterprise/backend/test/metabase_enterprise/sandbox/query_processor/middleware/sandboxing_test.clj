@@ -176,7 +176,10 @@
         (is (=? (mt/query checkins
                   {:type :query
                    :query {:source-query {:source-table $$checkins
-                                          :fields [$id $date $user_id $venue_id]
+                                          :fields [[:field %id {}]
+                                                   [:field %date {}]
+                                                   [:field %user_id {}]
+                                                   [:field %venue_id {}]]
                                           :filter [:and
                                                    ;; This still gets :default bucketing! auto-bucket-datetimes
                                                    ;; puts :day bucketing on both parts of this filter, since it's
@@ -196,8 +199,12 @@
                                           :query-permissions/sandboxed-table $$checkins}
                            :joins [{:source-query
                                     {:source-table $$venues
-                                     :fields [$venues.id $venues.name $venues.category_id
-                                              $venues.latitude $venues.longitude $venues.price]
+                                     :fields [[:field %venues.id {}]
+                                              [:field %venues.name {}]
+                                              [:field %venues.category_id {}]
+                                              [:field %venues.latitude {}]
+                                              [:field %venues.longitude {}]
+                                              [:field %venues.price {}]]
                                      :filter [:=
                                               $venues.price
                                               [:value 1 {:base_type :type/Integer
@@ -557,7 +564,7 @@
                                      :table_id (mt/id :venues))
                               ;; should return a field for the original field
                               (update :field_ref (fn [[tag _id opts]]
-                                                   [tag id (or opts {})]))
+                                                   [tag id opts]))
                               (dissoc :fk_target_field_id
                                       :lib/original-display-name
                                       :metabase.lib.query/transformation-added-base-type))))]
@@ -833,7 +840,7 @@
                      (first (mt/rows result))))))
           (testing "Ok, add remapping and it should still work"
             (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                              (mt/application-database-metadata-provider (mt/id))
+                                              (mt/metadata-provider)
                                               (mt/id :reviews :product_id)
                                               (mt/id :products :title))
               (let [result (mt/run-mbql-query reviews {:order-by [[:asc $id]]})]
@@ -909,7 +916,7 @@
 
                             test-preprocessing
                             (fn []
-                              (testing "`resolve-joined-fields` middleware should infer `:field` `:join-alias` correctly"
+                              (testing "`fix-bad-field-id-refs` middleware should infer `:field` `:join-alias` correctly"
                                 (is (= [:=
                                         [:field (mt/id :products :category) {:join-alias "products"}]
                                         [:value "Widget" {:base_type :type/Text
@@ -935,7 +942,7 @@
                                   (qp/process-query drill-thru-query)))))))]
             (test-drill-thru)
             (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                              (mt/application-database-metadata-provider (mt/id))
+                                              (mt/metadata-provider)
                                               (mt/id :orders :product_id)
                                               (mt/id :products :title))
               (test-drill-thru))))))))
@@ -986,7 +993,7 @@
           (do-tests)
           (testing "with remapping"
             (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                              (mt/application-database-metadata-provider (mt/id))
+                                              (mt/metadata-provider)
                                               (mt/id :orders :product_id)
                                               (mt/id :products :title))
               (do-tests))))))))
@@ -1014,7 +1021,7 @@
     (mt/dataset test-data
       (let [remap-metadata-provider (fn []
                                       (lib.tu/remap-metadata-provider
-                                       (mt/application-database-metadata-provider (mt/id))
+                                       (mt/metadata-provider)
                                        (mt/id :orders :product_id)
                                        (mt/id :products :title)))
             mbql-sandbox-results (met/with-gtaps! {:gtaps (mt/$ids

@@ -665,7 +665,7 @@
             ;; include the unit; however `:unit` is still `:year` so the frontend can use the correct formatting to
             ;; display values of the column.
             (is (=? [(assoc date-col  :field_ref [:field (mt/id :checkins :date) nil], :unit :year)
-                     (assoc count-col :field_ref [:field "count" {:base-type :type/Integer}])]
+                     (assoc count-col :field_ref [:field "count" {:base-type keyword?}])]
                     (mt/cols
                      (qp/process-query (query-with-source-card 1 lib.schema.id/saved-questions-virtual-database-id)))))))))))
 
@@ -720,7 +720,7 @@
 (deftest ^:parallel macroexpansion-test
   (testing "Make sure that macro expansion works inside of a neested query, when using a compound filter clause (#5974)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
-      (qp.store/with-metadata-provider (-> (mt/application-database-metadata-provider (mt/id))
+      (qp.store/with-metadata-provider (-> (mt/metadata-provider)
                                            (lib.tu/mock-metadata-provider
                                             {:segments [{:id         1
                                                          :name       "Segment 1"
@@ -1014,7 +1014,7 @@
                               {:source-table "card__1"}))))
           (testing "if source query with expression literals is from a Model"
             (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                              (mt/application-database-metadata-provider (mt/id))
+                                              (mt/metadata-provider)
                                               {:cards [{:id 1
                                                         :type :model
                                                         :name "Model 1"
@@ -1072,30 +1072,30 @@
                (mt/formatted-rows
                 [str str int]
                 results)))
-        (is (= (mt/$ids venues
-                 [{:name         (mt/format-name "name")
-                   :display_name "Name"
-                   :id           %name
-                   :field_ref    $name
-                   :base_type    :type/Text}
-                  {:name         (mt/format-name "name_2")
-                   :display_name "c → Name"
-                   :id           %categories.name
-                   :field_ref    &c.categories.name
-                   :base_type    :type/Text}
-                  {:name         "count"
-                   :display_name "Count"
-                   :field_ref    [:field "count" {:base-type :type/Integer}]
-                   :base_type    (:base_type (qp.test-util/aggregate-col :count))}])
-               (for [col (mt/cols results)]
-                 (select-keys col [:name :display_name :id :field_ref :base_type]))))))))
+        (is (=? (mt/$ids venues
+                  [{:name         (mt/format-name "name")
+                    :display_name "Name"
+                    :id           %name
+                    :field_ref    $name
+                    :base_type    :type/Text}
+                   {:name         (mt/format-name "name_2")
+                    :display_name "c → Name"
+                    :id           %categories.name
+                    :field_ref    &c.categories.name
+                    :base_type    :type/Text}
+                   {:name         "count"
+                    :display_name "Count"
+                    :field_ref    [:field "count" {:base-type keyword?}]
+                    :base_type    (:base_type (qp.test-util/aggregate-col :count))}])
+                (for [col (mt/cols results)]
+                  (select-keys col [:name :display_name :id :field_ref :base_type]))))))))
 
 (deftest ^:parallel remapped-fks-test
   (testing "Should be able to use a question with remapped FK columns as a Saved Question (#10474)"
     (mt/dataset test-data
       ;; Add column remapping from Orders Product ID -> Products.Title
       (let [provider              (lib.tu/remap-metadata-provider
-                                   (mt/application-database-metadata-provider (mt/id))
+                                   (mt/metadata-provider)
                                    (mt/id :orders :product_id)
                                    (mt/id :products :title))
             card-results-metadata (qp.store/with-metadata-provider provider
@@ -1147,7 +1147,7 @@
                    4.0 "2017-12-31T14:41:56.87Z"]
                   (first (mt/rows results))))))
         (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                          (mt/application-database-metadata-provider (mt/id))
+                                          (mt/metadata-provider)
                                           (mt/id :orders :product_id)
                                           (mt/id :products :title))
           (do-test
@@ -1201,17 +1201,17 @@
       (doseq [level (range 0 4)]
         (testing (format "with %d level(s) of nesting" level)
           (letfn [(run-query []
-                    (let [query (-> (mt/mbql-query orders
-                                      {:source-table $$orders
-                                       :joins        [{:fields       :all
-                                                       :source-table $$products
-                                                       :condition    [:= $product_id &Products.products.id]
-                                                       :alias        "Products"}]
-                                       :order-by     [[:asc $id]]
-                                       :limit        2})
-                                    ;; existing usage, do not use this going forward
-                                    #_{:clj-kondo/ignore [:deprecated-var]}
-                                    (mt/nest-query level))]
+                    (let [query (-> (lib/query
+                                     (mt/metadata-provider)
+                                     (mt/mbql-query orders
+                                       {:source-table $$orders
+                                        :joins        [{:fields       :all
+                                                        :source-table $$products
+                                                        :condition    [:= $product_id &Products.products.id]
+                                                        :alias        "Products"}]
+                                        :order-by     [[:asc $id]]
+                                        :limit        2}))
+                                    (as-> $query (nth (iterate lib/append-stage $query) level)))]
                       (qp/process-query query)))]
             (testing "with no FK remappings"
               (let [result (run-query)]
@@ -1223,7 +1223,7 @@
                         "2017-12-31T14:41:56.87Z"]
                        (mt/first-row result)))))
             (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                              (mt/application-database-metadata-provider (mt/id))
+                                              (mt/metadata-provider)
                                               (mt/id :orders :product_id)
                                               (mt/id :products :title))
               (let [result (run-query)]
@@ -1344,7 +1344,7 @@
                                {:source-query (:query query)})
                        metadata (assoc-in [:query :source-metadata] metadata))))
                   (test-card-source-query [metadata]
-                    (qp.store/with-metadata-provider (-> (mt/application-database-metadata-provider (mt/id))
+                    (qp.store/with-metadata-provider (-> (mt/metadata-provider)
                                                          (lib.tu/metadata-provider-with-cards-for-queries [query])
                                                          (lib.tu/merged-mock-metadata-provider
                                                           {:cards [{:id 1, :result-metadata metadata}]}))
@@ -1522,7 +1522,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "A nested query with a Metric should work as expected (#12507)"
       (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                        (mt/application-database-metadata-provider (mt/id))
+                                        (mt/metadata-provider)
                                         {:cards [{:id 1
                                                   :type :metric
                                                   :name "Metric 1"

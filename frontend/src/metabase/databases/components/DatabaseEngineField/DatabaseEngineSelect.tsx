@@ -45,6 +45,9 @@ export const DatabaseEngineSelect = ({
       searchable
       leftSection={<DatabaseIcon engineKey={engineKey} />}
       renderOption={renderSelectOption}
+      labelProps={{
+        mb: "sm",
+      }}
     />
   );
 };

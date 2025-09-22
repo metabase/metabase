@@ -40,6 +40,9 @@ export const DatabaseNameField = ({
       mb="md"
       {...autoFocusProps}
       {...props}
+      labelProps={{
+        mb: "sm",
+      }}
     />
   );
 };

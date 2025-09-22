@@ -17,6 +17,7 @@
    "Collection"
    "Dashboard"
    "Document"
+   "Glossary"
    "NativeQuerySnippet"
    "Timeline"])
 
@@ -64,6 +65,8 @@
    "HTTPAction"
    "ImplicitAction"
    "LoginHistory"
+   "MetabotConversation"
+   "MetabotMessage"
    "ModelIndex"
    "ModelIndexValue"
    "ModerationReview"
@@ -77,6 +80,7 @@
    "PermissionsGroupMembership"
    "PermissionsRevision"
    "PersistedInfo"
+   "PythonLibrary"
    "Pulse"
    "PulseCard"
    "PulseChannel"
