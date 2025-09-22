@@ -10,8 +10,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.collections.models.collection :as collection]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -80,7 +78,7 @@
    {:keys [message branch collection force-sync]}] :- [:map
                                                        [:message {:optional true} ms/NonBlankString]
                                                        [:branch {:optional true} ms/NonBlankString]
-                                                       [:collection {:optional true} ms/NonBlankString]
+                                                       [:collection {:optional true} pos-int?]
                                                        [:force-sync {:optional true} :boolean]]
   (api/check-superuser)
   (when-not (settings/remote-sync-enabled)
@@ -88,7 +86,7 @@
                     {:status-code 400})))
   (let [result (impl/export! (or branch (settings/remote-sync-branch))
                              (or message "Exported from Metabase")
-                             (if (some? collection) [(t2/select-one-fn :entity_id [:model/Collection :entity_id] collection)] nil))]
+                             (if (some? collection) [(t2/select-one-fn :entity_id [:model/Collection :entity_id] :id collection)] nil))]
     (case (:status result)
       :success "Success"
 
