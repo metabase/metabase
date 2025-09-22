@@ -101,7 +101,7 @@ export type CreateTransformJobRequest = {
   name: string;
   description?: string | null;
   schedule: string;
-  ui_display_type: ScheduleDisplayType;
+  ui_display_type?: ScheduleDisplayType;
   tag_ids?: TransformTagId[];
 };
 
