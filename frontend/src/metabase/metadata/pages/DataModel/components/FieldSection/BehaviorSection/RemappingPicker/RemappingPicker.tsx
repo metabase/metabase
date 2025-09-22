@@ -130,6 +130,7 @@ export const RemappingPicker = ({
         t`Failed to update display values of ${field.display_name}`,
       );
     } else {
+      trackMetadataChange("display_values");
       sendSuccessToast(
         t`Display values of ${field.display_name} updated`,
         async () => {
@@ -154,8 +155,6 @@ export const RemappingPicker = ({
   const handleDisplayValueChange = async (value: RemappingValue) => {
     setHasChanged(false);
     setIsChoosingInitialFkTarget(false);
-
-    trackMetadataChange("display_values");
 
     if (value === "original") {
       const { error } = await deleteFieldDimension(id);
