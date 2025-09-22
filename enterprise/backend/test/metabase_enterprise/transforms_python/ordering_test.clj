@@ -45,7 +45,7 @@
              (transform-deps-for-db (t2/select-one :model/Transform :id t1)))))))
 
 (deftest python-transform-ordering-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
     (testing "Python transforms are ordered correctly based on source-tables dependencies"
       (mt/with-temp [:model/Table {table1 :id} {:schema "public"
                                                 :name   "output_1"}
@@ -58,7 +58,7 @@
                (ordering/transform-ordering (t2/select :model/Transform :id [:in [t1 t2]]))))))))
 
 (deftest python-transform-multiple-dependencies-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
     (testing "Python transforms with multiple table dependencies"
       (mt/with-temp [:model/Table {table1 :id} {:schema "public"
                                                 :name "output_1"}
@@ -78,7 +78,7 @@
                (ordering/transform-ordering (t2/select :model/Transform :id [:in [t1 t2 t3]]))))))))
 
 (deftest mixed-transform-ordering-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python :transforms/table)
     (testing "Python and query transforms are ordered together correctly"
       (mt/with-temp [:model/Table {table1 :id} {:schema "public"
                                                 :name "sql_output"}
