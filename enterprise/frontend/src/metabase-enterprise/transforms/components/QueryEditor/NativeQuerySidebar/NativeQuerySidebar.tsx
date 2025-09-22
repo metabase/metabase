@@ -2,7 +2,7 @@ import { ResizableBox } from "react-resizable";
 import { useWindowSize } from "react-use";
 import { t } from "ttag";
 
-import { ControlledNotebookNativePreview } from "metabase/querying/notebook/components/NotebookNativePreview/NotebookNativePreview";
+import { NotebookNativePreview } from "metabase/querying/notebook/components/NotebookNativePreview";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
@@ -70,7 +70,7 @@ export function NativeQuerySidebar({
         marginInlineStart: "0.25rem",
       }}
     >
-      <ControlledNotebookNativePreview
+      <NotebookNativePreview
         question={question}
         onConvertClick={onConvertToSQLClick}
         buttonTitle={t`Convert this transform to SQL`}
