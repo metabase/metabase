@@ -78,7 +78,7 @@ export function PeopleListingApp({ children }: { children: React.ReactNode }) {
                   <Tabs.Tab value={USER_STATUS.active}>{t`Active`}</Tabs.Tab>
                   <Tabs.Tab
                     value={USER_STATUS.deactivated}
-                  >{t`Deactived`}</Tabs.Tab>
+                  >{t`Deactivated`}</Tabs.Tab>
                 </Tabs.List>
               </Tabs>
             )}
