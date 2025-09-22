@@ -427,7 +427,7 @@
   (mt/test-driver :starburst
     (testing "can check isClosed on statement"
       (sql-jdbc.execute/do-with-connection-with-options
-       driver/*driver* 2538 nil
+       driver/*driver* (mt/id) nil
        (fn [^Connection conn]
          (let [stmt (sql-jdbc.execute/statement driver/*driver* conn)]
            (is (false? (.isClosed stmt)))
@@ -435,7 +435,7 @@
            (is (true? (.isClosed stmt)))))))
     (testing "can check isClosed on prepared statement"
       (sql-jdbc.execute/do-with-connection-with-options
-       driver/*driver* 2538 nil
+       driver/*driver* (mt/id) nil
        (fn [^Connection conn]
          (let [prepared-stmt (sql-jdbc.execute/prepared-statement driver/*driver* conn "select 1" [])]
            (is (false? (.isClosed prepared-stmt)))
@@ -443,7 +443,7 @@
            (is (true? (.isClosed prepared-stmt)))))))
     (testing "can check isClosed on optimized prepared statement"
       (sql-jdbc.execute/do-with-connection-with-options
-       driver/*driver* 2538 nil
+       driver/*driver* (mt/id) nil
        (fn [^Connection conn]
          (let [stmt (.prepareStatement conn "select 1" ResultSet/TYPE_FORWARD_ONLY ResultSet/CONCUR_READ_ONLY)
                prepared-stmt (#'starburst/proxy-optimized-prepared-statement driver/*driver* conn stmt [])]
