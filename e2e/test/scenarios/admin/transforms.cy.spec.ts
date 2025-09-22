@@ -183,106 +183,119 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       testSnippets();
     });
 
-    it("should be possible to create and run a Python transform", () => {
-      cy.log("create a new transform");
-      visitTransformListPage();
-      getTransformListPage().button("Create a transform").click();
-      H.popover().findByText("Python script").click();
+    it(
+      "should be possible to create and run a Python transform",
+      { tags: ["@transforms-python"] },
+      () => {
+        cy.log("create a new transform");
+        visitTransformListPage();
+        getTransformListPage().button("Create a transform").click();
+        H.popover().findByText("Python script").click();
 
-      H.expectUnstructuredSnowplowEvent({
-        event: "transform_create",
-        event_detail: "python",
-        triggered_from: "transform-page-create-menu",
-      });
+        H.expectUnstructuredSnowplowEvent({
+          event: "transform_create",
+          event_detail: "python",
+          triggered_from: "transform-page-create-menu",
+        });
 
-      cy.findByTestId("python-data-picker")
-        .findByText("Select a database")
-        .click();
+        cy.findByTestId("python-data-picker")
+          .findByText("Select a database")
+          .click();
 
-      cy.log("Unsupported databases should be disabled");
-      H.popover()
-        .findByRole("option", { name: "Sample Database" })
-        .should("have.attr", "aria-disabled", "true");
+        cy.log("Unsupported databases should be disabled");
+        H.popover()
+          .findByRole("option", { name: "Sample Database" })
+          .should("have.attr", "aria-disabled", "true");
 
-      cy.log("Select database");
-      H.popover().findByText(DB_NAME).click();
+        cy.log("Select database");
+        H.popover().findByText(DB_NAME).click();
 
-      getPythonDataPicker().button("Select a table…").click();
-      H.entityPickerModal().findByText("Animals").click();
+        getPythonDataPicker().button("Select a table…").click();
+        H.entityPickerModal().findByText("Animals").click();
 
-      getPythonDataPicker().within(() => {
-        cy.findByText("Writable Postgres12 / Schema A").should("be.visible");
-        cy.findByText("Animals").should("be.visible");
-        cy.findByPlaceholderText("Enter alias").should("have.value", "animals");
-        cy.findByPlaceholderText("Enter alias").clear().type("foo bar").blur();
-        cy.findByPlaceholderText("Enter alias").should("have.value", "foo_bar");
-      });
+        getPythonDataPicker().within(() => {
+          cy.findByText("Writable Postgres12 / Schema A").should("be.visible");
+          cy.findByText("Animals").should("be.visible");
+          cy.findByPlaceholderText("Enter alias").should(
+            "have.value",
+            "animals",
+          );
+          cy.findByPlaceholderText("Enter alias")
+            .clear()
+            .type("foo bar")
+            .blur();
+          cy.findByPlaceholderText("Enter alias").should(
+            "have.value",
+            "foo_bar",
+          );
+        });
 
-      H.PythonEditor.value()
-        .should("contain", "def transform(foo_bar):")
-        .should(
-          "contain",
-          'foo_bar: DataFrame containing the data from the "Writable Postgres12.Schema A.Animals" table',
-        );
+        H.PythonEditor.value()
+          .should("contain", "def transform(foo_bar):")
+          .should(
+            "contain",
+            'foo_bar: DataFrame containing the data from the "Writable Postgres12.Schema A.Animals" table',
+          );
 
-      getPythonDataPicker().within(() => {
-        cy.findByText("Add a table").click();
-        cy.button("Select a table…").click();
-      });
+        getPythonDataPicker().within(() => {
+          cy.findByText("Add a table").click();
+          cy.button("Select a table…").click();
+        });
 
-      H.entityPickerModal().within(() => {
-        cy.log("Selecting the same table should not be possible");
-        cy.findByText("Animals")
-          .parent()
-          .parent()
-          .parent()
-          .should("have.attr", "data-disabled", "true");
+        H.entityPickerModal().within(() => {
+          cy.log("Selecting the same table should not be possible");
+          cy.findByText("Animals")
+            .parent()
+            .parent()
+            .parent()
+            .should("have.attr", "data-disabled", "true");
 
-        cy.findByText("Schema B").click();
-        cy.findByText("Animals").click();
-      });
+          cy.findByText("Schema B").click();
+          cy.findByText("Animals").click();
+        });
 
-      getPythonDataPicker().within(() => {
-        cy.icon("refresh").click();
-        cy.findAllByPlaceholderText("Enter alias")
-          .first()
-          .should("have.value", "animals_1")
-          .clear()
-          .type("foo bar")
-          .blur()
-          .should("have.value", "foo_bar");
-        cy.findAllByPlaceholderText("Enter alias")
-          .eq(1)
-          .should("have.value", "animals")
-          .clear()
-          .type("foo bar")
-          .blur()
-          .should("have.value", "foo_bar_1");
-      });
+        getPythonDataPicker().within(() => {
+          cy.icon("refresh").click();
+          cy.findAllByPlaceholderText("Enter alias")
+            .first()
+            .should("have.value", "animals_1")
+            .clear()
+            .type("foo bar")
+            .blur()
+            .should("have.value", "foo_bar");
+          cy.findAllByPlaceholderText("Enter alias")
+            .eq(1)
+            .should("have.value", "animals")
+            .clear()
+            .type("foo bar")
+            .blur()
+            .should("have.value", "foo_bar_1");
+        });
 
-      getQueryEditor().button("Save").click();
+        getQueryEditor().button("Save").click();
 
-      H.modal().within(() => {
-        cy.findByLabelText("Name").clear().type("Python transform");
-        cy.findByLabelText("Table name").clear().type("python_transform");
-        cy.button("Save").click();
-      });
+        H.modal().within(() => {
+          cy.findByLabelText("Name").clear().type("Python transform");
+          cy.findByLabelText("Table name").clear().type("python_transform");
+          cy.button("Save").click();
+        });
 
-      H.expectUnstructuredSnowplowEvent({
-        event: "transform_created",
-      });
+        H.expectUnstructuredSnowplowEvent({
+          event: "transform_created",
+        });
 
-      cy.log("run the transform and make sure its table can be queried");
-      runTransformAndWaitForSuccess();
-      H.expectUnstructuredSnowplowEvent({
-        event: "transform_trigger_manual_run",
-        triggered_from: "transform-page",
-      });
+        cy.log("run the transform and make sure its table can be queried");
+        runTransformAndWaitForSuccess();
+        H.expectUnstructuredSnowplowEvent({
+          event: "transform_trigger_manual_run",
+          triggered_from: "transform-page",
+        });
 
-      getTableLink().click();
-      H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
-      H.assertQueryBuilderRowCount(3);
-    });
+        getTableLink().click();
+        H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
+        H.assertQueryBuilderRowCount(3);
+      },
+    );
 
     it("should be able to create and run a transform from a question or a model", () => {
       function testCardSource({
@@ -1426,91 +1439,99 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
   });
 
   describe("python > common library", () => {
-    it("should be possible to edit and save the common library", () => {
-      visitCommonLibrary();
+    it(
+      "should be possible to edit and save the common library",
+      { tags: ["@transforms-python"] },
+      () => {
+        visitCommonLibrary();
 
-      cy.log("updating the library should be possible");
-      H.PythonEditor.clear().type(
-        dedent`
+        cy.log("updating the library should be possible");
+        H.PythonEditor.clear().type(
+          dedent`
           def useful_calculation(a, b):
           return a + b
         `,
-      );
-      getLibraryEditorHeader().findByText("Save").click();
+        );
+        getLibraryEditorHeader().findByText("Save").click();
 
-      cy.log("the contents should be saved properly");
-      visitCommonLibrary();
-      H.PythonEditor.value().should(
-        "eq",
-        dedent`
+        cy.log("the contents should be saved properly");
+        visitCommonLibrary();
+        H.PythonEditor.value().should(
+          "eq",
+          dedent`
           def useful_calculation(a, b):
               return a + b
           `,
-      );
+        );
 
-      cy.log("reverting the changes should be possible");
-      H.PythonEditor.clear().type("# oops");
-      getLibraryEditorHeader().findByText("Revert").click();
-      H.PythonEditor.value().should(
-        "eq",
-        dedent`
+        cy.log("reverting the changes should be possible");
+        H.PythonEditor.clear().type("# oops");
+        getLibraryEditorHeader().findByText("Revert").click();
+        H.PythonEditor.value().should(
+          "eq",
+          dedent`
           def useful_calculation(a, b):
               return a + b
           `,
-      );
-    });
+        );
+      },
+    );
 
-    it("should be possible to use the common library", () => {
-      visitCommonLibrary();
+    it(
+      "should be possible to use the common library",
+      { tags: ["@transforms-python"] },
+      () => {
+        visitCommonLibrary();
 
-      cy.log("updating the library should be possible");
-      H.PythonEditor.clear().type(
-        dedent`
+        cy.log("updating the library should be possible");
+        H.PythonEditor.clear().type(
+          dedent`
           def useful_calculation(a, b):
           return a + b
       `,
-      );
-      getLibraryEditorHeader().findByText("Save").click();
+        );
+        getLibraryEditorHeader().findByText("Save").click();
 
-      visitTransformListPage();
-      getTransformListPage().button("Create a transform").click();
-      H.popover().findByText("Python script").click();
+        visitTransformListPage();
+        getTransformListPage().button("Create a transform").click();
+        H.popover().findByText("Python script").click();
 
-      H.PythonEditor.clear().type(
-        dedent`
+        H.PythonEditor.clear().type(
+          dedent`
           import pandas as pd
 
           def transform():
           return pd.DataFrame({"foo": common.useful_calculation(1, 2)})
         `,
-      );
+        );
 
-      getQueryEditor().findByText("Import common library").click();
-      H.PythonEditor.value().should("contain", "import common");
+        getQueryEditor().findByText("Import common library").click();
+        H.PythonEditor.value().should("contain", "import common");
 
-      cy.findByTestId("python-data-picker")
-        .findByText("Select a database")
-        .click();
+        cy.findByTestId("python-data-picker")
+          .findByText("Select a database")
+          .click();
 
-      H.popover().findByText(DB_NAME).click();
+        H.popover().findByText(DB_NAME).click();
 
-      cy.findByTestId("python-data-picker")
-        .findByText("Select a table…")
-        .click();
+        cy.findByTestId("python-data-picker")
+          .findByText("Select a table…")
+          .click();
 
-      H.entityPickerModal().within(() => {
-        cy.findByText("Schema a").click();
-        cy.findByText("Animals").click();
-      });
+        H.entityPickerModal().within(() => {
+          cy.findByText("Schema a").click();
+          cy.findByText("Animals").click();
+        });
 
-      getQueryEditor().button("Save").click();
+        getQueryEditor().button("Save").click();
 
-      H.modal().within(() => {
-        cy.findByLabelText("Name").clear().type("Python transform");
-        cy.findByLabelText("Table name").clear().type("python_transform");
-        cy.button("Save").click();
-      });
-    });
+        H.modal().within(() => {
+          cy.findByLabelText("Name").clear().type("Python transform");
+          cy.findByLabelText("Table name").clear().type("python_transform");
+          cy.button("Save").click();
+        });
+      },
+    );
 
     function visitCommonLibrary(path = "common.py") {
       cy.visit(`/admin/transforms/library/${path}`);
