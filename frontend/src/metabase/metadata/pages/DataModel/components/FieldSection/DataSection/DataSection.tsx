@@ -12,6 +12,7 @@ import {
 import { Flex, Stack, Switch, rem } from "metabase/ui";
 import type { Field } from "metabase-types/api";
 
+import { trackMetadataChange } from "../../../analytics";
 import { TitledSection } from "../../TitledSection";
 
 import S from "./DataSection.module.css";
@@ -87,6 +88,8 @@ const DataSectionBase = ({ field }: Props) => {
           : t`Failed to update casting for ${field.display_name}`,
       );
     } else {
+      trackMetadataChange("type_casting");
+
       sendSuccessToast(
         field.coercion_strategy == null
           ? t`Casting enabled for ${field.display_name}`
