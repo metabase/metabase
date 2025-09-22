@@ -242,19 +242,22 @@ redirect_from:
             "type" : "string"
           },
           "tool_calls" : {
-            "type" : "object",
-            "properties" : {
-              "arguments" : {
-                "type" : "string"
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : {
+                "arguments" : {
+                  "type" : "string"
+                },
+                "id" : {
+                  "type" : "string"
+                },
+                "name" : {
+                  "type" : "string"
+                }
               },
-              "id" : {
-                "type" : "string"
-              },
-              "name" : {
-                "type" : "string"
-              }
-            },
-            "required" : [ "id", "name", "arguments" ]
+              "required" : [ "id", "name", "arguments" ]
+            }
           }
         },
         "required" : [ "role" ]
@@ -16606,8 +16609,10 @@ redirect_from:
           "name" : "id",
           "required" : true,
           "schema" : {
-            "type" : "string"
-          }
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
         } ],
         "responses" : {
           "2XX" : {
@@ -16705,6 +16710,72 @@ redirect_from:
           }
         },
         "tags" : [ "/api/ee/transform" ]
+      }
+    },
+    "/api/ee/transforms-python/library/{path}" : {
+      "get" : {
+        "summary" : "GET /api/ee/transforms-python/library/{path}",
+        "description" : "Get the Python library for user modules.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/transforms-python" ]
+      },
+      "put" : {
+        "summary" : "PUT /api/ee/transforms-python/library/{path}",
+        "description" : "Update the Python library source code for user modules.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "source" : {
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "source" ],
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/transforms-python" ]
       }
     },
     "/api/ee/upload-management/tables" : {
@@ -18060,6 +18131,136 @@ redirect_from:
           }
         },
         "tags" : [ "/api/geojson" ]
+      }
+    },
+    "/api/glossary/" : {
+      "get" : {
+        "summary" : "GET /api/glossary/",
+        "description" : "Fetch all glossary entries, optionally filtered by search term.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/glossary" ]
+      },
+      "post" : {
+        "summary" : "POST /api/glossary/",
+        "description" : "Create a new glossary entry.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "definition" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "term" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "term", "definition" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/glossary" ]
+      }
+    },
+    "/api/glossary/{id}" : {
+      "put" : {
+        "summary" : "PUT /api/glossary/{id}",
+        "description" : "Update an existing glossary entry.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "definition" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "term" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "term", "definition" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/glossary" ]
+      },
+      "delete" : {
+        "summary" : "DELETE /api/glossary/{id}",
+        "description" : "Delete a glossary entry.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/glossary" ]
       }
     },
     "/api/google/settings" : {

@@ -22,6 +22,9 @@
 .step.stepDone .stepIcon {
   color: var(--mb-color-bg-white);
   background: var(--mb-color-success-darker);
+
+  /** Prevent blue border color from affecting the done icon */
+  border-color: transparent;
 }
 
 .stepWrapper {
@@ -62,6 +65,10 @@
 }
 
 .stepCard:not(.lockedStepCard):hover {
+  border: 1px solid var(--mb-color-focus) !important;
+}
+
+.stepCard.nextStepCard {
   border: 1px solid var(--mb-color-focus) !important;
   box-shadow: 0 2px 24px 0 var(--mb-color-shadow-embedding-hub-card);
 }

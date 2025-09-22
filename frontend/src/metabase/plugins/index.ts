@@ -817,6 +817,7 @@ export const PLUGIN_DOCUMENTS = {
   shouldShowDocumentInNewItemMenu: () => false,
   getCurrentDocument: (_state: any) => null as Document | null,
   getSidebarOpen: (_state: any) => false,
+  getCommentSidebarOpen: (_state: any) => false,
 };
 
 export const PLUGIN_ENTITIES = {

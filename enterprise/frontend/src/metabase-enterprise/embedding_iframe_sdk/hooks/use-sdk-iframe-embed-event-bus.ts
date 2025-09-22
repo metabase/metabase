@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { match } from "ts-pattern";
 
+import { trackSchemaEvent } from "metabase/lib/analytics";
 import { isWithinIframe } from "metabase/lib/dom";
 
 import type {
@@ -26,13 +27,14 @@ export function useSdkIframeEmbedEventBus({
         return;
       }
 
-      match(event.data).with(
-        { type: "metabase.embed.setSettings" },
-        ({ data }) => {
+      match(event.data)
+        .with({ type: "metabase.embed.setSettings" }, ({ data }) => {
           setEmbedSettings(data);
           onSettingsChanged?.(data);
-        },
-      );
+        })
+        .with({ type: "metabase.embed.reportAnalytics" }, ({ data }) => {
+          trackSchemaEvent("embedded_analytics_js", data);
+        });
     };
 
     window.addEventListener("message", messageHandler);
