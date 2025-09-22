@@ -1,10 +1,10 @@
 const fs = require("fs");
 const path = require("path");
+const { execSync } = require("child_process");
 
 const collectAndAverageTimings = async ({
   github,
   context,
-  token,
   daysBack = 7,
   existingTimingsPath = "e2e/support/timings.json",
 }) => {
@@ -39,9 +39,7 @@ const collectAndAverageTimings = async ({
     );
     console.log(`✅ Updated ${existingTimingsPath} with new timing data`);
 
-    return {
-      artifactCount: timingData.length,
-    };
+    return { artifactCount: timingData.length };
   } catch (error) {
     console.error("❌ Error in collectAndAverageTimings:", error.message);
     throw error;
@@ -58,38 +56,33 @@ const findMergedTimingArtifacts = async ({ github, context, daysBack }) => {
 
   const artifacts = [];
   let page = 1;
-  let hasMorePages = true;
 
-  while (hasMorePages) {
+  while (true) {
     try {
-      const response = await github.rest.actions.listArtifactsForRepo({
+      const { data } = await github.rest.actions.listArtifactsForRepo({
         owner: context.repo.owner,
         repo: context.repo.repo,
         name: "merged-e2e-timings",
         per_page: 100,
-        page: page,
+        page,
       });
 
-      for (const artifact of response.data.artifacts) {
-        if (new Date(artifact.created_at) <= cutoffDate) {
-          hasMorePages = false;
-          break;
-        }
-        if (!artifact.expired) {
-          artifacts.push({
-            name: artifact.name,
-            created_at: artifact.created_at,
-            id: artifact.id,
-          });
-        }
-      }
+      const validArtifacts = data.artifacts
+        .filter((a) => new Date(a.created_at) > cutoffDate && !a.expired)
+        .map(({ name, created_at, id }) => ({ name, created_at, id }));
+      artifacts.push(...validArtifacts);
 
-      if (hasMorePages) {
-        hasMorePages = response.data.artifacts.length === 100;
+      if (
+        data.artifacts.some((a) => new Date(a.created_at) <= cutoffDate) ||
+        data.artifacts.length < 100
+      ) {
+        break;
       }
       page++;
     } catch (error) {
-      console.log(`Error fetching artifacts page ${page}: ${error.message}`);
+      console.log(
+        `Error fetching artifacts page ${page - 1}: ${error.message}`,
+      );
       break;
     }
   }
@@ -98,19 +91,11 @@ const findMergedTimingArtifacts = async ({ github, context, daysBack }) => {
   return artifacts;
 };
 
-const downloadAndExtractArtifacts = async (
-  artifacts,
-  token,
-  github,
-  context,
-) => {
+const downloadAndExtractArtifacts = async (artifacts, github, context) => {
   const tempDir = "timing-artifacts-temp";
-  if (!fs.existsSync(tempDir)) {
-    fs.mkdirSync(tempDir);
-  }
+  fs.mkdirSync(tempDir, { recursive: true });
 
   const timingData = [];
-  let successCount = 0;
 
   for (const artifact of artifacts) {
     try {
@@ -119,32 +104,26 @@ const downloadAndExtractArtifacts = async (
       const zipPath = path.join(tempDir, `${artifact.name}.zip`);
       const extractPath = path.join(tempDir, artifact.name);
 
-      const download = await github.rest.actions.downloadArtifact({
+      const { data } = await github.rest.actions.downloadArtifact({
         owner: context.repo.owner,
         repo: context.repo.repo,
         artifact_id: artifact.id,
         archive_format: "zip",
       });
-      fs.writeFileSync(zipPath, Buffer.from(download.data));
 
-      if (!fs.existsSync(extractPath)) {
-        fs.mkdirSync(extractPath);
-      }
-
-      const { execSync } = require("child_process");
+      fs.writeFileSync(zipPath, Buffer.from(data));
+      fs.mkdirSync(extractPath, { recursive: true });
       execSync(`unzip -q "${zipPath}" -d "${extractPath}"`);
 
-      const timingFilePath = path.join(extractPath, "mergedTimings.json");
+      const timingFilePath = path.join(extractPath, "runTimings.json");
 
       if (fs.existsSync(timingFilePath)) {
-        const content = fs.readFileSync(timingFilePath, "utf8");
-        const data = JSON.parse(content);
+        const content = JSON.parse(fs.readFileSync(timingFilePath, "utf8"));
 
-        if (data.durations && Array.isArray(data.durations)) {
-          timingData.push(data);
-          successCount++;
+        if (content.durations?.length) {
+          timingData.push(content);
           console.log(
-            `✅ Extracted timing data from ${artifact.name} (${data.durations.length} specs)`,
+            `✅ Extracted timing data from ${artifact.name} (${content.durations.length} specs)`,
           );
         } else {
           console.log(`⚠ Invalid timing data structure in ${artifact.name}`);
@@ -153,50 +132,41 @@ const downloadAndExtractArtifacts = async (
         console.log(`⚠ No timing data found in ${artifact.name}`);
       }
 
-      fs.unlinkSync(zipPath);
       fs.rmSync(extractPath, { recursive: true });
     } catch (error) {
       console.log(`❌ Error processing ${artifact.name}: ${error.message}`);
     }
   }
 
-  if (fs.existsSync(tempDir)) {
-    fs.rmSync(tempDir, { recursive: true });
-  }
+  fs.rmSync(tempDir, { recursive: true });
 
   console.log(
-    `Successfully extracted timing data from ${successCount}/${artifacts.length} artifacts`,
+    `Successfully extracted timing data from ${timingData.length}/${artifacts.length} artifacts`,
   );
   return timingData;
 };
 
 const averageTimings = (timingDataArray) => {
-  if (timingDataArray.length === 0) {
+  if (!timingDataArray.length) {
     throw new Error("No timing data to process");
   }
 
-  const specTimings = {};
-  timingDataArray.forEach((data) => {
-    data.durations.forEach((item) => {
-      if (item.spec && typeof item.duration === "number") {
-        if (!specTimings[item.spec]) {
-          specTimings[item.spec] = [];
-        }
-        specTimings[item.spec].push(item.duration);
-      }
-    });
-  });
+  const specTimings = timingDataArray
+    .flatMap((data) => data.durations)
+    .filter((item) => item.spec && typeof item.duration === "number")
+    .reduce((acc, { spec, duration }) => {
+      (acc[spec] = acc[spec] || []).push(duration);
+      return acc;
+    }, {});
 
-  const averagedTimings = { durations: [] };
-  Object.entries(specTimings).forEach(([spec, durations]) => {
-    const average = durations.reduce((sum, d) => sum + d, 0) / durations.length;
-    averagedTimings.durations.push({
-      spec: spec,
-      duration: Math.round(average),
-    });
-  });
+  const durations = Object.entries(specTimings).map(([spec, durations]) => ({
+    spec,
+    duration: Math.round(
+      durations.reduce((sum, d) => sum + d, 0) / durations.length,
+    ),
+  }));
 
-  return averagedTimings;
+  return { durations };
 };
 
 module.exports = { collectAndAverageTimings, averageTimings };

@@ -101,9 +101,6 @@ jobs:
             e2e/support
           sparse-checkout-cone-mode: false
 
-      - name: Install cypress-split for merging
-        run: npm install cypress-split@^1.24.20
-
       - name: Download all timing artifacts
         uses: actions/download-artifact@v4
         with:
@@ -114,27 +111,41 @@ jobs:
 
       - name: Merge split timings
         id: merge
-        run: |
-          echo "🔍 Checking for timing files to merge..."
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const glob = require('glob');
 
-          # Check if we have any timing files to merge
-          if ! find timing-files -name "chunkTimings.json" -type f | head -1 | grep -q .; then
-            echo "⚠ No chunkTimings.json files found - skipping timing merge"
-            exit 0
-          fi
+            const chunkFiles = glob.sync('timing-files/*/chunkTimings.json');
 
-          echo "✅ Found timing files, proceeding with merge..."
-          npx cypress-split-merge \
-            --parent-folder timing-files \
-            --split-file chunkTimings.json \
-            --output e2e/support/mergedTimings.json
+            const specs = new Map();
+            chunkFiles.forEach(file => {
+              const { durations = [] } = JSON.parse(fs.readFileSync(file, 'utf8'));
+              durations.forEach(({ spec, duration }) => specs.set(spec, duration));
+            });
+
+            if (specs.size === 0) {
+              throw new Error('No timing data found - no specs had timing changes');
+            }
+
+            const outputPath = 'e2e/support/runTimings.json';
+            fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+
+            const runTimings = {
+              durations: [...specs].map(([spec, duration]) => ({ spec, duration }))
+            };
+
+            fs.writeFileSync(outputPath, JSON.stringify(runTimings, null, 2));
+            console.log(`Merged timing data for ${specs.size} specs`);
 
       - name: Upload merged timing files
         if: steps.merge.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: merged-e2e-timings
-          path: e2e/support/mergedTimings.json
+          path: e2e/support/runTimings.json
           retention-days: 7
 
   e2e-tests-result:
