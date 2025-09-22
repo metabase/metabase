@@ -33,6 +33,7 @@
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase.models.serialization :as serdes]
+   [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml])
@@ -90,8 +91,9 @@
 (defn load-extract!
   "Perform a round-trip of loading an existing serialization, then serializing it again."
   [input-dir output-dir]
-  (serdes/with-cache
-    (load/load-metabase! (ingest/ingest-yaml input-dir)))
+  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+    (serdes/with-cache
+      (load/load-metabase! (ingest/ingest-yaml input-dir))))
   ;; Use a separate cache to make sure there is no cross-contamination.
   (serdes/with-cache
     (-> (extract/extract {:include-field-values true :include-metabot true})
