@@ -14,12 +14,13 @@ import type {
   EngineKey,
 } from "metabase-types/api";
 
-import { FIELD_OVERRIDES } from "../../constants";
-import type { EngineFieldOverride, FieldType } from "../../types";
-import { DatabaseHostnameWithProviderField } from "../DatabaseHostnameWithProviderField/DatabaseHostnameWithProviderField";
-import DatabaseInfoField from "../DatabaseInfoField";
-import DatabaseSectionField from "../DatabaseSectionField";
-import { getSharedFieldStyleProps } from "../styles";
+import { FIELD_OVERRIDES } from "../constants";
+import type { EngineFieldOverride, FieldType } from "../types";
+
+import { DatabaseHostnameWithProviderField } from "./DatabaseHostnameWithProviderField/DatabaseHostnameWithProviderField";
+import DatabaseInfoField from "./DatabaseInfoField";
+import DatabaseSectionField from "./DatabaseSectionField";
+import { getSharedFieldStyleProps } from "./styles";
 
 export interface DatabaseDetailFieldProps {
   field: EngineField;
@@ -28,7 +29,7 @@ export interface DatabaseDetailFieldProps {
   engine: Engine | undefined;
 }
 
-const DatabaseDetailField = ({
+export const DatabaseDetailField = ({
   field,
   autoFocus,
   engineKey,
@@ -151,6 +152,3 @@ const convertEngineFieldOptionsToSelectOptions = (
 ) => {
   return options.map((option) => ({ label: option.name, value: option.value }));
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DatabaseDetailField;
