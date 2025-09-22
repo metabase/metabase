@@ -55,10 +55,7 @@ export function NativeQuerySidebar({
       axis="x"
       resizeHandles={["w"]}
       handle={<ResizeHandle />}
-      style={{
-        borderLeft: "1px solid var(--mb-color-border)",
-        marginInlineStart: "0.25rem",
-      }}
+      className={S.nativeSidebar}
     >
       <NotebookNativePreview
         question={question}
