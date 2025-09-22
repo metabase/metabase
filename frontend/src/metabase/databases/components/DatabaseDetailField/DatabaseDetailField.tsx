@@ -140,13 +140,13 @@ const getPasswordProps = (field: EngineField) => {
 
 const getSelectProps = (field: EngineField, override?: EngineFieldOverride) => {
   return {
-    data: convertEnginFeildOptionsToSelectOptions(
+    data: convertEngineFieldOptionsToSelectOptions(
       override?.options ?? field.options ?? [],
     ),
   };
 };
 
-const convertEnginFeildOptionsToSelectOptions = (
+const convertEngineFieldOptionsToSelectOptions = (
   options: EngineFieldOption[],
 ) => {
   return options.map((option) => ({ label: option.name, value: option.value }));
