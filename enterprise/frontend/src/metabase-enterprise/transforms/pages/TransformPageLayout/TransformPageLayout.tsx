@@ -6,9 +6,9 @@ import {
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms/constants";
 
 import {
@@ -56,7 +56,7 @@ function TransformSidebar({ params }: TransformSidebarProps) {
   const transformListUrl = getTransformListUrl();
   const jobListUrl = getJobListUrl();
 
-  const hasPythonTransforms = hasPremiumFeature("transforms-python");
+  const hasPythonTransforms = useHasTokenFeature("transforms-python");
 
   return (
     <AdminNavWrapper data-testid="transform-sidebar">

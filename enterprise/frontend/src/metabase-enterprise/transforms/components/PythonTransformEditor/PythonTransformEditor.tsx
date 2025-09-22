@@ -2,8 +2,8 @@ import { useHotkeys } from "@mantine/hooks";
 import { useState } from "react";
 
 import { NotFound } from "metabase/common/components/ErrorPages";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { Flex, Stack } from "metabase/ui";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type {
   DatabaseId,
   PythonTransformSource,
@@ -48,6 +48,7 @@ export function PythonTransformEditor({
 }: PythonTransformEditorProps) {
   const [source, setSource] = useState(initialSource);
   const [isSourceDirty, setIsSourceDirty] = useState(false);
+  const hasPythonTransforms = useHasTokenFeature("transforms-python");
 
   const { isRunning, isDirty, cancel, run, executionResult } =
     useTestPythonTransform(source);
@@ -111,7 +112,7 @@ export function PythonTransformEditor({
       Object.keys(source["source-tables"]).length > 0,
   );
 
-  if (!hasPremiumFeature("transforms-python")) {
+  if (!hasPythonTransforms) {
     return <NotFound />;
   }
 
