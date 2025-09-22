@@ -77,7 +77,8 @@
 
 (defn list-files
   "List all files in the repository."
-  [{:keys [^Git git]} ^String branch]
+  [{:keys [^Git git] :as source} ^String branch]
+  (fetch! source)
   (let [repo (.getRepository git)
         rev-walk (RevWalk. repo)
         commit-id (.resolve repo (qualify-branch branch))
@@ -93,7 +94,8 @@
 (defn read-file
   "Read a specific file from the repository. Returns nil if the file does not exist.
   Path should be relative to the root of the repository."
-  [{:keys [^Git git]} ^String branch ^String path]
+  [{:keys [^Git git] :as source} ^String branch ^String path]
+  (fetch! source)
   (let [repo (.getRepository git)
         object-id (.resolve repo (str (qualify-branch branch) ":" path))]
     (when object-id

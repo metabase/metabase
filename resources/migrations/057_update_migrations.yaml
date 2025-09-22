@@ -1462,7 +1462,7 @@ databaseChangeLog:
                   type: char(21)
                   remarks: Entity ID of the model that was changed
                   constraints:
-                    nullable: false
+                    nullable: true
               - column:
                   name: created_at
                   type: ${timestamp_type}

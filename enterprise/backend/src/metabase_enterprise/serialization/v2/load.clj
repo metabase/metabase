@@ -194,7 +194,7 @@
                                                              (catch Exception _
                                                                nil)))
                                        root-dependency-path))
-                      (load-one! ctx item)
+                      (load-one! ctx #p item)
                       ctx)
                     (catch Exception e
                       (when-not continue-on-error
@@ -208,7 +208,8 @@
     ;;       this means that the corresponding entries would have been missing or stale when we indexed them.
     ;;       ideally, we would delay the indexing somehow, or only reindex what we've loaded.
     ;;       while we're figuring that out, here's a crude stopgap.
-    (search/reindex! {:async? false})))
+   ;; (search/reindex! {:async? false})
+    ))
 
 (defn load-selective!
   "Loads entities from an ingestion source, but only those whose types are in the whitelist.
