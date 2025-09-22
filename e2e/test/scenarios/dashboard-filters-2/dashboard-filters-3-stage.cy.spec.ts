@@ -403,6 +403,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
               .click();
           });
 
+          H.undoToast().icon("close").click();
+
           H.getDashboardCard(1).findByText("Select…").click();
           H.popover().within(() => {
             QSHelpers.getPopoverItem("Product → Category", 1)
