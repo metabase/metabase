@@ -30,11 +30,28 @@ You can also visit `https://[your metabase here]/reference`.
 
 The data reference is a collection of pages organized by database, then tables in that database (the same structure you use to [pick data](../questions/query-builder/editor.md#picking-data)). The data reference section is a great place to find information about the [data types](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview) of columns in your data.
 
+### Database details
+
+When you click into a database, you'll see:
+
+- **Details tab**: Contains metadata about the database, including general description, why this database is interesting, and things to be aware of.
+- **Tables tab**: Displays table names and descriptions. Click on a table to view its details and fields.
+
+For each table, you can view:
+
+- Table description and metadata
+- Fields in the table with their types and descriptions
+- Sample values for columns (when available)
+- Questions about this table (if you have permission to view them)
+- Option to create an X-ray of the table
+
+Admins can edit the metadata in this reference by clicking the **Edit** button in the upper right. Admins can also edit metabadata in the [admin settings](../data-modeling/metadata-editing.md).
+
 ## Glossary
 
 The glossary is a place where anyone can define terms relevant to your data. Currently, the glossary is a simple key-value store of terms and their definitions.
 
-To add a new term, click **+ New term**. Add the term name and its definitions, then click the checkmark to save the term to the glossary. 
+To add a new term, click **+ New term**. Add the term name and its definitions, then click the checkmark to save the term to the glossary.
 
 ## Segments
 
