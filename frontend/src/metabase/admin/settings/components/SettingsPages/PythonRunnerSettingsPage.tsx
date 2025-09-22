@@ -4,21 +4,12 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { useGetSettingsQuery } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHasTokenFeature } from "metabase/common/hooks";
 
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 
 export function PythonRunnerSettingsPage() {
-  // it seems we don't need to wire in _settingValues to the inputs - what is this magic??
-  const { data: _settingValues, isLoading } = useGetSettingsQuery();
   const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
-
-  if (isLoading) {
-    return <LoadingAndErrorWrapper loading />;
-  }
-
   if (!hasPythonTransformsFeature) {
     return (
       <SettingsPageWrapper title={t`Python Runner`}>
