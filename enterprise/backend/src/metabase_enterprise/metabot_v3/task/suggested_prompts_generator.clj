@@ -25,12 +25,11 @@
         metabot (t2/select-one :model/Metabot :entity_id metabot-eid)
         metabot-id (:id metabot)
         suggested-prompts-cnt (t2/count :model/MetabotPrompt :metabot_id metabot-id)]
-    (if (and (zero? suggested-prompts-cnt)
-             (:use_verified_content metabot))
+    (if (zero? suggested-prompts-cnt)
       (do
         (log/info "No suggested prompts found. Generating suggested prompts.")
         (metabot-v3.suggested-prompts/generate-sample-prompts metabot-id)
-        (log/info "Suggested prompts generated succesfully."))
+        (log/info "Suggested prompts generated successfully."))
       (log/info "Suggested prompts are present. Not generating."))))
 
 (task/defjob ^{DisallowConcurrentExecution true

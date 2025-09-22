@@ -36,9 +36,13 @@
   [metabot-id & {:as opts}]
   (let [opts (merge default-opts opts)]
     (lib.metadata.jvm/with-metadata-provider-cache
-      (let [cards (metabot-v3.tools.u/get-metrics-and-models metabot-id opts)
+      (let [cards (->> (metabot-v3.tools.u/get-metrics-and-models metabot-id opts)
+                       (sort-by :view_count #(compare %2 %1)))
+            ;; Limit to 5 metrics and 5 models
+            limited-cards (concat (take 5 (filter #(= (:type %) :metric) cards))
+                                  (take 5 (filter #(= (:type %) :model) cards)))
             {metrics :metric, models :model}
-            (->> (for [[[card-type database-id] group-cards] (group-by (juxt :type :database_id) cards)
+            (->> (for [[[card-type database-id] group-cards] (group-by (juxt :type :database_id) limited-cards)
                        detail (map (fn [detail card] (assoc detail ::origin card))
                                    (metabot-v3.dummy-tools/cards-details card-type database-id group-cards nil)
                                    group-cards)]
