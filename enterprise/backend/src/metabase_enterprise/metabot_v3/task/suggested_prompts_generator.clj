@@ -22,8 +22,7 @@
 (defn- maybe-generate-suggested-prompts! []
   (let [metabot-eid (get-in metabot-v3.config/metabot-config
                             [metabot-v3.config/internal-metabot-id :entity-id])
-        metabot (t2/select-one :model/Metabot :entity_id metabot-eid)
-        metabot-id (:id metabot)
+        metabot-id (t2/select-one-pk :model/Metabot :entity_id metabot-eid)
         suggested-prompts-cnt (t2/count :model/MetabotPrompt :metabot_id metabot-id)]
     (if (zero? suggested-prompts-cnt)
       (do

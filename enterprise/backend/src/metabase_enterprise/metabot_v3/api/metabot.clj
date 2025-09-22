@@ -31,7 +31,7 @@
   "Update a metabot instance"
   [{:keys [id]} :- [:map [:id pos-int?]]
    _query-params
-   metabot-updates :- [:map
+   metabot-updates :- [:map {:closed true}
                        [:use_verified_content {:optional true} :boolean]
                        [:collection_id {:optional true} [:maybe pos-int?]]]]
   (api/check-superuser)
@@ -43,17 +43,11 @@
                   (get-in metabot-v3.config/metabot-config [metabot-v3.config/internal-metabot-id :entity-id])))
       (api/check-400 false "Cannot update collection_id for the primary metabot instance."))
     ;; Prevent enabling verified content without the premium feature
-    (when (and (contains? metabot-updates :use_verified_content)
-               (:use_verified_content metabot-updates))
+    (when (:use_verified_content metabot-updates)
       (premium-features/assert-has-feature :content-verification (tru "Content verification")))
-    (let [verified-content-changed? (and (contains? metabot-updates :use_verified_content)
-                                         (not= (:use_verified_content old-metabot)
-                                               (:use_verified_content metabot-updates)))
-          collection-changed? (and (contains? metabot-updates :collection_id)
-                                   (not= (:collection_id old-metabot)
-                                         (:collection_id metabot-updates)))]
-      (t2/update! :model/Metabot id metabot-updates)
-      (when (or verified-content-changed? collection-changed?)
+    (let [old-vals (select-keys old-metabot (keys metabot-updates))]
+      (when (not= old-vals metabot-updates)
+        (t2/update! :model/Metabot id metabot-updates)
         (metabot-v3.suggested-prompts/delete-all-metabot-prompts id)
         (metabot-v3.suggested-prompts/generate-sample-prompts id))
       (t2/select-one :model/Metabot :id id))))
