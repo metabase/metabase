@@ -20,15 +20,20 @@
 
 (comment transform-job/keep-me)
 
+(def ^:private ui-display-types [:cron/raw :cron/builder])
+
 (api.macros/defendpoint :post "/"
   "Create a new transform job."
   [_route-params
    _query-params
-   {:keys [name description schedule tag_ids]} :- [:map
-                                                   [:name ms/NonBlankString]
-                                                   [:description {:optional true} [:maybe ms/NonBlankString]]
-                                                   [:schedule ms/NonBlankString]
-                                                   [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
+   {:keys [name description schedule ui_display_type tag_ids]} :- [:map
+                                                                   [:name ms/NonBlankString]
+                                                                   [:description {:optional true} [:maybe ms/NonBlankString]]
+                                                                   [:schedule ms/NonBlankString]
+                                                                   [:ui_display_type
+                                                                    {:default :cron/raw}
+                                                                    (ms/enum-decode-keyword ui-display-types)]
+                                                                   [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Creating transform job:" name "with schedule:" schedule)
   (api/check-superuser)
   ;; Validate cron expression
@@ -42,7 +47,8 @@
   (let [job (t2/insert-returning-instance! :model/TransformJob
                                            {:name name
                                             :description description
-                                            :schedule schedule})]
+                                            :schedule schedule
+                                            :ui_display_type ui_display_type})]
     (transforms.schedule/initialize-job! job)
     ;; Add tag associations if provided
     (when (seq tag_ids)
@@ -61,11 +67,14 @@
                         [:job-id ms/PositiveInt]]
    _query-params
    {tag-ids :tag_ids
-    :keys [name description schedule]} :- [:map
-                                           [:name {:optional true} ms/NonBlankString]
-                                           [:description {:optional true} [:maybe ms/NonBlankString]]
-                                           [:schedule {:optional true} ms/NonBlankString]
-                                           [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
+    :keys [name description schedule ui_display_type]} :- [:map
+                                                           [:name {:optional true} ms/NonBlankString]
+                                                           [:description {:optional true} [:maybe ms/NonBlankString]]
+                                                           [:schedule {:optional true} ms/NonBlankString]
+                                                           [:ui_display_type
+                                                            {:optional true}
+                                                            (ms/enum-decode-keyword ui-display-types)]
+                                                           [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Updating transform job" job-id)
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/TransformJob :id job-id))
@@ -82,7 +91,8 @@
     (when-let [updates (m/assoc-some nil
                                      :name name
                                      :description description
-                                     :schedule schedule)]
+                                     :schedule schedule
+                                     :ui_display_type ui_display_type)]
       (t2/update! :model/TransformJob job-id updates))
     (when schedule
       (transforms.schedule/update-job! job-id schedule))
