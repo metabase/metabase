@@ -32,7 +32,7 @@ jobs:
         run: NODE_ENV=development yarn build-storybook
 
       - name: Update Loki Snapshots
-        run: yarn test-visual:loki || yarn test-visual:loki-approve-diff && yarn test-visual:loki-prune
+        run: yarn test-visual:loki:ci || yarn test-visual:loki-approve-diff && yarn test-visual:loki-prune
 
       - name: Check for changes
         id: check-changes
