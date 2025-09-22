@@ -33,7 +33,6 @@
     (t2/select-one-fn :created_at :model/RemoteSyncChangeLog
                       {:where [:and
                                [:= :c.id root-col-id]
-                               [:= :most_recent [:inline true]]
                                [:= :status [:inline "success"]]
                                [:or
                                 [:= :sync_type [:inline "import"]]
@@ -112,26 +111,26 @@
   Returns:
     the count of dirty objects in this collection"
   [col-id select-options]
-  (let [{:keys [location] :as col} (t2/select-one :model/Collection :id col-id)
-        last-sync (last-sync-at col)
-        queries (mapv (fn [[table entity-type]]
-                        (let [entity-id-col (keyword (str (name table) ".entity_id"))]
-                          {:select (select-options table)
-                           :from [table]
-                           :join (cond-> [[:remote_sync_change_log :rs_change_log]
-                                          [:and
-                                           [:= :rs_change_log.model_entity_id entity-id-col]
-                                           [:= :rs_change_log.most_recent [:inline true]]
-                                           [:= :rs_change_log.model_type [:inline entity-type]]]]
-                                   (not= table :collection) (into [[:collection]
-                                                                   [:= (keyword (str (name table) ".collection_id")) :collection.id]]))
-                           :where [:and [:or
-                                         [:= :collection.id col-id]
-                                         [:like :collection.location [:inline (str location col-id "/%")]]]
-                                   (when last-sync
-                                     [:> :rs_change_log.created_at last-sync])]}))
-                      synced-models)]
-    {:union-all queries}))
+  (when-let [{:keys [location] :as col} (t2/select-one :model/Collection :id col-id)]
+    (let [last-sync #p (last-sync-at col)
+          queries (mapv (fn [[table entity-type]]
+                          (let [entity-id-col (keyword (str (name table) ".entity_id"))]
+                            {:select (select-options table)
+                             :from [table]
+                             :join (cond-> [[:remote_sync_change_log :rs_change_log]
+                                            [:and
+                                             [:= :rs_change_log.model_entity_id entity-id-col]
+                                             [:= :rs_change_log.most_recent [:inline true]]
+                                             [:= :rs_change_log.model_type [:inline entity-type]]]]
+                                     (not= table :collection) (into [[:collection]
+                                                                     [:= (keyword (str (name table) ".collection_id")) :collection.id]]))
+                             :where [:and [:or
+                                           [:= :collection.id col-id]
+                                           [:like :collection.location [:inline (str location col-id "/%")]]]
+                                     (when last-sync
+                                       [:> :rs_change_log.created_at last-sync])]}))
+                        synced-models)]
+      {:union-all queries})))
 
 (defn dirty-collection?
   "A boolean value reporting if the given collection has changes since the last sync
@@ -142,7 +141,9 @@
   Returns:
     boolean if the collection has changes or not"
   [col-id]
-  (:exists (t2/query-one {:select [[[:exists (dirty-collection col-id exists-select)] :exists]]})))
+  (boolean
+   (when-let [dirty-query (dirty-collection col-id exists-select)]
+     (:exists (t2/query-one {:select [[[:exists dirty-query] :exists]]})))))
 
 (defn dirty-for-collection
   "All models for collection that are dirty along with a note about why their state is dirty
@@ -153,4 +154,5 @@
   Returns:
     seq of models that have changed since the last remote sync"
   [col-id]
-  (t2/query (dirty-collection col-id items-select)))
+  (when-let [dirty-query (dirty-collection col-id items-select)]
+    (t2/query dirty-query)))
