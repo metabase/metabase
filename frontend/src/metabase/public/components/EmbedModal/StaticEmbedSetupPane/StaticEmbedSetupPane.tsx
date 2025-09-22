@@ -268,6 +268,7 @@ export const StaticEmbedSetupPane = ({
                 <ParametersSettings
                   resourceType={resourceType}
                   resourceParameters={resourceParameters}
+                  allowEditable
                   embeddingParams={embeddingParams}
                   lockedParameters={lockedParameters}
                   parameterValues={parameterValues}
