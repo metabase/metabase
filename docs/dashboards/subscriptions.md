@@ -78,13 +78,13 @@ If you check this box, Metabase will drop any visualization settings applied to 
 
 ### Questions to attach
 
-Here you can specify which questions Metabase should attach results for. If you don't select any questions, Metabase will not sent any attachments.
+Here you can specify which questions Metabase should attach results for. If you don't select any questions, Metabase won't send any attachments.
 
 The attached files will include up to 1 048 575 rows by default (Excel's row limit for spreadsheets). If you're self-hosting Metabase, you can adjust this row limit by setting the environment variable [`MB_ATTACHMENT_ROW_LIMIT`](../configuring-metabase/environment-variables.md#mb_attachment_row_limit). To change this row limit on your Metabase Cloud instance, you can [contact us](https://www.metabase.com/help-premium) and request a different row limit.
 
 ### Send only attachments (no charts)
 
-You can toggle on "Send only attachments (no charts)" if you want to receive just the csv/xls/json files without the charts. Remember to select the questions whose results you want to attach in "Questions to attach" above the toggle.
+You can toggle on "Send only attachments (no charts)" if you want to receive just the .csv or .xlsx files without the charts. Remember to select the results you want to attach in "Questions to attach" above the toggle.
 
 ## Slack subscription options
 
