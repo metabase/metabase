@@ -2,6 +2,7 @@
   "This is exactly the same as [[malli.experimental.describe]], but handles our deferred i18n forms, and uses our
   registry."
   (:require
+   [better-cond.core :as b]
    [clojure.string :as str]
    [malli.core :as mc]
    [malli.experimental.describe :as med]
@@ -13,12 +14,29 @@
 
 (declare describe)
 
+;;; for HUGE schemas like `:metabase.lib.schema/query`, don't expand refs once we get past a certain depth, otherwise
+;;; we can take literal minutes to generate the description. Three levels of depth is probably about all that would
+;;; really be useful anyway for an error message.
+
+(def ^:private max-depth 3)
+
 (defn- accept-ref [schema [k :as _children] options]
-  (or (description schema)
-      (if (contains? (::parent-refs options) k)
-        (str "recursive " k)
-        (describe (mr/resolve-schema schema)
-                  (update options ::parent-refs #(conj (set %) k))))))
+  (b/cond
+    :let [description (description schema)]
+    description
+    description
+
+    (> (::depth options 0) max-depth)
+    (pr-str k)
+
+    (contains? (::parent-refs options) k)
+    (str "recursive " k)
+
+    :else
+    (describe (mr/resolve-schema schema)
+              (-> options
+                  (update ::parent-refs #(conj (set %) k))
+                  (update ::depth (fnil inc 0))))))
 
 ;;; these implementations replace the normal ones which do not recursively resolve refs and schemas. We track
 ;;; `::parent-refs` to prevent infinite loops with self-referencing schemas

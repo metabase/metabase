@@ -42,6 +42,7 @@
                                     [:collection_id {:optional true} [:maybe ms/PositiveInt]]
                                     [:dashboard_id  {:optional true} [:maybe ms/PositiveInt]]]]
   (t2/with-transaction [_conn]
+    ;; TODO (Cam 9/18/25) -- N+1 endpoint
     (doseq [card-id card_ids]
-      (api.card/update-card! card-id (select-keys body [:collection_id :dashboard_id]) true)))
+      (api.card/update-card! card-id (select-keys body [:collection_id :dashboard_id]) {:delete-old-dashcards? true})))
   {:status :success})

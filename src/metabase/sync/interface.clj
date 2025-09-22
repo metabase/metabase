@@ -113,12 +113,12 @@
 
 (mr/def ::FKMetadataEntry
   [:map
-   [:fk-table-name    ::lib.schema.common/non-blank-string]
-   [:fk-table-schema  [:maybe ::lib.schema.common/non-blank-string]]
-   [:fk-column-name   ::lib.schema.common/non-blank-string]
-   [:pk-table-name    ::lib.schema.common/non-blank-string]
-   [:pk-table-schema  [:maybe ::lib.schema.common/non-blank-string]]
-   [:pk-column-name   ::lib.schema.common/non-blank-string]])
+   [:fk-table-name   ::lib.schema.common/non-blank-string]
+   [:fk-table-schema [:maybe ::lib.schema.common/non-blank-string]]
+   [:fk-column-name  ::lib.schema.common/non-blank-string]
+   [:pk-table-name   ::lib.schema.common/non-blank-string]
+   [:pk-table-schema [:maybe ::lib.schema.common/non-blank-string]]
+   [:pk-column-name  ::lib.schema.common/non-blank-string]])
 
 (def FKMetadataEntry
   "Schema for an entry in the expected output of [[metabase.driver/describe-fks]]."
@@ -129,12 +129,10 @@
 ;; out from the ns declaration when running `cljr-clean-ns`. Plus as a bonus in the future we could add additional
 ;; validations to these, e.g. requiring that a Field have a base_type
 
-(mr/def ::no-kebab-case-keys (ms/MapWithNoKebabKeys))
-
 (mr/def ::DatabaseInstance
   [:and
    (ms/InstanceOf :model/Database)
-   ::no-kebab-case-keys])
+   [:ref ::ms/snake_case_map]])
 
 (def DatabaseInstance
   "Schema for a valid instance of a Metabase Database."
@@ -143,7 +141,7 @@
 (mr/def ::TableInstance
   [:and
    (ms/InstanceOf :model/Table)
-   ::no-kebab-case-keys])
+   [:ref ::ms/snake_case_map]])
 
 (def TableInstance
   "Schema for a valid instance of a Metabase Table."
@@ -153,7 +151,7 @@
   [:and
    [:and
     (ms/InstanceOf :model/Field)
-    ::no-kebab-case-keys]])
+    [:ref ::ms/snake_case_map]]])
 
 (def FieldInstance
   "Schema for a valid instance of a Metabase Field."

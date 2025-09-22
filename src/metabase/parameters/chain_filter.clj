@@ -68,7 +68,9 @@
    [honey.sql :as sql]
    [metabase.app-db.core :as mdb]
    [metabase.driver.common.parameters.dates :as params.dates]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.parameters.chain-filter.dedupe-joins :as dedupe]
    [metabase.parameters.field-values :as params.field-values]
@@ -97,7 +99,7 @@
 (def Constraint
   "Schema for a constraint on a field."
   [:map
-   [:field-id ms/PositiveInt]
+   [:field-id ::lib.schema.id/field]
    [:op :keyword]
    [:value :any]
    [:options {:optional true} [:maybe map?]]])
@@ -126,7 +128,7 @@
      (t2/select-one [:model/Field :base_type :semantic_type] :id field-id))
    :ttl/threshold (u/minutes->ms 10)))
 
-(mu/defn- filter-clause
+(mu/defn- filter-clause :- mbql.s/Filter
   "Generate a single MBQL `:filter` clause for a Field and `value` (or multiple values, if `value` is a collection)."
   [source-table-id
    {:keys [field-id op value options]} :- Constraint]
@@ -440,9 +442,9 @@
 
 ;;; ------------------------ Chain filter (powers GET /api/dashboard/:id/params/:key/values) -------------------------
 
-(mu/defn- unremapped-chain-filter :- ms/FieldValuesResult
+(mu/defn- unremapped-chain-filter :- ::parameters.schema/field-values-result
   "Chain filtering without all the fancy remapping stuff on top of it."
-  [field-id    :- ms/PositiveInt
+  [field-id    :- ::lib.schema.id/field
    constraints :- [:maybe Constraints]
    options     :- [:maybe Options]]
   (let [mbql-query (chain-filter-mbql-query field-id constraints options)]
@@ -474,7 +476,7 @@
 (mu/defn- add-human-readable-values
   "Convert result `values` (a sequence of 1-tuples) to a sequence of `[v human-readable]` pairs by finding the
   matching remapped values from `v->human-readable`."
-  [values            :- [:sequential ms/NonRemappedFieldValue]
+  [values            :- [:sequential ::parameters.schema/non-remapped-field-value]
    v->human-readable :- ::parameters.schema/human-readable-remapping-map]
   (map vector
        (map first values)
@@ -580,7 +582,7 @@
                             (< limit (count values)))
                           has_more_values)}))
 
-(mu/defn chain-filter :- ms/FieldValuesResult
+(mu/defn chain-filter :- ::parameters.schema/field-values-result
   "Fetch a sequence of possible values of Field with `field-id` by restricting the possible values to rows that match
   values of other Fields in the `constraints` map. Powers the `GET /api/dashboard/:id/param/:key/values` chain filter
   API endpoint.
@@ -603,7 +605,7 @@
 
   For remapped columns (when remapping is detected or when an explicit remapping field-id is provided), this returns
   results as a sequence of `[value remapped-value]` pairs."
-  [field-id    :- ms/PositiveInt
+  [field-id    :- ::lib.schema.id/field
    constraints :- [:maybe Constraints]
    & options]
   (assert (even? (count options)))
@@ -667,7 +669,7 @@
                          :base-type   base-type}))))))
 
 (mu/defn- unremapped-chain-filter-search
-  [field-id    :- ms/PositiveInt
+  [field-id    :- ::lib.schema.id/field
    constraints :- [:maybe Constraints]
    query       :- ms/NonBlankString
    options     :- [:maybe Options]]
@@ -733,7 +735,7 @@
                limit (take limit))
      :has_more_values has_more_values}))
 
-(mu/defn chain-filter-search :- ms/FieldValuesResult
+(mu/defn chain-filter-search :- ::parameters.schema/field-values-result
   "Convenience version of `chain-filter` that adds a constraint to only return values of Field with `field-id`
   containing String `query`. Powers the `search/:query` version of the chain filter endpoint."
   [field-id          :- ms/PositiveInt

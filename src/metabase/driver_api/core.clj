@@ -1,7 +1,10 @@
 (ns metabase.driver-api.core
   {:clj-kondo/config '{:linters
-                       ;; this is actually ok here since this is a drivers namespace
-                       {:discouraged-namespace {metabase.query-processor.store {:level :off}}
+                       {:discouraged-namespace {;; allowed for now until we update drivers to use Lib
+                                                metabase.legacy-mbql.schema    {:level :off}
+                                                metabase.legacy-mbql.util      {:level :off}
+                                                ;; this is actually ok here since this is a drivers namespace
+                                                metabase.query-processor.store {:level :off}}
                         ;; this is also ok here since this is a drivers namespace
                         :discouraged-var       {metabase.lib.core/->legacy-MBQL {:level :off}}}}}
   (:refer-clojure :exclude [replace compile require])
@@ -119,7 +122,6 @@
  limit/determine-query-max-rows
  logger/level-enabled?
  mbql.s/Join
- mbql.s/MBQLQuery
  mbql.u/aggregation-at-index
  mbql.u/assoc-field-options
  mbql.u/desugar-filter-clause
@@ -311,3 +313,7 @@
 (def qp.util.transformations.nest-breakouts.externally-remapped-field
   ":metabase.query-processor.util.transformations.nest-breakouts/externally-remapped-field"
   ::qp.util.transformations.nest-breakouts/externally-remapped-field)
+
+(def MBQLQuery
+  "Schema for a legacy MBQL inner query."
+  [:ref ::mbql.s/MBQLInnerQuery])

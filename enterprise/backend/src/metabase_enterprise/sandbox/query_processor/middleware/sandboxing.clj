@@ -319,7 +319,7 @@
   (lib.walk/walk-stages
    query
    (fn [query _path stage]
-     (when (and (= (:lib/type stage) :mbql.stage/mbql)
+     (when (and (lib/mbql-stage? stage)
                 (:source-table stage)
                 (not (::sandbox? stage)))
        (when-let [sandbox (get table-id->sandbox (:source-table stage))]

@@ -1,5 +1,7 @@
 (ns metabase.lib.schema.metadata
   (:require
+   #?@(:clj
+       ([metabase.util.regex :as u.regex]))
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.schema.binning :as lib.schema.binning]
@@ -536,11 +538,25 @@
    [:definition {:optional true} [:maybe [:ref ::persisted-info.definition]]]
    [:query-hash {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
+(def ^:private card-types
+  #{:question :model :metric})
+
 (mr/def ::card.type
-  [:enum
-   :question
-   :model
-   :metric])
+  "All acceptable card types.
+
+  Previously (< 49), we only had 2 card types: question and model, which were differentiated using the boolean
+  `dataset` column. Soon we'll have more card types (e.g: metric) and we will longer be able to use a boolean column
+  to differentiate between all types. So we've added a new `type` column for this purpose.
+
+  Migrating all the code to use `report_card.type` will be quite an effort, we decided that we'll migrate it
+  gradually."
+  (into [:enum
+         (merge
+          {:decode/json      lib.schema.common/normalize-keyword
+           :decode/normalize lib.schema.common/normalize-keyword}
+          #?(:clj
+             {:api/regex (u.regex/re-or (map name card-types))}))]
+        card-types))
 
 (mr/def ::type
   "TODO -- not convinced we need a separate `:metadata/metric` anymore, it made sense back when Legacy/V1 Metrics were a

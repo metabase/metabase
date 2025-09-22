@@ -31,7 +31,7 @@
               [:< [:field 2 nil] 100]]]
             [:= [:field 3 nil] 42])))))
 
-(deftest ^:parallel interesting-fields-test
+(deftest ^:parallel w
   (testing "Should return only :type/Temporal and :type/Boolean fields, or fields with the :type/Category semantic type"
     (is (=? ["DATE" "CATEGORY" "BOOLEAN"]
             (->> [{:name "ID" :base_type :type/Integer :semantic_type :type/PK}

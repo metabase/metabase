@@ -51,7 +51,7 @@
   [query :- ::lib.schema/query]
   (cond-> query
     (and (is-download? query)
-         (= (:lib/type (lib/query-stage query -1)) :mbql.stage/mbql)
+         (lib/mbql-stage? query -1)
          (= (current-user-download-perms-level query) :ten-thousand-rows))
     (lib/limit ((fnil min Integer/MAX_VALUE) (lib/current-limit query -1) max-rows-in-limited-downloads))))
 

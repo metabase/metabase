@@ -17,7 +17,8 @@
    [metabase.xrays.transforms.dashboard :as transforms.dashboard]
    [metabase.xrays.transforms.materialize :as transforms.materialize]
    [ring.util.codec :as codec]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.lib-be.core :as lib-be]))
 
 (set! *warn-on-reflection* true)
 
@@ -114,8 +115,8 @@
   "Wrap query map into a Query object (mostly to facilitate type dispatch)."
   [query :- :map]
   (mi/instance :model/Query
-               (merge (queries/query->database-and-table-ids query)
-                      {:dataset_query (mi/maybe-normalize-query :out query)})))
+               (merge (queries/query->database-and-table-id query)
+                      {:dataset_query (lib-be/normalize-query query)})))
 
 (defmethod ->entity :adhoc
   [_entity-type encoded-query]

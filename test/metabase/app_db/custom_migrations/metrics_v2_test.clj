@@ -147,11 +147,11 @@
                                                             2 (:id metric2-card)})
                json/decode+kw)))))
 
-(def query-validator
-  (mr/validator mbql.s/MBQLQuery))
+(defn query-validator [inner-query]
+  (mr/validate ::mbql.s/MBQLInnerQuery inner-query))
 
-(def query-explainer
-  (mr/explainer mbql.s/MBQLQuery))
+(defn query-explainer [inner-query]
+  (mr/explain ::mbql.s/MBQLInnerQuery inner-query))
 
 (deftest migrate-metrics-to-v2-test
   (impl/test-migrations ["v51.2024-05-13T15:30:57" "v51.2024-05-13T16:00:00"] [migrate!]

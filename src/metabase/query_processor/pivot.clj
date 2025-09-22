@@ -379,32 +379,32 @@
                     [:database ::lib.schema.id/database]]
    viz-settings :- [:maybe :map]]
   (let [{:keys [rows columns values]} (:pivot_table.column_split viz-settings)
-        show-row-totals    (get viz-settings :pivot.show_row_totals true)
-        show-column-totals (get viz-settings :pivot.show_column_totals true)
-        metadata-provider  (or (:lib/metadata query)
-                               (lib.metadata.jvm/application-database-metadata-provider (:database query)))
-        query              (lib/query metadata-provider query)
-        unique-name-fn     (lib.util/unique-name-generator)
-        returned-columns   (->> (lib/returned-columns query)
-                                (mapv #(update % :name unique-name-fn)))
-        aggregations       (filter #(= (:lib/source %) :source/aggregations)
-                                   returned-columns)
-        breakouts          (filter :lib/breakout? returned-columns)
-        column-alias->index (into {}
-                                  (map-indexed (fn [i column] [(:lib/desired-column-alias column) i]))
-                                  (concat breakouts aggregations))
-        column-name->index (into {}
-                                 (map-indexed (fn [i column] [(:name column) i]))
-                                 (concat breakouts aggregations))
-        process-columns    (fn process-columns [column-names]
-                             (when (seq column-names)
-                               (into [] (keep (fn [n] (or (column-alias->index n)
-                                                          (column-name->index n)))) column-names)))
-        pivot-opts         {:pivot-rows         (process-columns rows)
-                            :pivot-cols         (process-columns columns)
-                            :pivot-measures     (process-columns values)
-                            :show-row-totals    show-row-totals
-                            :show-column-totals show-column-totals}]
+        show-row-totals               (get viz-settings :pivot.show_row_totals true)
+        show-column-totals            (get viz-settings :pivot.show_column_totals true)
+        metadata-providerable         (or (:lib/metadata query)
+                                          lib.metadata.jvm/application-database-metadata-provider)
+        query                         (lib/query metadata-providerable query)
+        unique-name-fn                (lib.util/unique-name-generator)
+        returned-columns              (->> (lib/returned-columns query)
+                                           (mapv #(update % :name unique-name-fn)))
+        aggregations                  (filter #(= (:lib/source %) :source/aggregations)
+                                              returned-columns)
+        breakouts                     (filter :lib/breakout? returned-columns)
+        column-alias->index           (into {}
+                                            (map-indexed (fn [i column] [(:lib/desired-column-alias column) i]))
+                                            (concat breakouts aggregations))
+        column-name->index            (into {}
+                                            (map-indexed (fn [i column] [(:name column) i]))
+                                            (concat breakouts aggregations))
+        process-columns               (fn process-columns [column-names]
+                                        (when (seq column-names)
+                                          (into [] (keep (fn [n] (or (column-alias->index n)
+                                                                     (column-name->index n)))) column-names)))
+        pivot-opts                    {:pivot-rows         (process-columns rows)
+                                       :pivot-cols         (process-columns columns)
+                                       :pivot-measures     (process-columns values)
+                                       :show-row-totals    show-row-totals
+                                       :show-column-totals show-column-totals}]
     (when (some some? (vals pivot-opts))
       pivot-opts)))
 
@@ -414,9 +414,9 @@
   [query        :- [:map
                     [:database ::lib.schema.id/database]]
    viz-settings :- [:maybe :map]]
-  (let [metadata-provider  (or (:lib/metadata query)
-                               (lib.metadata.jvm/application-database-metadata-provider (:database query)))
-        query              (lib/query metadata-provider query)
+  (let [metadata-providerable  (or (:lib/metadata query)
+                                   lib.metadata.jvm/application-database-metadata-provider)
+        query              (lib/query metadata-providerable query)
         index-in-breakouts (into {}
                                  (comp (filter (some-fn :lib/breakout? #(= (:lib/source %) :source/aggregations)))
                                        (map-indexed (fn [i column] [(:name column) i])))
@@ -438,17 +438,17 @@
   (let [{:keys [rows columns values]} (:pivot_table.column_split viz-settings)
         show-row-totals    (get viz-settings "pivot.show_row_totals" true)
         show-column-totals (get viz-settings "pivot.show_column_totals" true)
-        metadata-provider             (or (:lib/metadata query)
-                                          (lib.metadata.jvm/application-database-metadata-provider (:database query)))
-        mlv2-query                    (lib/query metadata-provider query)
+        metadata-providerable             (or (:lib/metadata query)
+                                              lib.metadata.jvm/application-database-metadata-provider)
+        mlv2-query                    (lib/query metadata-providerable query)
         breakouts                     (into []
                                             (map-indexed (fn [i col]
                                                            (cond-> col
                                                              true                         (assoc ::idx i)
-                                                             ;; if the col has a card-id, we swap the :lib/source to say
-                                                             ;; source/card this allows `lib/find-matching-column` to properly
-                                                             ;; match a column that has a join-alias but whose source is a
-                                                             ;; model
+                                                             ;; if the col has a card-id, we swap the :lib/source to
+                                                             ;; say source/card this allows `lib/find-matching-column`
+                                                             ;; to properly match a column that has a join-alias but
+                                                             ;; whose source is a model
                                                              (contains? col :lib/card-id) (assoc :lib/source :source/card))))
                                             (concat (lib/breakouts-metadata mlv2-query)
                                                     (lib/aggregations-metadata mlv2-query)))

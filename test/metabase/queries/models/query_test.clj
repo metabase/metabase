@@ -12,6 +12,8 @@
   (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id)
                                                    :type     :query
                                                    :query    {:source-table (mt/id :venues)}}}]
+    (is (= (mt/id)
+           (:database_id card)))
     (doseq [[message {:keys [expected query]}]
             {"A basic query"
              {:expected {:database-id 1, :table-id 1}
@@ -28,7 +30,7 @@
              "If the query has a card__id source table, we should fetch database and table ID from the Card"
              {:expected {:database-id (mt/id)
                          :table-id    (mt/id :venues)}
-              :query    {:database 1000
+              :query    {:database (mt/id)
                          :type     :query
                          :query    {:source-table (format "card__%d" (:id card))}}}
 
@@ -38,15 +40,18 @@
                          :type     :query
                          :query    {:source-query {:source-table 6}}}}}]
       (testing message
-        (is (=? expected
-                (into {} (query/query->database-and-table-ids query))))))))
+        (let [mp (lib.tu/mock-metadata-provider
+                  (mt/metadata-provider)
+                  {:database (assoc meta/database :id (:database query))})]
+          (is (=? expected
+                  (query/query->database-and-table-id (lib/query mp query)))))))))
 
 (deftest ^:parallel query->database-and-table-ids-pMBQL-test
   (testing "Should work for pMBQL queries"
     (let [venues (lib.metadata/table meta/metadata-provider (meta/id :venues))
           query  (lib/query meta/metadata-provider venues)]
       (is (= {:database-id (meta/id), :table-id (meta/id :venues)}
-             (query/query->database-and-table-ids query))))))
+             (query/query->database-and-table-id query))))))
 
 (deftest ^:parallel query->database-and-table-ids-pMBQL-source-card-test
   (testing "Should handle source-card lookup for pMBQL queries"
@@ -57,44 +62,4 @@
       (is (=? {:stages [{:lib/type :mbql.stage/mbql, :source-card 1}]}
               query-with-source-card))
       (is (= {:database-id (meta/id), :table-id (meta/id :venues)}
-             (query/query->database-and-table-ids query-with-source-card))))))
-
-(deftest ^:parallel collect-card-ids-legacy-native-query-template-tags-test
-  (let [query {:database 1
-               :type     :native
-               :native   {:query         "SELECT *;"
-                          :template-tags {"tag_1" {:type    :card
-                                                   :card-id 100}
-                                          "tag_2" {:type    :card
-                                                   :card-id 200}}}}]
-    (is (= #{100 200}
-           (set (query/collect-card-ids query))))))
-
-(deftest ^:parallel collect-card-ids-legacy-query-source-card-test
-  (let [query {:database 1
-               :type     :query
-               :query    {:source-query {:source-table "card__1000"}}}]
-    (is (= #{1000}
-           (set (query/collect-card-ids query))))))
-
-(deftest ^:parallel collect-card-ids-pmbql-native-query-template-tags-test
-  (let [query (lib/query meta/metadata-provider {:lib/type      :mbql.stage/native
-                                                 :native        "SELECT *;"
-                                                 :template-tags {"tag_1" {:name         "tag_1"
-                                                                          :display-name "Tag 1"
-                                                                          :type         :card
-                                                                          :card-id      100}
-                                                                 "tag_2" {:name         "tag_2"
-                                                                          :display-name "Tag 2"
-                                                                          :type         :card
-                                                                          :card-id      200}}})]
-    (is (= #{100 200}
-           (set (query/collect-card-ids query))))))
-
-(deftest ^:parallel collect-card-ids-pmbql-query-source-card-test
-  (let [metadata-provider      (lib.tu/metadata-provider-with-cards-for-queries
-                                meta/metadata-provider
-                                [(lib/query meta/metadata-provider (lib.metadata/table meta/metadata-provider (meta/id :venues)))])
-        query-with-source-card (lib/query metadata-provider (lib.metadata/card metadata-provider 1))]
-    (is (= #{1}
-           (set (query/collect-card-ids query-with-source-card))))))
+             (query/query->database-and-table-id query-with-source-card))))))

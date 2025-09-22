@@ -43,7 +43,7 @@
   stages can only be the first stage, so if the last stage is native it means we have only one stage and this query is
   native-only."
   [query]
-  (= (:lib/type (lib/query-stage query -1)) :mbql.stage/native))
+  (lib/native-stage? query -1))
 
 (mu/defn- compile* :- ::compiled
   [query :- ::lib.schema/query]

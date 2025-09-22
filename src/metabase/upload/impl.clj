@@ -746,7 +746,7 @@
   "For models that depend on only one table, return its id, otherwise return nil. Doesn't support native queries."
   [model]
   ; dataset_query can be empty in tests
-  (when-let [query (queries/card->lib-query model)]
+  (when-let [query (:dataset_query model)]
     (when (and (mbql? model) (no-joins? query))
       (lib/source-table-id query))))
 

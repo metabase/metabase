@@ -6,6 +6,7 @@
    [metabase.queries.models.card.metadata]
    [metabase.queries.models.parameter-card]
    [metabase.queries.models.query]
+   [metabase.queries.schema]
    [potemkin :as p]))
 
 (comment metabase.queries.card/keep-me
@@ -13,7 +14,8 @@
          metabase.queries.models.card/keep-me
          metabase.queries.models.card.metadata/keep-me
          metabase.queries.models.parameter-card/keep-me
-         metabase.queries.models.query/keep-me)
+         metabase.queries.models.query/keep-me
+         metabase.queries.schema/keep-me)
 
 (p/import-vars
  [metabase.queries.card
@@ -38,11 +40,10 @@
  [metabase.queries.models.parameter-card]
  [metabase.queries.models.query
   average-execution-time-ms
-  query->database-and-table-ids
-  save-query-and-update-average-execution-time!])
-
-#_{:clj-kondo/ignore [:missing-docstring]}
-(p/import-def metabase.queries.models.card/lib-query card->lib-query)
+  query->database-and-table-id
+  save-query-and-update-average-execution-time!]
+ [metabase.queries.schema
+  normalize-card])
 
 #_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.queries.models.card/populate-query-fields populate-card-query-fields)

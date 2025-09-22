@@ -96,5 +96,5 @@
   (lib.walk/walk-stages
    query
    (fn [query stage-path stage]
-     (when (= (:lib/type stage) :mbql.stage/mbql)
+     (when (lib/mbql-stage? stage)
        (reconcile-bucketing-in-stage query stage-path stage)))))

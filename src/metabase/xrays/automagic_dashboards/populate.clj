@@ -10,7 +10,9 @@
    [metabase.util.log :as log]
    [metabase.xrays.automagic-dashboards.filters :as filters]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.lib.core :as lib]
+   [metabase.lib-be.core :as lib-be]))
 
 (set! *warn-on-reflection* true)
 
@@ -125,20 +127,21 @@
 (defn card-defaults
   "Default properties for a dashcard on magic dashboard."
   []
-  {:id                     (gensym)
-   :dashboard_tab_id       nil
+  {:dashboard_tab_id       nil
    :visualization_settings {}})
 
 (defn- add-card
   "Add a card to dashboard `dashboard` at position [`x`, `y`]."
-  [dashboard {:keys [title description dataset_query width height id] :as card} [x y]]
+  [dashboard {query :dataset_query, :keys [title description width height id] :as card} [x y]]
   (let [card (-> {:creator_id    api/*current-user-id*
-                  :dataset_query dataset_query
+                  :dataset_query query
                   :description   description
                   :name          title
                   :collection_id nil
-                  :id            (or id (gensym))}
+                  :id            (when (pos-int? id)
+                                   id)}
                  (merge (visualization-settings card))
+                 queries/normalize-card
                  queries/populate-card-query-fields)]
     (update dashboard :dashcards conj
             (merge (card-defaults)

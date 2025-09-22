@@ -764,6 +764,7 @@
   parameters
   {:team "Querying"
    :api  #{metabase.parameters.chain-filter
+           metabase.parameters.core
            metabase.parameters.custom-values
            metabase.parameters.dashboard
            metabase.parameters.field
@@ -898,8 +899,7 @@
    :api  #{metabase.queries.api
            metabase.queries.core
            metabase.queries.init
-           metabase.queries.models.query ; TODO FIXME
-           metabase.queries.schema} ; TODO FIXME
+           metabase.queries.models.query} ; TODO FIXME
    :uses #{analytics
            analyze
            api

@@ -74,7 +74,7 @@
                                            (when (lib/previous-stage query -1)
                                              (lib/fields query -2)))
           field-ids                    (filter pos-int? (map last fields))
-          updated-column-viz-settings  (if (= (:lib/type (lib/query-stage query -1)) :mbql.stage/mbql)
+          updated-column-viz-settings  (if (lib/mbql-stage? query -1)
                                          (update-card-viz-settings query column-viz-settings field-ids)
                                          column-viz-settings)
           global-settings              (update-vals (appearance/custom-formatting)

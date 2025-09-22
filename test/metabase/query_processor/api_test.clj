@@ -774,9 +774,9 @@
             (is (= [nil nil 3 2009] (last rows)))))))))
 
 (deftest ^:parallel parameter-values-test
-  (testing "static-list"
+  (testing :static-list
     (let [parameter {:values_query_type "list",
-                     :values_source_type "static-list",
+                     :values_source_type :static-list,
                      :values_source_config {:values ["foo1" "foo2" "bar"]},
                      :name "Text",
                      :slug "text",
@@ -906,7 +906,7 @@
     (let [parameter {:name                 "Static Category label"
                      :id                   "list-param-id"
                      :type                 "category"
-                     :values_source_type   "static-list"
+                     :values_source_type   :static-list
                      :values_source_config {:values [["A frican" "Af"]
                                                      ["American" "Am"]
                                                      ["A   sian" "As"]]}}

@@ -396,7 +396,7 @@
   [query :- ::lib.schema/query
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage]
-  (when (and (= (:lib/type stage) :mbql.stage/mbql)
+  (when (and (lib/mbql-stage? stage)
              (lib.util.match/match-one stage
                [:field (_opts :guard (every-pred :source-field (complement :join-alias))) _id-or-name]))
     (when (and driver/*driver*
@@ -412,7 +412,7 @@
   [query :- ::lib.schema/query
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage]
-  (when (= (:lib/type stage) :mbql.stage/mbql)
+  (when (lib/mbql-stage? stage)
     (add-fields-from-next-stage query path stage)))
 
 (mu/defn add-implicit-joins :- ::lib.schema/query

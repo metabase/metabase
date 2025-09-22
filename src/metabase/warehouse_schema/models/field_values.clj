@@ -241,7 +241,7 @@
   [field-or-field-id]
   (if-not (map? field-or-field-id)
     (let [field-id (u/the-id field-or-field-id)]
-      (recur (or (t2/select-one ['Field :base_type :visibility_type :has_field_values] :id field-id)
+      (recur (or (t2/select-one [:model/Field :base_type :visibility_type :has_field_values] :id field-id)
                  (throw (ex-info (tru "Field {0} does not exist." field-id)
                                  {:field-id field-id, :status-code 404})))))
     (let [{base-type        :base_type
