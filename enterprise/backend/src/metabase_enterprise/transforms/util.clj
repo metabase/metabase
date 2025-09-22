@@ -7,12 +7,15 @@
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.sync.core :as sync]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
   (:import
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -39,6 +42,11 @@
                          :transform-id id}
                         e))
         (throw e)))))
+
+(defn python-transform?
+  "Check if this is a Python transform."
+  [transform]
+  (= :python (-> transform :source :type keyword)))
 
 (defn run-cancelable-transform!
   "Execute a transform with cancellation support and proper error handling."
@@ -79,7 +87,9 @@
 (defn target-table-exists?
   "Test if the target table of a transform already exists."
   [{:keys [source target] :as _transform}]
-  (let [db-id (-> source :query :database)
+  (let [db-id (or (-> source :query :database)
+                  ;; python transform target
+                  (-> target :database))
         {driver :engine :as database} (t2/select-one :model/Database db-id)]
     (driver/table-exists? driver database target)))
 
@@ -121,7 +131,9 @@
   [{:keys [id target source], :as _transform}]
   (when target
     (let [target (update target :type keyword)
-          database-id (-> source :query :database)
+          database-id (or (-> source :query :database)
+                          ;; python transform target
+                          (-> target :database))
           {driver :engine :as database} (t2/select-one :model/Database database-id)]
       (driver/drop-transform-target! driver database target)
       (log/info "Deactivating  target " (pr-str target) "for transform" id)
@@ -177,6 +189,56 @@
   (-> run
       (u/update-some :start_time utc-timestamp-string)
       (u/update-some :end_time   utc-timestamp-string)))
+
+(mr/def ::column-definition
+  [:map
+   [:name :string]
+   [:type ::lib.schema.common/base-type]
+   [:nullable? {:optional true} :boolean]])
+
+(mr/def ::table-definition
+  [:map
+   [:name :keyword]
+   [:columns [:sequential ::column-definition]]
+   [:primary-key {:optional true} [:sequential :string]]])
+
+(mu/defn create-table-from-schema!
+  "Create a table from a table-schema"
+  [driver :- :keyword
+   database-id :- pos-int?
+   table-schema :- ::table-definition]
+  (let [{:keys [columns] table-name :name} table-schema
+        column-definitions (into {} (map (fn [{:keys [name type database-type]}]
+                                           (let [db-type (if database-type
+                                                           [[:raw database-type]]
+                                                           (try
+                                                             (driver/type->database-type driver type)
+                                                             (catch IllegalArgumentException _
+                                                               (log/warnf "Couldn't determine database type for type %s, fallback to Text" type)
+                                                               (driver/type->database-type driver :type/Text))))]
+                                             [name db-type])))
+                                 columns)
+        primary-key-opts (select-keys table-schema [:primary-key])]
+    (log/infof "Creating table %s with %d columns" table-name (count columns))
+    (driver/create-table! driver database-id table-name column-definitions primary-key-opts)))
+
+(defn drop-table!
+  "Drop a table in the database."
+  [driver database-id table-name]
+  (log/infof "Dropping table %s" table-name)
+  (driver/drop-table! driver database-id table-name))
+
+(defn temp-table-name
+  "Generate a temporary table name with the given suffix and current timestamp in seconds."
+  [base-table-name suffix]
+  (keyword (str (u/qualified-name base-table-name) "_" suffix "_" (quot (System/currentTimeMillis) 1000))))
+
+(defn rename-tables!
+  "Rename multiple tables atomically within a transaction using the new driver/rename-tables method.
+   This is a simpler, composable operation that only handles renaming."
+  [driver database-id rename-map]
+  (log/infof "Renaming tables: %s" (pr-str rename-map))
+  (driver/rename-tables! driver database-id rename-map))
 
 (defn db-routing-enabled?
   "Returns whether or not the given database is either a router or destination database"

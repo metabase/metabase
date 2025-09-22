@@ -361,10 +361,10 @@
     (are [base-type expected] (= expected (driver/type->database-type :clickhouse base-type))
       :type/Boolean            [[:raw "Nullable(Boolean)"]]
       :type/Float              [[:raw "Nullable(Float64)"]]
-      :type/Integer            [[:raw "Nullable(Int64)"]]
+      :type/Integer            [[:raw "Nullable(Int32)"]]
       :type/Number             [[:raw "Nullable(Int64)"]]
       :type/Text               [[:raw "Nullable(String)"]]
       :type/TextLike           [[:raw "Nullable(String)"]]
       :type/Date               [[:raw "Nullable(Date32)"]]
       :type/DateTime           [[:raw "Nullable(DateTime64(3))"]]
-      :type/DateTimeWithTZ     [[:raw "Nullable(DateTime64(3))"]])))
+      :type/DateTimeWithTZ     [[:raw "Nullable(DateTime64(3, 'UTC'))"]])))
