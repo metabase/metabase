@@ -2,6 +2,7 @@
   (:require
    [clojure.data :as data]
    [clojure.string :as str]
+   [honey.sql.helpers :as sql.helpers]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
@@ -400,3 +401,50 @@
   "Adds the `:attributes` key to a user."
   [{:keys [login_attributes jwt_attributes] :as user}]
   (assoc user :attributes (merge jwt_attributes login_attributes)))
+
+;;; Filtering users
+
+(defn- status-clause
+  "Figure out what `where` clause to add to the user query when
+  we get a fiddly status and include_deactivated query.
+
+  This is to keep backwards compatibility with `include_deactivated` while adding `status."
+  [status include_deactivated]
+  (if include_deactivated
+    nil
+    (case status
+      "all"         nil
+      "deactivated" [:= :is_active false]
+      "active"      [:= :is_active true]
+      [:= :is_active true])))
+
+(defn- wildcard-query [query] (str "%" (u/lower-case-en query) "%"))
+
+(defn- query-clause
+  "Honeysql clause to shove into user query if there's a query"
+  [query]
+  [:or
+   [:like :%lower.first_name (wildcard-query query)]
+   [:like :%lower.last_name  (wildcard-query query)]
+   [:like :%lower.email      (wildcard-query query)]])
+
+(defn filter-clauses
+  "Honeysql clauses for filtering on users
+  - with a status,
+  - with a query,
+  - with a group_id,
+  - with include_deactivated"
+  [status query group_ids include_deactivated & [{:keys [limit offset]}]]
+  (cond-> {}
+    true                                    (sql.helpers/where [:= :core_user.type "personal"])
+    true                                    (sql.helpers/where (status-clause status include_deactivated))
+    ;; don't send the internal user
+    (perms/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
+    (some? query)                           (sql.helpers/where (query-clause query))
+    (some? group_ids)                       (sql.helpers/right-join
+                                             :permissions_group_membership
+                                             [:= :core_user.id :permissions_group_membership.user_id])
+    (some? group_ids)                       (sql.helpers/where
+                                             [:in :permissions_group_membership.group_id group_ids])
+    (some? limit)                           (sql.helpers/limit limit)
+    (some? offset)                          (sql.helpers/offset offset)))

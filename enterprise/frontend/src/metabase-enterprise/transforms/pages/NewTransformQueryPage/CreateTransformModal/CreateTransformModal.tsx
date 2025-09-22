@@ -132,7 +132,7 @@ function CreateTransformForm({
           <FormTextarea
             name="description"
             label={t`Description`}
-            placeholder={t`This is optional`}
+            placeholder={t`This is optional, but helpful`}
             minRows={4}
             maxRows={10}
           />
@@ -146,7 +146,7 @@ function CreateTransformForm({
           <FormTextInput
             name="targetName"
             label={t`Table name`}
-            placeholder={t`some_name`}
+            placeholder={t`descriptive_name`}
           />
           <Group>
             <Box flex={1}>

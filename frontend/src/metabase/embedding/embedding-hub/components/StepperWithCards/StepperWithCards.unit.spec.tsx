@@ -169,4 +169,104 @@ describe("StepperWithCards", () => {
     const lockIcon = screen.getByLabelText("lock icon");
     expect(lockIcon).toBeInTheDocument();
   });
+
+  it("should mark next step with data-next-step", () => {
+    const steps = createMockSteps([
+      {
+        id: "step1",
+        title: "First Step",
+        cards: [
+          { id: "1", done: true }, // done card
+          { id: "2", done: false, locked: true }, // locked, should skip
+          { id: "3", done: false, optional: true }, // optional, should skip
+          { id: "4", done: false }, // this should be the next step
+        ],
+      },
+      {
+        id: "step2",
+        title: "Second Step",
+        cards: [
+          { id: "5", done: false }, // should not be next since step 1 is incomplete
+        ],
+      },
+    ]);
+
+    render(<StepperWithCards steps={steps} />);
+
+    expect(screen.getByTestId("step-card-4")).toHaveAttribute(
+      "data-next-step",
+      "true",
+    );
+
+    ["1", "2", "3", "5"].forEach((id) => {
+      expect(screen.getByTestId(`step-card-${id}`)).not.toHaveAttribute(
+        "data-next-step",
+        "true",
+      );
+    });
+  });
+
+  it("should handle step progression and completion correctly", () => {
+    const completeFirstStep = createMockSteps([
+      {
+        id: "step1",
+        title: "First Step",
+        cards: [
+          { id: "1", done: true },
+          { id: "2", done: false, optional: true }, // optional, step is still complete
+        ],
+      },
+      {
+        id: "step2",
+        title: "Second Step",
+        cards: [
+          { id: "3", done: false }, // this should be next
+          { id: "4", done: false },
+        ],
+      },
+    ]);
+
+    render(<StepperWithCards steps={completeFirstStep} />);
+
+    // Step 1 is complete, so card 3 should be next.
+    expect(screen.getByTestId("step-card-3")).toHaveAttribute(
+      "data-next-step",
+      "true",
+    );
+
+    ["1", "2", "4"].forEach((id) => {
+      expect(screen.getByTestId(`step-card-${id}`)).not.toHaveAttribute(
+        "data-next-step",
+        "true",
+      );
+    });
+  });
+
+  it("all steps complete", () => {
+    // all steps are complete
+    const allComplete = createMockSteps([
+      {
+        id: "step1",
+        title: "First Step",
+        cards: [{ id: "1", done: true }],
+      },
+      {
+        id: "step2",
+        title: "Second Step",
+        cards: [
+          { id: "2", done: true },
+          { id: "3", done: false, optional: true }, // optional undone card
+        ],
+      },
+    ]);
+
+    render(<StepperWithCards steps={allComplete} />);
+
+    // When all steps are complete, no cards should be marked as next
+    const allCards = ["1", "2", "3"];
+    allCards.forEach((id) => {
+      const card = screen.getByTestId(`step-card-${id}`);
+      expect(card).not.toHaveAttribute("data-next-step", "true");
+    });
+  });
 });
