@@ -349,7 +349,7 @@
    :model/TransformTag
    (fn [_]
      (default-timestamped
-      {:name            (str "test-tag-" (u/generate-nano-id))}))
+      {:name (str "test-tag-" (u/generate-nano-id))}))
 
    :model/User
    (fn [_] {:first_name (u.random/random-name)
