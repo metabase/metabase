@@ -64,13 +64,10 @@
   the transforms in the original list -- if a transform depends on some transform not in the list, the 'extra'
   dependency is ignored. Both query and Python transforms can have dependencies on tables produced by other transforms."
   [transforms]
-
   (let [;; Group all transforms by their database
         transforms-by-db (->> transforms
                               (map (fn [transform]
-                                     (let [db-id (if (transforms.util/python-transform? transform)
-                                                   (get-in transform [:target :database])
-                                                   (get-in transform [:source :query :database]))]
+                                     (let [db-id (transforms.util/target-database-id transform)]
                                        {db-id [transform]})))
                               (apply merge-with into))
 
@@ -80,14 +77,12 @@
                                                          (qp.store/with-metadata-provider db-id
                                                            {:output-tables (output-table-map db-transforms)
                                                             :dependencies (dependency-map db-transforms)})))
-                                                  (apply merge-with merge))
-
-        all-deps (update-vals dependencies #(into #{}
-                                                  (keep (fn [{:keys [table transform]}]
-                                                          (or (output-tables table)
-                                                              (transform-ids transform))))
-                                                  %))]
-    all-deps))
+                                                  (apply merge-with merge))]
+    (update-vals dependencies #(into #{}
+                                     (keep (fn [{:keys [table transform]}]
+                                             (or (output-tables table)
+                                                 (transform-ids transform))))
+                                     %))))
 
 (defn find-cycle
   "Finds a path containing a cycle in the directed graph `node->children`.

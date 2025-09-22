@@ -50,7 +50,7 @@
    (transform-run/timeout-run! run-id)))
 
 (defn cancel-run!
-  "Cancel run"
+  "Cancel a run with id."
   [run-id]
   (when (chan-signal-cancel! run-id)
     (transform-run/cancel-run! run-id)))

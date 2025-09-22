@@ -8,6 +8,7 @@
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.sync.core :as sync]
@@ -39,6 +40,14 @@
   "Check if this is a Python transform."
   [transform]
   (= :python (-> transform :source :type keyword)))
+
+(defn check-feature-enabled
+  "Checking whether we have proper feature flags for using a given transform."
+  [transform]
+  (if (python-transform? transform)
+    (and (premium-features/has-feature? :transforms)
+         (premium-features/has-feature? :transforms-python))
+    (premium-features/has-feature? :transforms)))
 
 (defn try-start-unless-already-running
   "Start a transform run, throwing an informative error if already running."
@@ -89,12 +98,18 @@
    (log/info "Syncing target" (pr-str target) "for transform")
    (activate-table-and-mark-computed! database target)))
 
+;; TODO this and target-database-id can be transforms multimethods?
+(defn target-database-id
+  "Return the target database id of a transform"
+  [transform]
+  (if (python-transform? transform)
+    (-> transform :target :database)
+    (-> transform :source :query :database)))
+
 (defn target-table-exists?
   "Test if the target table of a transform already exists."
-  [{:keys [source target] :as _transform}]
-  (let [db-id (or (-> source :query :database)
-                  ;; python transform target
-                  (-> target :database))
+  [{:keys [target] :as transform}]
+  (let [db-id (target-database-id transform)
         {driver :engine :as database} (t2/select-one :model/Database db-id)]
     (driver/table-exists? driver database target)))
 
@@ -133,12 +148,10 @@
 
 (defn delete-target-table!
   "Delete the target table of a transform and sync it from the app db."
-  [{:keys [id target source], :as _transform}]
+  [{:keys [id target], :as transform}]
   (when target
     (let [target (update target :type keyword)
-          database-id (or (-> source :query :database)
-                          ;; python transform target
-                          (-> target :database))
+          database-id (target-database-id transform)
           {driver :engine :as database} (t2/select-one :model/Database database-id)]
       (driver/drop-transform-target! driver database target)
       (log/info "Deactivating  target " (pr-str target) "for transform" id)

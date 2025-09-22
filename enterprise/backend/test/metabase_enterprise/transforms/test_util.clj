@@ -76,6 +76,21 @@
   ^String [timestamp-string]
   (-> timestamp-string parse-instant str))
 
+(defn wait-for-table
+  "Wait for a table to appear in metadata, with timeout."
+  [^String table-name timeout-ms]
+  (let [timer (u/start-timer)]
+    (loop []
+      (let [table (t2/select-one :model/Table :name table-name)
+            fields (t2/select :model/Field :table_id (:id table))]
+        (cond
+          (and table (seq fields)) table
+          (> (u/since-ms timer) timeout-ms)
+          (throw (ex-info (format "Table %s did not appear after %dms" table-name timeout-ms)
+                          {:table-name table-name :timeout-ms timeout-ms}))
+          :else (do (Thread/sleep 100)
+                    (recur)))))))
+
 (defn test-run
   [transform-id]
   (let [resp      (mt/user-http-request :crowberto :post 202 (format "ee/transform/%s/run" transform-id))
@@ -94,20 +109,6 @@
           (Thread/sleep 100)
           (recur resp))))))
 
-(defn wait-for-table
-  "Wait for a table to appear in metadata, with timeout."
-  [^String table-name timeout-ms]
-  (let [timer (u/start-timer)]
-    (loop []
-      (let [table (t2/select-one :model/Table :name table-name)
-            fields (t2/select :model/Field :table_id (:id table))]
-        (cond
-          (and table (seq fields)) table
-          (> (u/since-ms timer) timeout-ms)
-          (throw (ex-info (format "Table %s did not appear after %dms" table-name timeout-ms)
-                          {:table-name table-name :timeout-ms timeout-ms}))
-          :else (do (Thread/sleep 100)
-                    (recur)))))))
 (defn get-test-schema
   "Get the schema from the products table in the test dataset.
    This is needed for databases like BigQuery that require a schema/dataset."
