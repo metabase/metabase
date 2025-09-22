@@ -104,7 +104,11 @@ const ResizeNodeView = ({
   };
 
   return (
-    <NodeViewWrapper style={{ height }} className={S.wrapper}>
+    <NodeViewWrapper
+      style={{ height }}
+      className={S.wrapper}
+      data-type="resizeNode"
+    >
       <NodeViewContent className={S.content} />
       <DragHandle onDrag={handleDrag} onDragEnd={handleDragEnd} />
     </NodeViewWrapper>

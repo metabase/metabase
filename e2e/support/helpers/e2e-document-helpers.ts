@@ -102,3 +102,77 @@ const visitDocumentById = (id: DocumentId) => {
 
   cy.wait(`@${alias}`);
 };
+
+export function dragAndDropCardOnAnotherCard(
+  sourceCardTitle: string,
+  targetCardTitle: string,
+  {
+    side = "left",
+    waitBeforeDrop = false,
+  }: {
+    side?: "left" | "right";
+    waitBeforeDrop?: boolean;
+  } = {},
+) {
+  const sourceAlias = `card-embed-${sourceCardTitle}`;
+  getDocumentCard(sourceCardTitle).as(sourceAlias).should("exist");
+  const targetAlias = `card-embed-${targetCardTitle}`;
+  getDocumentCard(targetCardTitle).as(targetAlias).should("exist");
+
+  // Perform drag and drop: drag sourceCard card onto targetCard
+  cy.get(`@${sourceAlias}`).then(($ordersCard) => {
+    cy.get(`@${targetAlias}`).then(($ordersCountCard) => {
+      const sourceRect = $ordersCard[0].getBoundingClientRect();
+
+      // Start drag from center of Orders card
+      cy.get(`@${sourceAlias}`).trigger("mousedown", {
+        x: 10,
+        y: 10,
+        scrollBehavior: false,
+      });
+      const dataTransfer = new DataTransfer();
+      cy.get(`@${sourceAlias}`).trigger("dragstart", {
+        dataTransfer,
+        clientX: sourceRect.left + 10,
+        clientY: sourceRect.top + 10,
+        scrollBehavior: false,
+      });
+
+      if (waitBeforeDrop) {
+        cy.wait(200);
+      }
+
+      const targetRect = $ordersCountCard[0].getBoundingClientRect();
+      // Calculate position for target card side drop (20% from left or 20% from right based on 'side' param)
+      const sideX =
+        targetRect.left + targetRect.width * (side === "left" ? 0.2 : 0.8);
+      const centerY = targetRect.top + 10;
+      documentContent().trigger("mousemove", {
+        clientX: sideX,
+        clientY: centerY,
+        scrollBehavior: false,
+      });
+      cy.get(`@${targetAlias}`).trigger("dragover", {
+        clientX: sideX,
+        clientY: centerY,
+        scrollBehavior: false,
+        force: true,
+      });
+
+      if (waitBeforeDrop) {
+        cy.wait(200);
+      }
+
+      cy.get(`@${sourceAlias}`).realMouseUp();
+      cy.get(`@${targetAlias}`).trigger("drop", {
+        dataTransfer,
+        clientX: sideX,
+        clientY: centerY,
+        scrollBehavior: false,
+      });
+      cy.get(`@${sourceAlias}`).trigger("dragend", {
+        scrollBehavior: false,
+      });
+    });
+  });
+}
