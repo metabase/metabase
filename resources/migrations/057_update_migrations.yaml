@@ -1454,7 +1454,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: ui_display_type
-                  remarks: The display of the subscription, used for the UI only; "cron/raw" or "cron/builder".
+                  remarks: The display type of the schedule, used for the UI only; "cron/raw" or "cron/builder".
                   type: varchar(32)
                   defaultValue: 'cron/raw'
                   constraints:
