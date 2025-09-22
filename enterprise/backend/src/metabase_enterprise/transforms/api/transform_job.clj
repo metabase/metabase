@@ -24,16 +24,12 @@
   "Create a new transform job."
   [_route-params
    _query-params
-   {:keys [name
-           description
-           schedule
-           ui_display_type
-           tag_ids]} :- [:map
-                         [:name ms/NonBlankString]
-                         [:description {:optional true} [:maybe ms/NonBlankString]]
-                         [:schedule ms/NonBlankString]
-                         [:ui_display_type {:optional true, :default "cron/raw"} ms/NonBlankString]
-                         [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
+   {:keys [name description schedule ui_display_type tag_ids]} :- [:map
+                                                                   [:name ms/NonBlankString]
+                                                                   [:description {:optional true} [:maybe ms/NonBlankString]]
+                                                                   [:schedule ms/NonBlankString]
+                                                                   [:ui_display_type {:optional true, :default "cron/raw"} ms/NonBlankString]
+                                                                   [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Creating transform job:" name "with schedule:" schedule)
   (api/check-superuser)
   ;; Validate cron expression
@@ -67,15 +63,12 @@
                         [:job-id ms/PositiveInt]]
    _query-params
    {tag-ids :tag_ids
-    :keys [name
-           description
-           schedule
-           ui_display_type]} :- [:map
-                                 [:name {:optional true} ms/NonBlankString]
-                                 [:description {:optional true} [:maybe ms/NonBlankString]]
-                                 [:schedule {:optional true} ms/NonBlankString]
-                                 [:ui_display_type {:optional true} ms/NonBlankString]
-                                 [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
+    :keys [name description schedule ui_display_type]} :- [:map
+                                                           [:name {:optional true} ms/NonBlankString]
+                                                           [:description {:optional true} [:maybe ms/NonBlankString]]
+                                                           [:schedule {:optional true} ms/NonBlankString]
+                                                           [:ui_display_type {:optional true} ms/NonBlankString]
+                                                           [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Updating transform job" job-id)
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/TransformJob :id job-id))
