@@ -19,18 +19,19 @@ import type {
   RecentItem,
 } from "metabase-types/api";
 
-import S from "./EditorBody.module.css";
-import { ResizableBoxHandle } from "./ResizableBoxHandle";
+import { ResizeHandle } from "../ResizeHandle";
 
-const EDITOR_HEIGHT = 400;
+import S from "./EditorBody.module.css";
+
+const EDITOR_HEIGHT = 550;
 
 const NATIVE_EDITOR_SIDEBAR_FEATURES = {
   dataReference: true,
-  variables: false,
   snippets: true,
-  promptInput: true,
   formatQuery: true,
-  aiGeneration: true,
+  variables: false,
+  promptInput: false,
+  aiGeneration: false,
 };
 
 type EditorBodyProps = {
@@ -141,7 +142,7 @@ export function EditorBody({
       className={S.root}
       axis="y"
       height={EDITOR_HEIGHT}
-      handle={<ResizableBoxHandle />}
+      handle={<ResizeHandle />}
       resizeHandles={["s"]}
       onResizeStart={() => setIsResizing(true)}
       onResizeStop={() => setIsResizing(false)}

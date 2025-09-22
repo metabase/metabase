@@ -812,10 +812,7 @@ function openActionEditorFor(actionName, { isReadOnly = false } = {}) {
 }
 
 function assertQueryEditorDisabled() {
-  // Ace doesn't act as a normal input, so we can't use `should("be.disabled")`
-  // Instead we'd assert that a user can't type in the editor
-  H.fillActionQuery("QWERTY");
-  cy.findByText("QWERTY").should("not.exist");
+  H.NativeEditor.get().should("have.attr", "contenteditable", "false");
 }
 
 function enableSharingFor(actionName, { publicUrlAlias }) {
