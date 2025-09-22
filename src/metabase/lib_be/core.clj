@@ -12,7 +12,9 @@
 
 (p/import-vars
  [metabase.lib-be.metadata.jvm
-  application-database-metadata-provider]
+  application-database-metadata-provider
+  metadata-provider-cache
+  with-metadata-provider-cache]
  [metabase.lib-be.models.transforms
   normalize-query
   transform-query]

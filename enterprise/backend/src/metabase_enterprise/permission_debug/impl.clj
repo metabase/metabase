@@ -14,7 +14,6 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.lib.core :as lib]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -142,7 +141,7 @@
 
 (mu/defmethod debug-permissions :card/read :- DebuggerSchema
   [{:keys [user-id model-id] :as _debug-info} :- DebuggerArguments]
-  (let [can-read? (user-can-read? :model/Card (Integer/parseInt model-id) user-id)]
+  (let [can-read? (user-can-read? :model/Card (parse-long model-id) user-id)]
     {:decision    (if can-read? "allow" "denied")
      :model-type  "card"
      :model-id    model-id
@@ -176,10 +175,9 @@
    Returns a map of blocked tables by group in the format:
    {[db-name schema table-name] #{group-name-1 group-name-2}}"
   [user-id card permissions-blocking permissions-granting]
-  ;; legacy usage -- don't do things like this going forward
-  (let [query (-> card :dataset_query qp.preprocess/preprocess #_{:clj-kondo/ignore [:discouraged-var]} lib/->legacy-MBQL)
-        query-tables (-> query :query lib.util/collect-source-tables)
-        native? (boolean (lib.util.match/match-one query (m :guard (every-pred map? :native))))]
+  (let [query (-> card :dataset_query qp.preprocess/preprocess)
+        query-tables (lib/all-source-table-ids query)
+        native? (lib/native-only-query? query)]
     (->>
      (cond
        native?
@@ -225,7 +223,7 @@
   [{:keys [user-id model-id] :as debug-info} :- DebuggerArguments]
   (merge-permission-check
    (debug-permissions (assoc debug-info :action-type :card/read))
-   (let [card-id (Integer/parseInt model-id)
+   (let [card-id (parse-long model-id)
          card (t2/select-one :model/Card :id card-id)
          blocked-by-group (check-table-permissions user-id card
                                                    {:perms/view-data :blocked}
@@ -245,7 +243,7 @@
   [{:keys [user-id model-id] :as debug-info} :- DebuggerArguments]
   (merge-permission-check
    (debug-permissions (assoc debug-info :action-type :card/query))
-   (let [card-id (Integer/parseInt model-id)
+   (let [card-id (parse-long model-id)
          card (t2/select-one :model/Card :id card-id)
          limited-by-group (check-table-permissions user-id card
                                                    {:perms/download-results :ten-thousand-rows}

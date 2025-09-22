@@ -18,14 +18,14 @@
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.types.isa :as lib.types]
-   [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.parameters.params :as params]
@@ -147,7 +147,7 @@
   ([{:keys [database_id dataset_query] :as card}]
    (when dataset_query
      (let [db-id (or database_id (:database dataset_query))
-           mp    (lib.metadata.jvm/application-database-metadata-provider db-id)]
+           mp    (lib-be/application-database-metadata-provider db-id)]
        (lib-query mp card))))
   ([metadata-providerable {:keys [dataset_query] :as _card}]
    (when dataset_query
@@ -211,30 +211,30 @@
    :id
    {:default []}))
 
-(defn- source-card-id
-  [query]
-  (when (map? query)
-    (let [query-type (lib/normalized-query-type query)]
-      (case query-type
-        :query      (-> query mbql.normalize/normalize #_{:clj-kondo/ignore [:deprecated-var]} qp.util/query->source-card-id)
-        :mbql/query (-> query lib/normalize lib.util/source-card-id)
-        nil))))
+(mu/defn- source-card-id :- [:maybe ::lib.schema.id/table]
+  [query :- [:maybe :map]]
+  (when-let [query (not-empty query)]
+    (-> query lib-be/normalize-query lib/source-card-id)))
 
-(defn- card->integer-table-ids
+(mu/defn- card->integer-table-ids :- [:maybe [:set ::lib.schema.id/table]]
   "Return integer source table ids for card's :dataset_query."
-  [card]
-  (when-some [query (-> card :dataset_query :query)]
-    (not-empty (filter pos-int? (lib.util/collect-source-tables query)))))
+  [card :- [:maybe
+            [:map
+             [:dataset_query {:optional true} [:maybe :map]]]]]
+  (when-let [query (some-> card :dataset_query not-empty lib-be/normalize-query)]
+    (lib/all-source-table-ids query)))
 
 (defn- prefetch-tables-for-cards!
   "Collect tables from `dataset-cards` and prefetch metadata. Should be used only with metdata provider caching
   enabled, as per https://github.com/metabase/metabase/pull/45050. Returns `nil`."
   [dataset-cards]
+  (assert (lib-be/metadata-provider-cache)
+          "It doesn't make sense to prefetch tables with no metadata provider cache bound!")
   (let [db-id->table-ids (-> (group-by :database_id dataset-cards)
                              (update-vals (partial into #{} (comp (mapcat card->integer-table-ids)
                                                                   (remove nil?)))))]
     (doseq [[db-id table-ids] db-id->table-ids
-            :let  [mp (lib.metadata.jvm/application-database-metadata-provider db-id)]
+            :let  [mp (lib-be/application-database-metadata-provider db-id)]
             :when (seq table-ids)]
       (lib.metadata.protocols/metadatas mp {:lib/type :metadata/table, :id (set table-ids)}))))
 
@@ -247,7 +247,7 @@
                               (keep (comp source-card-id :dataset_query))
                               dataset-cards)]
     ;; Prefetching code should not propagate any exceptions.
-    (when lib.metadata.jvm/*metadata-provider-cache*
+    (when (lib-be/metadata-provider-cache)
       (try
         (prefetch-tables-for-cards! dataset-cards)
         (catch Throwable t
@@ -658,7 +658,7 @@
                (-> card :dataset_query not-empty)
                (-> card :database_id))
     card
-    (m/assoc-some card :query_description (some-> (lib.metadata.jvm/application-database-metadata-provider
+    (m/assoc-some card :query_description (some-> (lib-be/application-database-metadata-provider
                                                    (:database_id card))
                                                   (lib/query (:dataset_query card))
                                                   lib/suggested-name))))
@@ -1254,8 +1254,8 @@
     ;; checking.
     (when-some [dataset-query (not-empty ((:out mi/transform-metabase-query) dataset-query-str))]
       (when (pos-int? (:database dataset-query))
-        (lib.metadata.jvm/with-metadata-provider-cache
-          (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
+        (lib-be/with-metadata-provider-cache
+          (let [metadata-provider (lib-be/application-database-metadata-provider (:database dataset-query))
                 lib-query         (lib/query metadata-provider dataset-query)
                 columns           (lib/returned-columns lib-query)]
             ;; Dimensions are columns that are not aggregations

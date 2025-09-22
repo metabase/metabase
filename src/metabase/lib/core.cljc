@@ -34,6 +34,7 @@
    [metabase.lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
+   [metabase.lib.metadata.protocols]
    [metabase.lib.metric :as lib.metric]
    [metabase.lib.native :as lib.native]
    [metabase.lib.normalize :as lib.normalize]
@@ -87,6 +88,7 @@
          metabase.lib.metadata/keep-me
          lib.metadata.calculation/keep-me
          lib.metadata.composed-provider/keep-me
+         metabase.lib.metadata.protocols/keep-me
          lib.metric/keep-me
          lib.native/keep-me
          lib.normalize/keep-me
@@ -338,6 +340,7 @@
   limit
   max-rows-limit]
  [metabase.lib.metadata
+  ->metadata-provider
   general-cached-value]
  [lib.metadata.calculation
   column-name
@@ -352,6 +355,10 @@
   visible-columns]
  [lib.metadata.composed-provider
   composed-metadata-provider]
+ [metabase.lib.metadata.protocols
+  cached-metadata-provider-with-cache?
+  metadata-provider?
+  metadata-providerable?]
  [lib.native
   engine
   extract-template-tags

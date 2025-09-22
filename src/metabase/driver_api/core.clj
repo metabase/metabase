@@ -3,7 +3,9 @@
                        ;; this is actually ok here since this is a drivers namespace
                        {:discouraged-namespace {metabase.query-processor.store {:level :off}}
                         ;; this is also ok here since this is a drivers namespace
-                        :discouraged-var       {metabase.lib.core/->legacy-MBQL {:level :off}}}}}
+                        :discouraged-var       {metabase.lib.core/->legacy-MBQL {:level :off}}
+                        ;; false positives for Potemkin `import-vars`
+                        :missing-docstring {:level :off}}}}
   (:refer-clojure :exclude [replace compile require])
   (:require
    [metabase.actions.core :as actions]
@@ -119,7 +121,6 @@
  limit/determine-query-max-rows
  logger/level-enabled?
  mbql.s/Join
- mbql.s/MBQLQuery
  mbql.u/aggregation-at-index
  mbql.u/assoc-field-options
  mbql.u/desugar-filter-clause
@@ -190,19 +191,20 @@
 
 #_{:clj-kondo/ignore [:missing-docstring]}
 ;; should use import-vars :rename once https://github.com/clj-kondo/clj-kondo/issues/2498 is fixed
-(do
-  (p/import-fn setting/get-value-of-type setting-get-value-of-type)
-  (p/import-fn secrets/value-as-string secret-value-as-string)
-  (p/import-fn secrets/value-as-file! secret-value-as-file!)
-  (p/import-fn table/database table->database)
+(p/import-fn setting/get-value-of-type setting-get-value-of-type)
+(p/import-fn secrets/value-as-string secret-value-as-string)
+(p/import-fn secrets/value-as-file! secret-value-as-file!)
+(p/import-fn table/database table->database)
 
-  (p/import-def qp.error-type/db qp.error-type.db)
-  (p/import-def qp.error-type/driver qp.error-type.driver)
-  (p/import-def qp.error-type/invalid-parameter qp.error-type.invalid-parameter)
-  (p/import-def qp.error-type/invalid-query qp.error-type.invalid-query)
-  (p/import-def qp.error-type/missing-required-parameter qp.error-type.missing-required-parameter)
-  (p/import-def qp.error-type/qp qp.error-type.qp)
-  (p/import-def qp.error-type/unsupported-feature qp.error-type.unsupported-feature))
+(p/import-def qp.error-type/db qp.error-type.db)
+(p/import-def qp.error-type/driver qp.error-type.driver)
+(p/import-def qp.error-type/invalid-parameter qp.error-type.invalid-parameter)
+(p/import-def qp.error-type/invalid-query qp.error-type.invalid-query)
+(p/import-def qp.error-type/missing-required-parameter qp.error-type.missing-required-parameter)
+(p/import-def qp.error-type/qp qp.error-type.qp)
+(p/import-def qp.error-type/unsupported-feature qp.error-type.unsupported-feature)
+
+(p/import-def mbql.s/MBQLInnerQuery MBQLQuery)
 
 (def schema.common.non-blank-string
   "::lib.schema.common/non-blank-string"

@@ -1375,7 +1375,7 @@
                 (core/= tag-name (:name tag-definition)))
               m))]])
 
-(def ^:private NativeQuery:Common
+(def ^:private NativeInnerQuery:Common
   [:and
    [:map
     [:template-tags {:optional true} [:ref ::TemplateTagMap]]
@@ -1386,24 +1386,24 @@
      :source-table ":source-table is only allowed in MBQL inner queries."
      :fields       ":fields is only allowed in MBQL inner queries."})])
 
-(def NativeQuery
+(def NativeInnerQuery
   "Schema for a valid, normalized native [inner] query."
   [:merge
-   NativeQuery:Common
+   NativeInnerQuery:Common
    [:map
     [:query :some]]])
 
 (mr/def ::NativeSourceQuery
   [:merge
-   NativeQuery:Common
+   NativeInnerQuery:Common
    [:map
     [:native :some]]])
 
 ;;; ----------------------------------------------- MBQL [Inner] Query -----------------------------------------------
 
-(def MBQLQuery
+(def MBQLInnerQuery
   "Schema for a valid, normalized MBQL [inner] query."
-  [:ref ::MBQLQuery])
+  [:ref ::MBQLInnerQuery])
 
 (mr/def ::SourceQuery
   [:multi
@@ -1415,7 +1415,7 @@
    ;; `:query` for reasons I do not fully remember (perhaps to make it easier to differentiate them from MBQL source
    ;; queries).
    [:native [:ref ::NativeSourceQuery]]
-   [:mbql   MBQLQuery]])
+   [:mbql   MBQLInnerQuery]])
 
 (def SourceQuery
   "Schema for a valid value for a `:source-query` clause."
@@ -1617,7 +1617,7 @@
 (mr/def ::OrderBys
   (helpers/distinct [:sequential {:min 1} [:ref ::OrderBy]]))
 
-(mr/def ::MBQLQuery
+(mr/def ::MBQLInnerQuery
   [:and
    [:map
     [:source-query {:optional true} SourceQuery]
@@ -1741,8 +1741,8 @@
       {:description "Type of query. `:query` = MBQL; `:native` = native."}
       :query :native]]
 
-    [:native     {:optional true} NativeQuery]
-    [:query      {:optional true} MBQLQuery]
+    [:native     {:optional true} NativeInnerQuery]
+    [:query      {:optional true} MBQLInnerQuery]
     [:parameters {:optional true} [:maybe [:ref ::lib.schema.parameter/parameters]]]
     ;;
     ;; OPTIONS

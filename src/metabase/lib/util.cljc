@@ -10,7 +10,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -732,17 +731,3 @@
     (:query :native) :mbql-version/legacy
     ;; otherwise, this is not a valid MBQL query.
     nil))
-
-(mu/defn collect-source-tables
-  "Return sequence of source tables from `query`.
-
-  DEPRECATED: Use [[metabase.lib.walk.util/all-source-table-ids]] going forward.
-
-  SUPER DEPRECATED -- this expects a legacy INNER query rather than MBQL 5... why is it even in Lib at all?"
-  {:deprecated "0.57.0"}
-  [query :- [:maybe ::mbql.s/MBQLInnerQuery]]
-  (let [from-joins (mapcat collect-source-tables (:joins query))]
-    (if-let [source-query (:source-query query)]
-      (concat (collect-source-tables source-query) from-joins)
-      (cond->> from-joins
-        (:source-table query) (cons (:source-table query))))))

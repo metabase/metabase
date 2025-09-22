@@ -99,7 +99,7 @@
 (mu/defn- pmbql-query->database-and-table-ids :- ::database-and-table-ids
   [{database-id :database, :as query} :- [:map
                                           [:lib/type [:= :mbql/query]]]]
-  (if-let [source-card-id (lib.util/source-card-id query)]
+  (if-let [source-card-id (lib/source-card-id query)]
     (let [card (lib.metadata/card query source-card-id)]
       (merge {:table-id nil} (select-keys card [:database-id :table-id])))
     (let [table-id (lib.util/source-table-id query)]

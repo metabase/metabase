@@ -498,6 +498,11 @@
   This is useful for an API request, or group fo API requests like a dashboard load, to reduce appdb traffic."
   nil)
 
+(defn metadata-provider-cache
+  "The currently bound [[*metadata-provider-cache*]], for Potemkin-export friendliness."
+  []
+  *metadata-provider-cache*)
+
 (defmacro with-metadata-provider-cache
   "Wrapper to create a [[*metadata-provider-cache*]] for the duration of the `body`.
 

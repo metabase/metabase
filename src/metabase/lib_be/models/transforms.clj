@@ -9,9 +9,14 @@
   "Normalize an MBQL `query` to MBQL 5 and attach a metadata provider."
   [query :- [:maybe :map]]
   (cond
-    (empty? query)        {}
-    (:lib/metadata query) query
-    :else                 (lib/query lib.metadata.jvm/application-database-metadata-provider query)))
+    (empty? query)
+    {}
+
+    (lib/cached-metadata-provider-with-cache? (:lib/metadata query))
+    query
+
+    :else
+    (lib/query lib.metadata.jvm/application-database-metadata-provider query)))
 
 (def transform-query
   "Toucan 2 transform spec for Card `dataset_query` and other columns that store MBQL."

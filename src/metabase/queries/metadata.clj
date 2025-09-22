@@ -2,6 +2,9 @@
   (:require
    [clojure.set :as set]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
@@ -95,10 +98,12 @@
                       (integer? field-id))]
      field-id)))
 
-(defn- batch-fetch-query-metadata*
+(mu/defn- batch-fetch-query-metadata*
   "Fetch dependent metadata for ad-hoc queries."
-  [queries]
-  (let [source-ids                (into #{} (mapcat #(lib.util/collect-source-tables (:query %)))
+  [queries :- [:sequential ::mbql.s/Query]]
+  (let [source-ids                (into #{}
+                                        (comp (map lib-be/normalize-query)
+                                              (mapcat lib/all-source-table-ids))
                                         queries)
         {source-table-ids :tables
          source-card-ids  :cards} (split-tables-and-legacy-card-refs source-ids)
