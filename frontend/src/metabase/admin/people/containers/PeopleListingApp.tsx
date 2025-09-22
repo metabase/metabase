@@ -93,7 +93,7 @@ export function PeopleListingApp({ children }: { children: React.ReactNode }) {
           <div data-testid="admin-panel">
             <Box px="md">
               <Flex wrap="wrap" gap="md" justify="space-between">
-                <Box>{headingContent && <>{headingContent}</>}</Box>
+                <Box>{headingContent}</Box>
 
                 {buttonText && (
                   <Box>
