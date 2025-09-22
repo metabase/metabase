@@ -80,4 +80,5 @@ export type AllowedEmbedSettingKey =
 export const DISABLE_UPDATE_FOR_KEYS = [
   "instanceUrl",
   "useExistingUserSession",
+  "isStatic",
 ] as const satisfies AllowedEmbedSettingKey[];

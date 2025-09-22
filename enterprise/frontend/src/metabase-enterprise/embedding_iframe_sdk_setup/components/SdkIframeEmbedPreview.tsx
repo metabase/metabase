@@ -29,7 +29,7 @@ import "metabase-enterprise/embedding_iframe_sdk/embed";
 
 declare global {
   interface Window {
-    metabaseConfig: Partial<SdkIframeEmbedBaseSettings>;
+    metabaseConfig?: Partial<SdkIframeEmbedBaseSettings>;
   }
 }
 
@@ -52,6 +52,11 @@ export const SdkIframeEmbedPreview = () => {
     },
     [],
   );
+  const cleanupMetabaseConfig = useCallback(() => {
+    if (window.metabaseConfig) {
+      delete window.metabaseConfig;
+    }
+  }, []);
 
   const derivedTheme = useMemo(() => {
     // TODO(EMB-696): There is a bug in the SDK where if we set the theme back to undefined,
@@ -91,13 +96,17 @@ export const SdkIframeEmbedPreview = () => {
   );
 
   // initial configuration, needed so that the element finds the config on first render
-  if (!window.metabaseConfig.instanceUrl) {
+  if (!window.metabaseConfig?.instanceUrl) {
     defineMetabaseConfig(metabaseConfig);
   }
 
   useEffect(() => {
     defineMetabaseConfig(metabaseConfig);
-  }, [metabaseConfig, defineMetabaseConfig]);
+
+    return () => {
+      cleanupMetabaseConfig();
+    };
+  }, [metabaseConfig, defineMetabaseConfig, cleanupMetabaseConfig]);
 
   // Show a "fake" loading indicator when componentName changes.
   // Embed JS has its own loading indicator, but it shows up after the iframe loads.
