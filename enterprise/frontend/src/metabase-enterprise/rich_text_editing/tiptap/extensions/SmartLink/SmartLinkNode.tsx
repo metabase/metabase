@@ -387,7 +387,7 @@ export const SmartLinkComponent = memo(
         >
           <span className={styles.smartLinkInner}>
             <Icon name={iconData.name} className={styles.icon} />
-            {entity.name}
+            {("display_name" in entity && entity.display_name) || entity.name}
           </span>
         </a>
       </NodeViewWrapper>
