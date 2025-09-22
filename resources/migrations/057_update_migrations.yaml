@@ -1478,7 +1478,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: ui_display_type
-                  value: NULL
+                  value: 'cron/raw'
             where: built_in_type IS NOT NULL
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
