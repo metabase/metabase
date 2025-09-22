@@ -2,37 +2,45 @@ import { t } from "ttag";
 
 import Button from "metabase/common/components/Button";
 import EditBar from "metabase/common/components/EditBar";
+import { Tooltip } from "metabase/ui";
+
+import type { QueryValidationResult } from "../types";
 
 type EditorHeaderProps = {
-  canSave: boolean;
+  validationResult: QueryValidationResult;
   isNew: boolean;
+  isQueryDirty: boolean;
   isSaving: boolean;
   onSave: () => void;
   onCancel: () => void;
 };
 
 export function EditorHeader({
-  canSave,
+  validationResult,
   isNew,
+  isQueryDirty,
   isSaving,
   onSave,
   onCancel,
 }: EditorHeaderProps) {
+  const canSave =
+    (isNew || isQueryDirty) && validationResult.isValid && !isSaving;
+
   return (
     <EditBar
       title={getTitle(isNew)}
       admin
       buttons={[
         <Button key="cancel" small onClick={onCancel}>{t`Cancel`}</Button>,
-        <Button
+        <Tooltip
           key="save"
-          onClick={onSave}
-          primary
-          small
-          disabled={!canSave || isSaving}
+          label={validationResult.errorMessage}
+          disabled={validationResult.errorMessage == null}
         >
-          {getSaveButtonLabel(isNew, isSaving)}
-        </Button>,
+          <Button onClick={onSave} primary small disabled={!canSave}>
+            {getSaveButtonLabel(isNew, isSaving)}
+          </Button>
+        </Tooltip>,
       ]}
     />
   );
