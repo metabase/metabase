@@ -247,9 +247,18 @@
   (driver/drop-table! driver database-id table-name))
 
 (defn temp-table-name
-  "Generate a temporary table name with the given suffix and current timestamp in seconds."
-  [base-table-name suffix]
-  (keyword (str (u/qualified-name base-table-name) "_" suffix "_" (quot (System/currentTimeMillis) 1000))))
+  "Generate a temporary table name with the given suffix and current timestamp in seconds.
+   If table name would exceed max table name length for the driver, fallback to using a shorter base-name."
+  [driver base-table-name suffix]
+  {:pre [(keyword? base-table-name)]}
+  (let [suffix (str "_" suffix "_" (quot (System/currentTimeMillis) 1000))
+        max-len (or (driver/table-name-length-limit driver) Integer/MAX_VALUE)
+        max-prefix-len (- max-len (count suffix))
+        table-name (name base-table-name)
+        prefix (subs table-name 0 (min (count table-name) max-prefix-len))]
+    (assert (pos? max-prefix-len))
+    (keyword (namespace base-table-name)
+             (str prefix suffix))))
 
 (defn rename-tables!
   "Rename multiple tables atomically within a transaction using the new driver/rename-tables method.
