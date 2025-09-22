@@ -39,10 +39,16 @@ const replaceExtension = <T extends AnyExtension>(
   return clone;
 };
 
+interface CustomStarterKitOptions extends StarterKitOptions {
+  paragraph: StarterKitOptions["paragraph"] & {
+    editorContext?: "comments" | "document";
+  };
+}
+
 /**
  * Modified StarterKit so it doesn't hijack browsers' cmd/ctrl+shift+b behavior
  */
-export const CustomStarterKit = StarterKit.extend<StarterKitOptions>({
+export const CustomStarterKit = StarterKit.extend<CustomStarterKitOptions>({
   name: "customStarterKit",
   addExtensions() {
     let extensions = this.parent?.() || [];
