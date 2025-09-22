@@ -33,11 +33,9 @@ import { useListCommentsQuery } from "metabase-enterprise/api";
 import { getTargetChildCommentThreads } from "metabase-enterprise/comments/utils";
 import { navigateToCardFromDocument } from "metabase-enterprise/documents/actions";
 import { trackDocumentReplaceCard } from "metabase-enterprise/documents/analytics";
-import {
-  getUnresolvedComments,
-  useCommentsButton,
-} from "metabase-enterprise/documents/components/Editor/CommentsMenu";
+import { getUnresolvedComments } from "metabase-enterprise/documents/components/Editor/CommentsMenu";
 import { EDITOR_STYLE_BOUNDARY_CLASS } from "metabase-enterprise/documents/components/Editor/constants";
+import { useCommentsButton } from "metabase-enterprise/documents/components/Editor/hooks/useCommentsButton";
 import {
   loadMetadataForDocumentCard,
   openVizSettingsSidebar,
@@ -61,7 +59,8 @@ import styles from "./CardEmbedNode.module.css";
 import { ModifyQuestionModal } from "./ModifyQuestionModal";
 import { NativeQueryModal } from "./NativeQueryModal";
 
-export const DROP_ZONE_COLOR = "var(--mb-base-color-blue-30)";
+export const DROP_ZONE_COLOR = "var(--mb-color-brand)";
+const DRAG_LEAVE_TIMEOUT = 300;
 
 interface DropZoneProps {
   isOver: boolean;
@@ -440,7 +439,7 @@ export const CardEmbedComponent = memo(
             if (isMountedRef.current) {
               setDragState({ isDraggedOver: false, side: null });
             }
-          }, 300);
+          }, DRAG_LEAVE_TIMEOUT);
         }
       },
       [editor.view.draggingNode, getPos, editor.state.doc],

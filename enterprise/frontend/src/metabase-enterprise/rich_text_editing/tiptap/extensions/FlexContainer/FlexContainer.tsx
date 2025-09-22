@@ -1,4 +1,3 @@
-import { useDndContext } from "@dnd-kit/core";
 import { Node, mergeAttributes } from "@tiptap/core";
 import {
   NodeViewContent,
@@ -86,9 +85,6 @@ const FlexContainerComponent: React.FC<NodeViewProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isResizing, setIsResizing] = useState(false);
-
-  const dndContext = useDndContext();
-  const isDragging = dndContext.active !== null;
 
   // Get column count and current widths
   const columnCount = node.content.childCount;
@@ -195,7 +191,7 @@ const FlexContainerComponent: React.FC<NodeViewProps> = ({
     [columnWidths, updateAttributes],
   );
 
-  const renderResizeHandles = (disabled: boolean) => {
+  const renderResizeHandles = () => {
     if (columnCount <= 1) {
       return null;
     }
@@ -213,7 +209,6 @@ const FlexContainerComponent: React.FC<NodeViewProps> = ({
           className={styles.resizeHandle}
           style={{
             left: `${leftWidth}%`,
-            pointerEvents: disabled ? "none" : "auto",
           }}
           contentEditable={false}
           onMouseDown={(e) => handleMouseDown(i, e)}
@@ -244,7 +239,7 @@ const FlexContainerComponent: React.FC<NodeViewProps> = ({
           }}
         />
 
-        {renderResizeHandles(isDragging)}
+        {renderResizeHandles()}
       </Box>
     </NodeViewWrapper>
   );

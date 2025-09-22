@@ -14,7 +14,7 @@
   padding: 1.5rem 0 2rem 0;
   min-height: 100%;
   outline: none;
-  max-width: 900px;
+  max-width: 56.25rem;
   margin: 0 auto;
   color: var(--mb-color-text-dark);
   font-size: 1rem;
@@ -197,50 +197,4 @@
     box-shadow: 0 0 0 1px var(--mb-color-brand);
     border-radius: var(--mantine-radius-xs);
   }
-}
-
-.editorContent
-  :global(.ProseMirror)
-  :global(table):not(:global(.editor-style-boundary) *) {
-  border-collapse: collapse;
-  margin: 0;
-  overflow: hidden;
-  table-layout: fixed;
-  width: 900px;
-  /* Prevent table from growing beyond max-width */
-  box-sizing: border-box;
-
-  :global(td) {
-    border: none;
-    box-sizing: border-box;
-    min-width: 200px;
-    padding: 0 0.5rem;
-    position: relative;
-    vertical-align: top;
-
-    > * {
-      margin-bottom: 0;
-    }
-  }
-
-  :global(.column-resize-handle) {
-    background-color: purple;
-    bottom: -2px;
-    pointer-events: none;
-    position: absolute;
-    right: -2px;
-    top: 0;
-    width: 4px;
-    cursor: col-resize;
-  }
-}
-
-.editorContent :global(.ProseMirror) :global(.tableWrapper) {
-  overflow: hidden;
-}
-
-.editorContent
-  :global(.ProseMirror):global(.resize-cursor)
-  :global(.tableWrapper) {
-  cursor: col-resize;
 }

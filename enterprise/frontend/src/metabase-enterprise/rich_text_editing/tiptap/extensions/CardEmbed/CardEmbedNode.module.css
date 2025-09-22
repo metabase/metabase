@@ -87,29 +87,3 @@
     background-color: var(--mb-color-bg-light);
   }
 }
-
-.dragHandle {
-  cursor: grab;
-  padding: 0.25rem;
-  border-radius: var(--mantine-radius-xs);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  position: absolute;
-  top: 0.5rem;
-  left: 0.5rem;
-
-  &:hover {
-    background-color: var(--mb-color-bg-light);
-  }
-
-  &:active {
-    cursor: grabbing;
-  }
-}
-
-.cardEmbed:hover .dragHandle {
-  opacity: 1;
-}

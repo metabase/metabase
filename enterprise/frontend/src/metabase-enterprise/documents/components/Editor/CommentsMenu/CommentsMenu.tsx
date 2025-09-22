@@ -1,16 +1,11 @@
 import cx from "classnames";
-import {
-  type CSSProperties,
-  type ElementType,
-  forwardRef,
-  useMemo,
-} from "react";
+import { type CSSProperties, forwardRef, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { Link } from "react-router";
-import { t } from "ttag";
 
-import { Box, Button, type ButtonProps, Icon, rem } from "metabase/ui";
+import { Box, Button, type ButtonProps, rem } from "metabase/ui";
 import type { CommentThread } from "metabase-enterprise/comments/types";
+
+import { useCommentsButton } from "../hooks/useCommentsButton";
 
 import S from "./CommentsMenu.module.css";
 
@@ -31,44 +26,6 @@ export const getUnresolvedComments = (
     .flatMap((thread) =>
       thread.comments.filter((comment) => !comment.deleted_at),
     );
-};
-
-interface CommentsButtonOptions {
-  active: boolean;
-  disabled: boolean;
-  href: string;
-  unresolvedCommentsCount: number;
-}
-
-export const useCommentsButton = ({
-  active,
-  disabled,
-  href,
-  unresolvedCommentsCount,
-}: CommentsButtonOptions): ButtonProps & {
-  component?: ElementType;
-  to?: string;
-} => {
-  const hasUnresolvedComments = unresolvedCommentsCount > 0;
-  return {
-    ...(!disabled
-      ? {
-          component: Link,
-          // If no existing unresolved comments comments, add query param to auto-open new comment form
-          to: hasUnresolvedComments ? href : `${href}?new=true`,
-        }
-      : {}),
-    disabled,
-    leftSection: (
-      <Icon name={hasUnresolvedComments ? "comment" : "add_comment"} />
-    ),
-    px: "sm",
-    size: "xs",
-    bd: 0,
-    "aria-label": t`Comments`,
-    variant: active ? "filled" : "default",
-    children: hasUnresolvedComments ? unresolvedCommentsCount : null,
-  };
 };
 
 export const CommentsMenu = forwardRef<HTMLDivElement, Props>(

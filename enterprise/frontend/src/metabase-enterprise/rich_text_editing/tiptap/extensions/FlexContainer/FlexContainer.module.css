@@ -77,17 +77,3 @@
 .flexContainer.resizing .resizeHandle {
   opacity: 1;
 }
-
-/* Visual feedback for empty container */
-.flexContainer:empty::after {
-  content: "Drop CardEmbed items here";
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 200px;
-  color: var(--mb-color-text-light);
-  font-style: italic;
-  border: 2px dashed var(--mb-color-border);
-  border-radius: var(--mantine-radius-md);
-  background-color: var(--mb-color-bg-light);
-}
