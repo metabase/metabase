@@ -94,11 +94,14 @@ export function PeopleListingApp({ children }: { children: React.ReactNode }) {
             <Box px="md">
               <Flex wrap="wrap" gap="md" justify="space-between">
                 <Box>{headingContent && <>{headingContent}</>}</Box>
-                <Box>
-                  <Link to={Urls.newUser()}>
-                    <Button primary>{buttonText}</Button>
-                  </Link>
-                </Box>
+
+                {buttonText && (
+                  <Box>
+                    <Link to={Urls.newUser()}>
+                      <Button primary>{buttonText}</Button>
+                    </Link>
+                  </Box>
+                )}
               </Flex>
             </Box>
 
