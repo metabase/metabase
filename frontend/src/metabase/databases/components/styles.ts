@@ -1,5 +1,5 @@
 export const sharedFieldStyleProps = {
-  mb: "xl",
+  mb: "lg",
   labelProps: {
     mb: "sm",
   },
