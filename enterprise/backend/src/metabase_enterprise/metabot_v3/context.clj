@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.context
   (:require
    [clojure.java.io :as io]
+   [medley.core :as m]
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
    [metabase.config.core :as config]
    [metabase.util.json :as json]
@@ -63,13 +64,7 @@
             tables (table-utils/enhanced-database-tables (:database query)
                                                          {:priority-tables used-tables
                                                           :all-tables-limit (count used-tables)})]
-        ;; Ensure no duplicate tables (by id) are returned, preserve first occurrence order
-        (reduce (fn [acc t]
-                  (if (some #(= (:id %) (:id t)) acc)
-                    acc
-                    (conj acc t)))
-                []
-                tables))
+        (m/distinct-by :id tables))
       [])
     (catch Exception e
       (log/error e "Error getting database tables for context")

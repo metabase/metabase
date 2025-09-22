@@ -20,8 +20,7 @@
         (is (= (count used) (count result)) "Should return all used tables")
         (is (not-any? #(= 3 (:id %)) result) "Should not include extra tables")
         (is (not-any? #(= 4 (:id %)) result) "Should not include extra tables")
-        (is (= (count (distinct (map :id result))) (count result))) ; no duplicates
-        ))))
+        (is (= (count (distinct (map :id result))) (count result))))))) ; no duplicates
 
 (deftest database-tables-for-context-used-tables-exceed-limit
   (let [used (mapv #(hash-map :id % :name (str "used" %)) (range 1 6)) ; 5 used tables
@@ -36,8 +35,7 @@
       (let [result (#'context/database-tables-for-context {:query {:database 123 :native {:query "SELECT *"}}, :all-tables-limit 3})]
         (is (= used result) "Should return all used tables")
         (is (= (count used) (count result)) "Should return all used tables")
-        (is (= (count (distinct (map :id result))) (count result))) ; no duplicates
-        ))))
+        (is (= (count (distinct (map :id result))) (count result))))))) ; no duplicates
 
 (deftest database-tables-for-context-no-used-tables
   (let [extra (mapv #(hash-map :id % :name (str "extra" %)) (range 1 5))]
@@ -60,8 +58,7 @@
       (let [result (#'context/database-tables-for-context {:query {:database 123 :native {:query "SELECT *"}}, :all-tables-limit 3})]
         (is (= used result) "Should be exactly the used tables, in order")
         (is (= (count used) (count result)))
-        (is (= (count (distinct (map :id result))) (count result))) ; no duplicates
-        ))))
+        (is (= (count (distinct (map :id result))) (count result))))))) ; no duplicates
 
 (deftest database-tables-for-context-exception-handling
   (testing "Returns empty when table-utils/enhanced-database-tables throws"
