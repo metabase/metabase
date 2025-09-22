@@ -69,7 +69,7 @@ export function PythonLibraryEditorPage({
   // When the library loads, set the source to the current library source
   useEffect(handleRevert, [isLoading, error, library]);
 
-  const isDirty = source !== library?.source;
+  const isDirty = source !== (library?.source ?? EMPTY_LIBRARY_SOURCE);
 
   if (isLoading || (error && !isNotFoundError(error))) {
     return (
