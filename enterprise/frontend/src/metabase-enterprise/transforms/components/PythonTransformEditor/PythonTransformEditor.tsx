@@ -1,7 +1,9 @@
 import { useHotkeys } from "@mantine/hooks";
 import { useState } from "react";
 
+import { NotFound } from "metabase/common/components/ErrorPages";
 import { Flex, Stack } from "metabase/ui";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type {
   DatabaseId,
   PythonTransformSource,
@@ -108,6 +110,10 @@ export function PythonTransformEditor({
       source["source-tables"] &&
       Object.keys(source["source-tables"]).length > 0,
   );
+
+  if (!hasPremiumFeature("transforms-python")) {
+    return <NotFound />;
+  }
 
   return (
     <Stack
