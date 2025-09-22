@@ -11,8 +11,10 @@ export type { MetabaseFontFamily } from "metabase/embedding-sdk/theme/fonts";
 
 export type SdkErrorComponentProps = {
   message: ReactNode;
+  error?: Error;
 };
 
 export type SdkErrorComponent = ({
   message,
+  error,
 }: SdkErrorComponentProps) => JSX.Element;

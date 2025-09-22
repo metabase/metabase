@@ -42,3 +42,11 @@ export function AUTH_TIMEOUT() {
     "Authentication has not been completed in time.",
   );
 }
+
+export function EXISTING_USER_SESSION_FAILED() {
+  return new MetabaseError(
+    "EXISTING_USER_SESSION_FAILED",
+    // eslint-disable-next-line no-literal-metabase-strings -- developer-facing error message explaining authentication failure
+    "Failed to authenticate using an existing Metabase user session.",
+  );
+}

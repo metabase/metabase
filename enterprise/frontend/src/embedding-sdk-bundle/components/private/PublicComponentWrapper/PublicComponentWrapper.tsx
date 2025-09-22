@@ -35,7 +35,9 @@ const PublicComponentWrapperInner = React.forwardRef<
   }
 
   if (loginStatus.status === "error") {
-    content = <SdkError message={loginStatus.error.message} />;
+    content = (
+      <SdkError message={loginStatus.error.message} error={loginStatus.error} />
+    );
   }
 
   // The SDK components should not load if there is a license error.
