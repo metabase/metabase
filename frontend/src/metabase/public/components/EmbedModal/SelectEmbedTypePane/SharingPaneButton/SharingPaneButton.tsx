@@ -42,14 +42,25 @@ export const SharingPaneButton = ({
       w="22rem"
       aria-label={title}
     >
-      <Stack pb={isDisabled ? "md" : undefined}>
-        <Center mb={32}>{illustration}</Center>
-        <Group align="center" gap="sm">
-          {badge}
-          <Title order={2}>{title}</Title>
-        </Group>
-        {children}
+      <Stack justify="space-between" align="flex-end" h="100%">
+        <Stack pb={isDisabled ? "md" : undefined}>
+          <Center mb={32}>{illustration}</Center>
+          <Group align="center" gap="sm">
+            {badge}
+            <Title order={2}>{title}</Title>
+          </Group>
+          {children}
+        </Stack>
+
+        {!isDisabled && (
+          <Stack mt="lg">
+            <Text c="brand" fw="bold">
+              {t`Embed`}
+            </Text>
+          </Stack>
+        )}
       </Stack>
+
       {isDisabled && (
         <Box
           pos="absolute"

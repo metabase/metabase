@@ -10,11 +10,14 @@ import {
 import { UpsellGem } from "metabase/admin/upsells/components";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Link from "metabase/common/components/Link";
-import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import {
+  useDocsUrl,
+  useHasTokenFeature,
+  useSetting,
+} from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import type { ExportFormatType } from "metabase/embedding/components/PublicLinkPopover/types";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { trackPublicLinkRemoved } from "metabase/public/lib/analytics";
 import { getPublicEmbedHTML } from "metabase/public/lib/code";
 import type {
@@ -26,8 +29,8 @@ import { Group, Icon, List, Stack, Text, UnstyledButton } from "metabase/ui";
 
 import { PublicEmbedCard } from "./PublicEmbedCard";
 import { SharingPaneButton } from "./SharingPaneButton/SharingPaneButton";
+import EmbeddedJsIllustration from "./illustrations/embedded-analytics-js.svg?component";
 import SdkIllustration from "./illustrations/embedding-sdk.svg?component";
-import InteractiveEmbeddingIllustration from "./illustrations/interactive-embedding.svg?component";
 import StaticEmbeddingIllustration from "./illustrations/static-embedding.svg?component";
 
 interface SelectEmbedTypePaneProps {
@@ -92,13 +95,9 @@ export function SelectEmbedTypePane({
     }
   };
 
-  const isInteractiveEmbeddingAvailable = useSelector(
-    PLUGIN_EMBEDDING.isInteractiveEmbeddingEnabled,
-  );
+  const isSimpleEmbeddingAvailable = useHasTokenFeature("embedding_simple");
   const isStaticEmbeddingEnabled = useSetting("enable-embedding-static");
-  const isInteractiveEmbeddingEnabled = useSetting(
-    "enable-embedding-interactive",
-  );
+  const isSimpleEmbeddingEnabled = useSetting("enable-embedding-simple");
   const isEmbeddingSdkEnabled = useSetting("enable-embedding-sdk");
 
   return (
@@ -110,7 +109,7 @@ export function SelectEmbedTypePane({
       align="stretch"
     >
       <Group gap="lg" maw="100%" align="stretch">
-        {/* STATIC EMBEDDING*/}
+        {/* Static Embedding */}
         <SharingPaneButton
           title={t`Static embedding`}
           illustration={<StaticEmbeddingIllustration />}
@@ -125,42 +124,40 @@ export function SelectEmbedTypePane({
           </List>
         </SharingPaneButton>
 
-        {/* INTERACTIVE EMBEDDING */}
-        <MaybeLinkInteractiveEmbedding
+        {/* Embedded Analytics JS */}
+        <MaybeLinkEmbeddedJs
           shouldRenderLink={
-            !isInteractiveEmbeddingAvailable || isInteractiveEmbeddingEnabled
+            !isSimpleEmbeddingAvailable || isSimpleEmbeddingEnabled
           }
         >
           <SharingPaneButton
-            title={t`Interactive embedding`}
+            title={t`Embedded Analytics JS`}
             badge={<UpsellGem />}
-            illustration={<InteractiveEmbeddingIllustration />}
-            isDisabled={
-              isInteractiveEmbeddingAvailable && !isInteractiveEmbeddingEnabled
-            }
-            disabledLink={"/admin/embedding/interactive"}
+            illustration={<EmbeddedJsIllustration />}
+            isDisabled={isSimpleEmbeddingAvailable && !isSimpleEmbeddingEnabled}
+            disabledLink={"/embed-js"}
           >
             <List>
               {/* eslint-disable-next-line no-literal-metabase-strings -- only admin sees this */}
-              <List.Item>{t`Embed all of Metabase in an iframe.`}</List.Item>
-              <List.Item>{t`Let people click to explore.`}</List.Item>
+              <List.Item>{t`A simple way to embed without React using plain JavaScript`}</List.Item>
+              <List.Item>{t`Embed static or interactive dashboards and charts with drill-down, the query builder or let people browse and manage collections.`}</List.Item>
               <List.Item>
-                {t`Customize appearance with your logo, font, and colors.`}{" "}
-                {!isInteractiveEmbeddingAvailable && <LearnMore url={url} />}
+                {t`Advanced customizations for styling.`}{" "}
+                {!isSimpleEmbeddingAvailable && <LearnMore url={url} />}
               </List.Item>
             </List>
-            {!isInteractiveEmbeddingAvailable && <UpsellSdkCta />}
+            {!isSimpleEmbeddingAvailable && <UpsellSdkCta />}
           </SharingPaneButton>
-        </MaybeLinkInteractiveEmbedding>
+        </MaybeLinkEmbeddedJs>
 
-        {/* REACT SDK */}
+        {/* SDK for React */}
         <MaybeLink
           to="/admin/embedding/modular"
           shouldRenderLink={isEmbeddingSdkEnabled}
-          aria-label={t`Embedded analytics SDK`}
+          aria-label={t`SDK for React`}
         >
           <SharingPaneButton
-            title={t`Embedded analytics SDK`}
+            title={t`SDK for React`}
             badge={<UpsellGem />}
             illustration={<SdkIllustration />}
             isDisabled={!isEmbeddingSdkEnabled}
@@ -175,6 +172,7 @@ export function SelectEmbedTypePane({
           </SharingPaneButton>
         </MaybeLink>
       </Group>
+
       <Group justify="space-between">
         {/* PUBLIC EMBEDDING */}
         {isPublicSharingEnabled ? (
@@ -218,15 +216,13 @@ function LearnMore({ url }: { url: string | undefined }) {
   );
 }
 
-interface MaybeLinkInteractiveEmbeddingProps {
-  shouldRenderLink?: boolean;
-  children: React.ReactNode;
-}
-
-function MaybeLinkInteractiveEmbedding({
+function MaybeLinkEmbeddedJs({
   shouldRenderLink,
   ...props
-}: MaybeLinkInteractiveEmbeddingProps) {
+}: {
+  shouldRenderLink?: boolean;
+  children: React.ReactNode;
+}) {
   const { url, internalLink, triggerUpsellFlow } = useUpsellSdkCta();
 
   if (!shouldRenderLink) {
