@@ -7,6 +7,7 @@
    [java-time.api :as t]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase.events.core :as events]
+   [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -119,16 +120,17 @@
 
 (defn- backfill-dependencies
   "Job to backfill dependencies for all entities.
-  Returns true if a full batch has been selected."
+  Returns true if a full batch has been selected, nil or false otherwise."
   []
-  (-> (reduce (fn [batch-size model-kw]
-                (if (< batch-size 1)
-                  (reduced 0)
-                  (let [processed (backfill-entity-batch! model-kw batch-size)]
-                    (- batch-size processed))))
-              (get-batch-size)
-              entities)
-      (< 1)))
+  (when (premium-features/has-feature? :dependencies)
+    (-> (reduce (fn [batch-size model-kw]
+                  (if (< batch-size 1)
+                    (reduced 0)
+                    (let [processed (backfill-entity-batch! model-kw batch-size)]
+                      (- batch-size processed))))
+                (get-batch-size)
+                entities)
+        (< 1))))
 
 (defn- has-pending-retries? []
   (some (fn [^Map model-retry-state]
