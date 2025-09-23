@@ -105,7 +105,7 @@
 
 (mu/defn device-info :- DeviceInfo
   "Information about the device that made this request, as recorded by the `LoginHistory` table."
-  [{{:strs [user-agent]} :headers, {:strs [token]} :query-params, :keys [browser-id], :as request}]
+  [{{:strs [user-agent x-metabase-client]} :headers, :keys [browser-id], :as request}]
   (let [id          (or browser-id
                         (log/warn "Login request is missing device ID information"))
         description (or user-agent
@@ -116,7 +116,7 @@
       (log/warn "Error determining login history for request"))
     {:device_id          (or id (trs "unknown"))
      :device_description (or description (trs "unknown")),
-     :embedded           (= "true" token)
+     :embedded           (boolean (#{"embedding-sdk-react" "embedding-simple"} x-metabase-client))
      :ip_address         (or ip-address (trs "unknown"))}))
 
 (defn describe-user-agent
