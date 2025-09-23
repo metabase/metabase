@@ -1,10 +1,11 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
 import { Box, Image, Stack, Text, rem } from "metabase/ui";
-import { isFK } from "metabase-lib/v1/types/utils/isa";
+import { TYPE } from "metabase-lib/v1/types/constants";
+import { isFK, isa } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn, Field, RowValue } from "metabase-types/api";
 
 import S from "./Value.module.css";
@@ -27,9 +28,27 @@ export const Value = ({ children, column, field, value }: Props) => {
       column.settings.link_text &&
       column.settings.link_url,
   );
+  const json = useMemo(() => getJson(column, value), [column, value]);
 
   if (isEmptyValue) {
     return <Text c="text-light">{t`empty`}</Text>;
+  }
+
+  if (json) {
+    return (
+      <Box
+        c="text-primary"
+        className={S.json}
+        component="pre"
+        fw="bold"
+        lh={1.5}
+        m={0}
+        p="sm"
+        w="100%"
+      >
+        {json}
+      </Box>
+    );
   }
 
   if (isFK(column) && newTableId != null && !isValidLink) {
@@ -83,3 +102,34 @@ export const Value = ({ children, column, field, value }: Props) => {
     </Text>
   );
 };
+
+function getJson(
+  column: DatasetColumn,
+  value: RowValue | undefined,
+): string | undefined {
+  if (!value || typeof value === "number" || typeof value === "boolean") {
+    return undefined;
+  }
+
+  if (
+    column.semantic_type &&
+    isa(column.semantic_type, TYPE.SerializedJSON) &&
+    typeof value == "string"
+  ) {
+    try {
+      return JSON.stringify(JSON.parse(value), null, 2);
+    } catch (error) {
+      return undefined;
+    }
+  }
+
+  if (typeof value === "object") {
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch (error) {
+      return undefined;
+    }
+  }
+
+  return undefined;
+}
