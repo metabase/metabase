@@ -229,6 +229,15 @@
           (assoc col :source (legacy-source col)))
         cols))
 
+(defn- remove-namespaced-options
+  "Update a legacy `:field`, `:expression` reference, or `:aggregation` reference clause by removing all namespaced keys
+  in the options map. This is mainly for clause equality comparison purposes -- in current usage namespaced keys are
+  used by individual pieces of middleware or driver implementations for tracking little bits of information that
+  should not be considered relevant when comparing clauses for equality."
+  [legacy-ref]
+  (mbql.u/update-field-options legacy-ref (partial into {} (remove (fn [[k _]]
+                                                                     (qualified-keyword? k))))))
+
 (mu/defn- fe-friendly-expression-ref :- ::mbql.s/Reference
   "Apparently the FE viz code breaks for pivot queries if `field_ref` comes back with extra 'non-traditional' Lib
   info (`:base-type` or `:effective-type` in `:expression`), so we better just strip this info out to be sure. If you
@@ -236,7 +245,7 @@
   will see."
   [col   :- ::kebab-cased-map
    a-ref :- ::mbql.s/Reference]
-  (let [a-ref (mbql.u/remove-namespaced-options a-ref)]
+  (let [a-ref (remove-namespaced-options a-ref)]
     (lib.util.match/replace a-ref
       [:field (id :guard pos-int?) opts]
       [:field id (not-empty (cond-> (dissoc opts :effective-type :inherited-temporal-unit)
