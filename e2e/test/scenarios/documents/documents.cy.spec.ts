@@ -193,12 +193,21 @@ H.describeWithSnowplowEE("documents", () => {
                 },
               },
               {
-                type: "cardEmbed",
+                type: "resizeNode",
                 attrs: {
-                  id: ORDERS_QUESTION_ID,
-                  name: null,
-                  _id: "2",
+                  height: 442,
+                  minHeight: 280,
                 },
+                content: [
+                  {
+                    type: "cardEmbed",
+                    attrs: {
+                      id: ORDERS_QUESTION_ID,
+                      name: null,
+                      _id: "2",
+                    },
+                  },
+                ],
               },
               {
                 type: "paragraph",
@@ -217,12 +226,13 @@ H.describeWithSnowplowEE("documents", () => {
 
       it("renders a 'not found' message if the copied card has been permanently deleted", () => {
         cy.get<Document>("@document").then(({ id, document: { content } }) => {
-          const cardEmbed = content?.find((n) => n.type === "cardEmbed");
+          const resizeNode = content?.find((n) => n.type === "resizeNode");
+          const cardEmbed = resizeNode?.content?.[0];
           const clonedCardId = cardEmbed?.attrs?.id;
           cy.request("DELETE", `/api/card/${clonedCardId}`);
           cy.visit(`/document/${id}`);
         });
-        H.getDocumentCard("Couldn't find this chart.").should("exist");
+        H.documentContent().should("contain.text", "Couldn't find this chart.");
       });
 
       it("read only access", () => {
@@ -684,9 +694,11 @@ H.describeWithSnowplowEE("documents", () => {
           });
         });
 
-        H.getDocumentCard(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name).should(
-          "not.exist",
-        );
+        H.documentContent()
+          .findAllByTestId("card-embed-title")
+          .contains(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name)
+          .should("not.exist");
+
         H.getDocumentCard("Orders").should("exist");
       });
 
