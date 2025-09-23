@@ -1119,7 +1119,7 @@
                    "`card-before-update`:" (pr-str card-before-update)
                    "`card-updates`:" (pr-str card-updates))))
     (when (collections/remote-synced-collection? (or (:collection_id card-updates) (:collection_id card-before-update)))
-      (collections/check-non-remote-synced-dependencies card-before-update))
+      (collections/check-non-remote-synced-dependencies (t2/select-one :model/Card :id (:id card-before-update))))
     (when (and (api/column-will-change? :collection_id card-before-update card-updates)
                (collections/moving-from-remote-synced? (:collection_id card-before-update) (:collection_id card-updates)))
       (collections/check-remote-synced-dependents (:collection_id card-before-update)

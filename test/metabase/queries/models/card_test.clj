@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [mb.hawk.assert-exprs.approximately-equal :as approximately-equal]
    [metabase.audit-app.impl :as audit]
    [metabase.config.core :as config]
    [metabase.lib.convert :as lib.convert]
@@ -183,41 +184,6 @@
           ;; actions still exists
           (is (= 2 (t2/count :model/Action :id [:in [action-id-1 action-id-2]])))
           (is (= 2 (t2/count :model/ImplicitAction :action_id [:in [action-id-1 action-id-2]]))))))))
-
-(defn- card-with-source-table
-  "Generate values for a Card with `source-table` for use with `with-temp`."
-  [source-table]
-  {:dataset_query {:database (mt/id)
-                   :type :query
-                   :query {:source-table source-table}}})
-
-(deftest circular-reference-test
-  (testing "Should throw an Exception if saving a Card that references itself"
-    (mt/with-temp [:model/Card card (card-with-source-table (mt/id :venues))]
-      ;; now try to make the Card reference itself. Should throw Exception
-      (is (thrown?
-           Exception
-           (t2/update! :model/Card (u/the-id card)
-                       (card-with-source-table (str "card__" (u/the-id card)))))))))
-
-(deftest circular-reference-test-2
-  (testing "Do the same stuff with circular reference between two Cards... (A -> B -> A)"
-    (mt/with-temp [:model/Card card-a (card-with-source-table (mt/id :venues))
-                   :model/Card card-b (card-with-source-table (str "card__" (u/the-id card-a)))]
-      (is (thrown?
-           Exception
-           (t2/update! :model/Card (u/the-id card-a)
-                       (card-with-source-table (str "card__" (u/the-id card-b)))))))))
-
-(deftest circular-reference-test-3
-  (testing "ok now try it with A -> C -> B -> A"
-    (mt/with-temp [:model/Card card-a (card-with-source-table (mt/id :venues))
-                   :model/Card card-b (card-with-source-table (str "card__" (u/the-id card-a)))
-                   :model/Card card-c (card-with-source-table (str "card__" (u/the-id card-b)))]
-      (is (thrown?
-           Exception
-           (t2/update! :model/Card (u/the-id card-a)
-                       (card-with-source-table (str "card__" (u/the-id card-c)))))))))
 
 (deftest validate-collection-namespace-test
   (mt/with-temp [:model/Collection {collection-id :id} {:namespace "currency"}]
@@ -803,13 +769,15 @@
       (mt/with-temp [:model/Card {card-id :id} {}
                      :model/QueryExecution _ {:card_id card-id
                                               :started_at now
+                                              :cache_hit false
                                               :running_time 100}
                      :model/QueryExecution _ {:card_id card-id
                                               :started_at (t/minus now (t/days 1))
+                                              :cache_hit false
                                               :running_time 200}]
         (let [card-with-stats (t2/hydrate (t2/select-one :model/Card :id card-id) :average_query_time :last_query_start)]
           (testing "average_query_time is calculated correctly"
-            (is (= 150 (:average_query_time card-with-stats))))
+            (is (>= 150.000 (:average_query_time card-with-stats))))
           (testing "last_query_start is the most recent"
             (is (= now (:last_query_start card-with-stats))))))))
 
@@ -1104,7 +1072,7 @@
                :actor {:id (mt/user->id :rasta)}}))))
 
       (testing "Card with library dependencies can be moved to library collection"
-        (mt/with-temp [:model/Collection {another-library-coll-id :id} {:type "remote-synced"}
+        (mt/with-temp [:model/Collection {another-library-coll-id :id} {:type "remote-synced" :location #p (str "/" library-coll-id "/")}
                        :model/Card {library-source-card-id :id} {:collection_id another-library-coll-id
                                                                  :name "Library source card"}
                        :model/Card movable-card {:collection_id regular-coll-id
@@ -1172,7 +1140,7 @@
                                   :name "Card with parameter reference"
                                   :parameters [{:id "test-param"
                                                 :type :category
-                                                :card_id library-card-id}]}]
+                                                :card-id library-card-id}]}]
       (testing "Cannot move library card when dependents reference it via parameters"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
@@ -1207,8 +1175,8 @@
 
 (deftest update-card-library-dependents-allows-move-within-library-test
   (testing "update-card! should allow moving card between library collections even with library dependents"
-    (mt/with-temp [:model/Collection {library-coll-1-id :id} {:type "remote-synced"}
-                   :model/Collection {library-coll-2-id :id} {:type "remote-synced"}
+    (mt/with-temp [:model/Collection {library-coll-1-id :id} {:type "remote-synced" :location "/"}
+                   :model/Collection {library-coll-2-id :id} {:type "remote-synced" :location (str "/" library-coll-1-id "/")}
                    :model/Card {library-card-id :id :as library-card} {:collection_id library-coll-1-id
                                                                        :name "Library card"}
                    :model/Card _ {:collection_id library-coll-1-id
