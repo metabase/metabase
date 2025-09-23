@@ -9,8 +9,6 @@
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [toucan2.core :as t2]))
 
-;;; ------------------- `->reference` -------------------
-
 (deftest ^:parallel ->reference-test
   (is (= [:field 1 nil]
          (->> (assoc (mi/instance :model/Field) :id 1)
@@ -22,8 +20,6 @@
   (is (= 42
          (->> 42
               (#'interesting/->reference :mbql)))))
-
-;;; -------------------- Bind dimensions, candidate bindings, field candidates, and related --------------------
 
 (defn field [table column]
   (or (t2/select-one :model/Field :id (mt/id table column))
@@ -39,7 +35,9 @@
         ;; ...but it isn't a candidate dimension because it is an id column...
         (is (false? ((#'interesting/fieldspec-matcher :type/*) id-field)))
         ;; ...unless you're looking explicitly for a primary key
-        (is (true? ((#'interesting/fieldspec-matcher :type/PK) id-field))))))
+        (is (true? ((#'interesting/fieldspec-matcher :type/PK) id-field)))))))
+
+(deftest ^:parallel field-matching-predicates-test-2
   (testing "The fieldspec-matcher should match fields by their fieldspec"
     (mt/dataset test-data
       (let [price-field (field :products :price)
@@ -49,20 +47,26 @@
         (is (false? (pred price-field)))
         (is (true? (pred latitude-field)))
         (is (true? ((#'interesting/fieldspec-matcher :type/CreationTimestamp) created-at-field)))
-        (is (true? ((#'interesting/fieldspec-matcher :type/*) created-at-field))))))
+        (is (true? ((#'interesting/fieldspec-matcher :type/*) created-at-field)))))))
+
+(deftest ^:parallel field-matching-predicates-test-3
   (testing "The name-regex-matcher should return fields with string/regex matches"
     (mt/dataset test-data
       (let [price-field (field :products :price)
             category-field (field :products :category)
             ice-pred (#'interesting/name-regex-matcher "ice")]
         (is (some? (ice-pred price-field)))
-        (is (nil? (ice-pred category-field))))))
+        (is (nil? (ice-pred category-field)))))))
+
+(deftest ^:parallel field-matching-predicates-test-4
   (testing "The max-cardinality-matcher should return fields with cardinality <= the specified cardinality"
     (mt/dataset test-data
       (let [category-field (field :products :category)]
         (is (false? ((#'interesting/max-cardinality-matcher 3) category-field)))
         (is (true? ((#'interesting/max-cardinality-matcher 4) category-field)))
-        (is (true? ((#'interesting/max-cardinality-matcher 100) category-field))))))
+        (is (true? ((#'interesting/max-cardinality-matcher 100) category-field)))))))
+
+(deftest ^:parallel field-matching-predicates-test-5
   (testing "Roll the above together and test filter-fields"
     (mt/dataset test-data
       (let [category-field (field :products :category)
@@ -259,7 +263,7 @@
                                                  :matches [{:name "Number of Greebles"}]}}]
           b-lt-a-bindings          [{"Quantity" {:score   100
                                                  :matches [{:name "Number of Nurnies"}]}}
-                                    {"Quantity" {:score   1,
+                                    {"Quantity" {:score   1
                                                  :matches [{:name "Number of Greebles"}]}}]
           bind-dimensions-merge-fn #(apply merge-with (fn [a b]
                                                         (case (compare (:score a) (:score b))
@@ -299,57 +303,57 @@
                          quantity-dim
                          unmatched-dim]
           bindings      (#'interesting/find-dimensions context dimensions)]
-      (is (= {"Quantity" {:field_type [:entity/GenericTable :type/Quantity],
-                          :score 100,
-                          :matches    [{:base_type     :type/Integer,
-                                        :name          "Number of Nurnies",
-                                        :semantic_type :type/Quantity,
-                                        :link          nil,
-                                        :field_type    [:entity/GenericTable :type/Quantity],
+      (is (= {"Quantity" {:field_type [:entity/GenericTable :type/Quantity]
+                          :score 100
+                          :matches    [{:base_type     :type/Integer
+                                        :name          "Number of Nurnies"
+                                        :semantic_type :type/Quantity
+                                        :link          nil
+                                        :field_type    [:entity/GenericTable :type/Quantity]
                                         :score         100}
-                                       {:base_type     :type/Integer,
-                                        :name          "Number of Greebles",
-                                        :semantic_type :type/Quantity,
-                                        :link          nil,
-                                        :field_type    [:entity/GenericTable :type/Quantity],
-                                        :score         100}]},
-              "GenericNumber" {:field_type [:entity/GenericTable :type/Number],
-                               :score      80,
-                               :matches    [{:base_type  :type/Float,
-                                             :name       "A double number field",
-                                             :link       nil,
-                                             :field_type [:entity/GenericTable :type/Number],
+                                       {:base_type     :type/Integer
+                                        :name          "Number of Greebles"
+                                        :semantic_type :type/Quantity
+                                        :link          nil
+                                        :field_type    [:entity/GenericTable :type/Quantity]
+                                        :score         100}]}
+              "GenericNumber" {:field_type [:entity/GenericTable :type/Number]
+                               :score      80
+                               :matches    [{:base_type  :type/Float
+                                             :name       "A double number field"
+                                             :link       nil
+                                             :field_type [:entity/GenericTable :type/Number]
                                              :score      80}]}}
              bindings)))))
 
 (deftest ^:parallel bind-dimensions-select-most-specific-test
   (testing "When multiple dimensions are candidates the most specific dimension is selected."
-    (is (= {"Quantity" {:field_type [:entity/GenericTable :type/Quantity],
-                        :score      100,
-                        :matches    [{:semantic_type  :type/Quantity,
-                                      :name           "QUANTITY",
-                                      :effective_type :type/Integer,
-                                      :display_name   "Quantity",
-                                      :base_type      :type/Integer,
-                                      :link           nil,
-                                      :field_type     [:entity/GenericTable :type/Quantity],
+    (is (= {"Quantity" {:field_type [:entity/GenericTable :type/Quantity]
+                        :score      100
+                        :matches    [{:semantic_type  :type/Quantity
+                                      :name           "QUANTITY"
+                                      :effective_type :type/Integer
+                                      :display_name   "Quantity"
+                                      :base_type      :type/Integer
+                                      :link           nil
+                                      :field_type     [:entity/GenericTable :type/Quantity]
                                       :score          100}]}}
            (let [context        {:source {:entity_type :entity/GenericTable
-                                          :fields      [{:semantic_type  :type/Discount,
+                                          :fields      [{:semantic_type  :type/Discount
                                                          :name           "DISCOUNT"
                                                          :effective_type :type/Float
                                                          :base_type      :type/Float}
-                                                        {:semantic_type  :type/Quantity,
+                                                        {:semantic_type  :type/Quantity
                                                          :name           "QUANTITY"
                                                          :effective_type :type/Integer
                                                          :base_type      :type/Integer}]}
                                  :tables [{:entity_type :entity/TransactionTable
-                                           :fields      [{:semantic_type  :type/Discount,
+                                           :fields      [{:semantic_type  :type/Discount
                                                           :name           "DISCOUNT"
-                                                          :effective_type :type/Float,
+                                                          :effective_type :type/Float
                                                           :display_name   "Discount"
                                                           :base_type      :type/Float}
-                                                         {:semantic_type  :type/Quantity,
+                                                         {:semantic_type  :type/Quantity
                                                           :name           "QUANTITY"
                                                           :effective_type :type/Integer
                                                           :display_name   "Quantity"
@@ -436,7 +440,11 @@
                          (update-vals m (fn [v]
                                           (assoc v :matches [{:id (mt/id :people :latitude)}]))))
                        dimensions)}
-                     candidate-bindings)))))))
+                     candidate-bindings))))))))))
+
+(deftest ^:parallel candidate-binding-inner-shape-test-2
+  (testing "Ensure we have examples to understand the shape returned from candidate-bindings"
+    (mt/dataset test-data
       (testing "A model with two fields that each have a high degree of matching."
         (let [source-query {:database (mt/id)
                             :query    {:source-table (mt/id :people)
@@ -491,7 +499,11 @@
                          (update-vals m (fn [v]
                                           (assoc v :matches [{:id (mt/id :people :longitude)}]))))
                        (remove (fn [dimension] (= "Lat" (ffirst dimension))) dimensions))}
-                     candidate-bindings)))))))
+                     candidate-bindings))))))))))
+
+(deftest ^:parallel candidate-binding-inner-shape-test-3
+  (testing "Ensure we have examples to understand the shape returned from candidate-bindings"
+    (mt/dataset test-data
       (testing "A table with a more specific entity-type will match to more specific binding definitions."
         (let [table (t2/select-one :model/Table (mt/id :people))
               {{:keys [entity_type]} :source :as root} (#'magic/->root table)
@@ -531,49 +543,49 @@
 
 (deftest ^:parallel grounded-metrics-test
   (mt/dataset test-data
-    (let [test-metrics [{:metric ["count"], :score 100, :metric-name "Count"}
-                        {:metric ["distinct" ["dimension" "FK"]], :score 100, :metric-name "CountDistinctFKs"}
-                        {:metric ["/"
-                                  ["dimension" "Discount"]
-                                  ["dimension" "Income"]], :score 100, :metric-name "AvgDiscount"}
-                        {:metric ["sum" ["dimension" "GenericNumber"]], :score 100, :metric-name "Sum"}
-                        {:metric ["avg" ["dimension" "GenericNumber"]], :score 100, :metric-name "Avg"}]
-          total-field {:id 1 :name "TOTAL"}
-          discount-field {:id 2 :name "DISCOUNT"}
-          income-field {:id 3 :name "INCOME"}]
+    (let [test-metrics   [{:metric ["count"], :score 100, :metric-name "Count"}
+                          {:metric ["distinct" ["dimension" "FK"]], :score 100, :metric-name "CountDistinctFKs"}
+                          {:metric ["/"
+                                    ["dimension" "Discount"]
+                                    ["dimension" "Income"]], :score 100, :metric-name "AvgDiscount"}
+                          {:metric ["sum" ["dimension" "GenericNumber"]], :score 100, :metric-name "Sum"}
+                          {:metric ["avg" ["dimension" "GenericNumber"]], :score 100, :metric-name "Avg"}]
+          total-field    (t2/instance :model/Field {:id 1 :name "TOTAL"})
+          discount-field (t2/instance :model/Field {:id 2 :name "DISCOUNT"})
+          income-field   (t2/instance :model/Field {:id 3 :name "INCOME"})]
       (testing "When no dimensions are provided, we produce grounded dimensionless metrics"
-        (is (= [{:metric-name       "Count"
-                 :metric-title      "Count"
-                 :metric-score      100
-                 :metric-definition {:aggregation [["count"]]}
+        (is (= [{:metric-name           "Count"
+                 :metric-title          "Count"
+                 :metric-score          100
+                 :metric-definition     {:aggregation [[:count]]}
                  :dimension-name->field {}}]
                (interesting/grounded-metrics
                 test-metrics
                 {"Count" {:matches []}}))))
       (testing "When we can match on a dimension, we produce every matching metric (2 for GenericNumber)"
-        (is (=? [{:metric-name       "Sum",
-                  :metric-definition {:aggregation [["sum" "TOTAL"]]}}
-                 {:metric-name       "Avg",
-                  :metric-definition {:aggregation [["avg" "TOTAL"]]}}]
+        (is (=? [{:metric-name       "Sum"
+                  :metric-definition {:aggregation [[:sum [:field 1 nil]]]}}
+                 {:metric-name       "Avg"
+                  :metric-definition {:aggregation [[:avg [:field 1 nil]]]}}]
                 (interesting/grounded-metrics
-                  ;; Drop Count
+                 ;; Drop Count
                  (rest test-metrics)
                  {"Count"         {:matches []}
                   "GenericNumber" {:matches [total-field]}}))))
       (testing "The addition of Discount doesn't add more matches as we need
                  Income as well to add the metric that uses Discount"
         (is (=? [{:metric-name       "Sum"
-                  :metric-definition {:aggregation [["sum" "TOTAL"]]}}
+                  :metric-definition {:aggregation [[:sum [:field 1 nil]]]}}
                  {:metric-name       "Avg"
-                  :metric-definition {:aggregation [["avg" "TOTAL"]]}}]
+                  :metric-definition {:aggregation [[:avg [:field 1 nil]]]}}]
                 (interesting/grounded-metrics
                  (rest test-metrics)
                  {"Count"         {:matches []}
                   "GenericNumber" {:matches [total-field]}
                   "Discount"      {:matches [discount-field]}}))))
       (testing "Discount and Income will add the satisfied AvgDiscount grounded metric"
-        (is (=? [{:metric-name       "AvgDiscount",
-                  :metric-definition {:aggregation [["/" "DISCOUNT" "INCOME"]]}}
+        (is (=? [{:metric-name       "AvgDiscount"
+                  :metric-definition {:aggregation [[:/ [:field 2 nil] [:field 3 nil]]]}}
                  {:metric-name "Sum"}
                  {:metric-name "Avg"}]
                 (interesting/grounded-metrics
@@ -591,8 +603,6 @@
              (interesting/normalize-seq-of-maps :froobs froobs)))
       (is (= [{:nurnies-name "Baz" :size 100}]
              (interesting/normalize-seq-of-maps :nurnies nurnies))))))
-
-;;; ------------------- Datetime resolution inference -------------------
 
 (deftest ^:parallel optimal-temporal-resolution-test
   (doseq [[m base-type expected] [[{:earliest "2015"

@@ -368,7 +368,7 @@
   (let [table-id (field-id->table-id field-id)]
     (database/table-id->database-id table-id)))
 
-(mu/defn table
+(mu/defn table :- [:maybe (ms/InstanceOf :model/Table)]
   "Return the `Table` associated with this `Field`."
   [{table-id :table_id, :as _field} :- [:maybe
                                         [:map

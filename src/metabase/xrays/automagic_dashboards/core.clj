@@ -149,6 +149,10 @@
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
@@ -180,7 +184,7 @@
   {:arglists '([entity])}
   mi/model)
 
-(mu/defmethod ->root :model/Table :- ::ads/context.root
+(mu/defmethod ->root :model/Table :- ::ads/root
   [table]
   {:entity                     table
    :full-name                  (:display_name table)
@@ -190,9 +194,9 @@
    :url                        (format "%stable/%s" public-endpoint (u/the-id table))
    :dashboard-templates-prefix ["table"]})
 
-(mu/defmethod ->root :model/Segment :- ::ads/context.root
+(mu/defmethod ->root :model/Segment :- ::ads/root
   [segment]
-  (let [table (->> segment :table_id (t2/select-one :model/Table :id))]
+  (let [table (some->> segment :table_id (t2/select-one :model/Table :id))]
     {:entity                     segment
      :full-name                  (tru "{0} in the {1} segment" (:display_name table) (:name segment))
      :short-name                 (:display_name table)
@@ -203,25 +207,25 @@
      :url                        (format "%ssegment/%s" public-endpoint (u/the-id segment))
      :dashboard-templates-prefix ["table"]}))
 
-(mu/defmethod ->root :xrays/Metric :- ::ads/context.root
-  [metric]
-  (let [table (->> metric :table_id (t2/select-one :model/Table :id))]
+(mu/defmethod ->root :xrays/Metric :- ::ads/root
+  [metric :- ::ads/metric]
+  (let [table (some->> metric :table_id (t2/select-one :model/Table :id))]
     {:entity                     metric
      :full-name                  (if (:id metric)
                                    (trun "{0} metric" "{0} metrics" (:name metric))
                                    (:name metric))
      :short-name                 (:name metric)
      :source                     table
-     :database                   (:db_id table)
+     :database                   (or (:db_id table)
+                                     (:xrays/database-id metric))
      ;; We use :id here as it might not be a concrete field but rather one from a nested query which
      ;; does not have an ID.
      :url                        (format "%smetric/%s" public-endpoint (:id metric))
      :dashboard-templates-prefix ["metric"]}))
 
-(mu/defmethod ->root :model/Field :- ::ads/context.root
+(mu/defmethod ->root :model/Field :- ::ads/root
   [field :- ::ads/field]
-  (let [table (when (:table_id field)
-                (field/table field))]
+  (let [table (field/table field)]
     {:entity                     field
      :full-name                  (trun "{0} field" "{0} fields" (:display_name field))
      :short-name                 (:display_name field)
@@ -234,26 +238,32 @@
      :url                        (format "%sfield/%s" public-endpoint (:id field))
      :dashboard-templates-prefix ["field"]}))
 
-(def ^:private ^{:arglists '([card-or-question])} nested-query?
+(mu/defn- source-card-id :- [:maybe ::lib.schema.id/card]
+  [{query :dataset_query, :as _card-or-question} :- [:map [:dataset_query :map]]]
+  (some-> query not-empty lib-be/normalize-query lib/source-card-id))
+
+(mu/defn- nested-query?
   "Is this card or question derived from another model or question?"
-  (comp some? #_{:clj-kondo/ignore [:deprecated-var]} qp.util/query->source-card-id :dataset_query))
+  [card-or-question :- [:map [:dataset_query :map]]]
+  (some? (source-card-id card-or-question)))
 
-(def ^:private ^{:arglists '([card-or-question])} native-query?
+(mu/defn- native-query?
   "Is this card or question native (SQL)?"
-  (comp some? #{:native} qp.util/normalize-token #(get-in % [:dataset_query :type])))
+  [{query :dataset_query, :as _card-or-question} :- [:map [:dataset_query :map]]]
+  (some-> query not-empty lib-be/normalize-query lib/native-only-query?))
 
-(defn- source-question
-  [card-or-question]
-  (when-let [source-card-id #_{:clj-kondo/ignore [:deprecated-var]} (qp.util/query->source-card-id (:dataset_query card-or-question))]
+(mu/defn- source-card
+  [card-or-question :- [:map [:dataset_query :map]]]
+  (when-let [source-card-id (source-card-id card-or-question)]
     (t2/select-one :model/Card :id source-card-id)))
 
-(defn- table-like?
-  [card-or-question]
-  (and
-   (nil? (get-in card-or-question [:dataset_query :query :aggregation]))
-   (nil? (get-in card-or-question [:dataset_query :query :breakout]))))
+(mu/defn- table-like?
+  [{query :dataset_query, :as _card-or-question} :- [:map [:dataset_query :map]]]
+  (when-let [query (some-> query not-empty lib-be/normalize-query)]
+    (and (empty? (lib/aggregations query))
+         (empty? (lib/breakouts query)))))
 
-(defn- table-id
+(mu/defn- table-id :- [:maybe ::lib.schema.id/table]
   "Get the Table ID from `card-or-question`, which can be either a Card from the DB (which has a `:table_id` property)
   or an ad-hoc query (referred to as a 'question' in this namespace) created with the
   [[metabase.xrays.api.automagic-dashboards/adhoc-query-instance]] function, which has a `:table-id` property."
@@ -261,20 +271,26 @@
   ;; didn't need this function, seems like something that would be too easy to forget
   [card-or-question]
   (or (:table_id card-or-question)
-      (:table-id card-or-question)))
+      (when-let [query (some-> card-or-question :dataset_query not-empty lib-be/normalize-query)]
+        (lib/source-table-id query))))
 
-(defn- source
-  [card]
+(mu/defn- source
+  [card :- [:map
+            [:dataset_query :map]]]
   (cond
     ;; This is a model
     (= (:type card) :model) (assoc card :entity_type :entity/GenericTable)
     ;; This is a query based on a query. Eventually we will want to change this as it suffers from the same sourcing
     ;; problems as other cards -- The x-ray is not done on the card, but on its source.
     (nested-query? card)    (-> card
-                                source-question
+                                source-card
                                 (assoc :entity_type :entity/GenericTable))
     (native-query? card)    (-> card (assoc :entity_type :entity/GenericTable))
     :else                   (->> card table-id (t2/select-one :model/Table :id))))
+
+(mu/defn- query-filter
+  [query :- ::mbql.s/Query]
+  (get-in query [:query :filter]))
 
 (defmethod ->root :model/Card
   [card]
@@ -282,7 +298,7 @@
     {:entity                     card
      :source                     source
      :database                   (:database_id card)
-     :query-filter               (get-in card [:dataset_query :query :filter])
+     :query-filter               (some-> card :dataset_query query-filter)
      :full-name                  (tru "\"{0}\"" (:name card))
      :short-name                 (names/source-name {:source source})
      :url                        (format "%s%s/%s" public-endpoint (name (:type source :question)) (u/the-id card))
@@ -292,16 +308,18 @@
 
 (defmethod ->root :model/Query
   [query]
-  (let [source (source query)]
+  (let [source      (source query)
+        database-id (:database-id query)
+        root        {:database database-id, :source source}]
     {:entity                     query
      :source                     source
-     :database                   (:database-id query)
-     :query-filter               (get-in query [:dataset_query :query :filter])
+     :database                   database-id
+     :query-filter               (some-> query :dataset_query query-filter)
      :full-name                  (cond
                                    (native-query? query) (tru "Native query")
-                                   (table-like? query) (-> source ->root :full-name)
-                                   :else (names/question-description {:source source} query))
-     :short-name                 (names/source-name {:source source})
+                                   (table-like? query)   (-> source ->root :full-name)
+                                   :else                 (names/question-description root query))
+     :short-name                 (names/source-name root)
      :url                        (format "%sadhoc/%s" public-endpoint
                                          (magic.util/encode-base64-json (:dataset_query query)))
      :dashboard-templates-prefix [(if (table-like? query)
@@ -431,7 +449,7 @@
   "Create the underlying context to which we will add metrics, dimensions, and filters.
 
   This is applicable to all dashboard templates."
-  [{:keys [source] :as root} :- ::ads/context.root]
+  [{:keys [source] :as root} :- ::ads/root]
   {:pre [source]}
   (let [tables        (concat [source] (when (mi/instance-of? :model/Table source)
                                          (linked-tables source)))
@@ -685,7 +703,7 @@
 
 (mu/defn- automagic-dashboard :- ::ads/dashboard
   "Create dashboards for table `root` using the best matching heuristics."
-  [{:keys [dashboard-template dashboard-templates-prefix] :as root} :- ::ads/context.root]
+  [{:keys [dashboard-template dashboard-templates-prefix] :as root} :- ::ads/root]
   (let [base-context    (make-base-context root)
         {template-dimensions :dimensions
          template-metrics    :metrics
@@ -722,25 +740,29 @@
   [segment opts]
   (automagic-dashboard (merge (->root segment) opts)))
 
-(defmethod automagic-analysis :xrays/Metric
-  [metric opts]
+(mu/defmethod automagic-analysis :xrays/Metric
+  [metric :- ::ads/metric opts]
   (automagic-dashboard (merge (->root metric) opts)))
 
-(mu/defn- collect-metrics :- [:maybe [:sequential (ms/InstanceOf :xrays/Metric)]]
-  [root question]
-  (map (fn [aggregation-clause]
-         (if (-> aggregation-clause
-                 first
-                 qp.util/normalize-token
-                 (= :metric))
-           ;; any [:metric ...] MBQL clauses these days are V2 Metrics and Automagic Dashboards do not handle them.
-           (log/error "X-Rays do not support V2 Metrics.")
-           (let [table-id (table-id question)]
-             (mi/instance :xrays/Metric {:definition {:aggregation  [aggregation-clause]
-                                                      :source-table table-id}
-                                         :name       (names/metric->description root aggregation-clause)
-                                         :table_id   table-id}))))
-       (get-in question [:dataset_query :query :aggregation])))
+(mu/defn- collect-metrics :- [:maybe [:sequential ::ads/metric]]
+  [root                                 :- ::ads/root
+   {query :dataset_query, :as question} :- [:map
+                                            [:dataset_query ::mbql.s/Query]]]
+  (keep (fn [aggregation-clause]
+          (if (-> aggregation-clause
+                  first
+                  qp.util/normalize-token
+                  (= :metric))
+            ;; any [:metric ...] MBQL clauses these days are V2 Metrics and Automagic Dashboards do not handle them.
+            (log/error "X-Rays do not support V2 Metrics.")
+            (let [table-id (table-id question)]
+              (mi/instance :xrays/Metric {:definition        (merge {:aggregation  [aggregation-clause]
+                                                                     :source-table table-id}
+                                                                    (select-keys (:query query) [:joins]))
+                                          :name              (names/metric->description root aggregation-clause)
+                                          :table_id          table-id
+                                          :xrays/database-id (:database root)}))))
+        (get-in query [:query :aggregation])))
 
 (mu/defn- collect-breakout-fields :- [:maybe [:sequential (ms/InstanceOf :model/Field)]]
   [root question]
@@ -764,20 +786,31 @@
                                 {:root root, :question question, :object x}
                                 e)))))]
     (into []
-          (comp cat (map analyze))
-          [(collect-metrics root question)
-           (collect-breakout-fields root question)])))
+          (comp (mapcat (fn [f]
+                          (f root question)))
+                (map analyze))
+          [collect-metrics
+           collect-breakout-fields])))
 
-(defn- preserve-entity-element
+(mu/defn- preserve-entity-element
   "Ensure that elements of an original dataset query are preserved in dashcard queries."
-  [dashboard entity entity-element]
-  (if-let [element-value (get-in entity [:dataset_query :query entity-element])]
+  [dashboard :- ::ads/dashboard
+   entity    :- [:map
+                 ;; expects legacy queries... for now
+                 [:dataset_query {:optional true} [:maybe ::mbql.s/Query]]]
+   k         :- :keyword]
+  (if-let [element-value (get-in entity [:dataset_query :query k])]
     (letfn [(splice-element [dashcard]
               (cond-> dashcard
                 (get-in dashcard [:card :dataset_query :query])
-                (update-in [:card :dataset_query :query entity-element]
-                           (fnil into (empty element-value))
-                           element-value)))]
+                (update-in [:card :dataset_query :query k] #(if (empty? %)
+                                                              element-value
+                                                              (into
+                                                               (empty %)
+                                                               (comp cat
+                                                                     (distinct))
+                                                               [%
+                                                                element-value])))))]
       (update dashboard :dashcards (partial map splice-element)))
     dashboard))
 
@@ -823,7 +856,7 @@
 (defmethod automagic-analysis :model/Query
   [query {:keys [cell-query] :as opts}]
   (let [root       (->root query)
-        cell-query (when cell-query (mbql.normalize/normalize-fragment [:query :filter] cell-query))
+        cell-query (mbql.normalize/normalize-fragment [:query :filter] cell-query)
         opts       (cond-> opts
                      cell-query (assoc :cell-query cell-query))
         cell-url   (format "%sadhoc/%s/cell/%s" public-endpoint

@@ -60,37 +60,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Code for creation of instantiated affinities
 
-(defn find-field-ids
-  "A utility function for pulling field definitions from mbql queries and return their IDs.
-   Does something like this already exist in our utils? I was unable to find anything like it."
-  [m]
-  (let [fields (atom #{})]
-    (walk/prewalk
-     (fn [v]
-       (when (vector? v)
-         (let [[f id] v]
-           (when (and id (= :field f))
-             (swap! fields conj id))))
-       v)
-     m)
-    @fields))
-
-(defn semantic-groups
-  "From a :xrays/Metric, construct a mapping of semantic types of linked fields to
-   sets of fields that can satisfy that type. A linked field is one that is in the
-   source table for the metric contribute to the metric itself, is not a PK, and
-   has a semantic_type (we assume nil semantic_type fields are boring)."
-  [{:keys [table_id definition]}]
-  (let [field-ids            (find-field-ids definition)
-        potential-dimensions (t2/select :model/Field
-                                        :id [:not-in field-ids]
-                                        :table_id table_id
-                                        :semantic_type [:not-in [:type/PK]])]
-    (update-vals
-     (->> potential-dimensions
-          (group-by :semantic_type))
-     set)))
-
 (defmulti ->reference
   "Get a reference for a given model to be injected into a template (either MBQL, native query, or string)."
   {:arglists '([template-type model])}
@@ -119,7 +88,7 @@
           (can-use? :hour) :hour))
       (if (can-use? :day) :day :hour))))
 
-(defmethod ->reference [:mbql :model/Field]
+(mu/defmethod ->reference [:mbql :model/Field] :- ::mbql.s/field
   [_ {:keys [fk_target_field_id id link aggregation name base_type] :as field}]
   (let [reference (mbql.normalize/normalize
                    (cond
@@ -178,44 +147,47 @@
         (map? form) ((some-fn :full-name :name) form))
       form))
 
-(defn transform-metric-aggregate
+(mu/defn transform-metric-aggregate :- ::mbql.s/Aggregation
   "Map a metric aggregate definition from nominal types to semantic types."
-  [m decoder]
-  (walk/prewalk
-   (fn [v]
-     (if (vector? v)
-       (let [[d n] v]
-         (if (= "dimension" d)
-           (decoder n)
-           v))
-       v))
-   m))
+  [m       :- [:any {:description "metric definition template"}]
+   decoder :- [:=> [:cat :any] :any]] ; not exactly 100% sure what the schema for the arg is supposed to be here
+  (let [ag-clause (walk/prewalk
+                   (fn [v]
+                     (if (vector? v)
+                       (let [[d n] v]
+                         (if (= "dimension" d)
+                           (decoder n)
+                           v))
+                       v))
+                   m)]
+    (first (mbql.normalize/normalize-fragment [:query :aggregation] [ag-clause]))))
 
-(mu/defn ground-metric :- [:sequential ads/grounded-metric]
+(mu/defn ground-metric :- [:sequential ::ads/grounded-metric]
   "Generate \"grounded\" metrics from the mapped dimensions (dimension name -> field matches).
    Since there may be multiple matches to a dimension, this will produce a sequence of potential matches."
   [{metric-name       :metric-name
     metric-score      :score
-    metric-definition :metric} :- ads/normalized-metric-template
-   ground-dimensions :- ads/dim-name->matching-fields]
+    metric-definition :metric} :- ::ads/normalized-metric-template
+   ground-dimensions :- ::ads/dim-name->matching-fields]
   (let [named-dimensions (dashboard-templates/collect-dimensions metric-definition)]
-    (->> (map (comp :matches ground-dimensions) named-dimensions)
+    (->> named-dimensions
+         (map (comp :matches ground-dimensions))
          (apply math.combo/cartesian-product)
          (map (partial zipmap named-dimensions))
-         (map (fn [nm->field]
-                (let [xform (update-vals nm->field (partial ->reference :mbql))]
+         (map (fn [dimension-name->field]
+                (let [xform (update-vals dimension-name->field (partial ->reference :mbql))]
                   {:metric-name           metric-name
                    :metric-title          metric-name
                    :metric-score          metric-score
                    :metric-definition     {:aggregation
                                            [(transform-metric-aggregate metric-definition xform)]}
                    ;; Required for title interpolation in grounded-metrics->dashcards
-                   :dimension-name->field nm->field}))))))
+                   :dimension-name->field dimension-name->field}))))))
 
-(mu/defn grounded-metrics :- [:sequential ads/grounded-metric]
+(mu/defn grounded-metrics :- [:sequential ::ads/grounded-metric]
   "Given a set of metric definitions and grounded (assigned) dimensions, produce a sequence of grounded metrics."
-  [metric-templates :- [:sequential ads/normalized-metric-template]
-   ground-dimensions :- ads/dim-name->matching-fields]
+  [metric-templates :- [:sequential ::ads/normalized-metric-template]
+   ground-dimensions :- ::ads/dim-name->matching-fields]
   (mapcat #(ground-metric % ground-dimensions) metric-templates))
 
 (defn normalize-seq-of-maps
@@ -369,7 +341,7 @@
   (let [scored-bindings (score-bindings candidate-binding-values)]
     (second (last (sort-by first scored-bindings)))))
 
-(mu/defn find-dimensions :- ads/dim-name->dim-defs+matches
+(mu/defn find-dimensions :- ::ads/dim-name->dim-defs+matches
   "Bind fields to dimensions from the dashboard template and resolve overloaded cases in which multiple fields match the
   dimension specification.
 
@@ -378,7 +350,7 @@
    (see `most-specific-definition` for details).
 
   The context is passed in, but it only needs tables and fields in `candidate-bindings`. It is not extensively used."
-  [context dimension-specs :- [:maybe [:sequential ads/dimension-template]]]
+  [context dimension-specs :- [:maybe [:sequential ::ads/dimension-template]]]
   (->> (candidate-bindings context dimension-specs)
        (map (comp most-specific-matched-dimension val))
        (apply merge-with (fn [a b]
@@ -447,20 +419,19 @@
                         (assoc v :filter f :filter-name fname))))))
        flatten))
 
-(mu/defn identify
-  :- [:map
-      [:dimensions ads/dim-name->matching-fields]
-      [:metrics [:sequential ads/grounded-metric]]]
+(mu/defn identify :- [:map
+                      [:dimensions ::ads/dim-name->matching-fields]
+                      [:metrics [:sequential ::ads/grounded-metric]]]
   "Identify interesting metrics and dimensions of a `thing`. First identifies interesting dimensions, and then
   interesting metrics which are satisfied.
   Metrics from the template are assigned a score of 50; user defined metrics a score of 95"
-  [context
+  [context                :- ::ads/context
    {:keys [dimension-specs
            metric-specs
            filter-specs]} :- [:map
-                              [:dimension-specs [:maybe [:sequential ads/dimension-template]]]
-                              [:metric-specs [:maybe [:sequential ads/metric-template]]]
-                              [:filter-specs [:maybe [:sequential ads/filter-template]]]]]
+                              [:dimension-specs [:maybe [:sequential ::ads/dimension-template]]]
+                              [:metric-specs [:maybe [:sequential ::ads/metric-template]]]
+                              [:filter-specs [:maybe [:sequential ::ads/filter-template]]]]]
   (let [dims      (->> (find-dimensions context dimension-specs)
                        (add-field-self-reference context))
         metrics   (-> (normalize-seq-of-maps :metric metric-specs)
@@ -474,6 +445,8 @@
                            (when (mi/instance-of? :xrays/Metric entity)
                              [{:metric-name       "this"
                                :metric-title      (:name entity)
-                               :metric-definition {:aggregation [(->reference :mbql entity)]}
+                               :metric-definition (merge
+                                                   (:definition entity)
+                                                   {:aggregation [(->reference :mbql entity)]})
                                :metric-score      dashboard-templates/max-score}])))
      :filters (grounded-filters filter-specs dims)}))

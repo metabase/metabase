@@ -21,6 +21,7 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver.util :as driver.u]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
    [metabase.query-processor.util :as qp.util]
@@ -78,20 +79,21 @@
 (mu/defn add-dataset-query :- ::ads/card
   "Add the `:dataset_query` key to this metric. Requires both the current metric-definition (from the grounded metric)
   and the database and table ids (from the source object)."
-  [{:keys [metric-definition] :as ground-metric-with-dimensions}
-   {{:keys [database]} :root :keys [source query-filter]} :- ::ads/context]
+  [{:keys [metric-definition] :as ground-metric-with-dimensions} :- ::ads/grounded-metric
+   {{:keys [database]} :root :keys [source query-filter]}        :- ::ads/context]
   (let [source-table (if (->> source (mi/instance-of? :model/Table))
                        (-> source u/the-id)
                        (->> source u/the-id (str "card__")))
         model?       (and (mi/instance-of? :model/Card source)
                           (queries/model? source))]
     (assoc ground-metric-with-dimensions
-           :dataset_query {:database database
-                           :type     :query
-                           :query    (cond-> (assoc metric-definition
-                                                    :source-table source-table)
-                                       (and (not model?)
-                                            query-filter) (assoc :filter query-filter))})))
+           :dataset_query (-> {:database database
+                               :type     :query
+                               :query    (cond-> (assoc metric-definition
+                                                        :source-table source-table)
+                                           (and (not model?)
+                                                query-filter) (assoc :filter query-filter))}
+                              mbql.normalize/normalize))))
 
 (defn- instantiate-visualization
   [[k v] dimensions metrics]
@@ -151,7 +153,6 @@
           dimension-name->field
           (map first card-dimensions)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (def ^:private ^{:arglists '([field])} id-or-name
   (some-fn :id :name))
 
@@ -184,16 +185,15 @@
                 (merge (bindings identifier) opts)))
          (every? (every-pred valid-breakout-dimension?
                              (complement (comp cell-dimension? id-or-name)))))))
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(mu/defn grounded-metrics->dashcards :- [:sequential ads/combined-metric]
+(mu/defn grounded-metrics->dashcards :- [:sequential ::ads/combined-metric]
   "Generate dashcards from ground dimensions, using the base context, ground dimensions,
   card templates, and grounded metrics as input."
   [base-context      :- ::ads/context
    card-templates
-   ground-dimensions :- ads/dim-name->matching-fields
+   ground-dimensions :- ::ads/dim-name->matching-fields
    ground-filters
-   grounded-metrics  :- [:sequential ads/grounded-metric]]
+   grounded-metrics  :- [:sequential ::ads/grounded-metric]]
   (let [metric-name->metric (zipmap
                              (map :metric-name grounded-metrics)
                              (map-indexed
@@ -250,17 +250,3 @@
                    (vals merged-dims)
                    (mapv (comp :filter simple-grounded-filters) card-filters))
            (add-dataset-query base-context))))))
-
-(defn items->str
-  "Convert a seq of items to a string. If more than two items are present, they are separated by commas, including the
-  oxford comma on the final pairing."
-  [[f s :as items]]
-  (condp = (count items)
-    0 ""
-    1 (str f)
-    2 (format "%s and %s" f s)
-    (format "%s, and %s" (str/join ", " (butlast items)) (last items))))
-
-(def dim-name
-  "Name of the dimension. Trying for `:display_name` and falling back to `:name`"
-  (some-fn :display_name :name))

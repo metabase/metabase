@@ -4316,7 +4316,7 @@
       (mt/with-temp [:model/Card {id-a :id} {:dataset_query (lib/->legacy-MBQL query-a) :type :question}]
         (let [query-b (mt/native-query {:query "select * from {{#100-base-query}}"
                                         :template-tags
-                                        {:#100-base-query
+                                        {"#100-base-query"
                                          {:type :card
                                           :name "#100-base-query"
                                           :id (random-uuid)

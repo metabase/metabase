@@ -99,8 +99,11 @@
                         {:query query, :type :invalid-query}))))))
 
 (mu/defn resolve-database :- [:maybe
-                              [:map
-                               [:database ::lib.schema.id/database]]]
+                              [:or
+                               [:map
+                                [:database ::lib.schema.id/database]]
+                               [:map
+                                [:type [:= :internal]]]]]
   "If query has `:database` `-1337` (the legacy database ID for queries using a source Card that had an unknown
   database), resolve the correct database ID and assoc it into the query."
   [query :- [:maybe :map]]

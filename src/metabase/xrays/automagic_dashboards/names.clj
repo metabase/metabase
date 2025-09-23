@@ -3,11 +3,14 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.time :as u.time]
+   [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]))
 
 ;; TODO - rename "minumum" to "minimum". Note that there are internationalization string implications
@@ -41,9 +44,12 @@
   "Return the (display) name of the source of a given root object."
   (comp (some-fn :display_name :name) :source))
 
-(defn metric->description
+(mu/defn metric->description
   "Return a description for the metric."
-  [root aggregation-clause]
+  [root               :- :map
+   aggregation-clause :- [:or
+                          ::mbql.s/Aggregation
+                          [:sequential ::mbql.s/Aggregation]]]
   (join-enumeration
    (for [metric (if (sequential? (first aggregation-clause))
                   aggregation-clause
@@ -56,9 +62,11 @@
                                                   (source-name root)))
        (metric-name metric)))))
 
-(defn question-description
+(mu/defn question-description
   "Generate a description for the question."
-  [root question]
+  [root     :- ::ads/root
+   question :- [:map
+                [:dataset_query ::mbql.s/Query]]]
   (let [aggregations (->> (get-in question [:dataset_query :query :aggregation])
                           (metric->description root))
         dimensions   (->> (get-in question [:dataset_query :query :breakout])
