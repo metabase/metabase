@@ -1,5 +1,6 @@
 (ns metabase-enterprise.transforms.models.transform-tag
   (:require
+   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util.i18n :as i18n]
    [methodical.core :as methodical]
@@ -36,29 +37,25 @@
     (merge tag (translate-name tag))))
 
 (t2/define-before-update :model/TransformTag [tag]
-  (if (nil? (:built_in_type tag))
+  (if (or (nil? (:built_in_type tag))
+          mi/*deserializing?*)
     tag
     (-> (merge (translate-name tag) ;; translated default names
                {:built_in_type nil} ;; never translate this again
                (t2/changes tag))    ;; include user edits
         (update :name str)))) ;; convert deferred to string
-;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defmethod serdes/hash-fields :model/TransformTag
-  [_transform-tag]
-  [:name :created_at])
+  [_tt]
+  [:name :built_in_type])
 
 (defmethod serdes/make-spec "TransformTag"
   [_model-name _opts]
-  {:copy [:name :entity_id :built_in_type]
-   :skip []
-   :transform {:created_at (serdes/date)
+  {:copy [:entity_id :built_in_type]
+   :transform {:name {:export str :import identity}
+               :created_at (serdes/date)
                :updated_at (serdes/date)}})
 
-(defmethod serdes/dependencies "TransformTag"
-  [_ingested]
-  #{})
-
-(defmethod serdes/descendants "TransformTag"
-  [_model-name _id]
-  {})
+(defmethod serdes/storage-path "TransformTag" [tt _ctx]
+  (let [{:keys [id label]} (-> tt serdes/path last)]
+    ["transforms" "transform_tags" (serdes/storage-leaf-file-name id label)]))

@@ -5,6 +5,7 @@
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -108,51 +109,46 @@
           (t2/insert! :model/TransformTransformTag
                       (for [tag-id to-insert]
                         {:transform_id transform-id
-                         :tag_id tag-id
-                         :position (get new-positions tag-id)})))))))
+                         :tag_id       tag-id
+                         :position     (get new-positions tag-id)})))))))
 
-;;; ------------------------------------------------- Serialization --------------------------------------------------
+;;; ------------------------------------------------- Serialization ------------------------------------------------
+
+(mi/define-batched-hydration-method tags
+  :tags
+  "Fetch tags"
+  [transforms]
+  (when (seq transforms)
+    (let [transform-ids (into #{} (map u/the-id) transforms)
+          tag-mappings  (group-by :transform_id
+                                  (t2/select :model/TransformTransformTag
+                                             :transform_id [:in transform-ids]
+                                             {:order-by [[:position :asc]]}))]
+      (for [transform transforms]
+        (assoc transform :tags (get tag-mappings (u/the-id transform) []))))))
 
 (defmethod serdes/hash-fields :model/Transform
   [_transform]
   [:name :created_at])
 
-(defn- transform-target-export
-  "Transform target JSON for export, replacing database IDs with portable names."
-  [target]
-  (when target
-    (let [export-db-fk (:export (serdes/fk :model/Database :name))]
-      (cond-> target
-        (:database target) (update :database export-db-fk)
-        (:databases target) (update :databases #(mapv export-db-fk %))))))
-
-(defn- transform-target-import
-  "Transform target JSON for import, replacing portable names with database IDs."
-  [target]
-  (when target
-    (let [import-db-fk (:import (serdes/fk :model/Database :name))]
-      (cond-> target
-        (:database target) (update :database import-db-fk)
-        (:databases target) (update :databases #(mapv import-db-fk %))))))
-
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy [:name :description :entity_id]
-   :skip [:synced_to_source_of_truth]
-   :transform
-   {:created_at (serdes/date)
-    :updated_at (serdes/date)
-    :source {:export serdes/export-mbql :import serdes/import-mbql}
-    :target {:export transform-target-export
-             :import transform-target-import}
-    :tag_associations (serdes/nested :model/TransformTransformTag :transform_id opts)}})
+   :skip []
+   :transform {:created_at (serdes/date)
+               :updated_at (serdes/date)
+               :source {:export serdes/export-mbql :import serdes/import-mbql}
+               :target {:export serdes/export-mbql :import serdes/import-mbql}
+               :tags (serdes/nested :model/TransformTransformTag :transform_id opts)}})
 
 (defmethod serdes/dependencies "Transform"
-  [{:keys [source _target]}]
-  (set (serdes/mbql-deps source)))
+  [{:keys [source tags]}]
+  (set
+   (concat
+    (for [{tag-id :tag_id} tags]
+      [{:model "TransformTag" :id tag-id}])
+    (serdes/mbql-deps source))))
 
-(defmethod serdes/descendants "Transform"
-  [_model-name id]
-  ;; Include the junction table records that link this transform to its tags
-  (into {} (for [junction-id (t2/select-pks-set :model/TransformTransformTag :transform_id id)]
-             {["TransformTransformTag" junction-id] {"Transform" id}})))
+(defmethod serdes/storage-path "Transform" [transform _ctx]
+  (let [{:keys [id label]} (-> transform serdes/path last)]
+    ["transforms" (serdes/storage-leaf-file-name id label)]))
