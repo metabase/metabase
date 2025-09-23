@@ -19,7 +19,7 @@ export function ToolsApp({ children }: { children: React.ReactNode }) {
             <ToolsNavItem
               label={t`Help`}
               path="/admin/tools/help"
-              icon="info_filled"
+              icon="info"
             />
             <ToolsNavItem
               label={t`Tasks`}

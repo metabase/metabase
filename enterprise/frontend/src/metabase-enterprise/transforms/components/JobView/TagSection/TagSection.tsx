@@ -16,7 +16,7 @@ export function TagSection({ job, onTagsChange }: TagSectionProps) {
   return (
     <SplitSection
       label={t`Tags to run`}
-      description={t`This job will run all transforms tagged with the tags you pick here.`}
+      description={t`This job will run all transforms tagged with any of the tags you pick here.`}
     >
       <Box p="xl">
         <TagMultiSelect tagIds={job.tag_ids ?? []} onChange={onTagsChange} />

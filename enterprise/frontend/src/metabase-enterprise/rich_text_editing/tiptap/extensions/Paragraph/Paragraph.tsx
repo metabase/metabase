@@ -41,7 +41,14 @@ export const CustomParagraph = Paragraph.extend({
   },
 });
 
-export const ParagraphNodeView = ({ node, editor, getPos }: NodeViewProps) => {
+export const ParagraphNodeView = ({
+  node,
+  editor,
+  getPos,
+  extension,
+}: NodeViewProps) => {
+  const editorContext = extension?.options?.editorContext || "document";
+  const shouldHideCommentMenu = editorContext === "comments";
   const childTargetId = useSelector(getChildTargetId);
   const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
   const document = useSelector(getCurrentDocument);
@@ -86,17 +93,20 @@ export const ParagraphNodeView = ({ node, editor, getPos }: NodeViewProps) => {
         <NodeViewContent<"p"> as="p" />
       </NodeViewWrapper>
 
-      {document && rendered && isTopLevel({ editor, getPos }) && (
-        <CommentsMenu
-          active={isOpen}
-          disabled={hasUnsavedChanges}
-          href={`/document/${document.id}/comments/${_id}`}
-          ref={refs.setFloating}
-          show={isOpen || hovered}
-          threads={threads}
-          style={floatingStyles}
-        />
-      )}
+      {document &&
+        rendered &&
+        !shouldHideCommentMenu &&
+        isTopLevel({ editor, getPos }) && (
+          <CommentsMenu
+            active={isOpen}
+            disabled={hasUnsavedChanges}
+            href={`/document/${document.id}/comments/${_id}`}
+            ref={refs.setFloating}
+            show={isOpen || hovered}
+            threads={threads}
+            style={floatingStyles}
+          />
+        )}
     </>
   );
 };

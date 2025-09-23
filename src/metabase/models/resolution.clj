@@ -44,6 +44,7 @@
     :model/Field                             metabase.warehouse-schema.models.field
     :model/FieldUserSettings                 metabase.warehouse-schema.models.field-user-settings
     :model/FieldValues                       metabase.warehouse-schema.models.field-values
+    :model/Glossary                          metabase.glossary.models.glossary
     :model/Sandbox                           metabase-enterprise.sandbox.models.sandbox
     :model/HTTPAction                        metabase.actions.models
     :model/ImplicitAction                    metabase.actions.models
@@ -84,6 +85,7 @@
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
     :model/Secret                            metabase.secrets.models.secret
     :model/Segment                           metabase.segments.models.segment
+    :model/SemanticSearchTokenTracking       metabase-enterprise.semantic-search.models.token-tracking
     :model/Session                           metabase.session.models.session
     :model/Setting                           metabase.settings.models.setting
     :model/Table                             metabase.warehouse-schema.models.table

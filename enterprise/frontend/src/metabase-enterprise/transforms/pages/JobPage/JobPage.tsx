@@ -10,6 +10,7 @@ import {
   useUpdateTransformJobMutation,
 } from "metabase-enterprise/api";
 import type {
+  ScheduleDisplayType,
   TransformJob,
   TransformJobId,
   TransformTagId,
@@ -42,7 +43,7 @@ export function JobPage({ params }: JobPageProps) {
   });
 
   if (isPolling !== isPollingNeeded(job)) {
-    setIsPolling(!isPolling);
+    setIsPolling(isPollingNeeded(job));
   }
 
   if (isLoading || error != null) {
@@ -103,10 +104,14 @@ function JobPageBody({ job }: JobPageBodyProps) {
     }
   };
 
-  const handleScheduleChange = async (schedule: string) => {
+  const handleScheduleChange = async (
+    schedule: string,
+    uiDisplayType: ScheduleDisplayType,
+  ) => {
     const { error } = await updateJob({
       id: job.id,
       schedule,
+      ui_display_type: uiDisplayType,
     });
 
     if (error) {
@@ -158,6 +163,8 @@ function getParsedParams({ jobId }: JobPageParams): JobPageParsedParams {
   };
 }
 
-function isPollingNeeded(job?: TransformJob) {
-  return job?.last_run?.status === "started";
+export function isPollingNeeded(job?: TransformJob) {
+  return (
+    job?.last_run?.status === "started" || job?.last_run?.status === "canceling"
+  );
 }

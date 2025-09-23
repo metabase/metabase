@@ -40,9 +40,20 @@
   (or (and (premium-features/has-feature? :sso-jwt) (sso-settings/jwt-enabled) (sso-settings/jwt-configured))
       (and (premium-features/has-feature? :sso-saml) (sso-settings/saml-enabled) (sso-settings/saml-configured))))
 
+(defn- has-user-created-models? []
+  (t2/exists? :model/Card {:where [:and
+                                   [:= :type "model"]
+                                   [:= :archived false]
+                                   [:or
+                                    [:not-in :collection_id [(:id (audit/default-audit-collection)) {:select :id
+                                                                                                     :from   [(t2/table-name :model/Collection)]
+                                                                                                     :where  [:= :is_sample true]}]]
+                                    [:is :collection_id nil]]]}))
+
 (defn- embedding-hub-checklist []
   {"add-data"                      (has-user-added-database?)
    "create-dashboard"              (has-user-created-dashboard?)
+   "create-models"                 (has-user-created-models?)
    "configure-row-column-security" (has-configured-sandboxes?)
    "create-test-embed"             (embedding.settings/embedding-hub-test-embed-snippet-created)
    "embed-production"              (embedding.settings/embedding-hub-production-embed-snippet-created)

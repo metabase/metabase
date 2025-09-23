@@ -20,6 +20,7 @@ export const HomeContent = (): JSX.Element | null => {
   const user = useSelector(getUser);
   const embeddingHomepage = useSetting("embedding-homepage");
   const isXrayEnabled = useSelector(getIsXrayEnabled);
+
   const { data: databases, error: databasesError } = useDatabaseListQuery();
   const { data: recentItemsRaw, error: recentItemsError } = useListRecentsQuery(
     undefined,

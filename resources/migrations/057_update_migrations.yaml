@@ -1399,6 +1399,88 @@ databaseChangeLog:
                     nullable: false
                   defaultValueComputed: current_timestamp
 
+  - changeSet:
+      id: v57.2025-09-12T16:08:00
+      author: piranha
+      comment: Create glossary table
+      changes:
+        - createTable:
+            tableName: glossary
+            remarks: Table to store glossary terms and their definitions
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key identifier for glossary entries
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: term
+                  type: varchar(255)
+                  remarks: The glossary term or phrase being defined
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: definition
+                  type: ${text.type}
+                  remarks: The detailed definition or explanation of the term
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when comment was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when comment was last updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-09-19T11:30:20
+      author: ranquild
+      comment: Add transform_job.ui_display_type
+      changes:
+        - addColumn:
+            tableName: transform_job
+            columns:
+              - column:
+                  name: ui_display_type
+                  remarks: The display type of the schedule, used for the UI only; "cron/raw" or "cron/builder".
+                  type: varchar(32)
+                  defaultValue: 'cron/raw'
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-09-19T12:30:20
+      author: ranquild
+      comment: Set transform_job.ui_display_type for built-in jobs
+      changes:
+        - update:
+            tableName: transform_job
+            columns:
+              - column:
+                  name: ui_display_type
+                  value: 'cron/builder'
+            where: built_in_type IS NOT NULL
+      rollback:
+        - update:
+            tableName: transform_job
+            columns:
+              - column:
+                  name: ui_display_type
+                  value: 'cron/raw'
+            where: built_in_type IS NOT NULL
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
