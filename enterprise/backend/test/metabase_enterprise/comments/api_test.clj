@@ -141,7 +141,8 @@
                                                      {:target_type       "document"
                                                       :target_id         doc-id
                                                       :parent_comment_id (:id created)
-                                                      :content           {:text "Third comment in a thread"}})]
+                                                      :content           (tiptap [:p "Third comment in a thread"])
+                                                      :html              "<p>Third comment in a thread</p>"})]
                   (is (=? {(:email (mt/fetch-user :rasta))
                            [{:subject "Comment on New Document"
                              :body    [{:content (relaxed-re
@@ -158,9 +159,10 @@
                                                 {:target_type     "document"
                                                  :target_id       doc-id
                                                  :child_target_id part-id
-                                                 :content         {:text "Part comment"}})]
+                                                 :content         (tiptap [:p "Part comment"])
+                                                 :html            "<p>Part comment</p>"})]
               (is (=? {:id              int?
-                       :content         {:text "Part comment"}
+                       :content         {:type "doc"}
                        :target_type     "document"
                        :target_id       doc-id
                        :child_target_id part-id
@@ -182,7 +184,8 @@
                                                   :target_id   doc-id
                                                   :content     (tiptap
                                                                 [:smartLink {:model    "user"
-                                                                             :entityId (mt/user->id :crowberto)}])})]
+                                                                             :entityId (mt/user->id :crowberto)}])
+                                                  :html        "<p>Mention of @crowberto :)</p>"})]
               (is (=? {(:email (mt/fetch-user :lucky))     [{:subject "Comment on New Document"}]
                        (:email (mt/fetch-user :crowberto)) [{:subject "Comment on New Document"}]}
                       (first (swap-vals! mt/inbox empty)))))))))))
@@ -263,7 +266,7 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection {restricted-col :id}        {:name "Restricted Collection"}
                      :model/Document   {restricted-doc-id :id}     {:collection_id restricted-col
-                                                                    :name "Restricted Document"}
+                                                                    :name          "Restricted Document"}
                      :model/Comment    {restricted-comment-id :id} {:target_id restricted-doc-id}]
 
         (mt/with-model-cleanup [:model/Comment]
@@ -278,7 +281,8 @@
                    (mt/user-http-request :lucky :post 403 "ee/comment/"
                                          {:target_type "document"
                                           :target_id   restricted-doc-id
-                                          :content     {:text "Comment by lucky"}}))))
+                                          :content     (tiptap "Comment by lucky")
+                                          :html        "You shall not pass"}))))
 
           (testing "PUT /api/ee/comment/:id - users without document access cannot update comments"
             (is (= "You don't have permissions to do that."

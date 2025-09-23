@@ -50,14 +50,15 @@
    [:target_type [:enum "document"]]
    [:target_id   ms/PositiveInt]
    [:content     CommentContent]
+   [:html        :string]
    [:child_target_id {:optional true} [:maybe :string]]
-   [:html {:optional true} [:maybe :string]]
    [:parent_comment_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (def UpdateComment
   "Schema for updating a comment"
   [:map
    [:content {:optional true} CommentContent]
+   [:html    {:optional true} :string]
    [:is_resolved {:optional true} :boolean]])
 
 ;;; routes
@@ -176,7 +177,7 @@
   "Update a comment"
   [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
    _query-params
-   {:keys [content is_resolved]} :- UpdateComment]
+   {:keys [content html is_resolved]} :- UpdateComment]
   (let [comment (api/check-404 (t2/select-one :model/Comment :id comment-id))
         entity  (-> (api/read-check (TYPE->MODEL (:target_type comment)) (:target_id comment))
                     (u/prog1 (api/check-400 (not (entity-archived? <>))
@@ -194,7 +195,7 @@
       ;; Anyone with write permission to target entity can resolve/unresolve
       (api/write-check entity))
 
-    (when-let [updates (-> {:content content :is_resolved is_resolved}
+    (when-let [updates (-> {:content content :html html :is_resolved is_resolved}
                            u/remove-nils
                            not-empty)]
       (t2/update! :model/Comment comment-id updates))
