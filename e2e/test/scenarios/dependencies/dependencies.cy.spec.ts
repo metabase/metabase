@@ -23,7 +23,7 @@ H.describeWithSnowplowEE("documents", () => {
   });
 
   describe("questions", () => {
-    it("should be able to confirm or cancel breaking changes to a question", () => {
+    it("should be able to confirm or cancel breaking changes to a MBQL question", () => {
       createMbqlQuestionWithDependentMbqlQuestions();
       H.visitQuestion("@questionId");
       H.openNotebook();
@@ -74,7 +74,7 @@ H.describeWithSnowplowEE("documents", () => {
       H.collectionTable().should("be.visible");
     });
 
-    it("should not show a confirmation if there are no breaking changes when updating a question", () => {
+    it("should not show a confirmation if there are no breaking changes when updating a MBQL question", () => {
       createMbqlQuestionWithDependentMbqlQuestions();
       H.visitQuestion("@questionId");
       H.openNotebook();
@@ -88,7 +88,7 @@ H.describeWithSnowplowEE("documents", () => {
   });
 
   describe("models", () => {
-    it("should be able to confirm or cancel breaking changes to a model", () => {
+    it("should be able to confirm or cancel breaking changes to a SQL model", () => {
       createSqlModelWithDependentSqlQuestions();
       cy.get<number>("@modelId").then(H.visitModel);
       H.openQuestionActions("Edit query definition");
@@ -110,7 +110,7 @@ H.describeWithSnowplowEE("documents", () => {
       cy.wait("@updateCard");
     });
 
-    it("should not show a confirmation if there are no breaking changes when updating a model", () => {
+    it("should not show a confirmation if there are no breaking changes when updating a SQL model", () => {
       createSqlModelWithDependentSqlQuestions();
       cy.get<number>("@modelId").then(H.visitModel);
       H.openQuestionActions("Edit query definition");
@@ -122,7 +122,7 @@ H.describeWithSnowplowEE("documents", () => {
   });
 
   describe("transforms", () => {
-    it("should be able to confirm or cancel breaking changes to a transform after it was run", () => {
+    it("should be able to confirm or cancel breaking changes to a SQL transform after it was run", () => {
       createSqlTransformWithDependentMbqlQuestions();
       cy.get<number>("@transformId").then(H.visitTransform);
       cy.findByTestId("transform-page").findByText("Edit query").click();
@@ -147,7 +147,7 @@ H.describeWithSnowplowEE("documents", () => {
       cy.wait("@updateTransform");
     });
 
-    it("should not show a confirmation if there are no breaking changes when updating a transform after it was run", () => {
+    it("should not show a confirmation if there are no breaking changes when updating a SQL transform after it was run", () => {
       createSqlTransformWithDependentMbqlQuestions();
       cy.get<number>("@transformId").then(H.visitTransform);
       cy.findByTestId("transform-page").findByText("Edit query").click();
@@ -158,7 +158,7 @@ H.describeWithSnowplowEE("documents", () => {
       cy.wait("@updateTransform");
     });
 
-    it("should be able to confirm or cancel breaking changes to a transform before it was run", () => {
+    it("should be able to confirm or cancel breaking changes to a MBQL transform before it was run", () => {
       createMbqlTransformWithDependentSqlTransforms();
       cy.get<number>("@transformId").then(H.visitTransform);
       cy.findByTestId("transform-page").findByText("Edit query").click();
@@ -184,7 +184,7 @@ H.describeWithSnowplowEE("documents", () => {
       cy.wait("@updateTransform");
     });
 
-    it("should not show a confirmation if there are no breaking changes when updating a transform before it was run", () => {
+    it("should not show a confirmation if there are no breaking changes when updating a MBQL transform before it was run", () => {
       createMbqlTransformWithDependentSqlTransforms();
       cy.get<number>("@transformId").then(H.visitTransform);
       cy.findByTestId("transform-page").findByText("Edit query").click();
