@@ -118,7 +118,7 @@
   (let [query-id (u/generate-nano-id)
         query-details (mt/with-current-user (mt/user->id :crowberto)
                         (#'metabot-v3.dummy-tools/execute-query query-id (:dataset_query (test-card))))
-        ->field-id #(u/prog1 (-> query-details :result_columns (by-name %) :field_id)
+        ->field-id #(u/prog1 (-> query-details :result-columns (by-name %) :field_id)
                       (when-not <>
                         (throw (ex-info (str "Column " % " not found") {:column %}))))
         result-field-id (->field-id "Average of Subtotal")]
