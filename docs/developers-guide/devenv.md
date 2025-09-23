@@ -7,7 +7,7 @@ title: Development environment
 The Metabase application has two basic components:
 
 1. A backend written in Clojure which contains a REST API as well as all the relevant code for talking to databases and processing queries.
-2. A frontend written as a Javascript single-page application which provides the web UI.
+2. A frontend written as a JavaScript single-page application which provides the web UI.
 
 Both components are built and assembled together into a single JAR file. In the directory where you run the JAR, you can create a JAR file (if Metabase hasn't already created it) and add drivers in there (the drivers are also JARs).
 
@@ -127,6 +127,10 @@ Unit tests use an enforced file naming convention `<test-suite-name>.unit.spec.j
 yarn test-unit # Run all tests at once
 yarn test-unit-watch # Watch for file changes
 ```
+
+### Custom FE development server port
+
+By default the Rspack runs the development server on port `8088`. If you'd like to run it on another port (e.g. to be able to run two dev servers at once), use `MB_FRONTEND_DEV_PORT` environment variable.
 
 ## Backend development
 
