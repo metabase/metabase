@@ -93,8 +93,3 @@
   (let [conn-spec (driver/connection-spec driver db)
         sql [[(format "DROP DATABASE IF EXISTS `%s`;" schema)]]]
     (driver/execute-raw-queries! driver/*driver* conn-spec sql)))
-
-(defmethod delete-schema! :bigquery-cloud-sdk [driver db schema]
-  (let [conn-spec (driver/connection-spec driver db)
-        sql [[(format "DROP SCHEMA IF EXISTS `%s` CASCADE;" schema)]]]
-    (driver/execute-raw-queries! driver/*driver* conn-spec sql)))
