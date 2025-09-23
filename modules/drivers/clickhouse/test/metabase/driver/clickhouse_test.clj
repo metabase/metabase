@@ -273,34 +273,36 @@
                                 :target [:dimension [:template-tag "category_name"]]
                                 :value  ["African"]}]}))))))))
 
-(deftest ^:parallel ternary-with-variable-test
-  (mt/test-driver :clickhouse
-    (testing "a query with a ternary and a variable should work correctly"
-      (is (= [[1 "African" 1]]
-             (mt/rows
-              (qp/process-query
-               {:database (mt/id)
-                :type :native
-                :native {:query "SELECT *, true ? 1 : 0 AS foo
-                                 FROM test_data.categories
-                                 WHERE name = {{category_name}};"
-                         :template-tags {"category_name" {:type         :text
-                                                          :name         "category_name"
-                                                          :display-name "Category Name"}}}
-                :parameters [{:type   :category
-                              :target [:variable [:template-tag "category_name"]]
-                              :value  "African"}]})))))))
+;; TODO(rileythomp, 2025-09-23): Enable when ClickHouse JDBC driver has been fixed
+#_(deftest ^:parallel ternary-with-variable-test
+    (mt/test-driver :clickhouse
+      (testing "a query with a ternary and a variable should work correctly"
+        (is (= [[1 "African" 1]]
+               (mt/rows
+                (qp/process-query
+                 {:database (mt/id)
+                  :type :native
+                  :native {:query "SELECT *, true ? 1 : 0 AS foo
+                                   FROM test_data.categories
+                                   WHERE name = {{category_name}};"
+                           :template-tags {"category_name" {:type         :text
+                                                            :name         "category_name"
+                                                            :display-name "Category Name"}}}
+                  :parameters [{:type   :category
+                                :target [:variable [:template-tag "category_name"]]
+                                :value  "African"}]})))))))
 
-(deftest ^:parallel line-comment-block-comment-test
-  (mt/test-driver :clickhouse
-    (testing "a query with a line comment followed by a block comment should work correctly"
-      (is (= [[1]]
-             (mt/rows
-              (qp/process-query
-               (mt/native-query
-                 {:query "-- foo
-                          /* comment */
-                          select 1;"}))))))))
+;; TODO(rileythomp, 2025-09-23): Enable when ClickHouse JDBC driver has been fixed
+#_(deftest ^:parallel line-comment-block-comment-test
+    (mt/test-driver :clickhouse
+      (testing "a query with a line comment followed by a block comment should work correctly"
+        (is (= [[1]]
+               (mt/rows
+                (qp/process-query
+                 (mt/native-query
+                   {:query "-- foo
+                            /* comment */
+                            select 1;"}))))))))
 
 (deftest ^:parallel subquery-with-cte-test
   (mt/test-driver :clickhouse
