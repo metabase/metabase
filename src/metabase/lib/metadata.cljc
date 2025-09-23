@@ -26,7 +26,10 @@
    (->metadata-provider metadata-providerable nil))
 
   ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-    database-id           :- [:maybe ::lib.schema.id/database]]
+    database-id           :- [:maybe
+                              [:or
+                               ::lib.schema.id/database
+                               ::lib.schema.id/saved-questions-virtual-database]]]
    (cond
      (lib.metadata.protocols/metadata-provider? metadata-providerable)
      metadata-providerable
