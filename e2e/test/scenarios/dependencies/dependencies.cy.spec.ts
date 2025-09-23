@@ -2,6 +2,7 @@ const { H } = cy;
 
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -53,7 +54,7 @@ H.describeWithSnowplowEE("documents", () => {
     it("should be able to navigate to affected questions or their collection", () => {
       createMbqlQuestionWithDependentMbqlQuestions();
 
-      cy.log("check that we can navigate to a broken question");
+      cy.log("check that we can navigate to the broken question");
       H.visitQuestion("@questionId");
       H.openNotebook();
       H.getNotebookStep("expression").findByText("Expr").icon("close").click();
@@ -76,6 +77,18 @@ H.describeWithSnowplowEE("documents", () => {
       });
       confirmDiscardChanges();
       H.collectionTable().should("be.visible");
+
+      cy.log("check that we can navigate to the dashboard of that question");
+      cy.go("back");
+      H.getNotebookStep("expression").findByText("Expr").icon("close").click();
+      H.queryBuilderHeader().button("Save").click();
+      H.modal().button("Save").click();
+      H.modal().within(() => {
+        cy.findByText("Question with fields").should("be.visible");
+        cy.findByText("Orders in a dashboard").click();
+      });
+      confirmDiscardChanges();
+      H.dashboardHeader().should("be.visible");
     });
 
     it("should not show a confirmation if there are no breaking changes when updating a MBQL question", () => {
@@ -324,6 +337,7 @@ function createMbqlQuestionWithDependentMbqlQuestions() {
         "source-table": `card__${card.id}`,
         filter: [">", ["field", "Expr", { "base-type": "type/Integer" }], 1],
       },
+      dashboard_id: ORDERS_DASHBOARD_ID,
     });
 
     H.createQuestion({
