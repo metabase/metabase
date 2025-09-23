@@ -2,7 +2,7 @@ import { Fragment, type ReactNode, useMemo } from "react";
 
 import type {
   DatePickerOperator,
-  DatePickerRelativeDirection,
+  DatePickerRelativeIntervalDirection,
   DatePickerShortcut,
   DatePickerValueType,
   RelativeDatePickerValue,
@@ -17,7 +17,7 @@ import { getShortcutOptionGroups, getTypeOptions } from "./utils";
 interface DateShortcutPickerProps {
   availableOperators: DatePickerOperator[];
   availableShortcuts: DatePickerShortcut[];
-  availableDirections: DatePickerRelativeDirection[];
+  availableDirections: DatePickerRelativeIntervalDirection[];
   renderBackButton?: () => ReactNode;
   onChange: (value: RelativeDatePickerValue) => void;
   onSelectType: (type: DatePickerValueType) => void;

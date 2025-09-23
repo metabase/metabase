@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 
 import type {
-  DatePickerRelativeDirection,
+  DatePickerRelativeIntervalDirection,
   DatePickerShortcut,
 } from "metabase/querying/filters/types";
 import { SearchFilterDateDisplay } from "metabase/search/components/SearchFilterDateDisplay";
@@ -14,7 +14,7 @@ type TimeFilterWidgetProps = {
   label: string;
   value: string | undefined;
   availableShortcuts?: DatePickerShortcut[];
-  availableDirections?: DatePickerRelativeDirection[];
+  availableDirections?: DatePickerRelativeIntervalDirection[];
   onChange: (value: string | undefined) => void;
 };
 

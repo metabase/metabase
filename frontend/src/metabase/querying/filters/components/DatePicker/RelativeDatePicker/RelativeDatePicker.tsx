@@ -1,7 +1,7 @@
 import { type ReactNode, useState } from "react";
 
 import type {
-  DatePickerRelativeDirection,
+  DatePickerRelativeIntervalDirection,
   DatePickerUnit,
   RelativeDatePickerValue,
 } from "metabase/querying/filters/types";
@@ -26,7 +26,7 @@ import {
 interface RelativeDatePickerProps {
   value: RelativeDatePickerValue | undefined;
   availableUnits: DatePickerUnit[];
-  availableDirections: DatePickerRelativeDirection[];
+  availableDirections: DatePickerRelativeIntervalDirection[];
   renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
   onChange: (value: RelativeDatePickerValue) => void;
   onBack: () => void;

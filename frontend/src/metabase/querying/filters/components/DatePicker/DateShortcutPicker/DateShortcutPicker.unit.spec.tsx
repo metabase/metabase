@@ -8,7 +8,7 @@ import {
 } from "metabase/querying/filters/constants";
 import type {
   DatePickerOperator,
-  DatePickerRelativeDirection,
+  DatePickerRelativeIntervalDirection,
   DatePickerShortcut,
 } from "metabase/querying/filters/types";
 
@@ -17,7 +17,7 @@ import { DateShortcutPicker } from "./DateShortcutPicker";
 interface SetupOpts {
   availableOperators?: DatePickerOperator[];
   availableShortcuts?: DatePickerShortcut[];
-  availableDirections?: DatePickerRelativeDirection[];
+  availableDirections?: DatePickerRelativeIntervalDirection[];
 }
 
 function setup({

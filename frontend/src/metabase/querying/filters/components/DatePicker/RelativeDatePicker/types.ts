@@ -1,6 +1,6 @@
-import type { DatePickerRelativeDirection } from "metabase/querying/filters/types";
+import type { DatePickerRelativeIntervalDirection } from "metabase/querying/filters/types";
 
 export interface Tab {
   label: string;
-  direction: DatePickerRelativeDirection;
+  direction: DatePickerRelativeIntervalDirection;
 }

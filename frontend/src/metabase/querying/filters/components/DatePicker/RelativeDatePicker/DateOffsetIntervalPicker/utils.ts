@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import type {
-  DatePickerRelativeDirection,
+  DatePickerRelativeIntervalDirection,
   DatePickerTruncationUnit,
   DatePickerUnit,
   RelativeDatePickerValue,
@@ -69,7 +69,7 @@ export function getOffsetUnitOptions(
 
 function getOffsetUnitText(
   unit: DatePickerTruncationUnit,
-  direction: DatePickerRelativeDirection,
+  direction: DatePickerRelativeIntervalDirection,
   interval: number,
 ) {
   const unitText = Lib.describeTemporalUnit(unit, interval).toLowerCase();

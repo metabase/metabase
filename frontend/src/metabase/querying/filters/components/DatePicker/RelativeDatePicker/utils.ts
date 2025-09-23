@@ -1,6 +1,6 @@
 import { DATE_PICKER_TRUNCATION_UNITS } from "metabase/querying/filters/constants";
 import type {
-  DatePickerRelativeDirection,
+  DatePickerRelativeIntervalDirection,
   DatePickerTruncationUnit,
   DatePickerUnit,
   DatePickerValue,
@@ -30,7 +30,7 @@ export function isOffsetIntervalValue(value: RelativeDatePickerValue) {
 
 export function getDirection(
   value: RelativeDatePickerValue | undefined,
-): DatePickerRelativeDirection {
+): DatePickerRelativeIntervalDirection {
   if (value == null || value.value === 0) {
     return "current";
   } else {
@@ -39,14 +39,14 @@ export function getDirection(
 }
 
 export function getDirectionDefaultValue(
-  direction: DatePickerRelativeDirection,
+  direction: DatePickerRelativeIntervalDirection,
 ) {
   return setDirectionAndCoerceUnit(DEFAULT_VALUE, direction);
 }
 
 export function setDirection(
   value: RelativeDatePickerValue = DEFAULT_VALUE,
-  direction: DatePickerRelativeDirection,
+  direction: DatePickerRelativeIntervalDirection,
   fallbackUnit?: DatePickerTruncationUnit,
 ): RelativeDatePickerValue | undefined {
   if (direction === "current") {
@@ -76,7 +76,7 @@ export function setDirection(
 
 export function setDirectionAndCoerceUnit(
   value: RelativeDatePickerValue,
-  direction: DatePickerRelativeDirection,
+  direction: DatePickerRelativeIntervalDirection,
 ) {
   const fallbackUnit =
     value.unit !== "hour" && value.unit !== "minute"
@@ -138,7 +138,7 @@ export function formatDateRange({
 }
 
 export function getDefaultValue(
-  availableDirections: DatePickerRelativeDirection[],
+  availableDirections: DatePickerRelativeIntervalDirection[],
 ) {
   if (availableDirections.length === 0) {
     return DEFAULT_VALUE;
@@ -149,7 +149,7 @@ export function getDefaultValue(
 
 export function getAvailableTabs(
   initialValue: RelativeDatePickerValue | undefined,
-  availableDirections: DatePickerRelativeDirection[],
+  availableDirections: DatePickerRelativeIntervalDirection[],
 ) {
   const initialDirection = getDirection(
     initialValue ?? getDefaultValue(availableDirections),

@@ -1,6 +1,6 @@
 import type {
   DatePickerOperator,
-  DatePickerRelativeDirection,
+  DatePickerRelativeIntervalDirection,
   DatePickerShortcut,
   ShortcutOption,
 } from "metabase/querying/filters/types";
@@ -10,7 +10,7 @@ import type { TypeOption } from "./types";
 
 export function getShortcutOptionGroups(
   availableShortcuts: DatePickerShortcut[],
-  availableDirections: DatePickerRelativeDirection[],
+  availableDirections: DatePickerRelativeIntervalDirection[],
 ): ShortcutOption[][] {
   return SHORTCUT_OPTION_GROUPS.map((options) =>
     options.filter(

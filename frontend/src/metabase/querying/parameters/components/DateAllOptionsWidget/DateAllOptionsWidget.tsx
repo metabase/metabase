@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { DatePicker } from "metabase/querying/filters/components/DatePicker";
 import type {
   DatePickerOperator,
-  DatePickerRelativeDirection,
+  DatePickerRelativeIntervalDirection,
   DatePickerShortcut,
   DatePickerValue,
 } from "metabase/querying/filters/types";
@@ -20,7 +20,7 @@ type DateAllOptionsWidgetProps = {
   value: ParameterValueOrArray | null | undefined;
   availableOperators?: DatePickerOperator[];
   availableShortcuts?: DatePickerShortcut[];
-  availableDirections?: DatePickerRelativeDirection[];
+  availableDirections?: DatePickerRelativeIntervalDirection[];
   submitButtonLabel?: string;
   onChange: (value: string) => void;
 };

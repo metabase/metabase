@@ -6,7 +6,7 @@ import {
   DATE_PICKER_UNITS,
 } from "metabase/querying/filters/constants";
 import type {
-  DatePickerRelativeDirection,
+  DatePickerRelativeIntervalDirection,
   DatePickerUnit,
   RelativeDatePickerValue,
 } from "metabase/querying/filters/types";
@@ -21,7 +21,7 @@ const TAB_CASES = TABS.flatMap((fromTab) =>
 interface SetupOpts {
   value?: RelativeDatePickerValue;
   availableUnits?: DatePickerUnit[];
-  availableDirections?: DatePickerRelativeDirection[];
+  availableDirections?: DatePickerRelativeIntervalDirection[];
 }
 
 function setup({
