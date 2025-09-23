@@ -353,23 +353,19 @@
 (deftest ^:parallel humanize-connection-error-message-test
   (is (= "random message" (driver/humanize-connection-error-message :clickhouse ["random message"])))
   (is (= :username-or-password-incorrect (driver/humanize-connection-error-message :clickhouse ["Failed to create connection"
-                                                                                                "Failed to get server info"
-                                                                                                "Code: 516. DB::Exception: asdf: Authentication failed: password is incorrect, or there is no user with such name. (AUTHENTICATION_FAILED) (version 25.7.4.11 (official build))"]))))
-
-;; TODO(rileythomp, 2025-09-23): Enable this test once ClickHouse has fixed
-;; https://github.com/ClickHouse/clickhouse-java/issues/2595 in 0.9.3.
-#_(deftest ^:parallel query-with-cte-subquery-and-param-test
-    (mt/test-driver :clickhouse
-      (testing "a query with a CTE in a subquery and a parameter should work correctly"
-        (is (= [[1 "abc"]]
-               (mt/rows
-                (qp/process-query
-                 {:database (mt/id)
-                  :type :native
-                  :native {:query "SELECT id, val FROM ( WITH foo AS ( SELECT 1 id, 'abc' val ) SELECT * FROM foo ) WHERE val = {{val}} LIMIT 1048575"
-                           :template-tags {"val" {:type :text
-                                                  :name "val"
-                                                  :display-name "Val"}}}
-                  :parameters [{:type "string/="
-                                :target [:variable [:template-tag "val"]]
-                                :value ["abc"]}]})))))))
+                                                                                                "Failed to get server info" "Code: 516. DB::Exception: asdf: Authentication failed: password is incorrect, or there is no user with such name. (AUTHENTICATION_FAILED) (version 25.7.4.11 (official build))"]))))
+(deftest ^:parallel query-with-cte-subquery-and-param-test
+  (mt/test-driver :clickhouse
+    (testing "a query with a CTE in a subquery and a parameter should work correctly"
+      (is (= [[1 "abc"]]
+             (mt/rows
+              (qp/process-query
+               {:database (mt/id)
+                :type :native
+                :native {:query "SELECT id, val FROM ( WITH foo AS ( SELECT 1 id, 'abc' val ) SELECT * FROM foo ) WHERE val = {{val}} LIMIT 1048575"
+                         :template-tags {"val" {:type :text
+                                                :name "val"
+                                                :display-name "Val"}}}
+                :parameters [{:type "string/="
+                              :target [:variable [:template-tag "val"]]
+                              :value ["abc"]}]})))))))
