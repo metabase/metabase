@@ -31,7 +31,6 @@ export function SdkSettingsCard({
   settingKey,
   isFeatureEnabled = true,
   links,
-  customLinksSection,
   rightSideContent,
 }: {
   title: string;
@@ -39,12 +38,13 @@ export function SdkSettingsCard({
   settingKey: "enable-embedding-sdk" | "enable-embedding-simple";
   isFeatureEnabled?: boolean;
   links?: LinkItem[];
-  customLinksSection?: React.ReactNode;
   rightSideContent?: React.ReactNode;
 }) {
   const hasButton = useMemo(() => {
     return links?.some((link) => link.type === "button");
   }, [links]);
+
+  const hasLinksContent = links && links.length > 0;
 
   const renderLink = (linkItem: LinkItem, index: number) => {
     const { type, icon, title, href, to } = linkItem;
@@ -72,8 +72,6 @@ export function SdkSettingsCard({
 
     return null;
   };
-
-  const hasLinksContent = links?.length || customLinksSection;
 
   return (
     <Flex
@@ -107,9 +105,7 @@ export function SdkSettingsCard({
           py={hasButton ? "sm" : "md"}
           className={S.CardLinksSection}
         >
-          {customLinksSection || (
-            <Group gap="xl">{links?.map(renderLink)}</Group>
-          )}
+          <Group gap="xl">{links?.map(renderLink)}</Group>
         </Box>
       )}
     </Flex>
