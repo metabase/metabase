@@ -2,7 +2,6 @@ import { Extension } from "@tiptap/core";
 import { Fragment, type NodeType as PMNodeType, Slice } from "@tiptap/pm/model";
 import { NodeSelection, Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
-import type { NodeViewProps } from "@tiptap/react";
 
 import {
   handleCardDropOnCard,
@@ -14,13 +13,6 @@ import {
   extractCardEmbed,
   getDroppedCardEmbedNodeData,
 } from "./utils";
-
-declare module "prosemirror-view" {
-  // This adds a new configuration option to the NodeConfig
-  interface EditorView {
-    draggingNode?: NodeViewProps["node"] | null;
-  }
-}
 
 export const HandleEditorDrop = Extension.create({
   name: "handleEditorDrop",
