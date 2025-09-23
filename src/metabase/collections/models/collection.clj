@@ -1551,7 +1551,7 @@
                                                                                [:and
                                                                                 [:= :c.id :collection_id]
                                                                                 [:or [:= :c.id root-collection-id]
-                                                                                 [:like :c.location (str "/" #p root-collection-id "/%")]]
+                                                                                 [:like :c.location (str "/" root-collection-id "/%")]]
                                                                                 [:= :c.type [:inline remote-synced-collection-type]]]]})))
     #{}))
 
