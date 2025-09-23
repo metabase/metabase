@@ -267,7 +267,7 @@
                       :type "datetime"
                       :semantic_type "creation_timestamp"}
                      {:field_id (str "q" query-id "/1")
-                      :name "CREATED_AT"
+                      :name "CREATED_AT_2"
                       :display_name "Created At: Day"
                       :type "datetime"
                       :semantic_type "creation_timestamp"}
