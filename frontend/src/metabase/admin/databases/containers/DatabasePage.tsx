@@ -65,14 +65,11 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
       <Box h="100%" w="100%" component={ScrollArea}>
         <Box
           w="100%"
-          maw={{
-            base: "50rem",
-            md: "52rem",
-          }}
+          maw="54rem"
           mx="auto"
           p={{
             base: `md`,
-            md: `xl`,
+            sm: `xl`,
           }}
         >
           <Flex
