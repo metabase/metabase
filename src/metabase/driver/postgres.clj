@@ -1043,6 +1043,7 @@
 (defmethod type->database-type :type/TextLike [_] [:text])
 (defmethod type->database-type :type/Text [_] [:text])
 (defmethod type->database-type :type/Number [_] [:bigint])
+(defmethod type->database-type :type/BigInteger [_] [:bigint])
 (defmethod type->database-type :type/Integer [_] [:int])
 (defmethod type->database-type :type/Float [_] [:float])
 (defmethod type->database-type :type/Decimal [_] [:decimal])
