@@ -1,4 +1,12 @@
-import { Box, Button, Group, Loader, Stack, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Group,
+  Loader,
+  Stack,
+  Text,
+  useMantineTheme,
+} from "metabase/ui";
 import { Icon } from "metabase/ui";
 import { useState, forwardRef, useImperativeHandle } from "react";
 import { useGetAdhocQueryQuery } from "metabase/api";
@@ -17,6 +25,8 @@ interface QueryPreviewRef {
 
 export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
   function QueryPreview({ query, databaseId, onRunQuery }, ref) {
+    const theme = useMantineTheme();
+    const isDark = theme.colorScheme === "dark";
     const [shouldExecute, setShouldExecute] = useState(false);
 
     const datasetQuery: DatasetQuery | typeof skipToken =
@@ -72,7 +82,12 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
         <Group
           justify="space-between"
           p="md"
-          style={{ borderBottom: "1px solid var(--mantine-color-gray-3)" }}
+          style={{
+            borderBottom: `1px solid ${isDark ? theme.colors.dark[4] : theme.colors.gray[3]}`,
+            backgroundColor: isDark
+              ? theme.colors.dark[6]
+              : theme.colors.gray[0],
+          }}
         >
           <Group gap="sm">
             <Text fw={500} size="sm">
@@ -108,8 +123,8 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
             <Box
               p="md"
               style={{
-                backgroundColor: "var(--mantine-color-red-0)",
-                border: "1px solid var(--mantine-color-red-3)",
+                backgroundColor: isDark ? "#2D1B1B" : theme.colors.red[0],
+                border: `1px solid ${isDark ? "#5C2E2E" : theme.colors.red[3]}`,
                 borderRadius: "4px",
               }}
             >
@@ -117,7 +132,7 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
                 <Icon
                   name="warning"
                   size={16}
-                  color="var(--mantine-color-red-6)"
+                  color={isDark ? theme.colors.red[4] : theme.colors.red[6]}
                 />
                 <Stack gap="xs">
                   <Text fw={500} size="sm" c="red">
@@ -162,7 +177,7 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
                 <Box
                   style={{
                     overflowX: "auto",
-                    border: "1px solid var(--mantine-color-gray-3)",
+                    border: `1px solid ${isDark ? theme.colors.dark[4] : theme.colors.gray[3]}`,
                     borderRadius: "4px",
                   }}
                 >
@@ -170,7 +185,9 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
                     <thead>
                       <tr
                         style={{
-                          backgroundColor: "var(--mantine-color-gray-0)",
+                          backgroundColor: isDark
+                            ? theme.colors.dark[6]
+                            : theme.colors.gray[0],
                         }}
                       >
                         {dataset.data.cols.map((col, index) => (
@@ -181,7 +198,7 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
                               textAlign: "left",
                               borderRight:
                                 index < dataset.data.cols.length - 1
-                                  ? "1px solid var(--mantine-color-gray-3)"
+                                  ? `1px solid ${isDark ? theme.colors.dark[4] : theme.colors.gray[3]}`
                                   : "none",
                               fontSize: "12px",
                               fontWeight: 500,
@@ -200,7 +217,7 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
                             borderBottom:
                               rowIndex <
                               Math.min(dataset.data.rows.length, 100) - 1
-                                ? "1px solid var(--mantine-color-gray-2)"
+                                ? `1px solid ${isDark ? theme.colors.dark[5] : theme.colors.gray[2]}`
                                 : "none",
                           }}
                         >
@@ -211,7 +228,7 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
                                 padding: "8px 12px",
                                 borderRight:
                                   cellIndex < row.length - 1
-                                    ? "1px solid var(--mantine-color-gray-2)"
+                                    ? `1px solid ${isDark ? theme.colors.dark[5] : theme.colors.gray[2]}`
                                     : "none",
                                 fontSize: "12px",
                                 maxWidth: "200px",
@@ -238,7 +255,9 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
                       p="md"
                       style={{
                         textAlign: "center",
-                        backgroundColor: "var(--mantine-color-gray-0)",
+                        backgroundColor: isDark
+                          ? theme.colors.dark[6]
+                          : theme.colors.gray[0],
                       }}
                     >
                       <Text size="sm" c="dimmed">
@@ -252,8 +271,10 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
                   p="md"
                   style={{
                     textAlign: "center",
-                    backgroundColor: "var(--mantine-color-gray-0)",
-                    border: "1px solid var(--mantine-color-gray-3)",
+                    backgroundColor: isDark
+                      ? theme.colors.dark[6]
+                      : theme.colors.gray[0],
+                    border: `1px solid ${isDark ? theme.colors.dark[4] : theme.colors.gray[3]}`,
                     borderRadius: "4px",
                   }}
                 >

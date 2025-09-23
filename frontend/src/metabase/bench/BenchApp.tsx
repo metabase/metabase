@@ -1,4 +1,4 @@
-import { Box, Text } from "metabase/ui";
+import { Box, Text, useMantineTheme } from "metabase/ui";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { useState, useEffect, useRef } from "react";
 import { keymap } from "@codemirror/view";
@@ -23,6 +23,8 @@ interface BenchAppProps {
 }
 
 export function BenchApp({ params }: BenchAppProps) {
+  const theme = useMantineTheme();
+  const isDark = theme.colorScheme === "dark";
   const dispatch = useDispatch();
   const queryPreviewRef = useRef<{ runQuery: () => void }>(null);
   const transformId = params?.transformId
@@ -88,7 +90,9 @@ ORDER BY total_spent DESC;`);
         <PanelResizeHandle
           style={{
             width: "4px",
-            backgroundColor: "var(--mantine-color-gray-3)",
+            backgroundColor: isDark
+              ? theme.colors.dark[4]
+              : theme.colors.gray[3],
             cursor: "col-resize",
             borderRadius: "2px",
             margin: "0 2px",
@@ -107,8 +111,10 @@ ORDER BY total_spent DESC;`);
                 <Box
                   p="md"
                   style={{
-                    borderBottom: "1px solid var(--mantine-color-gray-3)",
-                    backgroundColor: "var(--mantine-color-gray-0)",
+                    borderBottom: `1px solid ${isDark ? theme.colors.dark[4] : theme.colors.gray[3]}`,
+                    backgroundColor: isDark
+                      ? theme.colors.dark[6]
+                      : theme.colors.gray[0],
                   }}
                 >
                   <Text fw={500}>
@@ -160,7 +166,9 @@ ORDER BY total_spent DESC;`);
             <PanelResizeHandle
               style={{
                 height: "4px",
-                backgroundColor: "var(--mantine-color-gray-3)",
+                backgroundColor: isDark
+                  ? theme.colors.dark[4]
+                  : theme.colors.gray[3],
                 cursor: "row-resize",
                 borderRadius: "2px",
                 margin: "2px 0",
@@ -172,7 +180,7 @@ ORDER BY total_spent DESC;`);
               <Box
                 h="100%"
                 style={{
-                  border: "1px solid var(--mantine-color-gray-3)",
+                  border: `1px solid ${isDark ? theme.colors.dark[4] : theme.colors.gray[3]}`,
                   borderRadius: "8px",
                   display: "flex",
                   flexDirection: "column",
@@ -191,7 +199,9 @@ ORDER BY total_spent DESC;`);
         <PanelResizeHandle
           style={{
             width: "4px",
-            backgroundColor: "var(--mantine-color-gray-3)",
+            backgroundColor: isDark
+              ? theme.colors.dark[4]
+              : theme.colors.gray[3],
             cursor: "col-resize",
             borderRadius: "2px",
             margin: "0 2px",
