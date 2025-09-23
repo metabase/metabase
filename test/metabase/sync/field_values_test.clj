@@ -107,7 +107,7 @@
                  (sync-database!' "update-field-values" (data/db)))))
         (is (= [1 2 3 4] (venues-price-field-values)))))
     (finally
-      ; clear out our changes to not mess up other tests
+      ; clear out our changes to not mess up other tests. Changes are more than with-model-cleanup handles
       (t2/delete! :model/FieldValues :field_id (mt/id :venues :price))
       (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price))))))
 
