@@ -1,4 +1,4 @@
-import { Box, Text, useMantineTheme } from "metabase/ui";
+import { Box, Text, useMantineTheme, Tabs } from "metabase/ui";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { useState, useEffect, useRef } from "react";
 import { keymap } from "@codemirror/view";
@@ -14,6 +14,7 @@ import {
   TransformEntitiesList,
   TransformDetails,
   QueryPreview,
+  BenchMetabot,
 } from "./components";
 import type { Transform } from "metabase-types/api";
 
@@ -218,20 +219,54 @@ ORDER BY total_spent DESC;`);
 
         {/* Right Panel - Properties/Tools */}
         <Panel defaultSize={20} minSize={15} maxSize={35}>
-          <BenchPanel title="Properties" height="100%">
-            <TransformDetails transformId={transformId} />
-            <Box
-              p="sm"
-              mt="md"
+          <Box h="100%" style={{ display: "flex", flexDirection: "column" }}>
+            <Tabs
+              defaultValue="properties"
               style={{
-                backgroundColor: "var(--mantine-color-gray-1)",
-                borderRadius: "4px",
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
               }}
             >
-              <Text size="xs">Lines: {code.split("\n").length}</Text>
-              <Text size="xs">Characters: {code.length}</Text>
-            </Box>
-          </BenchPanel>
+              <Tabs.List
+                style={{
+                  borderBottom: `1px solid ${isDark ? theme.colors.dark[4] : theme.colors.gray[3]}`,
+                }}
+              >
+                <Tabs.Tab value="properties">Properties</Tabs.Tab>
+                <Tabs.Tab value="metabot">Metabot</Tabs.Tab>
+              </Tabs.List>
+
+              <Box style={{ flex: 1, overflow: "hidden" }}>
+                <Tabs.Panel
+                  value="properties"
+                  style={{ height: "100%", padding: "16px" }}
+                >
+                  <TransformDetails transformId={transformId} />
+                  <Box
+                    p="sm"
+                    mt="md"
+                    style={{
+                      backgroundColor: isDark
+                        ? "var(--mantine-color-dark-6)"
+                        : "var(--mantine-color-gray-1)",
+                      borderRadius: "4px",
+                    }}
+                  >
+                    <Text size="xs">Lines: {code.split("\n").length}</Text>
+                    <Text size="xs">Characters: {code.length}</Text>
+                  </Box>
+                </Tabs.Panel>
+
+                <Tabs.Panel
+                  value="metabot"
+                  style={{ height: "100%", padding: 0 }}
+                >
+                  <BenchMetabot />
+                </Tabs.Panel>
+              </Box>
+            </Tabs>
+          </Box>
         </Panel>
       </PanelGroup>
     </Box>
