@@ -705,6 +705,38 @@ H.describeWithSnowplowEE("documents", () => {
         H.getDocumentCard("Orders").should("exist");
       });
 
+      it("should support resizing cards", () => {
+        H.documentContent().click();
+        H.addToDocument("/", false);
+
+        cy.log("search via type");
+        H.addToDocument("Accounts", false);
+        H.commandSuggestionDialog().should(
+          "contain.text",
+          ACCOUNTS_COUNT_BY_CREATED_AT.name,
+        );
+
+        cy.realPress("{downarrow}");
+        H.addToDocument("\n", false);
+
+        H.getDocumentCard(ACCOUNTS_COUNT_BY_CREATED_AT.name).then((el) => {
+          const ogHeight = el.height();
+
+          H.documentChangeNodeHeight(
+            H.getDocumentCardResizeContainer(ACCOUNTS_COUNT_BY_CREATED_AT.name),
+            200,
+          );
+
+          H.getDocumentCard(ACCOUNTS_COUNT_BY_CREATED_AT.name).then((el) => {
+            const newHeight = el.height();
+
+            cy.log(`${ogHeight}, ${newHeight}`);
+
+            expect(newHeight).to.be.lessThan(ogHeight as number);
+          });
+        });
+      });
+
       it("should copy an added card on save", () => {
         cy.intercept({
           method: "PUT",

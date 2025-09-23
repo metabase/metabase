@@ -47,6 +47,9 @@ export const getDocumentCard = (name: string) =>
     .should("have.length", 1)
     .closest('[data-testid="document-card-embed"]');
 
+export const getDocumentCardResizeContainer = (name: string) =>
+  getDocumentCard(name).closest('[data-type="resizeNode"]');
+
 export const assertDocumentCardVizType = (name: string, type: string) =>
   getDocumentCard(name).find(`[data-viz-ui-name=${type}]`);
 
@@ -197,4 +200,30 @@ export function documentUndo() {
       scrollBehavior: false,
       force: true,
     });
+}
+
+export function documentChangeNodeHeight(
+  element: Cypress.Chainable<JQuery<HTMLElement>>,
+  diff: number,
+) {
+  element.findByTestId("resize-node-drag-handle").then((handle) => {
+    const rect = handle[0].getBoundingClientRect();
+
+    cy.log(`x: ${rect.x}, y: ${rect.y}, diff: ${diff}`);
+
+    cy.wrap(handle).trigger("mousedown", {
+      button: 0,
+      clientX: rect.x,
+      clientY: rect.y,
+      force: true,
+    });
+    cy.get("body")
+      .trigger("mousemove", {
+        button: 0,
+        clientX: rect.x,
+        clientY: rect.y + diff,
+        force: true,
+      })
+      .trigger("mouseup");
+  });
 }

@@ -146,7 +146,11 @@ const DragHandle = ({
 
   return (
     <Flex justify="center" className={S.dragContainer} contentEditable={false}>
-      <Box className={S.dragHandle} onMouseDown={handleMouseDown} />
+      <Box
+        className={S.dragHandle}
+        onMouseDown={handleMouseDown}
+        data-testid="resize-node-drag-handle"
+      />
     </Flex>
   );
 };
