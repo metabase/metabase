@@ -4,7 +4,9 @@ import type {
   RelativeDatePickerValue,
 } from "metabase/querying/filters/types";
 
-import { getDefaultValue, setDirection } from "./utils";
+import { CURRENT_TAB, LAST_TAB, NEXT_TAB } from "./constants";
+import type { Tab } from "./types";
+import { getAvailableTabs, getDefaultValue, setDirection } from "./utils";
 
 describe("setDirection", () => {
   describe("current", () => {
@@ -146,6 +148,59 @@ describe("getDefaultValue", () => {
     "should compute the default value based on available directions",
     ({ availableDirections, expectedValue }) => {
       expect(getDefaultValue(availableDirections)).toEqual(expectedValue);
+    },
+  );
+});
+
+type GetAvailableTabsTestCase = {
+  initialValue: RelativeDatePickerValue | undefined;
+  availableDirections: DatePickerRelativeDirection[];
+  expectedTabs: Tab[];
+};
+
+describe("getAvailableTabs", () => {
+  it.each<GetAvailableTabsTestCase>([
+    {
+      initialValue: undefined,
+      availableDirections: [],
+      expectedTabs: [LAST_TAB],
+    },
+    {
+      initialValue: undefined,
+      availableDirections: ["current", "next"],
+      expectedTabs: [CURRENT_TAB, NEXT_TAB],
+    },
+    {
+      initialValue: undefined,
+      availableDirections: ["last", "current", "next"],
+      expectedTabs: [LAST_TAB, CURRENT_TAB, NEXT_TAB],
+    },
+    {
+      initialValue: { type: "relative", value: 0, unit: "day" },
+      availableDirections: ["current", "next"],
+      expectedTabs: [CURRENT_TAB, NEXT_TAB],
+    },
+    {
+      initialValue: { type: "relative", value: 30, unit: "day" },
+      availableDirections: ["current", "next"],
+      expectedTabs: [CURRENT_TAB, NEXT_TAB],
+    },
+    {
+      initialValue: { type: "relative", value: -30, unit: "day" },
+      availableDirections: ["current", "next"],
+      expectedTabs: [LAST_TAB, CURRENT_TAB, NEXT_TAB],
+    },
+    {
+      initialValue: { type: "relative", value: -30, unit: "day" },
+      availableDirections: ["last", "current"],
+      expectedTabs: [LAST_TAB, CURRENT_TAB],
+    },
+  ])(
+    "should compute the default value based on available directions",
+    ({ initialValue, availableDirections, expectedTabs }) => {
+      expect(getAvailableTabs(initialValue, availableDirections)).toEqual(
+        expectedTabs,
+      );
     },
   );
 });
