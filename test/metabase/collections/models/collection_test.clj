@@ -1908,6 +1908,7 @@
     (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:name "Remote-Synced Collection" :type "remote-synced"}
                    :model/Collection {regular-coll-id :id} {:name "Regular Collection"}
                    :model/Collection {remote-synced-child-id :id} {:name "Remote-Synced Child"
+                                                                   :type "remote-synced"
                                                                    :location (format "/%d/" remote-synced-coll-id)}
                    :model/Card {card-in-remote-synced-child :id} {:name "Card in Remote-Synced Child"
                                                                   :collection_id remote-synced-child-id}
@@ -1915,8 +1916,7 @@
                                   :collection_id regular-coll-id}]
       ;; Test that cards in remote-synced collection descendant collections are properly excluded
       (let [result (collection/non-remote-synced-dependencies (t2/instance :model/Card {:id card-in-remote-synced-child}))]
-        (is (set? result)
-            "Should return a set of card IDs")))))
+        (is (empty? result))))))
 
 (deftest non-remote-synced-dependencies-ignores-non-cards-test
   (testing "function only returns Card dependencies, ignores other model types"
@@ -2888,38 +2888,61 @@
           (is (= (format "/%d/%d/" remote-synced-parent-id child-remote-synced-id) (:location unchanged-grandchild))
               "Grandchild collection location should remain unchanged after failed move"))))))
 
-(deftest remote-synced-parent-validation-test
-  (testing "A remote-synced collection can only be placed in another remote-synced collection or the root collection"
-    (testing "Creating a remote-synced collection in root is allowed"
-      (is (some? (t2/insert! :model/Collection
-                             {:name "Remote Synced Collection"
-                              :type "remote-synced"}))))
-
-    (testing "Creating a remote-synced collection inside another remote-synced collection is allowed"
-      (mt/with-temp [:model/Collection parent-collection {:type "remote-synced"}]
-        (is (some? (t2/insert! :model/Collection
-                               {:name "Child Remote Synced Collection"
-                                :type "remote-synced"
-                                :location (format "/%d/" (:id parent-collection))})))))
-
-    (testing "Creating a remote-synced collection inside a regular collection should fail"
-      (mt/with-temp [:model/Collection parent-collection {}]
+(deftest remote-synced-parent-validation-creating-regular-in-remote-test
+  (mt/with-model-cleanup [:model/Collection]
+    (testing "A regular collection cannot be placed in a remote-synced collection"
+      (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent Collection"
+                                                        :location "/"
+                                                        :type "remote-synced"}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"A remote-synced Collection can only be placed in another remote-synced Collection or the root Collection"
+             #"A Collection placed in a remote-synced Collection must also be remote-synced"
              (t2/insert! :model/Collection
-                         {:name "Child Remote Synced Collection"
-                          :type "remote-synced"
-                          :location (format "/%d/" (:id parent-collection))})))))
+                         {:name "Remote Synced Collection"
+                          :location (format "/%d/" parent-id)})))))))
 
-    (testing "Moving a remote-synced collection into a regular collection should fail"
-      (mt/with-temp [:model/Collection regular-parent {}
-                     :model/Collection remote-synced-collection {:type "remote-synced"}]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"A remote-synced Collection can only be placed in another remote-synced Collection or the root Collection"
-             (t2/update! :model/Collection (:id remote-synced-collection)
-                         {:location (format "/%d/" (:id regular-parent))})))))))
+(deftest remote-synced-parent-validation-creating-in-root-test
+  (mt/with-model-cleanup [:model/Collection]
+    (testing "A remote-synced collection can only be placed in another remote-synced collection or the root collection"
+      (testing "Creating a remote-synced collection in root is allowed"
+        (is (some? (t2/insert! :model/Collection
+                               {:name "Remote Synced Collection"
+                                :type "remote-synced"})))))))
+
+(deftest remote-synced-parent-validation-creating-inside-remote-synced-test
+  (mt/with-model-cleanup [:model/Collection]
+    (testing "A remote-synced collection can only be placed in another remote-synced collection or the root collection"
+      (testing "Creating a remote-synced collection inside another remote-synced collection is allowed"
+        (mt/with-temp [:model/Collection parent-collection {:type "remote-synced"}]
+          (is (some? (t2/insert! :model/Collection
+                                 {:name "Child Remote Synced Collection"
+                                  :type "remote-synced"
+                                  :location (format "/%d/" (:id parent-collection))}))))))))
+
+(deftest remote-synced-parent-validation-creating-inside-regular-collection-test
+  (mt/with-model-cleanup [:model/Collection]
+    (testing "A remote-synced collection can only be placed in another remote-synced collection or the root collection"
+      (testing "Creating a remote-synced collection inside a regular collection should fail"
+        (mt/with-temp [:model/Collection parent-collection {}]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"A remote-synced Collection can only be placed in another remote-synced Collection or the root Collection"
+               (t2/insert! :model/Collection
+                           {:name "Child Remote Synced Collection"
+                            :type "remote-synced"
+                            :location (format "/%d/" (:id parent-collection))}))))))))
+
+(deftest remote-synced-parent-validation-moving-into-regular-collection-test
+  (mt/with-model-cleanup [:model/Collection]
+    (testing "A remote-synced collection can only be placed in another remote-synced collection or the root collection"
+      (testing "Moving a remote-synced collection into a regular collection should fail"
+        (mt/with-temp [:model/Collection regular-parent {}
+                       :model/Collection remote-synced-collection {:type "remote-synced"}]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"A remote-synced Collection can only be placed in another remote-synced Collection or the root Collection"
+               (t2/update! :model/Collection (:id remote-synced-collection)
+                           {:location (format "/%d/" (:id regular-parent))}))))))))
 
 (deftest moving-into-remote-synced-enhanced-test
   (testing "Enhanced moving-into-remote-synced? function behavior including new remote-synced root scenarios"

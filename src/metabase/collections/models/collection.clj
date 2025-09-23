@@ -299,14 +299,20 @@
       (throw (ex-info msg {:status-code 400, :errors {:personal_owner_id msg}})))))
 
 (defn- assert-valid-remote-synced-parent
-  "Check that if this Collection is remote-synced, its parent is either remote-synced or the root collection."
+  "Check that if this Collection is remote-synced, its parent is either remote-synced or the root collection.
+
+  If a collection's parent is remote-synced, it must also be remote-synced."
   [{:keys [location type]}]
-  (when (and location (= type remote-synced-collection-type))
-    (when-let [parent-id (location-path->parent-id location)]
-      (let [parent-type (t2/select-one-fn :type :model/Collection :id parent-id)]
-        (when-not (= parent-type remote-synced-collection-type)
-          (let [msg (tru "A remote-synced Collection can only be placed in another remote-synced Collection or the root Collection.")]
-            (throw (ex-info msg {:status-code 400, :errors {:location msg}}))))))))
+  (when-let [parent-id (and location (location-path->parent-id location))]
+    (let [parent-type (t2/select-one-fn :type :model/Collection :id parent-id)]
+      (when (and (or
+                  (= parent-type remote-synced-collection-type)
+                  (= type remote-synced-collection-type))
+                 (not= parent-type type remote-synced-collection-type))
+        (let [msg (if (= type remote-synced-collection-type)
+                    (tru "A remote-synced Collection can only be placed in another remote-synced Collection or the root Collection.")
+                    (tru "A Collection placed in a remote-synced Collection must also be remote-synced."))]
+          (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))))
 
 ;; This function is defined later after children-location is available
 

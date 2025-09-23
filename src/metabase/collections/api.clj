@@ -1241,19 +1241,24 @@
     (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
     (api/check-superuser))
   ;; Get namespace from parent collection if not provided
-  (let [parent-collection (when parent_id
-                            (t2/select-one [:model/Collection :location :id :namespace] :id parent_id))
+  (let [{parent-type :type
+         :as parent-collection} (when parent_id
+                                  (t2/select-one [:model/Collection :location :id :namespace :type] :id parent_id))
         effective-namespace (cond
                               (contains? params :namespace) namespace
                               parent-collection (:namespace parent-collection)
-                              :else nil)]
-  ;; Now create the new Collection :)
+                              :else nil)
+        effective-type (cond
+                         (contains? params :type) type
+                         parent-type parent-type
+                         :else nil)]
+    ;; Now create the new Collection :)
     (u/prog1 (t2/insert-returning-instance!
               :model/Collection
               (merge
                {:name name
                 :description description
-                :type type
+                :type effective-type
                 :authority_level authority_level
                 :namespace effective-namespace}
                (when parent-collection
