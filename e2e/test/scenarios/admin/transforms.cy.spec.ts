@@ -2650,7 +2650,7 @@ function setPythonRunnerSettings() {
   H.updateSetting("python-storage-s-3-secret-key", "test");
   H.updateSetting(
     "python-storage-s-3-container-endpoint",
-    "http://localhost:4566",
+    "http://localstack:4566",
   );
   H.updateSetting("python-storage-s-3-path-style-access", true);
 }
