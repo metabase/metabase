@@ -5,6 +5,7 @@ import type {
 } from "metabase/home/components/Onboarding/types";
 import type { MetadataEditAnalyticsDetail } from "metabase/metadata/pages/DataModel/types";
 import type { KeyboardShortcutId } from "metabase/palette/shortcuts";
+import type { ClickActionSection } from "metabase/visualizations/types";
 import type {
   Engine,
   RelatedDashboardXRays,
@@ -339,10 +340,16 @@ export type XRaySuggestionClickedEvent = ValidateEvent<{
   triggered_from: "suggestion_sidebar";
 }>;
 
+export type XRayAutoInsightsClicked = ValidateEvent<{
+  event: "x-ray_automatic_insights_clicked";
+  event_detail: "x-ray" | "compare_to_rest";
+}>;
+
 export type XRayClickedEvent =
   | XRayTableClickedEvent
   | XRayDataReferenceClickedEvent
-  | XRaySuggestionClickedEvent;
+  | XRaySuggestionClickedEvent
+  | XRayAutoInsightsClicked;
 
 export type XRaySavedEvent = ValidateEvent<{
   event: "x-ray_saved";
@@ -440,6 +447,11 @@ export type BookmarkDocumentEvent = ValidateEvent<{
   triggered_from: "collection_list" | "document_header";
 }>;
 
+export type ClickActionPerformedEvent = ValidateEvent<{
+  event: "click_action";
+  triggered_from: ClickActionSection;
+}>;
+
 export type BookmarkEvent =
   | BookmarkQuestionEvent
   | BookmarkModelEvent
@@ -496,4 +508,5 @@ export type SimpleEvent =
   | RevertVersionEvent
   | LearnAboutDataClickedEvent
   | MetadataEditEvent
-  | BookmarkEvent;
+  | BookmarkEvent
+  | ClickActionPerformedEvent;

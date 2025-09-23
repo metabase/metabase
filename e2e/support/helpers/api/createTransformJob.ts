@@ -1,9 +1,10 @@
-import type { TransformJob } from "metabase-types/api";
+import type { ScheduleDisplayType, TransformJob } from "metabase-types/api";
 
 export type TransformJobDetails = Pick<TransformJob, "tag_ids"> & {
   name?: string;
   description?: string | null;
   schedule?: string;
+  ui_display_type?: ScheduleDisplayType;
 };
 
 export type CreateTransformJobOptions = {
@@ -17,6 +18,7 @@ export function createTransformJob(
     name = "New transform",
     description = null,
     schedule = "0 0 0 * * ? *",
+    ui_display_type = "cron/raw",
     tag_ids,
   }: TransformJobDetails = {},
   {
@@ -30,6 +32,7 @@ export function createTransformJob(
       name,
       description,
       schedule,
+      ui_display_type,
       tag_ids,
     })
     .then(({ body }) => {
