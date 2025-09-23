@@ -149,17 +149,8 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-;;; TODO -- we should just make this a FEATURE!!!!!1
-(defmulti ^Statement statement-supported?
-  "Indicates whether the given driver supports creating a java.sql.Statement, via the Connection. By default, this is
-  true for all :sql-jdbc drivers.  If the underlying driver does not support Statement creation, override this as
-  false."
-  {:added "0.39.0", :arglists '([driver])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
 (defmulti ^Statement statement
-  "Create a Statement object using the given connection. Only called if statement-supported? above returns true. This
+  "Create a Statement object using the given connection. Only called if the `:statements` feature is supported. This
   is to be used to execute native queries, which implies there are no parameters. As with prepared-statement, you
   shouldn't need to override the default implementation for this method; if you do, take care to set options to maximize
   result set read performance (e.g. `ResultSet/TYPE_FORWARD_ONLY`); refer to the default implementation."
@@ -522,11 +513,6 @@
         (.close stmt)
         (throw e)))))
 
-;; by default, drivers support .createStatement
-(defmethod statement-supported? :sql-jdbc
-  [_]
-  true)
-
 (defmethod statement :sql-jdbc
   [_ ^Connection conn]
   (let [stmt (.createStatement conn
@@ -573,7 +559,7 @@
     (wire-up-canceled-chan-to-cancel-Statement! canceled-chan)))
 
 (defn- use-statement? [driver params]
-  (and (statement-supported? driver) (empty? params)))
+  (and (driver/database-supports? driver :statements nil) (empty? params)))
 
 (defn- statement* ^Statement [driver conn canceled-chan]
   (doto (statement driver conn)
