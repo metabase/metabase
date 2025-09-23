@@ -6,6 +6,7 @@
    [environ.core :as env]
    [java-time.api :as t]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
+   [metabase.events.core :as events]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -62,6 +63,25 @@
            (take batch-size))
           (t2/reducible-select [model-kw :id] :dependency_analysis_version [:< target-version]))))
 
+(defn- backfill-card!
+  [id target-version]
+  ;; We don't want to change the card at all, we just want to update the dependency data and
+  ;; mark the card as processed for this dependency analysis version.
+  (let [update-count (t2/update! :model/Card id :dependency_analysis_version [:< target-version]
+                                 {:dependency_analysis_version target-version})]
+    (when-let [card (and (pos? update-count)
+                         (t2/select-one :model/Card id))]
+      (events/publish-event! :event/card-update {:object card :user-id nil}))
+    update-count))
+
+(defn- backfill-entity!
+  [model-kw id target-version]
+  (t2/with-transaction [_]
+    (case model-kw
+      :model/Card (backfill-card! id target-version)
+      (t2/update! model-kw id :dependency_analysis_version [:< target-version]
+                  {:dependency_analysis_version target-version}))))
+
 (defn- backfill-entity-batch!
   [model-kw batch-size]
   (let [model-name (name model-kw)
@@ -75,8 +95,7 @@
               (+ total
                  (try
                    ;; this should update the dependency table via a toucan2 update hook
-                   (let [update-count (t2/update! model-kw id :dependency_analysis_version [:< target-version]
-                                                  {:dependency_analysis_version target-version})]
+                   (let [update-count (backfill-entity! model-kw id target-version)]
                      (.remove retry-state-map id)
                      update-count)
                    (catch Exception e
