@@ -155,17 +155,26 @@
                                    [:in :type [:inline ["metric" "model"]]]
                                    [:= :archived false]
                                    (when api/*current-user-id*
-                                     (collection/visible-collection-filter-clause :collection_id))]}
-                          (when limit
-                            {:limit limit}))]
-    (if (and use-verified-content? (premium-features/has-feature? :content-verification))
-      (-> base-query
-          (assoc :left-join [[:moderation_review :mr] [:and
-                                                       [:= :mr.moderated_item_id :report_card.id]
-                                                       [:= :mr.moderated_item_type [:inline "card"]]
-                                                       [:= :mr.most_recent true]]])
-          (update :where conj [:= :mr.status [:inline "verified"]]))
-      base-query)))
+                                     (collection/visible-collection-filter-clause :collection_id))]})]
+    (cond-> base-query
+
+      ;; Prioritize verified content.
+      (premium-features/has-feature? :content-verification)
+      (assoc
+       :left-join [[:moderation_review :mr] [:and
+                                             [:= :mr.moderated_item_id :report_card.id]
+                                             [:= :mr.moderated_item_type [:inline "card"]]
+                                             [:= :mr.most_recent true]]]
+       :order-by [[[:case [:= :mr.status [:inline "verified"]] [:inline 0] :else [:inline 1]]
+                   :asc]])
+
+      ;; Filter verified items only when that's desired.
+      (and (premium-features/has-feature? :content-verification)
+           use-verified-content?)
+      (update :where conj [:= :mr.status [:inline "verified"]])
+
+      (integer? limit)
+      (assoc :limit limit))))
 
 (comment
   (binding [api/*current-user-id* 2
@@ -181,4 +190,4 @@
   Only cards visible to the current user are returned."
   [metabot-id & {:as opts}]
   (t2/select :model/Card (-> (metabot-metrics-and-models-query metabot-id opts)
-                             (assoc :order-by [:id]))))
+                             (update :order-by (fnil conj []) [:id]))))
