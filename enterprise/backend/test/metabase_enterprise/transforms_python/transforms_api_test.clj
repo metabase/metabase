@@ -314,3 +314,49 @@
                    :schema "PUBLIC"
                    :db_id  (:id target-db)}
                   (:table response))))))))
+
+(deftest python-transform-schema-change-integration-test
+  (testing "Python transform handles schema changes using appropriate rename strategy"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
+      (mt/with-premium-features #{:transforms :transforms-python}
+        (mt/dataset transforms-dataset/transforms-test
+          (let [schema (get-test-schema)]
+            (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
+                                                                     :schema schema
+                                                                     :name   "schema_change_test"}]
+
+              (let [initial-transform {:name   "Schema Change Integration Test"
+                                       :source {:type          "python"
+                                                :source-tables {}
+                                                :body          (str "import pandas as pd\n"
+                                                                    "\n"
+                                                                    "def transform():\n"
+                                                                    "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")}
+                                       :target (assoc target :database (mt/id))}
+                    ;; Create initial transform via API
+                    {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform" initial-transform)]
+
+                ;; Run initial transform and validate
+                (transforms.tu/test-run transform-id)
+                (transforms.tu/wait-for-table table-name 10000)
+                (let [initial-rows (transforms.tu/table-rows table-name)]
+                  (is (= [["Alice" 25] ["Bob" 30]] initial-rows) "Initial data should be Alice and Bob with ages"))
+
+                ;; Update transform with different schema via API endpoint
+                (let [updated-transform (assoc initial-transform
+                                               :source {:type          "python"
+                                                        :source-tables {}
+                                                        :body          (str "import pandas as pd\n"
+                                                                            "\n"
+                                                                            "def transform():\n"
+                                                                            "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'friend': ['Bob', 'Alice']})")})
+                      update-response (mt/user-http-request :crowberto :put 200 (format "ee/transform/%d" transform-id)
+                                                            updated-transform)]
+                  (is (some? update-response) "Transform update should succeed"))
+
+                ;; Run updated transform and validate schema change
+                (transforms.tu/test-run transform-id)
+                (transforms.tu/wait-for-table table-name 10000)
+                (let [updated-rows (transforms.tu/table-rows table-name)]
+                  (is (= [["Alice" "Bob"] ["Bob" "Alice"]] updated-rows)
+                      "Updated data should show Alice/Bob with friends instead of ages"))))))))))
