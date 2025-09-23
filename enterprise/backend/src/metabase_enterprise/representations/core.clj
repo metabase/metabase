@@ -132,7 +132,8 @@
                   :question (v0-question/export t2-model)
                   :model    (v0-model/export t2-model)
                   :metric   (v0-metric/export t2-model))
-    :model/Collection (v0-coll/export t2-model)))
+    :model/Collection (v0-coll/export t2-model)
+    :model/Transform  (v0-transform/export t2-model)))
 
 (defn- write-em
   "Writes representations to a directory `dir`. Will take a collection-id and serialize the whole collection, creating a folder named <collection-name> there. Example, supposing a collection id of 8 with name \"custom\",

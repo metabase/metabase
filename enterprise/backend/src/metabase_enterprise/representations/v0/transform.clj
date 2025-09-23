@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.models.serialization :as serdes]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -47,7 +48,9 @@
 (mr/def ::target-table
   [:and
    {:description "Name of the destination table"}
-   ::lib.schema.common/non-blank-string])
+   [:map
+    [:schema ::lib.schema.common/non-blank-string]
+    [:table  ::lib.schema.common/non-blank-string]]])
 
 (mr/def ::target-schema
   [:and
@@ -84,12 +87,15 @@
     {:description "v0 schema for human-writable transform representation"}
     [:type ::type]
     [:ref ::ref]
-    [:name ::name]
-    [:description ::description]
+    [:name {:optional true} ::name]
+    [:description {:optional true} ::description]
     [:database ::database]
     [:source ::source]
     [:target ::target]
-    [:run_trigger {:optional true} ::run-trigger]
+    [:target_table ::target-table]
+    [:query {:optional true} ::query]
+    [:mbql_query {:optional true} ::mbql-query]
+    #_[:run_trigger {:optional true} ::run-trigger]
     [:tags {:optional true} ::tags]]
    [:fn {:error/message "Source must have exactly one of :query or :mbql_query"}
     (fn [{:keys [source]}]
@@ -161,3 +167,54 @@
       (do
         (log/info "Creating new transform" (:name transform-data))
         (first (t2/insert-returning-instances! :model/Transform transform-data))))))
+
+(defn ->ref [card]
+  (format "%s-%s" "transform" (:id card)))
+
+(defn- source-table-ref [table]
+  (cond
+    (vector? table)
+    (let [[db schema table] table]
+      {:database db
+       :schema   schema
+       :table    table})
+
+    (string? table)
+    (let [referred-card (t2/select-one :model/Card :entity_id table)]
+      (->ref referred-card))))
+
+(defn- update-source-table [card]
+  (if-some [table (get-in card [:mbql_query :source-table])]
+    (update-in card [:mbql_query :source-table] source-table-ref)
+    card))
+
+(defn- patch-refs [card]
+  (-> card
+      (update-source-table)))
+
+(defn export [transform]
+  (clojure.pprint/pprint transform)
+  (let [query (serdes/export-mbql (-> transform :source :query))]
+    (cond-> {:name (:name transform)
+             ;;:version "question-v0"
+             :type "transform"
+             :ref (->ref transform)
+             :description (:description transform)}
+
+      (= "native" (:type query))
+      (assoc :query (-> query :native :query)
+             :database (:database query))
+
+      (= "query" (:type query))
+      (assoc :mbql_query (:query query)
+             :database (:database query))
+
+      (= "table" (-> transform :target :type))
+      (assoc :target_table {:schema (-> transform :target :schema)
+                            :table  (-> transform :target :name)})
+
+      :always
+      patch-refs
+
+      :always
+      v0-common/remove-nils)))
