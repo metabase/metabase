@@ -59,6 +59,7 @@ export function LogOutput({ content }: LogOutputProps) {
       bg="bg-light"
       fz="xs"
       data-css-specificity-hack=""
+      data-testid="log-output"
     >
       {displayContent}
     </AnsiLogs>
