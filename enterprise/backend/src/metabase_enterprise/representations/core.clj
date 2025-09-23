@@ -98,7 +98,7 @@
     :v0/question (v0-question/yaml->toucan valid-representation)
     :v0/model (v0-model/yaml->toucan valid-representation)))
 
-(defn import-yaml ; load-representation-yaml
+(defn import-yaml
   "Parse a YAML representation file and return the data structure.
    Returns nil if the file cannot be parsed."
   [file]
