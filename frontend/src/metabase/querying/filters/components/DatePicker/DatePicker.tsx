@@ -2,7 +2,7 @@ import { type ReactNode, useState } from "react";
 
 import {
   DATE_PICKER_OPERATORS,
-  DATE_PICKER_RELATIVE_DIRECTIONS,
+  DATE_PICKER_RELATIVE_INTERVAL_DIRECTIONS,
   DATE_PICKER_SHORTCUTS,
   DATE_PICKER_UNITS,
 } from "metabase/querying/filters/constants";
@@ -38,7 +38,7 @@ export function DatePicker({
   availableOperators = DATE_PICKER_OPERATORS,
   availableShortcuts = DATE_PICKER_SHORTCUTS,
   availableUnits = DATE_PICKER_UNITS,
-  availableDirections = DATE_PICKER_RELATIVE_DIRECTIONS,
+  availableDirections = DATE_PICKER_RELATIVE_INTERVAL_DIRECTIONS,
   renderSubmitButton = renderDefaultSubmitButton,
   renderBackButton,
   onChange,

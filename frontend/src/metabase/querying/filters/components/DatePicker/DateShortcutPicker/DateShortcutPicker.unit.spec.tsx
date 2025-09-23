@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
   DATE_PICKER_OPERATORS,
-  DATE_PICKER_RELATIVE_DIRECTIONS,
+  DATE_PICKER_RELATIVE_INTERVAL_DIRECTIONS,
   DATE_PICKER_SHORTCUTS,
 } from "metabase/querying/filters/constants";
 import type {
@@ -23,7 +23,7 @@ interface SetupOpts {
 function setup({
   availableOperators = DATE_PICKER_OPERATORS,
   availableShortcuts = DATE_PICKER_SHORTCUTS,
-  availableDirections = DATE_PICKER_RELATIVE_DIRECTIONS,
+  availableDirections = DATE_PICKER_RELATIVE_INTERVAL_DIRECTIONS,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onSelectType = jest.fn();

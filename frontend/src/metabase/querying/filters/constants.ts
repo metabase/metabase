@@ -49,7 +49,7 @@ export const DATE_PICKER_UNITS = [
   ...DATE_PICKER_EXTRACTION_UNITS,
 ];
 
-export const DATE_PICKER_RELATIVE_DIRECTIONS = [
+export const DATE_PICKER_RELATIVE_INTERVAL_DIRECTIONS = [
   "last" as const,
   "current" as const,
   "next" as const,
