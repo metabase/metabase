@@ -79,19 +79,17 @@
     :model/QueryTable
     :model/RecentViews
     :model/Revision
+    :model/SemanticSearchTokenTracking
     :model/SearchIndexMetadata
     :model/Secret
     :model/Session
     :model/TaskHistory
     :model/TimelineEvent
     ;; TODO we should remove these models from here once serialization is supported
-    :model/Transform
     :model/TransformRun
     :model/TransformRunCancelation
-    :model/TransformJob
     :model/TransformJobRun
     :model/TransformJobTransformTag
-    :model/TransformTag
     :model/TransformTransformTag
     :model/PythonLibrary
     :model/Undo
