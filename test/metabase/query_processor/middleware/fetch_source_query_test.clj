@@ -7,7 +7,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.query :as lib.query]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -21,8 +20,10 @@
 (defn resolve-source-cards* [query]
   ;; Handle old tests written with legacy queries. Convert legacy query to pMBQL and then convert results
   ;; back. That way we don't need to update all the tests immediately and can do so at our leisure.
-  (letfn [(thunk [] (let [mlv2-query (lib.query/query (qp.store/metadata-provider) query)
-                          resolved   (fetch-source-query/resolve-source-cards mlv2-query)]
+  (letfn [(thunk [] (let [mbql5-query (lib.query/query (or (:lib/metadata query)
+                                                           (qp.store/metadata-provider))
+                                                       query)
+                          resolved    (fetch-source-query/resolve-source-cards mbql5-query)]
                       (cond-> resolved
                         (not (:lib/type query)) lib.convert/->legacy-MBQL)))]
     (if (qp.store/initialized?)
@@ -37,7 +38,7 @@
     (resolve-source-cards* query)))
 
 (defn- wrap-inner-query [query]
-  {:database lib.schema.id/saved-questions-virtual-database-id
+  {:database (meta/id)
    :type     :query
    :query    query})
 
@@ -159,7 +160,7 @@
   (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
    meta/metadata-provider
    [(lib.tu.macros/mbql-query venues {:limit 100})
-    {:database lib.schema.id/saved-questions-virtual-database-id
+    {:database (meta/id)
      :type     :query
      :query    {:source-table "card__1"
                 :limit        50}}]))
@@ -187,7 +188,7 @@
   (let [base     (-> (mt/metadata-provider)
                      (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
                       [(mt/mbql-query venues {:limit 100})
-                       {:database lib.schema.id/saved-questions-virtual-database-id
+                       {:database (mt/id)
                         :type     :query
                         :query    {:source-table "card__1"
                                    :limit        50}}]))
@@ -204,7 +205,7 @@
         (let [results (qp/process-query {:type     :query
                                          :query    {:source-table "card__1"
                                                     :limit        1}
-                                         :database lib.schema.id/saved-questions-virtual-database-id})]
+                                         :database (mt/id)})]
           (is (=? {:dataset true        ; TODO -- remove the `:dataset` key
                    :rows    1
                    :model   true}
@@ -217,7 +218,7 @@
         (let [results (qp/process-query {:type     :query
                                          :query    {:source-table "card__2"
                                                     :limit        1}
-                                         :database lib.schema.id/saved-questions-virtual-database-id})]
+                                         :database (mt/id)})]
           (is (= {:rows 1}
                  (-> results :data (select-keys [:dataset :rows]) (update :rows count)))))))))
 

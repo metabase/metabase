@@ -295,7 +295,7 @@
                                       :dataset_query
                                       qp/process-query))))))))))))
 
-(deftest ^:parallel cards-have-can-run-adhoc-query-test
+(deftest cards-have-can-run-adhoc-query-test
   (api-call! "table/%s" [(mt/id :venues)]
              (constantly true)
              (fn [dashboard]
