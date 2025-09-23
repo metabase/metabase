@@ -269,7 +269,7 @@ H.describeWithSnowplowEE("documents", () => {
       H.modal().within(() => {
         cy.button("Save").click();
         cy.findByText("Question with snippet").should("be.visible");
-        // cy.findByText("Transform with snippet").should("be.visible");
+        cy.findByText("Transform with snippet").should("be.visible");
         cy.button("Cancel").click();
       });
       cy.get("@updateSnippet.all").should("have.length", 0);
@@ -278,7 +278,7 @@ H.describeWithSnowplowEE("documents", () => {
       H.modal().within(() => {
         cy.button("Save").click();
         cy.findByText("Question with snippet").should("be.visible");
-        // cy.findByText("Transform with snippet").should("be.visible");
+        cy.findByText("Transform with snippet").should("be.visible");
         cy.button("Save anyway").click();
       });
       cy.wait("@updateSnippet");
@@ -609,35 +609,35 @@ function createSnippetWithDependentQuestionsAndTransforms() {
       },
     });
 
-    // H.createTransform({
-    //   name: "Transform with snippet",
-    //   source: {
-    //     type: "query",
-    //     query: {
-    //       database: WRITABLE_DB_ID,
-    //       type: "native",
-    //       native: {
-    //         query:
-    //           'SELECT * FROM "Schema A"."Animals" WHERE {{snippet:ScoreSnippet}}',
-    //         "template-tags": {
-    //           "snippet:ScoreSnippet": {
-    //             id: "4b77cc1f-ea70-4ef6-84db-58432fce6929",
-    //             name: "snippet:ScoreSnippet",
-    //             "display-name": "snippet:ScoreSnippet",
-    //             type: "snippet",
-    //             "snippet-id": snippet.id,
-    //             "snippet-name": snippet.name,
-    //           },
-    //         },
-    //       },
-    //     },
-    //   },
-    //   target: {
-    //     type: "table",
-    //     name: "transform_with_snippet",
-    //     schema: "public",
-    //   },
-    // });
+    H.createTransform({
+      name: "Transform with snippet",
+      source: {
+        type: "query",
+        query: {
+          database: WRITABLE_DB_ID,
+          type: "native",
+          native: {
+            query:
+              'SELECT * FROM "Schema A"."Animals" WHERE {{snippet:ScoreSnippet}}',
+            "template-tags": {
+              "snippet:ScoreSnippet": {
+                id: "4b77cc1f-ea70-4ef6-84db-58432fce6929",
+                name: "snippet:ScoreSnippet",
+                "display-name": "snippet:ScoreSnippet",
+                type: "snippet",
+                "snippet-id": snippet.id,
+                "snippet-name": snippet.name,
+              },
+            },
+          },
+        },
+      },
+      target: {
+        type: "table",
+        name: "transform_with_snippet",
+        schema: "public",
+      },
+    });
   });
 }
 
