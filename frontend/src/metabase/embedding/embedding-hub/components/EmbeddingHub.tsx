@@ -73,7 +73,6 @@ export const EmbeddingHub = () => {
   return (
     <>
       <StepperWithCards steps={stepperSteps} />
-
       <AddDataModal
         opened={openedModal?.type === "add-data"}
         onClose={closeModal}

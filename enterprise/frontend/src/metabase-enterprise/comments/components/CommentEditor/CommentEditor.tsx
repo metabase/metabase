@@ -85,6 +85,7 @@ export const CommentEditor = ({
           trailingNode: false,
           heading: false,
           horizontalRule: false,
+          paragraph: { editorContext: "comments" },
         }),
         SmartLink.configure({
           HTMLAttributes: { class: "smart-link" },

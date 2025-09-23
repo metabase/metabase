@@ -71,21 +71,6 @@ export function enterCustomColumnDetails({
   }
 }
 
-export function checkExpressionEditorHelperPopoverPosition() {
-  expressionEditorTextfield().then(($target) => {
-    const textfieldPosition = $target[0].getBoundingClientRect();
-
-    cy.findByTestId("expression-helper-popover").then(($target) => {
-      const popoverPosition = $target[0].getBoundingClientRect();
-
-      expect(textfieldPosition.top - popoverPosition.top).to.be.lessThan(
-        textfieldPosition.height * 2,
-      );
-      expect(textfieldPosition.left - popoverPosition.left).to.be.lessThan(10);
-    });
-  });
-}
-
 export const CustomExpressionEditor = {
   get() {
     return cy.findByTestId("custom-expression-query-editor");
