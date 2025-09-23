@@ -140,7 +140,7 @@ export function SelectEmbedTypePane({
             badge={<UpsellGem />}
             illustration={<EmbeddedJsIllustration />}
             isDisabled={isEmbedJsAvailable && !isEmbedJsEnabled}
-            disabledLink="/embed-js"
+            disabledLink="/admin/embedding/modular"
           >
             <List>
               {/* eslint-disable-next-line no-literal-metabase-strings -- only admin sees this */}
