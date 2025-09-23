@@ -21,14 +21,13 @@ import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
+import { PLUGIN_GIT_SYNC } from "metabase/plugins";
 import {
   ActionIcon,
-  Button,
   Flex,
   Icon,
   type IconName,
   type IconProps,
-  Menu,
   Tooltip,
 } from "metabase/ui";
 import type { Bookmark, Collection } from "metabase-types/api";
@@ -52,7 +51,7 @@ import BookmarkList from "./BookmarkList";
 import { BrowseNavSection } from "./BrowseNavSection";
 import { GettingStartedSection } from "./GettingStartedSection";
 
-interface CollectionTreeItem extends Collection {
+export interface CollectionTreeItem extends Collection {
   icon: IconName | IconProps;
   children: CollectionTreeItem[];
 }
@@ -207,46 +206,12 @@ export function MainNavbarView({
             </SidebarSection>
           )}
 
-          {/* FIXME move to plugin */}
           {showSyncGroup && (
-            <SidebarSection>
-              <ErrorBoundary>
-                <Flex align="center" justify="space-between">
-                  <SidebarHeading>{t`Synced Collections`}</SidebarHeading>
-                  <Menu>
-                    <Menu.Target>
-                      <Button
-                        variant="subtle"
-                        leftSection={<Icon name="schema" size={12} />}
-                        rightSection={<Icon name="chevrondown" size={12} />}
-                        size="sm"
-                      >
-                        {t`main`}
-                      </Button>
-                    </Menu.Target>
-                    <Menu.Dropdown>
-                      {["main", "dev", "staging"].map((branch) => (
-                        <Menu.Item
-                          key={branch}
-                          leftSection={<Icon name="schema" size={12} />}
-                        >
-                          {branch}
-                        </Menu.Item>
-                      ))}
-                    </Menu.Dropdown>
-                  </Menu>
-                </Flex>
-
-                <Tree
-                  data={syncedCollections}
-                  selectedId={collectionItem?.id}
-                  onSelect={onItemSelect}
-                  TreeNode={SidebarCollectionLink}
-                  role="tree"
-                  aria-label="collection-tree"
-                />
-              </ErrorBoundary>
-            </SidebarSection>
+            <PLUGIN_GIT_SYNC.SyncedCollectionsSidebarSection
+              syncedCollections={syncedCollections}
+              collectionItem={collectionItem}
+              onItemSelect={onItemSelect}
+            />
           )}
 
           <SidebarSection>

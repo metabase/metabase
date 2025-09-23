@@ -843,9 +843,9 @@ export const PLUGIN_TRANSFORMS: TransformsPlugin = {
 export const PLUGIN_GIT_SYNC: {
   LibraryNav: ComponentType;
   GitSyncSettings: ComponentType;
-  SyncStatusBanner: ComponentType;
+  SyncedCollectionsSidebarSection: ComponentType;
 } = {
   LibraryNav: PluginPlaceholder,
   GitSyncSettings: NotFoundPlaceholder,
-  SyncStatusBanner: PluginPlaceholder,
+  SyncedCollectionsSidebarSection: PluginPlaceholder,
 };

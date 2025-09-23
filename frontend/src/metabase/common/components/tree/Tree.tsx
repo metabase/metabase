@@ -14,6 +14,7 @@ interface TreeProps {
   emptyState?: React.ReactNode;
   initiallyExpanded?: boolean;
   onSelect?: (item: ITreeNodeItem) => void;
+  rightSection?: (item: ITreeNodeItem) => React.ReactNode;
   TreeNode?: any; // This was previously set to TreeNodeComponent, but after upgrading to react 18, the type no longer played nice with forward ref compontents, including styled components
 }
 
@@ -25,6 +26,7 @@ function BaseTree({
   initiallyExpanded = false,
   onSelect,
   TreeNode = DefaultTreeNode,
+  rightSection,
 }: TreeProps) {
   const [expandedIds, setExpandedIds] = useState(() => {
     if (initiallyExpanded) {
@@ -90,6 +92,7 @@ function BaseTree({
       depth={0}
       onSelect={onSelect}
       onToggleExpand={handleToggleExpand}
+      rightSection={rightSection}
     />
   );
 }

@@ -50,8 +50,10 @@ export const collectionApi = Api.injectEndpoints({
         url: "/api/collection/tree",
         params,
       }),
-      providesTags: (collections = []) =>
-        provideCollectionListTags(collections),
+      providesTags: (collections = []) => [
+        ...provideCollectionListTags(collections),
+        "collection-tree",
+      ],
     }),
     listCollectionItems: builder.query<
       ListCollectionItemsResponse,

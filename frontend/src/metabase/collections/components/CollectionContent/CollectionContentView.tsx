@@ -33,7 +33,6 @@ import Bookmarks from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import Search from "metabase/entities/search";
 import { useDispatch } from "metabase/lib/redux";
-import { PLUGIN_GIT_SYNC } from "metabase/plugins";
 import { addUndo } from "metabase/redux/undo";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -227,8 +226,6 @@ const CollectionContentViewInner = ({
           }
         />
       )}
-
-      <PLUGIN_GIT_SYNC.SyncStatusBanner collection={collection} />
 
       <CollectionMain>
         <ErrorBoundary>

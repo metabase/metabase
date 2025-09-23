@@ -1,18 +1,18 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
+import { useAdminSetting } from "metabase/api/utils";
 import { getIcon } from "metabase/lib/icon";
 import { modelToUrl } from "metabase/lib/urls";
 import {
   Alert,
   Anchor,
+  Autocomplete,
   Badge,
   Box,
   Button,
   Card,
   Divider,
-  Flex,
   Group,
   Icon,
   Loader,
@@ -21,12 +21,14 @@ import {
   Stack,
   Text,
   Textarea,
+  Title,
 } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
 import {
   type DirtyEntity,
   useExportChangesMutation,
+  useGetBranchesQuery,
   useGetCollectionDirtyEntitiesQuery,
 } from "../api/git-sync";
 
@@ -41,7 +43,7 @@ import {
 interface PushChangesModalProps {
   isOpen: boolean;
   onClose: () => void;
-  collection: Collection;
+  collections: Collection[];
 }
 
 const SYNC_STATUS_ORDER: DirtyEntity["sync_status"][] = [
@@ -100,16 +102,10 @@ const EntityLink = ({ entity }: EntityLinkProps) => {
 interface SyncStatusGroupProps {
   syncStatus: DirtyEntity["sync_status"];
   entities: DirtyEntity[];
-  showDivider: boolean;
 }
 
-const SyncStatusGroup = ({
-  syncStatus,
-  entities,
-  showDivider,
-}: SyncStatusGroupProps) => (
+const SyncStatusGroup = ({ syncStatus, entities }: SyncStatusGroupProps) => (
   <Box key={syncStatus}>
-    {showDivider && <Divider />}
     <Box p="md">
       <Group gap="sm" mb="sm">
         <Icon
@@ -133,11 +129,38 @@ const SyncStatusGroup = ({
   </Box>
 );
 
-interface ChangesListProps {
-  entities: DirtyEntity[];
-}
+const ChangesLists = ({ collections }: { collections: Collection[] }) => {
+  return (
+    <Box>
+      {collections.map((collection, idx) => (
+        <Fragment key={collection.id}>
+          {idx > 0 && <Divider my="lg" />}
+          <ChangesList collection={collection} />
+        </Fragment>
+      ))}
+    </Box>
+  );
+};
 
-const ChangesList = ({ entities }: ChangesListProps) => {
+const ChangesList = ({ collection }: { collection: Collection }) => {
+  const { data: dirtyData, isLoading: isLoadingChanges } =
+    useGetCollectionDirtyEntitiesQuery(
+      { collectionId: collection.id },
+      {
+        refetchOnMountOrArgChange: true,
+        refetchOnFocus: true,
+      },
+    );
+
+  if (isLoadingChanges) {
+    return (
+      <Box>
+        <Loader size="sm" />
+      </Box>
+    );
+  }
+
+  const entities = dirtyData?.dirty || [];
   const groupedEntities = groupEntitiesBySyncStatus(entities);
 
   const getStatusPriority = (status: string): number => {
@@ -153,42 +176,44 @@ const ChangesList = ({ entities }: ChangesListProps) => {
     },
   );
 
+  const hasChanges = entities.length > 0;
+
   return (
     <Box>
-      <Group gap="xs" mb="md">
-        <Text fw={600} size="sm">
-          {t`What's changing`}
-        </Text>
+      <Group gap="xs" mb="md" align="end">
+        <Title order={3} mr="sm">
+          {collection.name}
+        </Title>
         <Badge size="sm" variant="light">
           {ngettext(
-            msgid`${entities.length} item`,
-            `${entities.length} items`,
+            msgid`${entities.length} item changed`,
+            `${entities.length} items changed`,
             entities.length,
           )}
         </Badge>
       </Group>
-
-      <Paper
-        withBorder
-        radius="md"
-        mah={300}
-        styles={{
-          root: {
-            overflowY: "auto",
-          },
-        }}
-      >
-        <Stack gap={0}>
-          {sortedGroups.map(([syncStatus, items], groupIndex) => (
-            <SyncStatusGroup
-              key={syncStatus}
-              syncStatus={syncStatus as DirtyEntity["sync_status"]}
-              entities={items}
-              showDivider={groupIndex > 0}
-            />
-          ))}
-        </Stack>
-      </Paper>
+      {hasChanges && (
+        <Paper
+          withBorder
+          radius="md"
+          mah={300}
+          styles={{
+            root: {
+              overflowY: "auto",
+            },
+          }}
+        >
+          <Stack gap={0}>
+            {sortedGroups.map(([syncStatus, items]) => (
+              <SyncStatusGroup
+                key={syncStatus}
+                syncStatus={syncStatus as DirtyEntity["sync_status"]}
+                entities={items}
+              />
+            ))}
+          </Stack>
+        </Paper>
+      )}
     </Box>
   );
 };
@@ -203,11 +228,9 @@ const CommitMessageSection = ({
   onChange,
 }: CommitMessageSectionProps) => (
   <Box>
-    <Text fw={600} size="sm" mb="xs">
-      {t`Describe your changes`}
-    </Text>
     <Textarea
       value={value}
+      label={t`Describe your changes`}
       onChange={(e) => onChange(e.target.value)}
       placeholder={t`What did you change and why?`}
       minRows={3}
@@ -224,67 +247,17 @@ const CommitMessageSection = ({
   </Box>
 );
 
-interface LoadingStateProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-const LoadingState = ({ isOpen, onClose }: LoadingStateProps) => (
-  <Modal
-    opened={isOpen}
-    title={<ModalTitle>{t`Push to Git`}</ModalTitle>}
-    onClose={onClose}
-    size="lg"
-  >
-    <Flex justify="center" align="center" py={60}>
-      <Stack align="center" gap="md">
-        <Loader size="lg" />
-        <Text c="text-medium" size="sm">
-          {t`Loading your changes...`}
-        </Text>
-      </Stack>
-    </Flex>
-  </Modal>
-);
-
-interface EmptyStateProps {
-  onClose: () => void;
-}
-
-const EmptyState = ({ onClose }: EmptyStateProps) => (
-  <Stack align="center" py={60} px="xl">
-    <Icon name="check" size={48} c="success" />
-    <Stack align="center" gap="xs">
-      <Text fw={600} size="lg">
-        {t`All caught up!`}
-      </Text>
-      <Text c="text-medium" size="sm" ta="center">
-        {t`Your collection is already in sync with the remote repository.`}
-      </Text>
-    </Stack>
-    <Button mt="lg" onClick={onClose}>
-      {t`Close`}
-    </Button>
-  </Stack>
-);
-
 export const PushChangesModal = ({
   isOpen,
   onClose,
-  collection,
+  collections,
 }: PushChangesModalProps) => {
   const [commitMessage, setCommitMessage] = useState("");
   const [forceMode, setForceMode] = useState(false);
-  const branch = useSetting("remote-sync-branch");
-
-  const { data: dirtyData, isLoading: isLoadingChanges } =
-    useGetCollectionDirtyEntitiesQuery(
-      { collectionId: collection.id },
-      {
-        refetchOnMountOrArgChange: true,
-        refetchOnFocus: true,
-      },
-    );
+  const { value: defaultBranch, updateSetting } =
+    useAdminSetting("remote-sync-branch");
+  const { data: branchData } = useGetBranchesQuery();
+  const [branch, setBranch] = useState(defaultBranch);
 
   const [
     exportChanges,
@@ -311,17 +284,14 @@ export const PushChangesModal = ({
   const handlePush = useCallback(() => {
     exportChanges({
       message: commitMessage.trim() || undefined,
-      collection: collection.id,
       forceSync: forceMode,
+      branch: branch ?? "main",
     });
-  }, [commitMessage, collection.id, forceMode, exportChanges]);
-
-  const entities = dirtyData?.dirty || [];
-  const hasChanges = entities.length > 0;
-
-  if (isLoadingChanges) {
-    return <LoadingState isOpen={isOpen} onClose={onClose} />;
-  }
+    updateSetting({
+      key: "remote-sync-branch",
+      value: branch ?? "main",
+    });
+  }, [commitMessage, forceMode, exportChanges, branch, updateSetting]);
 
   return (
     <Modal
@@ -333,72 +303,64 @@ export const PushChangesModal = ({
         body: { padding: 0 },
       }}
     >
-      {!hasChanges ? (
-        <EmptyState onClose={onClose} />
-      ) : (
-        <>
-          <Box px="xl" pt="md">
-            {errorMessage && (
-              <Alert
-                mb="md"
-                variant={hasConflict ? "warning" : "error"}
-                icon={<Icon name={hasConflict ? "info" : "warning"} />}
-              >
-                {errorMessage}
-              </Alert>
-            )}
+      <Box px="xl" pt="md">
+        {errorMessage && (
+          <Alert
+            mb="md"
+            variant={hasConflict ? "warning" : "error"}
+            icon={<Icon name={hasConflict ? "info" : "warning"} />}
+          >
+            {errorMessage}
+          </Alert>
+        )}
 
-            <Stack gap="lg">
-              <ChangesList entities={entities} />
-              <CommitMessageSection
-                value={commitMessage}
-                onChange={setCommitMessage}
-              />
-            </Stack>
-          </Box>
+        <Stack gap="lg">
+          <ChangesLists collections={collections} />
+          <Autocomplete
+            data={branchData?.items || []}
+            value={branch ?? "main"}
+            onChange={setBranch}
+            label={t`Select branch`}
+          />
+          <CommitMessageSection
+            value={commitMessage}
+            onChange={setCommitMessage}
+          />
+        </Stack>
+      </Box>
 
-          <Divider my="lg" />
+      <Divider my="lg" />
 
-          <Box px="xl" pb="lg">
-            {hasConflict && (
-              <Card bg="warning-light" p="sm" mb="md">
-                <Group gap="xs">
-                  <Icon name="warning" c="warning" />
-                  <Text size="sm" c="warning-dark">
-                    {t`Force pushing will replace the remote version with your changes`}
-                  </Text>
-                </Group>
-              </Card>
-            )}
+      <Box px="xl" pb="lg">
+        {hasConflict && (
+          <Card bg="warning-light" p="sm" mb="md">
+            <Group gap="xs">
+              <Icon name="warning" c="warning" />
+              <Text size="sm" c="warning-dark">
+                {t`Force pushing will replace the remote version with your changes`}
+              </Text>
+            </Group>
+          </Card>
+        )}
 
-            <Flex justify={branch ? "space-between" : "end"} align="center">
-              {branch && (
-                <Text size="sm" c="text-medium">
-                  {branch}
-                </Text>
-              )}
-
-              <Group gap="sm">
-                <Button variant="subtle" onClick={onClose}>
-                  {t`Cancel`}
-                </Button>
-                <Button
-                  variant="filled"
-                  color={forceMode ? "warning" : "brand"}
-                  onClick={handlePush}
-                  disabled={isPushing || !hasChanges}
-                  loading={isPushing}
-                  leftSection={
-                    forceMode ? <Icon name="warning" /> : <Icon name="upload" />
-                  }
-                >
-                  {forceMode ? t`Force push` : t`Push changes`}
-                </Button>
-              </Group>
-            </Flex>
-          </Box>
-        </>
-      )}
+        <Group gap="sm" justify="end">
+          <Button variant="subtle" onClick={onClose}>
+            {t`Cancel`}
+          </Button>
+          <Button
+            variant="filled"
+            color={forceMode ? "warning" : "brand"}
+            onClick={handlePush}
+            disabled={isPushing}
+            loading={isPushing}
+            leftSection={
+              forceMode ? <Icon name="warning" /> : <Icon name="upload" />
+            }
+          >
+            {forceMode ? t`Force push` : t`Push changes`}
+          </Button>
+        </Group>
+      </Box>
     </Modal>
   );
 };

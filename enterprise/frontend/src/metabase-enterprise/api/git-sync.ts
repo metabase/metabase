@@ -54,24 +54,34 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
       ExportChangesResponse,
       {
         message?: string;
-        collection: CollectionId;
+        branch?: string;
         forceSync?: boolean;
       }
     >({
-      query: ({ message, collection, forceSync }) => ({
+      query: ({ message, forceSync, branch }) => ({
         url: `/api/ee/remote-sync/export`,
         method: "POST",
         body: {
           message,
-          collection,
+          branch,
           "force-sync": forceSync,
         },
       }),
-      invalidatesTags: (_, error, { collection }) =>
+      invalidatesTags: (_, error) =>
         invalidateTags(error, [
-          tag("collection-dirty", collection),
-          tag("collection-is-dirty", collection),
+          tag("collection-dirty"),
+          tag("collection-is-dirty"),
         ]),
+    }),
+    importFromBranch: builder.mutation<void, { branch: string }>({
+      query: ({ branch }) => ({
+        url: `/api/ee/remote-sync/import`,
+        method: "POST",
+        body: {
+          branch,
+        },
+      }),
+      invalidatesTags: () => ["collection-tree"],
     }),
     getCollectionDirtyEntities: builder.query<
       CollectionDirtyResponse,
@@ -106,6 +116,13 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("session-properties")]),
     }),
+    getBranches: builder.query<{ items: string[] }, void>({
+      query: () => ({
+        method: "GET",
+        url: `/api/ee/remote-sync/branches`,
+      }),
+      providesTags: () => [tag("remote-sync-branches")],
+    }),
   }),
 });
 
@@ -114,4 +131,6 @@ export const {
   useIsCollectionDirtyQuery,
   useUpdateGitSyncSettingsMutation,
   useExportChangesMutation,
+  useGetBranchesQuery,
+  useImportFromBranchMutation,
 } = gitSyncApi;
