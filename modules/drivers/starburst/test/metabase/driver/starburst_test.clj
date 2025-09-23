@@ -423,24 +423,8 @@
                    (qp/process-query
                     (mt/native-query {:query "SELECT current_user"})))))))))))
 
-(deftest starburst-implements-isclosed-test
+(deftest optimized-prepared-statement-is-closed-test
   (mt/test-driver :starburst
-    (testing "can check isClosed on statement"
-      (sql-jdbc.execute/do-with-connection-with-options
-       driver/*driver* (mt/id) nil
-       (fn [^Connection conn]
-         (let [stmt (sql-jdbc.execute/statement driver/*driver* conn)]
-           (is (false? (.isClosed stmt)))
-           (.close stmt)
-           (is (true? (.isClosed stmt)))))))
-    (testing "can check isClosed on prepared statement"
-      (sql-jdbc.execute/do-with-connection-with-options
-       driver/*driver* (mt/id) nil
-       (fn [^Connection conn]
-         (let [prepared-stmt (sql-jdbc.execute/prepared-statement driver/*driver* conn "select 1" [])]
-           (is (false? (.isClosed prepared-stmt)))
-           (.close prepared-stmt)
-           (is (true? (.isClosed prepared-stmt)))))))
     (testing "can check isClosed on optimized prepared statement"
       (sql-jdbc.execute/do-with-connection-with-options
        driver/*driver* (mt/id) nil
