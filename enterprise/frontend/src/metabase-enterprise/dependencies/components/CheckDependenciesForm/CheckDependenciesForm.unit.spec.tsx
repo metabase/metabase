@@ -11,6 +11,7 @@ import type {
 import {
   createMockCard,
   createMockCheckDependenciesResponse,
+  createMockCollection,
 } from "metabase-types/api/mocks";
 
 import { CheckDependenciesForm } from "./CheckDependenciesForm";
@@ -57,6 +58,62 @@ describe("CheckDependenciesForm", () => {
         }),
       });
       expect(screen.getByText("Card")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /Card/ })).toHaveAttribute(
+        "href",
+        `/${type}/1-card`,
+      );
+    });
+
+    it("should display the root collection", () => {
+      setup({
+        checkData: createMockCheckDependenciesResponse({
+          success: false,
+          bad_cards: [
+            createMockCard({
+              name: "Card",
+              type,
+              collection: createMockCollection({
+                id: "root",
+                name: "Our analytics",
+              }),
+            }),
+          ],
+        }),
+      });
+      expect(
+        screen.getByRole("link", { name: "Our analytics" }),
+      ).toHaveAttribute("href", "/collection/root");
+    });
+
+    it("should display the nested collection with parent collections", () => {
+      setup({
+        checkData: createMockCheckDependenciesResponse({
+          success: false,
+          bad_cards: [
+            createMockCard({
+              name: "Card",
+              type,
+              collection: createMockCollection({
+                id: 2,
+                name: "Second collection",
+                effective_ancestors: [
+                  createMockCollection({ id: 1, name: "First collection" }),
+                  createMockCollection({ id: "root", name: "Our analytics" }),
+                ],
+              }),
+            }),
+          ],
+        }),
+      });
+      expect(
+        screen.getByRole("link", { name: "Our analytics" }),
+      ).toHaveAttribute("href", "/collection/root");
+      expect(
+        screen.getByRole("link", { name: "First collection" }),
+      ).toHaveAttribute("href", "/collection/1-first-collection");
+      expect(
+        screen.getByRole("link", { name: "Second collection" }),
+      ).toHaveAttribute("href", "/collection/2-second-collection");
     });
   });
 
