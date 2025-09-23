@@ -4,6 +4,7 @@ import { t } from "ttag";
 import Button from "metabase/common/components/Button";
 import EditBar from "metabase/common/components/EditBar";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { isResourceNotFoundError } from "metabase/lib/errors";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Flex } from "metabase/ui";
 import {
@@ -14,7 +15,6 @@ import { PythonEditor } from "metabase-enterprise/transforms/components/PythonEd
 import type { PythonLibraryEditorPageParams } from "metabase-enterprise/transforms/types";
 
 import S from "./PythonLibraryEditorPage.module.css";
-import { isNotFoundError } from "./utils";
 
 type PythonLibraryEditorPageProps = {
   params: PythonLibraryEditorPageParams;
@@ -47,7 +47,7 @@ export function PythonLibraryEditorPage({
       return;
     }
 
-    if (isNotFoundError(error)) {
+    if (isResourceNotFoundError(error)) {
       setSource(EMPTY_LIBRARY_SOURCE);
       return;
     }
