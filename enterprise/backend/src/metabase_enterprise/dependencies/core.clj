@@ -97,7 +97,7 @@
 ;; TODO: (Braden 09/22/2025) More precise schemas for the errors this function returns. Currently they're pretty
 ;; opaque, since the consumers of this function really care about "working/broken" and not the details of what's wrong
 ;; with any particular card.
-(mu/defn errors-from-proposed-edits :- [:map-of ::entity-type [:map-of :int [:sequential :any]]]
+(mu/defn errors-from-proposed-edits :- [:map-of ::entity-type [:map-of :int [:or :boolean [:sequential :any]]]]
   "Given a regular `MetadataProvider`, and a map of entity types (`:card`, `:transform`, `:snippet`) to lists of
   updated entities, this returns a map of `{entity-type {entity-id [bad-ref ...]}}`.
 
