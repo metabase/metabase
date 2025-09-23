@@ -1018,3 +1018,8 @@
         (let [sql (format "EXEC sp_rename '%s', '%s';" (name old-table-name) (name new-table-name))]
           (.addBatch ^java.sql.Statement stmt ^String sql)))
       (.executeBatch ^java.sql.Statement stmt))))
+
+(defmethod driver/table-name-length-limit :sqlserver
+  [_driver]
+  ;; https://learn.microsoft.com/en-us/previous-versions/sql/sql-server-2008-r2/ms191240(v=sql.105)#sysname
+  128)

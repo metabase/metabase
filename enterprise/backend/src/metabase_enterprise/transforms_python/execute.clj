@@ -140,8 +140,8 @@
                      :file temp-file}]
     (if table-exists?
       ;; Table exists - use temp table + atomic swap pattern
-      (let [source-table-name (transforms.util/temp-table-name table-name temp-table-suffix-new)
-            temp-table-name (transforms.util/temp-table-name table-name temp-table-suffix-old)]
+      (let [source-table-name (transforms.util/temp-table-name driver table-name temp-table-suffix-new)
+            temp-table-name (transforms.util/temp-table-name driver table-name temp-table-suffix-old)]
         (log/info "Existing table detected, Create then swap")
         (try
           (create-table-and-insert-data! driver (:id db) source-table-name metadata data-source)
