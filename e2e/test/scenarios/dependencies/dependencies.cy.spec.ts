@@ -252,6 +252,12 @@ H.describeWithSnowplowEE("documents", () => {
       cy.wait("@updateTransform");
     });
   });
+
+  describe("snippets", () => {
+    it("should be able to confirm or cancel breaking changes to a snippet", () => {
+      createSnippetWithDependentQuestionsAndTransforms();
+    });
+  });
 });
 
 function createMbqlQuestionWithDependentMbqlQuestions() {
@@ -273,6 +279,7 @@ function createMbqlQuestionWithDependentMbqlQuestions() {
         filter: [">", ["field", "Expr", { "base-type": "type/Integer" }], 1],
       },
     });
+
     H.createQuestion({
       name: "Question without fields",
       query: {
@@ -310,6 +317,7 @@ function createSqlModelWithDependentSqlQuestions() {
         },
       },
     });
+
     H.createNativeQuestion({
       name: "Question without fields",
       native: {
@@ -342,6 +350,7 @@ function createMetricWithDependentMbqlQuestionsAndTransforms() {
           },
         }).then(({ body: metric }) => {
           cy.wrap(metric.id).as("metricId");
+
           H.createQuestion({
             name: "Question with 1 stage",
             database: WRITABLE_DB_ID,
@@ -350,6 +359,7 @@ function createMetricWithDependentMbqlQuestionsAndTransforms() {
               aggregation: [["metric", metric.id]],
             },
           });
+
           H.createQuestion({
             name: "Question with 2 stages",
             database: WRITABLE_DB_ID,
@@ -364,6 +374,7 @@ function createMetricWithDependentMbqlQuestionsAndTransforms() {
               ],
             },
           });
+
           H.createTransform({
             name: "Transform with 1 stage",
             source: {
@@ -383,6 +394,7 @@ function createMetricWithDependentMbqlQuestionsAndTransforms() {
               schema: "public",
             },
           });
+
           H.createTransform({
             name: "Transform with 2 stages",
             source: {
@@ -531,6 +543,64 @@ function createMbqlTransformWithDependentSqlTransforms() {
       });
     },
   );
+}
+
+function createSnippetWithDependentQuestionsAndTransforms() {
+  H.createSnippet({
+    name: "ScoreSnippet",
+    content: "score = 1",
+  }).then(({ body: snippet }) => {
+    cy.wrap(snippet.id).as("snippetId");
+
+    H.createNativeQuestion({
+      name: "Question with snippet",
+      database: WRITABLE_DB_ID,
+      native: {
+        query:
+          'SELECT * FROM "Schema A"."Animals" WHERE {{snippet:ScoreSnippet}}',
+        "template-tags": {
+          "snippet:ScoreSnippet": {
+            id: "4b77cc1f-ea70-4ef6-84db-58432fce6928",
+            name: "snippet:ScoreSnippet",
+            "display-name": "snippet:ScoreSnippet",
+            type: "snippet",
+            "snippet-id": snippet.id,
+            "snippet-name": snippet.name,
+          },
+        },
+      },
+    });
+
+    H.createTransform({
+      name: "Transform with snippet",
+      source: {
+        type: "query",
+        query: {
+          database: WRITABLE_DB_ID,
+          type: "native",
+          native: {
+            query:
+              'SELECT * FROM "Schema A"."Animals" WHERE {{snippet:ScoreSnippet}}',
+            "template-tags": {
+              "snippet:ScoreSnippet": {
+                id: "4b77cc1f-ea70-4ef6-84db-58432fce6929",
+                name: "snippet:ScoreSnippet",
+                "display-name": "snippet:ScoreSnippet",
+                type: "snippet",
+                "snippet-id": snippet.id,
+                "snippet-name": snippet.name,
+              },
+            },
+          },
+        },
+      },
+      target: {
+        type: "table",
+        name: "transform_with_snippet",
+        schema: "public",
+      },
+    });
+  });
 }
 
 function confirmDiscardChanges() {
