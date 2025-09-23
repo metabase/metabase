@@ -1465,6 +1465,43 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  - changeSet:
+      id: v57.2025-09-19T11:30:20
+      author: ranquild
+      comment: Add transform_job.ui_display_type
+      changes:
+        - addColumn:
+            tableName: transform_job
+            columns:
+              - column:
+                  name: ui_display_type
+                  remarks: The display type of the schedule, used for the UI only; "cron/raw" or "cron/builder".
+                  type: varchar(32)
+                  defaultValue: 'cron/raw'
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-09-19T12:30:20
+      author: ranquild
+      comment: Set transform_job.ui_display_type for built-in jobs
+      changes:
+        - update:
+            tableName: transform_job
+            columns:
+              - column:
+                  name: ui_display_type
+                  value: 'cron/builder'
+            where: built_in_type IS NOT NULL
+      rollback:
+        - update:
+            tableName: transform_job
+            columns:
+              - column:
+                  name: ui_display_type
+                  value: 'cron/raw'
+            where: built_in_type IS NOT NULL
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
