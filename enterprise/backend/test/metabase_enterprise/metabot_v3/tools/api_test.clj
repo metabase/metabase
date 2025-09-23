@@ -1191,3 +1191,45 @@
                                             {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
                                             {:arguments {:transform_id (:id transform)}
                                              :conversation_id conversation-id}))))))))))
+
+(deftest get-transform-python-library-details-test
+  (mt/with-premium-features #{:metabot-v3 :python-transforms}
+    (let [conversation-id (str (random-uuid))
+          rasta-ai-token (ai-session-token)
+          crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))
+          saved-python-library (t2/select-one :model/PythonLibrary :path "common.py")]
+      (when (seq saved-python-library)
+        (t2/delete! :model/PythonLibrary))
+      (try
+        (testing "With no Python library present"
+          (is (= "Not found."
+                 (mt/user-http-request :rasta :post 404 "ee/metabot-tools/get-transform-python-library-details"
+                                       {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
+                                       {:arguments {:path "common.py"}
+                                        :conversation_id conversation-id}))))
+        (mt/with-temp [:model/PythonLibrary lib1 {:path "common.py"
+                                                  :source "def hello():\n    return 'world'"}]
+          (testing "With insufficient permissions"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :post 403 "ee/metabot-tools/get-transform-python-library-details"
+                                         {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
+                                         {:arguments {:path (:path lib1)}
+                                          :conversation_id conversation-id}))))
+          (testing "With non-existent library path"
+            (is (=? {:allowed-paths ["common.py"]
+                     :message "Invalid library path. Only 'common' is currently supported."
+                     :path "nonexistent.py"}
+                    (mt/user-http-request :rasta :post 400 "ee/metabot-tools/get-transform-python-library-details"
+                                          {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
+                                          {:arguments {:path "nonexistent.py"}
+                                           :conversation_id conversation-id}))))
+          (testing "With superuser permissions"
+            (is (=? {:structured_output (select-keys lib1 [:source :path :created_at :updated_at])
+                     :conversation_id conversation-id}
+                    (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-transform-python-library-details"
+                                          {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
+                                          {:arguments {:path (:path lib1)}
+                                           :conversation_id conversation-id})))))
+        (finally
+          (when (seq saved-python-library)
+            (t2/insert! :model/PythonLibrary saved-python-library)))))))
