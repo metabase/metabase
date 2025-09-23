@@ -18,7 +18,7 @@
 (setting/defsetting python-runner-api-token
   (deferred-tru "API token for authorizing with the python-runner service.")
   :type       :string
-  :visibility :internal
+  :visibility :admin
   :default    (when (not config/is-prod?) "dev-token-12345")
   :feature    :transforms-python
   :doc        false
