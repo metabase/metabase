@@ -2,7 +2,7 @@ import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
-import type { DatePickerRelativeIntervalDirection } from "metabase/querying/filters/types";
+import type { RelativeIntervalDirection } from "metabase/querying/filters/types";
 import { Group } from "metabase/ui";
 import { getRunListUrl } from "metabase-enterprise/transforms/urls";
 import type {
@@ -22,7 +22,7 @@ import { RunMethodFilterWidget } from "./RunMethodFilterWidget";
 import { StatusFilterWidget } from "./StatusFilterWidget";
 import { TransformFilterWidget } from "./TransformFilterWidget";
 
-const PAST_INTERVAL_DIRECTIONS: DatePickerRelativeIntervalDirection[] = [
+const PAST_INTERVAL_DIRECTIONS: RelativeIntervalDirection[] = [
   "last",
   "current",
 ];

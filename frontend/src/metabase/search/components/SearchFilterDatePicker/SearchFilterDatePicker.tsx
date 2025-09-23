@@ -1,7 +1,7 @@
 import type {
   DatePickerOperator,
-  DatePickerRelativeIntervalDirection,
   DatePickerShortcut,
+  RelativeIntervalDirection,
 } from "metabase/querying/filters/types";
 import { DateAllOptionsWidget } from "metabase/querying/parameters/components/DateAllOptionsWidget";
 
@@ -11,7 +11,7 @@ type SearchFilterDatePickerProps = {
   value: string | null;
   onChange: (value: string | null) => void;
   availableShortcuts?: DatePickerShortcut[];
-  availableDirections?: DatePickerRelativeIntervalDirection[];
+  availableDirections?: RelativeIntervalDirection[];
 };
 
 export const SearchFilterDatePicker = ({

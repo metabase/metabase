@@ -8,10 +8,10 @@ import {
 } from "metabase/querying/filters/constants";
 import type {
   DatePickerOperator,
-  DatePickerRelativeIntervalDirection,
   DatePickerShortcut,
   DatePickerUnit,
   DatePickerValue,
+  RelativeIntervalDirection,
 } from "metabase/querying/filters/types";
 
 import { DateShortcutPicker } from "./DateShortcutPicker";
@@ -26,7 +26,7 @@ type DatePickerProps = {
   availableOperators?: DatePickerOperator[];
   availableShortcuts?: DatePickerShortcut[];
   availableUnits?: DatePickerUnit[];
-  availableDirections?: DatePickerRelativeIntervalDirection[];
+  availableDirections?: RelativeIntervalDirection[];
   renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
   renderBackButton?: () => ReactNode;
   onChange: (value: DatePickerValue) => void;

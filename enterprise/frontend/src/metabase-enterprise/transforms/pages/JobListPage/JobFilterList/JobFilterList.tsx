@@ -2,7 +2,7 @@ import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
-import type { DatePickerRelativeIntervalDirection } from "metabase/querying/filters/types";
+import type { RelativeIntervalDirection } from "metabase/querying/filters/types";
 import { Group } from "metabase/ui";
 import { getJobListUrl } from "metabase-enterprise/transforms/urls";
 import type { TransformTag, TransformTagId } from "metabase-types/api";
@@ -16,12 +16,12 @@ type FilterListProps = {
   tags: TransformTag[];
 };
 
-const PAST_INTERVAL_DIRECTIONS: DatePickerRelativeIntervalDirection[] = [
+const PAST_INTERVAL_DIRECTIONS: RelativeIntervalDirection[] = [
   "last",
   "current",
 ];
 
-const FUTURE_INTERVAL_DIRECTIONS: DatePickerRelativeIntervalDirection[] = [
+const FUTURE_INTERVAL_DIRECTIONS: RelativeIntervalDirection[] = [
   "current",
   "next",
 ];

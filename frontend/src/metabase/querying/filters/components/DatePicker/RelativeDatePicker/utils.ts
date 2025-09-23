@@ -1,10 +1,10 @@
 import { DATE_PICKER_TRUNCATION_UNITS } from "metabase/querying/filters/constants";
 import type {
-  DatePickerRelativeIntervalDirection,
   DatePickerTruncationUnit,
   DatePickerUnit,
   DatePickerValue,
   RelativeDatePickerValue,
+  RelativeIntervalDirection,
 } from "metabase/querying/filters/types";
 import * as Lib from "metabase-lib";
 
@@ -30,7 +30,7 @@ export function isOffsetIntervalValue(value: RelativeDatePickerValue) {
 
 export function getDirection(
   value: RelativeDatePickerValue | undefined,
-): DatePickerRelativeIntervalDirection {
+): RelativeIntervalDirection {
   if (value == null || value.value === 0) {
     return "current";
   } else {
@@ -38,15 +38,13 @@ export function getDirection(
   }
 }
 
-export function getDirectionDefaultValue(
-  direction: DatePickerRelativeIntervalDirection,
-) {
+export function getDirectionDefaultValue(direction: RelativeIntervalDirection) {
   return setDirectionAndCoerceUnit(DEFAULT_VALUE, direction);
 }
 
 export function setDirection(
   value: RelativeDatePickerValue = DEFAULT_VALUE,
-  direction: DatePickerRelativeIntervalDirection,
+  direction: RelativeIntervalDirection,
   fallbackUnit?: DatePickerTruncationUnit,
 ): RelativeDatePickerValue | undefined {
   if (direction === "current") {
@@ -76,7 +74,7 @@ export function setDirection(
 
 export function setDirectionAndCoerceUnit(
   value: RelativeDatePickerValue,
-  direction: DatePickerRelativeIntervalDirection,
+  direction: RelativeIntervalDirection,
 ) {
   const fallbackUnit =
     value.unit !== "hour" && value.unit !== "minute"
@@ -138,7 +136,7 @@ export function formatDateRange({
 }
 
 export function getDefaultValue(
-  availableDirections: DatePickerRelativeIntervalDirection[],
+  availableDirections: RelativeIntervalDirection[],
 ) {
   if (availableDirections.length === 0) {
     return DEFAULT_VALUE;
@@ -149,7 +147,7 @@ export function getDefaultValue(
 
 export function getAvailableTabs(
   initialValue: RelativeDatePickerValue | undefined,
-  availableDirections: DatePickerRelativeIntervalDirection[],
+  availableDirections: RelativeIntervalDirection[],
 ) {
   const initialDirection = getDirection(
     initialValue ?? getDefaultValue(availableDirections),

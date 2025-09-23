@@ -1,7 +1,7 @@
 import type {
-  DatePickerRelativeIntervalDirection,
   DatePickerTruncationUnit,
   RelativeDatePickerValue,
+  RelativeIntervalDirection,
 } from "metabase/querying/filters/types";
 
 import { CURRENT_TAB, LAST_TAB, NEXT_TAB } from "./constants";
@@ -122,7 +122,7 @@ describe("setDirection", () => {
 });
 
 type GetDefaultValueTestCase = {
-  availableDirections: DatePickerRelativeIntervalDirection[];
+  availableDirections: RelativeIntervalDirection[];
   expectedValue: RelativeDatePickerValue | undefined;
 };
 
@@ -154,7 +154,7 @@ describe("getDefaultValue", () => {
 
 type GetAvailableTabsTestCase = {
   initialValue: RelativeDatePickerValue | undefined;
-  availableDirections: DatePickerRelativeIntervalDirection[];
+  availableDirections: RelativeIntervalDirection[];
   expectedTabs: Tab[];
 };
 

@@ -3,15 +3,15 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
 import { DATE_PICKER_UNITS } from "metabase/querying/filters/constants";
 import type {
-  DatePickerRelativeIntervalDirection,
   DatePickerUnit,
   RelativeDatePickerValue,
+  RelativeIntervalDirection,
 } from "metabase/querying/filters/types";
 
 import { SimpleDateIntervalPicker } from "./SimpleDateIntervalPicker";
 
 function getDefaultValue(
-  direction: DatePickerRelativeIntervalDirection,
+  direction: RelativeIntervalDirection,
 ): RelativeDatePickerValue {
   return {
     type: "relative",
@@ -45,7 +45,7 @@ describe("SimpleDateIntervalPicker", () => {
     jest.setSystemTime(new Date(2020, 0, 1));
   });
 
-  describe.each<DatePickerRelativeIntervalDirection>(["last", "next"])(
+  describe.each<RelativeIntervalDirection>(["last", "next"])(
     "%s",
     (direction) => {
       const defaultValue = getDefaultValue(direction);
