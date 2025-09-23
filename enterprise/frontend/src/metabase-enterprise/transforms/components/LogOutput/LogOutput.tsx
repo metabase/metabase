@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import reactAnsiStyle from "react-ansi-style";
 import { t } from "ttag";
 
-import { Box } from "metabase/ui";
+import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 
 import S from "./LogOutput.modules.css";
 
@@ -50,16 +50,17 @@ export function LogOutput({ content }: LogOutputProps) {
   };
 
   return (
-    <Box
+    <AnsiLogs
       ref={containerRef}
+      className={S.logOutput}
       onScroll={handleScroll}
       mah="12rem"
       p="sm"
       bg="bg-light"
-      className={S.logOutput}
       fz="xs"
+      data-css-specificity-hack=""
     >
       {displayContent}
-    </Box>
+    </AnsiLogs>
   );
 }
