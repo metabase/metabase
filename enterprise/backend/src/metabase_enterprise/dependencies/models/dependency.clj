@@ -142,7 +142,11 @@
 (methodical/defmethod events/publish-event! ::card-deps
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (replace-dependencies :card (:id object) (deps.calculation/upstream-deps:card object))))
+    (t2/with-transaction [_conn]
+      (replace-dependencies :card (:id object) (deps.calculation/upstream-deps:card object))
+      (when (not= (:dependency_analysis_version object) current-dependency-analysis-version)
+        (t2/update! :model/Card (:id object)
+                    {:dependency_analysis_version current-dependency-analysis-version})))))
 
 (derive ::card-delete :metabase/event)
 (derive :event/card-delete ::card-delete)
@@ -160,7 +164,11 @@
 (methodical/defmethod events/publish-event! ::snippet-deps
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (replace-dependencies :snippet (:id object) (deps.calculation/upstream-deps:snippet object))))
+    (t2/with-transaction [_conn]
+      (replace-dependencies :snippet (:id object) (deps.calculation/upstream-deps:snippet object))
+      (when (not= (:dependency_analysis_version object) current-dependency-analysis-version)
+        (t2/update! :model/NativeQuerySnippet (:id object)
+                    {:dependency_analysis_version current-dependency-analysis-version})))))
 
 (derive ::snippet-delete :metabase/event)
 (derive :event/snippet-delete ::snippet-delete)
@@ -203,8 +211,11 @@
 (methodical/defmethod events/publish-event! ::transform-deps
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (replace-dependencies :transform (:id object) (deps.calculation/upstream-deps:transform object))
-    (drop-outdated-target-dep! object)))
+    (t2/with-transaction [_conn]
+      (replace-dependencies :transform (:id object) (deps.calculation/upstream-deps:transform object))
+      (when (not= (:dependency_analysis_version object) current-dependency-analysis-version)
+        (t2/update! :model/Transform (:id object) {:dependency_analysis_version current-dependency-analysis-version}))
+      (drop-outdated-target-dep! object))))
 
 (derive ::transform-delete :metabase/event)
 (derive :event/delete-transform ::transform-delete)
