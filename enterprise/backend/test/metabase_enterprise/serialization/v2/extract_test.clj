@@ -1737,16 +1737,16 @@
                     model-eid :entity_id} {:name "AI Model"
                                            :type :model}
 
+       :model/Collection {coll-id :id
+                          coll-eid :entity_id} {:name "Metabot Collection"}
+
        :model/Metabot {metabot-id :id
                        metabot-eid :entity_id} {:name "Test Metabot"
-                                                :description "A test metabot"}
+                                                :description "A test metabot"
+                                                :use_verified_content false
+                                                :collection_id coll-id}
 
-       :model/MetabotEntity {metabot-entity-id :id
-                             metabot-entity-eid :entity_id} {:metabot_id metabot-id
-                                                             :model :dataset
-                                                             :model_id model-id}
-
-       :model/MetabotPrompt {metabot-prompt-eid :entity_id} {:metabot_entity_id metabot-entity-id
+       :model/MetabotPrompt {metabot-prompt-eid :entity_id} {:metabot_id metabot-id
                                                              :prompt "A sample prompt"
                                                              :model :model
                                                              :card_id model-id}]
@@ -1757,20 +1757,15 @@
                    :name "Test Metabot"
                    :description "A test metabot"
                    :entity_id metabot-eid
-                   :entities [{:model "dataset"
-                               :model_id model-eid
-                               :entity_id metabot-entity-eid
-                               :serdes/meta [{:model "Metabot" :id metabot-eid}
-                                             {:model "MetabotEntity" :id metabot-entity-eid}]
-                               :prompts [{:prompt "A sample prompt"
-                                          :model "model"
-                                          :entity_id metabot-prompt-eid
-                                          :card_id model-eid
-                                          :serdes/meta [{:model "Metabot" :id metabot-eid}
-                                                        {:model "MetabotEntity" :id metabot-entity-eid}
-                                                        {:model "MetabotPrompt" :id metabot-prompt-eid}]
-                                          :created_at string?}]
-                               :created_at string?}]
+                   :collection_id coll-eid
+                   :use_verified_content false
+                   :prompts [{:prompt "A sample prompt"
+                              :model "model"
+                              :entity_id metabot-prompt-eid
+                              :card_id model-eid
+                              :serdes/meta [{:model "Metabot" :id metabot-eid}
+                                            {:model "MetabotPrompt" :id metabot-prompt-eid}]
+                              :created_at string?}]
                    :created_at string?}
                   ser))
           (is (not (contains? ser :id)))
@@ -1782,24 +1777,23 @@
 (deftest metabot-collection-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc
-      [:model/Collection {model-id :id
-                          model-eid :entity_id} {:name "AI Model"}
+      [:model/Collection {model-id :id} {:name "AI Model"}
 
        :model/Card {card-id :id
                     card-eid :entity_id} {:name "AI Model"
                                           :type :model
                                           :collection_id model-id}
 
+       :model/Collection {coll-id :id
+                          coll-eid :entity_id} {:name "Metabot Collection"}
+
        :model/Metabot {metabot-id :id
                        metabot-eid :entity_id} {:name "Test Metabot"
-                                                :description "A test metabot"}
+                                                :description "A test metabot"
+                                                :use_verified_content false
+                                                :collection_id coll-id}
 
-       :model/MetabotEntity {metabot-entity-id :id
-                             metabot-entity-eid :entity_id} {:metabot_id metabot-id
-                                                             :model :collection
-                                                             :model_id model-id}
-
-       :model/MetabotPrompt {metabot-prompt-eid :entity_id} {:metabot_entity_id metabot-entity-id
+       :model/MetabotPrompt {metabot-prompt-eid :entity_id} {:metabot_id metabot-id
                                                              :prompt "A sample prompt"
                                                              :model :model
                                                              :card_id card-id}]
@@ -1810,26 +1804,21 @@
                    :name "Test Metabot"
                    :description "A test metabot"
                    :entity_id metabot-eid
-                   :entities [{:model "collection"
-                               :model_id model-eid
-                               :entity_id metabot-entity-eid
-                               :serdes/meta [{:model "Metabot" :id metabot-eid}
-                                             {:model "MetabotEntity" :id metabot-entity-eid}]
-                               :prompts [{:prompt "A sample prompt"
-                                          :model "model"
-                                          :entity_id metabot-prompt-eid
-                                          :card_id card-eid
-                                          :serdes/meta [{:model "Metabot" :id metabot-eid}
-                                                        {:model "MetabotEntity" :id metabot-entity-eid}
-                                                        {:model "MetabotPrompt" :id metabot-prompt-eid}]
-                                          :created_at string?}]
-                               :created_at string?}]
+                   :collection_id coll-eid
+                   :use_verified_content false
+                   :prompts [{:prompt "A sample prompt"
+                              :model "model"
+                              :entity_id metabot-prompt-eid
+                              :card_id card-eid
+                              :serdes/meta [{:model "Metabot" :id metabot-eid}
+                                            {:model "MetabotPrompt" :id metabot-prompt-eid}]
+                              :created_at string?}]
                    :created_at string?}
                   ser))
           (is (not (contains? ser :id)))
 
-          (testing "metabot depends on its model entities and their prompts"
-            (is (= #{[{:model "Collection" :id model-eid}] [{:model "Card" :id card-eid}]}
+          (testing "metabot depends on its prompts' cards"
+            (is (= #{[{:model "Card" :id card-eid}]}
                    (set (serdes/dependencies ser))))))))))
 
 (deftest visualizer-dashboard-card-settings-test
