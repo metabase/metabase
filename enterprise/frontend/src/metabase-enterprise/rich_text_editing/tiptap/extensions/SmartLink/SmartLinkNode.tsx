@@ -195,7 +195,8 @@ export const SmartLink = Node.create<{
         },
         this.options.HTMLAttributes,
       ),
-      label,
+      // 0 is Tiptap’s “content placeholder,” which tells it to render the node’s inner content.
+      label ?? 0,
     ];
   },
 
