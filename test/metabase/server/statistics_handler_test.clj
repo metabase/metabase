@@ -31,7 +31,7 @@
           (.setStatus response status-code)
           (.setContentLength response 0)
           (.. response getOutputStream close)
-          (a/<!! chan-finish-handle)
+          (a/<! chan-finish-handle)
           (.complete async-context))
         (a/<!! chan-finish-handle)))))
 
