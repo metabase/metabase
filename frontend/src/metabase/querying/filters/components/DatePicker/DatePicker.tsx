@@ -92,6 +92,7 @@ export function DatePicker({
         <DateShortcutPicker
           availableOperators={availableOperators}
           availableShortcuts={availableShortcuts}
+          availableDirections={availableDirections}
           renderBackButton={renderBackButton}
           onChange={onChange}
           onSelectType={setType}

@@ -79,6 +79,7 @@ export type DatePickerRelativeDirection = "last" | "current" | "next";
 export interface ShortcutOption {
   label: string;
   shortcut: DatePickerShortcut;
+  direction: DatePickerRelativeDirection;
   value: RelativeDatePickerValue;
 }
 

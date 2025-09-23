@@ -2,6 +2,7 @@ import { Fragment, type ReactNode, useMemo } from "react";
 
 import type {
   DatePickerOperator,
+  DatePickerRelativeDirection,
   DatePickerShortcut,
   DatePickerValueType,
   RelativeDatePickerValue,
@@ -16,6 +17,7 @@ import { getShortcutOptionGroups, getTypeOptions } from "./utils";
 interface DateShortcutPickerProps {
   availableOperators: DatePickerOperator[];
   availableShortcuts: DatePickerShortcut[];
+  availableDirections: DatePickerRelativeDirection[];
   renderBackButton?: () => ReactNode;
   onChange: (value: RelativeDatePickerValue) => void;
   onSelectType: (type: DatePickerValueType) => void;
@@ -24,13 +26,14 @@ interface DateShortcutPickerProps {
 export function DateShortcutPicker({
   availableOperators,
   availableShortcuts,
+  availableDirections,
   renderBackButton,
   onChange,
   onSelectType,
 }: DateShortcutPickerProps) {
   const shortcutGroups = useMemo(() => {
-    return getShortcutOptionGroups(availableShortcuts);
-  }, [availableShortcuts]);
+    return getShortcutOptionGroups(availableShortcuts, availableDirections);
+  }, [availableShortcuts, availableDirections]);
 
   const typeOptions = useMemo(() => {
     return getTypeOptions(availableOperators);
