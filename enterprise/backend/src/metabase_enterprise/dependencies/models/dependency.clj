@@ -217,10 +217,11 @@
 
 ;; On *executing* a transform, its (freshly synced) output table is made to depend on the transform.
 ;; (And if the target has changed, the old table's dep on the transform is dropped.)
+;; The upstream deps of the transform are not touched - those change only when the transform is edited.
 (derive ::transform-run :metabase/event)
 (derive :event/transform-run-complete ::transform-run)
 
-(defn- transform-table-deps [{:keys [db-id output-schema output-table transform-id] :as _details}]
+(defn- transform-table-deps! [{:keys [db-id output-schema output-table transform-id] :as _details}]
   (let [;; output-table is a keyword like :my_schema/my_table
         table-name (name output-table)]
     (when-let [table-id (t2/select-one-fn :id :model/Table :db_id db-id :schema output-schema :name table-name)]
@@ -229,7 +230,7 @@
 (methodical/defmethod events/publish-event! ::transform-run
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (replace-dependencies :transform (:transform-id object) (transform-table-deps object))))
+    (transform-table-deps! object)))
 
 (comment
   (set/difference #{3} nil)
