@@ -26,6 +26,10 @@ const lightTheme = {
       "#101113",
     ],
   },
+  other: {
+    textPrimary: "#000000",
+    textSecondary: "#666666",
+  },
 };
 
 const darkTheme = {
@@ -47,6 +51,10 @@ const darkTheme = {
       "#01010a",
     ],
   },
+  other: {
+    textPrimary: "#ffffff",
+    textSecondary: "#e0e0e0",
+  },
 };
 
 export function BenchLayout({ children }: BenchLayoutProps) {
@@ -60,7 +68,7 @@ export function BenchLayout({ children }: BenchLayoutProps) {
           height: "100vh",
           overflow: "hidden",
           backgroundColor: isDarkMode ? "#1A1B1E" : "#ffffff",
-          color: isDarkMode ? "#C1C2C5" : "#000000",
+          color: isDarkMode ? "#ffffff" : "#000000",
         }}
       >
         {children}

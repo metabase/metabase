@@ -1,0 +1,132 @@
+/* CodeMirror theme overrides for the bench */
+.benchEditor {
+  /* Container for the editor */
+}
+
+/* CSS custom properties and text color inheritance */
+.light {
+  --text-primary: #000000;
+  --text-secondary: #666666;
+  --text-dimmed: #999999;
+}
+
+.dark {
+  --text-primary: #ffffff;
+  --text-secondary: #e0e0e0;
+  --text-dimmed: #b0b0b0;
+}
+
+/* Global text color inheritance for Mantine components */
+.light :global(.mantine-Text-root) {
+  color: var(--text-primary) !important;
+}
+
+.light :global(.mantine-Text-root[data-variant="dimmed"]) {
+  color: var(--text-dimmed) !important;
+}
+
+.dark :global(.mantine-Text-root) {
+  color: var(--text-primary) !important;
+}
+
+.dark :global(.mantine-Text-root[data-variant="dimmed"]) {
+  color: var(--text-dimmed) !important;
+}
+
+/* Override for specific color props */
+.dark :global(.mantine-Text-root[data-color="dimmed"]) {
+  color: var(--text-secondary) !important;
+}
+
+/* Light theme overrides */
+.light :global(.cm-lineNumbers) {
+  color: #999999 !important;
+  background-color: #f8f9fa !important;
+}
+
+.light :global(.cm-lineNumbers .cm-gutterElement) {
+  color: #999999 !important;
+}
+
+.light :global(.cm-activeLineGutter) {
+  background-color: #e9ecef !important;
+}
+
+.light :global(.cm-gutters) {
+  background-color: #f8f9fa !important;
+  border-right: 1px solid #dee2e6 !important;
+}
+
+/* Dark theme overrides */
+.dark :global(.cm-lineNumbers) {
+  color: #6c757d !important;
+  background-color: #2c2e33 !important;
+}
+
+.dark :global(.cm-lineNumbers .cm-gutterElement) {
+  color: #6c757d !important;
+}
+
+.dark :global(.cm-activeLineGutter) {
+  background-color: #373a40 !important;
+}
+
+.dark :global(.cm-gutters) {
+  background-color: #2c2e33 !important;
+  border-right: 1px solid #495057 !important;
+}
+
+.dark :global(.cm-editor) {
+  background-color: #25262b !important;
+  color: #c1c2c5 !important;
+}
+
+.dark :global(.cm-content) {
+  background-color: #25262b !important;
+  color: #c1c2c5 !important;
+}
+
+.dark :global(.cm-focused) {
+  outline: none !important;
+}
+
+/* Selection colors for dark mode */
+.dark :global(.cm-selectionBackground) {
+  background-color: #495057 !important;
+}
+
+.dark :global(.cm-editor.cm-focused .cm-selectionBackground) {
+  background-color: #495057 !important;
+}
+
+/* Cursor color for dark mode */
+.dark :global(.cm-cursor) {
+  border-left-color: #c1c2c5 !important;
+}
+
+/* Search highlight colors for dark mode */
+.dark :global(.cm-searchMatch) {
+  background-color: rgba(255, 255, 0, 0.2) !important;
+}
+
+.dark :global(.cm-searchMatch.cm-searchMatch-selected) {
+  background-color: rgba(255, 255, 0, 0.4) !important;
+}
+
+/* Ensure proper line number spacing and visibility */
+.light :global(.cm-lineNumbers),
+.dark :global(.cm-lineNumbers) {
+  min-width: 3em !important;
+  padding-right: 8px !important;
+  text-align: right !important;
+  user-select: none !important;
+}
+
+/* Active line highlighting */
+.light :global(.cm-activeLine) {
+  background-color: rgba(0, 0, 0, 0.02) !important;
+}
+
+.dark :global(.cm-activeLine) {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+}

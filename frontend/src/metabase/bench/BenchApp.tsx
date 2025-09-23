@@ -3,6 +3,7 @@ import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { useState, useEffect, useRef } from "react";
 import { keymap } from "@codemirror/view";
 import { language } from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/language";
+import styles from "./BenchApp.module.css";
 import { push } from "react-router-redux";
 import { useDispatch } from "metabase/lib/redux";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
@@ -75,7 +76,11 @@ ORDER BY total_spent DESC;`);
   };
 
   return (
-    <Box h="100vh" style={{ overflow: "hidden" }}>
+    <Box
+      h="100vh"
+      style={{ overflow: "hidden" }}
+      className={isDark ? styles.dark : styles.light}
+    >
       <PanelGroup direction="horizontal">
         {/* Left Panel - Transform Entities */}
         <Panel defaultSize={20} minSize={15} maxSize={35}>
@@ -130,7 +135,10 @@ ORDER BY total_spent DESC;`);
                     </Text>
                   )}
                 </Box>
-                <Box style={{ flex: 1, position: "relative" }}>
+                <Box
+                  style={{ flex: 1, position: "relative" }}
+                  className={`${styles.benchEditor} ${isDark ? styles.dark : styles.light}`}
+                >
                   <CodeMirror
                     value={code}
                     onChange={(value) => setCode(value)}
