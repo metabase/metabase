@@ -353,7 +353,9 @@
 (deftest ^:parallel humanize-connection-error-message-test
   (is (= "random message" (driver/humanize-connection-error-message :clickhouse ["random message"])))
   (is (= :username-or-password-incorrect (driver/humanize-connection-error-message :clickhouse ["Failed to create connection"
-                                                                                                "Failed to get server info" "Code: 516. DB::Exception: asdf: Authentication failed: password is incorrect, or there is no user with such name. (AUTHENTICATION_FAILED) (version 25.7.4.11 (official build))"]))))
+                                                                                                "Failed to get server info"
+                                                                                                "Code: 516. DB::Exception: asdf: Authentication failed: password is incorrect, or there is no user with such name. (AUTHENTICATION_FAILED) (version 25.7.4.11 (official build))"]))))
+
 (deftest ^:parallel query-with-cte-subquery-and-param-test
   (mt/test-driver :clickhouse
     (testing "a query with a CTE in a subquery and a parameter should work correctly"
