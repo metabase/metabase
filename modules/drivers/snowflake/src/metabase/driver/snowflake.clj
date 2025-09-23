@@ -910,3 +910,8 @@
         (doseq [sql sqls]
           (.addBatch stmt ^String sql))
         (.executeBatch stmt)))))
+
+(defmethod driver/table-name-length-limit :snowflake
+  [_driver]
+  ;; https://docs.snowflake.com/en/sql-reference/identifiers
+  255)

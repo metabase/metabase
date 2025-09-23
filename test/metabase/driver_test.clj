@@ -399,6 +399,7 @@
     (let [driver driver/*driver*]
       (is (get-method driver/rename-tables!* driver))
       (is (get-method driver/create-table! driver))
+      (is (get-method driver/table-name-length-limit driver))
       (is (get-method driver/drop-table! driver))
       (is (let [should-be-supported-by-all #{:type/Number :type/Text :type/Date :type/DateTime :type/DateTimeWithTZ :type/Boolean}]
             (and (get-method driver/type->database-type driver)

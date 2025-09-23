@@ -760,3 +760,7 @@
                               credentials)]
         (mg/get-db-names unauthenticated-connection)))
     :.)
+
+(defmethod driver/table-name-length-limit :mongo
+  [_driver]
+  64)
