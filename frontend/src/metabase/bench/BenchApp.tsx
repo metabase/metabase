@@ -15,6 +15,7 @@ import {
   TransformDetails,
   QueryPreview,
   BenchMetabot,
+  TransformExecutionCard,
 } from "./components";
 import type { Transform } from "metabase-types/api";
 
@@ -240,21 +241,32 @@ ORDER BY total_spent DESC;`);
               <Box style={{ flex: 1, overflow: "hidden" }}>
                 <Tabs.Panel
                   value="properties"
-                  style={{ height: "100%", padding: "16px" }}
+                  style={{ height: "100%", padding: "16px", overflow: "auto" }}
                 >
-                  <TransformDetails transformId={transformId} />
                   <Box
-                    p="sm"
-                    mt="md"
                     style={{
-                      backgroundColor: isDark
-                        ? "var(--mantine-color-dark-6)"
-                        : "var(--mantine-color-gray-1)",
-                      borderRadius: "4px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "16px",
                     }}
                   >
-                    <Text size="xs">Lines: {code.split("\n").length}</Text>
-                    <Text size="xs">Characters: {code.length}</Text>
+                    <TransformDetails transformId={transformId} />
+
+                    <TransformExecutionCard transform={selectedTransform} />
+
+                    <Box
+                      p="sm"
+                      style={{
+                        backgroundColor: isDark
+                          ? "var(--mantine-color-dark-6)"
+                          : "var(--mantine-color-gray-1)",
+                        borderRadius: "4px",
+                        border: `1px solid ${isDark ? "var(--mantine-color-dark-4)" : "var(--mantine-color-gray-3)"}`,
+                      }}
+                    >
+                      <Text size="xs">Lines: {code.split("\n").length}</Text>
+                      <Text size="xs">Characters: {code.length}</Text>
+                    </Box>
                   </Box>
                 </Tabs.Panel>
 

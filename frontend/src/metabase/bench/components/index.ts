@@ -3,3 +3,4 @@ export { TransformEntitiesList } from "./TransformEntitiesList/TransformEntities
 export { TransformDetails } from "./TransformDetails/TransformDetails";
 export { QueryPreview } from "./QueryPreview/QueryPreview";
 export { BenchMetabot } from "./BenchMetabot/BenchMetabot";
+export { TransformExecutionCard } from "./TransformExecutionCard/TransformExecutionCard";
