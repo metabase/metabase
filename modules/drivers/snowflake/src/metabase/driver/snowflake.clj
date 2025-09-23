@@ -900,12 +900,11 @@
 (defmethod driver/rename-table! :snowflake
   [driver db-id from-table to-table]
   (let [sql (first (sql/format {:alter-table (keyword from-table)
-                                :rename-table (keyword (name to-table))}
+                                :rename-table (keyword to-table)}
                                :quoted true
                                :dialect (sql.qp/quote-style driver)))]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
-      (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
-        (.execute stmt ^String sql)))))
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+      (jdbc/execute! conn sql))))
 
 (defmethod driver/table-name-length-limit :snowflake
   [_driver]
