@@ -42,7 +42,7 @@ export const SharingPaneButton = ({
       w="22rem"
       aria-label={title}
     >
-      <Stack justify="space-between" align="flex-end" h="100%">
+      <Stack justify="space-between" h="100%">
         <Stack pb={isDisabled ? "md" : undefined}>
           <Center mb={32}>{illustration}</Center>
           <Group align="center" gap="sm">
@@ -53,7 +53,7 @@ export const SharingPaneButton = ({
         </Stack>
 
         {!isDisabled && (
-          <Stack mt="lg">
+          <Stack mt="lg" w="100%" align="flex-end">
             <Text c="brand" fw="bold">
               {t`Embed`}
             </Text>
