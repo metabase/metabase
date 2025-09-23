@@ -42,63 +42,65 @@
   (testing "upstream deps of a card are updated correctly"
     (mt/dataset test-data
       (mt/with-temp [:model/User user {:email "me@wherever.com"}]
-        (let [card1 (card/create-card! (basic-orders) user)]
-          (is (integer? (:id card1)))
-          (testing "when creating a new card"
-            (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))}
-                    (upstream-of :card (:id card1))))
+        (mt/with-premium-features #{:dependencies}
+          (let [card1 (card/create-card! (basic-orders) user)]
+            (is (integer? (:id card1)))
+            (testing "when creating a new card"
+              (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))}
+                      (upstream-of :card (:id card1))))
 
-            (testing "that depends on another card"
-              (let [card2 (card/create-card! (wrap-card card1) user)]
-                (is (=? #{(depends-on-> :card (:id card2) :card (:id card1))}
-                        (upstream-of :card (:id card2))))
-                (testing "but that doesn't affect the upstream deps of the inner card"
-                  (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))}
-                          (upstream-of :card (:id card1))))))))
+              (testing "that depends on another card"
+                (let [card2 (card/create-card! (wrap-card card1) user)]
+                  (is (=? #{(depends-on-> :card (:id card2) :card (:id card1))}
+                          (upstream-of :card (:id card2))))
+                  (testing "but that doesn't affect the upstream deps of the inner card"
+                    (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))}
+                            (upstream-of :card (:id card1))))))))
 
-          (testing "when updating an existing card"
-            (testing "to add a new table dep"
-              (card/update-card! {:card-before-update card1
-                                  :card-updates
-                                  {:dataset_query (mt/mbql-query orders
-                                                    {:joins [{:alias "Products"
-                                                              :source-table (mt/id :products)
-                                                              :condition [:= $id &Products.$products.id]}]})}})
-              (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))
-                        (depends-on-> :card (:id card1) :table (mt/id :products))}
-                      (upstream-of :card (:id card1)))))
-            (testing "to remove a table dep"
-              (card/update-card! {:card-before-update (t2/select-one :model/Card :id (:id card1))
-                                  :card-updates
-                                  {:dataset_query (mt/mbql-query products)}})
-              (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :products))}
-                      (upstream-of :card (:id card1)))))))))))
+            (testing "when updating an existing card"
+              (testing "to add a new table dep"
+                (card/update-card! {:card-before-update card1
+                                    :card-updates
+                                    {:dataset_query (mt/mbql-query orders
+                                                      {:joins [{:alias "Products"
+                                                                :source-table (mt/id :products)
+                                                                :condition [:= $id &Products.$products.id]}]})}})
+                (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))
+                          (depends-on-> :card (:id card1) :table (mt/id :products))}
+                        (upstream-of :card (:id card1)))))
+              (testing "to remove a table dep"
+                (card/update-card! {:card-before-update (t2/select-one :model/Card :id (:id card1))
+                                    :card-updates
+                                    {:dataset_query (mt/mbql-query products)}})
+                (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :products))}
+                        (upstream-of :card (:id card1))))))))))))
 
 (deftest ^:sequential card-deps-graph-test-1-mbql-card-chain
   (testing "deps graph is connected properly for a chain of MBQL cards"
     (mt/dataset test-data
       (mt/with-temp [:model/User user {:email "me@wherever.com"}]
-        (let [{id1 :id :as card1} (card/create-card! (basic-orders) user)
-              {id2 :id :as card2} (card/create-card! (wrap-card card1) user)
-              {id3 :id :as card3} (card/create-card! (wrap-card card2) user)]
-          (testing "raw deps are recorded correctly"
-            (is (=? #{(depends-on-> :card id1 :table (mt/id :orders))} (upstream-of :card id1)))
-            (is (=? #{(depends-on-> :card id2 :card  id1)}             (upstream-of :card id2)))
-            (is (=? #{(depends-on-> :card id3 :card  id2)}             (upstream-of :card id3))))
+        (mt/with-premium-features #{:dependencies}
+          (let [{id1 :id :as card1} (card/create-card! (basic-orders) user)
+                {id2 :id :as card2} (card/create-card! (wrap-card card1) user)
+                {id3 :id :as card3} (card/create-card! (wrap-card card2) user)]
+            (testing "raw deps are recorded correctly"
+              (is (=? #{(depends-on-> :card id1 :table (mt/id :orders))} (upstream-of :card id1)))
+              (is (=? #{(depends-on-> :card id2 :card  id1)}             (upstream-of :card id2)))
+              (is (=? #{(depends-on-> :card id3 :card  id2)}             (upstream-of :card id3))))
 
-          (testing "transitive deps are computed correctly"
-            (testing "for each card"
-              (is (=? {:card #{id2 id3}}
-                      (deps.graph/transitive-dependents {:card [card1]})))
-              (is (=? {:card #{id3}}
-                      (deps.graph/transitive-dependents {:card [card2]})))
-              (is (=? {}
-                      (deps.graph/transitive-dependents {:card [card3]}))))
-            (testing "for the table"
-              (is (set/subset? #{id1 id2 id3}
-                               (-> {:table [{:id (mt/id :orders)}]}
-                                   deps.graph/transitive-dependents
-                                   :card))))))))))
+            (testing "transitive deps are computed correctly"
+              (testing "for each card"
+                (is (=? {:card #{id2 id3}}
+                        (deps.graph/transitive-dependents {:card [card1]})))
+                (is (=? {:card #{id3}}
+                        (deps.graph/transitive-dependents {:card [card2]})))
+                (is (=? {}
+                        (deps.graph/transitive-dependents {:card [card3]}))))
+              (testing "for the table"
+                (is (set/subset? #{id1 id2 id3}
+                                 (-> {:table [{:id (mt/id :orders)}]}
+                                     deps.graph/transitive-dependents
+                                     :card)))))))))))
 
 (defn- sql-card [metadata-provider sql]
   {:name                   "SQL card"
@@ -114,29 +116,30 @@
   (testing "deps graph is connected properly for a chain of native cards"
     (mt/dataset test-data
       (mt/with-temp [:model/User user {:email "me@wherever.com"}]
-        (let [mp                  (mt/metadata-provider)
-              {id1 :id :as card1} (card/create-card! (sql-card mp "SELECT * FROM orders;") user)
-              {id2 :id :as card2} (card/create-card! (sql-card mp (str "SELECT * FROM {{#" id1 "}}")) user)
-              {id3 :id :as card3} (card/create-card! (sql-card mp (str "SELECT * FROM {{#" id2 "}}")) user)]
-          (testing "raw deps are recorded correctly"
-            (is (=? #{(depends-on-> :card id1 :table (mt/id :orders))} (upstream-of :card id1)))
-            (is (=? #{(depends-on-> :card id2 :table (mt/id :orders))
-                      (depends-on-> :card id2 :card  id1)}             (upstream-of :card id2)))
-            (is (=? #{(depends-on-> :card id3 :table (mt/id :orders))
-                      (depends-on-> :card id3 :card  id2)}             (upstream-of :card id3))))
-          (testing "transitive deps are computed correctly"
-            (testing "for each card"
-              (is (=? {:card #{id2 id3}}
-                      (deps.graph/transitive-dependents {:card [card1]})))
-              (is (=? {:card #{id3}}
-                      (deps.graph/transitive-dependents {:card [card2]})))
-              (is (=? {}
-                      (deps.graph/transitive-dependents {:card [card3]}))))
-            (testing "for the table"
-              (is (set/subset? #{id1 id2 id3}
-                               (-> {:table [{:id (mt/id :orders)}]}
-                                   deps.graph/transitive-dependents
-                                   :card))))))))))
+        (mt/with-premium-features #{:dependencies}
+          (let [mp                  (mt/metadata-provider)
+                {id1 :id :as card1} (card/create-card! (sql-card mp "SELECT * FROM orders;") user)
+                {id2 :id :as card2} (card/create-card! (sql-card mp (str "SELECT * FROM {{#" id1 "}}")) user)
+                {id3 :id :as card3} (card/create-card! (sql-card mp (str "SELECT * FROM {{#" id2 "}}")) user)]
+            (testing "raw deps are recorded correctly"
+              (is (=? #{(depends-on-> :card id1 :table (mt/id :orders))} (upstream-of :card id1)))
+              (is (=? #{(depends-on-> :card id2 :table (mt/id :orders))
+                        (depends-on-> :card id2 :card  id1)}             (upstream-of :card id2)))
+              (is (=? #{(depends-on-> :card id3 :table (mt/id :orders))
+                        (depends-on-> :card id3 :card  id2)}             (upstream-of :card id3))))
+            (testing "transitive deps are computed correctly"
+              (testing "for each card"
+                (is (=? {:card #{id2 id3}}
+                        (deps.graph/transitive-dependents {:card [card1]})))
+                (is (=? {:card #{id3}}
+                        (deps.graph/transitive-dependents {:card [card2]})))
+                (is (=? {}
+                        (deps.graph/transitive-dependents {:card [card3]}))))
+              (testing "for the table"
+                (is (set/subset? #{id1 id2 id3}
+                                 (-> {:table [{:id (mt/id :orders)}]}
+                                     deps.graph/transitive-dependents
+                                     :card)))))))))))
 
 (deftest dependency-analysis-version-test
   (testing "dependency_analysis_version is updated when entities are created or updated"
