@@ -19,8 +19,8 @@ export const SelectEmbedOptionsStep = () => {
     (experience === "dashboard" && settings.dashboardId) ||
     (experience === "chart" && settings.questionId);
 
-  const isBrowserEmbed = settings.componentName === "metabase-browser";
-  const isQuestionEmbed = settings.componentName === "metabase-question";
+  const isBrowserComponent = settings.componentName === "metabase-browser";
+  const isQuestionComponent = settings.componentName === "metabase-question";
 
   const updateColors = useCallback(
     (nextColors: Partial<MetabaseColors>) => {
@@ -58,7 +58,7 @@ export const SelectEmbedOptionsStep = () => {
             />
           )}
 
-          {isQuestionEmbed && (
+          {isQuestionComponent && (
             <Checkbox
               label={t`Allow users to save new questions`}
               checked={settings.isSaveEnabled}
@@ -68,7 +68,7 @@ export const SelectEmbedOptionsStep = () => {
             />
           )}
 
-          {isBrowserEmbed && (
+          {isBrowserComponent && (
             <Checkbox
               label={t`Allow editing dashboards and questions`}
               checked={!settings.readOnly}
