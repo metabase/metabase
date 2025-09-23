@@ -111,12 +111,12 @@ jobs:
 
       - name: Merge split timings
         id: merge
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
             const path = require('path');
-            const glob = require('glob');
 
             const chunkFiles = glob.sync('timing-files/*/chunkTimings.json');
 
