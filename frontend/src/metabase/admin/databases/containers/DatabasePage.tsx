@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type { Route } from "react-router";
 import { t } from "ttag";
 
+import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { getEngines } from "metabase/databases/selectors";
 import { useSelector } from "metabase/lib/redux";
 import {
@@ -61,18 +62,19 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
   };
 
   return (
-    <Flex direction="row" h="100%">
+    <Flex
+      direction="row"
+      h="100%"
+      style={{ backgroundColor: "var(--mb-color-bg-light)" }}
+    >
       <Box h="100%" w="100%" component={ScrollArea}>
         <Box
           w="100%"
-          maw={{
-            base: `calc(28.5rem + 2rem)`,
-            md: `calc(28.5rem + 4rem)`,
-          }}
+          maw="54rem"
           mx="auto"
           p={{
             base: `md`,
-            md: `xl`,
+            sm: `xl`,
           }}
         >
           <Flex
@@ -101,17 +103,19 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
               </Text>
             )}
           </Flex>
-          <DatabaseEditConnectionForm
-            database={database}
-            isAttachedDWH={database?.is_attached_dwh ?? false}
-            initializeError={databaseReq.error}
-            onSubmitted={handleOnSubmit}
-            route={route}
-            onCancel={handleCancel}
-            config={config}
-            formLocation="full-page"
-            onEngineChange={onEngineChange}
-          />
+          <SettingsSection>
+            <DatabaseEditConnectionForm
+              database={database}
+              isAttachedDWH={database?.is_attached_dwh ?? false}
+              initializeError={databaseReq.error}
+              onSubmitted={handleOnSubmit}
+              route={route}
+              onCancel={handleCancel}
+              config={config}
+              formLocation="full-page"
+              onEngineChange={onEngineChange}
+            />
+          </SettingsSection>
         </Box>
       </Box>
       {showSidePanel && (
