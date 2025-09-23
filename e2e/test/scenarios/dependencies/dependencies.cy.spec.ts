@@ -24,7 +24,7 @@ H.describeWithSnowplowEE("documents", () => {
 
   describe("questions", () => {
     it("should be able to confirm or cancel breaking changes to a question", () => {
-      createQuestionContent();
+      createMbqlQuestionWithDependentMbqlQuestions();
       H.visitQuestion("@questionId");
       H.openNotebook();
       H.getNotebookStep("expression").findByText("Expr").icon("close").click();
@@ -47,7 +47,7 @@ H.describeWithSnowplowEE("documents", () => {
     });
 
     it("should be able to navigate to affected questions or their collection", () => {
-      createQuestionContent();
+      createMbqlQuestionWithDependentMbqlQuestions();
 
       cy.log("check that we can navigate to a broken question");
       H.visitQuestion("@questionId");
@@ -75,7 +75,7 @@ H.describeWithSnowplowEE("documents", () => {
     });
 
     it("should not show a confirmation if there are no breaking changes when updating a question", () => {
-      createQuestionContent();
+      createMbqlQuestionWithDependentMbqlQuestions();
       H.visitQuestion("@questionId");
       H.openNotebook();
       H.getNotebookStep("expression").findByText("Expr").click();
@@ -89,7 +89,7 @@ H.describeWithSnowplowEE("documents", () => {
 
   describe("models", () => {
     it("should be able to confirm or cancel breaking changes to a model", () => {
-      createModelContent();
+      createSqlModelWithDependentSqlQuestions();
       cy.get<number>("@modelId").then(H.visitModel);
       H.openQuestionActions("Edit query definition");
       H.NativeEditor.clear().type("SELECT ID, TITLE FROM PRODUCTS");
@@ -111,7 +111,7 @@ H.describeWithSnowplowEE("documents", () => {
     });
 
     it("should not show a confirmation if there are no breaking changes when updating a model", () => {
-      createModelContent();
+      createSqlModelWithDependentSqlQuestions();
       cy.get<number>("@modelId").then(H.visitModel);
       H.openQuestionActions("Edit query definition");
       H.NativeEditor.clear().type("SELECT ID, CATEGORY FROM PRODUCTS");
@@ -122,8 +122,44 @@ H.describeWithSnowplowEE("documents", () => {
   });
 
   describe("transforms", () => {
-    it("should be able to confirm or cancel breaking changes to a transform until it was run", () => {
-      createTransformContent();
+    it("should be able to confirm or cancel breaking changes to a transform after it was run", () => {
+      createSqlTransformWithDependentMbqlQuestions();
+      cy.get<number>("@transformId").then(H.visitTransform);
+      cy.findByTestId("transform-page").findByText("Edit query").click();
+
+      cy.log("cancel breaking changes");
+      H.NativeEditor.clear().type('SELECT name FROM "Schema A"."Animals"');
+      cy.findByTestId("transform-query-editor").button("Save changes").click();
+      H.modal().within(() => {
+        cy.findByText("Question with fields").should("be.visible");
+        cy.findByText("Question without fields").should("not.exist");
+        cy.button("Cancel").click();
+      });
+      cy.get("@updateTransform.all").should("have.length", 0);
+
+      cy.log("confirm breaking changes");
+      cy.findByTestId("transform-query-editor").button("Save changes").click();
+      H.modal().within(() => {
+        cy.findByText("Question with fields").should("be.visible");
+        cy.findByText("Question without fields").should("not.exist");
+        cy.button("Save anyway").click();
+      });
+      cy.wait("@updateTransform");
+    });
+
+    it("should not show a confirmation if there are no breaking changes when updating a transform after it was run", () => {
+      createSqlTransformWithDependentMbqlQuestions();
+      cy.get<number>("@transformId").then(H.visitTransform);
+      cy.findByTestId("transform-page").findByText("Edit query").click();
+      H.NativeEditor.clear().type(
+        'SELECT score, name FROM "Schema A"."Animals"',
+      );
+      cy.findByTestId("transform-query-editor").button("Save changes").click();
+      cy.wait("@updateTransform");
+    });
+
+    it("should be able to confirm or cancel breaking changes to a transform before it was run", () => {
+      createMbqlTransformWithDependentSqlTransforms();
       cy.get<number>("@transformId").then(H.visitTransform);
       cy.findByTestId("transform-page").findByText("Edit query").click();
 
@@ -148,8 +184,8 @@ H.describeWithSnowplowEE("documents", () => {
       cy.wait("@updateTransform");
     });
 
-    it("should not show a confirmation if there are no breaking changes when updating a transform", () => {
-      createTransformContent();
+    it("should not show a confirmation if there are no breaking changes when updating a transform before it was run", () => {
+      createMbqlTransformWithDependentSqlTransforms();
       cy.get<number>("@transformId").then(H.visitTransform);
       cy.findByTestId("transform-page").findByText("Edit query").click();
       H.getNotebookStep("data").button("Sort").click();
@@ -160,7 +196,7 @@ H.describeWithSnowplowEE("documents", () => {
   });
 });
 
-function createQuestionContent() {
+function createMbqlQuestionWithDependentMbqlQuestions() {
   H.createQuestion({
     name: "Base question",
     query: {
@@ -188,7 +224,7 @@ function createQuestionContent() {
   });
 }
 
-function createModelContent() {
+function createSqlModelWithDependentSqlQuestions() {
   H.createNativeQuestion({
     name: "Base model",
     type: "model",
@@ -234,7 +270,58 @@ function createModelContent() {
   });
 }
 
-function createTransformContent() {
+function createSqlTransformWithDependentMbqlQuestions() {
+  const transformTableName = "base_transform";
+
+  H.createTransform({
+    name: "Base transform",
+    source: {
+      type: "query",
+      query: {
+        database: WRITABLE_DB_ID,
+        type: "native",
+        native: {
+          query: 'SELECT name, score FROM "Schema A"."Animals"',
+          "template-tags": {},
+        },
+      },
+    },
+    target: {
+      type: "table",
+      name: transformTableName,
+      schema: "public",
+    },
+  }).then(({ body: transform }) => {
+    cy.wrap(transform.id).as("transformId");
+    cy.request("POST", `/api/ee/transform/${transform.id}/run`);
+    H.waitForSucceededTransformRuns();
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: transformTableName });
+
+    H.getTableId({ databaseId: WRITABLE_DB_ID, name: transformTableName }).then(
+      (tableId) => {
+        H.createQuestion({
+          name: "Question with fields",
+          query: {
+            "source-table": tableId,
+            filter: [
+              ">",
+              ["field", "score", { "base-type": "type/Integer" }],
+              1,
+            ],
+          },
+        });
+        H.createQuestion({
+          name: "Question without fields",
+          query: {
+            "source-table": tableId,
+          },
+        });
+      },
+    );
+  });
+}
+
+function createMbqlTransformWithDependentSqlTransforms() {
   H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
     (tableId) => {
       H.createTransform(

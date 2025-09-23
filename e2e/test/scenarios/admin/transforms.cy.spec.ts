@@ -2,11 +2,7 @@ const { H } = cy;
 
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import type {
-  CardType,
-  ListTransformRunsResponse,
-  TransformTagId,
-} from "metabase-types/api";
+import type { CardType, TransformTagId } from "metabase-types/api";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -1302,7 +1298,7 @@ describe("scenarios > admin > transforms > jobs", () => {
           tag_ids: [tag.id],
         });
       });
-      waitForRuns();
+      H.waitForSucceededTransformRuns();
       visitRunListPage();
       getContentTable().within(() => {
         cy.findAllByText("MBQL transform").should("have.length.gte", 1);
@@ -2206,24 +2202,6 @@ function visitTableQuestion({
     },
     { visitQuestion: true },
   );
-}
-
-const WAIT_TIMEOUT = 10000;
-const WAIT_INTERVAL = 100;
-
-function waitForRuns(timeout = WAIT_TIMEOUT): Cypress.Chainable {
-  return cy
-    .request<ListTransformRunsResponse>("GET", "/api/ee/transform/run")
-    .then((response) => {
-      if (response.body.data.length > 0) {
-        return cy.wrap(response);
-      } else if (timeout > 0) {
-        cy.wait(WAIT_INTERVAL);
-        return waitForRuns(timeout - WAIT_INTERVAL);
-      } else {
-        throw new Error("Run retry timeout");
-      }
-    });
 }
 
 function assertTableDoesNotExistError({

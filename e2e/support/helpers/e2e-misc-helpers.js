@@ -425,7 +425,3 @@ export const goToAuthOverviewPage = () => {
     .first()
     .click();
 };
-
-export function visitTransform(transformId) {
-  cy.visit(`/admin/transforms/${transformId}`);
-}
