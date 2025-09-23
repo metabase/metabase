@@ -190,6 +190,7 @@ H.describeWithSnowplowEE("documents", () => {
       H.modal().within(() => {
         cy.findByText("Question with fields").should("be.visible");
         cy.findByText("Question without fields").should("not.exist");
+        cy.findByText("Base transform").should("not.exist");
         cy.button("Cancel").click();
       });
       cy.get("@updateTransform.all").should("have.length", 0);
@@ -199,6 +200,7 @@ H.describeWithSnowplowEE("documents", () => {
       H.modal().within(() => {
         cy.findByText("Question with fields").should("be.visible");
         cy.findByText("Question without fields").should("not.exist");
+        cy.findByText("Base transform").should("not.exist");
         cy.button("Save anyway").click();
       });
       cy.wait("@updateTransform");
@@ -495,6 +497,7 @@ function createSqlTransformWithDependentMbqlQuestions() {
       (tableId) => {
         H.createQuestion({
           name: "Question with fields",
+          database: WRITABLE_DB_ID,
           query: {
             "source-table": tableId,
             filter: [
@@ -506,6 +509,7 @@ function createSqlTransformWithDependentMbqlQuestions() {
         });
         H.createQuestion({
           name: "Question without fields",
+          database: WRITABLE_DB_ID,
           query: {
             "source-table": tableId,
           },

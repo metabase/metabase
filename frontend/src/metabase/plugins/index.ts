@@ -59,7 +59,6 @@ import type {
   Bookmark,
   CacheableDashboard,
   CacheableModel,
-  Card,
   CheckDependenciesResponse,
   Collection,
   CollectionAuthorityLevelConfig,
@@ -86,7 +85,6 @@ import type {
   TableId,
   Timeline,
   TimelineEvent,
-  Transform,
   UpdateSnippetRequest,
   UpdateTransformRequest,
   User,
@@ -870,20 +868,14 @@ type DependenciesPlugin = {
   ) => UseCheckDependenciesResult<UpdateTransformRequest>;
 };
 
-export type CheckDependenciesData = {
-  success: boolean;
-  bad_cards?: Card[];
-  bad_transforms?: Transform[];
-};
-
 export type CheckDependenciesFormProps = {
-  checkData: CheckDependenciesData;
+  checkData: CheckDependenciesResponse;
   onSave: () => void | Promise<void>;
   onCancel: () => void;
 };
 
 export type CheckDependenciesModalProps = {
-  checkData: CheckDependenciesData;
+  checkData: CheckDependenciesResponse;
   opened: boolean;
   onSave: () => void | Promise<void>;
   onClose: () => void;

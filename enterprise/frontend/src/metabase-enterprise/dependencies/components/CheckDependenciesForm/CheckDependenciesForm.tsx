@@ -9,10 +9,7 @@ import {
   FormSubmitButton,
 } from "metabase/forms";
 import * as Urls from "metabase/lib/urls";
-import type {
-  CheckDependenciesData,
-  CheckDependenciesFormProps,
-} from "metabase/plugins";
+import type { CheckDependenciesFormProps } from "metabase/plugins";
 import {
   Anchor,
   Box,
@@ -26,7 +23,11 @@ import {
 } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import { getTransformUrl } from "metabase-enterprise/transforms/urls";
-import type { Card as ApiCard, Transform } from "metabase-types/api";
+import type {
+  Card as ApiCard,
+  CheckDependenciesResponse,
+  Transform,
+} from "metabase-types/api";
 
 import S from "./CheckDependenciesForm.module.css";
 
@@ -75,7 +76,7 @@ export function CheckDependenciesForm({
 function getDependencyItems({
   bad_cards = [],
   bad_transforms = [],
-}: CheckDependenciesData): DependencyItem[] {
+}: CheckDependenciesResponse): DependencyItem[] {
   return [
     ...bad_transforms.map(
       (transform): TransformDependencyItem => ({
