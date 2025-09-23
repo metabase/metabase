@@ -38,6 +38,7 @@ H.describeWithSnowplowEE("documents", () => {
       H.modal().within(() => {
         cy.findByText("Question with fields").should("be.visible");
         cy.findByText("Question without fields").should("not.exist");
+        cy.findByText("Base question").should("not.exist");
         cy.button("Cancel").click();
       });
       cy.get("@updateCard.all").should("have.length", 0);
@@ -105,6 +106,7 @@ H.describeWithSnowplowEE("documents", () => {
       H.modal().within(() => {
         cy.findByText("Question with fields").should("be.visible");
         cy.findByText("Question without fields").should("not.exist");
+        cy.findByText("Base model").should("not.exist");
         cy.button("Cancel").click();
       });
       cy.get("@updateCard.all").should("have.length", 0);
@@ -147,6 +149,7 @@ H.describeWithSnowplowEE("documents", () => {
         cy.findByText("Transform with 2 stages").should("be.visible");
         cy.findByText("Question with 1 stage").should("not.exist");
         cy.findByText("Transform with 1 stage").should("not.exist");
+        cy.findByText("Base metric").should("not.exist");
         cy.button("Cancel").click();
       });
       cy.get("@updateCard.all").should("have.length", 0);
@@ -231,6 +234,7 @@ H.describeWithSnowplowEE("documents", () => {
       H.modal().within(() => {
         cy.findByText("Score transform").should("be.visible");
         cy.findByText("Name transform").should("not.exist");
+        cy.findByText("Base transform").should("not.exist");
         cy.button("Cancel").click();
       });
       cy.get("@updateTransform.all").should("have.length", 0);
@@ -272,6 +276,7 @@ H.describeWithSnowplowEE("documents", () => {
         cy.button("Save").click();
         cy.findByText("Question with snippet").should("be.visible");
         cy.findByText("Transform with snippet").should("be.visible");
+        cy.findByText("ScoreSnippet").should("not.exist");
         cy.button("Cancel").click();
       });
       cy.get("@updateSnippet.all").should("have.length", 0);
@@ -281,6 +286,7 @@ H.describeWithSnowplowEE("documents", () => {
         cy.button("Save").click();
         cy.findByText("Question with snippet").should("be.visible");
         cy.findByText("Transform with snippet").should("be.visible");
+        cy.findByText("ScoreSnippet").should("not.exist");
         cy.button("Save anyway").click();
       });
       cy.wait("@updateSnippet");
