@@ -93,7 +93,7 @@ if (typeof window !== "undefined") {
 }
 
 const raiseError = (message: string) => {
-  throw new MetabaseError("EMBED_ERROR", message);
+  throw new MetabaseError("EMBED_TAG_ERROR", message);
 };
 
 function assertFieldCanBeUpdated(

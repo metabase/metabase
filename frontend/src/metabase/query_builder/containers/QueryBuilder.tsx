@@ -38,6 +38,7 @@ import type {
 import type { QueryBuilderUIControls, State } from "metabase-types/store";
 
 import * as actions from "../actions";
+import { trackCardBookmarkAdded } from "../analytics";
 import { View } from "../components/view/View";
 import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 import {
@@ -301,13 +302,15 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   );
 
   const onClickBookmark = () => {
-    const {
-      card: { id },
-    } = props;
+    const { card } = props;
 
     const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
 
-    toggleBookmark(id);
+    if (!isBookmarked) {
+      trackCardBookmarkAdded(card);
+    }
+
+    toggleBookmark(card.id);
   };
 
   /**

@@ -36,7 +36,7 @@ export const SecretKeyModal = ({
       />
       <Flex direction="row" gap="md">
         <Icon
-          name="info_filled"
+          name="info"
           size={22}
           className={CS.textMedium}
           style={{ marginTop: "-4px" }}

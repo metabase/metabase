@@ -55,7 +55,7 @@ describe("scenarios > embedding > sdk iframe embedding > theming", () => {
         DARK_THEME.colors.background,
       );
 
-      cy.findByText("2,000 rows").should(
+      cy.findByText("Showing first 2,000 rows").should(
         "have.css",
         "color",
         DARK_THEME.colors["text-primary"],
@@ -128,7 +128,7 @@ describe("scenarios > embedding > sdk iframe embedding > theming", () => {
         LIGHT_THEME.colors.brand,
       );
 
-      cy.findByText("2,000 rows").should(
+      cy.findByText("Showing first 2,000 rows").should(
         "have.css",
         "color",
         LIGHT_THEME.colors["text-primary"],
@@ -160,7 +160,7 @@ describe("scenarios > embedding > sdk iframe embedding > theming", () => {
         DARK_THEME.colors.brand,
       );
 
-      cy.findByText("2,000 rows").should(
+      cy.findByText("Showing first 2,000 rows").should(
         "have.css",
         "color",
         DARK_THEME.colors["text-primary"],
@@ -192,7 +192,7 @@ describe("scenarios > embedding > sdk iframe embedding > theming", () => {
         LIGHT_THEME.colors.brand,
       );
 
-      cy.findByText("2,000 rows").should(
+      cy.findByText("Showing first 2,000 rows").should(
         "have.css",
         "color",
         LIGHT_THEME.colors["text-primary"],

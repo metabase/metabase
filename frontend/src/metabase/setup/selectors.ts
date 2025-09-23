@@ -128,25 +128,24 @@ export const getSteps = createSelector(
       tokenFeatures &&
       tokenFeatures["hosting"] &&
       !hasAddedPaidPlanInPreviousStep;
+
     const shouldShowDataUsageStep = !isHosted;
 
     const maybeAddStep = (step: SetupStep, condition: boolean): SetupStep[] =>
       condition ? [step] : [];
 
-    const regularSteps: SetupStep[] = [
+    const steps: SetupStep[] = [
       "welcome",
-      "language",
       "user_info",
-      "usage_question",
-      ...maybeAddStep("db_connection", shouldShowDBConnectionStep),
+      ...maybeAddStep("usage_question", !isEmbeddingUseCase),
+      ...maybeAddStep(
+        "db_connection",
+        shouldShowDBConnectionStep && !isEmbeddingUseCase,
+      ),
       ...maybeAddStep("license_token", shouldShowLicenseStep),
       ...maybeAddStep("data_usage", shouldShowDataUsageStep),
       "completed",
     ];
-
-    const embeddingSteps: SetupStep[] = ["user_info", "completed"];
-
-    const steps = isEmbeddingUseCase ? embeddingSteps : regularSteps;
 
     return steps.map((key) => ({
       key,
