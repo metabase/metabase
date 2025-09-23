@@ -150,7 +150,7 @@
   :hierarchy #'driver/hierarchy)
 
 (defmulti ^Statement statement
-  "Create a Statement object using the given connection. Only called if the `:statements` feature is supported. This
+  "Create a Statement object using the given connection. Only called if the `:jdbc/statements` feature is supported. This
   is to be used to execute native queries, which implies there are no parameters. As with prepared-statement, you
   shouldn't need to override the default implementation for this method; if you do, take care to set options to maximize
   result set read performance (e.g. `ResultSet/TYPE_FORWARD_ONLY`); refer to the default implementation."
@@ -559,7 +559,7 @@
     (wire-up-canceled-chan-to-cancel-Statement! canceled-chan)))
 
 (defn- use-statement? [driver params]
-  (and (driver/database-supports? driver :statements nil) (empty? params)))
+  (and (driver/database-supports? driver :jdbc/statements nil) (empty? params)))
 
 (defn- statement* ^Statement [driver conn canceled-chan]
   (doto (statement driver conn)

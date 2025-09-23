@@ -147,7 +147,7 @@
 (deftest statement-is-closed-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
     (testing "can check isClosed on statement"
-      (when (driver/database-supports? driver/*driver* :statements nil)
+      (when (driver/database-supports? driver/*driver* :jdbc/statements nil)
         (sql-jdbc.execute/do-with-connection-with-options
          driver/*driver* (mt/id) nil
          (fn [^Connection conn]
