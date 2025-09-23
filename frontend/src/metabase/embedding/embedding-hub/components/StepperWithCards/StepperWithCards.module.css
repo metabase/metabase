@@ -76,5 +76,5 @@
 }
 
 .stepCard.nextStepCard {
-  border: 1px solid var(--mb-color-brand) !important;
+  border: 1px solid var(--mb-color-metabase-brand) !important;
 }
