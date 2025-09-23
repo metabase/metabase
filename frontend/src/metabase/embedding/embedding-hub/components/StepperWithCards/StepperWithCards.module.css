@@ -52,7 +52,6 @@
     border 250ms ease;
   padding: 0.94rem 1.25rem;
   height: 8.75rem;
-  max-width: 30rem;
   text-align: left;
   width: 100%;
   box-shadow: none;
@@ -65,6 +64,11 @@
 .optionalStepCard,
 .stepCardLink:has(.optionalStepCard) {
   max-width: 15.625rem;
+}
+
+.requiredStepCard,
+.stepCardLink:has(.requiredStepCard) {
+  max-width: 30rem;
 }
 
 .lockedStepCard {
