@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
 import type {
+  DatePickerRelativeDirection,
   DatePickerTruncationUnit,
   DatePickerUnit,
   RelativeDatePickerValue,
-  RelativeIntervalDirection,
 } from "metabase/querying/filters/types";
 import * as Lib from "metabase-lib";
 
@@ -69,7 +69,7 @@ export function getOffsetUnitOptions(
 
 function getOffsetUnitText(
   unit: DatePickerTruncationUnit,
-  direction: RelativeIntervalDirection,
+  direction: DatePickerRelativeDirection,
   interval: number,
 ) {
   const unitText = Lib.describeTemporalUnit(unit, interval).toLowerCase();

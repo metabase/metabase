@@ -2,6 +2,7 @@ import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
+import type { DatePickerRelativeDirection } from "metabase/querying/filters/types";
 import { Group } from "metabase/ui";
 import { getRunListUrl } from "metabase-enterprise/transforms/urls";
 import type {
@@ -21,13 +22,22 @@ import { RunMethodFilterWidget } from "./RunMethodFilterWidget";
 import { StatusFilterWidget } from "./StatusFilterWidget";
 import { TransformFilterWidget } from "./TransformFilterWidget";
 
-type FilterListProps = {
+const PAST_INTERVAL_DIRECTIONS: DatePickerRelativeDirection[] = [
+  "last",
+  "current",
+];
+
+type RunFilterListProps = {
   transforms: Transform[];
   tags: TransformTag[];
   params: RunListParams;
 };
 
-export function FilterList({ transforms, tags, params }: FilterListProps) {
+export function RunFilterList({
+  transforms,
+  tags,
+  params,
+}: RunFilterListProps) {
   const dispatch = useDispatch();
 
   const handleTransformsChange = (transformIds: TransformId[]) => {
@@ -73,11 +83,13 @@ export function FilterList({ transforms, tags, params }: FilterListProps) {
       <TimeFilterWidget
         label={t`Start at`}
         value={params.startTime}
+        availableDirections={PAST_INTERVAL_DIRECTIONS}
         onChange={handleStartTimeChange}
       />
       <TimeFilterWidget
         label={t`End at`}
         value={params.endTime}
+        availableDirections={PAST_INTERVAL_DIRECTIONS}
         onChange={handleEndTimeChange}
       />
       <RunMethodFilterWidget

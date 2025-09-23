@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from "react";
 
 import type {
+  DatePickerRelativeDirection,
   DatePickerUnit,
   RelativeDatePickerValue,
 } from "metabase/querying/filters/types";
@@ -13,8 +14,9 @@ import { CurrentDatePicker } from "./CurrentDatePicker";
 import { DateIntervalPicker } from "./DateIntervalPicker";
 import { DateOffsetIntervalPicker } from "./DateOffsetIntervalPicker";
 import S from "./RelativeDatePicker.module.css";
-import { DEFAULT_VALUE, TABS } from "./constants";
 import {
+  getAvailableTabs,
+  getDefaultValue,
   getDirection,
   isIntervalValue,
   isOffsetIntervalValue,
@@ -24,6 +26,7 @@ import {
 interface RelativeDatePickerProps {
   value: RelativeDatePickerValue | undefined;
   availableUnits: DatePickerUnit[];
+  availableDirections: DatePickerRelativeDirection[];
   renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
   onChange: (value: RelativeDatePickerValue) => void;
   onBack: () => void;
@@ -33,18 +36,20 @@ interface RelativeDatePickerProps {
 export function RelativeDatePicker({
   value: initialValue,
   availableUnits,
+  availableDirections,
   renderSubmitButton = renderDefaultSubmitButton,
   onChange,
   onBack,
   readOnly,
 }: RelativeDatePickerProps) {
-  const [value, setValue] = useState<RelativeDatePickerValue | undefined>(
-    initialValue ?? DEFAULT_VALUE,
+  const [value, setValue] = useState(
+    initialValue ?? getDefaultValue(availableDirections),
   );
+  const tabs = getAvailableTabs(initialValue, availableDirections);
   const direction = getDirection(value);
 
   const handleTabChange = (tabValue: string | null) => {
-    const tab = TABS.find((tab) => tab.direction === tabValue);
+    const tab = tabs.find((tab) => tab.direction === tabValue);
     if (tab) {
       setValue(setDirection(value, tab.direction));
     }
@@ -66,7 +71,7 @@ export function RelativeDatePicker({
           withArrow={!readOnly}
         />
         <Tabs.List className={S.TabList}>
-          {TABS.map((tab) => (
+          {tabs.map((tab) => (
             <Tabs.Tab key={tab.direction} value={tab.direction}>
               {tab.label}
             </Tabs.Tab>
@@ -74,7 +79,7 @@ export function RelativeDatePicker({
         </Tabs.List>
       </Flex>
       <Divider />
-      {TABS.map((tab) => (
+      {tabs.map((tab) => (
         <Tabs.Panel key={tab.direction} value={tab.direction}>
           {value != null && isOffsetIntervalValue(value) ? (
             <DateOffsetIntervalPicker

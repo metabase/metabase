@@ -2,11 +2,13 @@ import { type ReactNode, useState } from "react";
 
 import {
   DATE_PICKER_OPERATORS,
+  DATE_PICKER_RELATIVE_DIRECTIONS,
   DATE_PICKER_SHORTCUTS,
   DATE_PICKER_UNITS,
 } from "metabase/querying/filters/constants";
 import type {
   DatePickerOperator,
+  DatePickerRelativeDirection,
   DatePickerShortcut,
   DatePickerUnit,
   DatePickerValue,
@@ -24,6 +26,7 @@ type DatePickerProps = {
   availableOperators?: DatePickerOperator[];
   availableShortcuts?: DatePickerShortcut[];
   availableUnits?: DatePickerUnit[];
+  availableDirections?: DatePickerRelativeDirection[];
   renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
   renderBackButton?: () => ReactNode;
   onChange: (value: DatePickerValue) => void;
@@ -35,6 +38,7 @@ export function DatePicker({
   availableOperators = DATE_PICKER_OPERATORS,
   availableShortcuts = DATE_PICKER_SHORTCUTS,
   availableUnits = DATE_PICKER_UNITS,
+  availableDirections = DATE_PICKER_RELATIVE_DIRECTIONS,
   renderSubmitButton = renderDefaultSubmitButton,
   renderBackButton,
   onChange,
@@ -64,6 +68,7 @@ export function DatePicker({
         <RelativeDatePicker
           value={value?.type === type ? value : undefined}
           availableUnits={availableUnits}
+          availableDirections={availableDirections}
           renderSubmitButton={renderSubmitButton}
           onChange={onChange}
           onBack={handleBack}

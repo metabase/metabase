@@ -74,7 +74,7 @@ export type DatePickerValue =
 
 export type DatePickerValueType = DatePickerValue["type"];
 
-export type RelativeIntervalDirection = "last" | "current" | "next";
+export type DatePickerRelativeDirection = "last" | "current" | "next";
 
 export interface ShortcutOption {
   label: string;

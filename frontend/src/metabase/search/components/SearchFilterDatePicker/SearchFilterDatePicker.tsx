@@ -1,26 +1,32 @@
 import type {
   DatePickerOperator,
+  DatePickerRelativeDirection,
   DatePickerShortcut,
 } from "metabase/querying/filters/types";
 import { DateAllOptionsWidget } from "metabase/querying/parameters/components/DateAllOptionsWidget";
 
 const OPERATORS: DatePickerOperator[] = ["=", ">", "<", "between"];
 
+type SearchFilterDatePickerProps = {
+  value: string | null;
+  onChange: (value: string | null) => void;
+  availableShortcuts?: DatePickerShortcut[];
+  availableDirections?: DatePickerRelativeDirection[];
+};
+
 export const SearchFilterDatePicker = ({
   value,
   onChange,
   availableShortcuts,
-}: {
-  value: string | null;
-  onChange: (value: string | null) => void;
-  availableShortcuts?: DatePickerShortcut[];
-}) => {
+  availableDirections,
+}: SearchFilterDatePickerProps) => {
   return (
     <DateAllOptionsWidget
       value={value ?? undefined}
       availableOperators={OPERATORS}
       onChange={onChange}
       availableShortcuts={availableShortcuts}
+      availableDirections={availableDirections}
     />
   );
 };

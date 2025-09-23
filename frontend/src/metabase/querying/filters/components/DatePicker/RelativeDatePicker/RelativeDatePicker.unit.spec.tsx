@@ -1,8 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { DATE_PICKER_UNITS } from "metabase/querying/filters/constants";
+import {
+  DATE_PICKER_RELATIVE_DIRECTIONS,
+  DATE_PICKER_UNITS,
+} from "metabase/querying/filters/constants";
 import type {
+  DatePickerRelativeDirection,
   DatePickerUnit,
   RelativeDatePickerValue,
 } from "metabase/querying/filters/types";
@@ -17,9 +21,14 @@ const TAB_CASES = TABS.flatMap((fromTab) =>
 interface SetupOpts {
   value?: RelativeDatePickerValue;
   availableUnits?: DatePickerUnit[];
+  availableDirections?: DatePickerRelativeDirection[];
 }
 
-function setup({ value, availableUnits = DATE_PICKER_UNITS }: SetupOpts = {}) {
+function setup({
+  value,
+  availableUnits = DATE_PICKER_UNITS,
+  availableDirections = DATE_PICKER_RELATIVE_DIRECTIONS,
+}: SetupOpts = {}) {
   const onChange = jest.fn();
   const onBack = jest.fn();
 
@@ -27,6 +36,7 @@ function setup({ value, availableUnits = DATE_PICKER_UNITS }: SetupOpts = {}) {
     <RelativeDatePicker
       value={value}
       availableUnits={availableUnits}
+      availableDirections={availableDirections}
       onChange={onChange}
       onBack={onBack}
     />,

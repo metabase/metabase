@@ -1,12 +1,12 @@
 import type {
   DatePickerOperator,
-  RelativeIntervalDirection,
+  DatePickerRelativeDirection,
 } from "metabase/querying/filters/types";
 
 export type OptionType =
   | "none"
   | DatePickerOperator
-  | RelativeIntervalDirection;
+  | DatePickerRelativeDirection;
 
 export interface OperatorOption {
   label: string;

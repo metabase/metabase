@@ -1,14 +1,14 @@
 import { DATE_PICKER_TRUNCATION_UNITS } from "metabase/querying/filters/constants";
 import type {
+  DatePickerRelativeDirection,
   DatePickerTruncationUnit,
   DatePickerUnit,
   DatePickerValue,
   RelativeDatePickerValue,
-  RelativeIntervalDirection,
 } from "metabase/querying/filters/types";
 import * as Lib from "metabase-lib";
 
-import { DEFAULT_VALUE } from "./constants";
+import { DEFAULT_VALUE, TABS } from "./constants";
 
 export function isRelativeValue(
   value: DatePickerValue | undefined,
@@ -30,7 +30,7 @@ export function isOffsetIntervalValue(value: RelativeDatePickerValue) {
 
 export function getDirection(
   value: RelativeDatePickerValue | undefined,
-): RelativeIntervalDirection {
+): DatePickerRelativeDirection {
   if (value == null || value.value === 0) {
     return "current";
   } else {
@@ -38,13 +38,15 @@ export function getDirection(
   }
 }
 
-export function getDirectionDefaultValue(direction: RelativeIntervalDirection) {
+export function getDirectionDefaultValue(
+  direction: DatePickerRelativeDirection,
+) {
   return setDirectionAndCoerceUnit(DEFAULT_VALUE, direction);
 }
 
 export function setDirection(
   value: RelativeDatePickerValue = DEFAULT_VALUE,
-  direction: RelativeIntervalDirection,
+  direction: DatePickerRelativeDirection,
   fallbackUnit?: DatePickerTruncationUnit,
 ): RelativeDatePickerValue | undefined {
   if (direction === "current") {
@@ -74,7 +76,7 @@ export function setDirection(
 
 export function setDirectionAndCoerceUnit(
   value: RelativeDatePickerValue,
-  direction: RelativeIntervalDirection,
+  direction: DatePickerRelativeDirection,
 ) {
   const fallbackUnit =
     value.unit !== "hour" && value.unit !== "minute"
@@ -133,4 +135,29 @@ export function formatDateRange({
     offsetUnit,
     includeCurrent: options?.includeCurrent,
   });
+}
+
+export function getDefaultValue(
+  availableDirections: DatePickerRelativeDirection[],
+) {
+  if (availableDirections.length === 0) {
+    return DEFAULT_VALUE;
+  }
+
+  return setDirection(DEFAULT_VALUE, availableDirections[0]);
+}
+
+export function getAvailableTabs(
+  initialValue: RelativeDatePickerValue | undefined,
+  availableDirections: DatePickerRelativeDirection[],
+) {
+  const initialDirection = getDirection(
+    initialValue ?? getDefaultValue(availableDirections),
+  );
+
+  return TABS.filter(
+    (tab) =>
+      tab.direction === initialDirection ||
+      availableDirections.includes(tab.direction),
+  );
 }

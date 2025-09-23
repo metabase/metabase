@@ -2,7 +2,10 @@ import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
-import type { DatePickerShortcut } from "metabase/querying/filters/types";
+import type {
+  DatePickerRelativeDirection,
+  DatePickerShortcut,
+} from "metabase/querying/filters/types";
 import { Group } from "metabase/ui";
 import { getJobListUrl } from "metabase-enterprise/transforms/urls";
 import type { TransformTag, TransformTagId } from "metabase-types/api";
@@ -17,6 +20,16 @@ type FilterListProps = {
 };
 
 const NO_SHORTCUTS: DatePickerShortcut[] = [];
+
+const PAST_INTERVAL_DIRECTIONS: DatePickerRelativeDirection[] = [
+  "last",
+  "current",
+];
+
+const FUTURE_INTERVAL_DIRECTIONS: DatePickerRelativeDirection[] = [
+  "current",
+  "next",
+];
 
 export function JobFilterList({ tags, params }: FilterListProps) {
   const dispatch = useDispatch();
@@ -38,13 +51,15 @@ export function JobFilterList({ tags, params }: FilterListProps) {
       <TimeFilterWidget
         label={t`Last run at`}
         value={params.lastRunStartTime}
+        availableDirections={PAST_INTERVAL_DIRECTIONS}
         onChange={handleLastRunStartTimeChange}
       />
       <TimeFilterWidget
         label={t`Next run`}
         value={params.nextRunStartTime}
-        onChange={handleNextRunStartTimeChange}
         availableShortcuts={NO_SHORTCUTS}
+        availableDirections={FUTURE_INTERVAL_DIRECTIONS}
+        onChange={handleNextRunStartTimeChange}
       />
       <TagFilterWidget
         tagIds={params.transformTagIds ?? []}

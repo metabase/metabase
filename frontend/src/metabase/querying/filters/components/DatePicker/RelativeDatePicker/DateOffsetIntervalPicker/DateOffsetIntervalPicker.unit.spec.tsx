@@ -4,9 +4,9 @@ import type { ReactNode } from "react";
 import { renderWithProviders, screen } from "__support__/ui";
 import { DATE_PICKER_UNITS } from "metabase/querying/filters/constants";
 import type {
+  DatePickerRelativeDirection,
   DatePickerUnit,
   RelativeDatePickerValue,
-  RelativeIntervalDirection,
 } from "metabase/querying/filters/types";
 
 import type { DatePickerSubmitButtonProps } from "../../types";
@@ -14,7 +14,7 @@ import type { DatePickerSubmitButtonProps } from "../../types";
 import { DateOffsetIntervalPicker } from "./DateOffsetIntervalPicker";
 
 function getDefaultValue(
-  direction: RelativeIntervalDirection,
+  direction: DatePickerRelativeDirection,
 ): RelativeDatePickerValue {
   return {
     type: "relative",
@@ -62,7 +62,7 @@ describe("DateOffsetIntervalPicker", () => {
     jest.setSystemTime(new Date(2020, 0, 1));
   });
 
-  describe.each<RelativeIntervalDirection>(["last", "next"])(
+  describe.each<DatePickerRelativeDirection>(["last", "next"])(
     "%s",
     (direction) => {
       const defaultValue = getDefaultValue(direction);
