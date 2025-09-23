@@ -1,7 +1,6 @@
 import { isMetabaseInstance } from "./use-sdk-iframe-embed-event-bus";
 
 describe("use-sdk-iframe-embed-event-bus", () => {
-  // eslint-disable-next-line no-literal-metabase-strings -- this is a function name
   describe("isMetabaseInstance", () => {
     it("returns true for same host with different protocols", () => {
       expect(
@@ -30,7 +29,6 @@ describe("use-sdk-iframe-embed-event-bus", () => {
       ).toBe(false);
     });
 
-    // eslint-disable-next-line no-literal-metabase-strings -- just a test name
     describe("Metabase at subpath", () => {
       it("returns true for same host with same subpaths", () => {
         expect(
