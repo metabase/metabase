@@ -119,6 +119,7 @@ export function SnippetFormModal({
             <SnippetForm
               snippet={snippet}
               isEditing={isEditing}
+              isDirty={checkData != null}
               onSubmit={handleSubmit}
               onArchive={handleArchive}
               onCancel={onClose}

@@ -10,7 +10,6 @@ import { ResizableBox, type ResizableBoxProps } from "react-resizable";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/common/components/ExplicitSize";
-import Modal from "metabase/common/components/Modal";
 import Databases from "metabase/entities/databases";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import Snippets from "metabase/entities/snippets";
@@ -376,21 +375,19 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
         {this.props.modalSnippet &&
           this.props.insertSnippet &&
           this.props.closeSnippetModal && (
-            <Modal onClose={this.props.closeSnippetModal}>
-              <SnippetFormModal
-                snippet={this.props.modalSnippet}
-                onCreate={this.props.insertSnippet}
-                onUpdate={(newSnippet, oldSnippet) => {
-                  // get the query instance with the latest Metadata that has the updated snippet
-                  const newQuery = this.props.query.updateSnippet(
-                    oldSnippet,
-                    newSnippet,
-                  );
-                  setDatasetQuery(newQuery);
-                }}
-                onClose={this.props.closeSnippetModal}
-              />
-            </Modal>
+            <SnippetFormModal
+              snippet={this.props.modalSnippet}
+              onCreate={this.props.insertSnippet}
+              onUpdate={(newSnippet, oldSnippet) => {
+                // get the query instance with the latest Metadata that has the updated snippet
+                const newQuery = this.props.query.updateSnippet(
+                  oldSnippet,
+                  newSnippet,
+                );
+                setDatasetQuery(newQuery);
+              }}
+              onClose={this.props.closeSnippetModal}
+            />
           )}
       </div>
     );

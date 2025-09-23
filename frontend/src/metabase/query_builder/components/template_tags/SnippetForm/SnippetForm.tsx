@@ -38,6 +38,7 @@ export type SnippetFormValues = Pick<
 export interface SnippetFormOwnProps {
   snippet?: Partial<SnippetFormValues>;
   isEditing: boolean;
+  isDirty?: boolean;
   onSubmit: (snippet: SnippetFormValues) => void | Promise<void>;
   onArchive?: () => void | Promise<void>;
   onCancel?: () => void;
@@ -52,6 +53,7 @@ function SnippetForm({
   snippet,
   snippetCollections,
   isEditing,
+  isDirty: isInitiallyDirty = false,
   onSubmit,
   onArchive,
   onCancel,
@@ -77,7 +79,7 @@ function SnippetForm({
       onSubmit={onSubmit}
     >
       {({ dirty }) => (
-        <Form disabled={!dirty} className={S.SnippetForm}>
+        <Form disabled={!dirty && !isInitiallyDirty} className={S.SnippetForm}>
           <FormTextArea
             inputClassName={S.FormSnippetTextArea}
             name="content"
@@ -122,7 +124,11 @@ function SnippetForm({
               {!!onCancel && (
                 <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
               )}
-              <FormSubmitButton title={t`Save`} disabled={!dirty} primary />
+              <FormSubmitButton
+                title={t`Save`}
+                disabled={!dirty && !isInitiallyDirty}
+                primary
+              />
             </Flex>
           </Flex>
         </Form>
