@@ -1560,6 +1560,16 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
           cy.findByLabelText("Table name").clear().type("python_transform");
           cy.button("Save").click();
         });
+
+        runTransformAndWaitForSuccess();
+        getTableLink().click();
+        H.queryBuilderHeader()
+          .findByText("Transform Table")
+          .should("be.visible");
+        H.assertQueryBuilderRowCount(3);
+        H.expectUnstructuredSnowplowEvent({
+          event: "transform_created",
+        });
       },
     );
 
