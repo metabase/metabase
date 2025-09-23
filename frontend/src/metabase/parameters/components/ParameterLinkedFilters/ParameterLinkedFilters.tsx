@@ -264,7 +264,7 @@ function ParameterHelpInfo() {
   return (
     <HoverCard>
       <HoverCard.Target>
-        <Icon c="text-secondary" name="info_filled" />
+        <Icon c="text-secondary" name="info" />
       </HoverCard.Target>
       <HoverCard.Dropdown>
         <Stack p="md" maw="20rem">
