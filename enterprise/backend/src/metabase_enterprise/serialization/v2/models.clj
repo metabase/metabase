@@ -90,6 +90,7 @@
    "Revision"
    "SearchIndexMetadata"
    "Secret"
+   "SemanticSearchTokenTracking"
    "Session"
    "TaskHistory"
    "User"

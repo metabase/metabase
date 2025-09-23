@@ -76,6 +76,7 @@
     :model/QueryTable
     :model/RecentViews
     :model/Revision
+    :model/SemanticSearchTokenTracking
     :model/SearchIndexMetadata
     :model/Secret
     :model/Session
