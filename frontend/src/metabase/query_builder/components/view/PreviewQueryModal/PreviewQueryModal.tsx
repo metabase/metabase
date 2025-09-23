@@ -10,7 +10,11 @@ import { NativeQueryPreview } from "metabase/querying/notebook/components/Native
 import { Modal } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 
-export const PreviewQueryModal = ({ onClose }: { onClose: () => void }) => {
+export const PreviewQueryModal = ({
+  onClose = () => undefined,
+}: {
+  onClose?: () => void;
+}) => {
   const question = checkNotNull(useSelector(getQuestion));
   const parameters: UiParameter[] = useSelector(getNextRunParameters);
 
