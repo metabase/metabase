@@ -971,8 +971,7 @@ describe("issue 29786", { tags: "@external" }, () => {
       query: SQL_QUERY,
     });
 
-    // type a space to trigger fields
-    H.NativeEditor.type(" ");
+    cy.findByTestId("native-query-top-bar").icon("variable").click();
 
     cy.findByTestId("tag-editor-variable-f1")
       .findByTestId("variable-type-select")
