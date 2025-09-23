@@ -61,7 +61,7 @@
 (defn- search-result-id
   "Generate a unique identifier for a search result based on its id and model."
   [search-result]
-  (juxt :id :model) search-result)
+  ((juxt :id :model) search-result))
 
 (defn- reciprocal-rank-fusion
   "Combine multiple ranked search result lists using Reciprocal Rank Fusion (RRF).
@@ -88,7 +88,8 @@
                          acc-map
                          (vec result-list)))
                       {}
-                      result-lists)]
+                      result-lists)
+         _ (def tsp-rrf-results rrf-results)]
      (->> rrf-results
           vals
           (sort-by :rrf >)
@@ -103,6 +104,7 @@
                         (set (distinct (keep entity-type->search-model entity-types)))
                         metabot-search-models)
         all-queries   (distinct (concat (or term-queries []) (or semantic-queries [])))
+        _ (def tsp-all-queries all-queries)
         metabot (t2/select-one :model/Metabot :entity_id (get-in metabot-v3.config/metabot-config [metabot-id :entity-id] metabot-id))
         use-verified-content? (if metabot-id
                                 (:use_verified_content metabot)
@@ -131,5 +133,7 @@
         ;; Create futures for parallel execution
         futures (mapv #(future (search-fn %)) all-queries)
         result-lists (mapv deref futures)
-        fused-results (reciprocal-rank-fusion result-lists)]
+        _ (def tsp-result-lists result-lists)
+        fused-results (reciprocal-rank-fusion result-lists)
+        _ (def tsp-results fused-results)]
     (map transform-search-result fused-results)))
