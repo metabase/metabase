@@ -1,3 +1,4 @@
+import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
 import type { DashboardId, Dataset, JsonQuery } from "metabase-types/api";
@@ -239,7 +240,7 @@ function embedDashboardTileUrl(
   lonField: string,
   parameters?: unknown[],
 ): string {
-  let url = `/api/embed/tiles/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${zoom}/${coord.x}/${coord.y}/${latField}/${lonField}`;
+  let url = `/api/${IS_EMBED_PREVIEW ? "preview_" : ""}embed/tiles/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${zoom}/${coord.x}/${coord.y}/${latField}/${lonField}`;
   if (parameters && parameters.length > 0) {
     url += `?parameters=${encodeURIComponent(JSON.stringify(parameters))}`;
   }
