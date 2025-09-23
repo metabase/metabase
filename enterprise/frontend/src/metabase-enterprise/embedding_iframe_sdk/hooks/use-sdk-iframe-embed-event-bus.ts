@@ -61,7 +61,7 @@ export function useSdkIframeEmbedEventBus({
 
   useEffect(() => {
     if (embedSettings?.instanceUrl && usageAnalytics) {
-      const isEmbeddedAnalyticsJsPreview = isSameHost(
+      const isEmbeddedAnalyticsJsPreview = isMetabaseInstance(
         embedSettings.instanceUrl,
         usageAnalytics.embedHostUrl,
       );
@@ -74,7 +74,7 @@ export function useSdkIframeEmbedEventBus({
   return { embedSettings };
 }
 
-function isSameHost(instanceUrl: string, embedHostUrl: string) {
+export function isMetabaseInstance(instanceUrl: string, embedHostUrl: string) {
   const instanceUrlObject = new URL(instanceUrl);
   const embedHostObject = new URL(embedHostUrl);
 
@@ -88,5 +88,5 @@ function isSameHost(instanceUrl: string, embedHostUrl: string) {
    * should be considered as a separate host. But https://example.com/metabase and https://example.com/metabase/dashboard/1
    * are the same host.
    */
-  return normalizedEmbedHostUrl.includes(normalizedInstanceUrl);
+  return normalizedEmbedHostUrl.startsWith(normalizedInstanceUrl);
 }
