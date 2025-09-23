@@ -164,4 +164,10 @@
               (is (contains? card-ids (:id verified-model)))
               (is (contains? card-ids (:id verified-metric)))
               (is (contains? card-ids (:id unverified-model)))
-              (is (contains? card-ids (:id unverified-metric))))))))))
+              (is (contains? card-ids (:id unverified-metric)))
+              (testing "Verified content comes first"
+                (let [ordered-ids (map :id result)
+                      verified-ids #{(:id verified-model) (:id verified-metric)}
+                      unverified-ids #{(:id unverified-model) (:id unverified-metric)}]
+                  (is (every? verified-ids (take 2 ordered-ids)))
+                  (is (every? unverified-ids (drop 2 ordered-ids))))))))))))

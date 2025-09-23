@@ -165,7 +165,8 @@
                                              [:= :mr.moderated_item_id :report_card.id]
                                              [:= :mr.moderated_item_type [:inline "card"]]
                                              [:= :mr.most_recent true]]]
-       :order-by [[[:case [:= :mr.status [:inline "verified"]] [:inline 0] :else [:inline 1]]
+       :order-by [[[:case [:= :mr.status [:inline "verified"]] [:inline 0]
+                    :else [:inline 1]]
                    :asc]])
 
       ;; Filter verified items only when that's desired.
