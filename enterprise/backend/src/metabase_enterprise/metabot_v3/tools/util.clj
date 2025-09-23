@@ -148,14 +148,14 @@
                                   collection-ids (conj (collection/descendant-ids collection) metabot-collection-id)]
                               [:in :collection_id collection-ids])
                             [:and true])
-        base-query (merge {:select [:report_card.*]
-                           :from   [[:report_card]]
-                           :where [:and
-                                   collection-filter
-                                   [:in :type [:inline ["metric" "model"]]]
-                                   [:= :archived false]
-                                   (when api/*current-user-id*
-                                     (collection/visible-collection-filter-clause :collection_id))]})]
+        base-query {:select [:report_card.*]
+                    :from   [[:report_card]]
+                    :where [:and
+                            collection-filter
+                            [:in :type [:inline ["metric" "model"]]]
+                            [:= :archived false]
+                            (when api/*current-user-id*
+                              (collection/visible-collection-filter-clause :collection_id))]}]
     (cond-> base-query
 
       ;; Prioritize verified content.
