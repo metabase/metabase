@@ -747,16 +747,16 @@
 (deftest create-user-setup-source-test
   (testing "POST /api/user"
     (testing "Inviting a teammate from the setup page should create a user with admin permissions"
-          (mt/with-model-cleanup [:model/User]
-               (mt/with-fake-inbox
-                 (let [resp (mt/user-http-request :crowberto :post 200 "user"
-                    {:first_name (mt/random-name)
-                     :last_name (mt/random-name)
-                     :email (mt/random-email)
-                     :source "setup"})]
-                   (is (= [{:id (:id (perms-group/all-users))} {:id (:id (perms-group/admin))}]
-                          (:user_group_memberships resp)))
-                   (is (true? (:is_superuser resp)))))))))
+      (mt/with-model-cleanup [:model/User]
+        (mt/with-fake-inbox
+          (let [resp (mt/user-http-request :crowberto :post 200 "user"
+                                           {:first_name (mt/random-name)
+                                            :last_name (mt/random-name)
+                                            :email (mt/random-email)
+                                            :source "setup"})]
+            (is (= [{:id (:id (perms-group/all-users))} {:id (:id (perms-group/admin))}]
+                   (:user_group_memberships resp)))
+            (is (true? (:is_superuser resp)))))))))
 
 (deftest create-user-set-groups-test
   (testing "POST /api/user"

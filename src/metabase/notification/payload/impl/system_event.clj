@@ -30,11 +30,11 @@
   but ideally this should be part of the template."
   [topic event-info]
   (let [{user-id :id from-setup :is_from_setup} (:object event-info)]
-  (case topic
-    :event/user-invited
-    {:user_invited_email_subject (trs "You''re invited to join {0}''s {1}" (appearance/site-name) (messages/app-name-trs))
-     :user_invited_join_url      (join-url user-id (when from-setup "/admin/databases/create"))}
-    {})))
+    (case topic
+      :event/user-invited
+      {:user_invited_email_subject (trs "You''re invited to join {0}''s {1}" (appearance/site-name) (messages/app-name-trs))
+       :user_invited_join_url      (join-url user-id (when from-setup "/admin/databases/create"))}
+      {})))
 
 (mu/defmethod notification.payload/payload :notification/system-event
   [notification-info :- ::notification.payload/Notification]
