@@ -1871,6 +1871,7 @@ function createComment(
   nodeId: string,
   text: string,
   parent_comment_id: CommentId | null = null,
+  html?: string,
 ) {
   return H.createComment({
     target_type: "document",
@@ -1887,6 +1888,7 @@ function createComment(
         },
       ],
     },
+    html: html ?? `<p>${text}</p>`,
   });
 }
 
