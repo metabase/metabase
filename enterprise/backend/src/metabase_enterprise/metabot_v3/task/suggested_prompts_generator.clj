@@ -38,8 +38,7 @@
 
 (defmethod task/init! ::SuggestedPromptsGenerator
   [_]
-  (when (and (premium-features/has-feature? :metabot-v3)
-             (premium-features/has-feature? :content-verification))
+  (when (premium-features/has-feature? :metabot-v3)
     (let [job
           (jobs/build
            (jobs/of-type SuggestedPromptsGenerator)
