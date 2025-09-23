@@ -42,7 +42,7 @@ describe("DatabaseForm", () => {
 
   it("should not allow to configure cache ttl", async () => {
     setup();
-    await userEvent.click(screen.getByText("Show advanced options"));
+    await userEvent.click(screen.getByLabelText("Advanced options"));
     expect(
       screen.getByText("Choose when syncs and scans happen"),
     ).toBeInTheDocument();
@@ -50,7 +50,7 @@ describe("DatabaseForm", () => {
 
   it("should not render hidden fields", async () => {
     setup();
-    await userEvent.click(screen.getByText("Show advanced options"));
+    await userEvent.click(screen.getByLabelText("Advanced options"));
     expect(screen.queryByText("Destination database")).not.toBeInTheDocument();
   });
 
@@ -88,7 +88,7 @@ describe("DatabaseForm", () => {
       },
     };
     setup({ engines: mockEngines });
-    await userEvent.click(screen.getByText("Show advanced options"));
+    await userEvent.click(screen.getByText("Advanced options"));
     expect(screen.queryByText("Destination database")).not.toBeInTheDocument();
     expect(
       screen.queryByText("Choose when syncs and scans happen"),
