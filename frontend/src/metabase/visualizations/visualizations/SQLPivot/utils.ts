@@ -11,6 +11,7 @@ export interface SQLPivotSettings {
   "sqlpivot.transpose"?: boolean;
   "sqlpivot.show_row_aggregation"?: boolean;
   "sqlpivot.show_column_aggregation"?: boolean;
+  "sqlpivot.hidden_column_labels"?: string[];
 }
 
 export function isSQLPivotSensible(data: DatasetData): boolean {
@@ -46,6 +47,15 @@ export function getDefaultColumnDimension(
     return stringColumns[1].name;
   }
   return null; // Don't auto-select if only one string column (used for rows)
+}
+
+export function getAllVisibleColumns(
+  data: DatasetData,
+  settings: SQLPivotSettings,
+): DatasetColumn[] {
+  // This function returns all columns that would be visible in the transformed pivot data
+  const transformedData = transformSQLDataToPivot(data, settings);
+  return transformedData.cols;
 }
 
 function calculateRowAggregation(

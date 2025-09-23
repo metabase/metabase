@@ -517,6 +517,21 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
             "test-TableInteractive-emptyCell": value == null,
           }),
         header: () => {
+          // For hidden column labels in SQL Pivot: render empty div to avoid background styling
+          if (!translatedColumnName || translatedColumnName.trim() === "") {
+            return (
+              <div
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              />
+            );
+          }
+
           return (
             <HeaderCellWithColumnInfo
               className={cx({
