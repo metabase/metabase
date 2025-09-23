@@ -10,7 +10,12 @@ export const getCollectionList = ({
   baseCollectionId = null,
   collection,
 }: GetCollectionListProps) => {
-  if (baseCollectionId && collection.id === baseCollectionId) {
+  // baseCollectionId can be either a numeric or entity id
+  if (
+    baseCollectionId &&
+    (collection.id === baseCollectionId ||
+      collection.entity_id === baseCollectionId)
+  ) {
     return [];
   }
 

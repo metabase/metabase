@@ -3,23 +3,26 @@ import { t } from "ttag";
 
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
-import { Card } from "metabase/ui";
+import { Card, Flex } from "metabase/ui";
 import {
   useListTransformTagsQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
+import { TimezoneIndicator } from "metabase-enterprise/transforms/components/TimezoneIndicator";
 import type { Transform } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
 import { RunStatusInfo } from "../../../components/RunStatusInfo";
 import { TagList } from "../../../components/TagList";
 import { getTransformUrl } from "../../../urls";
-import { parseLocalTimestamp } from "../../../utils";
+import { parseTimestampWithTimezone } from "../../../utils";
 
 import S from "./TransformList.module.css";
 
 export function TransformList() {
+  const systemTimezone = useSetting("system-timezone");
   const {
     data: transforms = [],
     isLoading: isLoadingTransforms,
@@ -52,8 +55,13 @@ export function TransformList() {
         columnTitles={[
           t`Transform`,
           t`Target`,
-          t`Last run at`,
-          t`Last run status`,
+          <Flex key="last-run-at" component="span" align="center" gap="xs">
+            <span className={S.nowrap}>{t`Last run at`}</span>{" "}
+            <TimezoneIndicator />
+          </Flex>,
+          <span key="last-run-status" className={S.nowrap}>
+            {t`Last run status`}
+          </span>,
           t`Tags`,
         ]}
       >
@@ -63,11 +71,14 @@ export function TransformList() {
             className={S.row}
             onClick={() => handleRowClick(transform)}
           >
-            <td>{transform.name}</td>
-            <td>{transform.target.name}</td>
+            <td className={S.wrap}>{transform.name}</td>
+            <td className={S.wrap}>{transform.target.name}</td>
             <td className={S.nowrap}>
               {transform.last_run?.end_time
-                ? parseLocalTimestamp(transform.last_run.end_time).format("lll")
+                ? parseTimestampWithTimezone(
+                    transform.last_run.end_time,
+                    systemTimezone,
+                  ).format("lll")
                 : null}
             </td>
             <td className={S.nowrap}>
@@ -77,15 +88,16 @@ export function TransformList() {
                   message={transform.last_run.message}
                   endTime={
                     transform.last_run.end_time != null
-                      ? parseLocalTimestamp(
+                      ? parseTimestampWithTimezone(
                           transform.last_run.end_time,
+                          systemTimezone,
                         ).toDate()
                       : null
                   }
                 />
               ) : null}
             </td>
-            <td>
+            <td className={S.wrap}>
               <TagList tags={tags} tagIds={transform.tag_ids ?? []} />
             </td>
           </tr>

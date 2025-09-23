@@ -80,7 +80,6 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
-      dismissEmbedTerms: false,
     });
 
     getEmbedSidebar().within(() => {

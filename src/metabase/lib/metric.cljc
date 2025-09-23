@@ -1,6 +1,6 @@
 (ns metabase.lib.metric
-  "A Metric is a saved MBQL query stage snippet with EXACTLY ONE `:aggregation` and optionally a `:filter` (boolean)
-  expression. Can be passed into the `:aggregation`s list."
+  "A Metric is a special type of Card that you can do special metric stuff with. (Not sure exactly what said special
+  stuff is TBH.)"
   (:require
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]

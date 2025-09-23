@@ -18,7 +18,7 @@
   position: relative;
   max-width: 41.5rem;
   width: 100%;
-  box-shadow: 0 2px 13.8px -1px #1871bf52;
+  border: 1px solid var(--mb-color-brand);
   border-radius: 22px;
 }
 

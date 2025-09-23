@@ -14,11 +14,18 @@ title: Driver interface changelog
 
 - Added metabase.driver/compile-transform, metabase.driver/compile-drop-table, metabase.driver/execute-raw-queries!,
   metabase.driver/run-transform!, metabase.driver/drop-transform-target!, metabase.driver/native-query-deps,
-  metabase.driver/connection-details, metabase.driver/table-exists?, metabase.driver.sql/normalize-name,
-  metabase.driver.sql/default-schema, and metabase.driver.sql/find-table to implement sql transforms.
+  metabase.driver/connection-spec, metabase.driver/table-exists?, metabase.driver.sql/normalize-name,
+  and metabase.driver.sql/default-schema to implement sql transforms.
 
-- `driver/humanize-connection-error-message` now takes a list of all messages in the exception chain,
+- Added `metabase.driver/rename-tables!*` multimethod for atomic table renaming operations. Takes a map of {from-table to-table}
+  pairs that has been topologically sorted.
+
+- Added the driver multi-methods `metabase.driver/schema-exists?` and `metabase.driver/create-schema-if-needed!` which should be implemented by drivers that support `:schemas` and `:transforms/table`.
+
+- `metabase.driver/humanize-connection-error-message` now takes a list of all messages in the exception chain,
   instead of just the top-level message as a string.
+
+- Removed `driver/set-database-used`. Drivers should set default databases in their connection specs instead.
 
 ## Metabase 0.56.3
 

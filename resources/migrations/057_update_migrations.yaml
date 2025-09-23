@@ -1044,6 +1044,20 @@ databaseChangeLog:
                 tag_id IN (SELECT id FROM transform_tag WHERE built_in_type IS NOT NULL);
 
   - changeSet:
+      id: v57.2025-08-22T00:15:01
+      author: william
+      comment: Add template tag data to snippets
+      changes:
+        - addColumn:
+            tableName: native_query_snippet
+            columns:
+              - column:
+                  name: template_tags
+                  remarks: Template tags for the snippet
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+  - changeSet:
       id: v57.2025-08-23T10:00:00
       author: chodorowicz
       comment: Add provider_name column to metabase_database table
@@ -1082,6 +1096,390 @@ databaseChangeLog:
       changes:
         - customChange:
             class: "metabase.app_db.custom_migrations.MigrateClickHouseDetailsToMultiDB"
+
+  - changeSet:
+      id: v57.2025-08-24T10:00:00
+      author: kulyk
+      comment: Create comment table for documents feature
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: comment
+      changes:
+        - createTable:
+            tableName: comment
+            remarks: Comments on various entities (documents, dashboards, etc.)
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key for comment table
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: parent_comment_id
+                  type: int
+                  remarks: ID of the parent comment for threading (null for root comments)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: target_type
+                  type: varchar(50)
+                  remarks: Type of entity being commented on
+                  defaultValue: "document"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: target_id
+                  type: int
+                  remarks: ID of the entity being commented on
+                  constraints:
+                    nullable: false
+              - column:
+                  name: child_target_id
+                  type: ${text.type}
+                  remarks: Sub-entity ID (e.g., document block node ID)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: User who created this comment
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content
+                  type: ${text.type}
+                  remarks: The comment content
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_resolved
+                  type: ${boolean.type}
+                  remarks: Whether this comment thread is resolved
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when comment was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when comment was last updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deleted_at
+                  type: ${timestamp_type}
+                  remarks: Soft delete timestamp (null if not deleted)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-08-24T10:01:00
+      author: kulyk
+      comment: Add foreign key constraint for comment creator
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: comment
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_comment_creator_id
+            onDelete: CASCADE
+      rollback: # will be removed along the table
+
+  - changeSet:
+      id: v57.2025-08-24T10:02:00
+      author: kulyk
+      comment: Add foreign key constraint for comment threading
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: comment
+            baseColumnNames: parent_comment_id
+            referencedTableName: comment
+            referencedColumnNames: id
+            constraintName: fk_comment_parent_comment_id
+            onDelete: CASCADE
+      rollback: # will be removed along the table
+
+  - changeSet:
+      id: v57.2025-08-24T10:03:00
+      author: kulyk
+      comment: Add index for comment entity lookups
+      changes:
+        - createIndex:
+            tableName: comment
+            indexName: idx_comment_entity
+            columns:
+              - column:
+                  name: target_type
+              - column:
+                  name: target_id
+      rollback: # will be removed along the table
+
+  - changeSet:
+      id: v57.2025-08-24T10:04:00
+      author: kulyk
+      comment: Add index for comment creator lookups
+      changes:
+        - createIndex:
+            tableName: comment
+            indexName: idx_comment_creator_id
+            columns:
+              - column:
+                  name: creator_id
+      rollback: # will be removed along the table
+
+  - changeSet:
+      id: v57.2025-08-24T10:05:00
+      author: kulyk
+      comment: Add index for comment threading
+      changes:
+        - createIndex:
+            tableName: comment
+            indexName: idx_comment_parent_comment_id
+            columns:
+              - column:
+                  name: parent_comment_id
+      rollback: # will be removed along the table
+
+  - changeSet:
+      id: v57.2025-09-01T17:15:00
+      author: kulyk
+      comment: Create comment_reaction table for comment reactions feature
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: comment_reaction
+      changes:
+        - createTable:
+            tableName: comment_reaction
+            remarks: Store reactions (emojis) on comments
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key for comment_reaction table
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: comment_id
+                  type: int
+                  remarks: ID of the comment being reacted to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: User who added this reaction
+                  constraints:
+                    nullable: false
+              - column:
+                  name: emoji
+                  type: varchar(10)
+                  remarks: Unicode emoji (supports compound emojis)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when reaction was added
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-09-01T17:16:00
+      author: kulyk
+      comment: Add foreign key constraint for comment reactions to comments
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: comment_reaction
+            baseColumnNames: comment_id
+            referencedTableName: comment
+            referencedColumnNames: id
+            constraintName: fk_comment_reaction_comment_id
+            onDelete: CASCADE
+      rollback: # will be removed along the table
+
+  - changeSet:
+      id: v57.2025-09-01T17:17:00
+      author: kulyk
+      comment: Add foreign key constraint for comment reactions to users
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: comment_reaction
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_comment_reaction_user_id
+            onDelete: CASCADE
+      rollback: # will be removed along the table
+
+  - changeSet:
+      id: v57.2025-09-01T17:18:00
+      author: kulyk
+      comment: Add unique constraint to prevent duplicate reactions
+      changes:
+        - addUniqueConstraint:
+            tableName: comment_reaction
+            columnNames: comment_id, user_id, emoji
+            constraintName: unique_user_comment_emoji
+      rollback: # will be removed along the table
+
+  - changeSet:
+      id: v57.2025-09-01T17:19:00
+      author: kulyk
+      comment: Add index for comment reaction lookups
+      changes:
+        - createIndex:
+            tableName: comment_reaction
+            indexName: idx_comment_reaction_comment_id
+            columns:
+              - column:
+                  name: comment_id
+      rollback: # will be removed along the table
+
+  - changeSet:
+      id: v57.2025-09-11T10:00:00
+      author: qnkhuat
+      comment: Add python_library table for storing Python transform user modules
+      changes:
+        - createTable:
+            tableName: python_library
+            remarks: Store Python library code for user modules in transforms
+            columns:
+              - column:
+                  name: id
+                  type: integer
+                  autoIncrement: true
+                  remarks: Primary key for python_library
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_python_library
+              - column:
+                  name: path
+                  type: varchar(254)
+                  remarks: Path identifier for the library
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uk_python_library_path
+              - column:
+                  name: source
+                  type: ${text.type}
+                  remarks: Python source code for user modules
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When the record was created
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: current_timestamp
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: When the record was last updated
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: current_timestamp
+
+  - changeSet:
+      id: v57.2025-09-12T16:08:00
+      author: piranha
+      comment: Create glossary table
+      changes:
+        - createTable:
+            tableName: glossary
+            remarks: Table to store glossary terms and their definitions
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key identifier for glossary entries
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: term
+                  type: varchar(255)
+                  remarks: The glossary term or phrase being defined
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: definition
+                  type: ${text.type}
+                  remarks: The detailed definition or explanation of the term
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when comment was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when comment was last updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-09-19T11:30:20
+      author: ranquild
+      comment: Add transform_job.ui_display_type
+      changes:
+        - addColumn:
+            tableName: transform_job
+            columns:
+              - column:
+                  name: ui_display_type
+                  remarks: The display type of the schedule, used for the UI only; "cron/raw" or "cron/builder".
+                  type: varchar(32)
+                  defaultValue: 'cron/raw'
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-09-19T12:30:20
+      author: ranquild
+      comment: Set transform_job.ui_display_type for built-in jobs
+      changes:
+        - update:
+            tableName: transform_job
+            columns:
+              - column:
+                  name: ui_display_type
+                  value: 'cron/builder'
+            where: built_in_type IS NOT NULL
+      rollback:
+        - update:
+            tableName: transform_job
+            columns:
+              - column:
+                  name: ui_display_type
+                  value: 'cron/raw'
+            where: built_in_type IS NOT NULL
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

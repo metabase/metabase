@@ -161,7 +161,7 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
 
   const handleNewExploration = () => {
     setCurrentView({ type: "exploration" });
-    reportLocation({ type: "question", id: "new", name: "New Exploration" });
+    reportLocation({ type: "question", id: "new", name: "New exploration" });
   };
 
   return (
@@ -185,7 +185,7 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
             <Group gap="sm">
               {(settings.withNewQuestion ?? true) && (
                 <Button justify="center" onClick={handleNewExploration}>
-                  {t`New Exploration`}
+                  {t`New exploration`}
                 </Button>
               )}
 
@@ -194,7 +194,7 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
                   justify="center"
                   onClick={() => setCurrentView({ type: "create-dashboard" })}
                 >
-                  {t`New Dashboard`}
+                  {t`New dashboard`}
                 </Button>
               )}
             </Group>

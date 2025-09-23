@@ -5,24 +5,23 @@
    [environ.core :refer [env]]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
-   [metabase-enterprise.semantic-search.core]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.db.migration :as semantic.db.migration]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.indexer :as semantic.indexer]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.util :as semantic.util]
-   [metabase.search.engine :as search.engine]
+   [metabase.search.config :as search.config]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
-   [next.jdbc.protocols :as jdbc.protocols]
    [next.jdbc.result-set :as jdbc.rs])
   (:import
    (clojure.lang IDeref)
@@ -32,7 +31,11 @@
 
 (set! *warn-on-reflection* true)
 
-;; If I won't find any use for following muted code in follow-up tasks I'll delete it -- lbrdnk
+;; Purpose of this fixure is to block running tests if db-url is not set. That's true for enterprise app-db tests in CI.
+(defn once-fixture
+  [f]
+  (when semantic.db.datasource/db-url
+    (f)))
 
 (def default-test-db "my_test_db")
 
@@ -61,54 +64,116 @@
   [db-name & body]
   `(do-with-temp-datasource! ~db-name (fn [] ~@body)))
 
+(defmulti do-with-setup-test-db!
+  "Setup pgvector database for tests."
+  {:arglists '([mode thunk])}
+  (fn [mode _thunk] mode))
+
+(defmethod do-with-setup-test-db! :blank
+  [_mode thunk]
+  (thunk))
+
+(declare mock-embedding-model
+         mock-index-metadata
+         mock-table-suffix)
+
+(defmethod do-with-setup-test-db! :mock-initialized
+  [_mode thunk]
+  (with-redefs [semantic.embedding/get-configured-model        (fn [] mock-embedding-model)
+                semantic.index-metadata/default-index-metadata mock-index-metadata
+                semantic.index/model-table-suffix              mock-table-suffix]
+    (let [pgvector (semantic.env/get-pgvector-datasource!)
+          index-metadata (semantic.env/get-index-metadata)
+          embedding-model (semantic.env/get-configured-embedding-model)]
+      (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model)
+      (thunk))))
+
+;; TODO: declare with macro (the do- less version) throws weird errors -- investigate!
+(declare do-with-indexable-documents!)
+
+(defmethod do-with-setup-test-db! :mock-gated
+  [mode thunk]
+  ((get-method do-with-setup-test-db! :mock-initialized)
+   mode
+   (fn []
+     (do-with-indexable-documents!
+      (fn []
+        (let [pgvector (semantic.env/get-pgvector-datasource!)
+              index-metadata (semantic.env/get-index-metadata)]
+          (semantic.pgvector-api/gate-updates! pgvector
+                                               index-metadata
+                                               (search.ingestion/searchable-documents))
+          (thunk)))))))
+
+(declare index-all!)
+
+(defmethod do-with-setup-test-db! :mock-indexed
+  [mode thunk]
+  ((get-method do-with-setup-test-db! :mock-gated)
+   mode
+   (fn []
+     (index-all!)
+     (thunk))))
+
+;; Reminder: this can be adjusted so (1) each database is unique and (2) redefs are thread local (latter is not simple
+;; but possible I believe), so we can take advantage of parallel tests.
 (defn do-with-test-db!
   "Impl [[with-test-db]]"
-  [db-name thunk]
+  [{:keys [dbname mode cleanup]
+    :or {dbname default-test-db
+         mode :blank
+         cleanup :before}
+    :as _opts}
+   thunk]
   (with-temp-datasource! "postgres"
     (try
-      (jdbc/execute! (semantic.db.datasource/ensure-initialized-data-source!)
-                     [(str "DROP DATABASE IF EXISTS " db-name " (FORCE)")])
-      (log/fatal "creating database")
-      (jdbc/execute! (semantic.db.datasource/ensure-initialized-data-source!)
-                     [(str "CREATE DATABASE " db-name)])
-      (log/fatal "created database")
+      (when (#{:before :both} cleanup)
+        (jdbc/execute! (semantic.env/get-pgvector-datasource!)
+                       [(str "DROP DATABASE IF EXISTS " dbname " (FORCE)")]))
+      (log/debugf "Creating database %s" dbname)
+      (jdbc/execute! (semantic.env/get-pgvector-datasource!)
+                     [(str "CREATE DATABASE " dbname)])
+      (log/debugf "Created test pgvector database %s" dbname)
       (catch java.sql.SQLException e
-        (log/fatal "creation failed")
+        (log/debugf "Creation of test pgvector database %s failed" dbname)
         (throw e))))
-  (with-temp-datasource! db-name
-    (thunk)))
 
+  (with-temp-datasource! dbname
+    (do-with-setup-test-db! mode thunk))
+
+  (when (#{:after :both} cleanup)
+    (with-temp-datasource! "postgres"
+      (try
+        (jdbc/execute! (semantic.env/get-pgvector-datasource!)
+                       [(str "DROP DATABASE IF EXISTS " dbname " (FORCE)")])
+        (catch java.sql.SQLException e
+          (log/debugf "Test pgvector database teardown %s failed" dbname)
+          (throw e))))))
+
+;; TODO: When we are parallelizing tests, we'd have to make
+;;       - `with-test-db!` use thread-safe version of with-redefs or similar,
+;;       - instead of `default-test-db` we could make unique database per test by means of eg. some counter.
 (defmacro with-test-db!
   "Drop, create database dbname on pgvector and redefine datasource accordingly. Not thread safe."
-  [db-name & body]
-  `(do-with-test-db! ~db-name (fn [] ~@body)))
+  [opts & body]
+  `(do-with-test-db! ~opts (fn [] ~@body)))
 
-(def ^:private init-delay
-  (delay
-    (when-not @semantic.db.datasource/data-source
-      (semantic.db.datasource/init-db!))))
+(defmacro with-test-db-defaults!
+  "Tiny wrapper to avoid at this point redundant {} arg of [[with-test-db!]]."
+  [& body]
+  `(with-test-db! {} ~@body))
 
-(defn once-fixture [f]
-  (when semantic.db.datasource/db-url
-    @init-delay
-    (f)))
+(defmacro with-weights
+  "Execute `body` overriding search weights with `weight-map`."
+  [weight-map & body]
+  `(mt/with-dynamic-fn-redefs [search.config/weights (constantly ~weight-map)]
+     ~@body))
 
-(declare db)
-
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
-(defn ensure-no-migration-table-fixture [f]
-  (semantic.db.migration/drop-migration-table! db)
-  (f)
-  (semantic.db.migration/drop-migration-table! db))
-
-(def db
-  "Proxies the semantic.db.datasource/data-source, avoids the deref and prettifies a little"
-  ;; proxy because semantic.db.datasource/data-source is not initialised until the fixture runs
-  (reify jdbc.protocols/Sourceable
-    (get-datasource [_] (jdbc.protocols/get-datasource @semantic.db.datasource/data-source))))
-
-(comment
-  (jdbc/execute! db ["select 1"]))
+(defmacro with-only-semantic-weights
+  "Execute `body` with only the semantic search hybrid scorer weights active."
+  [& body]
+  `(with-weights {:rrf 1}
+     ~@body))
 
 (def mock-embeddings
   "Static mapping from strings to (made-up) 4-dimensional embedding vectors for testing. Each pair of strings represents a
@@ -180,18 +245,21 @@
     (-> (semantic.index/default-index mock-embedding-model)
         (semantic.index-metadata/qualify-index mock-index-metadata))))
 
-(defmethod semantic.embedding/get-embedding        "mock" [_ text] (get-mock-embedding text))
-(defmethod semantic.embedding/get-embeddings-batch "mock" [_ texts] (get-mock-embeddings-batch texts))
+;; NOTE: opts are currently unused in following mock implementations
+(defmethod semantic.embedding/get-embedding        "mock" [_ text & {:as _opts}] (get-mock-embedding text))
+(defmethod semantic.embedding/get-embeddings-batch "mock" [_ texts & {:as _opts}] (get-mock-embeddings-batch texts))
 (defmethod semantic.embedding/pull-model           "mock" [_])
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn query-index [search-context]
-  (:results (semantic.index/query-index db mock-index search-context)))
+  (:results (semantic.index/query-index (semantic.env/get-pgvector-datasource!) mock-index search-context)))
 
+;; TODO: this should go!!!
 (defn upsert-index! [documents & {:keys [index] :or {index mock-index} :as opts}]
-  (semantic.index/upsert-index! db index documents opts))
+  (semantic.index/upsert-index! (semantic.env/get-pgvector-datasource!) index documents opts))
 
 (defn delete-from-index! [model ids]
-  (semantic.index/delete-from-index! db mock-index model ids))
+  (semantic.index/delete-from-index! (semantic.env/get-pgvector-datasource!) mock-index model ids))
 
 (defn dog-training-native-query []
   (mt/native-query {:query "SELECT AVG(tricks) FROM dogs WHERE age > 7 GROUP BY breed"}))
@@ -236,74 +304,116 @@
 
 (defn open-temp-index! ^Closeable [& {:keys [index] :or {index mock-index}}]
   (closeable
-   (do (semantic.index/create-index-table-if-not-exists! db index {:force-reset? true})
+   (do (semantic.index/create-index-table-if-not-exists! (semantic.env/get-pgvector-datasource!) index {:force-reset? true})
        index)
    (fn cleanup-temp-index-table! [{:keys [table-name] :as index}]
      (try
-       (semantic.index/drop-index-table! db index)
+       (semantic.index/drop-index-table! (semantic.env/get-pgvector-datasource!) index)
        (catch Exception e
          (log/error e "Warning: failed to clean up test table" table-name))))))
 
-(declare cleanup-index-metadata!)
+(defn do-with-indexable-documents!
+  "Wrap the thunk into with-temp, creating entities used throughout semantic search test.
 
-(defn open-temp-index-and-metadata! ^Closeable []
-  (closeable
-   (do (cleanup-index-metadata! db mock-index-metadata)
-       (semantic.pgvector-api/init-semantic-search! db mock-index-metadata mock-embedding-model)
-       mock-index-metadata)
-   (fn cleanup-temp-index-and-metadata! [index-metadata]
-     (try
-       (cleanup-index-metadata! db index-metadata)
-       (catch Exception e
-         (log/error e "Warning: failed to clean up index and metadata" index-metadata))))))
+  N.B. *disable-updates* is bound to avoid processing of those entities by logic in [[search.ingestion]] ns.
+  The processing is triggered by means :hook/search-index which :model/Card (and others) derive.
+
+  As of 2025-09-10, processing triggered by insertion, combined with manual gating of documents that callers
+  of this fn do, would result in duplicate processing and deletion of those entitities from index
+  due to [[search.ingestion/bulk-ingest!]].
+
+  For details see the https://metaboat.slack.com/archives/C07SJT1P0ET/p1757452434713309?thread_ts=1757410361.879029&cid=C07SJT1P0ET"
+  [thunk]
+  ;; NB: *disable-updates*
+  (binding [search.ingestion/*disable-updates* true]
+    (mt/dataset
+      test-data
+      (mt/with-temp [:model/Collection
+                     {col1 :id}
+                     {:name "Wildlife Collection" :archived false}
+
+                     :model/Collection
+                     {col2 :id}
+                     {:name "Archived Animals" :archived true}
+
+                     :model/Collection
+                     {col3 :id}
+                     {:name "Cryptozoology", :archived false}
+
+                     :model/Card
+                     {card1 :id}
+                     {:name "Dog Training Guide" :collection_id col1 :creator_id (mt/user->id :crowberto)
+                      :archived false :query_type "native" :dataset_query (dog-training-native-query)}
+
+                     :model/Card
+                     _
+                     {:name "Bird Watching Tips" :collection_id col1 :creator_id (mt/user->id :rasta) :archived false}
+
+                     :model/Card
+                     _
+                     {:name "Cat Behavior Study" :collection_id col2 :creator_id (mt/user->id :crowberto) :archived true}
+
+                     :model/Card
+                     _
+                     {:name "Horse Racing Analysis" :collection_id col1 :creator_id (mt/user->id :rasta) :archived false}
+
+                     :model/Card
+                     _
+                     {:name "Fish Tank Setup" :collection_id col2 :creator_id (mt/user->id :crowberto) :archived true}
+
+                     :model/Card
+                     _
+                     {:name "Bigfoot Sightings" :collection_id col3 :creator_id (mt/user->id :crowberto) :archived false}
+
+                     :model/ModerationReview
+                     _
+                     {:moderated_item_type "card"
+                      :moderated_item_id card1
+                      :moderator_id (mt/user->id :crowberto)
+                      :status "verified"
+                      :most_recent true}
+
+                     :model/Dashboard
+                     _
+                     {:name "Elephant Migration" :collection_id col1 :creator_id (mt/user->id :rasta) :archived false}
+
+                     :model/Dashboard
+                     _
+                     {:name "Lion Pride Dynamics" :collection_id col1 :creator_id (mt/user->id :crowberto) :archived false}
+
+                     :model/Dashboard
+                     _
+                     {:name "Penguin Colony Study" :collection_id col2 :creator_id (mt/user->id :rasta) :archived true}
+
+                     :model/Dashboard
+                     _
+                     {:name "Whale Communication" :collection_id col1 :creator_id (mt/user->id :crowberto) :archived false}
+
+                     :model/Dashboard
+                     _
+                     {:name "Tiger Conservation" :collection_id col2 :creator_id (mt/user->id :rasta) :archived true}
+
+                     :model/Dashboard
+                     _
+                     {:name "Loch Ness Stuff" :collection_id col3 :creator_id (mt/user->id :crowberto), :archived false}
+
+                     :model/Database
+                     {db-id :id}
+                     {:name "Animal Database"}
+
+                     :model/Table
+                     _
+                     {:name "Species Table", :db_id db-id}
+
+                     :model/Table
+                     _
+                     {:name "Monsters Table", :db_id db-id, :active true}]
+        (thunk)))))
 
 (defmacro with-indexable-documents!
-  "Add a collection of test documents to that can be indexed to the appdb."
+  "Wrapper for [[do-with-indexable-documents!]]."
   [& body]
-  `(mt/dataset ~(symbol "test-data")
-     (mt/with-temp [:model/Collection       {col1# :id}  {:name "Wildlife Collection" :archived false}
-
-                    :model/Collection       {col2# :id}  {:name "Archived Animals" :archived true}
-
-                    :model/Collection       {col3# :id}  {:name "Cryptozoology", :archived false}
-
-                    :model/Card             {card1# :id} {:name "Dog Training Guide" :collection_id col1# :creator_id (mt/user->id :crowberto) :archived false
-                                                          :query_type "native" :dataset_query (dog-training-native-query)}
-
-                    :model/Card             {}           {:name "Bird Watching Tips" :collection_id col1# :creator_id (mt/user->id :rasta) :archived false}
-
-                    :model/Card             {}           {:name "Cat Behavior Study" :collection_id col2# :creator_id (mt/user->id :crowberto) :archived true}
-
-                    :model/Card             {}           {:name "Horse Racing Analysis" :collection_id col1# :creator_id (mt/user->id :rasta) :archived false}
-
-                    :model/Card             {}           {:name "Fish Tank Setup" :collection_id col2# :creator_id (mt/user->id :crowberto) :archived true}
-
-                    :model/Card             {}           {:name "Bigfoot Sightings" :collection_id col3# :creator_id (mt/user->id :crowberto), :archived false}
-
-                    :model/ModerationReview {}           {:moderated_item_type "card"
-                                                          :moderated_item_id card1#
-                                                          :moderator_id (mt/user->id :crowberto)
-                                                          :status "verified"
-                                                          :most_recent true}
-
-                    :model/Dashboard        {}           {:name "Elephant Migration" :collection_id col1# :creator_id (mt/user->id :rasta) :archived false}
-
-                    :model/Dashboard        {}           {:name "Lion Pride Dynamics" :collection_id col1# :creator_id (mt/user->id :crowberto) :archived false}
-
-                    :model/Dashboard        {}           {:name "Penguin Colony Study" :collection_id col2# :creator_id (mt/user->id :rasta) :archived true}
-
-                    :model/Dashboard        {}           {:name "Whale Communication" :collection_id col1# :creator_id (mt/user->id :crowberto) :archived false}
-
-                    :model/Dashboard        {}           {:name "Tiger Conservation" :collection_id col2# :creator_id (mt/user->id :rasta) :archived true}
-
-                    :model/Dashboard        {}           {:name "Loch Ness Stuff" :collection_id col3# :creator_id (mt/user->id :crowberto), :archived false}
-
-                    :model/Database         {db-id# :id} {:name "Animal Database"}
-
-                    :model/Table            {}           {:name "Species Table", :db_id db-id#}
-
-                    :model/Table            {}           {:name "Monsters Table", :db_id db-id#, :active true}]
-       ~@body)))
+  `(do-with-indexable-documents! (fn [] ~@body)))
 
 (defn index-all!
   "Run indexer synchonously until we've exhausted polling all documents"
@@ -311,42 +421,25 @@
   (let [metadata-row   {:indexer_last_poll Instant/EPOCH
                         :indexer_last_seen Instant/EPOCH}
         indexing-state (semantic.indexer/init-indexing-state metadata-row)
-        step (fn [] (semantic.indexer/indexing-step db mock-index-metadata mock-index indexing-state))]
+        pgvector (semantic.env/get-pgvector-datasource!)
+        step (fn [] (semantic.indexer/indexing-step pgvector mock-index-metadata mock-index indexing-state))]
     (while (do (step) (pos? (:last-novel-count @indexing-state))))))
 
-(defmacro blocking-index!
-  "Execute body ensuring [[index-all!]] is invoked at the end"
-  [& body]
-  `(let [ret# (do ~@body)]
-     (index-all!)
-     ret#))
-
-(defmacro with-index!
-  "Ensure a clean, small index for testing populated with a few collections, cards, and dashboards."
-  [& body]
-  `(with-indexable-documents!
-     (with-redefs [semantic.embedding/get-configured-model        (fn [] mock-embedding-model)
-                   semantic.index-metadata/default-index-metadata mock-index-metadata
-                   semantic.index/model-table-suffix              mock-table-suffix]
-       (with-open [_# (open-temp-index-and-metadata!)]
-         (binding [search.ingestion/*force-sync* true]
-           (blocking-index!
-            (search.engine/reindex! :search.engine/semantic {:force-reset true}))
-           ~@body)))))
-
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn table-exists-in-db?
   "Check if a table actually exists in the database"
   [table-name]
   (when table-name
     (try
-      (semantic.util/table-exists? db (name table-name))
+      (semantic.util/table-exists? (semantic.env/get-pgvector-datasource!) (name table-name))
       (catch Exception _ false))))
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn table-has-index?
   [table-name index-name]
   (when table-name
     (try
-      (let [result (jdbc/execute! db
+      (let [result (jdbc/execute! (semantic.env/get-pgvector-datasource!)
                                   ["SELECT EXISTS (SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname = ?)"
                                    (name table-name)
                                    (name index-name)])]
@@ -421,7 +514,7 @@
 (defn index-count
   "Count the number of documents in the index."
   [index]
-  (let [result (jdbc/execute-one! db
+  (let [result (jdbc/execute-one! (semantic.env/get-pgvector-datasource!)
                                   (-> (sql.helpers/select [:%count.* :count])
                                       (sql.helpers/from (keyword (:table-name index)))
                                       semantic.index/sql-format-quoted)
@@ -433,17 +526,18 @@
   "Query the full index table and return all documents with decoded embeddings.
   Not used in tests, but useful for debugging."
   []
-  (->> (jdbc/execute! db
+  (->> (jdbc/execute! (semantic.env/get-pgvector-datasource!)
                       (-> (sql.helpers/select :model :model_id :content :creator_id :embedding)
                           (sql.helpers/from (keyword (:table-name mock-index)))
                           semantic.index/sql-format-quoted)
                       {:builder-fn jdbc.rs/as-unqualified-lower-maps})
        (mapv decode-embedding)))
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn query-embeddings
   "Query the `mock-index` table and return the decoded `:embedding`s for the given `model`"
   [{:keys [model model_id]}]
-  (->> (jdbc/execute! db
+  (->> (jdbc/execute! (semantic.env/get-pgvector-datasource!)
                       (-> (sql.helpers/select :model :model_id :content :creator_id :embedding)
                           (sql.helpers/from (keyword (:table-name mock-index)))
                           (sql.helpers/where :and
@@ -453,10 +547,11 @@
                       {:builder-fn jdbc.rs/as-unqualified-lower-maps})
        (mapv decode-embedding)))
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn query-tsvectors
   "Query the `mock-index` table and return the unwrapped tsvector columns for the given `model`"
   [{:keys [model model_id]}]
-  (->> (jdbc/execute! db
+  (->> (jdbc/execute! (semantic.env/get-pgvector-datasource!)
                       (-> (sql.helpers/select :model :model_id :content :creator_id
                                               :text_search_vector :text_search_with_native_query_vector)
                           (sql.helpers/from (keyword (:table-name mock-index)))
@@ -479,10 +574,11 @@
            (query-embeddings {:model "dashboard"
                               :model_id "456"})))))
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn check-index-has-no-mock-docs []
   (let [{:keys [table-name]}     mock-index
         table-exists-sql         "select exists(select * from information_schema.tables where table_name = ?) table_exists"
-        [{:keys [table_exists]}] (jdbc/execute! db [table-exists-sql table-name])]
+        [{:keys [table_exists]}] (jdbc/execute! (semantic.env/get-pgvector-datasource!) [table-exists-sql table-name])]
     (when table_exists
       (check-index-has-no-mock-card)
       (check-index-has-no-mock-dashboard))))

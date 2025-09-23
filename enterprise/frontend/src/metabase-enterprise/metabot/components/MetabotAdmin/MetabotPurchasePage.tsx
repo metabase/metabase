@@ -149,7 +149,7 @@ export const MetabotPurchasePage = () => {
                     label={
                       <Text>
                         {t`I agree with the Metabot AI add-on`}{" "}
-                        <ExternalLink href="https://www.metabase.com/license/metabot-addendum">{t`Terms of Service`}</ExternalLink>
+                        <ExternalLink href="https://www.metabase.com/license/hosting">{t`Terms of Service`}</ExternalLink>
                       </Text>
                     }
                   />

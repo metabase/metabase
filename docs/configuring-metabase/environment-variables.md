@@ -393,6 +393,15 @@ Timeout in minutes for databases query execution, both Metabase application data
 
 Whether or not the default GeoJSON maps are enabled.
 
+### `MB_DISABLE_CORS_ON_LOCALHOST`
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `disable-cors-on-localhost`.
+- [Configuration file name](./config-file.md): `disable-cors-on-localhost`
+
+Prevents the server from sending CORS headers for requests originating from localhost.
+
 ### `MB_DOWNLOAD_ROW_LIMIT`
 
 - Type: positive-integer
@@ -562,7 +571,7 @@ Allow these space delimited origins to embed Metabase interactive.
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
-- Default: `localhost:*`
+- Default: ``
 - [Configuration file name](./config-file.md): `embedding-app-origins-sdk`
 
 Allow Metabase SDK access to these space delimited origins.
@@ -575,6 +584,24 @@ Allow Metabase SDK access to these space delimited origins.
 - [Configuration file name](./config-file.md): `embedding-homepage`
 
 Embedding homepage status, indicating if it's visible, hidden or has been dismissed.
+
+### `MB_EMBEDDING_HUB_PRODUCTION_EMBED_SNIPPET_CREATED`
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `embedding-hub-production-embed-snippet-created`.
+- [Configuration file name](./config-file.md): `embedding-hub-production-embed-snippet-created`
+
+Indicates if a production embed snippet has been created for tracking in the embedding hub.
+
+### `MB_EMBEDDING_HUB_TEST_EMBED_SNIPPET_CREATED`
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `embedding-hub-test-embed-snippet-created`.
+- [Configuration file name](./config-file.md): `embedding-hub-test-embed-snippet-created`
+
+Indicates if a test embed snippet has been created for tracking in the embedding hub.
 
 ### `MB_EMBEDDING_SECRET_KEY`
 

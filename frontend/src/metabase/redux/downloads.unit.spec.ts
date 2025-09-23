@@ -56,6 +56,11 @@ describe("getDatasetResponse", () => {
 });
 
 describe("getChartFileName", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date("2024-12-15"));
+  });
+
   const createMockQuestion = (name?: string) => {
     return new Question(createMockCard({ name }), undefined);
   };

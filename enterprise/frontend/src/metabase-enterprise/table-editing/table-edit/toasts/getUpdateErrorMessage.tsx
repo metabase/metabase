@@ -32,3 +32,33 @@ export const getUpdateApiErrorMessage = (
 
   return t`Unknown error`;
 };
+
+export function getUpdateApiErrorType(error: unknown): string {
+  if (
+    isRecord(error) &&
+    isRecord(error.data) &&
+    isRecord(error.data.data) &&
+    typeof error.data.data.type === "string"
+  ) {
+    return error.data.data.type;
+  }
+
+  return "";
+}
+
+export function getUpdateApiTableId(error: unknown): number | undefined {
+  if (
+    isRecord(error) &&
+    isRecord(error.data) &&
+    isRecord(error.data.data) &&
+    typeof error.data.data["table-id"] === "number"
+  ) {
+    return error.data.data["table-id"];
+  }
+
+  return undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}

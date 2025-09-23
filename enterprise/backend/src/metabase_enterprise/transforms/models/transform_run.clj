@@ -1,10 +1,14 @@
 (ns metabase-enterprise.transforms.models.transform-run
   (:require
+   [medley.core :as m]
    [metabase-enterprise.transforms.models.transform-run-cancelation :as cancel]
    [metabase.app-db.core :as mdb]
+   [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
@@ -27,14 +31,19 @@
              :transform_id (:id transform)
              {:order-by [[:start_time :desc] [:end_time :desc]]}))
 
+(defn- latest-run-cte
+  ([] (latest-run-cte nil))
+  ([where]
+   [[:latest_runs
+     (-> {:select [:*
+                   [[:over [[:row_number] {:partition-by :transform_id, :order-by [[:start_time :desc]]}]] :rn]]
+          :from   [:transform_run]}
+         (m/assoc-some :where where))]]))
+
 (defn- latest-runs-query [transform-ids]
-  {:with   [[:ranked_runs
-             {:select [:*
-                       [[:over [[:row_number] {:partition-by :transform_id, :order-by [[:start_time :desc]]}]] :rn]]
-              :from   [:transform_run]
-              :where  [:in :transform_id transform-ids]}]]
+  {:with   (latest-run-cte [:in :transform_id transform-ids])
    :select [:*]
-   :from   [:ranked_runs]
+   :from   [:latest_runs]
    :where  [:= :rn [:inline 1]]})
 
 (defn latest-runs
@@ -43,14 +52,6 @@
   (when (seq transform-ids)
     (into [] (map (comp t2.realize/realize #(dissoc % :rn)))
           (t2/reducible-select :model/TransformRun (latest-runs-query transform-ids)))))
-
-(defn inactive-runs
-  "Return the runs with run IDs in `run-ids` that are not active."
-  [run-ids]
-  (when (seq run-ids)
-    (t2/select :model/TransformRun
-               :id    [:in run-ids]
-               :is_active nil)))
 
 (defn start-run!
   "Start a run"
@@ -146,12 +147,29 @@
                         :message   "Canceled by user but could not guarantee run stopped."})
     (cancel/delete-old-canceling-runs!)))
 
-(defn running-run-for-run-id
+(defn running-run-for-transform-id
   "Return a single active transform run or nil."
-  [id]
+  [transform-id]
   (t2/select-one :model/TransformRun
-                 :id id
+                 :transform_id transform-id
                  :is_active true))
+
+(defn- timestamp-constraint
+  [field-name date-string]
+  (let [{:keys [start end]}
+        (try
+          (params.dates/date-string->range date-string {:inclusive-end? false})
+          (catch Exception e
+            (throw (ex-info (tru "Failed to parse datetime value: {0}" date-string)
+                            {:status-code 400}
+                            e))))
+        start (some-> start u.date/parse)
+        end   (some-> end   u.date/parse)]
+    (into [:and] (remove nil?)
+          [(when start
+             [:>= field-name start])
+           (when end
+             [:< field-name end])])))
 
 (defn paged-runs
   "Return a page of the list of the runs.
@@ -159,6 +177,9 @@
   Follows the conventions used by the FE."
   [{:keys [offset
            limit
+           start_time
+           end_time
+           run_methods
            sort_column
            sort_direction
            transform_ids
@@ -171,52 +192,42 @@
                            :nulls-last
                            :nulls-first)
         sort-column      (keyword sort_column)
-        order-by         (case sort_column
+        order-by         (case sort-column
                            :started_at [[sort-column sort-direction]]
                            :ended_at   [[sort-column sort-direction nulls-sort]]
                            [[:start_time sort-direction]
                             [:end_time   sort-direction nulls-sort]])
-        ;; Build WHERE clause conditions
-        where-conditions (cond-> []
-                           ;; transform_ids and transform_tag_ids (intersection)
-                           (and (seq transform_ids) (seq transform_tag_ids))
-                           (conj [:and
-                                  [:in :transform_id transform_ids]
-                                  [:in :transform_id {:select [:transform_id]
-                                                      :from   [:transform_transform_tag]
-                                                      :where  [:in :tag_id transform_tag_ids]}]])
+        where-cond       (cond-> []
+                           (some? start_time)
+                           (conj (timestamp-constraint :start_time start_time))
 
-                           ;; Only transform_ids
-                           (and (seq transform_ids) (not (seq transform_tag_ids)))
+                           (some? end_time)
+                           (conj (timestamp-constraint :end_time end_time))
+
+                           (seq run_methods)
+                           (conj [:in :run_method (set run_methods)])
+
+                           (seq transform_ids)
                            (conj [:in :transform_id transform_ids])
 
-                           ;; Only transform_tag_ids
-                           (and (seq transform_tag_ids) (not (seq transform_ids)))
+                           (seq transform_tag_ids)
                            (conj [:in :transform_id {:select [:transform_id]
                                                      :from   [:transform_transform_tag]
                                                      :where  [:in :tag_id transform_tag_ids]}])
 
-                           ;; statuses condition
                            (seq statuses)
-                           (conj [:in :status statuses])
+                           (conj [:in :status (set statuses)])
 
-                           ;; is_active condition for started status
-                           (and (seq statuses)
-                                (some #(= % "started") statuses))
+                           ;; optimization: is_active condition for started status
+                           (and (= (first statuses) "started")
+                                (nil? (next statuses)))
                            (conj [:= :is_active true]))
-
-        where-clause  (when (seq where-conditions)
-                        (if (= 1 (count where-conditions))
-                          (first where-conditions)
-                          (into [:and] where-conditions)))
-        query-options (cond-> {:order-by order-by
-                               :offset offset
-                               :limit    limit}
-                        where-clause (assoc :where where-clause))
-        runs          (t2/select :model/TransformRun query-options)
-        count-options (cond-> {}
-                        where-clause (assoc :where where-clause))]
-
+        where-clause     (when (seq where-cond)
+                           (into [:and] where-cond))
+        count-options    (m/assoc-some {} :where where-clause)
+        query-options    (merge {:order-by order-by :offset offset :limit limit}
+                                count-options)
+        runs             (t2/select :model/TransformRun query-options)]
     {:data   (t2/hydrate runs :transform)
      :limit  limit
      :offset offset

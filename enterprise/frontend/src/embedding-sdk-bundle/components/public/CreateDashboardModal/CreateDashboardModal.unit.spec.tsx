@@ -59,7 +59,9 @@ describe("CreateDashboardModal", () => {
   it("should render", async () => {
     setup();
 
-    expect(screen.getByText("New dashboard")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("New dashboard")).toBeInTheDocument();
+    });
 
     expect(screen.getByText("Description")).toBeInTheDocument();
 
@@ -80,6 +82,10 @@ describe("CreateDashboardModal", () => {
       props: {
         onCreate,
       },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("New dashboard")).toBeInTheDocument();
     });
 
     await userEvent.type(
@@ -119,7 +125,7 @@ describe("CreateDashboardModal", () => {
     expect(onCreate).toHaveBeenLastCalledWith(mockResponseDashboard);
   });
 
-  it('should support "isOpen" prop', () => {
+  it('should support "isOpen" prop', async () => {
     const { rerender } = setup({
       props: {
         isOpen: false,
@@ -130,7 +136,9 @@ describe("CreateDashboardModal", () => {
 
     rerender(<CreateDashboardModal isOpen onCreate={jest.fn()} />);
 
-    expect(screen.getByText("New dashboard")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("New dashboard")).toBeInTheDocument();
+    });
   });
 });
 
@@ -146,6 +154,9 @@ function setup(
   useLocaleMock.mockReturnValue({ isLocaleLoading });
 
   setupCollectionByIdEndpoint({ collections: COLLECTIONS });
+
+  // Mock the "personal" collection endpoint since the component now passes string IDs directly
+  fetchMock.get("path:/api/collection/personal", PERSONAL_COLLECTION);
 
   return renderWithSDKProviders(
     <CreateDashboardModal onCreate={jest.fn()} {...props} />,

@@ -145,7 +145,7 @@ const MapNotFound = () => {
         {isAdmin && (
           <Text component="p" className={CS.mt1}>
             {jt`To add a new map, visit ${(
-              <Link to="/admin/settings/maps" className={CS.link}>
+              <Link key="link" to="/admin/settings/maps" className={CS.link}>
                 {t`Admin settings > Maps`}
               </Link>
             )}.`}

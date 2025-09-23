@@ -83,7 +83,7 @@ export const MutableParametersSection = ({
       <ParametersList
         className={cx(CS.alignStretch, CS.rowGap1)}
         vertical
-        dashboard={dashboard}
+        dashboardId={dashboard?.id}
         parameters={valuePopulatedParameters}
         hideParameters={hiddenParameters}
         setParameterValue={setParameterValue}

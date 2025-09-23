@@ -516,6 +516,8 @@
            public-sharing
            queries
            query-processor
+           request
+           server
            settings
            tiles
            util}}
@@ -546,6 +548,13 @@
            settings
            util}}
 
+  glossary
+  {:team "Workflows"
+   :api  #{metabase.glossary.api}
+   :uses #{api
+           models
+           util}}
+
   indexed-entities
   {:team "UX West"
    :api  #{metabase.indexed-entities.api
@@ -573,7 +582,6 @@
    :api  #{metabase.legacy-mbql.normalize
            metabase.legacy-mbql.predicates
            metabase.legacy-mbql.schema
-           metabase.legacy-mbql.schema.helpers
            metabase.legacy-mbql.util}
    :uses #{lib
            models
@@ -590,8 +598,7 @@
            metabase.lib.field
            metabase.lib.field.resolution
            metabase.lib.filter
-           metabase.lib.filter.desugar
-           metabase.lib.filter.desugar.jvm
+           metabase.lib.filter.desugar.jvm ; only so [[metabase.legacy-mbql.jvm-util]] can use defined regexes
            metabase.lib.init
            metabase.lib.join.util
            metabase.lib.metadata
@@ -717,6 +724,7 @@
            metabase.native-query-snippets.core}
    :uses #{api
            collections
+           lib
            models
            permissions
            premium-features
@@ -1097,6 +1105,7 @@
    :api  #{metabase.server.core
            metabase.server.init
            metabase.server.middleware.session
+           metabase.server.settings
            metabase.server.streaming-response} ; TODO -- too many API namespaces
    :uses #{analytics
            api
@@ -1566,6 +1575,7 @@
            app-db
            audit-app
            classloader
+           config
            driver
            lib
            models
@@ -1605,9 +1615,21 @@
   {:team "Cloud"
    :api  #{metabase-enterprise.cloud-add-ons.api}
    :uses #{api
+           events
            premium-features
            util
            enterprise/harbormaster}}
+
+  enterprise/comments
+  {:team "Workflows"
+   :api  #{metabase-enterprise.comments.api
+           metabase-enterprise.comments.init}
+   :uses #{api
+           events
+           models
+           request
+           users
+           util}}
 
   enterprise/content-translation
   {:team "UX West"
@@ -1652,6 +1674,7 @@
            metabase-enterprise.database-replication.init}
    :uses #{analytics
            api
+           driver
            premium-features
            settings
            util
@@ -1705,6 +1728,17 @@
            premium-features
            settings
            util}}
+
+  enterprise/embedding-hub
+  {:team "Embedding"
+   :api  #{metabase-enterprise.embedding-hub.api}
+   :uses #{api
+           appearance
+           audit-app
+           embedding
+           premium-features
+           util
+           enterprise/sso}}
 
   enterprise/gsheets
   {:team "Cloud"
@@ -1942,8 +1976,10 @@
   {:team "Querying"
    :api  #{metabase-enterprise.transforms.api
            metabase-enterprise.transforms.core
-           metabase-enterprise.transforms.init}
-   :uses #{api
+           metabase-enterprise.transforms.init
+           metabase-enterprise.transforms.util}
+   :uses #{analytics
+           api
            app-db
            config
            driver
@@ -1959,7 +1995,24 @@
            sync
            task
            task-history
-           util}}
+           upload
+           util
+           enterprise/transforms-python}}
+
+  enterprise/transforms-python
+  {:team "Querying"
+   :api  #{metabase-enterprise.transforms-python.api
+           metabase-enterprise.transforms-python.init
+           metabase-enterprise.transforms-python.settings}
+   :uses #{api
+           app-db
+           config
+           driver
+           models
+           query-processor
+           settings
+           util
+           enterprise/transforms}}
 
   enterprise/upload-management
   {:team "UX West"

@@ -59,7 +59,12 @@ export const turnModelIntoQuestion =
       return;
     }
 
-    const question = model.setType("question");
+    let question = model.setType("question");
+    // Display 'list' is not supported for questions, for now.
+    if (question.display() === "list") {
+      question = question.setDisplay("table");
+    }
+
     await dispatch(apiUpdateQuestion(question, { rerunQuery: true }));
 
     dispatch(

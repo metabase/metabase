@@ -963,6 +963,64 @@
                    :content "11 = 11"}
                   (t2/select-one :model/NativeQuerySnippet :entity_id (:entity_id snippet)))))))))
 
+(deftest snippet-template-tags-import-test
+  (testing "Template tags import preserves nil, empty, and populated values"
+
+    (testing "Missing template_tags field -> {} when selected"
+      (mt/with-empty-h2-app-db!
+        (let [snippet-data {:serdes/meta [{:model "NativeQuerySnippet"
+                                           :id    "test-entity-1"
+                                           :label "test_snippet_1"}]
+                            :name        "no-tags-field"
+                            :content     "WHERE id = {{id}}"
+                            :creator_id  "test@example.com"
+                            :entity_id   "test-entity-1"}
+              ingestion    (ingestion-in-memory [snippet-data])]
+          (serdes.load/load-metabase! ingestion)
+          (let [template-tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :entity_id "test-entity-1")]
+            ;; Toucan hooks compute the template-tags:
+            (is (=? {"id" {:type         :text
+                           :display-name "ID"
+                           :name         "id"}}
+                    template-tags))))))
+
+    (testing "Empty map template_tags -> preserved as empty map"
+      (mt/with-empty-h2-app-db!
+        (let [snippet-data {:serdes/meta   [{:model "NativeQuerySnippet"
+                                             :id    "test-entity-2"
+                                             :label "test_snippet_2"}]
+                            :name          "empty-tags"
+                            :content       "SELECT 1"
+                            :template_tags {}
+                            :creator_id    "test@example.com"
+                            :entity_id     "test-entity-2"}
+              ingestion    (ingestion-in-memory [snippet-data])]
+          (serdes.load/load-metabase! ingestion)
+          (let [template-tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :entity_id "test-entity-2")]
+            (is (= {} template-tags))))))
+
+    (testing "Snippet template tags get preserved rather than recalculated"
+      (mt/with-empty-h2-app-db!
+        (let [snippet-data {:serdes/meta   [{:model "NativeQuerySnippet"
+                                             :id    "test-entity-3"
+                                             :label "test_snippet_3"}]
+                            :name          "with-tags"
+                            :content       "WHERE id = {{snippet: id}}"
+                            :template_tags {"id" {:type         :snippet
+                                                  :name         "snippet: id"
+                                                  :snippet-name "id"
+                                                  ;; Definitely not calculated that way:
+                                                  :display-name "Snippet: WOOP"}}
+                            :creator_id    "test@example.com"
+                            :entity_id     "test-entity-3"}
+              ingestion    (ingestion-in-memory [snippet-data])]
+          (serdes.load/load-metabase! ingestion)
+          (let [template-tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :entity_id "test-entity-3")]
+            (is (=? {"snippet: id" {:type         :snippet
+                                    :name         "snippet: id"
+                                    :display-name "Snippet: WOOP"}}
+                    template-tags))))))))
+
 (deftest load-action-test
   (let [serialized (atom nil)
         eid (u/generate-nano-id)]
@@ -1246,6 +1304,7 @@
               (mt/with-log-messages-for-level [messages [metabase.models.serialization :warn]]
                 (let [ser            (vec (serdes.extract/extract {:no-settings       true
                                                                    :no-data-model     true
+                                                                   :no-transforms     true
                                                                    :continue-on-error true}))
                       {errors true
                        others false} (group-by #(instance? Exception %) ser)]
@@ -1256,7 +1315,8 @@
                                      (messages))))))))
         (testing "It's possible to skip a few errors during load"
           (let [ser     (vec (serdes.extract/extract {:no-settings   true
-                                                      :no-data-model true}))
+                                                      :no-data-model true
+                                                      :no-transforms true}))
                 changed (change-ser ser {(:entity_id c2) {:collection_id "does-not-exist"}})]
             (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
               (let [report (serdes.load/load-metabase! (ingestion-in-memory changed) {:continue-on-error true})]
@@ -1356,7 +1416,7 @@
                                             (t2/select-one [:model/Card :entity_id] :id (:id c1))))))
 
           (testing "Identity hashes end up in target db in place of entity ids"
-            (let [ser2 (vec (serdes.extract/extract {:no-settings true :no-data-model true}))]
+            (let [ser2 (vec (serdes.extract/extract {:no-settings true :no-data-model true :no-transforms true}))]
               (testing "\nWe exported identity hashes"
                 (doseq [e ser2
                         :when (:entity_id e)]

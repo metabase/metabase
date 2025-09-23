@@ -14,8 +14,11 @@ import {
 } from "metabase/ui";
 import type { Transform, TransformId } from "metabase-types/api";
 
-import { FilterFieldSet } from "../FilterFieldSet";
-import { MAX_HEIGHT, MIN_WIDTH } from "../constants";
+import { FilterFieldSet } from "../../../../components/FilterFieldSet";
+import {
+  FILTER_WIDGET_MAX_HEIGHT,
+  FILTER_WIDGET_MIN_WIDTH,
+} from "../../../../constants";
 
 type TransformFilterWidgetProps = {
   transformIds: TransformId[];
@@ -109,7 +112,7 @@ function TransformFilterForm({
   };
 
   return (
-    <Box component="form" miw={MIN_WIDTH} onSubmit={handleSubmit}>
+    <Box component="form" miw={FILTER_WIDGET_MIN_WIDTH} onSubmit={handleSubmit}>
       <Box px="md" pt="md">
         <TextInput
           value={searchValue}
@@ -119,7 +122,7 @@ function TransformFilterForm({
         />
       </Box>
       {filteredTransforms.length > 0 ? (
-        <Box mah={MAX_HEIGHT} style={{ overflow: "auto" }}>
+        <Box mah={FILTER_WIDGET_MAX_HEIGHT} style={{ overflow: "auto" }}>
           <Checkbox.Group
             value={transformIds.map(getTransformIdValue)}
             onChange={handleChange}

@@ -373,12 +373,12 @@ describe("issues 55617, 55618", () => {
     cy.findByPlaceholderText("Select a target")
       .should("have.value", "People → ID")
       .click();
-    cy.get("main").scrollTo("top"); // scroll to top so the popover drops up
+    H.main().scrollTo("bottom"); // scroll to bottom so the popover drops up
     H.popover().within(() => {
-      cy.findByText("Orders → ID").should("be.visible");
-      cy.findByText("People → ID").should("be.visible");
-      cy.findByText("Products → ID").should("be.visible");
-      cy.findByText("Reviews → ID").should("be.visible").click();
+      cy.findByText("Orders → ID").should("exist");
+      cy.findByText("People → ID").should("exist");
+      cy.findByText("Products → ID").should("exist");
+      cy.findByText("Reviews → ID").should("exist").click();
     });
     cy.findByPlaceholderText("Select a target").should(
       "have.value",
@@ -395,6 +395,76 @@ describe("issues 55617, 55618", () => {
       "No semantic type",
     );
   });
+});
+
+describe("issue 55619", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it(
+    "should allow you to change the currency where you can set a semantic type (metabase#55619)",
+    { tags: "@flaky" },
+    () => {
+      cy.log("set a non-default value");
+      cy.request("PUT", `/api/field/${ORDERS.DISCOUNT}`, {
+        settings: { currency: "CAD" },
+      });
+
+      cy.log("data reference - field list");
+      cy.visit(
+        `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields`,
+      );
+      H.main().within(() => {
+        cy.button(/Edit/).click();
+        cy.findByDisplayValue("Canadian Dollar").click();
+      });
+      H.popover().findByText("Euro").click();
+      H.main().within(() => {
+        cy.findByDisplayValue("Euro").should("be.visible");
+        cy.button(/Save/).click();
+        cy.button(/Edit/).should("be.visible");
+      });
+
+      cy.log("data reference - field details");
+      H.main().within(() => {
+        cy.findByRole("link", { name: /Discount/ }).click();
+        cy.button(/Edit/).click();
+        cy.findByDisplayValue("Euro").click();
+      });
+      H.popover().findByText("Australian Dollar").click();
+      H.main().within(() => {
+        cy.findByDisplayValue("Australian Dollar").should("be.visible");
+        cy.button(/Save/).click();
+        cy.button(/Edit/).should("be.visible");
+      });
+
+      cy.log("model metadata");
+      H.navigationSidebar().findByText("Models").click();
+      H.main().within(() => {
+        cy.findByLabelText("Create a new model").click();
+        cy.findByText("Use the notebook editor").click();
+      });
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
+      H.runButtonOverlay().click();
+      cy.findByTestId("editor-tabs-columns-name").click();
+      H.openColumnOptions("Discount");
+      cy.findByTestId("sidebar-content")
+        .findByDisplayValue("Australian Dollar")
+        .click();
+      H.popover().findByText("Euro").click();
+      cy.findByTestId("sidebar-content")
+        .findByDisplayValue("Euro")
+        .should("be.visible");
+      H.datasetEditBar().button("Save").click();
+      H.modal().button("Save").click();
+      H.tableHeaderColumn("Discount (€)").should("be.visible");
+    },
+  );
 });
 
 function waitForFieldSyncToFinish(iteration = 0) {

@@ -143,31 +143,35 @@ describe("issue 35711", () => {
     cy.signInAsAdmin();
   });
 
-  it("can edit metadata of a model with a custom column (metabase#35711)", () => {
-    H.createQuestion(
-      {
-        type: "model",
-        query: {
-          "source-table": ORDERS_ID,
-          expressions: {
-            "Custom column": ["-", DISCOUNT_FIELD_REF, 1],
+  it(
+    "can edit metadata of a model with a custom column (metabase#35711)",
+    { tags: "@flaky" },
+    () => {
+      H.createQuestion(
+        {
+          type: "model",
+          query: {
+            "source-table": ORDERS_ID,
+            expressions: {
+              "Custom column": ["-", DISCOUNT_FIELD_REF, 1],
+            },
+            limit: 5, // optimization
           },
-          limit: 5, // optimization
         },
-      },
-      { visitQuestion: true },
-    );
+        { visitQuestion: true },
+      );
 
-    H.openQuestionActions();
-    H.popover().findByText("Edit metadata").click();
-    H.waitForLoaderToBeRemoved();
+      H.openQuestionActions();
+      H.popover().findByText("Edit metadata").click();
+      H.waitForLoaderToBeRemoved();
 
-    reorderTaxAndTotalColumns();
-    assertNoError();
+      reorderTaxAndTotalColumns();
+      assertNoError();
 
-    cy.findByTestId("editor-tabs-query-name").click();
-    assertNoError();
-  });
+      cy.findByTestId("editor-tabs-query-name").click();
+      assertNoError();
+    },
+  );
 });
 
 describe("issues 25884 and 34349", () => {
@@ -977,20 +981,26 @@ describe("issue 39993", () => {
     cy.intercept("PUT", "/api/card/*").as("updateModel");
   });
 
-  it("should preserve viz settings for models with custom expressions (metabase#39993)", () => {
-    H.createQuestion(modelDetails).then(({ body: card }) =>
-      H.visitModel(card.id),
-    );
-    H.openQuestionActions();
-    H.popover().findByText("Edit metadata").click();
-    H.waitForLoaderToBeRemoved();
-    cy.log("drag & drop the custom column 100 px to the left");
-    H.moveDnDKitElement(H.tableHeaderColumn(columnName), { horizontal: -100 });
-    cy.button("Save changes").click();
-    cy.wait("@updateModel");
-    cy.findAllByTestId("header-cell").eq(0).should("have.text", "Exp");
-    cy.findAllByTestId("header-cell").eq(1).should("have.text", "ID");
-  });
+  it(
+    "should preserve viz settings for models with custom expressions (metabase#39993)",
+    { tags: "@flaky" },
+    () => {
+      H.createQuestion(modelDetails).then(({ body: card }) =>
+        H.visitModel(card.id),
+      );
+      H.openQuestionActions();
+      H.popover().findByText("Edit metadata").click();
+      H.waitForLoaderToBeRemoved();
+      cy.log("drag & drop the custom column 100 px to the left");
+      H.moveDnDKitElement(H.tableHeaderColumn(columnName), {
+        horizontal: -100,
+      });
+      cy.button("Save changes").click();
+      cy.wait("@updateModel");
+      cy.findAllByTestId("header-cell").eq(0).should("have.text", "Exp");
+      cy.findAllByTestId("header-cell").eq(1).should("have.text", "ID");
+    },
+  );
 });
 
 describe("issue 34574", () => {
@@ -1154,36 +1164,40 @@ describe("issue 36161", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  it("should allow to override metadata for custom columns (metabase#36161)", () => {
-    H.visitModel(ORDERS_MODEL_ID);
-    cy.wait("@dataset");
+  it(
+    "should allow to override metadata for custom columns (metabase#36161)",
+    { tags: "@flaky" },
+    () => {
+      H.visitModel(ORDERS_MODEL_ID);
+      cy.wait("@dataset");
 
-    H.openQuestionActions("Edit query definition");
-    H.getNotebookStep("data").button("Pick columns").click();
-    H.popover().findByText("Select all").click();
-    H.getNotebookStep("data").button("Custom column").click();
-    H.enterCustomColumnDetails({ formula: "[ID]", name: "ID2" });
-    H.popover().button("Done").click();
-    H.getNotebookStep("expression").icon("add").click();
-    H.enterCustomColumnDetails({ formula: "[ID]", name: "ID3" });
-    H.popover().button("Done").click();
-    H.runButtonOverlay().click();
-    cy.wait("@dataset");
-    cy.findByTestId("editor-tabs-columns-name").click();
-    H.openColumnOptions("ID2");
-    H.renameColumn("ID2", "ID2 custom");
-    H.openColumnOptions("ID3");
-    H.renameColumn("ID3", "ID3 custom");
-    H.saveMetadataChanges();
+      H.openQuestionActions("Edit query definition");
+      H.getNotebookStep("data").button("Pick columns").click();
+      H.popover().findByText("Select all").click();
+      H.getNotebookStep("data").button("Custom column").click();
+      H.enterCustomColumnDetails({ formula: "[ID]", name: "ID2" });
+      H.popover().button("Done").click();
+      H.getNotebookStep("expression").icon("add").click();
+      H.enterCustomColumnDetails({ formula: "[ID]", name: "ID3" });
+      H.popover().button("Done").click();
+      H.runButtonOverlay().click();
+      cy.wait("@dataset");
+      cy.findByTestId("editor-tabs-columns-name").click();
+      H.openColumnOptions("ID2");
+      H.renameColumn("ID2", "ID2 custom");
+      H.openColumnOptions("ID3");
+      H.renameColumn("ID3", "ID3 custom");
+      H.saveMetadataChanges();
 
-    H.openNotebook();
-    H.getNotebookStep("data").button("Filter").click();
-    H.popover().within(() => {
-      cy.findByText("ID").should("be.visible");
-      cy.findByText("ID2 custom").should("be.visible");
-      cy.findByText("ID3 custom").should("be.visible");
-    });
-  });
+      H.openNotebook();
+      H.getNotebookStep("data").button("Filter").click();
+      H.popover().within(() => {
+        cy.findByText("ID").should("be.visible");
+        cy.findByText("ID2 custom").should("be.visible");
+        cy.findByText("ID3 custom").should("be.visible");
+      });
+    },
+  );
 });
 
 describe("issue 34514", () => {
@@ -1217,7 +1231,7 @@ describe("issue 34514", () => {
     assertBackToEmptyState();
   });
 
-  it("should allow browser history navigation between tabs (metabase#34514)", () => {
+  it("should allow browser history navigation between tabs (metabase#34514, metabase#45787)", () => {
     H.entityPickerModal().within(() => {
       H.entityPickerModalTab("Tables").click();
       cy.wait("@fetchTables");
@@ -1230,13 +1244,15 @@ describe("issue 34514", () => {
 
     cy.findByTestId("editor-tabs-columns-name").click();
     assertMetadataTabState();
+    cy.get("@dataset.all").should("have.length", 1);
 
     cy.go("back");
-    cy.wait(["@dataset", "@fetchDatabase"]); // This should be removed when (metabase#45787) is fixed
     assertQueryTabState();
+    cy.get("@dataset.all").should("have.length", 1);
 
     cy.go("back");
     assertBackToEmptyState();
+    cy.get("@dataset.all").should("have.length", 1);
   });
 
   function assertQueryTabState() {
@@ -1342,72 +1358,6 @@ describe("issue 47988", () => {
     H.visualize();
     H.tableInteractive().should("be.visible");
   });
-});
-
-describe("issues 28270, 33708", { tags: "@skip" }, () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createQuestion(
-      {
-        type: "model",
-        query: {
-          "source-table": PRODUCTS_ID,
-        },
-      },
-      { visitQuestion: true },
-    );
-    cy.intercept("POST", "/api/dataset").as("dataset");
-  });
-
-  it("shows object relationships when model-based ad-hoc question has a filter (metabase#28270)", () => {
-    checkRelationships();
-    H.modal().icon("close").click();
-
-    H.tableHeaderClick("Title");
-    H.popover().findByText("Filter by this column").click();
-    H.popover().findByLabelText("Filter operator").click();
-    // eslint-disable-next-line no-unsafe-element-filtering
-    H.popover().last().findByText("Contains").click();
-    H.popover().findByLabelText("Filter value").type("a,");
-    H.popover().button("Add filter").click();
-
-    checkRelationships();
-  });
-
-  it("shows object relationships after navigating back from relationships question (metabase#33708)", () => {
-    checkRelationships();
-
-    H.modal().findByText("Orders").click();
-    cy.wait("@dataset");
-    cy.go("back");
-    cy.go("back"); // TODO: remove this when (metabase#33709) is fixed
-
-    checkRelationships();
-  });
-
-  function openObjectDetails() {
-    cy.findAllByTestId("cell-data").eq(8).should("have.text", "1").click();
-  }
-
-  function checkRelationships() {
-    openObjectDetails();
-
-    cy.wait(["@dataset", "@dataset"]);
-
-    H.modal().within(() => {
-      cy.findByTestId("fk-relation-orders")
-        .should("be.visible")
-        .and("contain.text", "93")
-        .and("contain.text", "Orders");
-
-      cy.findByTestId("fk-relation-reviews")
-        .should("be.visible")
-        .and("contain.text", "8")
-        .and("contain.text", "Reviews");
-    });
-  }
 });
 
 describe("issue 46221", () => {

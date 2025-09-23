@@ -52,9 +52,11 @@ export interface DataGridProps<TData>
     DataGridStylesProps {
   emptyState?: React.ReactNode;
   showRowsCount?: boolean;
+  rowsTruncated?: number;
   isColumnReorderingDisabled?: boolean;
   theme?: DataGridTheme;
   zoomedRowIndex?: number;
+  tableFooterExtraButtons?: React.ReactNode;
 }
 
 export const DataGrid = function DataGrid<TData>({
@@ -78,6 +80,8 @@ export const DataGrid = function DataGrid<TData>({
   onHeaderCellClick,
   onAddColumnClick,
   onWheel,
+  tableFooterExtraButtons,
+  rowsTruncated,
 }: DataGridProps<TData>) {
   const {
     virtualColumns,
@@ -394,8 +398,10 @@ export const DataGrid = function DataGrid<TData>({
             table={table}
             enablePagination={enablePagination}
             showRowsCount={showRowsCount}
+            rowsTruncated={rowsTruncated}
             style={styles?.footer}
             className={classNames?.footer}
+            tableFooterExtraButtons={tableFooterExtraButtons}
           />
         </div>
         {measureRoot}

@@ -18,7 +18,7 @@ Once you've confirmed that you're looking at a non-cached view of your tables an
 
 ## Syncing
 
-1. Make sure your database driver is up to date.
+1. If you are self-hosting Metabase, make sure your [Metabase instance](../installation-and-operation/upgrading-metabase.md) and any [community database drivers](../developers-guide/community-drivers.md) are up to date.
 2. Go to **Admin** > **Tools** > **Logs** to check the status of the sync.
 3. Run a query against your database from the Metabase SQL editor to check for database connection or database privilege errors that aren't listed in the logs:
 

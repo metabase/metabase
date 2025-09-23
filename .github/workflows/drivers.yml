@@ -1040,67 +1040,31 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
-  be-tests-starburst-ee:
-    needs: determine-driver-skips
-    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 60
-    env:
-      CI: 'true'
-      DRIVERS: starburst
-    services:
-      starburst:
-        image: trinodb/trino:latest
-        env:
-          CATALOG_MANAGEMENT: dynamic
-        ports:
-          - "8080:8080"
-    name: Starburst
-    steps:
-    - uses: actions/checkout@v4
-    - name: Make plugins directory
-      run: mkdir plugins
-    - name: Test Starburst driver
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-tests-starburst-ee'
-        test-args: >-
-          :only-tags [:mb/driver-tests]
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
-        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-
-  # TODO(rileythomp, 2025-08-20): Re-enable vertica tests once the docker image is updated
-  # be-tests-vertica-ee:
+  # TODO(dpsutton, 2025-08-20): Re-enable starburst when we figure out why it randomly dies in CI
+  # be-tests-starburst-ee:
   #   needs: determine-driver-skips
-  #   if: ${{ false && !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+  #   if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
   #   runs-on: ubuntu-22.04
   #   timeout-minutes: 60
   #   env:
   #     CI: 'true'
-  #     DRIVERS: vertica
+  #     DRIVERS: starburst
   #   services:
-  #     vertica:
-  #       image: vertica/vertica-ce:12.0.2-0
+  #     starburst:
+  #       image: trinodb/trino:latest
+  #       env:
+  #         CATALOG_MANAGEMENT: dynamic
   #       ports:
-  #         - "5433:5433"
-  #   name: Vertica
+  #         - "8080:8080"
+  #   name: Starburst
   #   steps:
   #   - uses: actions/checkout@v4
   #   - name: Make plugins directory
   #     run: mkdir plugins
-  #   - name: Test Vertica driver
+  #   - name: Test Starburst driver
   #     uses: ./.github/actions/test-driver
   #     with:
-  #       junit-name: 'be-tests-vertica-ee'
+  #       junit-name: 'be-tests-starburst-ee'
   #       test-args: >-
   #         :only-tags [:mb/driver-tests]
   #   - name: Upload Test Results
@@ -1114,6 +1078,75 @@ jobs:
   #       aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
   #       aws-region: ${{ vars.AWS_REGION }}
   #       trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
+  login-to-ecr:
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.CI_IAM_ROLE }}
+        role-session-name: GitHub_to_AWS_via_FederatedOIDC
+        aws-region: us-east-1
+    - name: Get ECR password
+      id: login-ecr
+      run: |
+        PASSWORD=$(aws ecr get-login-password --region us-east-1)
+
+        REGISTRY="$(aws sts get-caller-identity --query Account --output text).dkr.ecr.us-east-1.amazonaws.com"
+
+        echo "docker_username=AWS" >> $GITHUB_OUTPUT
+        echo "docker_password=$PASSWORD" >> $GITHUB_OUTPUT
+        echo "registry=$REGISTRY" >> $GITHUB_OUTPUT
+    outputs:
+      registry: ${{ steps.login-ecr.outputs.registry }}
+      docker_username: ${{ steps.login-ecr.outputs.docker_username }}
+      docker_password: ${{ steps.login-ecr.outputs.docker_password }}
+
+  be-tests-vertica-ee:
+    needs: [determine-driver-skips, login-to-ecr]
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      DRIVERS: vertica
+    services:
+      vertica:
+        image: ${{ needs.login-to-ecr.outputs.registry }}/vertica-ce:25.3.0-0
+        ports:
+          - "5433:5433"
+        credentials:
+          username: ${{ needs.login-to-ecr.outputs.docker_username }}
+          password: ${{ needs.login-to-ecr.outputs.docker_password }}
+    name: Vertica
+    steps:
+    - uses: actions/checkout@v4
+    - name: Make plugins directory
+      run: mkdir plugins
+    - name: Test Vertica driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-vertica-ee'
+        test-args: >-
+          :only-tags [:mb/driver-tests]
+    - name: Upload Test Results
+      uses: ./.github/actions/upload-test-results
+      if: always()
+      with:
+        input-path: ./target/junit/
+        output-name: ${{ github.job }}
+        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   drivers-tests-result:
     needs:
@@ -1136,7 +1169,7 @@ jobs:
       - be-tests-sparksql-ee
       - be-tests-sqlite-ee
       - be-tests-sqlserver
-      - be-tests-starburst-ee
+      # - be-tests-starburst-ee
       # TODO(rileythomp, 2025-08-20): Re-enable vertica tests once the docker image is updated
       # - be-tests-vertica-ee
       - be-tests-clickhouse-ee

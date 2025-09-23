@@ -538,9 +538,9 @@
   (mt/test-driver :oracle
     (mt/dataset date-cols-with-datetime-values
       (testing "Oracle's DATE columns are mapped to type/DateTime (#49440)"
-        (testing "Filtering with day temporal unit returns expected resutls"
+        (testing "Filtering with day temporal unit returns expected results"
           (let [query (mt/mbql-query dates_with_time
-                        {:filter [:= [:field %date_with_time {:base-type :type/Date :temporal-unit :day}] "2024-11-06"]})]
+                        {:filter [:= [:field %date_with_time {:temporal-unit :day}] "2024-11-06"]})]
             (mt/with-native-query-testing-context query
               (is (= [[2M "2024-11-06T13:13:13Z"]]
                      (mt/rows (qp/process-query query)))))))))))

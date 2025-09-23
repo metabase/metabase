@@ -19,6 +19,7 @@ import {
 import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
 
 import { MetabotChatEmbedding } from "./MetabotChatEmbedding";
+import { metabotQuestionSchema } from "./MetabotQuestion.schema";
 import { QuestionDetails } from "./QuestionDetails";
 import { QuestionTitle } from "./QuestionTitle";
 
@@ -109,6 +110,7 @@ const MetabotQuestionWrapped = () => {
   );
 };
 
-export const MetabotQuestion = withPublicComponentWrapper(
-  MetabotQuestionWrapped,
+export const MetabotQuestion = Object.assign(
+  withPublicComponentWrapper(MetabotQuestionWrapped),
+  { schema: metabotQuestionSchema },
 );

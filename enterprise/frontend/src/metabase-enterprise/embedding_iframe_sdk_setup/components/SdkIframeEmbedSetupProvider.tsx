@@ -5,9 +5,11 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useLocation } from "react-use";
 import { match } from "ts-pattern";
 import _ from "underscore";
 
+import { useSearchQuery } from "metabase/api";
 import { useUserSetting } from "metabase/common/hooks";
 
 import { trackEmbedWizardSettingsUpdated } from "../analytics";
@@ -34,6 +36,7 @@ interface SdkIframeEmbedSetupProviderProps {
 export const SdkIframeEmbedSetupProvider = ({
   children,
 }: SdkIframeEmbedSetupProviderProps) => {
+  const location = useLocation();
   const [isEmbedSettingsLoaded, setEmbedSettingsLoaded] = useState(false);
 
   const [rawSettings, setRawSettings] = useState<SdkIframeEmbedSetupSettings>();
@@ -50,6 +53,18 @@ export const SdkIframeEmbedSetupProvider = ({
     isRecentsLoading,
   } = useRecentItems();
 
+  const { data: searchData } = useSearchQuery({
+    limit: 0,
+    models: ["dataset"],
+  });
+
+  const modelCount = searchData?.total ?? 0;
+
+  // Embedding Hub: pre-specifies the auth method to use
+  const authMethodOverride = useMemo(() => {
+    return new URLSearchParams(location.search).get("auth_method");
+  }, [location.search]);
+
   const defaultSettings = useMemo(() => {
     return getDefaultSdkIframeEmbedSettings(
       "dashboard",
@@ -61,7 +76,25 @@ export const SdkIframeEmbedSetupProvider = ({
     "select-embed-experience",
   );
 
-  const settings = rawSettings ?? defaultSettings;
+  const settings = useMemo(() => {
+    const latestSettings = rawSettings ?? defaultSettings;
+
+    // Append entity-types=model if there are more than 2 models in the instance.
+    if (modelCount > 2) {
+      return match(latestSettings)
+        .with({ componentName: "metabase-question" }, (settings) => ({
+          ...settings,
+          entityTypes: ["model" as const],
+        }))
+        .with({ componentName: "metabase-browser" }, (settings) => ({
+          ...settings,
+          dataPickerEntityTypes: ["model" as const],
+        }))
+        .otherwise((settings) => settings);
+    }
+
+    return latestSettings;
+  }, [defaultSettings, modelCount, rawSettings]);
 
   // Which embed experience are we setting up?
   const experience = useMemo(
@@ -137,11 +170,26 @@ export const SdkIframeEmbedSetupProvider = ({
   // If they are, set them as the current settings.
   useEffect(() => {
     if (!isEmbedSettingsLoaded && !isRecentsLoading) {
-      setRawSettings({ ...settings, ...persistedSettings });
+      setRawSettings({
+        ...settings,
+        ...persistedSettings,
+
+        // Override the persisted settings if `auth_method` is specified.
+        // This is used for Embedding Hub.
+        ...(authMethodOverride !== null && {
+          useExistingUserSession: authMethodOverride === "user_session",
+        }),
+      });
 
       setEmbedSettingsLoaded(true);
     }
-  }, [persistedSettings, isEmbedSettingsLoaded, settings, isRecentsLoading]);
+  }, [
+    persistedSettings,
+    isEmbedSettingsLoaded,
+    settings,
+    isRecentsLoading,
+    authMethodOverride,
+  ]);
 
   return (
     <SdkIframeEmbedSetupContext.Provider value={value}>

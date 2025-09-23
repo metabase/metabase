@@ -1,7 +1,11 @@
 (ns metabase.query-processor.streaming
   (:require
+   [clojure.string :as str]
    [metabase.analytics.core :as analytics]
    [metabase.driver :as driver]
+   ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
+   ;; Lib soon
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.visualization-settings :as mb.viz]
@@ -28,6 +32,16 @@
 (comment qp.csv/keep-me
          qp.json/keep-me
          qp.xlsx/keep-me)
+
+(defn safe-filename-prefix
+  "Generate a safe filename prefix from a card name. Trims whitespace, slugifies the name,
+  and limits to 200 characters to respect filesystem limitations. Falls back to 'question' if empty."
+  [card-name]
+  (or (some-> card-name
+              str/trim
+              not-empty
+              (u/slugify {:max-length 200}))
+      "question"))
 
 (defn- deduplicate-col-names
   "Deduplicate column names that would otherwise conflict.

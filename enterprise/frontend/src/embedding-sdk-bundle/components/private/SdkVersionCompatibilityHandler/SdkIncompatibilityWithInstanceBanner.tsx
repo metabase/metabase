@@ -2,17 +2,19 @@ import { useMemo } from "react";
 import { c, t } from "ttag";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
-import { getEmbeddingSdkPackageBuildData } from "embedding-sdk-bundle/lib/get-embedding-sdk-package-build-data";
+import { useSdkSelector } from "embedding-sdk-bundle/store";
+import { getMetabaseInstanceVersion } from "embedding-sdk-bundle/store/selectors";
+import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import {
   isInvalidMetabaseVersion,
   isSdkPackageCompatibleWithSdkBundle,
-} from "embedding-sdk-bundle/lib/version-utils";
-import { useSdkSelector } from "embedding-sdk-bundle/store";
-import { getMetabaseInstanceVersion } from "embedding-sdk-bundle/store/selectors";
+} from "embedding-sdk-shared/lib/version-utils";
 import { Anchor } from "metabase/ui";
 
 export function SdkIncompatibilityWithInstanceBanner() {
-  const sdkPackageVersion = getEmbeddingSdkPackageBuildData().version;
+  const sdkPackageVersion = getBuildInfo(
+    "METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO",
+  ).version;
   const sdkBundleVersion = useSdkSelector(getMetabaseInstanceVersion);
 
   const isSdkCompatibleWithInstance = useMemo(() => {

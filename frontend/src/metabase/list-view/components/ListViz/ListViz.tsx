@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
@@ -12,6 +13,10 @@ import {
 import { Box } from "metabase/ui";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import type {
   ColumnSettingDefinition,
   VisualizationProps,
@@ -31,12 +36,16 @@ import type { DatasetColumn, Series } from "metabase-types/api";
 import { ListView } from "../ListView/ListView";
 import { ListViewConfiguration } from "../ListView/ListViewConfiguration";
 
+import S from "./ListViz.module.css";
+
 const vizDefinition = {
   identifier: "list",
   iconName: "list",
   getUiName: () => t`List`,
   hidden: true,
 
+  minSize: getMinSize("list"),
+  defaultSize: getDefaultSize("list"),
   checkRenderable: () => {},
   isSensible: () => true,
 
@@ -242,6 +251,7 @@ export const ListViz = ({
   settings,
   onVisualizationClick,
   queryBuilderMode,
+  isDashboard,
 }: VisualizationProps) => {
   const dispatch = useDispatch();
   const question = useSelector(getQuestion);
@@ -263,6 +273,14 @@ export const ListViz = ({
     }
     return {};
   }, [question]);
+
+  const columnsMetadata = useMemo(() => {
+    if (!question) {
+      return [];
+    }
+    const query = question.query();
+    return data.cols.map((col) => Lib.fromLegacyColumn(query, -1, col));
+  }, [data, question]);
 
   // Get the entity type from the question's source table
   const entityType = useMemo(() => {
@@ -312,16 +330,24 @@ export const ListViz = ({
   };
 
   return (
-    <Box w="100%" h="100%" pos="absolute">
+    <Box
+      w="100%"
+      pos="absolute"
+      className={cx(S.ListViz, {
+        [S.listViewDashcard]: isDashboard,
+      })}
+    >
       {isShowingListViewConfiguration ? (
         <ListViewConfiguration
           data={data}
           settings={settings}
           entityType={entityType}
           onChange={updateListSettings}
+          columnsMetadata={columnsMetadata}
         />
       ) : (
         <ListView
+          className={isDashboard ? S.dashboardListView : undefined}
           data={data}
           settings={settings}
           sortedColumnName={sortedColumnName}

@@ -3777,6 +3777,92 @@ describe("issue 35852", () => {
   }
 });
 
+describe("issue 47097", () => {
+  const questionDetails = {
+    name: "Products",
+    query: {
+      "source-table": PRODUCTS_ID,
+    },
+  };
+
+  const parameterDetails = {
+    id: "49596bcb-62bb-49d6-a92d-bf5dbfddf43b",
+    type: "string/=",
+    name: "Category",
+    slug: "category",
+  };
+
+  const dashboardDetails = {
+    name: "Dashboard",
+    parameters: [parameterDetails],
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it('should be able to use filters without "create-queries" permissions when coming from a dashboard (metabase#47097)', () => {
+    cy.log("create a dashboard with a parameter mapped to a field with values");
+    H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      ({ body: { id, card_id, dashboard_id } }) => {
+        H.updateDashboardCards({
+          dashboard_id,
+          cards: [
+            {
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 12,
+              size_y: 12,
+              parameter_mappings: [
+                {
+                  parameter_id: parameterDetails.id,
+                  card_id,
+                  target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+                },
+              ],
+            },
+          ],
+        });
+        cy.wrap(dashboard_id).as("dashboardId");
+      },
+    );
+
+    cy.log("verify the field values in a dashboard");
+    cy.signIn("nodata");
+    H.visitDashboard("@dashboardId");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Gadget").should("be.visible");
+      cy.findByPlaceholderText("Search the list").type("{esc}");
+    });
+
+    cy.log("drill-thru without filter values and check the dropdown");
+    H.getDashboardCard().findByText("Products").click();
+    H.queryBuilderHeader().should("be.visible");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Gadget").should("be.visible");
+      cy.findByPlaceholderText("Search the list").type("{esc}");
+    });
+    H.queryBuilderHeader().findByLabelText("Back to Dashboard").click();
+    H.getDashboardCard().should("be.visible");
+
+    cy.log("add a filter value, drill-thru, and check the dropdown");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Gadget").click();
+      cy.button("Add filter").click();
+    });
+    H.getDashboardCard().findByText("Products").click();
+    H.queryBuilderHeader().should("be.visible");
+    H.filterWidget().click();
+    H.popover().findByText("Widget").should("be.visible");
+  });
+});
+
 describe("issue 48524", () => {
   const questionDetails = {
     name: "15119",
@@ -4695,6 +4781,7 @@ describe("issue 14595", () => {
           },
           {
             name: "Many data types",
+            database: WRITABLE_DB_ID,
             query: { "source-table": tableId },
           },
         ],

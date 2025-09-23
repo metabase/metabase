@@ -51,7 +51,7 @@
 (defn columns-without-pivot-group
   "Removes the pivot-grouping column from a list of columns, identifying it by name."
   [columns]
-  (filter #(not (pivot-group-column? %)) columns))
+  (remove pivot-group-column? columns))
 
 (def ^:private get-active-breakout-indexes
   "For a given pivot group value (k), returns the indexes of active breakouts.

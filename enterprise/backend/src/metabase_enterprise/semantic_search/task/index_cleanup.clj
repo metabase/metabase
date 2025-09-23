@@ -1,14 +1,17 @@
 (ns metabase-enterprise.semantic-search.task.index-cleanup
   "Task to clean up inactive and stale semantic search indexes."
   (:require
+   [clojure.string :as str]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
+   [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
@@ -33,6 +36,53 @@
             (sql/format :quoted true))]
     (->> (jdbc/execute! pgvector orphaned-tables-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
          (map :table_name))))
+
+(defn- parse-repair-table-timestamp
+  "Extracts timestamp from repair table name. Returns nil if parsing fails."
+  [table-name]
+  (try
+    (when-let [[_ timestamp-str] (re-find #"^repair_(\d+)_" table-name)]
+      (t/instant (parse-long timestamp-str))) ; Convert milliseconds to instant
+    (catch Exception _
+      nil)))
+
+(defn- orphan-repair-tables
+  "Returns a list of repair tables that are older than the retention period.
+  Repair tables are named: repair_<millis-since-epoch>_<short-id>
+
+  Repair tables should not become orphaned under normal operation, since they should be deleted immeditaely after use.
+  However, in case of a crash or failure, they may be left behind, so we clean them up after a retention period."
+  [pgvector]
+  (let [retention-cutoff (t/minus (t/instant) (t/hours (semantic.settings/repair-table-retention-hours)))
+        repair-tables-sql (-> {:select [:t.table_name]
+                               :from [[:information_schema.tables :t]]
+                               :where [:like :t.table_name [:inline "repair_%"]]}
+                              (sql/format :quoted true))
+        all-repair-tables (->> (jdbc/execute! pgvector repair-tables-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+                               (map :table_name))
+        old-tables (filter (fn [table-name]
+                             (when-let [table-timestamp (parse-repair-table-timestamp table-name)]
+                               (t/before? table-timestamp retention-cutoff)))
+                           all-repair-tables)]
+    (when (seq old-tables)
+      (log/infof "Found %d orphaned repair tables older than %d hours"
+                 (count old-tables)
+                 (semantic.settings/repair-table-retention-hours)))
+    old-tables))
+
+(defn- cleanup-orphan-repair-tables!
+  "Cleans up repair tables that are older than the retention period."
+  [pgvector]
+  (let [orphan-tables (orphan-repair-tables pgvector)]
+    (when (seq orphan-tables)
+      (let [tables-to-drop (map keyword orphan-tables)
+            drop-table-sql (sql/format
+                            (apply sql.helpers/drop-table :if-exists tables-to-drop)
+                            :quoted true)]
+        (log/infof "Dropping %d orphaned repair tables: %s"
+                   (count tables-to-drop)
+                   (str/join ", " orphan-tables))
+        (jdbc/execute! pgvector drop-table-sql)))))
 
 (defn- stale-index-tables
   "Returns a list of semantic search index tables that are considered stale and can be dropped.
@@ -105,7 +155,8 @@
         orphaned-table-names (map keyword (orphan-index-tables pgvector index-metadata))
         tables-to-drop       (concat stale-table-names orphaned-table-names)
         drop-table-sql       (sql/format
-                              (apply sql.helpers/drop-table :if-exists tables-to-drop))]
+                              (apply sql.helpers/drop-table :if-exists tables-to-drop)
+                              :quoted true)]
     (when (seq tables-to-drop)
       (log/infof "Found %d semantic search index tables to clean up" (count tables-to-drop))
       (doseq [table-name stale-table-names]
@@ -117,7 +168,8 @@
   (let [pgvector             (semantic.env/get-pgvector-datasource!)
         index-metadata       (semantic.env/get-index-metadata)]
     (cleanup-stale-indexes! pgvector index-metadata)
-    (cleanup-old-gate-tombstones! pgvector index-metadata)))
+    (cleanup-old-gate-tombstones! pgvector index-metadata)
+    (cleanup-orphan-repair-tables! pgvector)))
 
 (def ^:private cleanup-job-key (jobs/key "metabase.task.semantic-index-cleanup.job"))
 (def ^:private cleanup-trigger-key (triggers/key "metabase.task.semantic-index-cleanup.trigger"))
@@ -128,16 +180,18 @@
   (cleanup-stale-indexes-and-gate-tombstones!))
 
 (defmethod task/init! ::SemanticIndexCleanup [_]
-  (let [job (jobs/build
-             (jobs/of-type SemanticIndexCleanup)
-             (jobs/with-identity cleanup-job-key))
-        trigger (triggers/build
-                 (triggers/with-identity cleanup-trigger-key)
-                 (triggers/start-now)
-                 (triggers/with-schedule
+  (when (and (string? (not-empty semantic.db.datasource/db-url))
+             (premium-features/has-feature? :semantic-search))
+    (let [job (jobs/build
+               (jobs/of-type SemanticIndexCleanup)
+               (jobs/with-identity cleanup-job-key))
+          trigger (triggers/build
+                   (triggers/with-identity cleanup-trigger-key)
+                   (triggers/start-now)
+                   (triggers/with-schedule
                   ;; Run daily at 3 AM
-                  (cron/cron-schedule "0 0 3 * * ? *")))]
-    (task/schedule-task! job trigger)))
+                    (cron/cron-schedule "0 0 3 * * ? *")))]
+      (task/schedule-task! job trigger))))
 
 (comment
   (task/job-exists? cleanup-job-key)

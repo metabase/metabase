@@ -11,13 +11,14 @@ import {
 } from "@dnd-kit/core";
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { arrayMove } from "@dnd-kit/sortable";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
   ReorderableTagsInput,
   SortablePill,
 } from "metabase/common/components/ReorderableTagsInput/ReorderableTagsInput";
+import { getColumnExample } from "metabase/query_builder/components/expressions/CombineColumns/util";
 import {
   ActionIcon,
   Box,
@@ -29,7 +30,8 @@ import {
   Text,
 } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { DatasetColumn, DatasetData } from "metabase-types/api";
+import type * as Lib from "metabase-lib";
+import type { DatasetColumn, DatasetData, RowValues } from "metabase-types/api";
 
 import { ENTITY_ICONS, getEntityIcon, useListColumns } from "./ListView";
 import S from "./ListView.module.css";
@@ -52,6 +54,7 @@ export const ListViewConfiguration = ({
   entityType,
   onChange,
   settings,
+  columnsMetadata,
 }: {
   data: DatasetData;
   entityType?: string;
@@ -61,6 +64,7 @@ export const ListViewConfiguration = ({
     entityIcon?: string;
   }) => void;
   settings?: ComputedVisualizationSettings;
+  columnsMetadata: Lib.ColumnMetadata[];
 }) => {
   const { cols } = data;
 
@@ -125,7 +129,10 @@ export const ListViewConfiguration = ({
     .map(findColByName)
     .filter(Boolean) as DatasetColumn[];
 
-  const firstRow = data.rows?.[0];
+  const previewSample = useMemo(
+    () => generatePreviewSample(data.rows, columnsMetadata),
+    [data.rows, columnsMetadata],
+  );
 
   const onConfigurationChange = ({
     left = leftValues,
@@ -379,22 +386,18 @@ export const ListViewConfiguration = ({
           data-testid="list-view-preview"
         >
           <Text fw="bold">{t`Preview`}</Text>
-          {firstRow ? (
-            <ListViewItem
-              row={firstRow}
-              cols={cols}
-              settings={settings as ComputedVisualizationSettings}
-              entityIcon={selectedEntityIcon}
-              imageColumn={undefined}
-              titleColumn={selectedTitleColumn}
-              subtitleColumn={selectedSubtitleColumn}
-              rightColumns={selectedRightColumns}
-              onClick={() => {}}
-              style={{ cursor: "default" }}
-            />
-          ) : (
-            <Text c="text-medium">{t`No data to preview`}</Text>
-          )}
+          <ListViewItem
+            row={previewSample}
+            cols={cols}
+            settings={settings as ComputedVisualizationSettings}
+            entityIcon={selectedEntityIcon}
+            imageColumn={undefined}
+            titleColumn={selectedTitleColumn}
+            subtitleColumn={selectedSubtitleColumn}
+            rightColumns={selectedRightColumns}
+            onClick={() => {}}
+            style={{ cursor: "default" }}
+          />
         </Stack>
       </Stack>
 
@@ -406,3 +409,11 @@ export const ListViewConfiguration = ({
     </DndContext>
   );
 };
+
+function generatePreviewSample(rows: RowValues[], cols: Lib.ColumnMetadata[]) {
+  const sample = rows[0] || Array(cols.length).fill(null);
+
+  return sample.map((value, index) =>
+    value == null ? getColumnExample(cols[index]) : value,
+  );
+}

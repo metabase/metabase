@@ -40,7 +40,7 @@ runs:
         list-tests: failed
         fail-on-error: false
     - name: Upload Logs on Failure
-      if: failure()
+      if: always() && !success()
       uses: actions/upload-artifact@v4
       with:
         name: test-logs-${{ github.job }}

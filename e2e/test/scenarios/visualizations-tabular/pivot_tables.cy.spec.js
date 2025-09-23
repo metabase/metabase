@@ -680,20 +680,6 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
           assertOnPivotFields();
         });
 
-        // Skipped to avoid flake
-        it(
-          "should display pivot table in an embed preview",
-          { tags: "@skip" },
-          () => {
-            // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-            cy.findByText(/Embed in your application/).click();
-            // we use preview endpoints when MB is iframed in itself
-            // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-            cy.findByText(test.subject);
-            H.getIframeBody().within(assertOnPivotFields);
-          },
-        );
-
         it("should display pivot table in an embed URL", () => {
           cy.findByTestId("pivot-table").should("be.visible");
           if (test.case === "question") {

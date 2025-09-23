@@ -38,6 +38,7 @@ export const engineKeys = [
   "databricks",
   "druid-jdbc",
   "druid",
+  "mongo",
   "mysql",
   "oracle",
   "postgres",
@@ -161,6 +162,8 @@ export type ScheduleDayType =
 
 export type ScheduleFrameType = "first" | "mid" | "last";
 
+export type ScheduleDisplayType = "cron/builder" | "cron/raw" | null;
+
 export interface FontFile {
   src: string;
   fontWeight: number;
@@ -229,6 +232,7 @@ const tokenStatusFeatures = [
   "embedding-sdk",
   "embedding",
   "embedding-simple",
+  "embedding-hub",
   "hosting",
   "metabase-store-managed",
   "metabot-v3",
@@ -430,6 +434,7 @@ interface AdminSettings {
   "active-users-count"?: number;
   "custom-geojson-enabled": boolean;
   "deprecation-notice-version"?: string;
+  "disable-cors-on-localhost": boolean;
   "embedding-secret-key"?: string;
   "redirect-all-requests-to-https": boolean;
   "query-caching-min-ttl": number;
@@ -445,8 +450,11 @@ interface AdminSettings {
   "show-static-embed-terms": boolean | null;
   "show-sdk-embed-terms": boolean | null;
   "show-simple-embed-terms": boolean | null;
+  "system-timezone"?: string;
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
+  "embedding-hub-test-embed-snippet-created": boolean;
+  "embedding-hub-production-embed-snippet-created": boolean;
   "store-url": string;
   gsheets: Partial<GdrivePayload>;
   "license-token-missing-banner-dismissal-timestamp"?: Array<string>;
@@ -667,6 +675,8 @@ export interface EnterpriseSettings extends Settings {
   "saml-group-mappings": Record<string, GroupId[]> | null;
   "database-replication-enabled": boolean | null;
   "database-replication-connections"?: DatabaseReplicationConnections | null;
+  "embedding-hub-test-embed-snippet-created": boolean;
+  "embedding-hub-production-embed-snippet-created": boolean;
   /**
    * @deprecated
    */

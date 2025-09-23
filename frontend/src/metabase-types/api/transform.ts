@@ -1,5 +1,6 @@
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery } from "./query";
+import type { ScheduleDisplayType } from "./settings";
 import type { Table } from "./table";
 
 export type TransformId = number;
@@ -47,7 +48,13 @@ export type TransformRun = {
   transform?: Transform;
 };
 
-export type TransformRunStatus = "started" | "succeeded" | "failed" | "timeout";
+export type TransformRunStatus =
+  | "started"
+  | "succeeded"
+  | "failed"
+  | "timeout"
+  | "canceling"
+  | "canceled";
 
 export type TransformRunMethod = "manual" | "cron";
 
@@ -63,12 +70,14 @@ export type TransformJob = {
   name: string;
   description: string | null;
   schedule: string;
+  ui_display_type: ScheduleDisplayType;
   created_at: string;
   updated_at: string;
 
   // hydrated fields
   tag_ids?: TransformTagId[];
   last_run?: TransformRun | null;
+  next_run?: { start_time: string } | null;
 };
 
 export type CreateTransformRequest = {
@@ -92,6 +101,7 @@ export type CreateTransformJobRequest = {
   name: string;
   description?: string | null;
   schedule: string;
+  ui_display_type?: ScheduleDisplayType;
   tag_ids?: TransformTagId[];
 };
 
@@ -100,6 +110,7 @@ export type UpdateTransformJobRequest = {
   name?: string;
   description?: string | null;
   schedule?: string;
+  ui_display_type?: ScheduleDisplayType;
   tag_ids?: TransformTagId[];
 };
 
@@ -112,10 +123,24 @@ export type UpdateTransformTagRequest = {
   name?: string;
 };
 
+export type RunTransformResponse = {
+  run_id: TransformRunId;
+  message?: string;
+};
+
+export type ListTransformJobsRequest = {
+  last_run_start_time?: string;
+  next_run_start_time?: string;
+  transform_tag_ids?: TransformTagId[];
+};
+
 export type ListTransformRunsRequest = {
   statuses?: TransformRunStatus[];
   transform_ids?: TransformId[];
   transform_tag_ids?: TransformTagId[];
+  start_time?: string;
+  end_time?: string;
+  run_methods?: TransformRunMethod[];
 } & PaginationRequest;
 
 export type ListTransformRunsResponse = {

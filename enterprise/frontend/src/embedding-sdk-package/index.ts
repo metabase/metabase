@@ -1,14 +1,14 @@
 // eslint-disable-next-line no-external-references-for-sdk-package-code
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 // eslint-disable-next-line no-external-references-for-sdk-package-code
-import { defineEmbeddingSdkPackageBuildInfo } from "metabase/embedding-sdk/lib/define-embedding-sdk-package-build-info";
+import { defineBuildInfo } from "metabase/embedding-sdk/lib/define-build-info";
 // eslint-disable-next-line no-external-references-for-sdk-package-code
 import { defineGlobalDependencies } from "metabase/embedding-sdk/lib/define-global-dependencies";
 
 // Enable SDK mode as we are in the SDK package
 EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 
-defineEmbeddingSdkPackageBuildInfo();
+defineBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO");
 defineGlobalDependencies();
 
 export { CollectionBrowser } from "./components/public/CollectionBrowser";

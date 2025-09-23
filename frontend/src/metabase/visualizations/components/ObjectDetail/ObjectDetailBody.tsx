@@ -1,6 +1,6 @@
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import type {
-  DatasetData,
+  DatasetColumn,
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -11,7 +11,7 @@ import { Relationships } from "./ObjectRelationships";
 import type { OnVisualizationClickType } from "./types";
 
 export interface ObjectDetailBodyProps {
-  data: DatasetData;
+  columns: DatasetColumn[];
   objectName: string;
   zoomedRow: RowValue[];
   settings: VisualizationSettings;
@@ -26,7 +26,7 @@ export interface ObjectDetailBodyProps {
 }
 
 export function ObjectDetailBody({
-  data,
+  columns,
   objectName,
   zoomedRow,
   settings,
@@ -40,7 +40,7 @@ export function ObjectDetailBody({
   return (
     <ObjectDetailBodyWrapper>
       <DetailsTable
-        data={data}
+        columns={columns}
         zoomedRow={zoomedRow}
         settings={settings}
         onVisualizationClick={onVisualizationClick}

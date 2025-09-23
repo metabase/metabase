@@ -80,6 +80,10 @@ export const activityApi = Api.injectEndpoints({
 export const { useListPopularItemsQuery, useLogRecentItemMutation } =
   activityApi;
 
+type GetRecentsQueryOptions = Parameters<
+  typeof activityApi.useListRecentsQuery
+>[1];
+
 // Makes it possible and type-safe to use the `include_metadata` parameter
 // in the `useListRecentsQuery` hook. If `include_metadata` is set to `true`,
 // the returned data will include the `result_metadata` property
@@ -91,10 +95,7 @@ export function useListRecentsQuery<T extends boolean | undefined = undefined>(
   params?:
     | ({ include_metadata?: T } & Omit<RecentsRequest, "include_metadata">)
     | void,
-  options?: {
-    refetchOnMountOrArgChange?: boolean;
-    skip?: boolean;
-  },
+  options?: GetRecentsQueryOptions,
 ) {
   type ResultType = T extends true ? RecentItemWithMetadata : RecentItem;
   return activityApi.endpoints.listRecents.useQuery(

@@ -136,3 +136,7 @@ This setting doesn't affect [SQL queries](../questions/native-editor/writing-sql
 - **Unit of currency:** if you do most of your business in a particular currency, you can specify that here.
 - **Currency label style:** whether you want to have your currencies labeled with a symbol, a code (like "USD"), or its full name.
 - **Where to display the unit of currency:** this pertains specifically to tables, and lets you choose whether you want the currency labels to appear only in the column heading, or next to each value in the column.
+
+## Localizing embedded Metabase
+
+You can tranlate both Metabase UI elements (like button labels) and content (like dashboard names) in static embeds. See [Setting the language for static embeds](../embedding/static-embedding-parameters.md#setting-the-language-for-a-static-embed) and [Translating embedded dashboards and questions](../embedding/translations.md).

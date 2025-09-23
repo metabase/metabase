@@ -2,20 +2,26 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
+import { hasFeature } from "metabase/admin/databases/utils";
+import {
+  skipToken,
+  useGetDatabaseQuery,
+  useListDatabaseSchemasQuery,
+} from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,
   FormErrorMessage,
   FormProvider,
-  FormSelect,
   FormSubmitButton,
   FormTextInput,
+  FormTextarea,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
 import { trackTransformCreated } from "metabase-enterprise/transforms/analytics";
+import { SchemaFormSelect } from "metabase-enterprise/transforms/components/SchemaFormSelect";
 import type {
   CreateTransformRequest,
   DatasetQuery,
@@ -71,14 +77,26 @@ function CreateTransformForm({
   onClose,
 }: CreateTransformFormProps) {
   const { database: databaseId } = query;
+
+  const {
+    data: database,
+    isLoading: isDatabaseLoading,
+    error: databaseError,
+  } = useGetDatabaseQuery(databaseId ? { id: databaseId } : skipToken);
+
   const {
     data: schemas = [],
-    isLoading,
-    error,
+    isLoading: isSchemasLoading,
+    error: schemasError,
   } = useListDatabaseSchemasQuery(
     databaseId ? { id: databaseId, include_hidden: true } : skipToken,
   );
+
+  const isLoading = isDatabaseLoading || isSchemasLoading;
+  const error = databaseError ?? schemasError;
+
   const [createTransform] = useCreateTransformMutation();
+  const supportsSchemas = database && hasFeature(database, "schemas");
 
   const initialValues: NewTransformValues = useMemo(
     () => getInitialValues(schemas),
@@ -111,18 +129,24 @@ function CreateTransformForm({
             label={t`Name`}
             placeholder={t`My Great Transform`}
           />
-          <FormTextInput
+          <FormTextarea
             name="description"
             label={t`Description`}
-            placeholder={t`This is optional`}
+            placeholder={t`This is optional, but helpful`}
+            minRows={4}
+            maxRows={10}
           />
-          {schemas.length > 1 && (
-            <FormSelect name="targetSchema" label={t`Schema`} data={schemas} />
+          {supportsSchemas && (
+            <SchemaFormSelect
+              name="targetSchema"
+              label={t`Schema`}
+              data={schemas}
+            />
           )}
           <FormTextInput
             name="targetName"
             label={t`Table name`}
-            placeholder={t`some_name`}
+            placeholder={t`descriptive_name`}
           />
           <Group>
             <Box flex={1}>

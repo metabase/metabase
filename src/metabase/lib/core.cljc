@@ -7,12 +7,13 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
-   [metabase.lib.card :as lib.card]
+   [metabase.lib.card]
    [metabase.lib.column-group :as lib.column-group]
    [metabase.lib.common :as lib.common]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.convert.metadata-to-legacy]
    [metabase.lib.database :as lib.database]
+   [metabase.lib.dispatch]
    [metabase.lib.drill-thru :as lib.drill-thru]
    [metabase.lib.drill-thru.column-extract :as lib.drill-thru.column-extract]
    [metabase.lib.drill-thru.pivot :as lib.drill-thru.pivot]
@@ -23,10 +24,14 @@
    [metabase.lib.field :as lib.field]
    [metabase.lib.field.util]
    [metabase.lib.filter :as lib.filter]
+   [metabase.lib.filter.desugar]
+   [metabase.lib.filter.negate]
+   [metabase.lib.filter.simplify-compound]
    [metabase.lib.filter.update :as lib.filter.update]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util]
    [metabase.lib.limit :as lib.limit]
+   [metabase.lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
    [metabase.lib.metric :as lib.metric]
@@ -41,22 +46,26 @@
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema.util]
    [metabase.lib.segment :as lib.segment]
+   [metabase.lib.serialize]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.swap :as lib.swap]
    [metabase.lib.table :as lib.table]
+   [metabase.lib.template-tags :as lib.template-tags]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.walk.util]
    [metabase.util.namespaces :as shared.ns]))
 
 (comment lib.aggregation/keep-me
          lib.binning/keep-me
          lib.breakout/keep-me
-         lib.card/keep-me
+         metabase.lib.card
          lib.column-group/keep-me
          lib.common/keep-me
          lib.convert/keep-me
          metabase.lib.convert.metadata-to-legacy/keep-me
          lib.database/keep-me
+         metabase.lib.dispatch/keep-me
          lib.drill-thru.column-extract/keep-me
          lib.drill-thru.pivot/keep-me
          lib.drill-thru/keep-me
@@ -67,10 +76,14 @@
          lib.field/keep-me
          metabase.lib.field.util/keep-me
          lib.filter.update/keep-me
+         metabase.lib.filter.desugar/keep-me
+         metabase.lib.filter.negate/keep-me
+         metabase.lib.filter.simplify-compound/keep-me
          lib.filter/keep-me
          lib.join/keep-me
          metabase.lib.join.util/keep-me
          lib.limit/keep-me
+         metabase.lib.metadata/keep-me
          lib.metadata.calculation/keep-me
          lib.metadata.composed-provider/keep-me
          lib.metric/keep-me
@@ -84,11 +97,14 @@
          lib.remove-replace/keep-me
          metabase.lib.schema.util/keep-me
          lib.segment/keep-me
+         metabase.lib.serialize/keep-me
          lib.stage/keep-me
          lib.swap/keep-me
          lib.table/keep-me
+         lib.template-tags/keep-me
          lib.temporal-bucket/keep-me
-         lib.util/keep-me)
+         lib.util/keep-me
+         metabase.lib.walk.util/keep-me)
 
 (shared.ns/import-fns
  [lib.aggregation
@@ -128,6 +144,8 @@
   breakouts
   breakouts-metadata
   remove-all-breakouts]
+ [metabase.lib.card
+  card->underlying-query]
  [lib.column-group
   columns-group-columns
   group-columns]
@@ -136,12 +154,15 @@
  [lib.convert
   ->legacy-MBQL
   ->pMBQL
+  legacy-default-join-alias
   without-cleaning]
  [metabase.lib.convert.metadata-to-legacy
   lib-metadata-column->legacy-metadata-column
   lib-metadata-column-key->legacy-metadata-column-key]
  [lib.database
   database-id]
+ [metabase.lib.dispatch
+  dispatch-value]
  [lib.drill-thru
   available-drill-thrus
   drill-thru]
@@ -274,6 +295,13 @@
   relative-time-interval
   time-interval
   segment]
+ [metabase.lib.filter.desugar
+  desugar-filter-clause]
+ [metabase.lib.filter.negate
+  negate-boolean-expression]
+ [metabase.lib.filter.simplify-compound
+  simplify-compound-filter
+  simplify-filters]
  [lib.filter.update
   update-lat-lon-filter
   update-numeric-filter
@@ -288,6 +316,7 @@
   join-condition-update-temporal-bucketing
   join-conditions
   join-fields
+  join-fields-to-add-to-parent-stage
   join-lhs-display-name
   join-strategy
   joinable-columns
@@ -306,6 +335,8 @@
   current-limit
   limit
   max-rows-limit]
+ [metabase.lib.metadata
+  general-cached-value]
  [lib.metadata.calculation
   column-name
   describe-query
@@ -327,8 +358,10 @@
   native-extras
   native-query
   raw-native-query
+  recognize-template-tags
   required-native-extras
-  template-tag-card-ids
+  native-query-card-ids
+  native-query-snippet-ids
   template-tags-referenced-cards
   template-tags
   with-different-database
@@ -357,7 +390,7 @@
   can-preview
   can-run
   can-save
-  check-overwrite
+  check-card-overwrite
   preview-query
   query
   query-from-legacy-inner-query
@@ -378,6 +411,8 @@
  [metabase.lib.schema.util]
  [lib.segment
   available-segments]
+ [metabase.lib.serialize
+  prepare-for-serialization]
  [lib.stage
   append-stage
   drop-stage
@@ -386,6 +421,9 @@
   has-clauses?]
  [lib.swap
   swap-clauses]
+ [lib.template-tags
+  template-tags->card-ids
+  template-tags->snippet-ids]
  [lib.temporal-bucket
   describe-temporal-unit
   describe-temporal-interval
@@ -396,6 +434,8 @@
   temporal-bucket
   with-temporal-bucket]
  [lib.util
+  clause?
+  clause-of-type?
   fresh-uuids
   native-stage?
   normalized-query-type
@@ -403,4 +443,10 @@
   previous-stage-number
   query-stage
   source-table-id
-  update-query-stage])
+  update-query-stage]
+ [metabase.lib.walk.util
+  all-field-ids
+  all-source-card-ids
+  all-source-table-ids
+  all-template-tags
+  any-native-stage?])

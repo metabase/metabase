@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]))
@@ -40,10 +41,9 @@
 
     :else
     (try
-      (hm.client/call :change-add-ons
-                      :upsert-add-ons [{:product-type product-type}]
-                      :metabase-user (-> (select-keys @api/*current-user* [:email :id])
-                                         (update-vals str)))
+      (let [add-on {:product-type product-type}]
+        (events/publish-event! :event/cloud-add-on-purchase {:details {:add-on add-on}, :user-id api/*current-user-id*})
+        (hm.client/call :change-add-ons :upsert-add-ons [add-on]))
       (premium-features/clear-cache)
       {:status 200 :body {}}
       (catch Exception e

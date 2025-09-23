@@ -2,15 +2,29 @@ import type { Location } from "history";
 
 import { isNotNull } from "metabase/lib/types";
 import type { RunListParams } from "metabase-enterprise/transforms/types";
-import type { TransformRunStatus } from "metabase-types/api";
+import type {
+  TransformRunMethod,
+  TransformRunStatus,
+} from "metabase-types/api";
 
 export function getParsedParams(location: Location): RunListParams {
-  const { page, statuses, transformIds, transformTagIds } = location.query;
+  const {
+    page,
+    statuses,
+    transformIds,
+    transformTagIds,
+    startTime,
+    endTime,
+    runMethods,
+  } = location.query;
   return {
     page: parseNumber(page),
     statuses: parseList(statuses, parseStatus),
     transformIds: parseList(transformIds, parseNumber),
     transformTagIds: parseList(transformTagIds, parseNumber),
+    startTime: parseTime(startTime),
+    endTime: parseTime(endTime),
+    runMethods: parseList(runMethods, parseMethod),
   };
 }
 
@@ -41,4 +55,31 @@ function parseStatus(value: unknown): TransformRunStatus | undefined {
     default:
       return undefined;
   }
+}
+
+function parseTime(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    return value;
+  }
+  return undefined;
+}
+
+function parseMethod(value: unknown): TransformRunMethod | undefined {
+  switch (value) {
+    case "manual":
+    case "cron":
+      return value;
+  }
+  return undefined;
+}
+
+export function hasFilterParams(params: RunListParams) {
+  return (
+    params.statuses != null ||
+    params.transformIds != null ||
+    params.transformTagIds != null ||
+    params.startTime != null ||
+    params.endTime != null ||
+    params.runMethods != null
+  );
 }

@@ -281,6 +281,7 @@ export function interceptIfNotPreviouslyDefined({ method, url, alias } = {}) {
  * @param {boolean=} [options.addToDashboard]
  * @param {boolean=} [options.wrapId]
  * @param {string=} [options.idAlias]
+ * @param {Object=} [pickEntityOptions]
  */
 export function saveQuestion(
   name,
@@ -419,8 +420,6 @@ export function visitPublicDashboard(
 
 export const goToAuthOverviewPage = () => {
   cy.findByTestId("admin-layout-sidebar")
-    .findAllByText("Overview") // auth overview page
-    .should("have.length", 2)
-    .first()
+    .findByText("Overview") // auth overview page
     .click();
 };

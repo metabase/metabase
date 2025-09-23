@@ -20,7 +20,6 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -39,8 +38,6 @@
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.models.query :as query]
    [metabase.query-permissions.core :as query-perms]
-   ;; legacy usage -- don't do things like this going forward
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
    [metabase.util :as u]
@@ -219,7 +216,7 @@
   (when (map? query)
     (let [query-type (lib/normalized-query-type query)]
       (case query-type
-        :query      (-> query mbql.normalize/normalize qp.util/query->source-card-id)
+        :query      (-> query mbql.normalize/normalize #_{:clj-kondo/ignore [:deprecated-var]} qp.util/query->source-card-id)
         :mbql/query (-> query lib/normalize lib.util/source-card-id)
         nil))))
 
@@ -239,7 +236,7 @@
     (doseq [[db-id table-ids] db-id->table-ids
             :let  [mp (lib.metadata.jvm/application-database-metadata-provider db-id)]
             :when (seq table-ids)]
-      (lib.metadata.protocols/metadatas mp :metadata/table table-ids))))
+      (lib.metadata.protocols/metadatas mp {:lib/type :metadata/table, :id (set table-ids)}))))
 
 (defn with-can-run-adhoc-query
   "Adds `:can_run_adhoc_query` to each card."
@@ -373,30 +370,6 @@
             {:database_id database-id})
           (when table-id
             {:table_id table-id})))))))
-
-(defn- check-for-circular-source-query-references
-  "Check that a `card`, if it is using another Card as its source, does not have circular references between source
-  Cards. (e.g. Card A cannot use itself as a source, or if A uses Card B as a source, Card B cannot use Card A, and so
-  forth.)"
-  [{query :dataset_query, id :id}]      ; don't use `u/the-id` here so that we can use this with `pre-insert` too
-  (loop [query query, ids-already-seen #{id}]
-    (let [source-card-id (qp.util/query->source-card-id query)]
-      (cond
-        (not source-card-id)
-        :ok
-
-        (ids-already-seen source-card-id)
-        (throw
-         (ex-info (tru "Cannot save Question: source query has circular references.")
-                  {:status-code 400}))
-
-        :else
-        (recur (or (if (qp.store/initialized?)
-                     (:dataset-query (lib.metadata/card (qp.store/metadata-provider) source-card-id))
-                     (t2/select-one-fn :dataset_query :model/Card :id source-card-id))
-                   (throw (ex-info (tru "Card {0} does not exist." source-card-id)
-                                   {:status-code 404})))
-               (conj ids-already-seen source-card-id))))))
 
 (defn- maybe-normalize-query [card]
   (cond-> card
@@ -545,8 +518,6 @@
         card     (maybe-check-dashboard-internal-card
                   (merge defaults card))]
     (u/prog1 card
-      ;; make sure this Card doesn't have circular source query references
-      (check-for-circular-source-query-references card)
       (check-field-filter-fields-are-from-correct-database card)
       ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters (#40013)
       (assert-valid-type card)
@@ -557,7 +528,7 @@
 
 (defenterprise pre-update-check-sandbox-constraints
   "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
-  metabase-enterprise.sandbox.models.group-table-access-policy
+  metabase-enterprise.sandbox.models.sandbox
   [_ _])
 
 (defn- update-parameters-using-card-as-values-source
@@ -574,17 +545,19 @@
         (let [model                  (case po-type :card 'Card :dashboard 'Dashboard)
               {:keys [parameters]}   (t2/select-one [model :parameters] :id po-id)
               affected-param-ids-set (cond
-                                      ;; update all parameters that use this card as source
+                                       ;; update all parameters that use this card as source
                                        (:archived changes)
                                        (set (map :parameter_id param-cards))
 
-                                      ;; update only parameters that have value_field no longer in this card
+                                       ;; update only parameters that have value_field no longer in this card
                                        (:result_metadata changes)
                                        (let [param-id->parameter (m/index-by :id parameters)]
                                          (->> param-cards
                                               (filter (fn [param-card]
-                                                       ;; if cant find the value-field in result_metadata, then we should
-                                                       ;; remove it
+                                                        ;; if cant find the value-field in result_metadata, then we should
+                                                        ;; remove it
+                                                        ;; existing usage -- do not use this in new code
+                                                        #_{:clj-kondo/ignore [:deprecated-var]}
                                                         (nil? (qp.util/field->field-info
                                                                (get-in (param-id->parameter (:parameter_id param-card)) [:values_source_config :value_field])
                                                                (:result_metadata changes)))))
@@ -648,9 +621,6 @@
                         "Newly Added:" newly-added-param-field-ids)
               ;; Now update the FieldValues for the Fields referenced by this Card.
               (field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids)))))
-      ;; make sure this Card doesn't have circular source query references if we're updating the query
-      (when (:dataset_query changes)
-        (check-for-circular-source-query-references card))
       ;; updating a model dataset query to not support implicit actions will disable implicit actions if they exist
       (when (and (:dataset_query changes)
                  (= (:type old-card-info) :model)
@@ -1279,13 +1249,17 @@
   "Extract dimensions (non-aggregation columns) from a dataset query."
   [dataset-query-str]
   (when dataset-query-str
-    (lib.metadata.jvm/with-metadata-provider-cache
-      (let [dataset-query     ((:out mi/transform-metabase-query) dataset-query-str)
-            metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
-            lib-query         (lib/query metadata-provider dataset-query)
-            columns           (lib/returned-columns lib-query)]
-        ;; Dimensions are columns that are not aggregations
-        (remove (comp #{:source/aggregations} :lib/source) columns)))))
+    ;; In production the :database should be always present and correct. That is not the case for some test mocks.
+    ;; As e.g. in [[metabase-enterprise.semantic-search.test-util/do-with-indexable-documents!]]. Hence the thorough
+    ;; checking.
+    (when-some [dataset-query (not-empty ((:out mi/transform-metabase-query) dataset-query-str))]
+      (when (pos-int? (:database dataset-query))
+        (lib.metadata.jvm/with-metadata-provider-cache
+          (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
+                lib-query         (lib/query metadata-provider dataset-query)
+                columns           (lib/returned-columns lib-query)]
+            ;; Dimensions are columns that are not aggregations
+            (remove (comp #{:source/aggregations} :lib/source) columns)))))))
 
 (defn extract-non-temporal-dimension-ids
   "Extract list of nontemporal dimension field IDs, stored as JSON string. See PR 60912"

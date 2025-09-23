@@ -1,1 +1,5 @@
 accept = ["200..=204", "429"]
+exclude_path = ["docs/embedding/sdk"]
+no_progress = true
+include_fragments = true
+verbose = "error"

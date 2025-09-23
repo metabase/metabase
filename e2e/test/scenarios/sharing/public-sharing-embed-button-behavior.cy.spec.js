@@ -194,11 +194,7 @@ describe("embed modal display", () => {
             cy.findByText("Disabled.").should("be.visible");
             cy.findByText("Enable in admin settings")
               .should("be.visible")
-              .and(
-                "have.attr",
-                "href",
-                "/admin/settings/embedding-in-other-applications/full-app",
-              );
+              .and("have.attr", "href", "/admin/embedding/interactive");
           },
         );
       });

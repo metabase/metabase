@@ -1147,7 +1147,7 @@
   drivers.
 
   Drivers that support any of the `:transforms/...` features must implement this method."
-  {:added "0.57.0", :arglists '([driver connection-details queries])}
+  {:added "0.57.0", :arglists '([driver conn-spec queries])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -1158,7 +1158,7 @@
   types."
   {:added "0.57.0",
    :arglists '([driver
-                {:keys [transform-type connection-details query output-table] :as _transform-details}
+                {:keys [transform-type conn-spec query output-table] :as _transform-details}
                 {:keys [overwrite?] :as _opts}])}
   (fn [driver transform-details _opts]
     [(dispatch-on-initialized-driver driver) (:transform-type transform-details)])
@@ -1183,7 +1183,24 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti connection-details
+(defmulti schema-exists?
+  "Checks if a schema exists in the given database."
+  {:added "0.57.0" :arglists '([driver db-id schema])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod schema-exists? :default [_driver _db-id _schema] false)
+
+(defmulti create-schema-if-needed!
+  "Creates a schema if it does not already exist.
+   Used to create new schemas for transforms."
+  {:added "0.57.0" :arglists '([driver conn-spec schema])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod create-schema-if-needed! :default [_driver _conn-spec _schema] nil)
+
+(defmulti connection-spec
   "Get connection details for a given driver and db object"
   {:added "0.57.0", :arglists '([driver db])}
   dispatch-on-initialized-driver
@@ -1260,6 +1277,35 @@
   {:added "0.50.0", :arglists '([driver db-id table-name])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti rename-tables!*
+  "Driver-specific implementation of table renaming. Takes a pre-sorted map of {from-table to-table}.
+   The input map has already been topologically sorted by the public rename-tables! function.
+   Implementations should perform the actual rename operations atomically as supported by the database.
+   NOTE: Do not call this directly - use rename-tables! instead which handles the topological sort."
+  {:added "0.57.0", :arglists '([driver db-id sorted-rename-map])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defn rename-tables!
+  "Rename multiple tables atomically. Takes a map of {from-table to-table}.
+   Performs topological sort to determine correct rename order, then delegates to driver-specific implementation.
+   Implementations should use transactions, compound operations, or metadata locks as supported by the database.
+   Table names may be qualified by schema e.g. :schema/table"
+  {:added "0.57.0"}
+  [driver db-id rename-map]
+  (let [sorted-rename-map (-> rename-map
+                              (update-vals vector)
+                              u/topological-sort
+                              (update-vals first))]
+    (rename-tables!* driver db-id sorted-rename-map)))
+
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+(defn rename-table!
+  "Rename a single table."
+  {:added "0.57.0"}
+  [driver db-id from-table to-table]
+  (rename-tables!* driver db-id {from-table to-table}))
 
 (defmulti insert-into!
   "Insert `values` into a table named `table-name`. `values` is a lazy sequence of rows, where each row's order matches
@@ -1471,11 +1517,3 @@
       (if (table-known-to-not-exist? driver e)
         false
         (throw e)))))
-
-(defmulti set-database-used!
-  "Sets the database to be used on a connection. Called prior to query execution for drivers that support USE DATABASE like commands."
-  {:added "0.56.0" :arglists '([driver conn db])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
-(defmethod set-database-used! ::driver [_driver _conn _db] nil)

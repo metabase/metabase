@@ -94,8 +94,8 @@
     :mine                1
     :exact               5
     :prefix              0
-    ;; TODO figure out a better way to blend these scorers with wildly different scale.
-    :rrf                 5000}
+    ;; RRF is the "Reciprocal Rank Fusion" score used by the semantic search backend to blend semantic and keyword scores
+    :rrf                 500}
    :command-palette
    {:prefix               5
     :model/collection     1

@@ -8,20 +8,35 @@ import type {
   TransformRunStatus,
 } from "metabase-types/api";
 
-export function parseLocalTimestamp(timestamp: string) {
-  return parseTimestamp(timestamp, null, true);
+export function parseTimestampWithTimezone(
+  timestamp: string,
+  systemTimezone: string | undefined,
+) {
+  const date = parseTimestamp(timestamp);
+  if (systemTimezone == null) {
+    return date;
+  }
+  try {
+    return date.tz(systemTimezone);
+  } catch {
+    return date;
+  }
 }
 
 export function formatStatus(status: TransformRunStatus) {
   switch (status) {
     case "started":
-      return t`In-progress`;
+      return t`In progress`;
     case "succeeded":
       return t`Success`;
     case "failed":
       return `Failed`;
     case "timeout":
       return t`Timeout`;
+    case "canceling":
+      return t`Canceling`;
+    case "canceled":
+      return t`Canceled`;
   }
 }
 
@@ -42,6 +57,8 @@ export function doesDatabaseSupportTransforms(database?: Database): boolean {
   return (
     !database.is_sample &&
     !database.is_audit &&
+    !database.router_user_attribute &&
+    !database.router_database_id &&
     hasFeature(database, "transforms/table")
   );
 }
