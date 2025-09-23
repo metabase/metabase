@@ -297,7 +297,6 @@
        (map #(vector (:id %) (:name %)))
        sort))
 
-#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest rename-tables-test
   (mt/test-drivers (mt/normal-drivers-with-feature :atomic-renames)
     (testing "rename-tables should rename multiple tables atomically"
@@ -370,3 +369,29 @@
           (finally
             (driver/drop-table! driver db-id qualified-table-1)
             (driver/drop-table! driver db-id qualified-table-2)))))))
+
+(deftest rename-table-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :rename)
+    (testing "rename-table! should rename a single table correctly"
+      (let [db-id           (mt/id)
+            driver          driver/*driver*
+            schema          (sql.tx/session-schema driver)
+            test-table      (mt/random-name)
+            renamed-table   (str test-table "_renamed")
+            qualified-table (qualified-table-name schema test-table)
+            qualified-renamed (qualified-table-name schema renamed-table)]
+        (driver/create-table! driver db-id qualified-table
+                              {"id" "INTEGER", "name" "VARCHAR(255)"} {})
+        (try
+          (testing "single table rename works correctly"
+            (driver/rename-table! driver db-id qualified-table qualified-renamed)
+            (is (driver/table-exists? driver (mt/db) {:name renamed-table :schema schema})
+                "Renamed table should exist")
+            (is (not (driver/table-exists? driver (mt/db) {:name test-table :schema schema}))
+                "Original table should not exist"))
+
+          (finally
+            (when (driver/table-exists? driver (mt/db) {:name renamed-table :schema schema})
+              (driver/drop-table! driver db-id qualified-renamed))
+            (when (driver/table-exists? driver (mt/db) {:name test-table :schema schema})
+              (driver/drop-table! driver db-id qualified-table))))))))
