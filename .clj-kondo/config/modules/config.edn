@@ -1625,6 +1625,7 @@
    :api  #{metabase-enterprise.comments.api
            metabase-enterprise.comments.init}
    :uses #{api
+           channel
            events
            models
            request
