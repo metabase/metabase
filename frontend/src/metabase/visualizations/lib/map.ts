@@ -1,3 +1,4 @@
+import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
 import type { DashboardId, Dataset, JsonQuery } from "metabase-types/api";
 
@@ -45,9 +46,14 @@ export function getTileUrl(params: TileUrlParams): string {
       return adhocQueryTileUrl(zoom, coord, latField, lonField, datasetQuery);
     }
 
-    if (typeof dashboardId === "string" && !isUuid(dashboardId)) {
+    if (
+      typeof dashboardId === "string" &&
+      !isUuid(dashboardId) && // public dashboard
+      !isJWT(dashboardId) // embedded dashboard
+    ) {
       throw Error("dashboardId must be an int or a uuid");
     }
+
     const isPublicDashboard = uuid;
 
     if (isPublicDashboard) {
