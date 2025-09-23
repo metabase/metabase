@@ -57,4 +57,28 @@ describe("DateShortcutPicker", () => {
     await userEvent.click(screen.getByText("Fixed date range…"));
     expect(onSelectType).toHaveBeenCalledWith("specific");
   });
+
+  it("should be able to filter shortcuts based on current interval directions", () => {
+    setup({ availableDirections: ["current"] });
+    expect(screen.getByText("Today")).toBeInTheDocument();
+    expect(screen.queryByText("Yesterday")).not.toBeInTheDocument();
+    expect(screen.queryByText("Previous week")).not.toBeInTheDocument();
+    expect(screen.queryByText("Previous month")).not.toBeInTheDocument();
+  });
+
+  it("should be able to filter shortcuts based on current and future interval directions", () => {
+    setup({ availableDirections: ["current", "next"] });
+    expect(screen.getByText("Today")).toBeInTheDocument();
+    expect(screen.queryByText("Yesterday")).not.toBeInTheDocument();
+    expect(screen.queryByText("Previous week")).not.toBeInTheDocument();
+    expect(screen.queryByText("Previous month")).not.toBeInTheDocument();
+  });
+
+  it("should be able to filter shortcuts based on past and current interval directions", () => {
+    setup({ availableDirections: ["last", "current"] });
+    expect(screen.getByText("Today")).toBeInTheDocument();
+    expect(screen.getByText("Yesterday")).toBeInTheDocument();
+    expect(screen.getByText("Previous week")).toBeInTheDocument();
+    expect(screen.getByText("Previous month")).toBeInTheDocument();
+  });
 });

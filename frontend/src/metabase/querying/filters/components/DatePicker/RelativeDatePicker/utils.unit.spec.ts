@@ -1,9 +1,10 @@
 import type {
+  DatePickerRelativeDirection,
   DatePickerTruncationUnit,
   RelativeDatePickerValue,
 } from "metabase/querying/filters/types";
 
-import { setDirection } from "./utils";
+import { getDefaultValue, setDirection } from "./utils";
 
 describe("setDirection", () => {
   describe("current", () => {
@@ -116,4 +117,35 @@ describe("setDirection", () => {
       });
     });
   });
+});
+
+type GetDefaultValueTestCase = {
+  availableDirections: DatePickerRelativeDirection[];
+  expectedValue: RelativeDatePickerValue | undefined;
+};
+
+describe("getDefaultValue", () => {
+  it.each<GetDefaultValueTestCase>([
+    {
+      availableDirections: [],
+      expectedValue: { type: "relative", value: -30, unit: "day" },
+    },
+    {
+      availableDirections: ["last", "current", "next"],
+      expectedValue: { type: "relative", value: -30, unit: "day" },
+    },
+    {
+      availableDirections: ["last", "current"],
+      expectedValue: { type: "relative", value: -30, unit: "day" },
+    },
+    {
+      availableDirections: ["current", "current"],
+      expectedValue: undefined,
+    },
+  ])(
+    "should compute the default value based on available directions",
+    ({ availableDirections, expectedValue }) => {
+      expect(getDefaultValue(availableDirections)).toEqual(expectedValue);
+    },
+  );
 });
