@@ -6,6 +6,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [malli.core :as m]
+   [malli.transform :as mt]
    [metabase-enterprise.representations.v0.collection :as v0-coll]
    [metabase-enterprise.representations.v0.database :as v0-db]
    [metabase-enterprise.representations.v0.document :as v0-doc]
@@ -70,16 +72,21 @@
    before validation if present.
 
    Handles both string and keyword keys from YAML parsing.
+   Applies JSON decoders to convert strings to appropriate types (e.g., \"scheduled\" -> :scheduled).
 
    Throws an exception if validation fails.
-   Returns the representation if validation passes."
+   Returns the decoded and validated representation if validation passes."
   [representation]
   (let [representation' (normalize-type representation)]
     (if-let [entity-type (:type representation')]
       (let [schema (type->schema entity-type)]
         (if-not schema
           (throw (ex-info (str "Unknown type: " entity-type) {:type entity-type}))
-          (mu/validate-throw schema representation')))
+          ;; First decode, then validate
+          (let [decoder (m/decoder schema mt/json-transformer)
+                decoded (decoder representation')]
+            (mu/validate-throw schema decoded)
+            decoded)))
       (throw (ex-info "Missing required field: type" {:representation representation})))))
 
 ;;;;;;;;;;;

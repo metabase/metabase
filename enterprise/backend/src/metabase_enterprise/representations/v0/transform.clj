@@ -1,10 +1,18 @@
 (ns metabase-enterprise.representations.v0.transform
+  "The v0 transform representation namespace."
   (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [malli.core :as m]
+   [malli.error :as me]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.serialization :as serdes]
+   [metabase.models.interface :as mi]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------ Schema Definitions ------------------------------------
@@ -104,22 +112,16 @@
 ;;; ------------------------------------ Ingestion Functions ------------------------------------
 
 (defn yaml->toucan
-  "Convert a validated v0 transform representation into data suitable for creating/updating a Transform.
-
-   Returns a map with keys matching the Transform model fields.
-   Does NOT insert into the database - just transforms the data."
-  [{transform-name :name
-    :keys [description database source target run_trigger] :as representation}]
+  "Convert a validated v0 transform representation into data suitable for creating/updating a Transform."
+  [{:keys [ref name description database source target] :as representation}]
   (let [database-id (v0-common/find-database-id database)
-        ;; TODO: generate-entity-id needs collection ref for stable ID
-        ;; For transforms, we don't have collections, so using just the ref for now
+        ;; TODO: better method for persistent entity IDs
         entity-id (v0-common/generate-entity-id (assoc representation :collection "transforms"))]
     (when-not database-id
       (throw (ex-info (str "Database not found: " database)
                       {:database database})))
-    ;; Build the transform data structure matching the API format
     {:entity_id entity-id
-     :name transform-name
+     :name name
      :description (or description "")
      :source {:type "query"
               :query (merge
@@ -138,11 +140,7 @@
                                         {:source source}))))}
      :target {:type "table"
               :schema (:schema target)
-              :name (:table target)}
-     :run_trigger (or (some-> run_trigger name) "none")
-     ;; Tags would need to be resolved to tag IDs
-     ;; For now, we'll skip tags in the POC
-     }))
+              :name (:table target)}}))
 
 (defn persist!
   "Ingest a v0 transform representation and create or update a Transform in the database.
@@ -157,8 +155,6 @@
         entity-id (:entity_id transform-data)
         existing (when entity-id
                    (t2/select-one :model/Transform :entity_id entity-id))]
-    ;; TODO: generate-entity-id needs a stable way to identify transforms
-    ;; without collections. Consider using database + ref as the unique key
     (if existing
       (do
         (log/info "Updating existing transform" (:name transform-data) "with ref" (:ref representation))
@@ -166,7 +162,7 @@
         (t2/select-one :model/Transform :id (:id existing)))
       (do
         (log/info "Creating new transform" (:name transform-data))
-        (first (t2/insert-returning-instances! :model/Transform transform-data))))))
+        (t2/insert-returning-instance! :model/Transform transform-data)))))
 
 (defn ->ref [card]
   (format "%s-%s" "transform" (:id card)))
