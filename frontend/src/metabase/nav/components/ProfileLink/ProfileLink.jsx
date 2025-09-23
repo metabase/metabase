@@ -90,6 +90,12 @@ function ProfileLink({
         action: () => dispatch(setOpenModal("help")),
       },
       {
+        title: t`Workbench`,
+        icon: null,
+        link: "/bench",
+        externalLink: true,
+      },
+      {
         separator: true,
       },
       helpLink.visible && {
