@@ -18,7 +18,8 @@
   [done-channel]
   (proxy [AsyncListener] []
     (onComplete [_]
-      (a/>!! done-channel :done))))
+      (a/go
+        (a/>! done-channel :done)))))
 
 (defn- async-servlet-handler
   ^ServletHandler [status-code chan-start-handle chan-finish-handle]
