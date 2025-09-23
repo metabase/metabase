@@ -114,7 +114,8 @@
   Models and native queries need their definitions walked as well as their own, card-level metadata."
   [cards]
   (let [queries (into []
-                      (comp (map #(update % :dataset_query lib-be/normalize-query))
+                      (comp (filter #(seq (:dataset_query %)))
+                            (map #(update % :dataset_query lib-be/normalize-query))
                             (mapcat (fn [{query :dataset_query, card-type :type, card-id :id, :as _card}]
                                       (if (or (= card-type :model)
                                               (lib/native-only-query? query))

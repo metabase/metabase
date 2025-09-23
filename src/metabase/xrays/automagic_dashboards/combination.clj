@@ -75,11 +75,11 @@
     #{:type/CreationTimestamp} :fail}
    #{:type/Integer}))
 
-(defn add-dataset-query
+(mu/defn add-dataset-query :- ::ads/card
   "Add the `:dataset_query` key to this metric. Requires both the current metric-definition (from the grounded metric)
   and the database and table ids (from the source object)."
   [{:keys [metric-definition] :as ground-metric-with-dimensions}
-   {{:keys [database]} :root :keys [source query-filter]}]
+   {{:keys [database]} :root :keys [source query-filter]} :- ::ads/context]
   (let [source-table (if (->> source (mi/instance-of? :model/Table))
                        (-> source u/the-id)
                        (->> source u/the-id (str "card__")))
@@ -189,11 +189,11 @@
 (mu/defn grounded-metrics->dashcards :- [:sequential ads/combined-metric]
   "Generate dashcards from ground dimensions, using the base context, ground dimensions,
   card templates, and grounded metrics as input."
-  [base-context
+  [base-context      :- ::ads/context
    card-templates
    ground-dimensions :- ads/dim-name->matching-fields
    ground-filters
-   grounded-metrics :- [:sequential ads/grounded-metric]]
+   grounded-metrics  :- [:sequential ads/grounded-metric]]
   (let [metric-name->metric (zipmap
                              (map :metric-name grounded-metrics)
                              (map-indexed
@@ -242,7 +242,7 @@
             :affinity-name card-name
             :card-score card-score
             :total-score (long (/ (apply + score-components) (count score-components)))
-              ;; Update dimension-name->field to include named contributions from both metrics and dimensions
+            ;; Update dimension-name->field to include named contributions from both metrics and dimensions
             :dimension-name->field all-names->field
             :score-components score-components)
            (update :metric-definition add-aggregations final-aggregate)

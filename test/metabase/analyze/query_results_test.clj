@@ -4,10 +4,9 @@
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.analyze.fingerprint.insights :as insights]
    [metabase.analyze.query-results :as qr]
-   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.core :as lib]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.sync :as test.sync]
@@ -48,7 +47,7 @@
          :metadata)))
 
 (defn- query-for-card [card-or-id]
-  {:database lib.schema.id/saved-questions-virtual-database-id
+  {:database (mt/id)
    :type     :query
    :query    {:source-table (str "card__" (u/the-id card-or-id))}})
 
@@ -93,14 +92,14 @@
   (testing (str "Similarly, check that we compute the correct semantic types. Note that we don't know that the category_id is an FK "
                 "as it's just an integer flowing through, similarly Price isn't found to be a category as we're inferring by name "
                 "only")
-    (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                      (mt/metadata-provider)
-                                      {:cards [{:id            1
-                                                :dataset-query {:database (mt/id)
-                                                                :type     :native
-                                                                :native   {:query "select * from venues"}}}]})
+    (let [mp (lib.tu/mock-metadata-provider
+              (mt/metadata-provider)
+              {:cards [{:id            1
+                        :dataset-query {:database (mt/id)
+                                        :type     :native
+                                        :native   {:query "select * from venues"}}}]})]
       (is (=? (assoc venue-name->semantic-types :category_id nil :price nil)
-              (name->semantic-type (query->result-metadata (query-for-card 1))))))))
+              (name->semantic-type (query->result-metadata (lib/query mp (query-for-card 1)))))))))
 
 (deftest one-column-test
   (testing "Limiting to just 1 column on an MBQL query should still get the result metadata from the Field"

@@ -256,40 +256,39 @@
 (deftest ^:parallel multilevel-nested-questions-with-joins
   (testing "Multilevel nested questions with joins work (#22859)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
-      (mt/dataset test-data
-        (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
-                                          [(mt/mbql-query reviews
-                                             {:fields [$id]
-                                              :joins  [{:source-table $$products
-                                                        :alias        "P"
-                                                        :fields       [&P.products.id &P.products.ean]
-                                                        :condition    [:= $product_id &P.products.id]}]})
-                                           (mt/mbql-query orders
-                                             {:fields [$id]
-                                              :joins  [{:source-table "card__1"
-                                                        :alias        "RP"
-                                                        :fields       [&RP.reviews.id &RP.products.id &RP.products.ean]
-                                                        :condition    [:= $product_id &RP.products.id]}]})])
-          (is (=? {:status :completed}
-                  (qp/process-query (query-with-source-card 2 lib.schema.id/saved-questions-virtual-database-id :limit 1)))))))))
+      (let [mp (qp.test-util/metadata-provider-with-cards-for-queries
+                [(mt/mbql-query reviews
+                   {:fields [$id]
+                    :joins  [{:source-table $$products
+                              :alias        "P"
+                              :fields       [&P.products.id &P.products.ean]
+                              :condition    [:= $product_id &P.products.id]}]})
+                 (mt/mbql-query orders
+                   {:fields [$id]
+                    :joins  [{:source-table "card__1"
+                              :alias        "RP"
+                              :fields       [&RP.reviews.id &RP.products.id &RP.products.ean]
+                              :condition    [:= $product_id &RP.products.id]}]})])]
+        (is (=? {:status :completed}
+                (qp/process-query (lib/query mp (query-with-source-card 2 (mt/id) :limit 1)))))))))
 
 (deftest ^:parallel source-card-id-test
   (testing "Make sure we can run queries using source table `card__id` format."
     ;; This is the format that is actually used by the frontend; it gets translated to the normal `source-query`
     ;; format by middleware. It's provided as a convenience so only minimal changes need to be made to the frontend.
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :basic-aggregations)
-      (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
-                                        [(mt/mbql-query venues)])
+      (let [mp (qp.test-util/metadata-provider-with-cards-for-queries
+                [(mt/mbql-query venues)])]
         (is (=? (breakout-results)
                 (qp.test-util/rows-and-cols
                  (mt/format-rows-by
                   [int int]
                   (qp/process-query
-                   (query-with-source-card 1
-                                           lib.schema.id/saved-questions-virtual-database-id
-                                           (mt/mbql-query venues
-                                             {:aggregation [:count]
-                                              :breakout    [$price]})))))))))))
+                   (lib/query
+                    mp
+                    (query-with-source-card 1 (mt/id) (mt/mbql-query venues
+                                                        {:aggregation [:count]
+                                                         :breakout    [$price]}))))))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::grouped-expression-in-card-test]
   [_driver _feature _database]
@@ -304,17 +303,17 @@
 (deftest ^:parallel grouped-expression-in-card-test
   (testing "Nested grouped expressions work (#23862)."
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions :basic-aggregations ::grouped-expression-in-card-test)
-      (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
-                                        [(mt/mbql-query venues
-                                           {:aggregation [[:count]]
-                                            :breakout    [[:expression "Price level"]]
-                                            :expressions {"Price level" [:case [[[:> $price 2] "expensive"]] {:default "budget"}]}
-                                            :limit       2})])
-        (let [query (query-with-source-card 1 lib.schema.id/saved-questions-virtual-database-id)]
-          (mt/with-native-query-testing-context query
-            (is (= [["budget"    81]
-                    ["expensive" 19]]
-                   (mt/rows (qp/process-query query))))))))))
+      (let [mp    (qp.test-util/metadata-provider-with-cards-for-queries
+                   [(mt/mbql-query venues
+                      {:aggregation [[:count]]
+                       :breakout    [[:expression "Price level"]]
+                       :expressions {"Price level" [:case [[[:> $price 2] "expensive"]] {:default "budget"}]}
+                       :limit       2})])
+            query (lib/query mp (query-with-source-card 1 (mt/id)))]
+        (mt/with-native-query-testing-context query
+          (is (= [["budget"    81]
+                  ["expensive" 19]]
+                 (mt/rows (qp/process-query query)))))))))
 
 (deftest ^:parallel card-id-native-source-queries-test
   (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :nested-queries)
@@ -322,18 +321,19 @@
     (let [native-sub-query (-> (mt/mbql-query venues {:source-table $$venues}) qp.compile/compile :query)
           run-native-query
           (fn [sql]
-            (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
-                                              [{:database (mt/id)
-                                                :type     :native
-                                                :native   {:query sql}}])
+            (let [mp (qp.test-util/metadata-provider-with-cards-for-queries
+                      [{:database (mt/id)
+                        :type     :native
+                        :native   {:query sql}}])]
               (qp.test-util/rows-and-cols
                (mt/format-rows-by
                 [int int]
                 (qp/process-query
-                 (query-with-source-card 1 lib.schema.id/saved-questions-virtual-database-id
-                                         (mt/mbql-query venues
-                                           {:aggregation [:count]
-                                            :breakout    [*price]})))))))]
+                 (lib/query
+                  mp
+                  (query-with-source-card 1 (mt/id) (mt/mbql-query venues
+                                                      {:aggregation [:count]
+                                                       :breakout    [*price]}))))))))]
       (is (=? (breakout-results :has-source-metadata? false :native-source? true)
               (run-native-query native-sub-query))
           "make sure `card__id`-style queries work with native source queries as well")
@@ -375,25 +375,27 @@
                                         :limit        5})
                                      qp.compile/compile
                                      :query))
-            query              (query-with-source-card 1 lib.schema.id/saved-questions-virtual-database-id)]
-        (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
-                                          [(mt/native-query {:query native-sub-query})])
-          (mt/with-native-query-testing-context query
-            (let [coun-col-re (re-pattern (str "(?i)" coun-col-name))
-                  long-col-re (re-pattern (str "(?i)" long-col-name))]
-              (is (=? {:rows [["AK" 68] ["AL" 56] ["AR" 49] ["AZ" 20] ["CA" 90]],
-                       :cols
-                       [{:source       :fields ; QUE-1340
-                         :name         long-col-re
-                         :display_name long-col-re
-                         :field_ref    [:field long-col-re {}]}
-                        {:source       :fields
-                         :name         coun-col-re
-                         :display_name coun-col-re
-                         :field_ref    [:field coun-col-re {}]}]}
-                      (qp.test-util/rows-and-cols
-                       (mt/format-rows-by [str int]
-                                          (qp/process-query query))))))))))))
+            mp                 (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                                [(mt/native-query {:query native-sub-query})])
+            query              (lib/query
+                                mp
+                                (query-with-source-card 1 (mt/id)))]
+        (mt/with-native-query-testing-context query
+          (let [coun-col-re (re-pattern (str "(?i)" coun-col-name))
+                long-col-re (re-pattern (str "(?i)" long-col-name))]
+            (is (=? {:rows [["AK" 68] ["AL" 56] ["AR" 49] ["AZ" 20] ["CA" 90]],
+                     :cols
+                     [{:source       :fields ; QUE-1340
+                       :name         long-col-re
+                       :display_name long-col-re
+                       :field_ref    [:field long-col-re {}]}
+                      {:source       :fields
+                       :name         coun-col-re
+                       :display_name coun-col-re
+                       :field_ref    [:field coun-col-re {}]}]}
+                    (qp.test-util/rows-and-cols
+                     (mt/format-rows-by [str int]
+                                        (qp/process-query query)))))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::filter-by-field-literal-test]
   [_driver _feature _database]
@@ -591,35 +593,35 @@
 (deftest ^:parallel correct-column-metadata-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure a query using a source query comes back with the correct columns metadata"
-      (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
-                                        [(mt/mbql-query venues)])
+      (let [mp (qp.test-util/metadata-provider-with-cards-for-queries
+                [(mt/mbql-query venues)])]
         (is (=? (map (partial qp.test-util/col :venues)
                      [:id :name :category_id :latitude :longitude :price])
                 ;; todo: i don't know why the results don't have the information
                 (mt/cols
-                 (qp/process-query (query-with-source-card 1 lib.schema.id/saved-questions-virtual-database-id)))))))))
+                 (qp/process-query (lib/query mp (query-with-source-card 1 (mt/id)))))))))))
 
 (deftest ^:parallel correct-column-metadata-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure a breakout/aggregate query using a source query comes back with the correct columns metadata"
-      (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
-                                        [(mt/mbql-query venues)])
+      (let [mp (qp.test-util/metadata-provider-with-cards-for-queries
+                [(mt/mbql-query venues)])]
         (is (=? [(qp.test-util/breakout-col (qp.test-util/col :venues :price))
                  (qp.test-util/aggregate-col :count)]
                 (mt/cols
                  (qp/process-query
-                  (query-with-source-card 1
-                                          lib.schema.id/saved-questions-virtual-database-id
-                                          (mt/mbql-query venues
-                                            {:aggregation [[:count]]
-                                             :breakout    [$price]}))))))))))
+                  (lib/query
+                   mp
+                   (query-with-source-card 1 (mt/id) (mt/mbql-query venues
+                                                       {:aggregation [[:count]]
+                                                        :breakout    [$price]})))))))))))
 
 (deftest ^:parallel correct-column-metadata-test-3
   (testing "make sure nested queries return the right columns metadata for SQL source queries and datetime breakouts"
-    (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
-                                      [{:database (mt/id)
-                                        :type     :native
-                                        :native   {:query "SELECT * FROM CHECKINS"}}])
+    (let [mp (qp.test-util/metadata-provider-with-cards-for-queries
+              [{:database (mt/id)
+                :type     :native
+                :native   {:query "SELECT * FROM CHECKINS"}}])]
       (is (=? [(-> (qp.test-util/breakout-col (qp.test-util/field-literal-col :checkins :date))
                    (assoc :field_ref    [:field "DATE" {:base-type :type/Date, :temporal-unit :day}]
                           :unit         :day)
@@ -629,10 +631,11 @@
                (qp.test-util/aggregate-col :count)]
               (mt/cols
                (qp/process-query
-                (query-with-source-card 1 lib.schema.id/saved-questions-virtual-database-id
-                                        (mt/mbql-query checkins
-                                          {:aggregation [[:count]]
-                                           :breakout    [!day.*date]})))))))))
+                (lib/query
+                 mp
+                 (query-with-source-card 1 (mt/id) (mt/mbql-query checkins
+                                                     {:aggregation [[:count]]
+                                                      :breakout    [!day.*date]}))))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::breakout-year-test]
   [_driver _feature _database]
@@ -649,25 +652,24 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries ::breakout-year-test)
     (testing (str "make sure when doing a nested query we give you metadata that would suggest you should be able to "
                   "break out a *YEAR*")
-      (let [source-query (mt/mbql-query checkins
-                           {:aggregation  [[:count]]
-                            :breakout     [!year.date]})]
-        (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
-                                          [source-query])
-          (let [[date-col count-col] (for [col (mt/cols (qp/process-query source-query))]
-                                       (as-> col col
-                                         (assoc col :source :fields)
-                                         (dissoc col :position)
-                                         (m/filter-keys simple-keyword? col)))]
-            ;; since the bucketing is happening in the source query rather than at this level, the field ref should
-            ;; return temporal unit `:default` rather than the upstream bucketing unit. You wouldn't want to re-apply
-            ;; the `:year` bucketing if you used this query in another subsequent query, so the field ref doesn't
-            ;; include the unit; however `:unit` is still `:year` so the frontend can use the correct formatting to
-            ;; display values of the column.
-            (is (=? [(assoc date-col  :field_ref [:field (mt/id :checkins :date) nil], :unit :year)
-                     (assoc count-col :field_ref [:field "count" {:base-type keyword?}])]
-                    (mt/cols
-                     (qp/process-query (query-with-source-card 1 lib.schema.id/saved-questions-virtual-database-id)))))))))))
+      (let [source-query         (mt/mbql-query checkins
+                                   {:aggregation [[:count]]
+                                    :breakout    [!year.date]})
+            mp                   (qp.test-util/metadata-provider-with-cards-for-queries
+                                  [source-query])
+            [date-col count-col] (for [col (mt/cols (qp/process-query (lib/query mp source-query)))]
+                                   (as-> col col
+                                     (assoc col :source :fields)
+                                     (dissoc col :position)
+                                     (m/filter-keys simple-keyword? col)))]
+        ;; since the bucketing is happening in the source query rather than at this level, the field ref should return
+        ;; temporal unit `:default` rather than the upstream bucketing unit. You wouldn't want to re-apply the `:year`
+        ;; bucketing if you used this query in another subsequent query, so the field ref doesn't include the unit;
+        ;; however `:unit` is still `:year` so the frontend can use the correct formatting to display values of the
+        ;; column.
+        (is (=? [(assoc date-col  :field_ref [:field (mt/id :checkins :date) nil], :unit :year)
+                 (assoc count-col :field_ref [:field "count" {:base-type keyword?}])]
+                (mt/cols (qp/process-query (lib/query mp (query-with-source-card 1 (mt/id)))))))))))
 
 (defn- completed-status [{:keys [status], :as results}]
   (if (= status :completed)
@@ -677,12 +679,12 @@
 (deftest ^:parallel time-interval-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure using a time interval filter works"
-      (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
-                                        [(mt/mbql-query checkins)])
-        (let [query (query-with-source-card 1
-                                            lib.schema.id/saved-questions-virtual-database-id
-                                            (mt/$ids checkins
-                                              {:filter [:time-interval *date -30 :day]}))]
+      (let [mp (qp.test-util/metadata-provider-with-cards-for-queries
+                [(mt/mbql-query checkins)])]
+        (let [query (lib/query
+                     mp
+                     (query-with-source-card 1 (mt/id) (mt/$ids checkins
+                                                         {:filter [:time-interval *date -30 :day]})))]
           (mt/with-native-query-testing-context query
             (is (=? {:status :completed}
                     (qp/process-query query)))))))))
@@ -690,52 +692,55 @@
 (deftest ^:parallel datetime-field-literals-in-filters-and-breakouts-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure that bucketing a `:field` w/ name works correctly in filters & breakouts"
-      (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
-                                        [(mt/mbql-query checkins)])
+      (let [mp (qp.test-util/metadata-provider-with-cards-for-queries
+                [(mt/mbql-query checkins)])]
         (is (= :completed
-               (-> (query-with-source-card 1
-                                           lib.schema.id/saved-questions-virtual-database-id
-                                           (mt/mbql-query checkins
-                                             {:aggregation [[:count]]
-                                              :filter      [:= !quarter.*date "2014-01-01T08:00:00.000Z"]
-                                              :breakout    [!month.*date]}))
+               (-> (lib/query
+                    mp
+                    (query-with-source-card 1
+                                            (mt/id)
+                                            (mt/mbql-query checkins
+                                              {:aggregation [[:count]]
+                                               :filter      [:= !quarter.*date "2014-01-01T08:00:00.000Z"]
+                                               :breakout    [!month.*date]})))
                    qp/process-query
                    completed-status)))))))
 
 (deftest ^:parallel drag-to-filter-timeseries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure timeseries queries generated by \"drag-to-filter\" work correctly"
-      (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
-                                        [(mt/mbql-query checkins)])
+      (let [mp (qp.test-util/metadata-provider-with-cards-for-queries
+                [(mt/mbql-query checkins)])]
         (is (= :completed
-               (-> (query-with-source-card 1
-                                           lib.schema.id/saved-questions-virtual-database-id
-                                           (mt/mbql-query checkins
-                                             {:aggregation [[:count]]
-                                              :breakout    [!week.*date]
-                                              :filter      [:between !week.*date "2014-02-01T00:00:00-08:00" "2014-05-01T00:00:00-07:00"]}))
-                   (qp/process-query)
-                   (completed-status))))))))
+               (-> (lib/query mp (query-with-source-card
+                                  1
+                                  (mt/id)
+                                  (mt/mbql-query checkins
+                                    {:aggregation [[:count]]
+                                     :breakout    [!week.*date]
+                                     :filter      [:between !week.*date "2014-02-01T00:00:00-08:00" "2014-05-01T00:00:00-07:00"]})))
+                   qp/process-query
+                   completed-status)))))))
 
 (deftest ^:parallel macroexpansion-test
   (testing "Make sure that macro expansion works inside of a neested query, when using a compound filter clause (#5974)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
-      (qp.store/with-metadata-provider (-> (mt/metadata-provider)
-                                           (lib.tu/mock-metadata-provider
-                                            {:segments [{:id         1
-                                                         :name       "Segment 1"
-                                                         :table-id   (mt/id :venues)
-                                                         :definition (mt/$ids {:filter [:= $venues.price 1]})}]})
-                                           (qp.test-util/metadata-provider-with-cards-for-queries
-                                            [(mt/mbql-query venues
-                                               {:filter [:segment 1]})]))
+      (let [mp (-> (mt/metadata-provider)
+                   (lib.tu/mock-metadata-provider
+                    {:segments [{:id         1
+                                 :name       "Segment 1"
+                                 :table-id   (mt/id :venues)
+                                 :definition (mt/$ids {:filter [:= $venues.price 1]})}]})
+                   (qp.test-util/metadata-provider-with-cards-for-queries
+                    [(mt/mbql-query venues
+                       {:filter [:segment 1]})]))]
         (is (= [[22]]
                (mt/formatted-rows
                 [int]
                 (qp/process-query
-                 (query-with-source-card 1
-                                         lib.schema.id/saved-questions-virtual-database-id
-                                         {:aggregation [:count]})))))))))
+                 (lib/query
+                  mp
+                  (query-with-source-card 1 (mt/id) {:aggregation [:count]}))))))))))
 
 (deftest ^:parallel card-perms-test
   (testing "perms for a Card with a SQL source query\n"

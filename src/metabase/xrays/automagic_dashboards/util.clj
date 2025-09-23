@@ -7,6 +7,7 @@
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -14,6 +15,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.xrays.automagic-dashboards.schema :as ads]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
@@ -64,30 +66,32 @@
   [form]
   (lib.util.match/match form :field &match))
 
-(mu/defn ->field :- [:maybe (ms/InstanceOf :model/Field)]
+(mu/defn ->field :- [:maybe ::ads/field]
   "Return `Field` instance for a given ID or name in the context of root."
-  [{{result-metadata :result_metadata} :source, :as root}
-   field-id-or-name-or-clause :- [:or ms/PositiveInt ms/NonBlankString [:fn mbql.preds/Field?]]]
+  [{{result-metadata :result_metadata, database :database_id} :source, :as root}
+   field-id-or-name-or-clause :- [:or ::lib.schema.id/field ms/NonBlankString [:fn mbql.preds/Field?]]]
   (let [id-or-name (if (sequential? field-id-or-name-or-clause)
                      (field-reference->id field-id-or-name-or-clause)
                      field-id-or-name-or-clause)]
-    (or
-     ;; Handle integer Field IDs.
-     (when (integer? id-or-name)
-       (t2/select-one :model/Field :id id-or-name))
-     ;; handle field string names. Only if we have result metadata. (Not sure why)
-     (when (string? id-or-name)
-       (when-not result-metadata
-         (log/warn "Warning: Automagic analysis context is missing result metadata. Unable to resolve Fields by name."))
-       (when-let [field (m/find-first #(= (:name %) id-or-name)
-                                      result-metadata)]
-         (as-> field field
-           (update field :base_type keyword)
-           (update field :semantic_type keyword)
-           (mi/instance :model/Field field)
-           (analyze/run-classifiers field {}))))
-     ;; otherwise this isn't returning something, and that's probably an error. Log it.
-     (log/warnf "Cannot resolve Field %s in automagic analysis context\n%s" field-id-or-name-or-clause (u/pprint-to-str root)))))
+    (some->
+     (or
+      ;; Handle integer Field IDs.
+      (when (pos-int? id-or-name)
+        (t2/select-one :model/Field :id id-or-name))
+      ;; handle field string names. Only if we have result metadata. (Not sure why)
+      (when (string? id-or-name)
+        (when-not result-metadata
+          (log/warn "Warning: Automagic analysis context is missing result metadata. Unable to resolve Fields by name."))
+        (when-let [field (m/find-first #(= (:name %) id-or-name)
+                                       result-metadata)]
+          (as-> field field
+            (update field :base_type keyword)
+            (update field :semantic_type keyword)
+            (mi/instance :model/Field field)
+            (analyze/run-classifiers field {}))))
+      ;; otherwise this isn't returning something, and that's probably an error. Log it.
+      (log/warnf "Cannot resolve Field %s in automagic analysis context\n%s" field-id-or-name-or-clause (u/pprint-to-str root)))
+     (assoc :xrays/database-id database))))
 
 (defn filter-id-for-field
   "Generate a parameter ID for the given field. In X-ray dashboards a parameter is mapped to a single field only."

@@ -1,15 +1,31 @@
 (ns metabase.xrays.automagic-dashboards.schema
   (:require
    [malli.core :as mc]
-   [malli.util :as mut]))
+   [malli.util :as mut]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
-(def context
+(mr/def ::field
+  [:and
+   [:map
+    [:table_id          {:optional true} [:maybe ::lib.schema.id/table]]
+    ;; "magic" (non-app-DB-based) key added by [[metabase.xrays.automagic-dashboards.util/->field]] and consumed
+    ;; by [[metabase.xrays.automagic-dashboards.core/->root]]
+    [:xrays/database-id {:optional true} [:maybe ::lib.schema.id/database]]]
+   (ms/InstanceOf :model/Field)])
+
+(mr/def ::context.root
+  [:map
+   [:database ::lib.schema.id/database]])
+
+(mr/def ::context
   "The big ball of mud data object from which we generate x-rays"
   (mc/schema
    [:map
-    [:source any?]
-    [:root any?]
-    [:tables {:optional true} any?]
+    [:source       any?]
+    [:root         [:ref ::context.root]]
+    [:tables       {:optional true} any?]
     [:query-filter {:optional true} any?]]))
 
 (def dashcard
@@ -262,6 +278,16 @@
       [:map
        [:aggregation [:sequential any?]]
        [:breakout [:sequential any?]]]]])))
+
+(mr/def ::card
+  [:map
+   [:dataset_query {:optional true} [:maybe
+                                     [:map
+                                      [:database ::lib.schema.id/database]]]]])
+
+(mr/def ::dashboard
+  [:map
+   [:cards {:optional true} [:maybe [:sequential [:ref ::card]]]]])
 
 (comment
   (require '[malli.generator :as mg])

@@ -227,7 +227,7 @@
                        :model/Card       {c4-id  :id
                                           c4-eid :entity_id}        {:name          "Referenced Question"
                                                                      :database_id   db-id
-                                                                     :table_id      schema-id
+                                                                     :table_id      no-schema-id
                                                                      :collection_id coll-id
                                                                      :creator_id    mark-id
                                                                      :dataset_query
@@ -240,7 +240,7 @@
                         c5-eid :entity_id}
                        {:name          "Dependent Question"
                         :database_id   db-id
-                        :table_id      schema-id
+                        :table_id      no-schema-id
                         :collection_id coll-id
                         :creator_id    mark-id
                         :dataset_query
@@ -428,7 +428,7 @@
       (testing "Cards can be based on other cards"
         (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id c5-id))]
           (is (=? {:serdes/meta    [{:model "Card" :id c5-eid :label "dependent_question"}]
-                   :table_id       ["My Database" "PUBLIC" "Schema'd Table"]
+                   :table_id       ["My Database" nil "Schemaless Table"]
                    :creator_id     "mark@direstrai.ts"
                    :collection_id  coll-eid
                    :dataset_query  {:query    {:source-table c4-eid
@@ -441,8 +441,7 @@
           (testing "and depend on their Database, Table and Collection, and the upstream Card"
             (is (= #{[{:model "Database"   :id "My Database"}]
                      [{:model "Database"   :id "My Database"}
-                      {:model "Schema"     :id "PUBLIC"}
-                      {:model "Table"      :id "Schema'd Table"}]
+                      {:model "Table"      :id "Schemaless Table"}]
                      [{:model "Collection" :id coll-eid}]
                      [{:model "Card"       :id c4-eid}]}
                    (set (serdes/dependencies ser)))))))

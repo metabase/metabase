@@ -139,10 +139,6 @@
        (is (= [{:col "Count"} {:col 100.0}]
               actual))))))
 
-(defn dissoc-id-and-name [obj]
-  (cond-> obj
-    (map? obj) (dissoc :id :name)))
-
 (def successful-card-info
   "Data that should be returned if `GET /api/embed/card/:token` completes successfully (minus `:id` and `:name`).
    This should only be the bare minimum amount of info needed to display the Card, leaving out other data we wouldn't
@@ -168,8 +164,7 @@
   (with-embedding-enabled-and-new-secret-key!
     (with-temp-card [card {:enable_embedding true}]
       (is (=? successful-card-info
-              (dissoc-id-and-name
-               (client/client :get 200 (card-url card))))))))
+              (client/client :get 200 (card-url card)))))))
 
 (deftest we-should-fail-when-attempting-to-use-an-expired-token
   (with-embedding-enabled-and-new-secret-key!
@@ -211,7 +206,8 @@
       (with-temp-card [card {:enable_embedding true
                              :dataset_query    {:database (mt/id)
                                                 :type     :native
-                                                :native   {:template-tags {:a {:type "date", :name "a", :display_name "a" :id "a"}
+                                                :native   {:query         "SELECT 1;"
+                                                           :template-tags {:a {:type "date", :name "a", :display_name "a" :id "a"}
                                                                            :b {:type "date", :name "b", :display_name "b" :id "b"}
                                                                            :c {:type "date", :name "c", :display_name "c" :id "c"}
                                                                            :d {:type "date", :name "d", :display_name "d" :id "d"}}}}
@@ -571,12 +567,10 @@
 (deftest it-should-be-possible-to-call-this-endpoint-successfully
   (with-embedding-enabled-and-new-secret-key!
     (mt/with-temp [:model/Dashboard dash {:enable_embedding true}]
-      (is (= successful-dashboard-info
-             (dissoc-id-and-name
-              (client/client :get 200 (dashboard-url dash)))))
-      (is (= successful-dashboard-info
-             (dissoc-id-and-name
-              (client/client :get 200 (dashboard-url (:entity_id dash) dash))))))))
+      (is (=? successful-dashboard-info
+              (client/client :get 200 (dashboard-url dash))))
+      (is (=? successful-dashboard-info
+              (client/client :get 200 (dashboard-url (:entity_id dash) dash)))))))
 
 (deftest bad-dashboard-id-fails
   (with-embedding-enabled-and-new-secret-key!

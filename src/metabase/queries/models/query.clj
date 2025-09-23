@@ -102,7 +102,7 @@
     (let [query (lib-be/normalize-query query)]
       (if-let [source-card-id (lib/source-card-id query)]
         (let [card (lib.metadata/card query source-card-id)]
-          (merge {:table-id nil} (select-keys card [:database-id :table-id])))
+          (merge {:table-id nil, :database-id (:database query)} (select-keys card [:database-id :table-id])))
         {:database-id (:database query)
          :table-id    (lib/source-table-id query)}))))
 

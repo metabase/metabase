@@ -8,6 +8,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.field :as lib.field]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
@@ -367,11 +368,13 @@
   (let [table-id (field-id->table-id field-id)]
     (database/table-id->database-id table-id)))
 
-(defn table
+(mu/defn table
   "Return the `Table` associated with this `Field`."
-  {:arglists '([field])}
-  [{:keys [table_id]}]
-  (t2/select-one 'Table, :id table_id))
+  [{table-id :table_id, :as _field} :- [:maybe
+                                        [:map
+                                         [:table_id {:optional true} ::lib.schema.id/table]]]]
+  (when table-id
+    (t2/select-one :model/Table, :id table-id)))
 
 (methodical/defmethod t2/batched-hydrate [:model/Field :parent]
   [_model k fields]

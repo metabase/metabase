@@ -343,77 +343,84 @@
   (mt/with-temp [:model/Database {database-id :id} {}
                  :model/Table {table-id :id} {:db_id database-id}
                  :model/Segment {segment-id :id} {:table_id table-id}
-                 :model/Card {model-id :id :as model} {:name "Model"
-                                                       :type :model
-                                                       :dataset_query {:query {:source-table (mt/id :venues)
-                                                                               :filter [:= [:field 1 nil] "1"]}}}
+                 :model/Card {model-id :id :as model} {:name          "Model"
+                                                       :type          :model
+                                                       :dataset_query {:database (mt/id)
+                                                                       :type     :query
+                                                                       :query    {:source-table (mt/id :venues)
+                                                                                  :filter       [:= [:field 1 nil] "1"]}}}
                  ;; matching question
-                 :model/Card card-1 {:name "Card 1"
-                                     :dataset_query {:query {:source-table (str "card__" model-id)
-                                                             :filter [:segment segment-id]}
+                 :model/Card card-1 {:name          "Card 1"
+                                     :dataset_query {:query    {:source-table (str "card__" model-id)
+                                                                :filter       [:segment segment-id]}
                                                      :database (mt/id)
-                                                     :type :query}}
+                                                     :type     :query}}
                  :model/Card {other-card-id :id} {}
                  ;; matching join
-                 :model/Card card-3 {:name "Card 3"
+                 :model/Card card-3 {:name          "Card 3"
                                      :dataset_query (let [alias (str "Question " model-id)]
                                                       (mt/mbql-query nil
-                                                        {:joins [{:fields [[:field 35 {:join-alias alias}]]
-                                                                  :source-table (str "card__" model-id)
-                                                                  :condition [:=
-                                                                              [:field 5 nil]
-                                                                              [:field 33 {:join-alias alias}]]
-                                                                  :alias alias
-                                                                  :strategy :inner-join}
-                                                                 {:fields       :all
-                                                                  :alias        "__alias__"
-                                                                  :condition    [:=
-                                                                                 [:field 1 nil]
-                                                                                 [:field 2 {:join-alias "__alias__"}]]
-                                                                  :source-query {:source-table 1
-                                                                                 :filter [:or
-                                                                                          [:> [:field 1 nil] 3]
-                                                                                          [:segment segment-id]]
-                                                                                 :aggregation  [[:+ [:count] 1]]
-                                                                                 :breakout     [[:field 4 nil]]}}]
-                                                         :fields [[:field 9 nil]]
+                                                        {:joins        [{:fields       [[:field 35 {:join-alias alias}]]
+                                                                         :source-table (str "card__" model-id)
+                                                                         :condition    [:=
+                                                                                        [:field 5 nil]
+                                                                                        [:field 33 {:join-alias alias}]]
+                                                                         :alias        alias
+                                                                         :strategy     :inner-join}
+                                                                        {:fields       :all
+                                                                         :alias        "__alias__"
+                                                                         :condition    [:=
+                                                                                        [:field 1 nil]
+                                                                                        [:field 2 {:join-alias "__alias__"}]]
+                                                                         :source-query {:source-table 1
+                                                                                        :filter       [:or
+                                                                                                       [:> [:field 1 nil] 3]
+                                                                                                       [:segment segment-id]]
+                                                                                        :aggregation  [[:+ [:count] 1]]
+                                                                                        :breakout     [[:field 4 nil]]}}]
+                                                         :fields       [[:field 9 nil]]
                                                          :source-table (str "card__" other-card-id)}))}
                  ;; matching native query
-                 :model/Card card-4 {:name "Card 4"
-                                     :dataset_query {:type :native
-                                                     :native (let [model-ref (format "#%d-q1" model-id)]
-                                                               {:query (format "select o.id from orders o join {{%s}} q1 on o.PRODUCT_ID = q1.PRODUCT_ID"
-                                                                               model-ref)
-                                                                :template-tags {model-ref
-                                                                                {:id "2185b98b-20b3-65e6-8623-4fb56acb0ca7"
-                                                                                 :name model-ref
-                                                                                 :display-name model-ref
-                                                                                 :type :card
-                                                                                 :card-id model-id}}})
+                 :model/Card card-4 {:name          "Card 4"
+                                     :dataset_query {:type     :native
+                                                     :native   (let [model-ref (format "#%d-q1" model-id)]
+                                                                 {:query         (format "select o.id from orders o join {{%s}} q1 on o.PRODUCT_ID = q1.PRODUCT_ID"
+                                                                                         model-ref)
+                                                                  :template-tags {model-ref
+                                                                                  {:id           "2185b98b-20b3-65e6-8623-4fb56acb0ca7"
+                                                                                   :name         model-ref
+                                                                                   :display-name model-ref
+                                                                                   :type         :card
+                                                                                   :card-id      model-id}}})
                                                      :database (mt/id)}}
                  ;; native query reference doesn't match
-                 :model/Card card-5 {:name "Card 5"
-                                     :dataset_query {:type :native
-                                                     :native (let [model-ref (str "card__" model-id)
-                                                                   card-id other-card-id
-                                                                   card-ref (format "#%d-q1" card-id)]
-                                                               {:query (format "select o.id %s from orders o join {{%s}} q1 on o.PRODUCT_ID = q1.PRODUCT_ID"
-                                                                               model-ref card-ref)
-                                                                :template-tags {card-ref
-                                                                                {:id "2185b98b-20b3-65e6-8623-4fb56acb0ca7"
-                                                                                 :name card-ref
-                                                                                 :display-name card-ref
-                                                                                 :type :card
-                                                                                 :card-id card-id}}})
+                 :model/Card card-5 {:name          "Card 5"
+                                     :dataset_query {:type     :native
+                                                     :native   (let [model-ref (str "card__" model-id)
+                                                                     card-id   other-card-id
+                                                                     card-ref  (format "#%d-q1" card-id)]
+                                                                 {:query         (format "select o.id %s from orders o join {{%s}} q1 on o.PRODUCT_ID = q1.PRODUCT_ID"
+                                                                                         model-ref card-ref)
+                                                                  :template-tags {card-ref
+                                                                                  {:id           "2185b98b-20b3-65e6-8623-4fb56acb0ca7"
+                                                                                   :name         card-ref
+                                                                                   :display-name card-ref
+                                                                                   :type         :card
+                                                                                   :card-id      card-id}}})
                                                      :database (mt/id)}}
                  :model/Database {other-database-id :id} {}
                  ;; database doesn't quite match
-                 :model/Card card-6 {:name "Card 6", :database_id other-database-id
-                                     :dataset_query {:query {:source-table (str "card__" model-id)}}}
+                 :model/Card card-6 {:name          "Card 6"
+                                     :database_id   other-database-id
+                                     :dataset_query {:database other-database-id
+                                                     :type     :query
+                                                     :query    {:source-table (str "card__" model-id)}}}
                  ;; same as matching question, but archived
-                 :model/Card card-7 {:name "Card 7"
-                                     :archived true
-                                     :dataset_query {:query {:source-table (str "card__" model-id)}}}]
+                 :model/Card card-7 {:name          "Card 7"
+                                     :archived      true
+                                     :dataset_query {:database (mt/id)
+                                                     :type     :query
+                                                     :query    {:source-table (str "card__" model-id)}}}]
     (testing "list cards using a model"
       (with-cards-in-readable-collection! [model card-1 card-3 card-4 card-5 card-6 card-7]
         (is (= #{"Card 1" "Card 3" "Card 4"}
@@ -2594,6 +2601,9 @@
       (testing "Changing core attributes un-verifies the card"
         (with-card :verified
           (is (verified? card))
+          (is (=? {:dataset_query {:query {:source-table pos-int?}}}
+                  card)
+              "(This test is written to expect a legacy query)")
           (update-card card (update-in card [:dataset_query :query :source-table] inc))
           (is (not (verified? card)))
           (testing "The unverification edit has explanatory text"
@@ -3674,8 +3684,9 @@
   (testing "Don't throw an error if source card is deleted (#48461)"
     (mt/with-temp
       [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)}
-       :model/Card {card-id-2 :id} {:dataset_query {:type  :query
-                                                    :query {:source-table (str "card__" card-id-1)}}}]
+       :model/Card {card-id-2 :id} {:dataset_query {:database (mt/id)
+                                                    :type     :query
+                                                    :query    {:source-table (str "card__" card-id-1)}}}]
       (letfn [(query-metadata [expected-status card-id]
                 (-> (mt/user-http-request :crowberto :get expected-status (str "card/" card-id "/query_metadata"))
                     (api.test-util/select-query-metadata-keys-for-debugging)))]
@@ -3685,8 +3696,8 @@
             (doseq [[card-id table-id] [[card-id-1 (mt/id :products)]
                                         [card-id-2 (str "card__" card-id-1)]]]
               (is (=?
-                   {:fields empty?
-                    :tables [{:id table-id}]
+                   {:fields    empty?
+                    :tables    [{:id table-id}]
                     :databases [{:id (mt/id) :engine string?}]}
                    (query-metadata 200 card-id)))))
          #(testing "After delete"

@@ -163,6 +163,7 @@
    [metabase.xrays.automagic-dashboards.interesting :as interesting]
    [metabase.xrays.automagic-dashboards.names :as names]
    [metabase.xrays.automagic-dashboards.populate :as populate]
+   [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [metabase.xrays.related :as related]
    [toucan2.core :as t2]))
@@ -179,7 +180,7 @@
   {:arglists '([entity])}
   mi/model)
 
-(defmethod ->root :model/Table
+(mu/defmethod ->root :model/Table :- ::ads/context.root
   [table]
   {:entity                     table
    :full-name                  (:display_name table)
@@ -189,7 +190,7 @@
    :url                        (format "%stable/%s" public-endpoint (u/the-id table))
    :dashboard-templates-prefix ["table"]})
 
-(defmethod ->root :model/Segment
+(mu/defmethod ->root :model/Segment :- ::ads/context.root
   [segment]
   (let [table (->> segment :table_id (t2/select-one :model/Table :id))]
     {:entity                     segment
@@ -202,7 +203,7 @@
      :url                        (format "%ssegment/%s" public-endpoint (u/the-id segment))
      :dashboard-templates-prefix ["table"]}))
 
-(defmethod ->root :xrays/Metric
+(mu/defmethod ->root :xrays/Metric :- ::ads/context.root
   [metric]
   (let [table (->> metric :table_id (t2/select-one :model/Table :id))]
     {:entity                     metric
@@ -217,14 +218,17 @@
      :url                        (format "%smetric/%s" public-endpoint (:id metric))
      :dashboard-templates-prefix ["metric"]}))
 
-(defmethod ->root :model/Field
-  [field]
-  (let [table (field/table field)]
+(mu/defmethod ->root :model/Field :- ::ads/context.root
+  [field :- ::ads/field]
+  (let [table (when (:table_id field)
+                (field/table field))]
     {:entity                     field
      :full-name                  (trun "{0} field" "{0} fields" (:display_name field))
      :short-name                 (:display_name field)
      :source                     table
-     :database                   (:db_id table)
+     :database                   (or (:db_id table)
+                                     (:xrays/database-id field)
+                                     (throw (ex-info "Cannot create root context from Field without Table or Database ID" {:field field})))
      ;; We use :id here as it might not be a concrete metric but rather one from a nested query
      ;; which does not have an ID.
      :url                        (format "%sfield/%s" public-endpoint (:id field))
@@ -423,11 +427,11 @@
           (constantly source-fields))
         (constantly [])))))
 
-(defn- make-base-context
+(mu/defn- make-base-context :- ::ads/context
   "Create the underlying context to which we will add metrics, dimensions, and filters.
 
   This is applicable to all dashboard templates."
-  [{:keys [source] :as root}]
+  [{:keys [source] :as root} :- ::ads/context.root]
   {:pre [source]}
   (let [tables        (concat [source] (when (mi/instance-of? :model/Table source)
                                          (linked-tables source)))
@@ -450,12 +454,12 @@
                                                (assoc group :title (or comparison_title title))))))
        (instantiate-metadata context available-metrics {}))))
 
-(defn- generate-base-dashboard
+(mu/defn- generate-base-dashboard :- ::ads/dashboard
   "Produce the \"base\" dashboard from the base context for an item and a dashboard template.
   This includes dashcards and global filters, but does not include related items and is not yet populated.
   Repeated calls of this might be generated (e.g. the main dashboard and related) then combined once using
   create dashboard."
-  [{root :root :as base-context}
+  [{root :root :as base-context} :- ::ads/context
    {template-cards      :cards
     :keys               [dashboard_filters]
     :as                 dashboard-template}
@@ -658,9 +662,9 @@
               (comparisons root))
        (fill-related max-related (get related-selectors (-> root :entity mi/model)))))
 
-(defn- generate-dashboard
+(mu/defn- generate-dashboard :- ::ads/dashboard
   "Produce a fully-populated dashboard from the base context for an item and a dashboard template."
-  [{{:keys [show url query-filter] :as root} :root :as base-context}
+  [{{:keys [show url query-filter] :as root} :root :as base-context} :- ::ads/context
    {:as dashboard-template}
    {grounded-dimensions :dimensions :as grounded-values}]
   (let [show      (or show max-cards)
@@ -679,9 +683,9 @@
          :auto_apply_filters true
          :width "fixed"))))
 
-(defn- automagic-dashboard
+(mu/defn- automagic-dashboard :- ::ads/dashboard
   "Create dashboards for table `root` using the best matching heuristics."
-  [{:keys [dashboard-template dashboard-templates-prefix] :as root}]
+  [{:keys [dashboard-template dashboard-templates-prefix] :as root} :- ::ads/context.root]
   (let [base-context    (make-base-context root)
         {template-dimensions :dimensions
          template-metrics    :metrics
@@ -830,8 +834,9 @@
                             {:cell-query cell-query
                              :cell-url   cell-url}))))
 
-(defmethod automagic-analysis :model/Field
-  [field opts]
+(mu/defmethod automagic-analysis :model/Field
+  [field :- ::ads/field
+   opts]
   (automagic-dashboard (merge (->root field) opts)))
 
 (defn- load-tables-with-enhanced-table-stats

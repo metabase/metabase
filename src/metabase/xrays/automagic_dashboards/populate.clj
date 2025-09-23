@@ -8,7 +8,9 @@
    [metabase.queries.core :as queries]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.xrays.automagic-dashboards.filters :as filters]
+   [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [toucan2.core :as t2]))
 
@@ -129,9 +131,11 @@
    :dashboard_tab_id       nil
    :visualization_settings {}})
 
-(defn- add-card
+(mu/defn- add-card
   "Add a card to dashboard `dashboard` at position [`x`, `y`]."
-  [dashboard {:keys [title description dataset_query width height id] :as card} [x y]]
+  [dashboard
+   {:keys [title description dataset_query width height id] :as card} :- ::ads/card
+   [x y]]
   (let [card (-> {:creator_id    api/*current-user-id*
                   :dataset_query dataset_query
                   :description   description
@@ -226,8 +230,8 @@
 
 (def ^:private ^Long ^:const group-heading-height 2)
 
-(defn- add-group
-  [dashboard grid group cards]
+(mu/defn- add-group
+  [dashboard grid group cards :- [:maybe [:sequential ::ads/card]]]
   (let [start-row (bottom-row grid)
         start-row (cond-> start-row
                     group (+ group-heading-height))]
@@ -286,10 +290,11 @@
     (let [g (group-by f coll)]
       (access key-order g))))
 
-(defn create-dashboard
+(mu/defn create-dashboard
   "Create dashboard and populate it with cards."
   ([dashboard] (create-dashboard dashboard :all))
-  ([{:keys [title transient_title description groups filters cards]} n]
+  ([{:keys [title transient_title description groups filters cards], :as _dashboard} :- ::ads/dashboard
+    n]
    (let [n             (cond
                          (= n :all)   (count cards)
                          (keyword? n) (Integer/parseInt (name n))
