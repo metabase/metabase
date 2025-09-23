@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { match } from "ts-pattern";
 
+import { trackSchemaEvent } from "metabase/lib/analytics";
 import { isWithinIframe } from "metabase/lib/dom";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 
@@ -22,7 +23,6 @@ export function useSdkIframeEmbedEventBus({
   onSettingsChanged?: (settings: SdkIframeEmbedSettings) => void;
 }): {
   embedSettings: SdkIframeEmbedSettings | null;
-  usageAnalytics: UsageAnalytics | null;
 } {
   const [embedSettings, setEmbedSettings] =
     useState<SdkIframeEmbedSettings | null>(null);
@@ -59,5 +59,34 @@ export function useSdkIframeEmbedEventBus({
     };
   }, [onSettingsChanged]);
 
-  return { embedSettings, usageAnalytics };
+  useEffect(() => {
+    if (embedSettings?.instanceUrl && usageAnalytics) {
+      const isEmbeddedAnalyticsJsPreview = isSameHost(
+        embedSettings.instanceUrl,
+        usageAnalytics.embedHostUrl,
+      );
+      if (!isEmbeddedAnalyticsJsPreview) {
+        trackSchemaEvent("embedded_analytics_js", usageAnalytics.usage);
+      }
+    }
+  }, [embedSettings?.instanceUrl, usageAnalytics]);
+
+  return { embedSettings };
+}
+
+function isSameHost(instanceUrl: string, embedHostUrl: string) {
+  const instanceUrlObject = new URL(instanceUrl);
+  const embedHostObject = new URL(embedHostUrl);
+
+  const normalizedInstanceUrl =
+    instanceUrlObject.host + instanceUrlObject.pathname;
+  const normalizedEmbedHostUrl =
+    embedHostObject.host + embedHostObject.pathname;
+
+  /**
+   * This is to ensure Metabase at Subpath works. e.g. https://example.com/metabase and https://example.com/embed
+   * should be considered as a separate host. But https://example.com/metabase and https://example.com/metabase/dashboard/1
+   * are the same host.
+   */
+  return normalizedEmbedHostUrl.includes(normalizedInstanceUrl);
 }
