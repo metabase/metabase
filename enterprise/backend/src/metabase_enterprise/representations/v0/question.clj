@@ -105,9 +105,9 @@
       ;; :creator_id
       :database_id database-id
       ;; :table_id
-      :query_type (:type query)
       ;; :archived
       ;; :public_uuid
+      :query_type (if (= (:type query) "native") :native :query)
       :type :question}
      ;; Optional fields
      (when-let [coll-id (v0-common/find-collection-id collection)]
@@ -163,7 +163,8 @@
       (update-source-table)))
 
 (defn export [card]
-  (let [query (serdes/export-mbql (:dataset_query card))]
+  (let [query #_(:dataset_query card) (serdes/export-mbql (:dataset_query card))]
+    (prn query)
     (cond-> {:name (:name card)
              ;;:version "question-v0"
              :type (:type card)
@@ -178,8 +179,11 @@
       (assoc :mbql_query (:query query)
              :database (:database query))
 
-      :always
-      patch-refs
+      ;;:always
+      ;;patch-refs
 
       :always
       v0-common/remove-nils)))
+
+(comment
+  (clojure.pprint/pprint (export (t2/select-one :model/Card :id 123))))

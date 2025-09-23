@@ -49,7 +49,9 @@
       ;; MBQL query - use serdes/import-mbql if it's already in MBQL format
       mbql_query
       (try
-        (-> (serdes/import-mbql mbql_query)
+        (-> (serdes/import-mbql {:type :query
+                                 :database database-id
+                                 :query mbql_query})
             (update :type keyword))
         (catch Exception _e
           ;; Fall back to simple structure if import fails
