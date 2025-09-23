@@ -1,7 +1,7 @@
 import { Extension } from "@tiptap/core";
 import { Fragment, type NodeType as PMNodeType, Slice } from "@tiptap/pm/model";
 import { NodeSelection, Plugin, PluginKey } from "@tiptap/pm/state";
-import type { EditorView as PMEditorView } from "@tiptap/pm/view";
+import type { EditorView } from "@tiptap/pm/view";
 import type { NodeViewProps } from "@tiptap/react";
 
 import {
@@ -169,7 +169,7 @@ const handleCardDropOnParagraph = ({
 };
 
 const moveNode = (
-  view: PMEditorView,
+  view: EditorView,
   fromPos: number,
   toPos: number,
   wrapper?: PMNodeType,
@@ -207,7 +207,7 @@ const moveNode = (
 };
 
 // Traverses the document and unwraps any flexContainer nodes that only have 1 child
-const cleanupFlexContainerNodes = (view: PMEditorView) => {
+const cleanupFlexContainerNodes = (view: EditorView) => {
   view.state.doc.descendants((node, pos) => {
     if (node.type.name === "flexContainer" && node.childCount === 1) {
       const child = node.firstChild;
