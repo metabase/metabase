@@ -1,17 +1,9 @@
 import { t } from "ttag";
 
-import { skipToken, useGetDatabaseQuery, useGetTableQuery } from "metabase/api";
+import { skipToken, useGetTableQuery } from "metabase/api";
 import Link from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import {
-  Divider,
-  Group,
-  Icon,
-  type IconName,
-  Loader,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Box, Group, Icon, type IconName, Loader, Stack } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
 
 import { SplitSection } from "../../../components/SplitSection";
@@ -21,94 +13,37 @@ import {
   getQueryBuilderUrl,
 } from "../../../urls";
 
+import S from "./SourceSection.module.css";
+
 type SourceSectionProps = {
   transform: Transform;
 };
 
 export function SourceSection({ transform }: SourceSectionProps) {
-  if (transform.source.type !== "python") {
+  const { source } = transform;
+  if (source.type !== "python") {
     return null;
   }
+
+  const { "source-database": sourceDatabaseId, "source-tables": sourceTables } =
+    source;
 
   return (
     <SplitSection
       label={t`Transform source`}
-      description={t`The data sources for this Python transform.`}
+      description={t`The data sources for this Python transform, by alias.`}
     >
-      <Group p="lg">
-        <SourceInfo transform={transform} />
-      </Group>
-    </SplitSection>
-  );
-}
-
-type SourceInfoProps = {
-  transform: Transform;
-};
-
-function SourceInfo({ transform }: SourceInfoProps) {
-  const source = transform.source;
-  const sourceDatabaseId =
-    source.type === "python" ? source["source-database"] : undefined;
-  const sourceTables =
-    source.type === "python" ? source["source-tables"] : undefined;
-
-  const { data: database, isLoading: isDatabaseLoading } = useGetDatabaseQuery(
-    sourceDatabaseId ? { id: sourceDatabaseId } : skipToken,
-  );
-
-  if (!database) {
-    return null;
-  }
-
-  const hasMultipleTables =
-    sourceTables && Object.keys(sourceTables).length > 0;
-
-  if (isDatabaseLoading) {
-    return <Loader size="sm" />;
-  }
-
-  // Display for multiple tables
-  if (hasMultipleTables) {
-    return (
-      <Stack gap="sm">
-        {database && (
-          <Group gap="sm">
-            <SourceItemLink
-              label={database.name}
-              icon="database"
-              to={getBrowseDatabaseUrl(database.id)}
-              data-testid="source-database-link"
-            />
-          </Group>
-        )}
-        <Divider />
-        <Stack gap="xs">
-          {Object.entries(sourceTables).map(([alias, tableId]) => (
-            <TableWithAlias
-              key={alias}
-              alias={alias}
-              tableId={tableId as number}
-              databaseId={sourceDatabaseId as number}
-            />
-          ))}
-        </Stack>
+      <Stack p="lg" gap="sm" className={S.grid}>
+        {Object.entries(sourceTables).map(([alias, tableId]) => (
+          <TableWithAlias
+            key={alias}
+            alias={alias}
+            tableId={tableId as number}
+            databaseId={sourceDatabaseId as number}
+          />
+        ))}
       </Stack>
-    );
-  }
-
-  // Just show database if no tables selected
-  return (
-    <Group gap="sm">
-      {database != null && (
-        <SourceItemLink
-          label={database.name}
-          icon="database"
-          to={getBrowseDatabaseUrl(database.id)}
-          data-testid="source-database-link"
-        />
-      )}
-    </Group>
+    </SplitSection>
   );
 }
 
@@ -124,22 +59,30 @@ function TableWithAlias({ alias, tableId, databaseId }: TableWithAliasProps) {
   );
 
   if (isLoading) {
-    return <Loader size="xs" />;
+    return <Loader size="xs" data-testid="loader" />;
   }
 
   return (
-    <Group gap="sm" pl="md">
-      <Text size="sm" c="dimmed">
-        {alias}:
-      </Text>
-      <Group gap="xs">
+    <>
+      <Group className={S.alias}>{alias}</Group>
+      <Group gap="sm">
+        {table?.db && (
+          <>
+            <SourceItemLink
+              label={table.db.name}
+              icon="database"
+              to={getBrowseDatabaseUrl(table.db.id)}
+              data-testid="source-database-link"
+            />
+            <SourceItemDivider />
+          </>
+        )}
         {table?.schema && (
           <>
             <SourceItemLink
               label={table.schema}
               icon="folder"
               to={getBrowseSchemaUrl(databaseId, table.schema)}
-              small
             />
             <SourceItemDivider />
           </>
@@ -148,11 +91,9 @@ function TableWithAlias({ alias, tableId, databaseId }: TableWithAliasProps) {
           label={table?.display_name || table?.name || `Table ${tableId}`}
           icon="table2"
           to={table ? getQueryBuilderUrl(table.id, table.db_id) : undefined}
-          data-testid={`source-table-${alias}-link`}
-          small
         />
       </Group>
-    </Group>
+    </>
   );
 }
 
@@ -160,29 +101,14 @@ type SourceItemLinkProps = {
   label: string;
   icon: IconName;
   to?: string;
-  "data-testid"?: string;
-  small?: boolean;
 };
 
-function SourceItemLink({
-  label,
-  icon,
-  to,
-  "data-testid": dataTestId,
-  small = false,
-}: SourceItemLinkProps) {
+function SourceItemLink({ label, icon, to }: SourceItemLinkProps) {
   return (
-    <Link
-      className={CS.link}
-      to={to ?? ""}
-      disabled={to == null}
-      data-testid={dataTestId}
-    >
-      <Group gap="xs">
-        <Icon name={icon} size={small ? 14 : 16} />
-        <Text c="inherit" size={small ? "sm" : "md"}>
-          {label}
-        </Text>
+    <Link className={CS.link} to={to ?? ""} disabled={to == null}>
+      <Group gap="xs" align="center" justify="center">
+        <Icon name={icon} />
+        <Box>{label}</Box>
       </Group>
     </Link>
   );

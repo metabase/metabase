@@ -1,4 +1,6 @@
 import type {
+  DatabaseId,
+  PythonTransformTableAliases,
   Transform,
   TransformJob,
   TransformRun,
@@ -16,12 +18,20 @@ export function createMockTransformSource(): TransformSource {
   };
 }
 
-export function createMockPythonTransformSource(): TransformSource {
+export function createMockPythonTransformSource({
+  sourceDatabase = 1,
+  sourceTables = {},
+  body = "# Python script\nprint('Hello, world!')",
+}: {
+  sourceDatabase?: DatabaseId;
+  sourceTables?: PythonTransformTableAliases;
+  body?: string;
+}): TransformSource {
   return {
     type: "python",
-    body: "# Python script\nprint('Hello, world!')",
-    "source-database": 1,
-    "source-tables": {},
+    body,
+    "source-database": sourceDatabase,
+    "source-tables": sourceTables,
   };
 }
 
