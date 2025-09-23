@@ -586,6 +586,7 @@ export const CardEmbedComponent = memo(
                       <Ellipsified lines={1} tooltip={displayName}>
                         <Text
                           className={styles.titleText}
+                          data-testid="card-embed-title"
                           size="md"
                           color="text-dark"
                           fw={700}

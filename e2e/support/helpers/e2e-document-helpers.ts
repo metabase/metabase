@@ -39,8 +39,13 @@ export const commandSuggestionItem = (name: RegExp | string) =>
 
 export const getDocumentCard = (name: string) =>
   documentContent()
-    .findAllByTestId("document-card-embed")
-    .contains('[data-testid="document-card-embed"]', name);
+    .findAllByTestId("card-embed-title")
+    .filter((index, el) => {
+      // Filter elements based on custom logic, e.g., text content, class, etc.
+      return el.innerText === name;
+    })
+    .should("have.length", 1)
+    .closest('[data-testid="document-card-embed"]');
 
 export const assertDocumentCardVizType = (name: string, type: string) =>
   getDocumentCard(name).find(`[data-viz-ui-name=${type}]`);
@@ -114,65 +119,82 @@ export function dragAndDropCardOnAnotherCard(
     waitBeforeDrop?: boolean;
   } = {},
 ) {
-  const sourceAlias = `card-embed-${sourceCardTitle}`;
-  getDocumentCard(sourceCardTitle).as(sourceAlias).should("exist");
-  const targetAlias = `card-embed-${targetCardTitle}`;
-  getDocumentCard(targetCardTitle).as(targetAlias).should("exist");
-
   // Perform drag and drop: drag sourceCard card onto targetCard
-  cy.get(`@${sourceAlias}`).then(($ordersCard) => {
-    cy.get(`@${targetAlias}`).then(($ordersCountCard) => {
-      const sourceRect = $ordersCard[0].getBoundingClientRect();
+  getDocumentCard(sourceCardTitle)
+    .should("exist")
+    .then(($ordersCard) => {
+      getDocumentCard(targetCardTitle)
+        .should("exist")
+        .then(($ordersCountCard) => {
+          const sourceRect = $ordersCard[0].getBoundingClientRect();
 
-      // Start drag from center of Orders card
-      cy.get(`@${sourceAlias}`).trigger("mousedown", {
-        x: 10,
-        y: 10,
-        scrollBehavior: false,
-      });
-      const dataTransfer = new DataTransfer();
-      cy.get(`@${sourceAlias}`).trigger("dragstart", {
-        dataTransfer,
-        clientX: sourceRect.left + 10,
-        clientY: sourceRect.top + 10,
-        scrollBehavior: false,
-      });
+          // Start drag from center of Orders card
+          getDocumentCard(sourceCardTitle).trigger("mousedown", {
+            x: 10,
+            y: 10,
+            scrollBehavior: false,
+            force: true,
+          });
+          const dataTransfer = new DataTransfer();
+          getDocumentCard(sourceCardTitle).trigger("dragstart", {
+            dataTransfer,
+            clientX: sourceRect.left + 10,
+            clientY: sourceRect.top + 10,
+            scrollBehavior: false,
+            force: true,
+          });
 
-      if (waitBeforeDrop) {
-        cy.wait(200);
-      }
+          if (waitBeforeDrop) {
+            cy.wait(200);
+          }
 
-      const targetRect = $ordersCountCard[0].getBoundingClientRect();
-      // Calculate position for target card side drop (20% from left or 20% from right based on 'side' param)
-      const sideX =
-        targetRect.left + targetRect.width * (side === "left" ? 0.2 : 0.8);
-      const centerY = targetRect.top + 10;
-      documentContent().trigger("mousemove", {
-        clientX: sideX,
-        clientY: centerY,
-        scrollBehavior: false,
-      });
-      cy.get(`@${targetAlias}`).trigger("dragover", {
-        clientX: sideX,
-        clientY: centerY,
-        scrollBehavior: false,
-        force: true,
-      });
+          const targetRect = $ordersCountCard[0].getBoundingClientRect();
+          // Calculate position for target card side drop (20% from left or 20% from right based on 'side' param)
+          const sideX =
+            targetRect.left + targetRect.width * (side === "left" ? 0.2 : 0.8);
+          const centerY = targetRect.top + 10;
+          documentContent().trigger("mousemove", {
+            clientX: sideX,
+            clientY: centerY,
+            scrollBehavior: false,
+          });
+          getDocumentCard(targetCardTitle).trigger("dragover", {
+            clientX: sideX,
+            clientY: centerY,
+            scrollBehavior: false,
+            force: true,
+          });
 
-      if (waitBeforeDrop) {
-        cy.wait(200);
-      }
+          if (waitBeforeDrop) {
+            cy.wait(200);
+          }
 
-      cy.get(`@${sourceAlias}`).realMouseUp();
-      cy.get(`@${targetAlias}`).trigger("drop", {
-        dataTransfer,
-        clientX: sideX,
-        clientY: centerY,
-        scrollBehavior: false,
-      });
-      cy.get(`@${sourceAlias}`).trigger("dragend", {
-        scrollBehavior: false,
-      });
+          getDocumentCard(sourceCardTitle).realMouseUp({
+            scrollBehavior: false,
+          });
+          getDocumentCard(targetCardTitle).trigger("drop", {
+            dataTransfer,
+            clientX: sideX,
+            clientY: centerY,
+            scrollBehavior: false,
+            force: true,
+          });
+          getDocumentCard(sourceCardTitle).trigger("dragend", {
+            scrollBehavior: false,
+            force: true,
+          });
+        });
     });
-  });
+}
+
+export function documentUndo() {
+  const macOSX = Cypress.platform === "darwin";
+
+  documentContent()
+    .get('[contenteditable="true"]')
+    .click()
+    .type(macOSX ? "{cmd+z}" : "{ctrl+z}", {
+      scrollBehavior: false,
+      force: true,
+    });
 }
