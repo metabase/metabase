@@ -230,5 +230,5 @@ export function useTestPythonTransform(
 export function isPythonTransformSource(
   source: PythonTransformSourceDraft,
 ): source is PythonTransformSource {
-  return source["source-database"] !== undefined;
+  return source.type === "python" && source["source-database"] !== undefined;
 }
