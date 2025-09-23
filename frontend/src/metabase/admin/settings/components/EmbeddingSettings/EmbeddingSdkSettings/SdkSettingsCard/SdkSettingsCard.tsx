@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Link } from "react-router";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
@@ -41,12 +42,16 @@ export function SdkSettingsCard({
   customLinksSection?: React.ReactNode;
   rightSideContent?: React.ReactNode;
 }) {
+  const hasButton = useMemo(() => {
+    return links?.some((link) => link.type === "button");
+  }, [links]);
+
   const renderLink = (linkItem: LinkItem, index: number) => {
     const { type, icon, title, href, to } = linkItem;
 
     if (type === "button" && to) {
       return (
-        <Link to={to} className={CS.cursorPointer}>
+        <Link key={index} to={to} className={CS.cursorPointer}>
           <Button variant="brand" size="sm">
             {title}
           </Button>
@@ -71,7 +76,11 @@ export function SdkSettingsCard({
   const hasLinksContent = links?.length || customLinksSection;
 
   return (
-    <Flex direction="column" className={S.SectionCard}>
+    <Flex
+      direction="column"
+      className={S.SectionCard}
+      data-testid="sdk-setting-card"
+    >
       <Stack gap="xs" px="xl" py="lg">
         <Text fz="h3" fw={600} c="text-dark">
           {title}
@@ -93,9 +102,13 @@ export function SdkSettingsCard({
       </Stack>
 
       {hasLinksContent && (
-        <Box px="xl" py="md" className={S.CardLinksSection}>
+        <Box
+          px="xl"
+          py={hasButton ? "sm" : "md"}
+          className={S.CardLinksSection}
+        >
           {customLinksSection || (
-            <Group gap="md">{links?.map(renderLink)}</Group>
+            <Group gap="xl">{links?.map(renderLink)}</Group>
           )}
         </Box>
       )}
