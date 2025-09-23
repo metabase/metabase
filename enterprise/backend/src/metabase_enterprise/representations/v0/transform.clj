@@ -7,8 +7,8 @@
    [malli.error :as me]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.models.serialization :as serdes]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -58,17 +58,12 @@
    {:description "Name of the destination table"}
    [:map
     [:schema ::lib.schema.common/non-blank-string]
-    [:table  ::lib.schema.common/non-blank-string]]])
+    [:table ::lib.schema.common/non-blank-string]]])
 
 (mr/def ::target-schema
   [:and
    {:description "Database schema for the target table (e.g., 'public', 'reporting')"}
    ::lib.schema.common/non-blank-string])
-
-(mr/def ::run-trigger
-  [:enum {:decode/json keyword
-          :description "Optional trigger for when to run the transform"}
-   :manual :scheduled :on-change])
 
 (mr/def ::tags
   [:sequential
@@ -103,7 +98,6 @@
     [:target_table ::target-table]
     [:query {:optional true} ::query]
     [:mbql_query {:optional true} ::mbql-query]
-    #_[:run_trigger {:optional true} ::run-trigger]
     [:tags {:optional true} ::tags]]
    [:fn {:error/message "Source must have exactly one of :query or :mbql_query"}
     (fn [{:keys [source]}]
@@ -163,6 +157,8 @@
       (do
         (log/info "Creating new transform" (:name transform-data))
         (t2/insert-returning-instance! :model/Transform transform-data)))))
+
+;; EXPORT
 
 (defn ->ref [card]
   (format "%s-%s" "transform" (:id card)))
