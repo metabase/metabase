@@ -66,7 +66,9 @@
   [query column index field-id-prefix]
   (let [semantic-type (some-> (:semantic-type column) name u/->snake_case_en)]
     (-> {:field_id (str field-id-prefix index)
-         :name (:lib/desired-column-alias column)
+         ;; Prefer desired-column-alias over source-column-alias to ensure we use deduplicated names if needed
+         :name (or (:lib/desired-column-alias column)
+                   (:lib/source-column-alias column))
          :display_name (lib/display-name query column)
          :type (convert-field-type column)}
         (m/assoc-some :description (:description column)

@@ -284,20 +284,20 @@
             (is (every? #(contains? % :type) tables))
             (is (every? #(contains? % :display_name) tables))
             (is (every? #(= :table (:type %)) tables))
-            (is (every? #(every? (fn [field] (contains? field :field-id)) (:fields %)) tables))
+            (is (every? #(every? (fn [field] (contains? field :field_id)) (:fields %)) tables))
             (is (every? #(every? (fn [field] (contains? field :name)) (:fields %)) tables))
             (is (every? #(every? (fn [field] (contains? field :type)) (:fields %)) tables))
             (is (every? #(contains? % :metrics) tables)))))
 
-      (testing "includes table-reference for implicitly joined fields"
+      (testing "includes table_reference for implicitly joined fields"
         (mt/dataset test-data
           (mt/with-current-user (mt/user->id :crowberto)
             (let [test-db-id (mt/id)
                   tables (table-utils/enhanced-database-tables test-db-id)
                   orders-table (first (filter #(= "ORDERS" (:name %)) tables))
                   all-fields (:fields orders-table)
-                  user-fields (filter #(= "User" (:table-reference %)) all-fields)
-                  product-fields (filter #(= "Product" (:table-reference %)) all-fields)]
+                  user-fields (filter #(= "User" (:table_reference %)) all-fields)
+                  product-fields (filter #(= "Product" (:table_reference %)) all-fields)]
               (is (some? orders-table) "Expected to find ORDERS table")
               (is (seq user-fields) "Expected to find fields with table-reference 'User' from implicit join")
               (is (some #(= "NAME" (:name %)) user-fields) "Expected to find User NAME field from implicit join")

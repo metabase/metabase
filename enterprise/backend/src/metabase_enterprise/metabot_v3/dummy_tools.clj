@@ -97,13 +97,13 @@
               :type :metric
               :name (:name card)
               :description (:description card)
-              :default-time-dimension-field-id (when default-temporal-breakout
+              :default_time_dimension_field_id (when default-temporal-breakout
                                                  (-> (metabot-v3.tools.u/->result-column
                                                       metric-query
                                                       default-temporal-breakout
                                                       (col-index default-temporal-breakout)
                                                       field-id-prefix)
-                                                     :field-id))
+                                                     :field_id))
               :verified (verified-review? id "card")}
        with-queryable-dimensions?
        (assoc :queryable-dimensions (into []
@@ -124,7 +124,7 @@
   ([db-metric metadata-provider options]
    (-> db-metric
        (metric-details metadata-provider (assoc options :with-queryable-dimensions? false))
-       (select-keys  [:id :type :name :description :default-time-dimension-field-id]))))
+       (select-keys  [:id :type :name :description :default_time_dimension_field_id]))))
 
 (defn- table-details
   ([id] (table-details id nil))
