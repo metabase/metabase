@@ -39,6 +39,18 @@ function BenchSidebarComponent({ isDarkMode, location }: BenchSidebarProps) {
       path: "/bench/segments",
       description: t`Manage data segments`,
     },
+    {
+      label: t`Metrics`,
+      icon: <Icon name="metric" size={16} />,
+      path: "/bench/browse/metrics",
+      description: t`Create and manage metrics`,
+    },
+    {
+      label: t`Models`,
+      icon: <Icon name="search" size={16} />,
+      path: "/bench/browse/models",
+      description: t`Browse models and metrics`,
+    },
   ];
 
   return (
