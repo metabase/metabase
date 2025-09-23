@@ -64,6 +64,26 @@
         (log/error e "Does not validate.")))
     (yaml/generate-string rep)))
 
+(api.macros/defendpoint :get "/metric/:id"
+  "Download a yaml representation of a model."
+  [{:keys [id]}
+   _query-params
+   _body-params
+   _request]
+  (let [id (Long/parseLong id)
+        question (api/check-404 (t2/select-one :model/Card :id id :type "metric"))
+        rep (rep/export question)]
+    (try
+      (-> rep
+          rep/validate
+          yaml/generate-string)
+      (catch Exception e
+        (log/error e "Does not validate.")
+        (yaml/generate-string rep)))))
+
+(comment
+  (t2/select-one :model/Card :type "metric"))
+
 (api.macros/defendpoint :get "/collection/:id"
   "Download a yaml representation of a collection."
   [{:keys [id]}

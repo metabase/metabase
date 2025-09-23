@@ -9,6 +9,7 @@
    [metabase-enterprise.representations.v0.collection :as v0-coll]
    [metabase-enterprise.representations.v0.database :as v0-db]
    [metabase-enterprise.representations.v0.document :as v0-doc]
+   [metabase-enterprise.representations.v0.metric :as v0-metric]
    [metabase-enterprise.representations.v0.model :as v0-model]
    [metabase-enterprise.representations.v0.question :as v0-question]
    [metabase-enterprise.representations.v0.snippet :as v0-snippet]
@@ -31,7 +32,7 @@
    Keys are strings like 'v0/question', values are qualified keywords."
   {:v0/question   ::v0-question/question
    :v0/model      ::v0-model/model
-   ;; :v0/metric ::v0-card/metric
+   :v0/metric     ::v0-metric/metric
    :v0/collection ::v0-coll/collection
    :v0/database   ::v0-db/database
    :v0/document   ::v0-doc/document
@@ -60,7 +61,7 @@
 
 (defn validate
   "Validates a representation against its schema based on the type field.
-
+  
    The type field can be either:
    - Simple: 'question', 'collection' (defaults to v0)
    - Versioned: 'v0/question', 'v1/collection' (explicit version)
@@ -129,7 +130,8 @@
   (case (t2/model t2-model)
     :model/Card (case (:type t2-model)
                   :question (v0-question/export t2-model)
-                  :model    (v0-model/export t2-model))
+                  :model    (v0-model/export t2-model)
+                  :metric   (v0-metric/export t2-model))
     :model/Collection (v0-coll/export t2-model)))
 
 (defn- write-em
@@ -223,7 +225,7 @@
               ;; must be a prewalk since we look down one level for card references
               (walk/prewalk
                (let [ref-map? (fn [x]
-                                (and (map? x) (= 1 (count x)) (string? (:ref x)) ))]
+                                (and (map? x) (= 1 (count x)) (string? (:ref x))))]
                  (fn [x] (cond
                            ;; look ahead for {:source-table {:ref "124"}} to become {:source-table "card__1234"}
                            (and (map? x) (ref-map? ((some-fn :source-table :source_table) x)))
