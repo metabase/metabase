@@ -1537,6 +1537,7 @@ H.describeWithSnowplowEE("document comments", () => {
               },
             ],
           },
+          html: "<a href='#'>Robert Tableton</a>",
         }).then(({ body: comment }) => {
           H.getInbox().then((response: any) => {
             const emails = response.body;
