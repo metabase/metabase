@@ -688,6 +688,23 @@
     [:structured_output [:sequential ::full-transform]]]
    [:map [:output :string]]])
 
+(mr/def ::get-transform-python-library-details-arguments
+  [:and
+   [:map
+    [:path :string]]
+   [:map {:encode/tool-api-request
+          #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+
+(mr/def ::get-transform-python-library-details-result
+  [:or
+   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+                         [:source :string]
+                         [:path :string]
+                         [:created_at ms/TemporalString]
+                         [:updated_at ms/TemporalString]]]]
+   [:map [:output :string]]])
+
 (mr/def ::answer-sources-result
   [:or
    [:map
@@ -1045,6 +1062,26 @@
         transform-id (:transform-id arguments)]
     (doto (-> (mc/decode ::get-transform-details-result
                          (metabot-v3.tools.transforms/get-transform-details transform-id)
+                         (mtx/transformer {:name :tool-api-response}))
+              (assoc :conversation_id conversation_id))
+      (metabot-v3.context/log :llm.log/be->llm))))
+
+(api.macros/defendpoint :post "/get-transform-python-library-details" :- [:merge
+                                                                          ::get-transform-python-library-details-result
+                                                                          ::tool-request]
+  "Get information about a Python library by path."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments
+                                                           ::get-transform-python-library-details-arguments]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log (assoc body :api :get-transform-python-library-details) :llm.log/llm->be)
+  (let [arguments (mc/encode ::get-transform-python-library-details-arguments
+                             arguments (mtx/transformer {:name :tool-api-request}))
+        path (:path arguments)]
+    (doto (-> (mc/decode ::get-transform-python-library-details-result
+                         (metabot-v3.tools.transforms/get-transform-python-library-details path)
                          (mtx/transformer {:name :tool-api-response}))
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))

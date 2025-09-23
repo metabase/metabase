@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.tools.transforms
   (:require
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
+   [metabase-enterprise.python-transform.api :as python-transform.api]
    [metabase-enterprise.transforms.api :as api.transforms]
    [metabase.util.malli.registry :as mr]))
 
@@ -42,5 +43,14 @@
   (try
     {:structured_output
      (api.transforms/get-transform transform-id)}
+    (catch Exception e
+      (metabot-v3.tools.u/handle-agent-error e))))
+
+(defn get-transform-python-library-details
+  "Get information about a Python library by path."
+  [path]
+  (try
+    {:structured_output
+     (python-transform.api/get-python-library-by-path path)}
     (catch Exception e
       (metabot-v3.tools.u/handle-agent-error e))))
