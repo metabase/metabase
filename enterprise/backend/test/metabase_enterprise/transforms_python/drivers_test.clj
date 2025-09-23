@@ -473,6 +473,7 @@
                                             (str "    # Merge with exotic types if available\n"
                                                  "    exotic_df = " source-table-name "_exotic.copy()\n"
                                                  "    df = df.merge(exotic_df, on='id', how='left', suffixes=('', '_exotic'))\n"
+                                                 "    df.attrs[\"source_metadata\"] = {**df.attrs.get(\"source_metadata\", {}), **exotic_df.attrs.get(\"source_metadata\", {})}"
                                                  "    \n"))
                                           "    # Return processed dataframe\n"
                                           "    return df")
