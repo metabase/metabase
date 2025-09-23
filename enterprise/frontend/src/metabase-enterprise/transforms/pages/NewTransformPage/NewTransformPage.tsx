@@ -6,7 +6,7 @@ import { skipToken, useGetCardQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PythonTransformEditor } from "metabase-enterprise/transforms/components/PythonTransformEditor";
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import type {
   CardId,
   DatasetQuery,
@@ -85,27 +85,17 @@ function NewTransformEditorBody(props: {
 }) {
   const { type, ...rest } = props;
   if (type === "python") {
-    return <NewPythonTransformEditorBody {...rest} />;
+    return (
+      <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+        initialSource={getInitialPythonTransformSource()}
+        isNew
+        onSave={props.onSave}
+        onCancel={props.onCancel}
+      />
+    );
   }
 
   return <NewQueryTransformEditorBody {...rest} type={type} />;
-}
-
-function NewPythonTransformEditorBody({
-  onSave,
-  onCancel,
-}: {
-  onSave: (source: TransformSource) => void;
-  onCancel: () => void;
-}) {
-  return (
-    <PythonTransformEditor
-      initialSource={getInitialPythonTransformSource()}
-      isNew
-      onSave={onSave}
-      onCancel={onCancel}
-    />
-  );
 }
 
 function NewQueryTransformEditorBody({

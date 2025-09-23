@@ -6,17 +6,11 @@ import {
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
-import { useHasTokenFeature } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
-import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms/constants";
 
-import {
-  getJobListUrl,
-  getPythonLibraryUrl,
-  getRunListUrl,
-  getTransformListUrl,
-} from "../../urls";
+import { getJobListUrl, getRunListUrl, getTransformListUrl } from "../../urls";
 
 type TransformPageLayoutParams = {
   transformId?: string;
@@ -45,6 +39,10 @@ export function TransformPageLayout({
   );
 }
 
+export function FullWidthTransformPageLayout(props: TransformPageLayoutProps) {
+  return <TransformPageLayout {...props} fullWidth />;
+}
+
 type TransformSidebarProps = {
   params: TransformPageLayoutParams;
 };
@@ -55,8 +53,6 @@ function TransformSidebar({ params }: TransformSidebarProps) {
   const pathname = location?.pathname;
   const transformListUrl = getTransformListUrl();
   const jobListUrl = getJobListUrl();
-
-  const hasPythonTransforms = useHasTokenFeature("transforms-python");
 
   return (
     <AdminNavWrapper data-testid="transform-sidebar">
@@ -73,13 +69,7 @@ function TransformSidebar({ params }: TransformSidebarProps) {
         active={pathname?.startsWith(jobListUrl)}
       />
       <AdminNavItem label={t`Runs`} path={getRunListUrl()} icon="list" />
-      {hasPythonTransforms && (
-        <AdminNavItem
-          label={t`Python library`}
-          path={getPythonLibraryUrl({ path: SHARED_LIB_IMPORT_PATH })}
-          icon="code_block"
-        />
-      )}
+      {PLUGIN_TRANSFORMS_PYTHON.getTransformsNavLinks()}
     </AdminNavWrapper>
   );
 }

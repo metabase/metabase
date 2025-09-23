@@ -3,15 +3,13 @@ import { t } from "ttag";
 
 import { createAdminRouteGuard } from "metabase/admin/utils";
 import { Route } from "metabase/hoc/Title";
-import { PLUGIN_TRANSFORMS } from "metabase/plugins";
+import { PLUGIN_TRANSFORMS, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { PythonRunnerSettingsPage } from "./components/PythonRunnerSettingsPage/PythonRunnerSettingsPage";
 import { JobListPage } from "./pages/JobListPage";
 import { JobPage } from "./pages/JobPage";
 import { NewJobPage } from "./pages/NewJobPage";
 import { NewTransformPage } from "./pages/NewTransformPage";
-import { PythonLibraryEditorPage } from "./pages/PythonLibraryEditorPage";
 import { RunListPage } from "./pages/RunListPage";
 import { TransformListPage } from "./pages/TransformListPage";
 import { TransformPage } from "./pages/TransformPage";
@@ -19,8 +17,6 @@ import { TransformPageLayout } from "./pages/TransformPageLayout";
 import { TransformQueryPage } from "./pages/TransformQueryPage";
 
 if (hasPremiumFeature("transforms")) {
-  const hasPythonTransforms = hasPremiumFeature("transforms-python");
-
   PLUGIN_TRANSFORMS.getAdminPaths = () => [
     { key: "transforms", name: t`Transforms`, path: "/admin/transforms" },
   ];
@@ -36,21 +32,11 @@ if (hasPremiumFeature("transforms")) {
           <Route path="runs" component={RunListPage} />
           <Route path=":transformId" component={TransformPage} />
         </Route>
-        {hasPythonTransforms && (
-          <Route
-            component={(props) => <TransformPageLayout {...props} fullWidth />}
-          >
-            <Route path="library/:path" component={PythonLibraryEditorPage} />
-          </Route>
-        )}
+        {PLUGIN_TRANSFORMS_PYTHON.getAdminRoutes()}
         <Route path="new/:type" component={NewTransformPage} />
         <Route path="new/card/:cardId" component={NewTransformPage} />
         <Route path=":transformId/query" component={TransformQueryPage} />
       </Route>
     </Route>
   );
-
-  if (hasPythonTransforms) {
-    PLUGIN_TRANSFORMS.PythonRunnerSettingsPage = PythonRunnerSettingsPage;
-  }
 }

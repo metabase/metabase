@@ -6,13 +6,13 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
 import type { Transform, TransformSource } from "metabase-types/api";
 
-import { PythonTransformEditor } from "../../components/PythonTransformEditor";
 import { QueryEditor } from "../../components/QueryEditor";
 import { getTransformUrl } from "../../urls";
 
@@ -74,7 +74,7 @@ export function TransformQueryPageBody({
 
   if (transform.source.type === "python") {
     return (
-      <PythonTransformEditor
+      <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
         initialSource={transform.source}
         isNew={false}
         isSaving={isLoading}
