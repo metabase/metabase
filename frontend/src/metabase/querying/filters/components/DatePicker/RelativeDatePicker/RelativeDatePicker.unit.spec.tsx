@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import {
-  DATE_PICKER_RELATIVE_INTERVAL_DIRECTIONS,
+  DATE_PICKER_DIRECTIONS,
   DATE_PICKER_UNITS,
 } from "metabase/querying/filters/constants";
 import type {
@@ -27,7 +27,7 @@ interface SetupOpts {
 function setup({
   value,
   availableUnits = DATE_PICKER_UNITS,
-  availableDirections = DATE_PICKER_RELATIVE_INTERVAL_DIRECTIONS,
+  availableDirections = DATE_PICKER_DIRECTIONS,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onBack = jest.fn();
