@@ -54,7 +54,7 @@
           (try
             (testing "Can create table with generated temp name"
               (driver/create-table! driver db-id qualified-table-name column-definitions {})
-              (is (driver/table-exists? driver db-id {:schema schema-name :name (name table-name)})))
+              (is (driver/table-exists? driver (mt/db) {:schema schema-name :name (name table-name)})))
             (finally
               (try
                 (driver/drop-table! driver db-id qualified-table-name)
