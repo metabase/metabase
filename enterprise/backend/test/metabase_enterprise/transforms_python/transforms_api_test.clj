@@ -356,7 +356,8 @@
 
                 ;; Run updated transform and validate schema change
                 (transforms.tu/test-run transform-id)
-                (transforms.tu/wait-for-table table-name 10000)
+                (transforms.tu/wait-for-transform-completion transform-id 10000)
+                (transforms.tu/wait-for-table table-name 2000)
                 (let [updated-rows (transforms.tu/table-rows table-name)]
                   (is (= [["Alice" "Bob"] ["Bob" "Alice"]] updated-rows)
                       "Updated data should show Alice/Bob with friends instead of ages"))))))))))

@@ -109,6 +109,23 @@
           (Thread/sleep 100)
           (recur resp))))))
 
+(defn wait-for-transform-completion
+  "Wait for a transform run to complete without triggering a new run.
+   Polls the transform status until it succeeds or times out."
+  [transform-id timeout-ms]
+  (let [start-time (u/start-timer)]
+    (loop []
+      (when (> (u/since-ms start-time) timeout-ms)
+        (throw (ex-info (format "Transform %d did not complete after %dms" transform-id timeout-ms)
+                        {:transform-id transform-id :timeout-ms timeout-ms})))
+      (let [resp (mt/user-http-request :crowberto :get 200 (format "ee/transform/%d" transform-id))
+            status (some-> resp :last_run :status keyword)]
+        (case status
+          :succeeded resp
+          (:started :running) (do (Thread/sleep 100) (recur))
+          (throw (ex-info (format "Transform run failed with status %s" status)
+                          {:resp resp :status status})))))))
+
 (defn get-test-schema
   "Get the schema from the products table in the test dataset.
    This is needed for databases like BigQuery that require a schema/dataset."
