@@ -1535,85 +1535,6 @@ databaseChangeLog:
                   name: to_entity_id
 
   - changeSet:
-      id: v57.2025-09-18T10:00:00
-      author: metamben
-      comment: Add dependency_analysis_version to report_card
-      changes:
-        - addColumn:
-            tableName: report_card
-            columns:
-              - column:
-                  name: dependency_analysis_version
-                  type: smallint
-                  defaultValue: 0
-                  remarks: Version of the dependency analysis for this entity.
-                  constraints:
-                    nullable: false
-  - changeSet:
-      id: v57.2025-09-18T10:01:00
-      author: metamben
-      comment: Add index for dependency_analysis_version to report_card
-      changes:
-        - createIndex:
-            tableName: report_card
-            indexName: idx_report_card_dependency_analysis_version
-            columns:
-              - column:
-                  name: dependency_analysis_version
-  - changeSet:
-      id: v57.2025-09-18T10:02:00
-      author: metamben
-      comment: Add dependency_analysis_version to transform
-      changes:
-        - addColumn:
-            tableName: transform
-            columns:
-              - column:
-                  name: dependency_analysis_version
-                  type: smallint
-                  defaultValue: 0
-                  remarks: Version of the dependency analysis for this entity.
-                  constraints:
-                    nullable: false
-  - changeSet:
-      id: v57.2025-09-18T10:03:00
-      author: metamben
-      comment: Add index for dependency_analysis_version to transform
-      changes:
-        - createIndex:
-            tableName: transform
-            indexName: idx_transform_dependency_analysis_version
-            columns:
-              - column:
-                  name: dependency_analysis_version
-  - changeSet:
-      id: v57.2025-09-18T10:04:00
-      author: metamben
-      comment: Add dependency_analysis_version to native_query_snippet
-      changes:
-        - addColumn:
-            tableName: native_query_snippet
-            columns:
-              - column:
-                  name: dependency_analysis_version
-                  type: smallint
-                  defaultValue: 0
-                  remarks: Version of the dependency analysis for this entity.
-                  constraints:
-                    nullable: false
-  - changeSet:
-      id: v57.2025-09-18T10:05:00
-      author: metamben
-      comment: Add index for dependency_analysis_version to native_query_snippet
-      changes:
-        - createIndex:
-            tableName: native_query_snippet
-            indexName: idx_native_query_snippet_dependency_analysis_version
-            columns:
-              - column:
-                  name: dependency_analysis_version
-
-  - changeSet:
       id: v57.2025-09-11T10:00:00
       author: qnkhuat
       comment: Add python_library table for storing Python transform user modules
@@ -1703,6 +1624,85 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v57.2025-09-18T10:00:00
+      author: metamben
+      comment: Add dependency_analysis_version to report_card
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  remarks: Version of the dependency analysis for this entity.
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v57.2025-09-18T10:01:00
+      author: metamben
+      comment: Add index for dependency_analysis_version to report_card
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_dependency_analysis_version
+            columns:
+              - column:
+                  name: dependency_analysis_version
+  - changeSet:
+      id: v57.2025-09-18T10:02:00
+      author: metamben
+      comment: Add dependency_analysis_version to transform
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  remarks: Version of the dependency analysis for this entity.
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v57.2025-09-18T10:03:00
+      author: metamben
+      comment: Add index for dependency_analysis_version to transform
+      changes:
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_dependency_analysis_version
+            columns:
+              - column:
+                  name: dependency_analysis_version
+  - changeSet:
+      id: v57.2025-09-18T10:04:00
+      author: metamben
+      comment: Add dependency_analysis_version to native_query_snippet
+      changes:
+        - addColumn:
+            tableName: native_query_snippet
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  remarks: Version of the dependency analysis for this entity.
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v57.2025-09-18T10:05:00
+      author: metamben
+      comment: Add index for dependency_analysis_version to native_query_snippet
+      changes:
+        - createIndex:
+            tableName: native_query_snippet
+            indexName: idx_native_query_snippet_dependency_analysis_version
+            columns:
+              - column:
+                  name: dependency_analysis_version
 
   - changeSet:
       id: v57.2025-09-19T11:30:20
