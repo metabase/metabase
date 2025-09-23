@@ -12,6 +12,7 @@ import {
   createMockCard,
   createMockCheckDependenciesResponse,
   createMockCollection,
+  createMockTransform,
 } from "metabase-types/api/mocks";
 
 import { CheckDependenciesForm } from "./CheckDependenciesForm";
@@ -137,4 +138,57 @@ describe("CheckDependenciesForm", () => {
       expect(getIcon(icon)).toBeInTheDocument();
     },
   );
+
+  it("should display the dashboard that the question belongs to", () => {
+    setup({
+      checkData: createMockCheckDependenciesResponse({
+        success: false,
+        bad_cards: [
+          createMockCard({
+            name: "Card",
+            type: "question",
+            collection: createMockCollection({
+              id: 1,
+              name: "First collection",
+              effective_ancestors: [
+                createMockCollection({ id: "root", name: "Our analytics" }),
+              ],
+            }),
+            dashboard: {
+              id: 2,
+              name: "Card dashboard",
+            },
+          }),
+        ],
+      }),
+    });
+    expect(screen.getByRole("link", { name: "Our analytics" })).toHaveAttribute(
+      "href",
+      "/collection/root",
+    );
+    expect(
+      screen.getByRole("link", { name: "First collection" }),
+    ).toHaveAttribute("href", "/collection/1-first-collection");
+    expect(
+      screen.getByRole("link", { name: "Card dashboard" }),
+    ).toHaveAttribute("href", "/dashboard/2-card-dashboard");
+  });
+
+  it("should display transforms", () => {
+    setup({
+      checkData: createMockCheckDependenciesResponse({
+        success: false,
+        bad_transforms: [
+          createMockTransform({
+            id: 1,
+            name: "SQL transform",
+          }),
+        ],
+      }),
+    });
+    expect(screen.getByRole("link", { name: /SQL transform/ })).toHaveAttribute(
+      "href",
+      "/admin/transforms/1",
+    );
+  });
 });
