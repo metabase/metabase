@@ -19,8 +19,8 @@ export const SelectEmbedOptionsStep = () => {
     (experience === "dashboard" && settings.dashboardId) ||
     (experience === "chart" && settings.questionId);
 
-  const isExplorationEmbed = settings.template === "exploration";
   const isBrowserEmbed = settings.componentName === "metabase-browser";
+  const isQuestionEmbed = settings.componentName === "metabase-question";
 
   const updateColors = useCallback(
     (nextColors: Partial<MetabaseColors>) => {
@@ -58,7 +58,7 @@ export const SelectEmbedOptionsStep = () => {
             />
           )}
 
-          {isExplorationEmbed && (
+          {isQuestionEmbed && (
             <Checkbox
               label={t`Allow users to save new questions`}
               checked={settings.isSaveEnabled}
