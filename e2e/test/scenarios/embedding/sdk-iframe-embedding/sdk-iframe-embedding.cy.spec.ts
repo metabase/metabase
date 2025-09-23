@@ -426,6 +426,7 @@ H.describeWithSnowplowEE(
             auth_method: "session",
           },
         },
+        // Expect that the usage event shouldn't be sent
         0,
       );
     });
