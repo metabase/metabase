@@ -60,7 +60,7 @@ export const SelectEmbedOptionsStep = () => {
 
           {isQuestionComponent && (
             <Checkbox
-              label={t`Allow users to save new questions`}
+              label={t`Allow people to save new questions`}
               checked={settings.isSaveEnabled}
               onChange={(e) =>
                 updateSettings({ isSaveEnabled: e.target.checked })
