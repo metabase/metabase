@@ -33,15 +33,6 @@ export function getBenchRoutes() {
             path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
             component={DataModel}
           />
-          <Route component={DataModel}>
-            <Route path="segments" component={SegmentListApp} />
-            <Route path="segment/create" component={SegmentApp} />
-            <Route path="segment/:id" component={SegmentApp} />
-            <Route
-              path="segment/:id/revisions"
-              component={RevisionHistoryApp}
-            />
-          </Route>
           <Redirect
             from="database/:databaseId/schema/:schemaId/table/:tableId/settings"
             to="database/:databaseId/schema/:schemaId/table/:tableId"
@@ -52,6 +43,10 @@ export function getBenchRoutes() {
           />
         </Route>
       </Route>
+      <Route path="segments" component={SegmentListApp} />
+      <Route path="segment/create" component={SegmentApp} />
+      <Route path="segment/:id" component={SegmentApp} />
+      <Route path="segment/:id/revisions" component={RevisionHistoryApp} />
     </Route>
   );
 }

@@ -1,6 +1,5 @@
 import { useDisclosure, useWindowEvent } from "@mantine/hooks";
-import type { Location } from "history";
-import { type ReactNode, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -22,7 +21,6 @@ import {
   PreviewSection,
   type PreviewType,
   RouterTablePicker,
-  SegmentsLink,
   SyncOptionsModal,
   TableSection,
 } from "./components";
@@ -31,19 +29,16 @@ import type { RouteParams } from "./types";
 import { getTableMetadataQuery, parseRouteParams } from "./utils";
 
 interface Props {
-  children?: ReactNode;
-  location: Location;
   params: RouteParams;
 }
 
-export const DataModel = ({ children, location, params }: Props) => {
+export const DataModel = ({ params }: Props) => {
   const { databaseId, fieldId, schemaName, tableId } = parseRouteParams(params);
   const { data: databasesData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery({ include_editable_data_model: true });
   const databaseExists = databasesData?.data?.some(
     (database) => database.id === databaseId,
   );
-  const isSegments = location.pathname.startsWith("/bench/metadata/segment");
   const [isPreviewOpen, { close: closePreview, toggle: togglePreview }] =
     useDisclosure();
   const [isSyncModalOpen, { close: closeSyncModal, open: openSyncModal }] =
@@ -110,15 +105,8 @@ export const DataModel = ({ children, location, params }: Props) => {
           tableId={tableId}
         />
 
-        <Box className={S.footer} mx="xl" py="sm">
-          <SegmentsLink active={isSegments} to="/bench/metadata/segments" />
-        </Box>
       </Stack>
 
-      {isSegments && children}
-
-      {!isSegments && (
-        <>
           {databaseId != null &&
             tableId == null &&
             databaseExists === false && (
@@ -174,15 +162,15 @@ export const DataModel = ({ children, location, params }: Props) => {
                 {field && table && (
                   <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max}>
                     <FieldSection
-                      databaseId={databaseId}
-                      field={field}
+                      databaseId={databaseId!}
+                      field={field!}
                       /**
                        * Make sure internal component state is reset when changing fields.
                        * This is to avoid state mix-up with optimistic updates.
                        */
-                      key={getRawTableFieldId(field)}
+                      key={getRawTableFieldId(field!)}
                       parent={parentField}
-                      table={table}
+                      table={table!}
                       onFieldValuesClick={openFieldValuesModal}
                       onPreviewClick={togglePreview}
                     />
@@ -207,12 +195,12 @@ export const DataModel = ({ children, location, params }: Props) => {
             >
               <PreviewSection
                 className={S.preview}
-                databaseId={databaseId}
-                field={field}
-                fieldId={fieldId}
+                databaseId={databaseId!}
+                field={field!}
+                fieldId={fieldId!}
                 previewType={previewType}
-                table={table}
-                tableId={tableId}
+                table={table!}
+                tableId={tableId!}
                 onClose={closePreview}
                 onPreviewTypeChange={setPreviewType}
               />
@@ -243,8 +231,6 @@ export const DataModel = ({ children, location, params }: Props) => {
               </Box>
             </Flex>
           )}
-        </>
-      )}
 
       {table && (
         <SyncOptionsModal

@@ -36,7 +36,7 @@ function BenchSidebarComponent({ isDarkMode, location }: BenchSidebarProps) {
     {
       label: t`Segments`,
       icon: <Icon name="filter" size={16} />,
-      path: "/bench/metadata/segments",
+      path: "/bench/segments",
       description: t`Manage data segments`,
     },
   ];

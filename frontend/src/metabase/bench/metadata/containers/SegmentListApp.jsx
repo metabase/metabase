@@ -24,7 +24,7 @@ class SegmentListAppInner extends Component {
       >
         <div className={cx(CS.flex, CS.py2)}>
           {tableSelector}
-          <Link to="/bench/metadata/segment/create" className={CS.mlAuto}>
+          <Link to="/bench/segment/create" className={CS.mlAuto}>
             <Button primary>{t`New segment`}</Button>
           </Link>
         </div>

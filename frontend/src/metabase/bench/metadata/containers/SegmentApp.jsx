@@ -39,7 +39,7 @@ const UpdateSegmentFormInner = ({
 
       try {
         await updateSegment(segment);
-        onChangeLocation("/bench/metadata/segments");
+        onChangeLocation("/bench/segments");
       } catch (error) {
         setIsDirty(isDirty);
       }
@@ -92,7 +92,7 @@ const CreateSegmentForm = ({
       scheduleCallback(async () => {
         try {
           await createSegment(segment);
-          onChangeLocation("/bench/metadata/segments");
+          onChangeLocation("/bench/segments");
         } catch (error) {
           setIsDirty(isDirty);
         }
