@@ -1813,10 +1813,12 @@
            pulse
            query-processor
            request
+           search
            server
            settings
            sync
            system
+           task
            users
            util
            warehouse-schema
