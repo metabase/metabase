@@ -886,6 +886,7 @@
           field-metadata       (when (integer? id-or-name)
                                  (driver-api/field (driver-api/metadata-provider) id-or-name))
           allow-casting?       (and field-metadata
+                                    (pos-int? (driver-api/qp.add.source-table options))
                                     (not (:qp/ignore-coercion options)))
           ;; preserve metadata attached to the original field clause, for example BigQuery temporal type information.
           identifier           (-> (apply h2x/identifier :field
