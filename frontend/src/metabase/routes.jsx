@@ -30,6 +30,7 @@ import { DashboardMoveModalConnected } from "metabase/dashboard/components/Dashb
 import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
 import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDashboardApp";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
+import { getBenchRoutes } from "metabase/bench/routes";
 import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
@@ -394,6 +395,9 @@ export const getRoutes = (store) => {
         from="/collections/permissions"
         to="/admin/permissions/collections"
       />
+
+      {/* BENCH */}
+      {getBenchRoutes()}
 
       {/* MISC */}
       <Route path="/unsubscribe" component={UnsubscribePage} />
