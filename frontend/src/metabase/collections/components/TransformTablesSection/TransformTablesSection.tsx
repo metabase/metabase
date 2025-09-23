@@ -3,9 +3,10 @@ import { t } from "ttag";
 
 import { useGetTableQuery } from "metabase/api";
 import { color } from "metabase/lib/colors";
+import { tableRowsQuery } from "metabase/lib/urls";
 import {
   Box,
-  Button,
+  Card,
   Group,
   Icon,
   SimpleGrid,
@@ -85,13 +86,8 @@ export function TransformTablesSection({
       <Stack gap="sm" pb="md">
         <Group gap="sm">
           <Icon name="table2" color={color("brand")} />
-          <Title order={4}>{t`Transform Tables`}</Title>
+          <Title order={4}>{t`Tables`}</Title>
         </Group>
-        <Box c="text-medium">
-          <Text size="sm">
-            {t`These tables are created by transforms and linked to this collection`}
-          </Text>
-        </Box>
       </Stack>
 
       <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md" mb="xl">
@@ -145,47 +141,31 @@ function TransformTableCardWrapper({ tableId }: { tableId: TableId }) {
     );
   }
 
-  const handleViewTable = () => {
-    window.open(
-      `/browse/${table.db_id}/schema/${table.schema || "public"}/table/${tableId}`,
-      "_blank",
-    );
-  };
+  // Create a query URL that points to the table
+  const queryUrl = tableRowsQuery(table.db_id, tableId);
 
   return (
-    <Box
-      p="md"
-      style={{
-        border: `1px solid ${color("border")}`,
-        borderRadius: "8px",
-        backgroundColor: color("bg-light"),
-      }}
-    >
-      <Stack gap="sm">
-        <Group gap="xs">
-          <Icon name="table2" color={color("brand")} />
-          <Text fw={600}>{table.display_name || table.name}</Text>
-        </Group>
+    <Card p="md">
+      <a size="xs" href={queryUrl} target="_blank">
+        <Stack gap="sm">
+          <Group gap="xs">
+            <Icon name="table2" color={color("brand")} />
+            <Text fw={600}>{table.display_name || table.name}</Text>
+          </Group>
 
-        {table.description && (
+          {table.description && (
+            <Text size="sm" c="dimmed">
+              {table.description}
+            </Text>
+          )}
+
           <Text size="sm" c="dimmed">
-            {table.description}
+            {table.schema ? `${table.schema}.${table.name}` : table.name}
           </Text>
-        )}
 
-        <Text size="sm" c="dimmed">
-          {table.schema ? `${table.schema}.${table.name}` : table.name}
-        </Text>
-
-        <Button
-          variant="light"
-          size="xs"
-          onClick={handleViewTable}
-          leftSection={<Icon name="eye" />}
-        >
-          {t`View Table`}
-        </Button>
-      </Stack>
-    </Box>
+          {t`Query this table`}
+        </Stack>
+      </a>
+    </Card>
   );
 }
