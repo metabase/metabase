@@ -77,6 +77,7 @@
                               :schemas                                false
                               :uploads                                true
                               :identifiers-with-spaces                true
+                              :rename                                 true
                               :expressions/integer                    true
                               :expressions/float                      true
                               :expressions/date                       true

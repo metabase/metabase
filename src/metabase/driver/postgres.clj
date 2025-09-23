@@ -65,6 +65,7 @@
                               :convert-timezone         true
                               :datetime-diff            true
                               :now                      true
+                              :rename                   true
                               :persist-models           true
                               :schemas                  true
                               :identifiers-with-spaces  true

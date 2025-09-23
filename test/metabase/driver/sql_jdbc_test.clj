@@ -299,7 +299,7 @@
 
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest rename-tables-test
-  (mt/test-drivers #{:postgres :mysql :sqlserver :redshift}
+  (mt/test-drivers #{:postgres :mysql :redshift}
     (testing "rename-tables should rename multiple tables atomically"
       (let [db-id             (mt/id)
             driver            driver/*driver*

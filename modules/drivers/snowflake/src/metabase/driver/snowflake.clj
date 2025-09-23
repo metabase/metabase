@@ -54,6 +54,7 @@
 
 (doseq [[feature supported?] {:connection-impersonation               true
                               :connection-impersonation-requires-role true
+                              :rename                                 true
                               :convert-timezone                       true
                               :datetime-diff                          true
                               :describe-fields                        false
@@ -896,20 +897,15 @@
   (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS \"%s\";" schema)]]]
     (driver/execute-raw-queries! driver conn-spec sql)))
 
-(defmethod driver/rename-tables!* :snowflake
-  [driver db-id sorted-rename-map]
-  ;; TODO: QUE-2474. not atomic
-  (let [sqls (mapv (fn [[from-table to-table]]
-                     (first (sql/format {:alter-table (keyword from-table)
-                                         :rename-table (keyword (name to-table))}
-                                        :quoted true
-                                        :dialect (sql.qp/quote-style driver))))
-                   sorted-rename-map)]
+(defmethod driver/rename-table! :snowflake
+  [driver db-id from-table to-table]
+  (let [sql (first (sql/format {:alter-table (keyword from-table)
+                                :rename-table (keyword (name to-table))}
+                               :quoted true
+                               :dialect (sql.qp/quote-style driver)))]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
-        (doseq [sql sqls]
-          (.addBatch stmt ^String sql))
-        (.executeBatch stmt)))))
+        (.execute stmt ^String sql)))))
 
 (defmethod driver/table-name-length-limit :snowflake
   [_driver]

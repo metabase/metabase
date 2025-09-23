@@ -767,6 +767,9 @@
                               :expressions                      true
                               :now                              true
                               :percentile-aggregations          true
+                              ;; we can't support `alter table .. rename ..`  in general
+                              ;; since it won't work for streaming tables
+                              :rename                           false
                               :metadata/key-constraints         false
                               :identifiers-with-spaces          true
                               :expressions/integer              true
@@ -873,26 +876,6 @@
   [driver database-id table-name column-definitions & {:keys [primary-key]}]
   (let [sql (#'driver.sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)]
     (driver/execute-raw-queries! driver (t2/select-one :model/Database database-id) [sql])))
-
-(defmethod driver/rename-tables!* :bigquery-cloud-sdk
-  [driver db-id sorted-rename-map]
-  ;; TODO: QUE-2474. renames may be not supported, and are not atomic
-  (let [database (t2/select-one :model/Database db-id)]
-    (doseq [[old-table-name new-table-name] sorted-rename-map]
-      (let [old-table-str (get-table-str old-table-name)
-            new-table-str (name new-table-name)]
-        (try
-          (let [sql (format "ALTER TABLE %s RENAME TO %s" old-table-str new-table-str)]
-            (driver/execute-raw-queries! driver database [sql]))
-          (catch Exception e
-            (if (and (instance? com.google.cloud.bigquery.BigQueryException e)
-                     (str/includes? (.getMessage e) "streaming data"))
-              ;; rename failed, we must create + drop
-              (let [create-sql (driver/compile-transform driver {:query (format "SELECT * FROM %s" old-table-str)
-                                                                 :output-table new-table-name})
-                    drop-sql (driver/compile-drop-table driver old-table-name)]
-                (driver/execute-raw-queries! driver database (concat create-sql drop-sql)))
-              (throw e))))))))
 
 (defmethod driver/drop-table! :bigquery-cloud-sdk
   [driver database-id table-name]
