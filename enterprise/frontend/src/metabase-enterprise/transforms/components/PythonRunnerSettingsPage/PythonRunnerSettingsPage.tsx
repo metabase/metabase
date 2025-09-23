@@ -5,22 +5,8 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { useHasTokenFeature } from "metabase/common/hooks";
 
 export function PythonRunnerSettingsPage() {
-  const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
-  if (!hasPythonTransformsFeature) {
-    return (
-      <SettingsPageWrapper title={t`Python Runner`}>
-        <SettingsSection>
-          <div className="text-medium">
-            {t`Python Runner configuration requires the transforms-python feature.`}
-          </div>
-        </SettingsSection>
-      </SettingsPageWrapper>
-    );
-  }
-
   return (
     <SettingsPageWrapper title={t`Python Runner`}>
       <SettingsSection title={t`Service Configuration`}>
