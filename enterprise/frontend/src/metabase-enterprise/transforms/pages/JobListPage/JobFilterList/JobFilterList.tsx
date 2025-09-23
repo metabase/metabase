@@ -12,8 +12,8 @@ import { TimeFilterWidget } from "../../../components/TimeFilterWidget";
 import type { JobListParams } from "../../../types";
 
 type FilterListProps = {
-  tags: TransformTag[];
   params: JobListParams;
+  tags: TransformTag[];
 };
 
 const PAST_INTERVAL_DIRECTIONS: DatePickerRelativeDirection[] = [
@@ -26,7 +26,7 @@ const FUTURE_INTERVAL_DIRECTIONS: DatePickerRelativeDirection[] = [
   "next",
 ];
 
-export function JobFilterList({ tags, params }: FilterListProps) {
+export function JobFilterList({ params, tags }: FilterListProps) {
   const dispatch = useDispatch();
 
   const handleLastRunStartTimeChange = (lastRunStartTime?: string) => {
@@ -50,7 +50,7 @@ export function JobFilterList({ tags, params }: FilterListProps) {
         onChange={handleLastRunStartTimeChange}
       />
       <TimeFilterWidget
-        label={t`Next run`}
+        label={t`Next run at`}
         value={params.nextRunStartTime}
         availableDirections={FUTURE_INTERVAL_DIRECTIONS}
         onChange={handleNextRunStartTimeChange}

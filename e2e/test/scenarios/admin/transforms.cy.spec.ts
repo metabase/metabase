@@ -2310,7 +2310,7 @@ function getLastRunAtFilterWidget() {
 }
 
 function getNextRunFilterWidget() {
-  return cy.findByRole("group", { name: "Next run" });
+  return cy.findByRole("group", { name: "Next run at" });
 }
 
 function getStatusFilterWidget() {

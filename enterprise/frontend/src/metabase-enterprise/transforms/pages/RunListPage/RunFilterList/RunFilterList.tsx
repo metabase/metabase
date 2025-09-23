@@ -28,15 +28,15 @@ const PAST_INTERVAL_DIRECTIONS: DatePickerRelativeDirection[] = [
 ];
 
 type RunFilterListProps = {
+  params: RunListParams;
   transforms: Transform[];
   tags: TransformTag[];
-  params: RunListParams;
 };
 
 export function RunFilterList({
+  params,
   transforms,
   tags,
-  params,
 }: RunFilterListProps) {
   const dispatch = useDispatch();
 
