@@ -7,6 +7,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type {
   CardType,
   ListTransformRunsResponse,
+  PythonTransformTableAliases,
   TransformTagId,
 } from "metabase-types/api";
 
@@ -1205,6 +1206,35 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       cy.log("update the query");
       getTransformPage().findByRole("link", { name: "Edit query" }).click();
       H.NativeEditor.type(" WHERE name = 'Duck'");
+      getQueryEditor().button("Save changes").click();
+      cy.wait("@updateTransform");
+
+      cy.log("run the transform and make sure the query has changed");
+      runTransformAndWaitForSuccess();
+      getTableLink().click();
+      H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
+      H.assertQueryBuilderRowCount(1);
+    });
+
+    it("should be able to update a Python query", () => {
+      cy.log("create a new transform");
+      H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
+        (id) => {
+          createPythonTransform({
+            body: dedent`
+          def transform(foo: DataFrame):
+            return pd.DataFrame({"foo": 42 })
+        `,
+            sourceTables: { foo: id },
+            visitTransform: true,
+          });
+        },
+      );
+
+      cy.log("update the query");
+      getTransformPage().findByRole("link", { name: "Edit script" }).click();
+      H.PythonEditor.type("{backspace}{backspace} + 10 })");
+
       getQueryEditor().button("Save changes").click();
       cy.wait("@updateTransform");
 
@@ -2561,6 +2591,41 @@ function createSqlTransform({
       },
       target: {
         type: "table",
+        name: targetTable,
+        schema: targetSchema,
+      },
+      tag_ids: tagIds,
+    },
+    { wrapId: true, visitTransform },
+  );
+}
+function createPythonTransform({
+  body,
+  sourceTables,
+  targetTable = TARGET_TABLE,
+  targetSchema = TARGET_SCHEMA,
+  tagIds,
+  visitTransform,
+}: {
+  body: string;
+  sourceTables: PythonTransformTableAliases;
+  targetTable?: string;
+  targetSchema?: string;
+  tagIds?: TransformTagId[];
+  visitTransform?: boolean;
+}) {
+  H.createTransform(
+    {
+      name: "Python transform",
+      source: {
+        type: "python",
+        "source-database": WRITABLE_DB_ID,
+        "source-tables": sourceTables,
+        body,
+      },
+      target: {
+        type: "table",
+        database: WRITABLE_DB_ID,
         name: targetTable,
         schema: targetSchema,
       },
