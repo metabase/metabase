@@ -23,7 +23,9 @@
     (write-files! [_ _ _ _] nil)))
 
 (use-fixtures :once (fixtures/initialize :db))
-(use-fixtures :each (fn [f] (mt/with-model-cleanup [:model/RemoteSyncChangeLog] (f))))
+(use-fixtures :each
+  (fn [f] (mt/with-model-cleanup [:model/RemoteSyncChangeLog] (f)))
+  (fn [f] (mt/with-premium-features #{:serialization} (f))))
 
 (deftest branches-endpoint-test
   (testing "GET /api/ee/remote-sync/branches"
