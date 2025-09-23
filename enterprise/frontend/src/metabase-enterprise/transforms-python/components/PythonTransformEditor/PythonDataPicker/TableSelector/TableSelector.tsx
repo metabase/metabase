@@ -16,6 +16,7 @@ import {
   Tooltip,
 } from "metabase/ui";
 import type {
+  ConcreteTableId,
   DatabaseId,
   RecentItem,
   Table,
@@ -36,7 +37,7 @@ export function TableSelector({
   database: DatabaseId | undefined;
   table: Table | undefined;
   availableTables: Table[];
-  selectedTableIds: TableId[];
+  selectedTableIds: ConcreteTableId[];
   disabled?: boolean;
   onChange: (table: Table | undefined) => void;
   onRemove: () => void;
@@ -55,7 +56,7 @@ export function TableSelector({
   ) {
     if (item.model === "table") {
       // Filter available tables to exclude already selected ones (except current selection)
-      return selectedTableIds.includes(item.id);
+      return !isConcreteTableId(item.id) || !selectedTableIds.includes(item.id);
     }
     if (item.model === "database") {
       return item.id !== database;
@@ -124,4 +125,8 @@ function getDataPickerValue(table: Table | undefined) {
     db_id: table.db_id,
     schema: table.schema,
   };
+}
+
+function isConcreteTableId(id: TableId | undefined): id is ConcreteTableId {
+  return typeof id === "number";
 }

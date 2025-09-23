@@ -1,7 +1,7 @@
 import type { DatabaseId } from "./database";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery } from "./query";
-import type { Table, TableId } from "./table";
+import type { ConcreteTableId, Table } from "./table";
 
 export type TransformId = number;
 export type TransformTagId = number;
@@ -23,7 +23,7 @@ export type Transform = {
   last_run?: TransformRun | null;
 };
 
-export type PythonTransformTableAliases = Record<string, TableId>;
+export type PythonTransformTableAliases = Record<string, ConcreteTableId>;
 
 export type PythonTransformSource = {
   type: "python";
