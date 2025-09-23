@@ -20,7 +20,7 @@ function SavedQuestionHeaderButton({
   return (
     <Flex
       align="center"
-      gap="0.25rem"
+      gap="sm"
       className={SavedQuestionHeaderButtonS.HeaderTitleContainer}
     >
       <EditableText

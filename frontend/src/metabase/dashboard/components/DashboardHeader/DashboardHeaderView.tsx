@@ -145,7 +145,7 @@ export function DashboardHeaderView({
                     [S.showSubHeader]: showSubHeader,
                   })}
                 >
-                  <Flex className={S.HeaderCaptionContainer}>
+                  <Flex className={S.HeaderCaptionContainer} gap="sm">
                     <Dashboard.Title className={S.HeaderCaption} />
                     <PLUGIN_MODERATION.EntityModerationIcon
                       dashboard={dashboard}
