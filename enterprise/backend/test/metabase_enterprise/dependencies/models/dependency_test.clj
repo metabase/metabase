@@ -110,7 +110,6 @@
                                lib/->legacy-MBQL)
    :visualization_settings {}})
 
-;; FIXME: This should work, I think? But the deps are not actually getting created.
 (deftest ^:sequential card-deps-graph-test-2-native-card-chain
   (testing "deps graph is connected properly for a chain of native cards"
     (mt/dataset test-data

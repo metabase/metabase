@@ -247,8 +247,10 @@
 
   (t2/select :model/Dependency :from_entity_type :card      :from_entity_id 124)
   (t2/select :model/Dependency :from_entity_type :table     :from_entity_id 155)
-  (t2/select :model/Dependency :from_entity_type :transform :from_entity_id 1)
-  (t2/select :model/Dependency :to_entity_type   :transform :to_entity_id   1)
+
+  (t2/select :model/Dependency :from_entity_type :transform :from_entity_id 2)
+  (t2/select :model/Dependency :to_entity_type   :transform :to_entity_id   2)
+  (t2/select-one :model/Table :id 175)
   *e
 
   (t2/select-one :model/Transform :id 1)

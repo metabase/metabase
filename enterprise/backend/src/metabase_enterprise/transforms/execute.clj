@@ -50,7 +50,6 @@
       (canceling/chan-start-run! run-id qp.pipeline/*canceled-chan*)
       (driver/run-transform! driver transform-details opts))
     (transform-run/succeed-started-run! run-id)
-    (events/publish-event! :event/transform-run-complete {:object transform-details})
     (catch Throwable t
       (transform-run/fail-started-run! run-id {:message (.getMessage t)})
       (throw t))
@@ -97,7 +96,9 @@
            (deliver start-promise [:started run-id]))
          (log/info "Executing transform" id "with target" (pr-str target))
          (run-transform! run-id driver transform-details opts)
-         (sync-target! target database run-id)))
+         (sync-target! target database run-id)
+         ;; This event must be published only after the sync is complete - the new table needs to be in AppDB.
+         (events/publish-event! :event/transform-run-complete {:object transform-details})))
      (catch Throwable t
        (log/error t "Error executing transform")
        (when start-promise
