@@ -10,6 +10,7 @@ export * from "./collection";
 export * from "./dashboard";
 export * from "./database";
 export * from "./dataset";
+export * from "./dependencies";
 export * from "./document";
 export * from "./field";
 export * from "./geojson";

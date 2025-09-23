@@ -17,7 +17,7 @@ export * from "./content-translation";
 export * from "./dashboard";
 export * from "./database";
 export * from "./dataset";
-export * from "./dependency";
+export * from "./dependencies";
 export * from "./email";
 export * from "./entity-id";
 export * from "./field";
