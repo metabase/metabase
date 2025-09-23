@@ -155,9 +155,10 @@
 
 (defn load-metabase!
   "Loads in a database export from an ingestion source, which is any Ingestable instance."
-  [ingestion & {:keys [backfill? continue-on-error]
+  [ingestion & {:keys [backfill? continue-on-error reindex?]
                 :or   {backfill?         true
-                       continue-on-error false}}]
+                       continue-on-error false
+                       reindex?          true}}]
   (u/prog1
     (t2/with-transaction [_tx]
       ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared dependencies
@@ -183,8 +184,9 @@
                       (update ctx :errors conj e))))
                 ctx
                 contents)))
+    (when reindex?
     ;; Hack: the transaction above typically takes much longer than our delay on the search indexing queue.
     ;;       this means that the corresponding entries would have been missing or stale when we indexed them.
     ;;       ideally, we would delay the indexing somehow, or only reindex what we've loaded.
     ;;       while we're figuring that out, here's a crude stopgap.
-    (search/reindex! {:async? false})))
+      (search/reindex!))))
