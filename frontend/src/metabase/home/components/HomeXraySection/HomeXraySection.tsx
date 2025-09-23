@@ -72,6 +72,7 @@ const HomeXrayView = ({ database, candidates = [] }: HomeXrayViewProps) => {
   const tableMessages = useMemo(() => getMessages(tableCount), [tableCount]);
   const canSelectSchema = schemas.length > 1 && schema !== null;
   const applicationName = useSelector(getApplicationName);
+  const hasTables = (candidate?.tables.length ?? 0) > 0;
 
   return (
     <div>
@@ -90,7 +91,7 @@ const HomeXrayView = ({ database, candidates = [] }: HomeXrayViewProps) => {
           {t`schema in`}
           <DatabaseInfo database={database} />
         </HomeCaption>
-      ) : (candidate?.tables.length ?? 0) > 0 ? (
+      ) : hasTables ? (
         <HomeCaption primary>
           {t`Here are some explorations of`}
           <DatabaseInfo database={database} />
