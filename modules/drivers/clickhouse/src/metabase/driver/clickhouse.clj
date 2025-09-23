@@ -53,6 +53,7 @@
                               :window-functions/cumulative     (not driver-api/is-test?)
                               :left-join                       (not driver-api/is-test?)
                               :describe-fks                    false
+                              :rename                          true
                               :actions                         false
                               :metadata/key-constraints        (not driver-api/is-test?)
                               :database-routing                true
@@ -268,15 +269,15 @@
        (let [sql (create-table!-sql driver table-name column-definitions :primary-key primary-key)]
          (.execute stmt sql))))))
 
-(defmethod driver/rename-tables!* :clickhouse
-  [_driver db-id sorted-rename-map]
-  ;; TODO: QUE-2474
+;; rename-tables!* only supported by the atomic engine
+;; https://clickhouse.com/docs/engines/database-engines/atomic#exchange-tables
+
+(defmethod driver/rename-table! :clickhouse
+  [_driver db-id old-table-name new-table-name]
   (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
     (with-open [stmt (.createStatement ^java.sql.Connection (:connection conn))]
-      (doseq [[old-table-name new-table-name] sorted-rename-map]
-        (let [sql (format "RENAME TABLE %s TO %s" (quote-name old-table-name) (quote-name new-table-name))]
-          (.addBatch ^java.sql.Statement stmt ^String sql)))
-      (.executeBatch ^java.sql.Statement stmt))))
+      (let [sql (format "RENAME TABLE %s TO %s" (quote-name old-table-name) (quote-name new-table-name))]
+        (.execute stmt sql)))))
 
 (defmethod driver/insert-into! :clickhouse
   [driver db-id table-name column-names values]

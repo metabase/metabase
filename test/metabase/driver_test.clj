@@ -397,7 +397,6 @@
 (deftest python-transform-drivers-multimethods-support
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
     (let [driver driver/*driver*]
-      (is (get-method driver/rename-tables!* driver))
       (is (get-method driver/create-table! driver))
       (is (get-method driver/table-name-length-limit driver))
       (is (get-method driver/drop-table! driver))

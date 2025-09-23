@@ -20,6 +20,9 @@ title: Driver interface changelog
 - Added `metabase.driver/rename-tables!*` multimethod for atomic table renaming operations. Takes a map of {from-table to-table}
   pairs that has been topologically sorted.
 
+- Added `metabase.driver/rename-table!` multimethod for table renaming operations. Takes a single from-table to-table pair.
+  Fallbacks to singleton call to `rename-tables!*` if available.
+
 - Added the driver multi-methods `metabase.driver/schema-exists?` and `metabase.driver/create-schema-if-needed!`
   which should be implemented by drivers that support `:schemas` and `:transforms/table`.
 
