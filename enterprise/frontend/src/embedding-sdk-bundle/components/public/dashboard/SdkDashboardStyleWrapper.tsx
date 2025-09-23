@@ -13,7 +13,7 @@ export const SdkDashboardStyledWrapper = forwardRef(
   ) {
     return (
       <Flex
-        mih="100vh"
+        h="100%"
         bg="bg-dashboard"
         direction="column"
         justify="flex-start"

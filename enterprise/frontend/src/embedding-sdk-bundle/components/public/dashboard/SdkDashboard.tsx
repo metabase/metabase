@@ -2,6 +2,7 @@ import {
   type CSSProperties,
   type PropsWithChildren,
   type ReactNode,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -34,6 +35,7 @@ import {
   toggleSidebar,
   updateDashboardAndCards,
 } from "metabase/dashboard/actions";
+import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import {
@@ -49,6 +51,7 @@ import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmb
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { getErrorPage } from "metabase/selectors/app";
+import type { CardDisplayType } from "metabase-types/api";
 
 import type {
   DrillThroughQuestionProps,
@@ -141,11 +144,13 @@ const SdkDashboardInner = ({
   dashboardActions,
   dashcardMenu,
   getClickActionMode,
-  navigateToNewCardFromDashboard = undefined,
+  navigateToNewCardFromDashboard,
   className,
   style,
   children,
   dataPickerProps,
+  onVisualizationChange,
+  adHocQuestionHeight,
 }: SdkDashboardInnerProps) => {
   const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
     onLoad,
@@ -226,6 +231,22 @@ const SdkDashboardInner = ({
   const { modalContent, show } = useConfirmation();
   const isDashboardDirty = useSelector(getIsDirty);
 
+  const navigateToNewCardFromDashboardCallback = useCallback(
+    (options: NavigateToNewCardFromDashboardOpts) => {
+      onVisualizationChange?.(options.nextCard.display as CardDisplayType);
+
+      if (navigateToNewCardFromDashboard) {
+        return navigateToNewCardFromDashboard(options);
+      }
+      return onNavigateToNewCardFromDashboard(options);
+    },
+    [
+      onNavigateToNewCardFromDashboard,
+      navigateToNewCardFromDashboard,
+      onVisualizationChange,
+    ],
+  );
+
   if (isLocaleLoading) {
     return (
       <SdkDashboardStyledWrapper className={className} style={style}>
@@ -262,11 +283,7 @@ const SdkDashboardInner = ({
       ref={dashboardContextProviderRef}
       dashboardId={dashboardId}
       parameterQueryParams={initialParameters}
-      navigateToNewCardFromDashboard={
-        navigateToNewCardFromDashboard !== undefined
-          ? navigateToNewCardFromDashboard
-          : onNavigateToNewCardFromDashboard
-      }
+      navigateToNewCardFromDashboard={navigateToNewCardFromDashboardCallback}
       onNewQuestion={() => {
         if (isDashboardDirty) {
           show({
@@ -319,6 +336,8 @@ const SdkDashboardInner = ({
               questionPath={adhocQuestionUrl!}
               onNavigateBack={onNavigateBackToDashboard}
               {...drillThroughQuestionProps}
+              onVisualizationChange={onVisualizationChange}
+              height={adHocQuestionHeight}
             >
               {AdHocQuestionView && <AdHocQuestionView />}
             </SdkAdHocQuestion>
@@ -350,6 +369,7 @@ const SdkDashboardInner = ({
               setRenderMode("dashboard");
             }}
             dataPickerProps={dataPickerProps}
+            onVisualizationChange={onVisualizationChange}
           />
         ))
         .exhaustive()}
@@ -390,6 +410,7 @@ type DashboardQueryBuilderProps = {
   onCreate: (question: MetabaseQuestion) => void;
   onNavigateBack: () => void;
   dataPickerProps: EditableDashboardOwnProps["dataPickerProps"];
+  onVisualizationChange?: (display: CardDisplayType) => void;
 };
 
 /**
@@ -399,6 +420,7 @@ function DashboardQueryBuilder({
   onCreate,
   onNavigateBack,
   dataPickerProps,
+  onVisualizationChange,
 }: DashboardQueryBuilderProps) {
   const { dashboard, selectTab, setEditingDashboard } = useDashboardContext();
 
@@ -436,6 +458,7 @@ function DashboardQueryBuilder({
       withChartTypeSelector
       // The default value is 600px and it cuts off the "Visualize" button.
       height="700px"
+      onVisualizationChange={onVisualizationChange}
     />
   );
 }
