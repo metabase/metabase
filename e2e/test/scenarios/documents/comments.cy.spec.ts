@@ -50,27 +50,38 @@ H.describeWithSnowplowEE("document comments", () => {
       testCommentingOnNode(documentId, BLOCKQUOTE_ID, getBlockquote);
       testCommentingOnNode(documentId, ORDERED_LIST_ID, getOrderedList);
       testCommentingOnNode(documentId, CODE_BLOCK_ID, getCodeBlock);
-      testCommentingOnNode(documentId, CARD_EMBED_ID, getEmbed);
+      testCommentingOnNode(documentId, CARD_EMBED_ID, getEmbed, {
+        isCardEmbedNode: true,
+      });
     });
 
     function testCommentingOnNode<E extends HTMLElement>(
       targetId: DocumentId,
       childTargetId: string,
       getNodeElement: () => Cypress.Chainable<JQuery<E>>,
+      { isCardEmbedNode = false } = {},
     ) {
       cy.get("body").click(0, 0);
-      Comments.getDocumentNodeButton({ targetId, childTargetId }).should(
-        "not.be.visible",
-      );
 
-      getNodeElement()
-        .closest("[data-node-view-wrapper]")
-        .should("have.attr", "aria-expanded", "false");
-      getNodeElement().scrollIntoView();
-      getNodeElement().realHover();
-      Comments.getDocumentNodeButton({ targetId, childTargetId })
-        .should("be.visible")
-        .click();
+      if (isCardEmbedNode) {
+        getNodeElement().scrollIntoView();
+        getNodeElement().icon("ellipsis").click();
+
+        H.menu().findByText("Comment").click();
+      } else {
+        Comments.getDocumentNodeButton({ targetId, childTargetId }).should(
+          "not.be.visible",
+        );
+
+        getNodeElement()
+          .closest("[data-node-view-wrapper]")
+          .should("have.attr", "aria-expanded", "false");
+        getNodeElement().scrollIntoView();
+        getNodeElement().realHover();
+        Comments.getDocumentNodeButton({ targetId, childTargetId })
+          .should("be.visible")
+          .click();
+      }
 
       Comments.getSidebar().within(() => {
         cy.findByRole("heading", { name: "Comments about this" }).should(
@@ -95,6 +106,7 @@ H.describeWithSnowplowEE("document comments", () => {
         targetId,
         childTargetId,
         hasComments: true,
+        isCardEmbedNode,
       })
         .should("be.visible")
         .and("contain.text", "1");
@@ -112,6 +124,7 @@ H.describeWithSnowplowEE("document comments", () => {
         targetId,
         childTargetId,
         hasComments: true,
+        isCardEmbedNode,
       }).should("be.visible");
     }
   });
@@ -1800,12 +1813,21 @@ function createLoremIpsumDocument() {
           ],
         },
         {
-          type: "cardEmbed",
+          type: "resizeNode",
           attrs: {
-            id: ORDERS_QUESTION_ID,
-            name: null,
-            _id: CARD_EMBED_ID,
+            height: 350,
+            minHeight: 280,
           },
+          content: [
+            {
+              type: "cardEmbed",
+              attrs: {
+                id: ORDERS_QUESTION_ID,
+                name: null,
+                _id: CARD_EMBED_ID,
+              },
+            },
+          ],
         },
         {
           type: "paragraph",

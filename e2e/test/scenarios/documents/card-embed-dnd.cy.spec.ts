@@ -552,7 +552,6 @@ function addNewStandaloneCard(
   cy.get(".node-paragraph.is-empty").click();
   H.addToDocument("/", false);
   H.commandSuggestionItem("Chart").click();
-  H.commandSuggestionItem(/Browse all/).click();
   H.entityPickerModalTab(
     cardType === "question" ? "Questions" : "Models",
   ).click();

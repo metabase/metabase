@@ -232,7 +232,10 @@ H.describeWithSnowplowEE("documents", () => {
           cy.request("DELETE", `/api/card/${clonedCardId}`);
           cy.visit(`/document/${id}`);
         });
-        H.documentContent().should("contain.text", "Couldn't find this chart.");
+        cy.findByTestId("document-card-embed").should(
+          "have.text",
+          "Couldn't find this chart.",
+        );
       });
 
       it("read only access", () => {
