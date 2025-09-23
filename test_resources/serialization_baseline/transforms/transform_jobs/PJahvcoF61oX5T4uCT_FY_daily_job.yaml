@@ -1,17 +1,12 @@
 built_in_type: daily
-created_at: '2025-09-19T16:53:47.903413Z'
+created_at: '2025-09-23T12:20:31.215628Z'
 description: Executes transforms tagged with 'daily' once per day
 entity_id: PJahvcoF61oX5T4uCT_FY
-job_tags:
-- entity_id: PJahvcoF61oX5T4uCT_FY
-  position: 0
-  tag_id: dUW7nvQHQBdA0Rx0gJckI
-  serdes/meta:
-  - id: PJahvcoF61oX5T4uCT_FY
-    model: TransformJobTransformTag
+job_tags: []
 name: Daily job
 schedule: 0 0 0 * * ? *
-updated_at: '2025-09-19T16:53:47.903413Z'
+ui_display_type: cron/builder
+updated_at: '2025-09-23T12:20:31.215628Z'
 serdes/meta:
 - id: PJahvcoF61oX5T4uCT_FY
   label: daily_job
