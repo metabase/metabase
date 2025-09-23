@@ -1,12 +1,12 @@
 import cx from "classnames";
 import type React from "react";
-import { type ComponentProps, useState } from "react";
+import { type ComponentProps, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
-  UpsellSdkCta,
-  useUpsellSdkCta,
-} from "metabase/admin/upsells/UpsellSdkCta";
+  UpsellEmbedJsCta,
+  useUpsellEmbedJsCta,
+} from "metabase/admin/upsells/UpsellEmbedJsCta";
 import { UpsellGem } from "metabase/admin/upsells/components";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Link from "metabase/common/components/Link";
@@ -50,7 +50,13 @@ export function SelectEmbedTypePane({
   getPublicUrl,
   goToNextStep,
 }: SelectEmbedTypePaneProps) {
-  const { url } = useUpsellSdkCta();
+  // Selecting "Embedded Analytics JS" should link to the embed flow.
+  // TODO(EMB-848): pre-select dashboard and question when embed flow is opened from the embed sharing modal
+  const embedFlowUrl = useMemo(() => {
+    return `/embed-js?resource_type=${resourceType}&resource_id=${resource.id}`;
+  }, [resourceType, resource.id]);
+
+  const { url } = useUpsellEmbedJsCta({ embedFlowUrl });
   const hasPublicLink = resource.public_uuid != null;
 
   const utmTags = {
@@ -95,9 +101,9 @@ export function SelectEmbedTypePane({
     }
   };
 
-  const isSimpleEmbeddingAvailable = useHasTokenFeature("embedding_simple");
+  const isEmbedJsAvailable = useHasTokenFeature("embedding_simple");
   const isStaticEmbeddingEnabled = useSetting("enable-embedding-static");
-  const isSimpleEmbeddingEnabled = useSetting("enable-embedding-simple");
+  const isEmbedJsEnabled = useSetting("enable-embedding-simple");
   const isEmbeddingSdkEnabled = useSetting("enable-embedding-sdk");
 
   return (
@@ -126,16 +132,15 @@ export function SelectEmbedTypePane({
 
         {/* Embedded Analytics JS */}
         <MaybeLinkEmbeddedJs
-          shouldRenderLink={
-            !isSimpleEmbeddingAvailable || isSimpleEmbeddingEnabled
-          }
+          shouldRenderLink={!isEmbedJsAvailable || isEmbedJsEnabled}
+          embedFlowUrl={embedFlowUrl}
         >
           <SharingPaneButton
             title={t`Embedded Analytics JS`}
             badge={<UpsellGem />}
             illustration={<EmbeddedJsIllustration />}
-            isDisabled={isSimpleEmbeddingAvailable && !isSimpleEmbeddingEnabled}
-            disabledLink={"/embed-js"}
+            isDisabled={isEmbedJsAvailable && !isEmbedJsEnabled}
+            disabledLink="/embed-js"
           >
             <List>
               {/* eslint-disable-next-line no-literal-metabase-strings -- only admin sees this */}
@@ -143,10 +148,13 @@ export function SelectEmbedTypePane({
               <List.Item>{t`Embed static or interactive dashboards and charts with drill-down, the query builder or let people browse and manage collections.`}</List.Item>
               <List.Item>
                 {t`Advanced customizations for styling.`}{" "}
-                {!isSimpleEmbeddingAvailable && <LearnMore url={url} />}
+                {!isEmbedJsAvailable && <LearnMore url={url} />}
               </List.Item>
             </List>
-            {!isSimpleEmbeddingAvailable && <UpsellSdkCta />}
+
+            {!isEmbedJsAvailable && (
+              <UpsellEmbedJsCta embedFlowUrl={embedFlowUrl} />
+            )}
           </SharingPaneButton>
         </MaybeLinkEmbeddedJs>
 
@@ -218,12 +226,16 @@ function LearnMore({ url }: { url: string | undefined }) {
 
 function MaybeLinkEmbeddedJs({
   shouldRenderLink,
+  embedFlowUrl,
   ...props
 }: {
   shouldRenderLink?: boolean;
+  embedFlowUrl: string;
   children: React.ReactNode;
 }) {
-  const { url, internalLink, triggerUpsellFlow } = useUpsellSdkCta();
+  const { url, internalLink, triggerUpsellFlow } = useUpsellEmbedJsCta({
+    embedFlowUrl,
+  });
 
   if (!shouldRenderLink) {
     return props.children;
@@ -234,7 +246,7 @@ function MaybeLinkEmbeddedJs({
       <UnstyledButton
         onClick={triggerUpsellFlow}
         type="button"
-        aria-label={t`Interactive embedding`}
+        aria-label={t`Embedded Analytics JS`}
       >
         {props.children}
       </UnstyledButton>
@@ -247,7 +259,7 @@ function MaybeLinkEmbeddedJs({
         {...props}
         href={url}
         target="_blank"
-        aria-label={t`Interactive embedding`}
+        aria-label={t`Embedded Analytics JS`}
       />
     );
   }
@@ -257,7 +269,7 @@ function MaybeLinkEmbeddedJs({
       <Link
         {...props}
         to={internalLink}
-        aria-label={t`Interactive embedding`}
+        aria-label={t`Embedded Analytics JS`}
       />
     );
   }
