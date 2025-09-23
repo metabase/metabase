@@ -1,17 +1,14 @@
 import { useHotkeys } from "@mantine/hooks";
 import { useState } from "react";
 
-import { NotFound } from "metabase/common/components/ErrorPages";
-import { useHasTokenFeature } from "metabase/common/hooks";
 import { Flex, Stack } from "metabase/ui";
+import { EditorHeader } from "metabase-enterprise/transforms/components/QueryEditor/EditorHeader";
 import type {
   DatabaseId,
   PythonTransformSource,
   PythonTransformTableAliases,
   Table,
 } from "metabase-types/api";
-
-import { EditorHeader } from "../QueryEditor/EditorHeader";
 
 import { PythonDataPicker } from "./PythonDataPicker";
 import { PythonEditorBody } from "./PythonEditorBody";
@@ -29,7 +26,7 @@ export type PythonTransformSourceDraft = {
   "source-tables": PythonTransformTableAliases;
 };
 
-type PythonTransformEditorProps = {
+export type PythonTransformEditorProps = {
   initialSource: PythonTransformSourceDraft;
   isNew?: boolean;
   isSaving?: boolean;
@@ -48,7 +45,6 @@ export function PythonTransformEditor({
 }: PythonTransformEditorProps) {
   const [source, setSource] = useState(initialSource);
   const [isSourceDirty, setIsSourceDirty] = useState(false);
-  const hasPythonTransforms = useHasTokenFeature("transforms-python");
 
   const { isRunning, isDirty, cancel, run, executionResult } =
     useTestPythonTransform(source);
@@ -111,10 +107,6 @@ export function PythonTransformEditor({
       source["source-tables"] &&
       Object.keys(source["source-tables"]).length > 0,
   );
-
-  if (!hasPythonTransforms) {
-    return <NotFound />;
-  }
 
   return (
     <Stack

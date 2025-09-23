@@ -6,7 +6,7 @@ import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Card, Group, Icon } from "metabase/ui";
-import { PythonEditor } from "metabase-enterprise/transforms/components/PythonEditor";
+import { PythonEditor } from "metabase-enterprise/transforms-python/components/PythonEditor";
 import type { Transform } from "metabase-types/api";
 
 import { QueryView } from "../../../components/QueryView";

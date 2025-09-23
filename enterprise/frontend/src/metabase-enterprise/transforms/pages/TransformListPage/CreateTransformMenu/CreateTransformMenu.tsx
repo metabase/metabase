@@ -9,8 +9,8 @@ import {
   QuestionPickerModal,
   type QuestionPickerValueItem,
 } from "metabase/common/components/Pickers/QuestionPicker";
-import { useHasTokenFeature } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { Button, Center, Icon, Loader, Menu } from "metabase/ui";
 import { trackTransformCreate } from "metabase-enterprise/transforms/analytics";
 import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/utils";
@@ -22,7 +22,6 @@ import {
 
 export function CreateTransformMenu() {
   const dispatch = useDispatch();
-  const hasPythonTransforms = useHasTokenFeature("transforms-python");
   const [isPickerOpened, { open: openPicker, close: closePicker }] =
     useDisclosure();
 
@@ -87,21 +86,7 @@ export function CreateTransformMenu() {
               >
                 {t`SQL query`}
               </Menu.Item>
-              {hasPythonTransforms && (
-                <Menu.Item
-                  component={ForwardRefLink}
-                  to={getNewTransformFromTypeUrl("python")}
-                  leftSection={<Icon name="code_block" />}
-                  onClick={() => {
-                    trackTransformCreate({
-                      triggeredFrom: "transform-page-create-menu",
-                      creationType: "python",
-                    });
-                  }}
-                >
-                  {t`Python script`}
-                </Menu.Item>
-              )}
+              {PLUGIN_TRANSFORMS_PYTHON.getCreateTransformsMenuItems()}
               <Menu.Item
                 leftSection={<Icon name="copy" />}
                 onClick={handleSavedQuestionClick}

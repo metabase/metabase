@@ -5,9 +5,9 @@ import { t } from "ttag";
 import Link from "metabase/common/components/Link";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 import { Box, Checkbox, Flex, Icon, Stack } from "metabase/ui";
-import { getPythonLibraryUrl } from "metabase-enterprise/transforms/urls";
+import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
+import { getPythonLibraryUrl } from "metabase-enterprise/transforms-python/urls";
 
-import { SHARED_LIB_IMPORT_PATH } from "../../../constants";
 import { PythonEditor } from "../../PythonEditor";
 
 import S from "./PythonEditorBody.module.css";

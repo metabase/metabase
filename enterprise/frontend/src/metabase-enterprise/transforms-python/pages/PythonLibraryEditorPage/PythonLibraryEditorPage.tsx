@@ -11,8 +11,9 @@ import {
   useGetPythonLibraryQuery,
   useUpdatePythonLibraryMutation,
 } from "metabase-enterprise/api/python-transform-library";
-import { PythonEditor } from "metabase-enterprise/transforms/components/PythonEditor";
-import type { PythonLibraryEditorPageParams } from "metabase-enterprise/transforms/types";
+
+import { PythonEditor } from "../../components/PythonEditor";
+import type { PythonLibraryEditorPageParams } from "../../types";
 
 import S from "./PythonLibraryEditorPage.module.css";
 
@@ -71,7 +72,7 @@ export function PythonLibraryEditorPage({
 
   const isDirty = source !== (library?.source ?? EMPTY_LIBRARY_SOURCE);
 
-  if (isLoading || (error && !isNotFoundError(error))) {
+  if (isLoading || (error && !isResourceNotFoundError(error))) {
     return (
       <Box p="md">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
