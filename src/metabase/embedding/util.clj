@@ -19,4 +19,3 @@
   [request]
   (or (has-react-sdk-header? request)
       (has-embedded-analytics-js-header? request)))
-
