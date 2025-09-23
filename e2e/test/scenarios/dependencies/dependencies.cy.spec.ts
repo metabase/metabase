@@ -155,6 +155,24 @@ H.describeWithSnowplowEE("documents", () => {
       H.modal().button("Save anyway").click();
       cy.wait("@updateCard");
     });
+
+    it("should not show a warning when a change to a metric is backward-compatible with existing content", () => {
+      createMetricWithDependentMbqlQuestionsAndTransforms();
+      cy.get<number>("@metricId").then(H.visitMetric);
+      H.openQuestionActions("Edit metric definition");
+      H.getNotebookStep("summarize").findByText("Min of Score").click();
+      H.popover().within(() => {
+        cy.icon("chevronleft").click();
+        cy.findByText("Custom Expression").click();
+      });
+      H.enterCustomColumnDetails({
+        name: "Custom Min",
+        formula: "Min([Score] + 1)",
+      });
+      H.popover().button("Update").click();
+      cy.findByTestId("edit-bar").button("Save changes").click();
+      cy.wait("@updateCard");
+    });
   });
 
   describe("transforms", () => {
