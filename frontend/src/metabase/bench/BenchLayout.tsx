@@ -1,78 +1,35 @@
-import { MantineProvider } from "@mantine/core";
-import { Box } from "metabase/ui";
 import type { ReactNode } from "react";
+import { withRouter } from "react-router";
+
+import { Box, Flex, ThemeProvider } from "metabase/ui";
+
+import { BenchSidebar } from "./components";
 import { useDarkMode } from "./hooks/useDarkMode";
 
 interface BenchLayoutProps {
   children: ReactNode;
 }
 
-const lightTheme = {
-  primaryColor: "blue",
-  defaultRadius: "md",
-  fontFamily: "system-ui, sans-serif",
-  colorScheme: "light" as const,
-  colors: {
-    dark: [
-      "#C1C2C5",
-      "#A6A7AB",
-      "#909296",
-      "#5c5f66",
-      "#373A40",
-      "#2C2E33",
-      "#25262b",
-      "#1A1B1E",
-      "#141517",
-      "#101113",
-    ],
-  },
-  other: {
-    textPrimary: "#000000",
-    textSecondary: "#666666",
-  },
-};
-
-const darkTheme = {
-  primaryColor: "blue",
-  defaultRadius: "md",
-  fontFamily: "system-ui, sans-serif",
-  colorScheme: "dark" as const,
-  colors: {
-    dark: [
-      "#d5d7e0",
-      "#acaebf",
-      "#8c8fa3",
-      "#666980",
-      "#4d4f66",
-      "#34354a",
-      "#2b2c3d",
-      "#1d1e30",
-      "#0c0d21",
-      "#01010a",
-    ],
-  },
-  other: {
-    textPrimary: "#ffffff",
-    textSecondary: "#e0e0e0",
-  },
-};
-
-export function BenchLayout({ children }: BenchLayoutProps) {
+function BenchLayoutComponent({ children }: BenchLayoutProps) {
   const isDarkMode = useDarkMode();
-  const theme = isDarkMode ? darkTheme : lightTheme;
 
   return (
-    <MantineProvider theme={theme}>
+    <ThemeProvider>
       <Box
         style={{
           height: "100vh",
           overflow: "hidden",
-          backgroundColor: isDarkMode ? "#1A1B1E" : "#ffffff",
-          color: isDarkMode ? "#ffffff" : "#000000",
         }}
       >
-        {children}
+        <Flex h="100%">
+          <BenchSidebar isDarkMode={isDarkMode} />
+          <Box flex="1" style={{ overflow: "hidden" }}>
+            {children}
+          </Box>
+        </Flex>
       </Box>
-    </MantineProvider>
+    </ThemeProvider>
   );
 }
+
+export const BenchLayout = withRouter(BenchLayoutComponent);
