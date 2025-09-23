@@ -1824,6 +1824,25 @@
                   mt/process-query
                   mt/rows))))))
 
+(deftest ^:parallel arrays-have-base-type
+  (testing "queries with pg arrays have a base type on column metadata (#63909)"
+    (mt/test-driver :postgres
+      (is (=? [{:name "id"
+                :database_type "int4"
+                :base_type :type/Integer}
+               {:name "urls"
+                :database_type "_text"
+                :base_type :type/*}]
+              (->> (mt/native-query {:query "SELECT *
+                                             FROM (
+                                               VALUES
+                                                 (1, ARRAY['https://example.com', 'https://example.org']),
+                                                 (2, ARRAY['https://test.com']),
+                                                 (3, ARRAY['https://foo.com', 'https://bar.com', 'https://baz.com'])
+                                             ) AS adhoc_table (id, urls);"})
+                   mt/process-query
+                   mt/cols))))))
+
 (deftest ^:parallel detect-provider-from-database-test
   (let [tests [["Aiven" "mydb-project.aivencloud.com"]
                ["Amazon RDS" "czrs8kj4isg7.us-east-1.rds.amazonaws.com"]
