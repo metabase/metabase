@@ -72,6 +72,7 @@ export const LegendLayout = ({
         onHoverChange={onHoverChange}
         onSelectSeries={onSelectSeries}
         onToggleSeriesVisibility={onToggleSeriesVisibility}
+        isQueryBuilder={isQueryBuilder}
         isReversed={isReversed}
       />
       {!isVertical && actionButtons && (

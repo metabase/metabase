@@ -174,7 +174,8 @@
   ^Parser [h2-db-id]
   (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! :h2 h2-db-id))]
     ;; The H2 Parser class is created from the H2 JDBC session, but these fields are not public
-    (let [session (-> conn (get-field "inner") (get-field "session"))]
+    (let [inner (.unwrap conn java.sql.Connection) ;; May be a wrapper, get the innermost object that has session field
+          session (get-field inner "session")]
       ;; Only SessionLocal represents a connection we can create a parser with. Remote sessions and other
       ;; session types are ignored.
       (when (instance? SessionLocal session)

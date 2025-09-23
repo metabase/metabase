@@ -46,6 +46,7 @@
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema.util]
    [metabase.lib.segment :as lib.segment]
+   [metabase.lib.serialize]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.swap :as lib.swap]
    [metabase.lib.table :as lib.table]
@@ -97,6 +98,7 @@
          lib.remove-replace/keep-me
          metabase.lib.schema.util/keep-me
          lib.segment/keep-me
+         metabase.lib.serialize/keep-me
          lib.stage/keep-me
          lib.swap/keep-me
          lib.table/keep-me
@@ -153,6 +155,7 @@
  [lib.convert
   ->legacy-MBQL
   ->pMBQL
+  legacy-default-join-alias
   without-cleaning]
  [metabase.lib.convert.metadata-to-legacy
   lib-metadata-column->legacy-metadata-column
@@ -409,6 +412,8 @@
  [metabase.lib.schema.util]
  [lib.segment
   available-segments]
+ [metabase.lib.serialize
+  prepare-for-serialization]
  [lib.stage
   append-stage
   drop-stage
@@ -430,6 +435,8 @@
   temporal-bucket
   with-temporal-bucket]
  [lib.util
+  clause?
+  clause-of-type?
   fresh-uuids
   native-stage?
   normalized-query-type
@@ -441,6 +448,8 @@
  [lib.validate
   find-bad-refs]
  [metabase.lib.walk.util
+  all-field-ids
   all-source-card-ids
   all-source-table-ids
-  all-template-tags])
+  all-template-tags
+  any-native-stage?])

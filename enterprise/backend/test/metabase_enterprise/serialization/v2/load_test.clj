@@ -1304,6 +1304,7 @@
               (mt/with-log-messages-for-level [messages [metabase.models.serialization :warn]]
                 (let [ser            (vec (serdes.extract/extract {:no-settings       true
                                                                    :no-data-model     true
+                                                                   :no-transforms     true
                                                                    :continue-on-error true}))
                       {errors true
                        others false} (group-by #(instance? Exception %) ser)]
@@ -1314,7 +1315,8 @@
                                      (messages))))))))
         (testing "It's possible to skip a few errors during load"
           (let [ser     (vec (serdes.extract/extract {:no-settings   true
-                                                      :no-data-model true}))
+                                                      :no-data-model true
+                                                      :no-transforms true}))
                 changed (change-ser ser {(:entity_id c2) {:collection_id "does-not-exist"}})]
             (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
               (let [report (serdes.load/load-metabase! (ingestion-in-memory changed) {:continue-on-error true})]
@@ -1414,7 +1416,7 @@
                                             (t2/select-one [:model/Card :entity_id] :id (:id c1))))))
 
           (testing "Identity hashes end up in target db in place of entity ids"
-            (let [ser2 (vec (serdes.extract/extract {:no-settings true :no-data-model true}))]
+            (let [ser2 (vec (serdes.extract/extract {:no-settings true :no-data-model true :no-transforms true}))]
               (testing "\nWe exported identity hashes"
                 (doseq [e ser2
                         :when (:entity_id e)]

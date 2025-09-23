@@ -21,6 +21,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.schema.middleware-options :as lib.schema.middleware-options]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.settings :as lib.schema.settings]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
@@ -296,6 +297,8 @@
   (lib.schema.common/disallowed-keys
    {:strategy ":binning keys like :strategy are not allowed at the top level of :field options."}))
 
+;;; TODO (Cam 9/12/25) -- aren't these basically the same as MBQL 5, except Lib UUID isn't required? Maybe we should
+;;; unify these schemas.
 (mr/def ::FieldOptions
   [:and
    [:map
@@ -389,7 +392,7 @@
 
 (def ^{:added "0.39.0"} field
   "Schema for a `:field` clause."
-  (with-meta [:ref ::field] {:clause-name :field}))
+  ^{:clause-name :field} [:ref ::field])
 
 (mr/def ::field-or-expression-ref
   [:schema
@@ -1680,33 +1683,6 @@
 (defclause variable
   target template-tag)
 
-(mr/def ::parameter.target
-  "Schema for the value of `:target` in a [[Parameter]]."
-  ;; not 100% sure about this but `field` on its own comes from a Dashboard parameter and when it's wrapped in
-  ;; `dimension` it comes from a Field filter template tag parameter (don't quote me on this -- working theory)
-  [:or
-   Field
-   (one-of dimension variable)])
-
-(mr/def ::Parameter
-  "Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as
-  part of the `:parameters` list in a query."
-  [:merge
-   [:ref :metabase.lib.schema.parameter/parameter]
-   [:map
-    [:target {:optional true} [:ref ::parameter.target]]]])
-
-(def Parameter
-  "Alias for ::Parameter. Prefer using that directly going forward."
-  [:ref ::Parameter])
-
-(mr/def ::ParameterList
-  [:maybe [:sequential Parameter]])
-
-(def ParameterList
-  "Schema for a list of `:parameters` as passed in to a query."
-  [:ref ::ParameterList])
-
 ;;; --------------------------------------------- Metabase [Outer] Query ---------------------------------------------
 
 ;; To the reader: yes, this seems sort of hacky, but one of the goals of the Nested Query Initiative™ was to minimize
@@ -1767,7 +1743,7 @@
 
     [:native     {:optional true} NativeQuery]
     [:query      {:optional true} MBQLQuery]
-    [:parameters {:optional true} ParameterList]
+    [:parameters {:optional true} [:maybe [:ref ::lib.schema.parameter/parameters]]]
     ;;
     ;; OPTIONS
     ;;

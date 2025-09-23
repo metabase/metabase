@@ -23,6 +23,7 @@
    [metabase-enterprise.dependencies.api]
    [metabase-enterprise.documents.api]
    [metabase-enterprise.email.api]
+   [metabase-enterprise.embedding-hub.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.llm.api]
    [metabase-enterprise.metabot-v3.api]
@@ -33,6 +34,7 @@
    [metabase-enterprise.semantic-search.api]
    [metabase-enterprise.serialization.api]
    [metabase-enterprise.stale.api]
+   [metabase-enterprise.transforms-python.api]
    [metabase-enterprise.transforms.api]
    [metabase-enterprise.upload-management.api]
    [metabase.api.macros :as api.macros]
@@ -53,6 +55,7 @@
    :content-translation        (deferred-tru "Content translation")
    :dependencies               (deferred-tru "Dependency Tracking")
    :documents                  (deferred-tru "Documents")
+   :embedding                  (deferred-tru "Embedding")
    :etl-connections            (deferred-tru "ETL Connections")
    :etl-connections-pg         (deferred-tru "ETL Connections PG replication")
    :llm-autodescription        (deferred-tru "LLM Auto-description")
@@ -64,7 +67,8 @@
    :transforms                 (deferred-tru "Transforms")
    :upload-management          (deferred-tru "Upload Management")
    :database-routing           (deferred-tru "Database Routing")
-   :cloud-custom-smtp          (deferred-tru "Custom SMTP")})
+   :cloud-custom-smtp          (deferred-tru "Custom SMTP")
+   :transforms-python          (deferred-tru "Transforms Python")})
 
 (defn- premium-handler [handler required-feature]
   (let [handler (cond-> handler
@@ -105,6 +109,7 @@
    "/dependencies"                 (premium-handler metabase-enterprise.dependencies.api/routes :dependencies)
    "/document"                     (premium-handler metabase-enterprise.documents.api/routes :documents)
    "/email"                        (premium-handler metabase-enterprise.email.api/routes :cloud-custom-smtp)
+   "/embedding-hub"                (premium-handler metabase-enterprise.embedding-hub.api/routes :embedding)
    "/gsheets"                      (-> gsheets.api/routes ;; gsheets requires both features.
                                        (premium-handler :attached-dwh)
                                        (premium-handler :etl-connections))
@@ -112,6 +117,7 @@
    "/metabot-tools"                metabase-enterprise.metabot-v3.tools.api/routes
    "/metabot-v3"                   (premium-handler metabase-enterprise.metabot-v3.api/routes :metabot-v3)
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
+   "/transforms-python"            (premium-handler metabase-enterprise.transforms-python.api/routes :transforms-python)
    "/scim"                         (premium-handler metabase-enterprise.scim.routes/routes :scim)
    "/semantic-search"              (premium-handler metabase-enterprise.semantic-search.api/routes :semantic-search)
    "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)

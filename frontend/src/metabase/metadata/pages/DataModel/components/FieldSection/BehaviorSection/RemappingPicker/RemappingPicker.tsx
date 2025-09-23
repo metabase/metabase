@@ -11,6 +11,7 @@ import {
   useUpdateFieldValuesMutation,
 } from "metabase/api";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { trackMetadataChange } from "metabase/metadata/pages/DataModel/analytics";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { FieldDataSelector } from "metabase/query_builder/components/DataSelector";
@@ -129,6 +130,7 @@ export const RemappingPicker = ({
         t`Failed to update display values of ${field.display_name}`,
       );
     } else {
+      trackMetadataChange("display_values");
       sendSuccessToast(
         t`Display values of ${field.display_name} updated`,
         async () => {

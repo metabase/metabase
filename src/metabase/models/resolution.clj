@@ -44,12 +44,15 @@
     :model/Field                             metabase.warehouse-schema.models.field
     :model/FieldUserSettings                 metabase.warehouse-schema.models.field-user-settings
     :model/FieldValues                       metabase.warehouse-schema.models.field-values
+    :model/Glossary                          metabase.glossary.models.glossary
     :model/Sandbox                           metabase-enterprise.sandbox.models.sandbox
     :model/HTTPAction                        metabase.actions.models
     :model/ImplicitAction                    metabase.actions.models
     :model/LoginHistory                      metabase.login-history.models.login-history
     :model/Metabot                           metabase-enterprise.metabot-v3.models.metabot
+    :model/MetabotConversation               metabase-enterprise.metabot-v3.models.metabot-conversation
     :model/MetabotEntity                     metabase-enterprise.metabot-v3.models.metabot-entity
+    :model/MetabotMessage                    metabase-enterprise.metabot-v3.models.metabot-message
     :model/MetabotPrompt                     metabase-enterprise.metabot-v3.models.metabot-prompt
     :model/ModelIndex                        metabase.indexed-entities.models.model-index
     :model/ModelIndexValue                   metabase.indexed-entities.models.model-index
@@ -66,6 +69,7 @@
     :model/PermissionsGroupMembership        metabase.permissions.models.permissions-group-membership
     :model/PermissionsRevision               metabase.permissions.models.permissions-revision
     :model/PersistedInfo                     metabase.model-persistence.models.persisted-info
+    :model/PythonLibrary                     metabase-enterprise.transforms-python.models.python-library
     :model/Pulse                             metabase.pulse.models.pulse
     :model/PulseCard                         metabase.pulse.models.pulse-card
     :model/PulseChannel                      metabase.pulse.models.pulse-channel
@@ -81,6 +85,7 @@
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
     :model/Secret                            metabase.secrets.models.secret
     :model/Segment                           metabase.segments.models.segment
+    :model/SemanticSearchTokenTracking       metabase-enterprise.semantic-search.models.token-tracking
     :model/Session                           metabase.session.models.session
     :model/Setting                           metabase.settings.models.setting
     :model/Table                             metabase.warehouse-schema.models.table
