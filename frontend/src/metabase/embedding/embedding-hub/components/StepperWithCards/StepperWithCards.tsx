@@ -130,7 +130,7 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                             <Flex justify="flex-end">
                               {match(card)
                                 .with({ done: true }, () => (
-                                  <Flex align="center" gap="xs">
+                                  <Group gap="xs">
                                     <Icon
                                       name="check"
                                       c="var(--mb-color-success-darker)"
@@ -142,7 +142,7 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                                     >
                                       {t`Done`}
                                     </Text>
-                                  </Flex>
+                                  </Group>
                                 ))
                                 .with({ locked: true }, () => (
                                   <Group gap="xs">
