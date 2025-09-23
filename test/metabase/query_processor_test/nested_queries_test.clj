@@ -679,15 +679,15 @@
 (deftest ^:parallel time-interval-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure using a time interval filter works"
-      (let [mp (qp.test-util/metadata-provider-with-cards-for-queries
-                [(mt/mbql-query checkins)])]
-        (let [query (lib/query
-                     mp
-                     (query-with-source-card 1 (mt/id) (mt/$ids checkins
-                                                         {:filter [:time-interval *date -30 :day]})))]
-          (mt/with-native-query-testing-context query
-            (is (=? {:status :completed}
-                    (qp/process-query query)))))))))
+      (let [mp    (qp.test-util/metadata-provider-with-cards-for-queries
+                   [(mt/mbql-query checkins)])
+            query (lib/query
+                   mp
+                   (query-with-source-card 1 (mt/id) (mt/$ids checkins
+                                                       {:filter [:time-interval *date -30 :day]})))]
+        (mt/with-native-query-testing-context query
+          (is (=? {:status :completed}
+                  (qp/process-query query))))))))
 
 (deftest ^:parallel datetime-field-literals-in-filters-and-breakouts-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
