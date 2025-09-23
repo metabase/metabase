@@ -1,6 +1,7 @@
 import { Box, Text } from "metabase/ui";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { useState, useEffect } from "react";
+import { language } from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/language";
 import { push } from "react-router-redux";
 import { useDispatch } from "metabase/lib/redux";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
@@ -125,6 +126,7 @@ ORDER BY total_spent DESC;`);
                   dropCursor: false,
                   allowMultipleSelections: false,
                 }}
+                extensions={language({ engine: "postgres" })}
                 placeholder="Enter your SQL code here..."
               />
             </Box>
@@ -153,15 +155,8 @@ ORDER BY total_spent DESC;`);
                 borderRadius: "4px",
               }}
             >
-              <Text size="xs" fw={500} mb="xs">
-                Current Query Info
-              </Text>
-              <Text size="xs" c="dimmed">
-                Lines: {code.split("\n").length}
-              </Text>
-              <Text size="xs" c="dimmed">
-                Characters: {code.length}
-              </Text>
+              <Text size="xs">Lines: {code.split("\n").length}</Text>
+              <Text size="xs">Characters: {code.length}</Text>
             </Box>
           </BenchPanel>
         </Panel>

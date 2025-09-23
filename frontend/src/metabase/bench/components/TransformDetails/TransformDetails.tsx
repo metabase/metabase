@@ -17,7 +17,7 @@ export function TransformDetails({ transformId }: TransformDetailsProps) {
 
   if (!transformId) {
     return (
-      <Text size="sm" c="dimmed" ta="center" py="md">
+      <Text size="sm" ta="center" py="md">
         Select a transform to view details
       </Text>
     );
@@ -29,7 +29,7 @@ export function TransformDetails({ transformId }: TransformDetailsProps) {
 
   if (!transform) {
     return (
-      <Text size="sm" c="dimmed" ta="center" py="md">
+      <Text size="sm" ta="center" py="md">
         Transform not found
       </Text>
     );
@@ -54,7 +54,7 @@ export function TransformDetails({ transformId }: TransformDetailsProps) {
   return (
     <Stack gap="md">
       <Box>
-        <Text size="xs" fw={500} mb="xs" c="dimmed">
+        <Text size="xs" fw={500} mb="xs">
           TRANSFORM NAME
         </Text>
         <Text size="sm" fw={500}>
@@ -64,27 +64,26 @@ export function TransformDetails({ transformId }: TransformDetailsProps) {
 
       {transform.description && (
         <Box>
-          <Text size="xs" fw={500} mb="xs" c="dimmed">
+          <Text size="xs" fw={500} mb="xs">
             DESCRIPTION
           </Text>
-          <Text size="sm">
-            {transform.description}
-          </Text>
+          <Text size="sm">{transform.description}</Text>
         </Box>
       )}
 
       <Box>
-        <Text size="xs" fw={500} mb="xs" c="dimmed">
+        <Text size="xs" fw={500} mb="xs">
           TARGET TABLE
         </Text>
         <Text size="sm">
-          {transform.target.schema ? `${transform.target.schema}.` : ""}{transform.target.name}
+          {transform.target.schema ? `${transform.target.schema}.` : ""}
+          {transform.target.name}
         </Text>
       </Box>
 
       {transform.last_run && (
         <Box>
-          <Text size="xs" fw={500} mb="xs" c="dimmed">
+          <Text size="xs" fw={500} mb="xs">
             LAST RUN STATUS
           </Text>
           <Group gap="xs">
@@ -96,13 +95,13 @@ export function TransformDetails({ transformId }: TransformDetailsProps) {
               {transform.last_run.status}
             </Badge>
             {transform.last_run.end_time && (
-              <Text size="xs" c="dimmed">
+              <Text size="xs">
                 {new Date(transform.last_run.end_time).toLocaleString()}
               </Text>
             )}
           </Group>
           {transform.last_run.message && (
-            <Text size="xs" c="dimmed" mt="xs">
+            <Text size="xs" mt="xs">
               {transform.last_run.message}
             </Text>
           )}
@@ -110,7 +109,7 @@ export function TransformDetails({ transformId }: TransformDetailsProps) {
       )}
 
       <Box>
-        <Text size="xs" fw={500} mb="xs" c="dimmed">
+        <Text size="xs" fw={500} mb="xs">
           CREATED
         </Text>
         <Text size="sm">
@@ -119,7 +118,7 @@ export function TransformDetails({ transformId }: TransformDetailsProps) {
       </Box>
 
       <Box>
-        <Text size="xs" fw={500} mb="xs" c="dimmed">
+        <Text size="xs" fw={500} mb="xs">
           LAST UPDATED
         </Text>
         <Text size="sm">
