@@ -17,7 +17,7 @@ import {
 
 declare module "prosemirror-view" {
   // This adds a new configuration option to the NodeConfig
-  class EditorView {
+  interface EditorView {
     draggingNode?: NodeViewProps["node"] | null;
   }
 }
