@@ -8,6 +8,7 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -210,7 +211,7 @@
                              (u/the-id (some #(get query %) [:database "database"]))))]
     (lib/query metadata-provider query)))
 
-(mu/defn maybe-normalize-query
+(mu/defn ^:deprecated maybe-normalize-query
   "For top-level query maps like `Card.dataset_query`. Normalizes them on the way in & out."
   [in-or-out :- [:enum :in :out]
    query]
@@ -261,8 +262,8 @@
 
 (def transform-metabase-query
   "Transform for metabase-query."
-  {:in  (comp json-in (partial maybe-normalize-query :in))
-   :out (comp (catch-normalization-exceptions (partial maybe-normalize-query :out)) json-out-without-keywordization)})
+  {:in  json-in
+   :out (comp lib-be/opacify json-out-without-keywordization)})
 
 (def transform-parameters-list
   "Transform for parameters list."
