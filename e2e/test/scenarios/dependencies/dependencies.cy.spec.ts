@@ -1,16 +1,21 @@
 const { H } = cy;
 
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
 H.describeWithSnowplowEE("documents", () => {
   beforeEach(() => {
-    H.restore();
+    H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: "many_schemas" });
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
     H.resetSnowplow();
+
     cy.intercept("PUT", "/api/card/*").as("updateCard");
+    cy.intercept("PUT", "/api/ee/transform/*").as("updateTransform");
   });
 
   afterEach(() => {
@@ -18,18 +23,6 @@ H.describeWithSnowplowEE("documents", () => {
   });
 
   describe("questions", () => {
-    it("should not show a confirmation if there are no breaking changes when updating a question", () => {
-      createQuestionContent();
-      H.visitQuestion("@questionId");
-      H.openNotebook();
-      H.getNotebookStep("expression").findByText("Expr").click();
-      H.CustomExpressionEditor.clear().type("2 + 2");
-      H.popover().button("Update").click();
-      H.queryBuilderHeader().button("Save").click();
-      H.modal().button("Save").click();
-      cy.wait("@updateCard");
-    });
-
     it("should be able to confirm or cancel breaking changes to a question", () => {
       createQuestionContent();
       H.visitQuestion("@questionId");
@@ -80,19 +73,21 @@ H.describeWithSnowplowEE("documents", () => {
       confirmDiscardChanges();
       H.collectionTable().should("be.visible");
     });
+
+    it("should not show a confirmation if there are no breaking changes when updating a question", () => {
+      createQuestionContent();
+      H.visitQuestion("@questionId");
+      H.openNotebook();
+      H.getNotebookStep("expression").findByText("Expr").click();
+      H.CustomExpressionEditor.clear().type("2 + 2");
+      H.popover().button("Update").click();
+      H.queryBuilderHeader().button("Save").click();
+      H.modal().button("Save").click();
+      cy.wait("@updateCard");
+    });
   });
 
   describe("models", () => {
-    it("should not show a confirmation if there are no breaking changes when updating a model", () => {
-      createModelContent();
-      cy.get<number>("@modelId").then(H.visitModel);
-      H.openQuestionActions("Edit query definition");
-      H.NativeEditor.clear().type("SELECT ID, CATEGORY FROM PRODUCTS");
-      H.runNativeQuery();
-      H.datasetEditBar().button("Save changes").click();
-      cy.wait("@updateCard");
-    });
-
     it("should be able to confirm or cancel breaking changes to a model", () => {
       createModelContent();
       cy.get<number>("@modelId").then(H.visitModel);
@@ -113,6 +108,54 @@ H.describeWithSnowplowEE("documents", () => {
       H.datasetEditBar().button("Save changes").click();
       H.modal().button("Save anyway").click();
       cy.wait("@updateCard");
+    });
+
+    it("should not show a confirmation if there are no breaking changes when updating a model", () => {
+      createModelContent();
+      cy.get<number>("@modelId").then(H.visitModel);
+      H.openQuestionActions("Edit query definition");
+      H.NativeEditor.clear().type("SELECT ID, CATEGORY FROM PRODUCTS");
+      H.runNativeQuery();
+      H.datasetEditBar().button("Save changes").click();
+      cy.wait("@updateCard");
+    });
+  });
+
+  describe("transforms", () => {
+    it("should be able to confirm or cancel breaking changes to a transform until it was run", () => {
+      createTransformContent();
+      cy.get<number>("@transformId").then(H.visitTransform);
+      cy.findByTestId("transform-page").findByText("Edit query").click();
+
+      cy.log("cancel breaking changes");
+      H.getNotebookStep("data").findByLabelText("Pick columns").click();
+      H.popover().findByLabelText("Score").click();
+      cy.findByTestId("transform-query-editor").button("Save changes").click();
+      H.modal().within(() => {
+        cy.findByText("Score transform").should("be.visible");
+        cy.findByText("Name transform").should("not.exist");
+        cy.button("Cancel").click();
+      });
+      cy.get("@updateTransform.all").should("have.length", 0);
+
+      cy.log("confirm breaking changes");
+      cy.findByTestId("transform-query-editor").button("Save changes").click();
+      H.modal().within(() => {
+        cy.findByText("Score transform").should("be.visible");
+        cy.findByText("Name transform").should("not.exist");
+        cy.button("Save anyway").click();
+      });
+      cy.wait("@updateTransform");
+    });
+
+    it("should not show a confirmation if there are no breaking changes when updating a transform", () => {
+      createTransformContent();
+      cy.get<number>("@transformId").then(H.visitTransform);
+      cy.findByTestId("transform-page").findByText("Edit query").click();
+      H.getNotebookStep("data").button("Sort").click();
+      H.popover().findByText("Score").click();
+      cy.findByTestId("transform-query-editor").button("Save changes").click();
+      cy.wait("@updateTransform");
     });
   });
 });
@@ -189,6 +232,74 @@ function createModelContent() {
       },
     });
   });
+}
+
+function createTransformContent() {
+  H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
+    (tableId) => {
+      H.createTransform(
+        {
+          name: "Base transform",
+          source: {
+            type: "query",
+            query: {
+              database: WRITABLE_DB_ID,
+              type: "query",
+              query: {
+                "source-table": tableId,
+              },
+            },
+          },
+          target: {
+            type: "table",
+            name: "base_transform",
+            schema: "public",
+          },
+        },
+        { wrapId: true },
+      );
+
+      H.createTransform({
+        name: "Name transform",
+        source: {
+          type: "query",
+          query: {
+            database: WRITABLE_DB_ID,
+            type: "native",
+            native: {
+              query: "SELECT name FROM base_transform",
+              "template-tags": {},
+            },
+          },
+        },
+        target: {
+          type: "table",
+          name: "name_transform",
+          schema: "public",
+        },
+      });
+
+      H.createTransform({
+        name: "Score transform",
+        source: {
+          type: "query",
+          query: {
+            database: WRITABLE_DB_ID,
+            type: "native",
+            native: {
+              query: "SELECT score FROM base_transform",
+              "template-tags": {},
+            },
+          },
+        },
+        target: {
+          type: "table",
+          name: "score_transform",
+          schema: "public",
+        },
+      });
+    },
+  );
 }
 
 function confirmDiscardChanges() {
