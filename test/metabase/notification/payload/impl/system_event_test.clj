@@ -147,7 +147,7 @@
       (check true
              "You're invited to join SuperStar's Metabase"
              [#"Ngoc could use your help setting up Metabase"
-              #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*#new\"[^>]*>"]))))
+              #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*\?redirect(&#x3D;|=)/admin/databases/create#new\"[^>]*>"]))))
 
 (deftest notification-create-email-test
   (mt/with-temporary-setting-values [site-url "https://metabase.com"]
