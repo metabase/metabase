@@ -42,7 +42,7 @@ const TEST_SUPPORT_PATH = __dirname + "/frontend/test/__support__";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const E2E_PATH = __dirname + "/e2e";
 
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.MB_FRONTEND_DEV_PORT || 8080;
 const isDevMode = IS_DEV_MODE;
 const shouldEnableHotRefresh = WEBPACK_BUNDLE === "hot";
 
