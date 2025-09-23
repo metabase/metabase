@@ -40,7 +40,7 @@ export function WhatsNewNotification() {
     isWhiteLabeling,
   ]);
 
-  const dimiss = useCallback(() => {
+  const dismiss = useCallback(() => {
     dispatch(
       updateSetting({
         key: "last-acknowledged-version",
@@ -57,7 +57,7 @@ export function WhatsNewNotification() {
       <Stack gap="sm">
         <Flex justify="space-between">
           <Sparkles color={color("brand")} />
-          <DismissIconButtonWrapper onClick={dimiss}>
+          <DismissIconButtonWrapper onClick={dismiss}>
             <Icon name="close" />
           </DismissIconButtonWrapper>
         </Flex>
