@@ -96,9 +96,8 @@
   [:merge
    ::parameter.schema.typed.common
    [:map
-
     [:type [:= :string]]
-    [:format    {:optional true} [:enum :binary "binary" :byte "byte"]]
+    [:format    {:optional true} [:enum :binary "binary" :byte "byte" :uuid "uuid"]]
     [:minLength {:optional true} integer?]
     [:maxLength {:optional true} integer?]
     [:pattern   {:optional true} (ms/InstanceOfClass java.util.regex.Pattern)]]])
