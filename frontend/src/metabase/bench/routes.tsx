@@ -1,28 +1,23 @@
-import { IndexRedirect, Redirect } from "react-router";
-import { t } from "ttag";
+import { IndexRedirect, IndexRoute, Redirect, Route } from "react-router";
 
-import { Route, IndexRoute } from "react-router";
-import { BenchLayout } from "./BenchLayout";
 import { BenchApp } from "./BenchApp";
-
-
-import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
-import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
-import SegmentListApp from "metabase/admin/datamodel/containers/SegmentListApp";
-import { DataModel } from "metabase/metadata/pages/DataModel";
-import { createAdminRouteGuard } from "metabase/admin/utils";
+import { BenchLayout } from "./BenchLayout";
+import RevisionHistoryApp from "./metadata/containers/RevisionHistoryApp";
+import SegmentApp from "./metadata/containers/SegmentApp";
+import SegmentListApp from "./metadata/containers/SegmentListApp";
+import { DataModel } from "./metadata/pages/DataModel/DataModel";
 
 export function getBenchRoutes() {
   return (
-    <Route path="/bench" title="Metabase Bench" component={BenchLayout}>
+    // eslint-disable-next-line no-literal-metabase-strings -- This is for the bench section
+    <Route path="/bench" component={BenchLayout}>
       <IndexRoute component={BenchApp} />
       <Route
         path="transform/:transformId"
-        title="Transform - Metabase Bench"
         component={BenchApp}
       />
-      <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
-        <Route title={t`Table Metadata`}>
+      <Route path="metadata">
+        <Route>
           <IndexRedirect to="database" />
           <Route path="database" component={DataModel} />
           <Route path="database/:databaseId" component={DataModel} />
