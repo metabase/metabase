@@ -14,7 +14,7 @@
   [dimensions dimension-name]
   (let [pred (if (string? dimension-name)
                (comp #{dimension-name} :display_name)
-               (every-pred (comp #{(first dimension-name)} :table-reference)
+               (every-pred (comp #{(first dimension-name)} :table_reference)
                            (comp #{(second dimension-name)} :display_name)))]
     (m/find-first pred dimensions)))
 
@@ -38,7 +38,7 @@
                                 :group-by []}))))
       (mt/with-current-user (mt/user->id :crowberto)
         (let [metric-details (metabot-v3.dummy-tools/metric-details metric-id)
-              ->field-id #(u/prog1 (-> metric-details :queryable-dimensions (by-name %) :field-id)
+              ->field-id #(u/prog1 (-> metric-details :queryable-dimensions (by-name %) :field_id)
                             (when-not <>
                               (throw (ex-info (str "Column " % " not found") {:column %}))))]
           (testing "Trivial query works."
@@ -178,7 +178,7 @@
       (let [model-details (-> (metabot-v3.dummy-tools/get-table-details {:model-id model-id})
                               :structured-output)
             model-card-id (str "card__" model-id)
-            ->field-id #(u/prog1 (-> model-details :fields (by-name %) :field-id)
+            ->field-id #(u/prog1 (-> model-details :fields (by-name %) :field_id)
                           (when-not <>
                             (throw (ex-info (str "Column " % " not found") {:column %}))))
             order-created-at-field-id (->field-id "Created At")]
@@ -315,7 +315,7 @@
     (let [mp (mt/metadata-provider)
           table-id (mt/id :orders)
           table-details (#'metabot-v3.dummy-tools/table-details table-id {:metadata-provider mp})
-          ->field-id #(u/prog1 (-> table-details :fields (by-name %) :field-id)
+          ->field-id #(u/prog1 (-> table-details :fields (by-name %) :field_id)
                         (when-not <>
                           (throw (ex-info (str "Column " % " not found") {:column %}))))]
       (testing "Trivial query works."
@@ -375,7 +375,7 @@
       (mt/with-current-user (mt/user->id :crowberto)
         (let [model-details (#'metabot-v3.dummy-tools/card-details model-id)
               table-id (str "card__" model-id)
-              ->field-id #(u/prog1 (-> model-details :fields (by-name %) :field-id)
+              ->field-id #(u/prog1 (-> model-details :fields (by-name %) :field_id)
                             (when-not <>
                               (throw (ex-info (str "Column " % " not found") {:column %}))))]
           (testing "Trivial query works."
@@ -421,7 +421,7 @@
                                 :filters []}))))
       (mt/with-current-user (mt/user->id :crowberto)
         (let [report-details (#'metabot-v3.dummy-tools/card-details card-id)
-              ->field-id #(u/prog1 (-> report-details :fields (by-name %) :field-id)
+              ->field-id #(u/prog1 (-> report-details :fields (by-name %) :field_id)
                             (when-not <>
                               (throw (ex-info (str "Column " % " not found") {:column %}))))]
           (testing "Trivial query works."
@@ -462,7 +462,7 @@
         legacy-query (lib.convert/->legacy-MBQL query)
         query-details (mt/with-current-user (mt/user->id :crowberto)
                         (#'metabot-v3.dummy-tools/execute-query query-id legacy-query))
-        ->field-id #(u/prog1 (-> query-details :result-columns (by-name %) :field-id)
+        ->field-id #(u/prog1 (-> query-details :result-columns (by-name %) :field_id)
                       (when-not <>
                         (throw (ex-info (str "Column " % " not found") {:column %}))))
         input {:data-source {:query-id query-id}
@@ -495,7 +495,7 @@
     (let [mp (mt/metadata-provider)
           table-id (mt/id :orders)
           table-details (#'metabot-v3.dummy-tools/table-details table-id {:metadata-provider mp})
-          ->field-id #(u/prog1 (-> table-details :fields (by-name %) :field-id)
+          ->field-id #(u/prog1 (-> table-details :fields (by-name %) :field_id)
                         (when-not <>
                           (throw (ex-info (str "Column " % " not found") {:column %}))))]
       (testing "Basic table query works"
@@ -599,7 +599,7 @@
       (let [model-details (-> (metabot-v3.dummy-tools/get-table-details {:model-id model-id})
                               :structured-output)
             model-card-id (str "card__" model-id)
-            ->field-id #(u/prog1 (-> model-details :fields (by-name %) :field-id)
+            ->field-id #(u/prog1 (-> model-details :fields (by-name %) :field_id)
                           (when-not <>
                             (throw (ex-info (str "Column " % " not found") {:column %}))))]
         (testing "Basic model query works"
