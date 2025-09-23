@@ -4,113 +4,114 @@ import {
   autocompletion,
 } from "@codemirror/autocomplete";
 import { pythonLanguage } from "@codemirror/lang-python";
+import { t } from "ttag";
 
-const pandasDefinitions: Record<string, Completion[]> = {
+const pandasDefinitions = (): Record<string, Completion[]> => ({
   pd: [
     {
       label: "DataFrame",
       type: "class",
-      info: "Two-dimensional, size-mutable, potentially heterogeneous tabular data",
+      info: t`Two-dimensional, size-mutable, potentially heterogeneous tabular data`,
     },
     {
       label: "Series",
       type: "class",
-      info: "One-dimensional ndarray with axis labels",
+      info: t`One-dimensional ndarray with axis labels`,
     },
     {
       label: "read_csv",
       type: "function",
-      info: "Read a comma-separated values (csv) file into DataFrame",
+      info: t`Read a comma-separated values (csv) file into DataFrame`,
     },
     {
       label: "read_excel",
       type: "function",
-      info: "Read an Excel file into a pandas DataFrame",
+      info: t`Read an Excel file into a pandas DataFrame`,
     },
     {
       label: "read_json",
       type: "function",
-      info: "Convert a JSON string to pandas object",
+      info: t`Convert a JSON string to pandas object`,
     },
     {
       label: "read_sql",
       type: "function",
-      info: "Read SQL query or database table into a DataFrame",
+      info: t`Read SQL query or database table into a DataFrame`,
     },
     {
       label: "read_parquet",
       type: "function",
-      info: "Load a parquet object from file path",
+      info: t`Load a parquet object from file path`,
     },
     {
       label: "concat",
       type: "function",
-      info: "Concatenate pandas objects along a particular axis",
+      info: t`Concatenate pandas objects along a particular axis`,
     },
     {
       label: "merge",
       type: "function",
-      info: "Merge DataFrame or named Series objects with a database-style join",
+      info: t`Merge DataFrame or named Series objects with a database-style join`,
     },
     {
       label: "pivot_table",
       type: "function",
-      info: "Create a spreadsheet-style pivot table as a DataFrame",
+      info: t`Create a spreadsheet-style pivot table as a DataFrame`,
     },
     {
       label: "crosstab",
       type: "function",
-      info: "Compute a simple cross tabulation of two (or more) factors",
+      info: t`Compute a simple cross tabulation of two (or more) factors`,
     },
     {
       label: "get_dummies",
       type: "function",
-      info: "Convert categorical variable(s) into dummy/indicator variables",
+      info: t`Convert categorical variable(s) into dummy/indicator variables`,
     },
     {
       label: "date_range",
       type: "function",
-      info: "Return a fixed frequency DatetimeIndex",
+      info: t`Return a fixed frequency DatetimeIndex`,
     },
     {
       label: "to_datetime",
       type: "function",
-      info: "Convert argument to datetime",
+      info: t`Convert argument to datetime`,
     },
     {
       label: "to_numeric",
       type: "function",
-      info: "Convert argument to a numeric type",
+      info: t`Convert argument to a numeric type`,
     },
     {
       label: "cut",
       type: "function",
-      info: "Bin values into discrete intervals",
+      info: t`Bin values into discrete intervals`,
     },
     {
       label: "qcut",
       type: "function",
-      info: "Quantile-based discretization function",
+      info: t`Quantile-based discretization function`,
     },
     {
       label: "isna",
       type: "function",
-      info: "Detect missing values for an array-like object",
+      info: t`Detect missing values for an array-like object`,
     },
     {
       label: "isnull",
       type: "function",
-      info: "Detect missing values for an array-like object",
+      info: t`Detect missing values for an array-like object`,
     },
     {
       label: "notna",
       type: "function",
-      info: "Detect non-missing values for an array-like object",
+      info: t`Detect non-missing values for an array-like object`,
     },
     {
       label: "notnull",
       type: "function",
-      info: "Detect non-missing values for an array-like object",
+      info: t`Detect non-missing values for an array-like object`,
     },
   ],
 
@@ -122,209 +123,209 @@ const pandasDefinitions: Record<string, Completion[]> = {
     {
       label: "info",
       type: "method",
-      info: "Print a concise summary of a DataFrame",
+      info: t`Print a concise summary of a DataFrame`,
     },
     {
       label: "describe",
       type: "method",
-      info: "Generate descriptive statistics",
+      info: t`Generate descriptive statistics`,
     },
     {
       label: "shape",
       type: "property",
-      info: "Return a tuple representing the dimensionality",
+      info: t`Return a tuple representing the dimensionality`,
     },
     {
       label: "size",
       type: "property",
-      info: "Return an int representing the number of elements",
+      info: t`Return an int representing the number of elements`,
     },
     {
       label: "columns",
       type: "property",
-      info: "The column labels of the DataFrame",
+      info: t`The column labels of the DataFrame`,
     },
     {
       label: "index",
       type: "property",
-      info: "The index (row labels) of the DataFrame",
+      info: t`The index (row labels) of the DataFrame`,
     },
     {
       label: "dtypes",
       type: "property",
-      info: "Return the dtypes in the DataFrame",
+      info: t`Return the dtypes in the DataFrame`,
     },
     {
       label: "values",
       type: "property",
-      info: "Return a Numpy representation of the DataFrame",
+      info: t`Return a Numpy representation of the DataFrame`,
     },
 
     // Selection/Indexing
     {
       label: "loc",
       type: "property",
-      info: "Access a group of rows and columns by label(s)",
+      info: t`Access a group of rows and columns by label(s)`,
     },
     {
       label: "iloc",
       type: "property",
-      info: "Purely integer-location based indexing",
+      info: t`Purely integer-location based indexing`,
     },
     {
       label: "at",
       type: "property",
-      info: "Access a single value for a row/column label pair",
+      info: t`Access a single value for a row/column label pair`,
     },
     {
       label: "iat",
       type: "property",
-      info: "Access a single value for a row/column pair by integer position",
+      info: t`Access a single value for a row/column pair by integer position`,
     },
     {
       label: "query",
       type: "method",
-      info: "Query the columns of a DataFrame with a boolean expression",
+      info: t`Query the columns of a DataFrame with a boolean expression`,
     },
     {
       label: "filter",
       type: "method",
-      info: "Subset the dataframe rows or columns according to labels",
+      info: t`Subset the dataframe rows or columns according to labels`,
     },
     {
       label: "where",
       type: "method",
-      info: "Replace values where the condition is False",
+      info: t`Replace values where the condition is False`,
     },
     {
       label: "mask",
       type: "method",
-      info: "Replace values where the condition is True",
+      info: t`Replace values where the condition is True`,
     },
 
     // Data Cleaning
     {
       label: "drop",
       type: "method",
-      info: "Drop specified labels from rows or columns",
+      info: t`Drop specified labels from rows or columns`,
     },
     {
       label: "drop_duplicates",
       type: "method",
-      info: "Return DataFrame with duplicate rows removed",
+      info: t`Return DataFrame with duplicate rows removed`,
     },
     { label: "dropna", type: "method", info: "Remove missing values" },
     {
       label: "fillna",
       type: "method",
-      info: "Fill NA/NaN values using the specified method",
+      info: t`Fill NA/NaN values using the specified method`,
     },
     {
       label: "replace",
       type: "method",
-      info: "Replace values given in to_replace with value",
+      info: t`Replace values given in to_replace with value`,
     },
     {
       label: "interpolate",
       type: "method",
-      info: "Fill NaN values using an interpolation method",
+      info: t`Fill NaN values using an interpolation method`,
     },
     {
       label: "duplicated",
       type: "method",
-      info: "Return boolean Series denoting duplicate rows",
+      info: t`Return boolean Series denoting duplicate rows`,
     },
     { label: "isnull", type: "method", info: "Detect missing values" },
     { label: "isna", type: "method", info: "Detect missing values" },
     {
       label: "notnull",
       type: "method",
-      info: "Detect existing (non-missing) values",
+      info: t`Detect existing (non-missing) values`,
     },
     {
       label: "notna",
       type: "method",
-      info: "Detect existing (non-missing) values",
+      info: t`Detect existing (non-missing) values`,
     },
 
     // Transformations
     {
       label: "sort_values",
       type: "method",
-      info: "Sort by the values along either axis",
+      info: t`Sort by the values along either axis`,
     },
     {
       label: "sort_index",
       type: "method",
-      info: "Sort object by labels (along an axis)",
+      info: t`Sort object by labels (along an axis)`,
     },
     {
       label: "reset_index",
       type: "method",
-      info: "Reset the index, or a level of it",
+      info: t`Reset the index, or a level of it`,
     },
     {
       label: "set_index",
       type: "method",
-      info: "Set the DataFrame index using existing columns",
+      info: t`Set the DataFrame index using existing columns`,
     },
     {
       label: "reindex",
       type: "method",
-      info: "Conform Series/DataFrame to new index",
+      info: t`Conform Series/DataFrame to new index`,
     },
     { label: "rename", type: "method", info: "Alter axes labels" },
     {
       label: "assign",
       type: "method",
-      info: "Assign new columns to a DataFrame",
+      info: t`Assign new columns to a DataFrame`,
     },
     {
       label: "pipe",
       type: "method",
-      info: "Apply chainable functions that expect Series or DataFrames",
+      info: t`Apply chainable functions that expect Series or DataFrames`,
     },
 
     // Aggregation/GroupBy
     {
       label: "groupby",
       type: "method",
-      info: "Group DataFrame using a mapper or by a Series of columns",
+      info: t`Group DataFrame using a mapper or by a Series of columns`,
     },
     {
       label: "agg",
       type: "method",
-      info: "Aggregate using one or more operations",
+      info: t`Aggregate using one or more operations`,
     },
     {
       label: "aggregate",
       type: "method",
-      info: "Aggregate using one or more operations",
+      info: t`Aggregate using one or more operations`,
     },
     {
       label: "apply",
       type: "method",
-      info: "Apply a function along an axis of the DataFrame",
+      info: t`Apply a function along an axis of the DataFrame`,
     },
     {
       label: "applymap",
       type: "method",
-      info: "Apply a function to a Dataframe elementwise",
+      info: t`Apply a function to a Dataframe elementwise`,
     },
     {
       label: "transform",
       type: "method",
-      info: "Call func on self producing a DataFrame with transformed values",
+      info: t`Call func on self producing a DataFrame with transformed values`,
     },
     {
       label: "rolling",
       type: "method",
-      info: "Provide rolling window calculations",
+      info: t`Provide rolling window calculations`,
     },
     {
       label: "expanding",
       type: "method",
-      info: "Provide expanding transformations",
+      info: t`Provide expanding transformations`,
     },
     { label: "resample", type: "method", info: "Resample time-series data" },
 
@@ -332,136 +333,136 @@ const pandasDefinitions: Record<string, Completion[]> = {
     {
       label: "sum",
       type: "method",
-      info: "Return the sum of the values for the requested axis",
+      info: t`Return the sum of the values for the requested axis`,
     },
     {
       label: "mean",
       type: "method",
-      info: "Return the mean of the values for the requested axis",
+      info: t`Return the mean of the values for the requested axis`,
     },
     {
       label: "median",
       type: "method",
-      info: "Return the median of the values for the requested axis",
+      info: t`Return the median of the values for the requested axis`,
     },
     {
       label: "mode",
       type: "method",
-      info: "Get the mode(s) of each element along the selected axis",
+      info: t`Get the mode(s) of each element along the selected axis`,
     },
     {
       label: "std",
       type: "method",
-      info: "Return sample standard deviation over requested axis",
+      info: t`Return sample standard deviation over requested axis`,
     },
     {
       label: "var",
       type: "method",
-      info: "Return unbiased variance over requested axis",
+      info: t`Return unbiased variance over requested axis`,
     },
     {
       label: "min",
       type: "method",
-      info: "Return the minimum of the values for the requested axis",
+      info: t`Return the minimum of the values for the requested axis`,
     },
     {
       label: "max",
       type: "method",
-      info: "Return the maximum of the values for the requested axis",
+      info: t`Return the maximum of the values for the requested axis`,
     },
     {
       label: "count",
       type: "method",
-      info: "Count non-NA cells for each column or row",
+      info: t`Count non-NA cells for each column or row`,
     },
     {
       label: "nunique",
       type: "method",
-      info: "Count number of distinct elements in specified axis",
+      info: t`Count number of distinct elements in specified axis`,
     },
     {
       label: "value_counts",
       type: "method",
-      info: "Return a Series containing counts of unique values",
+      info: t`Return a Series containing counts of unique values`,
     },
     {
       label: "corr",
       type: "method",
-      info: "Compute pairwise correlation of columns",
+      info: t`Compute pairwise correlation of columns`,
     },
     {
       label: "cov",
       type: "method",
-      info: "Compute pairwise covariance of columns",
+      info: t`Compute pairwise covariance of columns`,
     },
     {
       label: "rank",
       type: "method",
-      info: "Compute numerical data ranks (1 through n) along axis",
+      info: t`Compute numerical data ranks (1 through n) along axis`,
     },
     {
       label: "quantile",
       type: "method",
-      info: "Return values at the given quantile over requested axis",
+      info: t`Return values at the given quantile over requested axis`,
     },
     {
       label: "clip",
       type: "method",
-      info: "Trim values at input threshold(s)",
+      info: t`Trim values at input threshold(s)`,
     },
 
     // Merging/Joining
     {
       label: "merge",
       type: "method",
-      info: "Merge DataFrame or named Series objects",
+      info: t`Merge DataFrame or named Series objects`,
     },
     {
       label: "join",
       type: "method",
-      info: "Join columns of another DataFrame",
+      info: t`Join columns of another DataFrame`,
     },
     {
       label: "concat",
       type: "method",
-      info: "Concatenate pandas objects along a particular axis",
+      info: t`Concatenate pandas objects along a particular axis`,
     },
     {
       label: "append",
       type: "method",
-      info: "Append rows of other to the end of caller",
+      info: t`Append rows of other to the end of caller`,
     },
     {
       label: "update",
       type: "method",
-      info: "Modify in place using non-NA values from another DataFrame",
+      info: t`Modify in place using non-NA values from another DataFrame`,
     },
 
     // Reshaping
     {
       label: "pivot",
       type: "method",
-      info: "Return reshaped DataFrame organized by given index / column values",
+      info: t`Return reshaped DataFrame organized by given index / column values`,
     },
     {
       label: "pivot_table",
       type: "method",
-      info: "Create a spreadsheet-style pivot table",
+      info: t`Create a spreadsheet-style pivot table`,
     },
     {
       label: "melt",
       type: "method",
-      info: "Unpivot a DataFrame from wide to long format",
+      info: t`Unpivot a DataFrame from wide to long format`,
     },
     {
       label: "stack",
       type: "method",
-      info: "Stack the prescribed level(s) from columns to index",
+      info: t`Stack the prescribed level(s) from columns to index`,
     },
     {
       label: "unstack",
       type: "method",
-      info: "Pivot a level of the (necessarily hierarchical) index labels",
+      info: t`Pivot a level of the (necessarily hierarchical) index labels`,
     },
     { label: "transpose", type: "method", info: "Transpose index and columns" },
     { label: "T", type: "property", info: "Transpose index and columns" },
@@ -470,82 +471,82 @@ const pandasDefinitions: Record<string, Completion[]> = {
     {
       label: "to_csv",
       type: "method",
-      info: "Write object to a comma-separated values (csv) file",
+      info: t`Write object to a comma-separated values (csv) file`,
     },
     {
       label: "to_excel",
       type: "method",
-      info: "Write object to an Excel sheet",
+      info: t`Write object to an Excel sheet`,
     },
     {
       label: "to_json",
       type: "method",
-      info: "Convert the object to a JSON string",
+      info: t`Convert the object to a JSON string`,
     },
     {
       label: "to_sql",
       type: "method",
-      info: "Write records stored in a DataFrame to a SQL database",
+      info: t`Write records stored in a DataFrame to a SQL database`,
     },
     {
       label: "to_parquet",
       type: "method",
-      info: "Write a DataFrame to the binary parquet format",
+      info: t`Write a DataFrame to the binary parquet format`,
     },
     {
       label: "to_dict",
       type: "method",
-      info: "Convert the DataFrame to a dictionary",
+      info: t`Convert the DataFrame to a dictionary`,
     },
     {
       label: "to_html",
       type: "method",
-      info: "Render a DataFrame as an HTML table",
+      info: t`Render a DataFrame as an HTML table`,
     },
     {
       label: "to_string",
       type: "method",
-      info: "Render a DataFrame to a console-friendly tabular output",
+      info: t`Render a DataFrame to a console-friendly tabular output`,
     },
     {
       label: "to_numpy",
       type: "method",
-      info: "Convert the DataFrame to a NumPy array",
+      info: t`Convert the DataFrame to a NumPy array`,
     },
 
     // Time Series
     {
       label: "shift",
       type: "method",
-      info: "Shift index by desired number of periods",
+      info: t`Shift index by desired number of periods`,
     },
     { label: "tshift", type: "method", info: "Shift the time index" },
     {
       label: "diff",
       type: "method",
-      info: "First discrete difference of element",
+      info: t`First discrete difference of element`,
     },
     {
       label: "pct_change",
       type: "method",
-      info: "Percentage change between the current and a prior element",
+      info: t`Percentage change between the current and a prior element`,
     },
 
     // Plotting (if matplotlib available)
     {
       label: "plot",
       type: "method",
-      info: "Make plots of Series or DataFrame",
+      info: t`Make plots of Series or DataFrame`,
     },
     {
       label: "hist",
       type: "method",
-      info: "Make a histogram of the DataFrame's columns",
+      info: t`Make a histogram of the DataFrame's columns`,
     },
     {
       label: "boxplot",
       type: "method",
-      info: "Make a box plot of the DataFrame columns",
+      info: t`Make a box plot of the DataFrame columns`,
     },
   ],
 
@@ -556,78 +557,80 @@ const pandasDefinitions: Record<string, Completion[]> = {
     {
       label: "describe",
       type: "method",
-      info: "Generate descriptive statistics",
+      info: t`Generate descriptive statistics`,
     },
     {
       label: "value_counts",
       type: "method",
-      info: "Return a Series containing counts of unique values",
+      info: t`Return a Series containing counts of unique values`,
     },
     {
       label: "unique",
       type: "method",
-      info: "Return unique values of Series object",
+      info: t`Return unique values of Series object`,
     },
     {
       label: "nunique",
       type: "method",
-      info: "Return number of unique elements in the object",
+      info: t`Return number of unique elements in the object`,
     },
     { label: "sort_values", type: "method", info: "Sort by the values" },
     {
       label: "sort_index",
       type: "method",
-      info: "Sort Series by index labels",
+      info: t`Sort Series by index labels`,
     },
     {
       label: "reset_index",
       type: "method",
-      info: "Generate a new DataFrame or Series with the index reset",
+      info: t`Generate a new DataFrame or Series with the index reset`,
     },
     {
       label: "dropna",
       type: "method",
-      info: "Return a new Series with missing values removed",
+      info: t`Return a new Series with missing values removed`,
     },
     {
       label: "fillna",
       type: "method",
-      info: "Fill NA/NaN values using the specified method",
+      info: t`Fill NA/NaN values using the specified method`,
     },
     {
       label: "apply",
       type: "method",
-      info: "Invoke function on values of Series",
+      info: t`Invoke function on values of Series`,
     },
     {
       label: "map",
       type: "method",
-      info: "Map values of Series according to input correspondence",
+      info: t`Map values of Series according to input correspondence`,
     },
     {
       label: "replace",
       type: "method",
-      info: "Replace values given in to_replace with value",
+      info: t`Replace values given in to_replace with value`,
     },
     {
       label: "str",
       type: "property",
-      info: "Vectorized string functions for Series and Index",
+      info: t`Vectorized string functions for Series and Index`,
     },
     {
       label: "dt",
       type: "property",
-      info: "Accessor object for datetimelike properties",
+      info: t`Accessor object for datetimelike properties`,
     },
     {
       label: "cat",
       type: "property",
-      info: "Accessor object for categorical properties",
+      info: t`Accessor object for categorical properties`,
     },
   ],
-};
+});
 
 function genericPandasCompletions(context: CompletionContext) {
+  const definitions = pandasDefinitions();
+
   const word = context.matchBefore(/[\w.]*/);
   if (!word || (word.from === word.to && !context.explicit)) {
     return null;
@@ -641,11 +644,11 @@ function genericPandasCompletions(context: CompletionContext) {
     const obj = parts.at(-2);
     const partial = parts.at(-1) ?? "";
 
-    if (!obj || !pandasDefinitions[obj]) {
+    if (!obj || !definitions[obj]) {
       return null;
     }
 
-    const options = pandasDefinitions[obj]
+    const options = definitions[obj]
       .filter(
         (item) =>
           !partial ||
