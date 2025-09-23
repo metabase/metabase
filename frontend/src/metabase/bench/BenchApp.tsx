@@ -1,6 +1,7 @@
 import { Box, Text } from "metabase/ui";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { keymap } from "@codemirror/view";
 import { language } from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/language";
 import { push } from "react-router-redux";
 import { useDispatch } from "metabase/lib/redux";
@@ -11,6 +12,7 @@ import {
   BenchPanel,
   TransformEntitiesList,
   TransformDetails,
+  QueryPreview,
 } from "./components";
 import type { Transform } from "metabase-types/api";
 
@@ -22,6 +24,7 @@ interface BenchAppProps {
 
 export function BenchApp({ params }: BenchAppProps) {
   const dispatch = useDispatch();
+  const queryPreviewRef = useRef<{ runQuery: () => void }>(null);
   const transformId = params?.transformId
     ? parseInt(params.transformId, 10)
     : undefined;
@@ -65,6 +68,10 @@ ORDER BY total_spent DESC;`);
     dispatch(push(`/bench/transform/${transform.id}`));
   };
 
+  const handleRunQuery = () => {
+    queryPreviewRef.current?.runQuery();
+  };
+
   return (
     <Box h="100vh" style={{ overflow: "hidden" }}>
       <PanelGroup direction="horizontal">
@@ -88,49 +95,97 @@ ORDER BY total_spent DESC;`);
           }}
         />
 
-        {/* Center Panel - Code Editor */}
+        {/* Center Panel - Code Editor and Preview */}
         <Panel defaultSize={60} minSize={30}>
-          <Box h="100%" style={{ display: "flex", flexDirection: "column" }}>
-            <Box
-              p="md"
+          <PanelGroup direction="vertical">
+            {/* Code Editor */}
+            <Panel defaultSize={60} minSize={30}>
+              <Box
+                h="100%"
+                style={{ display: "flex", flexDirection: "column" }}
+              >
+                <Box
+                  p="md"
+                  style={{
+                    borderBottom: "1px solid var(--mantine-color-gray-3)",
+                    backgroundColor: "var(--mantine-color-gray-0)",
+                  }}
+                >
+                  <Text fw={500}>
+                    {selectedTransform ? selectedTransform.name : "SQL Editor"}
+                  </Text>
+                  {selectedTransform && (
+                    <Text size="sm" c="dimmed">
+                      Target:{" "}
+                      {selectedTransform.target.schema
+                        ? `${selectedTransform.target.schema}.`
+                        : ""}
+                      {selectedTransform.target.name}
+                    </Text>
+                  )}
+                </Box>
+                <Box style={{ flex: 1, position: "relative" }}>
+                  <CodeMirror
+                    value={code}
+                    onChange={(value) => setCode(value)}
+                    height="100%"
+                    style={{
+                      height: "100%",
+                      fontSize: "14px",
+                    }}
+                    basicSetup={{
+                      lineNumbers: true,
+                      foldGutter: true,
+                      dropCursor: false,
+                      allowMultipleSelections: false,
+                    }}
+                    extensions={[
+                      ...language({ engine: "postgres" }),
+                      keymap.of([
+                        {
+                          key: "Mod-Enter",
+                          run: () => {
+                            handleRunQuery();
+                            return true;
+                          },
+                        },
+                      ]),
+                    ]}
+                    placeholder="Enter your SQL code here..."
+                  />
+                </Box>
+              </Box>
+            </Panel>
+
+            <PanelResizeHandle
               style={{
-                borderBottom: "1px solid var(--mantine-color-gray-3)",
-                backgroundColor: "var(--mantine-color-gray-0)",
+                height: "4px",
+                backgroundColor: "var(--mantine-color-gray-3)",
+                cursor: "row-resize",
+                borderRadius: "2px",
+                margin: "2px 0",
               }}
-            >
-              <Text fw={500}>
-                {selectedTransform ? selectedTransform.name : "SQL Editor"}
-              </Text>
-              {selectedTransform && (
-                <Text size="sm" c="dimmed">
-                  Target:{" "}
-                  {selectedTransform.target.schema
-                    ? `${selectedTransform.target.schema}.`
-                    : ""}
-                  {selectedTransform.target.name}
-                </Text>
-              )}
-            </Box>
-            <Box style={{ flex: 1, position: "relative" }}>
-              <CodeMirror
-                value={code}
-                onChange={(value) => setCode(value)}
-                height="100%"
+            />
+
+            {/* Query Preview */}
+            <Panel defaultSize={40} minSize={20}>
+              <Box
+                h="100%"
                 style={{
-                  height: "100%",
-                  fontSize: "14px",
+                  border: "1px solid var(--mantine-color-gray-3)",
+                  borderRadius: "8px",
+                  display: "flex",
+                  flexDirection: "column",
                 }}
-                basicSetup={{
-                  lineNumbers: true,
-                  foldGutter: true,
-                  dropCursor: false,
-                  allowMultipleSelections: false,
-                }}
-                extensions={language({ engine: "postgres" })}
-                placeholder="Enter your SQL code here..."
-              />
-            </Box>
-          </Box>
+              >
+                <QueryPreview
+                  ref={queryPreviewRef}
+                  query={code}
+                  databaseId={selectedTransform?.source?.query?.database}
+                />
+              </Box>
+            </Panel>
+          </PanelGroup>
         </Panel>
 
         <PanelResizeHandle
