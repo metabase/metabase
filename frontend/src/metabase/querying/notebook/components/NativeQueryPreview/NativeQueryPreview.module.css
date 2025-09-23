@@ -9,3 +9,10 @@
     text-decoration: underline;
   }
 }
+
+.code {
+  background-color: var(--mb-color-bg-light);
+  border-radius: var(--mantine-radius-md);
+  overflow: hidden;
+  border: 1px solid var(--mb-color-border);
+}
