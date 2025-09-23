@@ -23,7 +23,9 @@
     :model/FieldValues
     :model/FieldUserSettings
     ;; Settings have human-selected unique names.
-    :model/Setting})
+    :model/Setting
+    ;; Glossary items have unique `term` key
+    :model/Glossary})
 
 (def ^:private entities-not-exported
   "Entities that are either:
@@ -50,6 +52,8 @@
     :model/DashboardCardSeries
     :model/LoginHistory
     :model/FieldValues
+    :model/MetabotConversation
+    :model/MetabotMessage
     :model/ModelIndex
     :model/ModelIndexValue
     :model/ModerationReview
@@ -75,26 +79,25 @@
     :model/QueryTable
     :model/RecentViews
     :model/Revision
+    :model/SemanticSearchTokenTracking
     :model/SearchIndexMetadata
     :model/Secret
     :model/Session
     :model/TaskHistory
     :model/TimelineEvent
     ;; TODO we should remove these models from here once serialization is supported
-    :model/Transform
     :model/TransformRun
     :model/TransformRunCancelation
-    :model/TransformJob
     :model/TransformJobRun
     :model/TransformJobTransformTag
-    :model/TransformTag
     :model/TransformTransformTag
+    :model/PythonLibrary
     :model/Undo
     :model/User
     :model/UserParameterValue
     :model/UserKeyValue
     :model/ViewLog
-    :model/GroupTableAccessPolicy
+    :model/Sandbox
     :model/ConnectionImpersonation
     :model/CloudMigration
     :model/Comment

@@ -64,14 +64,17 @@
         (map transforms-by-id complete)))))
 
 (defn- run-transform! [run-id run-method {transform-id :id :as transform}]
-  (when (transform-run/running-run-for-run-id transform-id)
+  (when
+   (transform-run/running-run-for-transform-id transform-id)
     (log/warn "Transform" (pr-str transform-id) "already running, waiting")
     (loop []
       (Thread/sleep 2000)
-      (when (transform-run/running-run-for-run-id transform-id)
+      (when (transform-run/running-run-for-transform-id transform-id)
         (recur))))
+
   (log/info "Executing job transform" (pr-str transform-id))
   (transforms.execute/run-mbql-transform! transform {:run-method run-method})
+
   (transforms.job-run/add-run-activity! run-id))
 
 (defn run-transforms!

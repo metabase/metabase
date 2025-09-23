@@ -1424,7 +1424,7 @@ describe("scenarios > dashboard > parameters", () => {
       H.createQuestionAndDashboard({
         questionDetails: ordersCountByCategory,
         dashboardDetails: {
-          parameters: [categoryParameter],
+          parameters: [categoryParameter, countParameter],
         },
       }).then(({ body: dashcard }) => {
         const dashboardId = dashcard.dashboard_id;
@@ -1440,8 +1440,9 @@ describe("scenarios > dashboard > parameters", () => {
             {
               id: dashcard.id,
               row: 1,
-              size_x: 12,
+              size_x: 24,
               size_y: 6,
+              inline_parameters: [countParameter.id],
               parameter_mappings: [
                 {
                   parameter_id: categoryParameter.id,
@@ -1450,6 +1451,15 @@ describe("scenarios > dashboard > parameters", () => {
                     "dimension",
                     categoryFieldRef,
                     { "stage-number": 0 },
+                  ],
+                },
+                {
+                  parameter_id: countParameter.id,
+                  card_id: ORDERS_BY_YEAR_QUESTION_ID,
+                  target: [
+                    "dimension",
+                    ["field", "count", { "base-type": "type/Integer" }],
+                    { "stage-number": 1 },
                   ],
                 },
               ],
@@ -1483,11 +1493,15 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Gadget");
+        expect(search).to.eq("?category=Gadget&count=");
       });
 
       // Verify filter doesn't show up in the dashboard header
       H.dashboardParametersContainer().should("not.exist");
+
+      cy.findByTestId("embed-frame").then(($el) => {
+        expect(H.isScrollableHorizontally($el[0])).to.be.false;
+      });
     });
 
     [

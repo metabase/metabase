@@ -294,3 +294,21 @@
   :default    false
   :export?    true
   :visibility :admin)
+
+(defsetting embedding-hub-test-embed-snippet-created
+  (deferred-tru "Indicates if a test embed snippet has been created for tracking in the embedding hub")
+  :type       :boolean
+  :default    false
+  :export?    true
+  :visibility :admin
+  :can-read-from-env? false
+  :doc false)
+
+(defsetting embedding-hub-production-embed-snippet-created
+  (deferred-tru "Indicates if a production embed snippet has been created for tracking in the embedding hub")
+  :type       :boolean
+  :default    false
+  :export?    true
+  :visibility :admin
+  :can-read-from-env? false
+  :doc false)

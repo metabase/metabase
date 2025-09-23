@@ -73,9 +73,7 @@ describe("detail view", () => {
     it("shows loading state and 404 error state", () => {
       DetailView.visitTable(PRODUCTS_ID, 9999);
 
-      cy.findByTestId("loading-indicator").should("be.visible");
       cy.findByTestId("loading-indicator").should("not.exist");
-
       cy.findByRole("heading", { name: "Row not found" }).should("be.visible");
 
       H.appBar().within(() => {

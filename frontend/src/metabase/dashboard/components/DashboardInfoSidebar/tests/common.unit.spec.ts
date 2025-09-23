@@ -139,7 +139,7 @@ describe("DashboardInfoSidebar", () => {
     });
 
     expect(screen.getByText("Creator and last editor")).toBeInTheDocument();
-    expect(screen.getByText("January 1, 2024")).toBeInTheDocument();
+    expect(await screen.findByText("January 1, 2024")).toBeInTheDocument();
     expect(screen.getByText("by Testy Tableton")).toBeInTheDocument();
   });
 

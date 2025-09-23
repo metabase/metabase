@@ -2,7 +2,7 @@ import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import FieldList from "./FieldList";
+import { FieldList } from "./FieldList";
 
 const database = createSampleDatabase();
 

@@ -1399,6 +1399,15 @@ describe("scenarios > admin > datamodel", () => {
   });
 
   describe("Field section", () => {
+    beforeEach(() => {
+      H.resetSnowplow();
+      H.enableTracking();
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
     describe("Name and description", () => {
       it("should allow changing the field name", () => {
         H.DataModel.visit({
@@ -1640,6 +1649,11 @@ describe("scenarios > admin > datamodel", () => {
           H.popover().should("not.contain.text", "Coercion");
           H.popover().findByText("UNIX seconds → Datetime").click();
           cy.wait("@updateField");
+          H.expectUnstructuredSnowplowEvent({
+            event: "metadata_edited",
+            event_detail: "type_casting",
+            triggered_from: "admin",
+          });
           verifyAndCloseToast("Casting enabled for Rating");
 
           cy.log("verify preview");
@@ -1753,6 +1767,11 @@ describe("scenarios > admin > datamodel", () => {
             // it should allow to just type to search (metabase#59052)
             .type("no sema{downarrow}{enter}");
           cy.wait("@updateField");
+          H.expectUnstructuredSnowplowEvent({
+            event: "metadata_edited",
+            event_detail: "semantic_type_change",
+            triggered_from: "admin",
+          });
           H.undoToast().should(
             "contain.text",
             "Semantic type of Product ID updated",
@@ -2140,6 +2159,11 @@ describe("scenarios > admin > datamodel", () => {
             .click();
           H.popover().findByText("Everywhere").click();
           cy.wait("@updateField");
+          H.expectUnstructuredSnowplowEvent({
+            event: "metadata_edited",
+            event_detail: "visibility_change",
+            triggered_from: "admin",
+          });
           verifyAndCloseToast("Visibility of Tax updated");
           FieldSection.getVisibilityInput().should("have.value", "Everywhere");
 
@@ -2327,6 +2351,11 @@ describe("scenarios > admin > datamodel", () => {
             .click();
           H.popover().findByText("Search box").click();
           cy.wait("@updateField");
+          H.expectUnstructuredSnowplowEvent({
+            event: "metadata_edited",
+            event_detail: "filtering_change",
+            triggered_from: "admin",
+          });
           verifyAndCloseToast("Filtering of Quantity updated");
 
           cy.log("verify preview");
@@ -2488,6 +2517,11 @@ describe("scenarios > admin > datamodel", () => {
           H.popover().findByText("Use foreign key").click();
           H.popover().findByText("Title").click();
           cy.wait("@updateFieldDimension");
+          H.expectUnstructuredSnowplowEvent({
+            event: "metadata_edited",
+            event_detail: "display_values",
+            triggered_from: "admin",
+          });
           H.undoToast().should(
             "contain.text",
             "Display values of Product ID updated",
@@ -2575,6 +2609,11 @@ describe("scenarios > admin > datamodel", () => {
                 FieldSection.getDisplayValuesInput().scrollIntoView().click();
                 H.popover().findByText("Custom mapping").click();
                 cy.wait("@updateFieldValues");
+                H.expectUnstructuredSnowplowEvent({
+                  event: "metadata_edited",
+                  event_detail: "display_values",
+                  triggered_from: "admin",
+                });
                 H.undoToast().should(
                   "contain.text",
                   "Display values of Num updated",
@@ -2929,6 +2968,11 @@ describe("scenarios > admin > datamodel", () => {
           FieldSection.getUnfoldJsonInput().should("have.value", "Yes").click();
           H.popover().findByText("No").click();
           cy.wait("@updateField");
+          H.expectUnstructuredSnowplowEvent({
+            event: "metadata_edited",
+            event_detail: "json_unfolding",
+            triggered_from: "admin",
+          });
           H.undoToast().should(
             "contain.text",
             "JSON unfolding disabled for Json",
@@ -3049,6 +3093,11 @@ describe("scenarios > admin > datamodel", () => {
         FieldSection.getStyleInput().click();
         H.popover().findByText("Percent").click();
         cy.wait("@updateField");
+        H.expectUnstructuredSnowplowEvent({
+          event: "metadata_edited",
+          event_detail: "formatting",
+          triggered_from: "admin",
+        });
         verifyAndCloseToast("Formatting of Quantity updated");
 
         cy.log("verify preview");
