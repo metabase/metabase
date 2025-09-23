@@ -149,6 +149,8 @@
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
@@ -230,9 +232,13 @@
      :url                        (format "%sfield/%s" public-endpoint (:id field))
      :dashboard-templates-prefix ["field"]}))
 
-(def ^:private ^{:arglists '([card-or-question])} nested-query?
+(defn- source-card-id [card-or-question]
+  (some-> card-or-question :dataset_query not-empty lib-be/normalize-query lib/source-card-id))
+
+(defn- nested-query?
   "Is this card or question derived from another model or question?"
-  (comp some? #_{:clj-kondo/ignore [:deprecated-var]} qp.util/query->source-card-id :dataset_query))
+  [card-or-question]
+  (some-> card-or-question source-card-id some?))
 
 (def ^:private ^{:arglists '([card-or-question])} native-query?
   "Is this card or question native (SQL)?"
@@ -240,7 +246,7 @@
 
 (defn- source-question
   [card-or-question]
-  (when-let [source-card-id #_{:clj-kondo/ignore [:deprecated-var]} (qp.util/query->source-card-id (:dataset_query card-or-question))]
+  (when-let [source-card-id (source-card-id card-or-question)]
     (t2/select-one :model/Card :id source-card-id)))
 
 (defn- table-like?

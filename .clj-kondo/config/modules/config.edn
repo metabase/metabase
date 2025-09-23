@@ -938,6 +938,7 @@
    :uses #{api
            legacy-mbql
            lib
+           lib-be
            models
            permissions
            query-processor
