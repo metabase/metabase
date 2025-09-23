@@ -38,6 +38,7 @@
                               :describe-fields                true
                               :describe-fks                   true
                               :rename                         true
+                              :atomic-renames                 true
                               :expression-literals            true
                               :identifiers-with-spaces        false
                               :uuid-type                      false

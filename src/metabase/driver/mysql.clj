@@ -78,6 +78,7 @@
                               :uploads                                true
                               :identifiers-with-spaces                true
                               :rename                                 true
+                              :atomic-renames                         true
                               :expressions/integer                    true
                               :expressions/float                      true
                               :expressions/date                       true

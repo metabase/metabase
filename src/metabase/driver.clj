@@ -633,6 +633,9 @@
     ;; Does the driver support table renaming
     :rename
 
+    ;; Does the driver support atomic multi-table renaming
+    :atomic-renames
+
     ;; Does the driver support custom writeback actions. Drivers that support this must
     ;; implement [[execute-write-query!]]
     :actions/custom

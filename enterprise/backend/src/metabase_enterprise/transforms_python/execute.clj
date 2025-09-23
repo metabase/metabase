@@ -9,6 +9,7 @@
    [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
@@ -133,33 +134,79 @@
     (transforms.util/create-table-from-schema! driver db-id table-schema)
     (driver/insert-from-source! driver db-id table-schema data-source)))
 
-(defn- transfer-file-to-db [driver db {:keys [target] :as transform} metadata temp-file]
+(defn- transfer-with-rename-tables-strategy!
+  "Transfer data using the rename-tables*! multimethod with atomicity guarantees.
+   Creates new table, then atomically renames target->old and new->target, then drops old."
+  [driver db-id table-name metadata data-source]
+  (let [source-table-name (transforms.util/temp-table-name driver table-name temp-table-suffix-new)
+        temp-table-name (transforms.util/temp-table-name driver table-name temp-table-suffix-old)]
+    (log/info "Using rename-tables strategy with atomicity guarantees")
+    (try
+
+      (create-table-and-insert-data! driver db-id source-table-name metadata data-source)
+      (transforms.util/rename-tables! driver db-id {table-name temp-table-name
+                                                    source-table-name table-name})
+      (transforms.util/drop-table! driver db-id temp-table-name)
+
+      (catch Exception e
+        (log/error e "Failed to transfer data using rename-tables strategy")
+        (try
+          (transforms.util/drop-table! driver db-id source-table-name)
+          (catch Exception _))
+        (throw e)))))
+
+(defn- transfer-with-create-drop-rename-strategy!
+  "Transfer data using create + drop + rename to minimize time without data.
+   Creates new table, drops old table, then renames new->target."
+  [driver db-id table-name metadata data-source]
+  (let [source-table-name (transforms.util/temp-table-name driver table-name temp-table-suffix-new)]
+    (log/info "Using create-drop-rename strategy to minimize downtime")
+    (try
+
+      (create-table-and-insert-data! driver db-id source-table-name metadata data-source)
+      (transforms.util/drop-table! driver db-id table-name)
+      (driver/rename-table! driver db-id source-table-name table-name)
+
+      (catch Exception e
+        (log/error e "Failed to transfer data using create-drop-rename strategy")
+        (try
+          (transforms.util/drop-table! driver db-id source-table-name)
+          (catch Exception _))
+        (throw e)))))
+
+(defn- transfer-with-drop-create-fallback-strategy!
+  "Transfer data using drop + create fallback strategy.
+   Drops old table, then creates new table directly with target name."
+  [driver db-id table-name metadata data-source]
+  (log/info "Using drop-create fallback strategy")
+  (try
+
+    (transforms.util/drop-table! driver db-id table-name)
+    (create-table-and-insert-data! driver db-id table-name metadata data-source)
+
+    (catch Exception e
+      (log/error e "Failed to transfer data using drop-create fallback strategy")
+      (throw e))))
+
+(defn- transfer-file-to-db [driver {db-id :id :as db} {:keys [target] :as transform} metadata temp-file]
   (let [table-name (transforms.util/qualified-table-name driver target)
         table-exists? (transforms.util/target-table-exists? transform)
         data-source {:type :jsonl-file
                      :file temp-file}]
-    (if table-exists?
-      ;; Table exists - use temp table + atomic swap pattern
-      (let [source-table-name (transforms.util/temp-table-name driver table-name temp-table-suffix-new)
-            temp-table-name (transforms.util/temp-table-name driver table-name temp-table-suffix-old)]
-        (log/info "Existing table detected, Create then swap")
-        (try
-          (create-table-and-insert-data! driver (:id db) source-table-name metadata data-source)
-          ;; Use the new atomic rename-tables! function: target <- source (using temp)
-          (transforms.util/rename-tables! driver (:id db) {table-name temp-table-name
-                                                           source-table-name table-name})
-          ;; Drop the old table (now stored in temp-table-name) separately
-          (transforms.util/drop-table! driver (:id db) temp-table-name)
-          (catch Exception e
-            (log/error e "Failed to transfer data to table")
-            (try
-              (transforms.util/drop-table! driver (:id db) source-table-name)
-              (catch Exception _))
-            (throw e))))
-      ;; Table doesn't exist - create directly with target name
+    (cond
+      (not table-exists?)
       (do
         (log/info "New table")
-        (create-table-and-insert-data! driver (:id db) table-name metadata data-source)))))
+        (create-table-and-insert-data! driver db-id table-name metadata data-source))
+
+      (driver.u/supports? driver :atomic-renames db)
+      (transfer-with-rename-tables-strategy! driver db-id table-name metadata data-source)
+
+      (driver.u/supports? driver :rename db)
+      (transfer-with-create-drop-rename-strategy! driver db-id table-name metadata data-source)
+
+      :else
+      (transfer-with-drop-create-fallback-strategy! driver db-id table-name metadata data-source))))
 
 (defn- start-cancellation-process!
   "Starts a core.async process that optimistically sends a cancellation request to the python executor if cancel-chan receives a value.
