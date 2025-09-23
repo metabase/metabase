@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "branch",
+        "restack"
+      ],
+      "branch": "emb-840-minor-visual-improvements-for-embedding-hub"
+    }
+  ]
 }
