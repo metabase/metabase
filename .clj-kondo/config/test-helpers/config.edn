@@ -16,6 +16,7 @@
      clojure.core.async/<!
      clojure.core.async/>!!
      clojure.core.async/>!
+     clojure.core.async/alts!
      clojure.core.async/alts!!
      clojure.core.async/close!
      clojure.core.async/poll!
