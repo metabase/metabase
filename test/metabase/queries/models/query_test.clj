@@ -67,6 +67,7 @@
                                                    :card-id 100}
                                           "tag_2" {:type    :card
                                                    :card-id 200}}}}]
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (is (= #{100 200}
            (set (query/collect-card-ids query))))))
 
@@ -74,6 +75,7 @@
   (let [query {:database 1
                :type     :query
                :query    {:source-query {:source-table "card__1000"}}}]
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (is (= #{1000}
            (set (query/collect-card-ids query))))))
 
@@ -88,6 +90,7 @@
                                                                           :display-name "Tag 2"
                                                                           :type         :card
                                                                           :card-id      200}}})]
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (is (= #{100 200}
            (set (query/collect-card-ids query))))))
 
@@ -96,5 +99,6 @@
                                 meta/metadata-provider
                                 [(lib/query meta/metadata-provider (lib.metadata/table meta/metadata-provider (meta/id :venues)))])
         query-with-source-card (lib/query metadata-provider (lib.metadata/card metadata-provider 1))]
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (is (= #{1}
            (set (query/collect-card-ids query-with-source-card))))))

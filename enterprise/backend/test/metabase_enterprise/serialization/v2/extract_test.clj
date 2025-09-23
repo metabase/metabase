@@ -163,6 +163,7 @@
                         :dataset_query {:query {:source-table no-schema-id
                                                 :filter [:>= [:field field-id nil] 18]
                                                 :aggregation [[:count]]}
+                                        :type :query
                                         :database db-id}}
 
                        :model/Card
@@ -176,6 +177,7 @@
                         :dataset_query {:query {:source-table no-schema-id
                                                 :filter [:>= [:field field-id nil] 18]
                                                 :aggregation [[:count]]}
+                                        :type :query
                                         :database db-id}}
 
                        :model/Card
@@ -225,24 +227,26 @@
                        :model/Card       {c4-id  :id
                                           c4-eid :entity_id}        {:name          "Referenced Question"
                                                                      :database_id   db-id
-                                                                     :table_id      schema-id
+                                                                     :table_id      no-schema-id
                                                                      :collection_id coll-id
                                                                      :creator_id    mark-id
                                                                      :dataset_query
                                                                      {:query {:source-table no-schema-id
                                                                               :filter [:>= [:field field-id nil] 18]}
-                                                                      :database db-id}}
+                                                                      :database db-id
+                                                                      :type :query}}
                        :model/Card
                        {c5-id  :id
                         c5-eid :entity_id}
                        {:name          "Dependent Question"
                         :database_id   db-id
-                        :table_id      schema-id
+                        :table_id      no-schema-id
                         :collection_id coll-id
                         :creator_id    mark-id
                         :dataset_query
                         {:query {:source-table (str "card__" c4-id)
                                  :aggregation [[:count]]}
+                         :type :query
                          :database db-id}}
 
                        :model/Action
@@ -424,7 +428,7 @@
       (testing "Cards can be based on other cards"
         (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id c5-id))]
           (is (=? {:serdes/meta    [{:model "Card" :id c5-eid :label "dependent_question"}]
-                   :table_id       ["My Database" "PUBLIC" "Schema'd Table"]
+                   :table_id       ["My Database" nil "Schemaless Table"]
                    :creator_id     "mark@direstrai.ts"
                    :collection_id  coll-eid
                    :dataset_query  {:query    {:source-table c4-eid
@@ -437,8 +441,7 @@
           (testing "and depend on their Database, Table and Collection, and the upstream Card"
             (is (= #{[{:model "Database"   :id "My Database"}]
                      [{:model "Database"   :id "My Database"}
-                      {:model "Schema"     :id "PUBLIC"}
-                      {:model "Table"      :id "Schema'd Table"}]
+                      {:model "Table"      :id "Schemaless Table"}]
                      [{:model "Collection" :id coll-eid}]
                      [{:model "Card"       :id c4-eid}]}
                    (set (serdes/dependencies ser)))))))
@@ -1516,18 +1519,23 @@
                        :model/Collection    {coll2-id :id} {:name "Other Collection"}
                        :model/Collection    {coll3-id :id} {:name "Third Collection"}
                        :model/Dashboard     {dash-id :id}  {:name "A Dashboard" :collection_id coll1-id}
-                       :model/Card          {card1-id :id} {:name "Some Card"}
+                       :model/Database      {db-id :id}    {}
+                       :model/Card          {card1-id :id} {:name "Some Card", :database_id db-id}
                        :model/DashboardCard _              {:card_id card1-id :dashboard_id dash-id}
                        :model/Card          _              {:name          "Dependent Card"
                                                             :collection_id coll2-id
-                                                            :dataset_query {:query {:source-table (str "card__" card1-id)}}}
+                                                            :dataset_query {:type     :query
+                                                                            :database db-id
+                                                                            :query    {:source-table (str "card__" card1-id)}}}
                        :model/User          user           {:email "dirk@kirk.ir"}
                        :model/Collection    pcoll          {:name              "Personal Collection"
                                                             :personal_owner_id (:id user)}
                        :model/Card          pcard          {:name          "Personal Card"
                                                             :collection_id (:id pcoll)}
                        :model/Card          _              {:name          "External Card"
-                                                            :dataset_query {:query {:source-table (str "card__" (:id pcard))}}}
+                                                            :dataset_query {:database db-id
+                                                                            :type     :query
+                                                                            :query    {:source-table (str "card__" (:id pcard))}}}
                        :model/Card          _              {:name          "Card with parameters"
                                                             :collection_id coll3-id
                                                             :parameters    [{:id                   "abc"

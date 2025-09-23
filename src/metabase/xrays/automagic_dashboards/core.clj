@@ -151,6 +151,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
@@ -233,7 +234,8 @@
      :dashboard-templates-prefix ["field"]}))
 
 (defn- source-card-id [card-or-question]
-  (some-> card-or-question :dataset_query not-empty lib-be/normalize-query lib/source-card-id))
+  (binding [lib.schema/*HACK-disable-join-alias-in-field-ref-validation* true]
+    (some-> card-or-question :dataset_query not-empty lib-be/normalize-query lib/source-card-id)))
 
 (defn- nested-query?
   "Is this card or question derived from another model or question?"
