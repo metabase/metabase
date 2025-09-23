@@ -27,9 +27,7 @@ jobs:
         run: yarn build-pure:cljs
 
       - name: Update Loki Snapshots
-        # We won't be able to use Storybook play's `userEvent` with production build
-        # see https://github.com/storybookjs/storybook/issues/19758
-        run: NODE_ENV=development yarn test-visual:loki:ci || yarn test-visual:loki-approve-diff && yarn test-visual:loki-prune
+        run: yarn test-visual:loki:ci || yarn test-visual:loki-approve-diff && yarn test-visual:loki-prune
 
       - name: Check for changes
         id: check-changes

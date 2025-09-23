@@ -54,10 +54,7 @@ jobs:
         run: NODE_ENV=development yarn build-pure:cljs
 
       - name: Run Loki Visual Tests
-        # We won't be able to use Storybook play's `userEvent` with production build
-        # see https://github.com/storybookjs/storybook/issues/19758
-        run: |
-          NODE_ENV=development yarn test-visual:loki:ci
+        run: yarn test-visual:loki:ci
 
       - name: Generate Visual Report on Failure
         if: failure()
