@@ -425,6 +425,7 @@
                               :nested-queries                  true
                               :set-timezone                    true
                               :standard-deviation-aggregations true
+                              :rename                          true
                               :test/jvm-timezone-setting       false
                               :identifiers-with-spaces         true
                               :saved-question-sandboxing       false
@@ -574,16 +575,14 @@
     (some-> (mongo.util/collection db (name table-name))
             .drop)))
 
-(defmethod driver/rename-tables!* :mongo
-  [_driver db-id sorted-rename-map]
-  ;; TODO: QUE-2474. not atomic
+(defmethod driver/rename-table! :mongo
+  [_driver db-id old-table-name new-table-name]
   (mongo.connection/with-mongo-database [^MongoDatabase db db-id]
-    (doseq [[old-table-name new-table-name] sorted-rename-map]
-      (let [old-collection (mongo.util/collection db (name old-table-name))]
-        (.renameCollection old-collection
-                           (com.mongodb.MongoNamespace.
-                            (.getName db)
-                            (name new-table-name)))))))
+    (let [old-collection (mongo.util/collection db (name old-table-name))]
+      (.renameCollection old-collection
+                         (com.mongodb.MongoNamespace.
+                          (.getName db)
+                          (name new-table-name))))))
 
 (defmethod driver/drop-transform-target! [:mongo :table]
   [driver database target]

@@ -630,6 +630,12 @@
     ;; Does the driver support multi-level-schema for e.g. multicatalog support in databricks
     :multi-level-schema
 
+    ;; Does the driver support table renaming
+    :rename
+
+    ;; Does the driver support atomic multi-table renaming
+    :atomic-renames
+
     ;; Does the driver support custom writeback actions. Drivers that support this must
     ;; implement [[execute-write-query!]]
     :actions/custom
@@ -1305,10 +1311,13 @@
                               (update-vals first))]
     (rename-tables!* driver db-id sorted-rename-map)))
 
-#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
-(defn rename-table!
+(defmulti rename-table!
   "Rename a single table."
-  {:added "0.57.0"}
+  {:added "0.57.0", :arglists '([driver db-id old-table-name new-table-name])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod rename-table! ::driver
   [driver db-id from-table to-table]
   (rename-tables!* driver db-id {from-table to-table}))
 
