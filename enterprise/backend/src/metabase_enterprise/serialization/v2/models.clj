@@ -101,6 +101,7 @@
    "Sandbox"
    "SearchIndexMetadata"
    "Secret"
+   "SemanticSearchTokenTracking"
    "Session"
    "TaskHistory"
    "TransformJobRun"
