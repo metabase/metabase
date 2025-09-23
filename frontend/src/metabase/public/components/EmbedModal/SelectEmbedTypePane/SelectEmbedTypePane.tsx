@@ -139,7 +139,7 @@ export function SelectEmbedTypePane({
           >
             <List>
               {/* eslint-disable-next-line no-literal-metabase-strings -- only admin sees this */}
-              <List.Item>{t`A simple way to embed without React using plain JavaScript`}</List.Item>
+              <List.Item>{t`A simple way to embed using plain JavaScript`}</List.Item>
               <List.Item>{t`Embed static or interactive dashboards and charts with drill-down, the query builder or let people browse and manage collections.`}</List.Item>
               <List.Item>
                 {t`Advanced customizations for styling.`}{" "}
