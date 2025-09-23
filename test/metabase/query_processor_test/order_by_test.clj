@@ -2,6 +2,10 @@
   "Tests for the `:order-by` clause."
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]))
 
 (deftest ^:parallel order-by-test
@@ -127,3 +131,32 @@
                        {:aggregation [[:stddev $category_id]]
                         :breakout    [$price]
                         :order-by    [[:desc [:aggregation 0]]]}))))))))
+
+;;; See also [[metabase.driver.sql.query-processor-test/order-by-aggregation-reference-test]]
+(deftest ^:parallel order-by-aggregate-fields-test-6
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "Should order by aggregation references correctly (#62885)"
+      (let [mp      (mt/metadata-provider)
+            query   (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                      (lib/aggregate (lib/count))
+                      (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :products :price))))
+                      (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :products :rating))))
+                      (lib/breakout (lib.metadata/field mp (mt/id :products :category)))
+                      (as-> $query (lib/order-by $query (lib.tu.notebook/find-col-with-spec
+                                                         $query
+                                                         (lib/orderable-columns $query)
+                                                         {}
+                                                         {:display-name "Sum of Rating"})))
+                      (lib/limit 4))
+            results (qp/process-query query)]
+        (mt/with-native-query-testing-context query
+          (is (= ["Category"
+                  "Count"
+                  "Sum of Price"
+                  "Sum of Rating"]
+                 (map :display_name (mt/cols results))))
+          (is (= [["Doohickey" 42 2185.89 156.6]
+                  ["Widget"    54 3109.31 170.3]
+                  ["Gadget"    53 3019.2  181.9]
+                  ["Gizmo"     51 2834.88 185.5]]
+                 (mt/formatted-rows [str int 2.0 1.0] results))))))))

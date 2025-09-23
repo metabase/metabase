@@ -14,6 +14,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.limit :as limit]
@@ -1528,3 +1529,35 @@
                 :params nil}
                (-> (qp.compile/compile query)
                    (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
+
+;;; see also [[metabase.query-processor-test.order-by-test/order-by-aggregate-fields-test-6]]
+(deftest ^:parallel order-by-aggregation-reference-test
+  (testing "Should order by aggregation references correctly (#62885)"
+    (let [mp    meta/metadata-provider
+          query (-> (lib/query mp (meta/table-metadata :products))
+                    (lib/aggregate (lib/count))
+                    (lib/aggregate (lib/sum (meta/field-metadata :products :price)))
+                    (lib/aggregate (lib/sum (meta/field-metadata :products :rating)))
+                    (lib/breakout (meta/field-metadata :products :category))
+                    (as-> $query (lib/order-by $query (lib.tu.notebook/find-col-with-spec
+                                                       $query
+                                                       (lib/orderable-columns $query)
+                                                       {}
+                                                       {:display-name "Sum of Rating"}))))]
+      (is (= ["SELECT"
+              "  \"PUBLIC\".\"PRODUCTS\".\"CATEGORY\" AS \"CATEGORY\","
+              "  COUNT(*) AS \"count\","
+              "  SUM(\"PUBLIC\".\"PRODUCTS\".\"PRICE\") AS \"sum\","
+              "  SUM(\"PUBLIC\".\"PRODUCTS\".\"RATING\") AS \"sum_2\""
+              "FROM"
+              "  \"PUBLIC\".\"PRODUCTS\""
+              "GROUP BY"
+              "  \"PUBLIC\".\"PRODUCTS\".\"CATEGORY\""
+              "ORDER BY"
+              "  \"sum_2\" ASC,"
+              "  \"PUBLIC\".\"PRODUCTS\".\"CATEGORY\" ASC"]
+             (-> query
+                 qp.compile/compile
+                 :query
+                 (->> (driver/prettify-native-form :h2))
+                 str/split-lines ))))))
