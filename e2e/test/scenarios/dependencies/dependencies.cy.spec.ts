@@ -11,7 +11,7 @@ H.describeWithSnowplowEE("documents", () => {
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "Animals" });
     H.resetSnowplow();
 
     cy.intercept("PUT", "/api/card/*").as("updateCard");
@@ -25,6 +25,8 @@ H.describeWithSnowplowEE("documents", () => {
   describe("questions", () => {
     it("should be able to confirm or cancel breaking changes to a MBQL question", () => {
       createMbqlQuestionWithDependentMbqlQuestions();
+
+      cy.log("make breaking changes");
       H.visitQuestion("@questionId");
       H.openNotebook();
       H.getNotebookStep("expression").findByText("Expr").icon("close").click();
@@ -90,6 +92,8 @@ H.describeWithSnowplowEE("documents", () => {
   describe("models", () => {
     it("should be able to confirm or cancel breaking changes to a SQL model", () => {
       createSqlModelWithDependentSqlQuestions();
+
+      cy.log("make breaking changes");
       cy.get<number>("@modelId").then(H.visitModel);
       H.openQuestionActions("Edit query definition");
       H.NativeEditor.clear().type("SELECT ID, TITLE FROM PRODUCTS");
@@ -121,14 +125,48 @@ H.describeWithSnowplowEE("documents", () => {
     });
   });
 
+  describe("metrics", () => {
+    it("should be able to confirm or cancel breaking changes to a metric", () => {
+      createMetricWithDependentMbqlQuestionsAndTransforms();
+
+      cy.log("make breaking changes");
+      cy.get<number>("@metricId").then(H.visitMetric);
+      H.openQuestionActions("Edit metric definition");
+      H.getNotebookStep("summarize").findByText("Min of Score").click();
+      H.popover().within(() => {
+        cy.icon("chevronleft").click();
+        cy.findByText("Maximum of ...").click();
+        cy.findByText("Score").click();
+      });
+
+      cy.log("cancel breaking changes");
+      cy.findByTestId("edit-bar").button("Save changes").click();
+      H.modal().within(() => {
+        cy.findByText("Question with 2 stages").should("be.visible");
+        cy.findByText("Transform with 2 stages").should("be.visible");
+        cy.findByText("Question with 1 stage").should("not.exist");
+        cy.findByText("Transform with 1 stage").should("not.exist");
+        cy.button("Cancel").click();
+      });
+      cy.get("@updateCard.all").should("have.length", 0);
+
+      cy.log("confirm breaking changes");
+      cy.findByTestId("edit-bar").button("Save changes").click();
+      H.modal().button("Save anyway").click();
+      cy.wait("@updateCard");
+    });
+  });
+
   describe("transforms", () => {
     it("should be able to confirm or cancel breaking changes to a SQL transform after it was run", () => {
       createSqlTransformWithDependentMbqlQuestions();
+
+      cy.log("make breaking changes");
       cy.get<number>("@transformId").then(H.visitTransform);
       cy.findByTestId("transform-page").findByText("Edit query").click();
+      H.NativeEditor.clear().type('SELECT name FROM "Schema A"."Animals"');
 
       cy.log("cancel breaking changes");
-      H.NativeEditor.clear().type('SELECT name FROM "Schema A"."Animals"');
       cy.findByTestId("transform-query-editor").button("Save changes").click();
       H.modal().within(() => {
         cy.findByText("Question with fields").should("be.visible");
@@ -160,12 +198,14 @@ H.describeWithSnowplowEE("documents", () => {
 
     it("should be able to confirm or cancel breaking changes to a MBQL transform before it was run", () => {
       createMbqlTransformWithDependentSqlTransforms();
+
+      cy.log("make breaking changes");
       cy.get<number>("@transformId").then(H.visitTransform);
       cy.findByTestId("transform-page").findByText("Edit query").click();
-
-      cy.log("cancel breaking changes");
       H.getNotebookStep("data").findByLabelText("Pick columns").click();
       H.popover().findByLabelText("Score").click();
+
+      cy.log("cancel breaking changes");
       cy.findByTestId("transform-query-editor").button("Save changes").click();
       H.modal().within(() => {
         cy.findByText("Score transform").should("be.visible");
@@ -268,6 +308,92 @@ function createSqlModelWithDependentSqlQuestions() {
       },
     });
   });
+}
+
+function createMetricWithDependentMbqlQuestionsAndTransforms() {
+  H.getTableId({ databaseId: WRITABLE_DB_ID, name: "Animals" }).then(
+    (tableId) => {
+      H.getFieldId({ tableId, name: "score" }).then((fieldId) => {
+        H.createQuestion({
+          name: "Base metric",
+          type: "metric",
+          database: WRITABLE_DB_ID,
+          query: {
+            "source-table": tableId,
+            aggregation: [["min", ["field", fieldId, null]]],
+          },
+        }).then(({ body: metric }) => {
+          cy.wrap(metric.id).as("metricId");
+          H.createQuestion({
+            name: "Question with 1 stage",
+            database: WRITABLE_DB_ID,
+            query: {
+              "source-table": tableId,
+              aggregation: [["metric", metric.id]],
+            },
+          });
+          H.createQuestion({
+            name: "Question with 2 stages",
+            database: WRITABLE_DB_ID,
+            query: {
+              "source-query": {
+                "source-table": tableId,
+                aggregation: [["metric", metric.id]],
+                breakout: [["field", fieldId, null]],
+              },
+              aggregation: [
+                ["avg", ["field", "min", { "base-type": "type/Integer" }]],
+              ],
+            },
+          });
+          H.createTransform({
+            name: "Transform with 1 stage",
+            source: {
+              type: "query",
+              query: {
+                database: WRITABLE_DB_ID,
+                type: "query",
+                query: {
+                  "source-table": tableId,
+                  aggregation: [["metric", metric.id]],
+                },
+              },
+            },
+            target: {
+              type: "table",
+              name: "transform_1_stage",
+              schema: "public",
+            },
+          });
+          H.createTransform({
+            name: "Transform with 2 stages",
+            source: {
+              type: "query",
+              query: {
+                database: WRITABLE_DB_ID,
+                type: "query",
+                query: {
+                  "source-query": {
+                    "source-table": tableId,
+                    aggregation: [["metric", metric.id]],
+                    breakout: [["field", fieldId, null]],
+                  },
+                  aggregation: [
+                    ["avg", ["field", "min", { "base-type": "type/Integer" }]],
+                  ],
+                },
+              },
+            },
+            target: {
+              type: "table",
+              name: "transform_2_stages",
+              schema: "public",
+            },
+          });
+        });
+      });
+    },
+  );
 }
 
 function createSqlTransformWithDependentMbqlQuestions() {
