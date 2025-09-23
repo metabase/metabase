@@ -16,6 +16,7 @@ import {
   QueryPreview,
   BenchMetabot,
   TransformExecutionCard,
+  CollectionsCard,
 } from "./components";
 import type { Transform } from "metabase-types/api";
 
@@ -86,7 +87,7 @@ ORDER BY total_spent DESC;`);
       <PanelGroup direction="horizontal">
         {/* Left Panel - Transform Entities */}
         <Panel defaultSize={20} minSize={15} maxSize={35}>
-          <BenchPanel title="Transform Entities" height="100%">
+          <BenchPanel title="Transforms" height="100%">
             <TransformEntitiesList
               selectedTransformId={transformId}
               onTransformClick={handleTransformClick}
@@ -253,6 +254,8 @@ ORDER BY total_spent DESC;`);
                     <TransformDetails transformId={transformId} />
 
                     <TransformExecutionCard transform={selectedTransform} />
+
+                    <CollectionsCard transform={selectedTransform} />
 
                     <Box
                       p="sm"

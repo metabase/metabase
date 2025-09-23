@@ -1,0 +1,1 @@
+export { CollectionsCard } from "./CollectionsCard";
