@@ -57,5 +57,5 @@ export function slugify(
       return alias;
     }
   }
-  throw new Error("Could not find a unique alias");
+  return name;
 }
