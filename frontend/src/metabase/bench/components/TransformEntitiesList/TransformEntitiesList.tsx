@@ -1,56 +1,62 @@
 import { ActionIcon, Group, Text } from "metabase/ui";
 import { Icon } from "metabase/ui";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useListTransformsQuery } from "metabase-enterprise/api";
+import type { Transform } from "metabase-types/api";
 
-interface TransformEntity {
-  id: string;
-  name: string;
-  type: "model" | "table" | "query";
+interface TransformEntitiesListProps {
+  selectedTransformId?: number;
+  onTransformClick?: (transform: Transform) => void;
 }
 
-const mockTransformEntities: TransformEntity[] = [
-  { id: "1", name: "user_metrics", type: "model" },
-  { id: "2", name: "sales_data", type: "table" },
-  { id: "3", name: "revenue_analysis", type: "query" },
-  { id: "4", name: "customer_segments", type: "model" },
-  { id: "5", name: "product_performance", type: "query" },
-];
+export function TransformEntitiesList({
+  selectedTransformId,
+  onTransformClick,
+}: TransformEntitiesListProps) {
+  const { data: transforms = [], isLoading, error } = useListTransformsQuery();
 
-const getEntityIcon = (type: TransformEntity["type"]) => {
-  switch (type) {
-    case "model":
-      return "model";
-    case "table":
-      return "table";
-    case "query":
-      return "insight";
-    default:
-      return "document";
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
-};
 
-export function TransformEntitiesList() {
+  if (transforms.length === 0) {
+    return (
+      <Text size="sm" c="dimmed" ta="center" py="md">
+        No transforms found
+      </Text>
+    );
+  }
+
   return (
     <>
-      {mockTransformEntities.map((entity) => (
+      {transforms.map((transform) => (
         <Group
-          key={entity.id}
+          key={transform.id}
           p="xs"
           style={{
             borderRadius: "4px",
             cursor: "pointer",
+            backgroundColor:
+              selectedTransformId === transform.id
+                ? "var(--mantine-color-blue-1)"
+                : "transparent",
             ":hover": {
-              backgroundColor: "var(--mantine-color-gray-1)",
+              backgroundColor:
+                selectedTransformId === transform.id
+                  ? "var(--mantine-color-blue-2)"
+                  : "var(--mantine-color-gray-1)",
             },
           }}
+          onClick={() => onTransformClick?.(transform)}
         >
           <ActionIcon variant="subtle" size="sm">
-            <Icon name={getEntityIcon(entity.type)} />
+            <Icon name="model" />
           </ActionIcon>
-          <Text size="sm" style={{ flex: 1 }}>
-            {entity.name}
+          <Text size="sm" style={{ flex: 1 }} truncate>
+            {transform.name}
           </Text>
           <Text size="xs" c="dimmed">
-            {entity.type}
+            {transform.target.name}
           </Text>
         </Group>
       ))}

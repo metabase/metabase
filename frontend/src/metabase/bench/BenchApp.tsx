@@ -1,10 +1,33 @@
 import { Box, Text } from "metabase/ui";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { push } from "react-router-redux";
+import { useDispatch } from "metabase/lib/redux";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
-import { BenchPanel, TransformEntitiesList } from "./components";
+import { useGetTransformQuery } from "metabase-enterprise/api";
+import { skipToken } from "metabase/api";
+import {
+  BenchPanel,
+  TransformEntitiesList,
+  TransformDetails,
+} from "./components";
+import type { Transform } from "metabase-types/api";
 
-export function BenchApp() {
+interface BenchAppProps {
+  params?: {
+    transformId?: string;
+  };
+}
+
+export function BenchApp({ params }: BenchAppProps) {
+  const dispatch = useDispatch();
+  const transformId = params?.transformId
+    ? parseInt(params.transformId, 10)
+    : undefined;
+
+  const { data: selectedTransform, isLoading: isLoadingTransform } =
+    useGetTransformQuery(transformId ?? skipToken);
+
   const [code, setCode] = useState(`-- Welcome to the Metabase Bench
 -- This is your SQL editor for transform development
 
@@ -17,13 +40,40 @@ WHERE created_at >= '2024-01-01'
 GROUP BY customer_id
 ORDER BY total_spent DESC;`);
 
+  // Update editor content when transform is loaded
+  useEffect(() => {
+    if (selectedTransform?.source?.query?.native?.query) {
+      setCode(selectedTransform.source.query.native.query);
+    } else if (!transformId) {
+      // Reset to welcome message when no transform is selected
+      setCode(`-- Welcome to the Metabase Bench
+-- This is your SQL editor for transform development
+
+SELECT
+  customer_id,
+  COUNT(*) as order_count,
+  SUM(total_amount) as total_spent
+FROM orders
+WHERE created_at >= '2024-01-01'
+GROUP BY customer_id
+ORDER BY total_spent DESC;`);
+    }
+  }, [selectedTransform, transformId]);
+
+  const handleTransformClick = (transform: Transform) => {
+    dispatch(push(`/bench/transform/${transform.id}`));
+  };
+
   return (
     <Box h="100vh" style={{ overflow: "hidden" }}>
       <PanelGroup direction="horizontal">
         {/* Left Panel - Transform Entities */}
         <Panel defaultSize={20} minSize={15} maxSize={35}>
           <BenchPanel title="Transform Entities" height="100%">
-            <TransformEntitiesList />
+            <TransformEntitiesList
+              selectedTransformId={transformId}
+              onTransformClick={handleTransformClick}
+            />
           </BenchPanel>
         </Panel>
 
@@ -47,7 +97,18 @@ ORDER BY total_spent DESC;`);
                 backgroundColor: "var(--mantine-color-gray-0)",
               }}
             >
-              <Text fw={500}>SQL Editor</Text>
+              <Text fw={500}>
+                {selectedTransform ? selectedTransform.name : "SQL Editor"}
+              </Text>
+              {selectedTransform && (
+                <Text size="sm" c="dimmed">
+                  Target:{" "}
+                  {selectedTransform.target.schema
+                    ? `${selectedTransform.target.schema}.`
+                    : ""}
+                  {selectedTransform.target.name}
+                </Text>
+              )}
             </Box>
             <Box style={{ flex: 1, position: "relative" }}>
               <CodeMirror
@@ -83,11 +144,10 @@ ORDER BY total_spent DESC;`);
         {/* Right Panel - Properties/Tools */}
         <Panel defaultSize={20} minSize={15} maxSize={35}>
           <BenchPanel title="Properties" height="100%">
-            <Text size="sm" c="dimmed" mb="md">
-              Query properties and metadata will appear here.
-            </Text>
+            <TransformDetails transformId={transformId} />
             <Box
               p="sm"
+              mt="md"
               style={{
                 backgroundColor: "var(--mantine-color-gray-1)",
                 borderRadius: "4px",
