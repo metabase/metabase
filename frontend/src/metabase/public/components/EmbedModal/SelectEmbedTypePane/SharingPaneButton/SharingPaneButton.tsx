@@ -16,6 +16,7 @@ type SharingOptionProps = {
   "data-testid"?: string;
   isDisabled?: boolean;
   disabledLink: string;
+  actionHint?: ReactNode;
 };
 
 export const SharingPaneButton = ({
@@ -27,6 +28,7 @@ export const SharingPaneButton = ({
   "data-testid": dataTestId,
   isDisabled,
   disabledLink,
+  actionHint,
 }: SharingOptionProps) => {
   return (
     <Paper
@@ -54,9 +56,11 @@ export const SharingPaneButton = ({
 
         {!isDisabled && (
           <Stack mt="lg" w="100%" align="flex-end">
-            <Text c="brand" fw="bold">
-              {t`Embed`}
-            </Text>
+            {actionHint ?? (
+              <Text c="brand" fw="bold">
+                {t`Embed`}
+              </Text>
+            )}
           </Stack>
         )}
       </Stack>

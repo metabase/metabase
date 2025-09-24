@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type React from "react";
-import { type ComponentProps, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -69,6 +69,11 @@ export function SelectEmbedTypePane({
     utm: utmTags,
   });
 
+  // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
+  const { url: sdkDocsUrl } = useDocsUrl("embedding/sdk/introduction", {
+    utm: utmTags,
+  });
+
   const isPublicSharingEnabled = useSelector((state) =>
     getSetting(state, "enable-public-sharing"),
   );
@@ -130,8 +135,8 @@ export function SelectEmbedTypePane({
           </List>
         </SharingPaneButton>
 
-        {/* Embedded Analytics JS */}
-        <MaybeLinkEmbeddedJs
+        {/* Embedded Analytics JS: render either upsell or embed flow link */}
+        <MaybeLinkEmbedJs
           shouldRenderLink={!isEmbedJsAvailable || isEmbedJsEnabled}
           embedFlowUrl={embedFlowUrl}
         >
@@ -156,20 +161,25 @@ export function SelectEmbedTypePane({
               <UpsellEmbedJsCta embedFlowUrl={embedFlowUrl} />
             )}
           </SharingPaneButton>
-        </MaybeLinkEmbeddedJs>
+        </MaybeLinkEmbedJs>
 
         {/* SDK for React */}
-        <MaybeLink
-          to="/admin/embedding/modular"
-          shouldRenderLink={isEmbeddingSdkEnabled}
-          aria-label={t`SDK for React`}
-        >
+        <ExternalLink href={sdkDocsUrl} className={CS.noDecoration}>
           <SharingPaneButton
             title={t`SDK for React`}
             badge={<UpsellGem />}
             illustration={<SdkIllustration />}
             isDisabled={!isEmbeddingSdkEnabled}
             disabledLink={"/admin/embedding/modular"}
+            actionHint={
+              <Group gap="xs">
+                <Text c="brand" fw="bold">
+                  {t`Go to quick start`}
+                </Text>
+
+                <Icon name="external" c="brand" aria-hidden />
+              </Group>
+            }
           >
             <List>
               {/* eslint-disable-next-line no-literal-metabase-strings -- visible only to admin */}
@@ -178,7 +188,7 @@ export function SelectEmbedTypePane({
               <List.Item>{t`Advanced customization options for styling`}</List.Item>
             </List>
           </SharingPaneButton>
-        </MaybeLink>
+        </ExternalLink>
       </Group>
 
       <Group justify="space-between">
@@ -224,7 +234,7 @@ function LearnMore({ url }: { url: string | undefined }) {
   );
 }
 
-function MaybeLinkEmbeddedJs({
+function MaybeLinkEmbedJs({
   shouldRenderLink,
   embedFlowUrl,
   ...props
@@ -272,18 +282,6 @@ function MaybeLinkEmbeddedJs({
         aria-label={t`Embedded Analytics JS`}
       />
     );
-  }
-
-  return props.children;
-}
-
-interface MaybeLinkProps extends ComponentProps<typeof Link> {
-  shouldRenderLink?: boolean;
-}
-
-function MaybeLink({ shouldRenderLink, ...props }: MaybeLinkProps) {
-  if (shouldRenderLink) {
-    return <Link {...props} />;
   }
 
   return props.children;
