@@ -13,7 +13,7 @@ import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 import type { CollectionId } from "metabase-types/api";
 
-export type SdkIframeEventBusCalledFunctionName = "fetchStaticToken";
+export type SdkIframeEventBusCalledFunctionName = string;
 
 export type SdkIframeEventFunctionCallMessageHandler = (
   handlerData: SdkIframeFunctionCallHandlerData,
