@@ -6,7 +6,6 @@ import { parseTimestampWithTimezone } from "metabase-enterprise/transforms/utils
 import type { TransformRun } from "metabase-types/api";
 import { RunInfo } from "../RunInfo";
 
-
 type RunStatusSectionProps = {
   run: TransformRun | null;
   neverRunMessage: string;

@@ -87,7 +87,6 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
       {runExtra}
     </Stack>
   );
-
 }
 
 type RunButtonSectionProps = {
