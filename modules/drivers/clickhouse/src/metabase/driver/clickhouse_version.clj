@@ -53,7 +53,7 @@
    (is-at-least? major minor (driver-api/database (driver-api/metadata-provider))))
   ([major minor db]
    ;; used from the Driver overrides; we have access to the DB object
-   (let [version  (:dbms-version db)
+   (let [version  ((some-fn :dbms-version :dbms_version) db)
          semantic (:semantic-version version)]
      (driver.u/semantic-version-gte [(:major semantic) (:minor semantic)] [major minor]))))
 
