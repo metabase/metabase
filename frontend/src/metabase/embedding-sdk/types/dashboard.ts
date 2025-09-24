@@ -1,12 +1,9 @@
-type ParameterId = string;
-
-type ParameterValueOrArray =
+export type ParameterValues = Record<
+  string,
   | string
   | number
   | boolean
-  | Array<string | number | boolean | null>;
-
-export type ParameterValues = Record<
-  ParameterId,
-  ParameterValueOrArray | null | undefined
+  | Array<string | number | boolean | null>
+  | null
+  | undefined
 >;
