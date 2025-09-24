@@ -1,6 +1,8 @@
 (ns metabase-enterprise.remote-sync.models.remote-sync-task
   "Model for tracking remote sync tasks and their progress."
   (:require
+   [java-time.api :as t]
+   [metabase-enterprise.remote-sync.settings :as settings]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -17,6 +19,14 @@
 (methodical/defmethod t2/table-name :model/RemoteSyncTask [_model] :remote_sync_task)
 
 (derive :model/RemoteSyncTask :metabase/model)
+
+(declare current-task)
+
+(t2/define-before-insert :model/RemoteSyncTask
+  [task]
+  (when-let [existing (current-task)]
+    (throw (ex-info "A running task exists" {:existing-task existing})))
+  task)
 
 ;;; ------------------------------------------- Helper Functions -------------------------------------------
 
@@ -81,23 +91,44 @@
               {:ended_at (mi/now)
                :error_message error-msg}))
 
-(mu/defn current-task-by-type :- [:sequential [:map]]
-  "Get the current active sync tasks by type.
-
-  Arguments:
-    - sync-task-type: Type of sync task to filter by
+(defn current-task
+  "Get the current active sync task
 
   Returns:
-    Collection of sync task records of the specified type."
-  [sync-task-type :- ::remote-sync-task-type]
-  (t2/select :model/RemoteSyncTask
-             {:where [:and
-                      [:= :sync_task_type sync-task-type]
-                      [:<> :started_at nil]
-                      [:= :ended_at nil]]
-              :limit 1
-              :order-by [[:started_at :desc]
-                         [:id :desc]]}))
+    A sync task record"
+  []
+  (t2/select-one :model/RemoteSyncTask
+                 {:where [:and
+                          [:<> :started_at nil]
+                          [:= :ended_at nil]
+                          [:<
+                           (t/minus (t/instant) (t/millis (settings/remote-sync-task-time-limit-ms)))
+                           :last_progress_report_at]]
+                  :limit 1
+                  :order-by [[:started_at :desc]
+                             [:id :desc]]}))
+
+(defn most-recent-task
+  "Gets the most recently run task, including the currently running task if there is one"
+  []
+  (t2/select-one :model/RemoteSyncTask
+                 {:where [:and
+                          [:<> :started_at nil]]
+                  :limit 1
+                  :order-by [[:started_at :desc]
+                             [:id :desc]]}))
+
+(defn successful?
+  "Returns truthy iff this is a successfully completed task"
+  [task]
+  (and (nil? (:error_message task))
+       (some? (:ended_at task))))
+
+(defn failed?
+  "Returns truthy iff this is a failed, completed task"
+  [task]
+  (and (some? (:error_message task))
+       (some? (:ended_at task))))
 
 ;;; ------------------------------------------- Hydration -------------------------------------------
 
