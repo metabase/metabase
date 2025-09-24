@@ -83,43 +83,45 @@ export function PeopleListingApp({ children }: { children: React.ReactNode }) {
               </Tabs>
             )}
 
-            <Box mb="xl">
-              <Flex wrap="wrap" gap="md" justify="space-between">
-                <Flex align="center">
-                  <Input
-                    miw="14rem"
-                    mr="xl"
-                    fz="sm"
-                    type="text"
-                    placeholder={t`Find someone`}
-                    value={searchInputValue}
-                    onChange={handleSearchChange}
-                    leftSection={
-                      <Icon c="text-secondary" name="search" size={16} />
-                    }
-                    rightSectionPointerEvents="all"
-                    rightSection={
-                      searchInputValue === "" ? (
-                        <div /> // rendering null causes width change
-                      ) : (
-                        <Input.ClearButton
-                          c={"text-secondary"}
-                          onClick={() => updateSearchInputValue("")}
-                        />
-                      )
-                    }
-                  />
-                </Flex>
+            <Flex
+              align="center"
+              gap="xl"
+              justify="space-between"
+              mb="xl"
+              wrap="wrap"
+            >
+              <Input
+                miw="14rem"
+                fz="sm"
+                flex="1"
+                type="text"
+                placeholder={t`Find someone`}
+                value={searchInputValue}
+                onChange={handleSearchChange}
+                leftSection={
+                  <Icon c="text-secondary" name="search" size={16} />
+                }
+                rightSectionPointerEvents="all"
+                rightSection={
+                  searchInputValue === "" ? (
+                    <div /> // rendering null causes width change
+                  ) : (
+                    <Input.ClearButton
+                      c={"text-secondary"}
+                      onClick={() => updateSearchInputValue("")}
+                    />
+                  )
+                }
+              />
 
-                {buttonText && (
-                  <Box>
-                    <Link to={Urls.newUser()}>
-                      <Button variant="filled">{buttonText}</Button>
-                    </Link>
-                  </Box>
-                )}
-              </Flex>
-            </Box>
+              {buttonText && (
+                <Box>
+                  <Link to={Urls.newUser()}>
+                    <Button variant="filled">{buttonText}</Button>
+                  </Link>
+                </Box>
+              )}
+            </Flex>
 
             {currentUser && (
               <PeopleList
