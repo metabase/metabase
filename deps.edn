@@ -284,6 +284,8 @@
                  "-Duser.country=US"
                  ;; Allow clojure goes fast tooling to work
                  "-Djdk.attach.allowAttachSelf"
+                 ;; have core.async report usages of blocking operations in go blocks
+                 "-Dclojure.core.async.go-checking=true"
                  ;; This will suppress the warning about dynamically loaded agents (like clj-memory-meter)
                  "-XX:+EnableDynamicAgentLoading"
                  ;; set the logging properties set in `metabase.core.bootstrap`. calling (dev) will load it but
