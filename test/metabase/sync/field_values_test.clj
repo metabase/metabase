@@ -97,7 +97,7 @@
                       {:last_used_at (t/minus (t/offset-date-time) (t/days 20))
                        :values       [1 2 3]})
           (t2/insert! :model/FieldValues {:field_id     (mt/id :venues :price)
-                                          :type         :advanced
+                                          :type         :sandbox
                                           :hash_key     "random-key"
                                           :last_used_at (t/instant)})
 
