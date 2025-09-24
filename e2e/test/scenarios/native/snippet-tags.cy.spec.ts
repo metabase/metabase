@@ -344,25 +344,24 @@ describe("scenarios > native > snippet tags", () => {
     H.createSnippet({
       name: "category filter",
       content: "category = {{category}}",
-    }).then(() => {
-      H.startNewNativeQuestion();
-
-      cy.log("type a query with snippet tags containing trailing spaces");
-      H.NativeEditor.type(
-        "select id from products where {{snippet: category filter }}",
-      );
-
-      cy.log("verify both snippet references are recognized");
-      getEditorTopBar().within(() => {
-        cy.findByPlaceholderText("Category").should("be.visible");
-        cy.get('[placeholder="Category"]').should("have.length", 1);
-      });
-
-      cy.log("verify the query can be run with the parameter");
-      getEditorTopBar().findByPlaceholderText("Category").type("Widget");
-      H.runNativeQuery();
-      H.assertQueryBuilderRowCount(54);
     });
+
+    H.startNewNativeQuestion();
+
+    cy.log("type a query with snippet tags containing trailing spaces");
+    H.NativeEditor.type(
+      "select id from products where {{snippet: category filter }}",
+    );
+
+    cy.log("verify snippet reference is recognized");
+    getEditorTopBar().within(() => {
+      cy.findByPlaceholderText("Category").should("be.visible");
+    });
+
+    cy.log("verify the query can be run with the parameter");
+    getEditorTopBar().findByPlaceholderText("Category").type("Widget");
+    H.runNativeQuery();
+    H.assertQueryBuilderRowCount(54);
   });
 });
 
