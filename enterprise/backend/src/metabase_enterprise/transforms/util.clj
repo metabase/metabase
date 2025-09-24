@@ -176,8 +176,10 @@
 (defn required-database-feature
   "Returns the database feature necessary to execute `transform`."
   [transform]
-  (case (-> transform :target :type)
-    "table"             :transforms/table))
+  (if (python-transform? transform)
+    :transforms/python
+    (case (-> transform :target :type)
+      "table"             :transforms/table)))
 
 (defn ->instant
   "Convert a temporal value `t` to an Instant in the system timezone."
