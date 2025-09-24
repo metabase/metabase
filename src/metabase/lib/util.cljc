@@ -761,9 +761,15 @@
                                      [:table {:optional true} [:set ::lib.schema.id/table]]]
   "Returns all the table and card IDs that this list of **legacy, MBQL 4 queries** depend on."
   [legacy-queries]
-  (let [source-ids (into #{}
-                         ;; existing usage -- do not use in new code
-                         #_{:clj-kondo/ignore [:deprecated-var]}
-                         (mapcat #(collect-source-tables (:query %)))
-                         legacy-queries)]
+  (let [metric-ids (-> (lib.util.match/match legacy-queries
+                         [:metric (id :guard pos-int?) & _]
+                         id)
+                       set)
+        source-ids (-> #{}
+                       (into (map #(str "card__" %)) metric-ids)
+                       (into
+                        ;; existing usage -- do not use in new code
+                        #_{:clj-kondo/ignore [:deprecated-var]}
+                        (mapcat #(collect-source-tables (:query %)))
+                        legacy-queries))]
     (split-tables-and-legacy-card-refs source-ids)))
