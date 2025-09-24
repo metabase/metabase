@@ -4,7 +4,7 @@ import type { JobListParams } from "metabase-enterprise/transforms/types";
 
 import {
   parseInteger,
-  parseListFromUrl,
+  parseList,
   parseRunStatus,
   parseString,
 } from "../../utils";
@@ -19,9 +19,9 @@ export function getParsedParams(location: Location): JobListParams {
 
   return {
     lastRunStartTime: parseString(lastRunStartTime),
-    lastRunStatuses: parseListFromUrl(lastRunStatuses, parseRunStatus),
+    lastRunStatuses: parseList(lastRunStatuses, parseRunStatus),
     nextRunStartTime: parseString(nextRunStartTime),
-    transformTagIds: parseListFromUrl(transformTagIds, parseInteger),
+    transformTagIds: parseList(transformTagIds, parseInteger),
   };
 }
 

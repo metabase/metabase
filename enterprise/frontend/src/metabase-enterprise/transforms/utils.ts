@@ -64,7 +64,7 @@ export function doesDatabaseSupportTransforms(database?: Database): boolean {
   );
 }
 
-export function parseListFromUrl<T>(
+export function parseList<T>(
   value: unknown,
   parseItem: (value: unknown) => T | undefined,
 ): T[] | undefined {

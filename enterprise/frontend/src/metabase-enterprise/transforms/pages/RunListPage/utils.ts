@@ -4,7 +4,7 @@ import type { RunListParams } from "metabase-enterprise/transforms/types";
 
 import {
   parseInteger,
-  parseListFromUrl,
+  parseList,
   parseRunMethod,
   parseRunStatus,
   parseString,
@@ -22,12 +22,12 @@ export function getParsedParams(location: Location): RunListParams {
   } = location.query;
   return {
     page: parseInteger(page),
-    statuses: parseListFromUrl(statuses, parseRunStatus),
-    transformIds: parseListFromUrl(transformIds, parseInteger),
-    transformTagIds: parseListFromUrl(transformTagIds, parseInteger),
+    statuses: parseList(statuses, parseRunStatus),
+    transformIds: parseList(transformIds, parseInteger),
+    transformTagIds: parseList(transformTagIds, parseInteger),
     startTime: parseString(startTime),
     endTime: parseString(endTime),
-    runMethods: parseListFromUrl(runMethods, parseRunMethod),
+    runMethods: parseList(runMethods, parseRunMethod),
   };
 }
 
