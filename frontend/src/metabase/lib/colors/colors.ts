@@ -190,97 +190,324 @@ const baseColors = {
 };
 
 export const getColors = (isDarkMode: boolean) => {
-  return {
-    ...colors,
-    brand: isDarkMode ? baseColors.lobster[70] : colors.brand,
-  };
+  return isDarkMode ? darkColors : colors;
+};
+
+const colorConfig = {
+  "accent-gray-dark": {
+    light: baseColors.orion[20],
+    dark: baseColors.orion[20],
+  },
+  "accent-gray-light": {
+    light: baseColors.orion[5],
+    dark: baseColors.orion[5],
+  },
+  "accent-gray": { light: baseColors.orion[10], dark: baseColors.orion[10] },
+  "admin-navbar": {
+    light: baseColors.octopus[60],
+    dark: baseColors.octopus[60],
+  },
+  "background-brand": {
+    light: baseColors.brand[40],
+    dark: baseColors.brand[40],
+  },
+  "background-disabled": {
+    light: baseColors.orion[10],
+    dark: baseColors.orion[10],
+  },
+  "background-error-secondary": {
+    light: baseColors.lobster[5],
+    dark: baseColors.lobster[5],
+  },
+  "background-hover": {
+    light: baseColors.brand[10],
+    dark: baseColors.brand[10],
+  },
+  "background-info": { light: baseColors.orion[5], dark: baseColors.orion[5] },
+  "background-inverse": {
+    light: baseColors.orion[80],
+    dark: baseColors.orion[80],
+  },
+  "background-light": { light: baseColors.orion[5], dark: baseColors.orion[5] },
+  "background-selected": {
+    light: baseColors.brand[40],
+    dark: baseColors.brand[40],
+  },
+  background: { light: baseColors.white, dark: baseColors.white },
+  "bg-black-alpha-60": {
+    light: `color-mix(in srgb, ${baseColors.orion[80]} 60%, transparent)`,
+    dark: `color-mix(in srgb, ${baseColors.orion[80]} 60%, transparent)`,
+  },
+  "bg-black": { light: baseColors.orion[80], dark: baseColors.orion[80] },
+  "bg-dark": { light: baseColors.orion[40], dark: baseColors.orion[40] },
+  "bg-darker": { light: baseColors.orion[70], dark: baseColors.orion[70] },
+  "bg-error": { light: baseColors.lobster[10], dark: baseColors.lobster[10] },
+  "bg-light": { light: baseColors.orion[5], dark: baseColors.orion[5] },
+  "bg-medium": { light: baseColors.orion[10], dark: baseColors.orion[10] },
+  "bg-night": { light: baseColors.orion[70], dark: baseColors.orion[70] },
+  "bg-white-alpha-15": {
+    light: `color-mix(in srgb, ${baseColors.white} 15%, transparent)`,
+    dark: `color-mix(in srgb, ${baseColors.white} 15%, transparent)`,
+  },
+  "bg-white": {
+    light: baseColors.white,
+    dark: baseColors.white,
+  },
+  "bg-yellow": {
+    light: baseColors.dubloon[5],
+    dark: baseColors.dubloon[5],
+  },
+  "border-alpha-30": {
+    light: "color-mix(in srgb, #eeecec 30%, transparent)",
+    dark: "color-mix(in srgb, #eeecec 30%, transparent)",
+  },
+  "border-dark": {
+    light: baseColors.orion[60],
+    dark: baseColors.orion[60],
+  },
+  border: {
+    light: baseColors.orion[20],
+    dark: baseColors.orion[20],
+  },
+  "brand-alpha-04": {
+    light: `color-mix(in srgb, ${baseColors.blue[40]} 4%, transparent)`,
+    dark: `color-mix(in srgb, ${baseColors.blue[40]} 4%, transparent)`,
+  },
+  "brand-alpha-88": {
+    light: `color-mix(in srgb, ${baseColors.blue[40]} 88%, transparent)`,
+    dark: `color-mix(in srgb, ${baseColors.blue[40]} 88%, transparent)`,
+  },
+  "brand-dark": {
+    light: baseColors.brand[60],
+    dark: baseColors.brand[60],
+  },
+  "brand-darker": {
+    light: baseColors.brand[70],
+    dark: baseColors.brand[70],
+  },
+  "brand-light": {
+    light: `color-mix(in srgb, ${baseColors.blue[40]}, #fff 80%)`,
+    dark: `color-mix(in srgb, ${baseColors.blue[40]}, #fff 80%)`,
+  },
+  "brand-lighter": {
+    light: `color-mix(in srgb, ${baseColors.blue[40]}, #fff 90%)`,
+    dark: `color-mix(in srgb, ${baseColors.blue[40]}, #fff 90%)`,
+  },
+  brand: {
+    light: baseBrand,
+    dark: baseColors.lobster[70],
+  },
+  danger: {
+    light: baseColors.lobster[50],
+    dark: baseColors.lobster[50],
+  },
+  error: {
+    light: baseColors.lobster[50],
+    dark: baseColors.lobster[50],
+  },
+  filter: {
+    light: baseColors.octopus[50],
+    dark: baseColors.octopus[50],
+  },
+  focus: {
+    light: baseColors.blue[20],
+    dark: baseColors.blue[20],
+  },
+  "icon-primary-disabled": {
+    light: baseColors.orion[30],
+    dark: baseColors.orion[30],
+  },
+  "icon-primary": {
+    light: baseColors.brand[40],
+    dark: baseColors.brand[40],
+  },
+  "icon-secondary-disabled": {
+    light: baseColors.orion[10],
+    dark: baseColors.orion[10],
+  },
+  "icon-secondary": {
+    light: baseColors.brand[20],
+    dark: baseColors.brand[20],
+  },
+  "metabase-brand": {
+    light: baseColors.blue[40], // not for whitelabeling
+    dark: baseColors.blue[40], // not for whitelabeling
+  },
+  "saturated-blue": {
+    light: "hsla(208, 66%, 50%, 1.00)",
+    dark: "hsla(208, 66%, 50%, 1.00)",
+  },
+  "saturated-green": {
+    light: "hsla(90, 48%, 44%, 1.00)",
+    dark: "hsla(90, 48%, 44%, 1.00)",
+  },
+  "saturated-purple": {
+    light: "hsla(272, 36%, 52%, 1.00)",
+    dark: "hsla(272, 36%, 52%, 1.00)",
+  },
+  "saturated-red": {
+    light: "hsla(0, 78%, 68%, 1.00)",
+    dark: "hsla(0, 78%, 68%, 1.00)",
+  },
+  "saturated-yellow": {
+    light: "hsla(46, 94%, 63%, 1.00)",
+    dark: "hsla(46, 94%, 63%, 1.00)",
+  },
+  "shadow-embedding-hub-card": {
+    light: "hsla(208, 55%, 77%, 0.70)",
+    dark: "hsla(208, 55%, 77%, 0.70)",
+  },
+  shadow: {
+    light: "hsla(0, 0%, 0%, 0.13)",
+    dark: "hsla(0, 0%, 0%, 0.13)",
+  },
+  "success-darker": {
+    light: baseColors.palm[60],
+    dark: baseColors.palm[60],
+  },
+  success: {
+    light: baseColors.palm[50],
+    dark: baseColors.palm[50],
+  },
+  summarize: {
+    light: baseColors.palm[40],
+    dark: baseColors.palm[40],
+  },
+  "switch-off": {
+    light: baseColors.orion[10],
+    dark: baseColors.orion[10],
+  },
+  "syntax-parameters-active": {
+    light: baseColors.mango[10],
+    dark: baseColors.mango[10],
+  },
+  "syntax-parameters": {
+    light: baseColors.mango[40],
+    dark: baseColors.mango[40],
+  },
+  "text-brand": {
+    light: baseColors.brand[40],
+    dark: baseColors.brand[40],
+  },
+  "text-dark": {
+    light: baseColors.orion[80],
+    dark: baseColors.orion[80],
+  },
+  "text-disabled": {
+    light: baseColors.orion[50],
+    dark: baseColors.orion[50],
+  },
+  "text-hover": {
+    light: baseColors.brand[40],
+    dark: baseColors.brand[40],
+  },
+  "text-light": {
+    light: baseColors.orion[40],
+    dark: baseColors.orion[40],
+  },
+  "text-medium": {
+    light: baseColors.orion[60],
+    dark: baseColors.orion[60],
+  },
+  "text-primary": {
+    light: baseColors.orion[80],
+    dark: baseColors.orion[80],
+  },
+  "text-secondary-inverse": {
+    light: baseColors.orion[30],
+    dark: baseColors.orion[30],
+  },
+  "text-secondary": {
+    light: baseColors.orion[60],
+    dark: baseColors.orion[60],
+  },
+  "text-selected": {
+    light: baseColors.white,
+    dark: baseColors.white,
+  },
+  "text-tertiary": {
+    light: baseColors.orion[40],
+    dark: baseColors.orion[40],
+  },
+  "text-white-alpha-85": {
+    light: `color-mix(in srgb, ${baseColors.white} 85%, transparent)`,
+    dark: `color-mix(in srgb, ${baseColors.white} 85%, transparent)`,
+  },
+  "text-white": {
+    light: baseColors.white,
+    dark: baseColors.white,
+  },
+  "tooltip-background-focused": {
+    light: `color-mix(in srgb, ${baseColors.orion[80]} 50%, #000)`,
+    dark: `color-mix(in srgb, ${baseColors.orion[80]} 50%, #000)`,
+  },
+  "tooltip-background": {
+    light: baseColors.orion[80], // references mb-color-background-inverse
+    dark: baseColors.orion[80], // references mb-color-background-inverse
+  },
+  "tooltip-text-secondary": {
+    light: baseColors.orion[40], // references mb-color-text-light
+    dark: baseColors.orion[40], // references mb-color-text-light
+  },
+  "tooltip-text": {
+    light: baseColors.white,
+    dark: baseColors.white,
+  },
+  warning: {
+    light: baseColors.dubloon[30],
+    dark: baseColors.dubloon[30],
+  },
+
+  white: {
+    light: baseColors.white,
+    dark: baseColors.white,
+  },
+  // Legacy colors (keeping existing ones for backward compatibility)
+  accent0: {
+    light: "#509EE3",
+    dark: "#509EE3",
+  },
+  accent1: {
+    light: "#88BF4D",
+    dark: "#88BF4D",
+  },
+  accent2: {
+    light: "#A989C5",
+    dark: "#A989C5",
+  },
+  accent3: {
+    light: "#EF8C8C",
+    dark: "#EF8C8C",
+  },
+  accent4: {
+    light: "#F9D45C",
+    dark: "#F9D45C",
+  },
+  accent5: {
+    light: "#F2A86F",
+    dark: "#F2A86F",
+  },
+  accent6: {
+    light: "#98D9D9",
+    dark: "#98D9D9",
+  },
+  accent7: {
+    light: "#7172AD",
+    dark: "#7172AD",
+  },
+  // ...whitelabelColors, // TODO: Figure out where/how to define this
 };
 
 export const colors = {
-  "accent-gray-dark": baseColors.orion[20],
-  "accent-gray-light": baseColors.orion[5],
-  "accent-gray": baseColors.orion[10],
-  "admin-navbar": baseColors.octopus[60],
-  "background-brand": baseColors.brand[40],
-  "background-disabled": baseColors.orion[10],
-  "background-error-secondary": baseColors.lobster[5],
-  "background-hover": baseColors.brand[10],
-  "background-info": baseColors.orion[5],
-  "background-inverse": baseColors.orion[80],
-  "background-light": baseColors.orion[5],
-  "background-selected": baseColors.brand[40],
-  background: baseColors.white,
-  "bg-black-alpha-60": `color-mix(in srgb, ${baseColors.orion[80]} 60%, transparent)`,
-  "bg-black": baseColors.orion[80],
-  "bg-dark": baseColors.orion[40],
-  "bg-darker": baseColors.orion[70],
-  "bg-error": baseColors.lobster[10],
-  "bg-light": baseColors.orion[5],
-  "bg-medium": baseColors.orion[10],
-  "bg-night": baseColors.orion[70],
-  "bg-white-alpha-15": `color-mix(in srgb, ${baseColors.white} 15%, transparent)`,
-  "bg-white": baseColors.white,
-  "bg-yellow": baseColors.dubloon[5],
-  "border-alpha-30": "color-mix(in srgb, #eeecec 30%, transparent)",
-  "border-dark": baseColors.orion[60],
-  border: baseColors.orion[20],
-  "brand-alpha-04": `color-mix(in srgb, ${baseColors.blue[40]} 4%, transparent)`,
-  "brand-alpha-88": `color-mix(in srgb, ${baseColors.blue[40]} 88%, transparent)`,
-  "brand-dark": baseColors.brand[60],
-  "brand-darker": baseColors.brand[70],
-  "brand-light": `color-mix(in srgb, ${baseColors.blue[40]}, #fff 80%)`,
-  "brand-lighter": `color-mix(in srgb, ${baseColors.blue[40]}, #fff 90%)`,
-  brand: baseBrand,
-  danger: baseColors.lobster[50],
-  error: baseColors.lobster[50],
-  filter: baseColors.octopus[50],
-  focus: baseColors.blue[20],
-  "icon-primary-disabled": baseColors.orion[30],
-  "icon-primary": baseColors.brand[40],
-  "icon-secondary-disabled": baseColors.orion[10],
-  "icon-secondary": baseColors.brand[20],
-  "metabase-brand": baseColors.blue[40], // not for whitelabeling
-  "saturated-blue": "hsla(208, 66%, 50%, 1.00)",
-  "saturated-green": "hsla(90, 48%, 44%, 1.00)",
-  "saturated-purple": "hsla(272, 36%, 52%, 1.00)",
-  "saturated-red": "hsla(0, 78%, 68%, 1.00)",
-  "saturated-yellow": "hsla(46, 94%, 63%, 1.00)",
-  "shadow-embedding-hub-card": "hsla(208, 55%, 77%, 0.70)",
-  shadow: "hsla(0, 0%, 0%, 0.13)",
-  "success-darker": baseColors.palm[60],
-  success: baseColors.palm[50],
-  summarize: baseColors.palm[40],
-  "switch-off": baseColors.orion[10],
-  "syntax-parameters-active": baseColors.mango[10],
-  "syntax-parameters": baseColors.mango[40],
-  "text-brand": baseColors.brand[40],
-  "text-dark": baseColors.orion[80],
-  "text-disabled": baseColors.orion[50],
-  "text-hover": baseColors.brand[40],
-  "text-light": baseColors.orion[40],
-  "text-medium": baseColors.orion[60],
-  "text-primary": baseColors.orion[80],
-  "text-secondary-inverse": baseColors.orion[30],
-  "text-secondary": baseColors.orion[60],
-  "text-selected": baseColors.white,
-  "text-tertiary": baseColors.orion[40],
-  "text-white-alpha-85": `color-mix(in srgb, ${baseColors.white} 85%, transparent)`,
-  "text-white": baseColors.white,
-  "tooltip-background-focused": `color-mix(in srgb, ${baseColors.orion[80]} 50%, #000)`,
-  "tooltip-background": baseColors.orion[80], // references mb-color-background-inverse
-  "tooltip-text-secondary": baseColors.orion[40], // references mb-color-text-light
-  "tooltip-text": baseColors.white,
-  warning: baseColors.dubloon[30],
+  ...Object.fromEntries(
+    Object.entries(colorConfig).map(([k, v]) => [k, v.light]),
+  ),
+  ...whitelabelColors, // TODO: Figure out where/how to define this
+};
 
-  white: baseColors.white,
-  // Legacy colors (keeping existing ones for backward compatibility)
-  accent0: "#509EE3",
-  accent1: "#88BF4D",
-  accent2: "#A989C5",
-  accent3: "#EF8C8C",
-  accent4: "#F9D45C",
-  accent5: "#F2A86F",
-  accent6: "#98D9D9",
-  accent7: "#7172AD",
-  ...whitelabelColors,
+const darkColors = {
+  ...Object.fromEntries(
+    Object.entries(colorConfig).map(([k, v]) => [k, v.dark]),
+  ),
+  ...whitelabelColors, // TODO: Figure out where/how to define this
 };
