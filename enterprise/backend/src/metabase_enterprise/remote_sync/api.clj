@@ -43,11 +43,11 @@
 
 (defn- async-import!
   [branch]
-  (run-async! "import" (fn [task-id] (impl/import! (source/source-from-settings) task-id branch))))
+  (run-async! "import" (fn [task-id] (impl/import! (source/source-from-settings branch) task-id branch))))
 
 (defn- async-export!
   [branch message collection]
-  (run-async! "export" (fn [task-id] (impl/export! (source/source-from-settings)
+  (run-async! "export" (fn [task-id] (impl/export! (source/source-from-settings branch)
                                                    task-id
                                                    branch
                                                    message
