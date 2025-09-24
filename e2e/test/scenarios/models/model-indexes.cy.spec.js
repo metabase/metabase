@@ -139,7 +139,7 @@ describe("scenarios > model indexes", () => {
       cy.findByRole("heading", { name: "Small Marble Shoes" }).should(
         "be.visible",
       );
-      cy.findAllByText("Small Marble Shoes").should("have.length", 1);
+      cy.findAllByText("Small Marble Shoes").should("have.length", 2);
       cy.findByText("Doohickey").should("be.visible");
     });
   });
@@ -176,7 +176,7 @@ describe("scenarios > model indexes", () => {
     cy.findByTestId("object-detail").within(() => {
       cy.findByText(/We're a little lost/i).should("not.exist");
       cy.findByRole("heading", { name: "Anais Zieme" }).should("be.visible");
-      cy.findAllByText("Anais Zieme").should("have.length", 1);
+      cy.findAllByText("Anais Zieme").should("have.length", 2);
     });
   });
 
@@ -196,7 +196,7 @@ describe("scenarios > model indexes", () => {
       cy.findByRole("heading", { name: "Small Marble Shoes" }).should(
         "be.visible",
       );
-      cy.findAllByText("Small Marble Shoes").should("have.length", 1);
+      cy.findAllByText("Small Marble Shoes").should("have.length", 2);
       cy.findByText("Doohickey").should("be.visible");
     });
 

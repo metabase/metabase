@@ -429,28 +429,30 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     H.openObjectDetail(0);
 
     cy.findByTestId("object-detail").within(() => {
-      cy.findByText("Link to review 1")
-        .should("be.visible")
-        .should("have.attr", "href")
+      cy.findAllByText("Link to review 1")
+        .should("have.length", 2)
+        .and("be.visible")
+        .and("have.attr", "href")
         .and("eq", "https://metabase.test?review=1");
 
       cy.findByText("Rating: 5")
         .should("be.visible")
-        .should("have.attr", "href")
+        .and("have.attr", "href")
         .and("eq", "https://metabase.test?rating=5");
     });
 
     cy.findByLabelText("Next row").click();
 
     cy.findByTestId("object-detail").within(() => {
-      cy.findByText("Link to review 2")
-        .should("be.visible")
-        .should("have.attr", "href")
+      cy.findAllByText("Link to review 2")
+        .should("have.length", 2)
+        .and("be.visible")
+        .and("have.attr", "href")
         .and("eq", "https://metabase.test?review=2");
 
       cy.findByText("Rating: 4")
         .should("be.visible")
-        .should("have.attr", "href")
+        .and("have.attr", "href")
         .and("eq", "https://metabase.test?rating=4");
     });
   });
