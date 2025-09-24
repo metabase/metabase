@@ -26,9 +26,13 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
     const toggles = screen.getAllByRole("switch");
     expect(toggles).toHaveLength(2);
 
-    expect(screen.getByText("SDK for React")).toBeInTheDocument();
+    expect(
+      screen.getByRole("switch", { name: "SDK for React toggle" }),
+    ).toBeInTheDocument();
 
-    expect(screen.getByText("Embedded Analytics JS")).toBeInTheDocument();
+    expect(
+      screen.getByRole("switch", { name: "Embedded Analytics JS toggle" }),
+    ).toBeInTheDocument();
   });
 
   it("should show legalese modal when Simple Embedding toggle is enabled", async () => {
@@ -100,6 +104,10 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
       .getAllByTestId("sdk-setting-card")
       .find((card) => card.textContent?.includes("Embedded Analytics JS"));
 
+    // Upsell should be shown
+    expect(card).toHaveTextContent("Try for free");
+
+    // Call-to-action and link should not be shown
     expect(card).not.toHaveTextContent("New embed");
     expect(card).not.toHaveTextContent("Documentation");
   });
