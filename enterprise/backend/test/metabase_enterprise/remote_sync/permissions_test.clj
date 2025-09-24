@@ -1,7 +1,7 @@
 (ns metabase-enterprise.remote-sync.permissions-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.remote-sync.settings :as library.settings]
+   [metabase-enterprise.remote-sync.settings :as settings]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -17,7 +17,7 @@
 (deftest remote-synced-permissions-with-remote-sync-type-import-test
   (testing "can_write should be false for remote-synced collection items when remote-sync-type is import"
     (mt/with-current-user (mt/user->id :rasta)
-      (mt/with-temporary-setting-values [library.settings/remote-sync-type "import"]
+      (mt/with-temporary-setting-values [settings/remote-sync-type "import"]
         (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
                                                                 :type "remote-synced"}]
 
@@ -44,7 +44,7 @@
 (deftest remote-synced-permissions-with-remote-sync-type-export-test
   (testing "can_write should be true for remote-synced collection items when remote-sync-type is export"
     (mt/with-current-user (mt/user->id :rasta)
-      (mt/with-temporary-setting-values [library.settings/remote-sync-type "export"]
+      (mt/with-temporary-setting-values [settings/remote-sync-type "export"]
         (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
                                                                 :type "remote-synced"}]
 
@@ -76,7 +76,7 @@
 
         (doseq [remote-sync-setting ["import" "export"]]
           (testing (str "When remote-sync-type is " remote-sync-setting)
-            (mt/with-temporary-setting-values [library.settings/remote-sync-type remote-sync-setting]
+            (mt/with-temporary-setting-values [settings/remote-sync-type remote-sync-setting]
 
               (testing "Cards in regular collections have can_write=true"
                 (mt/with-temp [:model/Card {card-id :id} {:name "Regular Card"
@@ -108,7 +108,7 @@
                                                                :type "remote-synced"}]
 
         (testing "When remote-sync-type is import"
-          (mt/with-temporary-setting-values [library.settings/remote-sync-type "import"]
+          (mt/with-temporary-setting-values [settings/remote-sync-type "import"]
 
             (testing "Cards in nested remote-synced collections have can_write=false"
               (mt/with-temp [:model/Card {card-id :id} {:name "Nested Library Card"
@@ -131,7 +131,7 @@
                     "Document in nested remote-synced collection should not be writable when remote-sync-type is import")))))
 
         (testing "When remote-sync-type is export"
-          (mt/with-temporary-setting-values [library.settings/remote-sync-type true]
+          (mt/with-temporary-setting-values [settings/remote-sync-type "export"]
 
             (testing "Cards in nested remote-synced collections have can_write=true"
               (mt/with-temp [:model/Card {card-id :id} {:name "Nested Library Card"
@@ -162,7 +162,7 @@
                                                               :type nil}]
 
         (testing "When remote-sync-type is import"
-          (mt/with-temporary-setting-values [library.settings/remote-sync-type "import"]
+          (mt/with-temporary-setting-values [settings/remote-sync-type "import"]
 
             (testing "Library items have can_write=false while regular items have can_write=true"
               (mt/with-temp [:model/Card {library-card-id :id} {:name "Library Card"
@@ -206,7 +206,7 @@
                                                               :type nil}]
 
         (testing "When remote-sync-type is import"
-          (mt/with-temporary-setting-values [library.settings/remote-sync-type "import"]
+          (mt/with-temporary-setting-values [settings/remote-sync-type "import"]
 
             (testing "Library items have can_write=false while regular items have can_write=true"
               (mt/with-temp [:model/Card {library-card-id :id} {:name "Library Card"
@@ -245,7 +245,7 @@
   (testing "can_write for remote-synced collections themselves should respect remote-sync-type"
 
     (testing "When remote-sync-type is import"
-      (mt/with-temporary-setting-values [library.settings/remote-sync-type "import"]
+      (mt/with-temporary-setting-values [settings/remote-sync-type "import"]
         (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
                                                                 :type "remote-synced"}]
           (mt/with-current-user (mt/user->id :rasta))
@@ -253,7 +253,7 @@
               "Library collection itself should not be writable when remote-sync-type is import"))))
 
     (testing "When remote-sync-type is export"
-      (mt/with-temporary-setting-values [library.settings/remote-sync-type "export"]
+      (mt/with-temporary-setting-values [settings/remote-sync-type "export"]
         (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
                                                                 :type "remote-synced"}]
           (mt/with-current-user (mt/user->id :rasta)
@@ -262,7 +262,7 @@
 
     (testing "Regular collections are always writable regardless of remote-sync-type"
       (doseq [remote-sync-setting ["import" "export"]]
-        (mt/with-temporary-setting-values [library.settings/remote-sync-type remote-sync-setting]
+        (mt/with-temporary-setting-values [settings/remote-sync-type remote-sync-setting]
           (mt/with-temp [:model/Collection {regular-coll-id :id} {:name "Regular Collection"
                                                                   :type nil}]
             (mt/with-current-user (mt/user->id :rasta)

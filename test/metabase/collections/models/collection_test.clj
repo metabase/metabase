@@ -2442,7 +2442,8 @@
         (is (= dep-card-id (:id (first dependents)))
             "Should return the dependent card using template tags")))))
 
-(deftest ^:parallel remote-synced-dependents-with-multiple-types-test
+;; Runs into deadlocks on mysql/maria with ^:parallel
+(deftest remote-synced-dependents-with-multiple-types-test
   (testing "when card has multiple types of dependents"
     (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced" :type "remote-synced"}
                    :model/Card {base-card-id :id} {:name "Base Card"
