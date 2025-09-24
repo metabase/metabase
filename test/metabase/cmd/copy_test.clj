@@ -39,6 +39,7 @@
     :model/QueryField
     :model/QueryTable
     :model/SearchIndexMetadata
+    :model/SemanticSearchTokenTracking
     :model/TaskHistory
     ;; TODO we should remove these models from here once serialization is supported
     :model/Transform

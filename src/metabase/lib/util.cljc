@@ -2,8 +2,8 @@
   (:refer-clojure :exclude [format])
   (:require
    #?@(:clj
-       ([potemkin :as p]))
-   #?@(:cljs
+       ([potemkin :as p])
+       :cljs
        (["crc-32" :as CRC32]
         [goog.string :as gstring]
         [goog.string.format :as gstring.format]))
@@ -54,7 +54,8 @@
 
 ;;; TODO (Cam 9/8/25) -- some overlap with [[metabase.lib.dispatch/mbql-clause-type]]
 (defn clause-of-type?
-  "Returns true if this is a clause."
+  "Returns truthy if is a clause of `clause-type`, which can be either a keyword (like `:field`) or a set (like
+  `#{:field :expression}`)."
   [clause clause-type]
   (and (clause? clause)
        (if (set? clause-type)
@@ -395,6 +396,13 @@
   ([query stage-number]
    (native-stage? (query-stage query stage-number))))
 
+(defn mbql-stage?
+  "Is this query stage an MBQL stage?"
+  ([stage]
+   (= (:lib/type stage) :mbql.stage/mbql))
+  ([query stage-number]
+   (mbql-stage? (query-stage query stage-number))))
+
 (mu/defn ensure-mbql-final-stage :- ::lib.schema/query
   "Convert query to a MBQL 5 (pipeline) query, and make sure the final stage is an `:mbql` one."
   [query]
@@ -715,19 +723,25 @@
       (when (#{:mbql/query :query :native :internal} query-type)
         query-type))))
 
-(mu/defn referenced-field-ids :- [:maybe [:set ::lib.schema.id/field]]
-  "Find all the integer field IDs in `coll`, Which can arbitrarily be anything that is part of MLv2 query schema."
-  [coll]
-  (not-empty
-   (into #{}
-         (comp cat (filter some?))
-         (lib.util.match/match coll [:field opts (id :guard int?)] [id (:source-field opts)]))))
+(mu/defn normalized-mbql-version :- [:maybe [:enum :mbql-version/mbql5 :mbql-version/legacy]]
+  "Version of MBQL a `query` map is using, either `:mbql-version/mbql-5` or `:mbql-version/legacy`."
+  [query :- [:maybe :map]]
+  (case (normalized-query-type query)
+    :mbql/query      :mbql-version/mbql5
+    (:query :native) :mbql-version/legacy
+    ;; otherwise, this is not a valid MBQL query.
+    nil))
 
 (defn collect-source-tables
-  "Return sequence of source tables from `query`."
-  [query]
-  (let [from-joins (mapcat collect-source-tables (:joins query))]
-    (if-let [source-query (:source-query query)]
+  "Return sequence of source tables from `query`.
+
+  DEPRECATED: This operates on legacy MBQL, so it's really out of place here in Lib.
+  Use [[metabase.lib.walk.util/all-source-table-ids]] going forward."
+  {:deprecated "0.57.0"}
+  [legacy-query]
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (let [from-joins (mapcat collect-source-tables (:joins legacy-query))]
+    (if-let [source-query (:source-query legacy-query)]
       (concat (collect-source-tables source-query) from-joins)
       (cond->> from-joins
-        (:source-table query) (cons (:source-table query))))))
+        (:source-table legacy-query) (cons (:source-table legacy-query))))))

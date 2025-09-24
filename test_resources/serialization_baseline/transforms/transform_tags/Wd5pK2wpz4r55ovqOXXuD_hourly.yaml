@@ -1,0 +1,9 @@
+built_in_type: hourly
+created_at: '2025-09-18T19:48:23.746358Z'
+entity_id: Wd5pK2wpz4r55ovqOXXuD
+name: hourly
+updated_at: '2025-09-18T19:48:23.746359Z'
+serdes/meta:
+- id: Wd5pK2wpz4r55ovqOXXuD
+  label: hourly
+  model: TransformTag
