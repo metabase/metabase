@@ -30,13 +30,7 @@ export const FlexibleSizeComponent = ({
   style,
   children,
 }: FlexibleSizeProps) => (
-  <Box
-    h={propHeight}
-    w={propWidth}
-    mih={propHeight}
-    miw={propWidth}
-    data-testid="flexible-size-component"
-  >
+  <Box h={propHeight} w={propWidth} mih={propHeight} miw={propWidth}>
     <Box
       h="100%"
       w="100%"
