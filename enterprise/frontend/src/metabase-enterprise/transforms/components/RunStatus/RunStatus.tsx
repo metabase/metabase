@@ -47,14 +47,14 @@ export function RunStatus({
   switch (status) {
     case "started":
       return (
-        <Group gap="sm">
+        <Group gap="sm" data-testid="run-status">
           <Icon c="text-primary" name="sync" />
           <Box>{t`Run in progress…`}</Box>
         </Group>
       );
     case "succeeded":
       return (
-        <Group gap="sm">
+        <Group gap="sm" data-testid="run-status">
           <Icon c="success" name="check_filled" />
           <Box>
             {endTimeText
@@ -66,7 +66,7 @@ export function RunStatus({
       );
     case "failed":
       return (
-        <Group gap={0}>
+        <Group gap={0} data-testid="run-status">
           <Icon c="error" name="warning" mr="sm" />
           <Box mr={errorInfo ? "xs" : "sm"}>
             {endTimeText
@@ -97,7 +97,7 @@ export function RunStatus({
       );
     case "timeout":
       return (
-        <Group gap={0}>
+        <Group gap={0} data-testid="run-status">
           <Icon c="error" name="warning" mr="sm" />
           <Box mr={errorInfo ? "xs" : "sm"}>
             {endTimeText
