@@ -3,12 +3,14 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.events :as lib.events]
+   [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -85,20 +87,21 @@
 
 (defn import!
   "Reloads the Metabase entities from the git repo"
-  [branch & [collections]]
+  [task-id branch & [collections]]
   (log/info "Reloading remote entities from the remote source")
   (let [sync-timestamp (t/instant)]
     (if-let [source (source/source-from-settings)]
       (try
         ;; Load all entities from Git first - this handles creates/updates via entity_id matching
-        (let [load-result (serdes/with-cache
-                            (if (seq collections)
-                              (reduce (fn [accum collection]
-                                        (merge-with conj accum
-                                                    (serialization/load-metabase! (source/ingestable-source source (or branch (settings/remote-sync-branch)))
-                                                                                  :root-dependency-path [{:id collection :model "Collection"}])))
-                                      {} collections)
-                              (serialization/load-metabase! (source/ingestable-source source (or branch (settings/remote-sync-branch))))))
+        (let [load-result (u/prog1 (serdes/with-cache
+                                     (if (seq collections)
+                                       (reduce (fn [accum collection]
+                                                 (merge-with conj accum
+                                                             (serialization/load-metabase! (source/ingestable-source source branch)
+                                                                                           :root-dependency-path [{:id collection :model "Collection"}])))
+                                               {} collections)
+                                       (serialization/load-metabase! (source/ingestable-source source (or branch (settings/remote-sync-branch))))))
+                            (remote-sync.task/update-progress! task-id 0.7))
               ;; Extract entity_ids by model from the :seen paths
               imported-entities (->> (:seen load-result)
                                      (map last) ; Get the last element of each path (the entity itself)
@@ -107,7 +110,9 @@
                                             [model (set (map :id entities))]))
                                      (into {}))]
 
+          (remote-sync.task/update-progress! task-id 0.8)
           (clean-synced! (affected-collections collections) imported-entities)
+          (remote-sync.task/update-progress! task-id 0.9)
           (let [collection-entity-ids (get imported-entities "Collection")
                 root-collections (when (seq collection-entity-ids)
                                    (t2/select :model/Collection :entity_id [:in collection-entity-ids] :location "/"))]
@@ -128,9 +133,9 @@
 
 (defn export!
   "Exports the synced collections to the source repo"
-  ([branch message]
-   (export! branch message nil))
-  ([branch message collections]
+  ([task-id branch message]
+   (export! task-id branch message nil))
+  ([task-id branch message collections]
    (if-let [source (source/source-from-settings)]
      (let [collections (or (seq collections) (t2/select-fn-set :entity_id :model/Collection :type "remote-synced" :location "/"))]
        (try
@@ -143,6 +148,7 @@
                                        :include-database-secrets :false
                                        :continue-on-error        false})
                (source/store! source branch message)))
+         (remote-sync.task/update-progress! task-id 0.8)
          (doseq [collection collections]
            (lib.events/publish-remote-sync! "export" nil api/*current-user-id*
                                             {:target-branch branch
@@ -152,6 +158,7 @@
          {:status :success}
 
          (catch Exception e
+           (remote-sync.task/fail-sync-task! task-id (ex-message e))
            (doseq [collection collections]
              (lib.events/publish-remote-sync! "export" nil api/*current-user-id*
                                               {:target-branch  branch

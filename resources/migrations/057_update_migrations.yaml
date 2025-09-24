@@ -1572,6 +1572,90 @@ databaseChangeLog:
                   value: 'cron/raw'
             where: built_in_type IS NOT NULL
 
+  - changeSet:
+      id: v57.2025-09-24T14:40:00
+      author: edpaget
+      comment: Create remote_sync_task table
+      changes:
+        - createTable:
+            tableName: remote_sync_task
+            remarks: Table to track remote sync tasks and their progress
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: sync_task_type
+                  type: varchar(24)
+                  remarks: Type of the sync task
+                  constraints:
+                    nullable: false
+              - column:
+                  name: progress
+                  type: float
+                  remarks: Progress percentage of the sync task (0.0 to 1.0)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: started_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the sync task started
+                  constraints:
+                    nullable: true
+              - column:
+                  name: ended_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the sync task ended
+                  constraints:
+                    nullable: true
+              - column:
+                  name: last_progress_report_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp of the last progress update
+                  constraints:
+                    nullable: true
+              - column:
+                  name: initiated_by
+                  type: int
+                  remarks: ID of the user who initiated the sync task
+                  constraints:
+                    nullable: true
+              - column:
+                  name: error_message
+                  type: ${text.type}
+                  remarks: error message if this task failed
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-09-24T14:41:00
+      author: edpaget
+      comment: Add index for remote_sync_task.initiated_by
+      changes:
+        - createIndex:
+            tableName: remote_sync_task
+            indexName: idx_remote_sync_task_initiated_by
+            columns:
+              - column:
+                  name: initiated_by
+
+  - changeSet:
+      id: v57.2025-09-24T14:42:00
+      author: edpaget
+      comment: Add foreign key constraint for remote_sync_task.initiated_by
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: remote_sync_task
+            baseColumnNames: initiated_by
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_remote_sync_task_initiated_by
+            onDelete: SET NULL
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
