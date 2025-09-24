@@ -145,16 +145,26 @@ export function DashboardHeaderView({
                     [S.showSubHeader]: showSubHeader,
                   })}
                 >
-                  <Flex className={S.HeaderCaptionContainer} gap="sm">
+                  <Flex className={S.HeaderCaptionContainer} gap={2}>
                     <Dashboard.Title className={S.HeaderCaption} />
-                    <PLUGIN_MODERATION.EntityModerationIcon
-                      dashboard={dashboard}
-                    />
-                    <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
-                      color="brand"
-                      collection={collection}
-                      entity="dashboard"
-                    />
+
+                    <Flex
+                      align="center"
+                      flex="0 0 auto"
+                      gap="sm"
+                      pos="relative"
+                      // intentionally misaligned: https://github.com/metabase/metabase/pull/63871#pullrequestreview-3259596723
+                      top={2}
+                    >
+                      <PLUGIN_MODERATION.EntityModerationIcon
+                        dashboard={dashboard}
+                      />
+                      <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
+                        color="brand"
+                        collection={collection}
+                        entity="dashboard"
+                      />
+                    </Flex>
                   </Flex>
                   <Flex className={S.HeaderBadges}>
                     {isLastEditInfoVisible && (
