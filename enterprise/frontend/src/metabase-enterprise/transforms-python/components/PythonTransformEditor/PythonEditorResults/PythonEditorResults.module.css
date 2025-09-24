@@ -43,7 +43,6 @@
 
 .success {
   color: var(--mb-color-success);
-  background-color: var(--mb-color-bg-success);
   border-bottom: 1px solid var(--mb-color-border);
 }
 
