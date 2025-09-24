@@ -139,7 +139,7 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
       ),
     )
     .with({ type: "collection" }, (view) => (
-      <Box px="xl" pt="lg" style={{ overflowY: "scroll" }}>
+      <Box px="xl" pt="lg" style={{ overflowY: "auto" }}>
         <CollectionBrowser
           collectionId={view.id}
           visibleColumns={settings.collectionVisibleColumns}
@@ -153,7 +153,6 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
 
             setCurrentView({ type, id: item.id });
           }}
-          style={{ overflowY: "scroll" }}
         />
       </Box>
     ))
