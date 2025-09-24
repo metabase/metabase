@@ -11,7 +11,7 @@ const baseBrand = whitelabelColors.brand || "hsla(208, 72%, 60%, 1.00)"; // defa
 
 // Do not export this or you will be fired
 const baseColors = {
-  white: "#fff",
+  white: "hsla(0, 0%, 100%, 1.00)",
 
   // Brand colors (dynamic based on --mb-color-brand)
   brand: {
@@ -192,7 +192,7 @@ const baseColors = {
 export const colors = {
   "accent-gray-dark": baseColors.orion[20],
   "accent-gray-light": baseColors.orion[5],
-  "accent-gray": baseColors.orion[10], // Orion 10 (--mb-base-color-orion-10)
+  "accent-gray": baseColors.orion[10],
   "admin-navbar": baseColors.octopus[60],
   "background-brand": baseColors.brand[40],
   "background-disabled": baseColors.orion[10],
@@ -240,7 +240,7 @@ export const colors = {
   "saturated-yellow": "hsla(46, 94%, 63%, 1.00)",
   "shadow-embedding-hub-card": "hsla(208, 55%, 77%, 0.70)",
   shadow: "hsla(0, 0%, 0%, 0.13)",
-  "success-darker": baseColors.palm[50],
+  "success-darker": baseColors.palm[60],
   success: baseColors.palm[50],
   summarize: baseColors.palm[40],
   "switch-off": baseColors.orion[10],
@@ -259,13 +259,13 @@ export const colors = {
   "text-tertiary": baseColors.orion[40],
   "text-white-alpha-85": `color-mix(in srgb, ${baseColors.white} 85%, transparent)`,
   "text-white": baseColors.white,
-  "tooltip-background-focused": "color-mix(in srgb, #2e353b 50%, #000)",
-  "tooltip-background": "#2e353b", // references mb-color-background-inverse
-  "tooltip-text-secondary": "#949aab", // references mb-color-text-light
+  "tooltip-background-focused": `color-mix(in srgb, ${baseColors.orion[80]} 50%, #000)`,
+  "tooltip-background": baseColors.orion[80], // references mb-color-background-inverse
+  "tooltip-text-secondary": baseColors.orion[40], // references mb-color-text-light
   "tooltip-text": baseColors.white,
   warning: baseColors.dubloon[30],
 
-  white: "#FFFFFF",
+  white: baseColors.white,
   // Legacy colors (keeping existing ones for backward compatibility)
   accent0: "#509EE3",
   accent1: "#88BF4D",
