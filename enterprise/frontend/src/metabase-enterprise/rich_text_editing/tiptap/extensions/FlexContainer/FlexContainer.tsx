@@ -212,6 +212,7 @@ const FlexContainerComponent: React.FC<NodeViewProps> = ({
           }}
           contentEditable={false}
           onMouseDown={(e) => handleMouseDown(i, e)}
+          data-testid="flex-container-drag-handle"
         />,
       );
     }

@@ -721,11 +721,13 @@ H.describeWithSnowplowEE("documents", () => {
 
         H.getDocumentCard(ACCOUNTS_COUNT_BY_CREATED_AT.name).then((el) => {
           const ogHeight = el.height();
-
-          H.documentChangeNodeHeight(
-            H.getDocumentCardResizeContainer(ACCOUNTS_COUNT_BY_CREATED_AT.name),
-            200,
+          const resizeNode = H.getDocumentCardResizeContainer(
+            ACCOUNTS_COUNT_BY_CREATED_AT.name,
           );
+
+          H.documentDoDrag(H.getDragHandleForDocumentResizeNode(resizeNode), {
+            y: 200,
+          });
 
           H.getDocumentCard(ACCOUNTS_COUNT_BY_CREATED_AT.name).then((el) => {
             const newHeight = el.height();

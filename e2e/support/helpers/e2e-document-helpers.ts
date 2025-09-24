@@ -202,11 +202,17 @@ export function documentUndo() {
     });
 }
 
-export function documentChangeNodeHeight(
-  element: Cypress.Chainable<JQuery<HTMLElement>>,
-  diff: number,
+export function getDragHandleForDocumentResizeNode(element: Cypress.Chainable) {
+  return element.findByTestId("resize-node-drag-handle");
+}
+
+export function documentDoDrag(
+  _handle: Cypress.Chainable<JQuery<HTMLElement>>,
+  diff: { x?: number; y?: number },
 ) {
-  element.findByTestId("resize-node-drag-handle").then((handle) => {
+  _handle.then((handle) => {
+    const { x: deltaX = 0, y: deltaY = 0 } = diff;
+
     const rect = handle[0].getBoundingClientRect();
 
     cy.log(`x: ${rect.x}, y: ${rect.y}, diff: ${diff}`);
@@ -220,10 +226,18 @@ export function documentChangeNodeHeight(
     cy.get("body")
       .trigger("mousemove", {
         button: 0,
-        clientX: rect.x,
-        clientY: rect.y + diff,
+        clientX: rect.x + deltaX,
+        clientY: rect.y + deltaY,
         force: true,
       })
       .trigger("mouseup");
   });
+}
+
+export function getFlexContainerForCard(name: string) {
+  return getDocumentCard(name).closest('[data-type="flexContainer"]');
+}
+
+export function getResizeHandlesForFlexContianer(element: Cypress.Chainable) {
+  return element.findAllByTestId("flex-container-drag-handle");
 }

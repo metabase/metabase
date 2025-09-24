@@ -303,6 +303,38 @@ describe("documents card embed drag and drop", () => {
       cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
     });
 
+    it("should allow you to resize the cards inside a flex container", () => {
+      getCardWidths(["Orders", "Orders, Count"], (first, second) => {
+        cy.wrap(first).as("ogWidth1");
+        cy.wrap(second).as("ogWidth2");
+        expect(first).to.be.closeTo(second, 3);
+      });
+
+      H.getDocumentCard("Orders").as("ORDERS_CARD");
+      H.getDocumentCard("Orders, Count").as("ORDERS_COUNT_CARD");
+
+      const flexContainer = H.getFlexContainerForCard("Orders");
+
+      const handles = H.getResizeHandlesForFlexContianer(flexContainer);
+
+      H.documentDoDrag(handles.eq(0), { x: 100 });
+
+      getCardWidths(["Orders", "Orders, Count"], (first, second) => {
+        cy.get("@ogWidth1").then((_first) => {
+          cy.get("@ogWidth2").then((_second) => {
+            cy.log("compare that changes are close to the drag distance");
+            expect((_first as unknown as number) + 100).to.be.closeTo(first, 3);
+            expect((_second as unknown as number) - 100).to.be.closeTo(
+              second,
+              3,
+            );
+
+            expect(first).to.be.closeTo(second + 200, 3);
+          });
+        });
+      });
+    });
+
     it("should add a third card to an existing flexContainer with 2 cards", () => {
       // Wait for all cards to load
       H.getDocumentCard("Orders")
@@ -385,6 +417,40 @@ describe("documents card embed drag and drop", () => {
             "Orders, Count, Grouped by Created At (year)",
           ]);
         });
+
+      cy.log("changing the widths of 2 cards should leave the 3rd alone");
+
+      const cardNames = [
+        "Orders",
+        "Orders, Count",
+        "Orders, Count, Grouped by Created At (year)",
+      ];
+
+      getCardWidths(cardNames, (first, second, third) => {
+        cy.wrap(first).as("_first");
+        cy.wrap(second).as("_second");
+        cy.wrap(third).as("_third");
+        expect(first).to.be.closeTo(second, 10);
+        expect(first).to.be.closeTo(third as unknown as number, 10);
+      });
+
+      const flexContainer = H.getFlexContainerForCard("Orders");
+
+      const handles = H.getResizeHandlesForFlexContianer(flexContainer);
+
+      H.documentDoDrag(handles.eq(1), { x: 50 });
+
+      getCardWidths(cardNames, (first, second, third) => {
+        cy.get("@_first").then((_first) => {
+          cy.get("@_second").then((_second) => {
+            cy.get("@_third").then((_third) => {
+              expect(first).to.be.closeTo(_first as unknown as number, 3);
+              expect(second).to.be.greaterThan(_second as unknown as number);
+              expect(third).to.be.lessThan(_third as unknown as number);
+            });
+          });
+        });
+      });
     });
 
     it("should prevent adding a fourth card to a flexContainer with 3 cards", () => {
@@ -556,4 +622,26 @@ function addNewStandaloneCard(
     cardType === "question" ? "Questions" : "Models",
   ).click();
   H.entityPickerModalItem(1, cardName).click();
+}
+
+function getCardWidths(
+  cardNames: string[],
+  cb: (val1: number, val2: number, val3?: number) => void,
+) {
+  const [firstCardName, secondCardName, thirdCardName] = cardNames;
+  H.getDocumentCard(firstCardName).then((firstCard) => {
+    H.getDocumentCard(secondCardName).then((secondCard) => {
+      if (thirdCardName) {
+        H.getDocumentCard(thirdCardName).then((thirdCard) => {
+          cb(
+            firstCard.width() as number,
+            secondCard.width() as number,
+            thirdCard.width() as number,
+          );
+        });
+      } else {
+        cb(firstCard.width() as number, secondCard.width() as number);
+      }
+    });
+  });
 }
