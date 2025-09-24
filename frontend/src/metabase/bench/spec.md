@@ -143,6 +143,12 @@ For loading collections/lists:
 - useFetchModels(params) from metabase/common/hooks/use-fetch-models - uses search API with models: ["dataset"]
 - useSearchQuery(params) from metabase/api/search - generic search across all content types
 
+**Important**: These hooks return a SearchResponse object with a `data` property containing the array of results. Access the data like this:
+```typescript
+const { data: searchResponse, isLoading, error } = useFetchMetrics();
+const metrics = searchResponse?.data || [];
+```
+
 Key functions:
 - frontend/src/metabase/api/card.ts:71 - getCard endpoint
 - frontend/src/metabase/common/hooks/use-fetch-metrics.tsx:4 - useFetchMetrics hook
@@ -271,7 +277,8 @@ Key details:
 ### State of prototype and major remaining todos.
 - Transforms is basically working as expected.
 - We have an example of how to do a tool layout in the transforms work, but its not necessarily fully set up to be reused.
-- Metrics and models need to be adapted to use the tool layout and listing. Replace the components at the current routes with new ones.
+- **Metrics**: ✅ COMPLETED - Tool layout implemented with MetricsApp, MetricsEntitiesList, and MetricsDetails components. Uses proper data access pattern for SearchResponse.data.
+- Models need to be adapted to use the tool layout and listing. Replace the components at the current routes with new ones.
 - Segments needs updated to use the new tool layout and detail views.
 - Metadata is working and does not need modified at this time.
 - We need to move Metabot to its own panel.
