@@ -8,7 +8,6 @@ import { QuestionPickerModal } from "metabase/common/components/Pickers/Question
 import { ActionIcon, Card, Group, Icon, Stack, Text } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
-import { trackEmbedWizardResourceSelected } from "../analytics";
 import { useSdkIframeEmbedSetupContext } from "../context";
 import type {
   SdkIframeEmbedSetupExperience,
@@ -62,13 +61,6 @@ export const SelectEmbedResourceStep = () => {
         settings.initialCollection === id)
     ) {
       return;
-    }
-
-    const numericResourceId = typeof id === "string" ? parseInt(id) : id;
-
-    // Only track the resource id if it is a valid numeric id.
-    if (!isNaN(numericResourceId)) {
-      trackEmbedWizardResourceSelected(numericResourceId, experience);
     }
 
     if (experience === "dashboard") {
