@@ -146,23 +146,23 @@ export function EmbeddingSdkSettings() {
         description={t`An easy-to-use library that lets you embed Metabase entities like charts, dashboards, or even the query builder into your own application using customizable components.`}
         settingKey="enable-embedding-simple"
         isFeatureEnabled={isSimpleEmbedFeatureEnabled}
-        links={
-          isSimpleEmbedFeatureEnabled
+        links={[
+          ...(isSimpleEmbedEnabled
             ? [
                 {
-                  type: "button",
+                  type: "button" as const,
                   title: t`New embed`,
                   to: "/embed-js",
                 },
-                {
-                  type: "link",
-                  icon: "reference",
-                  title: t`Documentation`,
-                  href: embedJsDocumentationUrl?.url,
-                },
               ]
-            : undefined
-        }
+            : []),
+          {
+            type: "link",
+            icon: "reference",
+            title: t`Documentation`,
+            href: embedJsDocumentationUrl?.url,
+          },
+        ]}
         rightSideContent={
           !isSimpleEmbedFeatureEnabled ? (
             <UpsellEmbeddingButton
