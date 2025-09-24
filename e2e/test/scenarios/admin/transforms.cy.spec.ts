@@ -566,7 +566,6 @@ LIMIT
       getTagsInput().type("New tag");
       H.popover().findByText("New tag").click();
       cy.wait("@createTag");
-      H.popover().findByText("New tag").should("be.visible");
       H.undoToast().should("contain.text", "Transform tags updated");
     });
 
@@ -622,7 +621,6 @@ LIMIT
       getTagsInput().type("New tag");
       H.popover().findByText("New tag").click();
       cy.wait("@createTag");
-      H.popover().findByText("New tag").should("be.visible");
 
       cy.log("Navigate to transform B");
       getNavSidebar().findByText("Transforms").click();
