@@ -24,5 +24,27 @@ export const isSdkPackageCompatibleWithSdkBundle = ({
   const sdkBundleVersionComponents =
     versionToNumericComponents(sdkBundleVersion);
 
-  return sdkBundleVersionComponents?.[1] === sdkPackageVersionComponents?.[1];
+  if (!sdkPackageVersionComponents || !sdkBundleVersionComponents) {
+    return true;
+  }
+
+  return sdkBundleVersionComponents?.[1] >= sdkPackageVersionComponents?.[1];
+};
+
+export const isSdkBundleCompatibleWithMetabaseInstance = ({
+  sdkBundleVersion,
+  metabaseInstanceVersion,
+}: {
+  sdkBundleVersion: string;
+  metabaseInstanceVersion: string;
+}) => {
+  const sdkBundleVersionComponents =
+    versionToNumericComponents(sdkBundleVersion);
+  const metabaseInstanceVersionComponents = versionToNumericComponents(
+    metabaseInstanceVersion,
+  );
+
+  return (
+    sdkBundleVersionComponents?.[1] === metabaseInstanceVersionComponents?.[1]
+  );
 };
