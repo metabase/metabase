@@ -20,9 +20,12 @@ import type {
   SdkIframeEmbedEvent,
   SdkIframeEmbedEventHandler,
   SdkIframeEmbedMessage,
+  SdkIframeEmbedSetStaticTokenMessage,
   SdkIframeEmbedSettings,
   SdkIframeEmbedTagFetchStaticTokenMessage,
+  SdkIframeEmbedTagFunctionCallMessage,
   SdkIframeEmbedTagMessage,
+  SdkIframeFunctionCallHandlerData,
 } from "./types/embed";
 import { attributeToSettingKey, parseAttributeValue } from "./webcomponents";
 
@@ -144,6 +147,16 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
   protected abstract _attributeNames: readonly string[];
 
   static readonly VERSION = "1.1.0";
+
+  private readonly functionCallMessageHandlerDataList: SdkIframeFunctionCallHandlerData[] =
+    [
+      {
+        functionCallMessageType: "metabase.embed.functionCall.fetchStaticToken",
+        functionResultMessageType:
+          "metabase.embed.functionResult.fetchStaticToken",
+        handler: this._fetchStaticToken,
+      },
+    ];
 
   private _isEmbedReady: boolean = false;
   private _eventHandlers: Map<
@@ -399,6 +412,20 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
       return;
     }
 
+    const functionCallHandler = this.functionCallMessageHandlerDataList.find(
+      (data) => data.functionCallMessageType === event.data.type,
+    );
+
+    if (functionCallHandler) {
+      await functionCallHandler?.handler.call(
+        this,
+        functionCallHandler,
+        event.data as SdkIframeEmbedTagFunctionCallMessage,
+      );
+
+      return;
+    }
+
     if (event.data.type === "metabase.embed.iframeReady") {
       if (this._isEmbedReady) {
         return;
@@ -415,10 +442,6 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
 
     if (event.data.type === "metabase.embed.requestSessionToken") {
       await this._authenticate();
-    }
-
-    if (event.data.type === "metabase.embed.fetchStaticToken") {
-      await this._fetchStaticToken(event.data.data);
     }
   };
 
@@ -515,7 +538,8 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
   }
 
   private async _fetchStaticToken(
-    data: SdkIframeEmbedTagFetchStaticTokenMessage["data"],
+    handlerData: SdkIframeFunctionCallHandlerData,
+    message: SdkIframeEmbedTagFetchStaticTokenMessage,
   ) {
     const { fetchStaticToken } = this.properties;
 
@@ -525,12 +549,18 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
       );
     }
 
-    const staticToken = await fetchStaticToken(data);
-
-    this.sendMessage("metabase.embed.fetchStaticTokenResult", {
-      messageId: data.messageId,
-      staticToken,
+    const staticToken = await fetchStaticToken({
+      entityType: message.data.params.entityType,
+      entityId: message.data.params.entityId,
     });
+
+    this.sendMessage<SdkIframeEmbedSetStaticTokenMessage>(
+      handlerData.functionResultMessageType,
+      {
+        messageId: message.data.messageId,
+        result: staticToken,
+      },
+    );
   }
 }
 

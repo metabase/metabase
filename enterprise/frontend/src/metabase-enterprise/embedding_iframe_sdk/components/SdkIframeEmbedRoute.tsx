@@ -52,15 +52,10 @@ export const SdkIframeEmbedRoute = () => {
 
   const fetchStaticToken = useCallback(
     async (data: MetabaseFetchStaticTokenFnData) => {
-      const result = await transferFunctionCallMessages<
+      return transferFunctionCallMessages<
         SdkIframeEmbedTagFetchStaticTokenMessage,
         SdkIframeEmbedSetStaticTokenMessage
-      >({
-        messageName: "metabase.embed.fetchStaticToken",
-        resultMessageName: "metabase.embed.fetchStaticTokenResult",
-      })(data);
-
-      return result.staticToken;
+      >("fetchStaticToken", data);
     },
     [transferFunctionCallMessages],
   );
@@ -96,7 +91,9 @@ export const SdkIframeEmbedRoute = () => {
   const authConfig = {
     metabaseInstanceUrl: embedSettings.instanceUrl,
     apiKey: embedSettings.apiKey,
-    fetchStaticToken,
+    fetchStaticToken: embedSettings.fetchStaticToken
+      ? fetchStaticToken
+      : undefined,
   } as MetabaseAuthConfig;
 
   return (
