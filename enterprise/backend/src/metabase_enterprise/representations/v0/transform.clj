@@ -56,9 +56,7 @@
 (mr/def ::target-table
   [:and
    {:description "Name of the destination table"}
-   [:map
-    [:schema ::lib.schema.common/non-blank-string]
-    [:table ::lib.schema.common/non-blank-string]]])
+   ::lib.schema.common/non-blank-string])
 
 (mr/def ::target-schema
   [:and
@@ -95,7 +93,6 @@
     [:database ::database]
     [:source ::source]
     [:target ::target]
-    [:target_table ::target-table]
     [:query {:optional true} ::query]
     [:mbql_query {:optional true} ::mbql-query]
     [:tags {:optional true} ::tags]]
