@@ -43,6 +43,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2])
@@ -1776,3 +1777,55 @@
                                             array[array[1, null], array[null, 2]]"})
                   mt/process-query
                   mt/rows))))))
+
+(deftest ^:parallel arrays-have-base-type
+  (testing "queries with pg arrays have a base type on column metadata (#63909)"
+    (mt/test-driver :postgres
+      (is (=? [{:name "id"
+                :database_type "int4"
+                :base_type :type/Integer}
+               {:name "urls"
+                :database_type "_text"
+                :base_type :type/*}]
+              (->> (mt/native-query {:query "SELECT *
+                                             FROM (
+                                               VALUES
+                                                 (1, ARRAY['https://example.com', 'https://example.org']),
+                                                 (2, ARRAY['https://test.com']),
+                                                 (3, ARRAY['https://foo.com', 'https://bar.com', 'https://baz.com'])
+                                             ) AS adhoc_table (id, urls);"})
+                   mt/process-query
+                   mt/cols))))))
+
+(deftest can-edit-model-metadata
+  (testing "queries with pg arrays have a base type on column metadata (#63909)"
+    (mt/test-driver :postgres
+      (let [query "SELECT *
+                   FROM (
+                     VALUES
+                       (1, ARRAY['https://example.com', 'https://example.org']),
+                       (2, ARRAY['https://test.com']),
+                       (3, ARRAY['https://foo.com', 'https://bar.com', 'https://baz.com'])
+                   ) AS adhoc_table (id, urls);"]
+        (mt/with-temp [:model/Card model (mt/card-with-metadata
+                                          {:name "model"
+                                           :type :model
+                                           :dataset_query (mt/native-query {:query query})
+                                           :database_id (mt/id)})]
+          ;; update cards such that base_type is missing, similuating existing data
+          (t2/query ["update report_card set result_metadata = ? where id = ?"
+                     (json/encode [(first (:result_metadata model))
+                                   (assoc (second (:result_metadata model))
+                                          :base_type nil)])
+                     (:id model)])
+          (let [response (mt/user-http-request :crowberto :put 200
+                                               (format "card/%d" (:id model))
+                                               {:dataset_query
+                                                (mt/native-query {:query (str "-- comment at top\n " query)})})]
+            (is (=? [{:name "id"
+                      :database_type "int4"
+                      :base_type "type/Integer"}
+                     {:name "urls"
+                      :database_type "_text"
+                      :base_type "type/*"}]
+                    (:result_metadata response)))))))))
