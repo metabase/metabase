@@ -115,6 +115,7 @@ export function SelectEmbedTypePane({
   };
 
   const isEmbedJsAvailable = useHasTokenFeature("embedding_simple");
+  const isEmbeddingSdkAvailable = useHasTokenFeature("embedding_sdk");
   const isStaticEmbeddingEnabled = useSetting("enable-embedding-static");
   const isEmbedJsEnabled = useSetting("enable-embedding-simple");
   const isEmbeddingSdkEnabled = useSetting("enable-embedding-sdk");
@@ -150,7 +151,7 @@ export function SelectEmbedTypePane({
         >
           <SharingPaneButton
             title={t`Embedded Analytics JS`}
-            badge={<UpsellGem />}
+            badge={!isEmbedJsAvailable && <UpsellGem />}
             illustration={<EmbeddedJsIllustration />}
             isDisabled={isEmbedJsAvailable && !isEmbedJsEnabled}
             disabledLink="/admin/embedding/modular"
@@ -174,7 +175,7 @@ export function SelectEmbedTypePane({
         <ExternalLink href={sdkDocsUrl} className={CS.noDecoration}>
           <SharingPaneButton
             title={t`SDK for React`}
-            badge={<UpsellGem />}
+            badge={!isEmbeddingSdkAvailable && <UpsellGem />}
             illustration={<SdkIllustration />}
             isDisabled={!isEmbeddingSdkEnabled}
             disabledLink={"/admin/embedding/modular"}
