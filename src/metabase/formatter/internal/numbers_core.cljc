@@ -1,4 +1,4 @@
-(ns metabase.util.formatting.internal.numbers-core
+(ns metabase.formatter.internal.numbers-core
   "Cross-platform foundation for the number formatters."
   (:require
    [metabase.util.currency :as currency]))

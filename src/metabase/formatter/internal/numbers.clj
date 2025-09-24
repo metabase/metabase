@@ -1,9 +1,9 @@
-(ns metabase.util.formatting.internal.numbers
+(ns metabase.formatter.internal.numbers
   "JVM Clojure implementation of the [[core/NumberFormatter]] abstaction."
   (:require
    [clojure.string :as str]
-   [metabase.util.currency :as currency]
-   [metabase.util.formatting.internal.numbers-core :as core])
+   [metabase.formatter.internal.numbers-core :as core]
+   [metabase.util.currency :as currency])
   (:import
    (java.math BigDecimal MathContext RoundingMode)
    (java.text DecimalFormat NumberFormat)

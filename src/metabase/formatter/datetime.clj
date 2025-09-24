@@ -3,10 +3,10 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.formatter.constants :as constants]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.formatting.constants :as constants]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log])
   (:import
