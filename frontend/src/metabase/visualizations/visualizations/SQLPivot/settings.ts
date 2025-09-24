@@ -6,6 +6,7 @@ import { isNumber, isString } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn, Series } from "metabase-types/api";
 
 import {
+  getAllVisibleColumns,
   getDefaultColumnDimension,
   getDefaultRowColumns,
   getDefaultValueColumns,
@@ -151,5 +152,48 @@ export const SQL_PIVOT_SETTINGS = {
     inline: true,
     default: false,
     getHidden: isColumnDimensionHidden,
+  },
+
+  "sqlpivot.hidden_column_labels": {
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Hide labels for columns`;
+    },
+    get description() {
+      return t`Select columns for which you want to hide the column labels`;
+    },
+    widget: "multiselect",
+    getValue: (_rawSeries: Series, settings: any) => {
+      return settings["sqlpivot.hidden_column_labels"] ?? [];
+    },
+    getProps: ([{ data }]: Series, settings: any) => {
+      try {
+        // Get all visible columns from current pivot configuration
+        const visibleColumns = getAllVisibleColumns(data, settings);
+        return {
+          placeholder: t`Select columns to hide labels...`,
+          options: visibleColumns.map((col: DatasetColumn) => ({
+            label: col.display_name || col.name,
+            value: col.name,
+          })),
+        };
+      } catch (error) {
+        // Fallback to original data columns if transformation fails
+        console.warn(
+          "Failed to get visible columns, using original data columns:",
+          error,
+        );
+        return {
+          placeholder: t`Select columns to hide labels...`,
+          options: data.cols.map((col: DatasetColumn) => ({
+            label: col.display_name || col.name,
+            value: col.name,
+          })),
+        };
+      }
+    },
+    useRawSeries: true,
   },
 };

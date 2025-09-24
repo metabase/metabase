@@ -112,6 +112,13 @@ export class SQLPivot extends Component<SQLPivotProps, SQLPivotState> {
       return "";
     }
 
+    // Check if this column's label should be hidden
+    const hiddenColumnLabels =
+      (settings as any)["sqlpivot.hidden_column_labels"] || [];
+    if (hiddenColumnLabels.includes(column.name)) {
+      return "";
+    }
+
     try {
       // Use displayNameForColumn as fallback, similar to Table component
       // Note: getTitleForColumn expects (column, series, settings) order
