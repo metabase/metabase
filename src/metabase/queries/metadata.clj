@@ -98,7 +98,10 @@
 (defn- batch-fetch-query-metadata*
   "Fetch dependent metadata for ad-hoc queries."
   [queries]
-  (let [source-ids                (into #{} (mapcat #(lib.util/collect-source-tables (:query %)))
+  (let [source-ids                (into #{}
+                                        ;; existing usage -- do not use in new code
+                                        #_{:clj-kondo/ignore [:deprecated-var]}
+                                        (mapcat #(lib.util/collect-source-tables (:query %)))
                                         queries)
         {source-table-ids :tables
          source-card-ids  :cards} (split-tables-and-legacy-card-refs source-ids)

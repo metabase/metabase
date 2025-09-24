@@ -93,6 +93,7 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                     <CardAction card={card} key={card.id}>
                       <Card
                         className={cx(S.stepCard, {
+                          [S.requiredStepCard]: !card.optional,
                           [S.optionalStepCard]: card.optional,
                           [S.lockedStepCard]: card.locked,
                           [S.nextStepCard]: isNextCard,
@@ -130,18 +131,35 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                             <Flex justify="flex-end">
                               {match(card)
                                 .with({ done: true }, () => (
-                                  <Text
-                                    size="sm"
-                                    c="var(--mb-color-success-darker)"
-                                  >
-                                    {t`Done`}
-                                  </Text>
+                                  <Group gap="xs">
+                                    <Icon
+                                      name="check"
+                                      c="var(--mb-color-success-darker)"
+                                      size={12}
+                                    />
+                                    <Text
+                                      size="sm"
+                                      c="var(--mb-color-success-darker)"
+                                    >
+                                      {t`Done`}
+                                    </Text>
+                                  </Group>
                                 ))
                                 .with({ locked: true }, () => (
-                                  <Icon
-                                    name="lock"
-                                    c="var(--mb-color-text-secondary)"
-                                  />
+                                  <Group gap="xs">
+                                    <Icon
+                                      name="lock"
+                                      c="var(--mb-color-text-secondary)"
+                                      size={12}
+                                    />
+
+                                    <Text
+                                      c="var(--mb-color-text-secondary)"
+                                      fz={12}
+                                    >
+                                      {t`Complete the other steps to unlock`}
+                                    </Text>
+                                  </Group>
                                 ))
                                 .with({ optional: true }, () => (
                                   <Text
@@ -187,6 +205,10 @@ const CardAction = ({
         return children;
       }
 
-      return <Link to={to}>{children}</Link>;
+      return (
+        <Link to={to} className={S.stepCardLink}>
+          {children}
+        </Link>
+      );
     })
     .otherwise(() => children);

@@ -502,6 +502,7 @@
            metabase.embedding.init
            metabase.embedding.jwt
            metabase.embedding.settings
+           metabase.embedding.util
            metabase.embedding.validation}
    :uses #{analytics
            api
@@ -1020,6 +1021,7 @@
            metabase.request.schema}
    :uses #{api
            config
+           embedding
            permissions ; FIXME
            session
            settings
@@ -1813,10 +1815,12 @@
            pulse
            query-processor
            request
+           search
            server
            settings
            sync
            system
+           task
            users
            util
            warehouse-schema
