@@ -69,7 +69,7 @@ const DetailViewPreviewInner = ({
 
   const data = queryResult?.data;
   const finalError = hasPermissionError
-    ? t`Sorry, you don't have permission to see that.`
+    ? t`Sorry, you don’t have permission to see that.`
     : hasDataError
       ? getDataErrorMessage(queryResult)
       : error;
