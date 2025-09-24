@@ -385,14 +385,27 @@ redirect_from:
       "metabase-enterprise.metabot-v3.tools.api.basic-table" : {
         "type" : "object",
         "properties" : {
-          "description" : {
+          "id" : {
+            "type" : "integer"
+          },
+          "name" : {
             "type" : "string"
+          },
+          "database_id" : {
+            "type" : "integer"
+          },
+          "display_name" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string",
+            "enum" : [ "model", "table" ]
           },
           "fields" : {
             "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.columns"
           },
-          "id" : {
-            "type" : "integer"
+          "database_schema" : {
+            "type" : "string"
           },
           "metrics" : {
             "type" : "array",
@@ -400,15 +413,11 @@ redirect_from:
               "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.basic-metric"
             }
           },
-          "name" : {
+          "description" : {
             "type" : "string"
-          },
-          "type" : {
-            "type" : "string",
-            "enum" : [ "model", "table" ]
           }
         },
-        "required" : [ "id", "type", "name", "fields" ]
+        "required" : [ "id", "type", "name", "display_name", "database_id", "fields" ]
       },
       "metabase-enterprise.metabot-v3.tools.api.bucket" : {
         "type" : "string",
@@ -803,49 +812,6 @@ redirect_from:
           "required" : [ "output" ]
         } ]
       },
-      "metabase-enterprise.metabot-v3.tools.api.find-metric-result" : {
-        "anyOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "structured_output" : {
-              "type" : "object",
-              "properties" : {
-                "default_time_dimension_field_id" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.column"
-                },
-                "description" : {
-                  "type" : "string"
-                },
-                "id" : {
-                  "type" : "integer"
-                },
-                "name" : {
-                  "type" : "string"
-                },
-                "queryable_dimensions" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.column"
-                  }
-                },
-                "type" : {
-                  "const" : "metric"
-                }
-              },
-              "required" : [ "id", "type", "name", "queryable_dimensions" ]
-            }
-          },
-          "required" : [ "structured_output" ]
-        }, {
-          "type" : "object",
-          "properties" : {
-            "output" : {
-              "type" : "string"
-            }
-          },
-          "required" : [ "output" ]
-        } ]
-      },
       "metabase-enterprise.metabot-v3.tools.api.find-outliers-arguments" : {
         "allOf" : [ {
           "type" : "object",
@@ -968,6 +934,9 @@ redirect_from:
           },
           "type" : {
             "const" : "metric"
+          },
+          "verified" : {
+            "type" : "boolean"
           }
         },
         "required" : [ "id", "type", "name" ]
@@ -975,22 +944,16 @@ redirect_from:
       "metabase-enterprise.metabot-v3.tools.api.full-table" : {
         "type" : "object",
         "properties" : {
-          "description" : {
-            "type" : "string"
-          },
-          "fields" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.columns"
-          },
           "id" : {
             "type" : "integer"
           },
-          "metrics" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.basic-metric"
-            }
-          },
           "name" : {
+            "type" : "string"
+          },
+          "database_id" : {
+            "type" : "integer"
+          },
+          "display_name" : {
             "type" : "string"
           },
           "queryable_foreign_key_tables" : {
@@ -1002,9 +965,24 @@ redirect_from:
           "type" : {
             "type" : "string",
             "enum" : [ "model", "table" ]
+          },
+          "fields" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.columns"
+          },
+          "database_schema" : {
+            "type" : "string"
+          },
+          "metrics" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.basic-metric"
+            }
+          },
+          "description" : {
+            "type" : "string"
           }
         },
-        "required" : [ "id", "type", "name", "fields" ]
+        "required" : [ "id", "type", "name", "display_name", "database_id", "fields" ]
       },
       "metabase-enterprise.metabot-v3.tools.api.generate-insights-arguments" : {
         "type" : "object",
@@ -1100,6 +1078,9 @@ redirect_from:
                 },
                 "type" : {
                   "const" : "dashboard"
+                },
+                "verified" : {
+                  "type" : "boolean"
                 }
               },
               "required" : [ "id", "type", "name" ]
@@ -1284,6 +1265,9 @@ redirect_from:
                 },
                 "type" : {
                   "const" : "question"
+                },
+                "verified" : {
+                  "type" : "boolean"
                 }
               },
               "required" : [ "id", "type", "name", "result_columns" ]
@@ -1494,6 +1478,65 @@ redirect_from:
       "metabase-enterprise.metabot-v3.tools.api.proportion" : {
         "type" : "number"
       },
+      "metabase-enterprise.metabot-v3.tools.api.query-datasource-arguments" : {
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "aggregations" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.aggregation"
+              }
+            },
+            "fields" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.field"
+              }
+            },
+            "filters" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.filter"
+              }
+            },
+            "group_by" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.group-by"
+              }
+            },
+            "limit" : {
+              "type" : "integer"
+            },
+            "model_id" : {
+              "type" : "integer"
+            },
+            "order_by" : {
+              "type" : "array",
+              "items" : {
+                "type" : "object",
+                "properties" : {
+                  "direction" : {
+                    "type" : "string",
+                    "enum" : [ "asc", "desc" ]
+                  },
+                  "field" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.field"
+                  }
+                },
+                "required" : [ "field", "direction" ]
+              }
+            },
+            "table_id" : {
+              "type" : "integer"
+            }
+          }
+        }, {
+          "type" : "object",
+          "properties" : { }
+        } ]
+      },
       "metabase-enterprise.metabot-v3.tools.api.query-metric-arguments" : {
         "allOf" : [ {
           "type" : "object",
@@ -1576,6 +1619,130 @@ redirect_from:
           "type" : "object",
           "properties" : { }
         } ]
+      },
+      "metabase-enterprise.metabot-v3.tools.api.search-arguments" : {
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "created_at" : {
+              "type" : "string",
+              "minLength" : 1
+            },
+            "database_id" : {
+              "type" : "integer"
+            },
+            "entity_types" : {
+              "type" : "array",
+              "items" : {
+                "type" : "string",
+                "enum" : [ "table", "model", "question", "dashboard", "metric", "database" ]
+              }
+            },
+            "last_edited_at" : {
+              "type" : "string",
+              "minLength" : 1
+            },
+            "limit" : {
+              "default" : 50,
+              "type" : "integer"
+            },
+            "semantic_queries" : {
+              "type" : "array",
+              "items" : {
+                "type" : "string"
+              }
+            },
+            "term_queries" : {
+              "type" : "array",
+              "items" : {
+                "type" : "string"
+              }
+            }
+          }
+        }, {
+          "type" : "object",
+          "properties" : { }
+        } ]
+      },
+      "metabase-enterprise.metabot-v3.tools.api.search-result" : {
+        "anyOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "structured_output" : {
+              "type" : "object",
+              "properties" : {
+                "data" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.search-result-item"
+                  }
+                },
+                "total_count" : {
+                  "type" : "integer"
+                }
+              },
+              "required" : [ "data", "total_count" ]
+            }
+          },
+          "required" : [ "structured_output" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "output" : {
+              "type" : "string"
+            }
+          },
+          "required" : [ "output" ]
+        } ]
+      },
+      "metabase-enterprise.metabot-v3.tools.api.search-result-item" : {
+        "description" : "Unified schema for search result items.",
+        "type" : "object",
+        "properties" : {
+          "collection" : {
+            "type" : "object",
+            "properties" : {
+              "authority_level" : {
+                "type" : "string"
+              },
+              "name" : {
+                "type" : "string"
+              }
+            }
+          },
+          "id" : {
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "verified" : {
+            "type" : "boolean"
+          },
+          "database_id" : {
+            "type" : "integer"
+          },
+          "updated_at" : {
+            "type" : "string"
+          },
+          "display_name" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string",
+            "enum" : [ "table", "model", "dashboard", "question", "metric", "database" ]
+          },
+          "database_schema" : {
+            "type" : "string"
+          },
+          "created_at" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "type", "name" ]
       },
       "metabase-enterprise.metabot-v3.tools.api.statistics" : {
         "type" : "object",
@@ -3833,30 +4000,37 @@ redirect_from:
         "type" : "integer"
       },
       "metabase.lib.schema.id.action" : {
+        "description" : "Valid Action ID",
         "type" : "integer",
         "minimum" : 1
       },
       "metabase.lib.schema.id.card" : {
+        "description" : "Valid Card ID",
         "type" : "integer",
         "minimum" : 1
       },
       "metabase.lib.schema.id.dashboard" : {
+        "description" : "Valid Dashboard ID",
         "type" : "integer",
         "minimum" : 1
       },
       "metabase.lib.schema.id.database" : {
+        "description" : "Valid Database ID",
         "type" : "integer",
         "minimum" : 1
       },
       "metabase.lib.schema.id.dimension" : {
+        "description" : "Valid Dimension ID",
         "type" : "integer",
         "minimum" : 1
       },
       "metabase.lib.schema.id.field" : {
+        "description" : "Valid Field ID",
         "type" : "integer",
         "minimum" : 1
       },
       "metabase.lib.schema.id.pulse" : {
+        "description" : "Valid Pulse ID",
         "type" : "integer",
         "minimum" : 1
       },
@@ -3865,18 +4039,22 @@ redirect_from:
         "const" : -1337
       },
       "metabase.lib.schema.id.segment" : {
+        "description" : "Valid legacy Segment ID",
         "type" : "integer",
         "minimum" : 1
       },
       "metabase.lib.schema.id.snippet" : {
+        "description" : "Valid Snippet ID",
         "type" : "integer",
         "minimum" : 1
       },
       "metabase.lib.schema.id.table" : {
+        "description" : "Valid Table ID",
         "type" : "integer",
         "minimum" : 1
       },
       "metabase.lib.schema.id.user" : {
+        "description" : "Valid User ID",
         "type" : "integer",
         "minimum" : 1
       },
@@ -3979,6 +4157,7 @@ redirect_from:
         }, { }, { }, { } ]
       },
       "metabase.lib.schema.literal.time" : {
+        "description" : "time literal",
         "anyOf" : [ {
           "$ref" : "#/components/schemas/metabase.lib.schema.literal..string.time"
         }, { }, { } ]
@@ -4588,26 +4767,29 @@ redirect_from:
       },
       "metabase.lib.schema.parameter..dimension.target" : {
         "oneOf" : [ {
-          "$ref" : "#/components/schemas/metabase.lib.schema.parameter.legacy-field-ref"
-        }, {
-          "$ref" : "#/components/schemas/metabase.lib.schema.parameter.legacy-expression-ref"
+          "$ref" : "#/components/schemas/metabase.lib.schema.parameter..target.legacy-expression-ref"
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.parameter.template-tag"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.parameter..target.legacy-field-ref"
         } ]
+      },
+      "metabase.lib.schema.parameter..target.legacy-expression-ref" : {
+        "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.expression"
+      },
+      "metabase.lib.schema.parameter..target.legacy-field-ref" : {
+        "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field"
       },
       "metabase.lib.schema.parameter..variable.target" : {
         "oneOf" : [ {
-          "$ref" : "#/components/schemas/metabase.lib.schema.parameter.legacy-field-ref"
+          "$ref" : "#/components/schemas/metabase.lib.schema.parameter..target.legacy-field-ref"
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.parameter.template-tag"
         } ]
       },
       "metabase.lib.schema.parameter.dimension" : { },
-      "metabase.lib.schema.parameter.legacy-expression-ref" : {
-        "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.expression"
-      },
-      "metabase.lib.schema.parameter.legacy-field-ref" : {
-        "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field"
+      "metabase.lib.schema.parameter.id" : {
+        "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
       },
       "metabase.lib.schema.parameter.parameter" : {
         "description" : "Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as\n  part of the `:parameters` list in a query.",
@@ -4615,7 +4797,7 @@ redirect_from:
         "properties" : {
           "default" : { },
           "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            "$ref" : "#/components/schemas/metabase.lib.schema.parameter.id"
           },
           "name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
@@ -4643,11 +4825,11 @@ redirect_from:
       },
       "metabase.lib.schema.parameter.target" : {
         "oneOf" : [ {
-          "$ref" : "#/components/schemas/metabase.lib.schema.parameter.legacy-field-ref"
-        }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.parameter.dimension"
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.parameter.variable"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.parameter..target.legacy-field-ref"
         } ]
       },
       "metabase.lib.schema.parameter.template-tag" : {
@@ -4670,6 +4852,7 @@ redirect_from:
         } ]
       },
       "metabase.lib.schema.parameter.type" : {
+        "description" : "Valid parameter :type",
         "type" : "string",
         "enum" : [ "number", "text", "date", "boolean", "date/single", "id", "category", "location/city", "location/state", "location/zip_code", "location/country", "date/range", "date/month-year", "date/quarter-year", "date/relative", "date/all-options", "temporal-unit", "number/!=", "number/<=", "number/=", "number/>=", "number/between", "string/!=", "string/=", "string/contains", "string/does-not-contain", "string/ends-with", "string/starts-with", "boolean/=" ]
       },
@@ -12647,6 +12830,9 @@ redirect_from:
                   "content" : {
                     "type" : "object"
                   },
+                  "html" : {
+                    "type" : "string"
+                  },
                   "parent_comment_id" : {
                     "description" : "value must be an integer greater than zero.",
                     "type" : "integer",
@@ -12662,7 +12848,7 @@ redirect_from:
                     "enum" : [ "document" ]
                   }
                 },
-                "required" : [ "target_type", "target_id", "content" ]
+                "required" : [ "target_type", "target_id", "content", "html" ]
               }
             }
           }
@@ -12722,6 +12908,9 @@ redirect_from:
                 "properties" : {
                   "content" : {
                     "type" : "object"
+                  },
+                  "html" : {
+                    "type" : "string"
                   },
                   "is_resolved" : {
                     "type" : "boolean"
@@ -13909,66 +14098,6 @@ redirect_from:
         "tags" : [ "/api/ee/metabot-tools" ]
       }
     },
-    "/api/ee/metabot-tools/find-metric" : {
-      "post" : {
-        "summary" : "POST /api/ee/metabot-tools/find-metric",
-        "description" : "Find a metric matching a description.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "conversation_id" : {
-                      "description" : "value must be a valid UUID.",
-                      "type" : "string",
-                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-                    }
-                  },
-                  "required" : [ "conversation_id" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "arguments" : {
-                    "type" : "object",
-                    "properties" : {
-                      "message" : {
-                        "type" : "string"
-                      }
-                    },
-                    "required" : [ "message" ]
-                  },
-                  "conversation_id" : {
-                    "description" : "value must be a valid UUID.",
-                    "type" : "string",
-                    "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-                  }
-                },
-                "required" : [ "arguments", "conversation_id" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/metabot-tools" ]
-      }
-    },
     "/api/ee/metabot-tools/find-outliers" : {
       "post" : {
         "summary" : "POST /api/ee/metabot-tools/find-outliers",
@@ -14520,6 +14649,60 @@ redirect_from:
         "tags" : [ "/api/ee/metabot-tools" ]
       }
     },
+    "/api/ee/metabot-tools/query-datasource" : {
+      "post" : {
+        "summary" : "POST /api/ee/metabot-tools/query-datasource",
+        "description" : "Construct a query from a model or table data source.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "conversation_id" : {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    }
+                  },
+                  "required" : [ "conversation_id" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "arguments" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.query-datasource-arguments"
+                  },
+                  "conversation_id" : {
+                    "description" : "value must be a valid UUID.",
+                    "type" : "string",
+                    "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  }
+                },
+                "required" : [ "arguments", "conversation_id" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/metabot-tools" ]
+      }
+    },
     "/api/ee/metabot-tools/query-metric" : {
       "post" : {
         "summary" : "POST /api/ee/metabot-tools/query-metric",
@@ -14628,6 +14811,116 @@ redirect_from:
         "tags" : [ "/api/ee/metabot-tools" ]
       }
     },
+    "/api/ee/metabot-tools/search" : {
+      "post" : {
+        "summary" : "POST /api/ee/metabot-tools/search",
+        "description" : "Enhanced search with term and semantic queries using Reciprocal Rank Fusion.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "conversation_id" : {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    }
+                  },
+                  "required" : [ "conversation_id" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "arguments" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.search-arguments"
+                  },
+                  "conversation_id" : {
+                    "description" : "value must be a valid UUID.",
+                    "type" : "string",
+                    "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  }
+                },
+                "required" : [ "conversation_id" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/metabot-tools" ]
+      }
+    },
+    "/api/ee/metabot-v3/agent-streaming" : {
+      "post" : {
+        "summary" : "POST /api/ee/metabot-v3/agent-streaming",
+        "description" : "Send a chat message to the LLM via the AI Proxy.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "context" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.context.context"
+                  },
+                  "conversation_id" : {
+                    "description" : "value must be a valid UUID.",
+                    "type" : "string",
+                    "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "history" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.client.schema.messages"
+                  },
+                  "message" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "metabot_id" : {
+                    "type" : "string"
+                  },
+                  "profile_id" : {
+                    "type" : "string"
+                  },
+                  "state" : {
+                    "type" : "object",
+                    "properties" : { }
+                  }
+                },
+                "required" : [ "message", "context", "conversation_id", "state" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/metabot-v3" ]
+      }
+    },
     "/api/ee/metabot-v3/document/generate-content" : {
       "post" : {
         "summary" : "POST /api/ee/metabot-v3/document/generate-content",
@@ -14712,37 +15005,10 @@ redirect_from:
           }
         },
         "tags" : [ "/api/ee/metabot-v3/metabot" ]
-      }
-    },
-    "/api/ee/metabot-v3/metabot/{id}/entities" : {
-      "get" : {
-        "summary" : "GET /api/ee/metabot-v3/metabot/{id}/entities",
-        "description" : "List the entities this metabot has access to",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/metabot-v3/metabot" ]
       },
       "put" : {
-        "summary" : "PUT /api/ee/metabot-v3/metabot/{id}/entities",
-        "description" : "Update the entities this metabot has access to",
+        "summary" : "PUT /api/ee/metabot-v3/metabot/{id}",
+        "description" : "Update a metabot instance",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -14769,70 +15035,17 @@ redirect_from:
               "schema" : {
                 "type" : "object",
                 "properties" : {
-                  "items" : {
-                    "type" : "array",
-                    "items" : {
-                      "type" : "object",
-                      "properties" : {
-                        "id" : {
-                          "type" : "integer",
-                          "minimum" : 1
-                        },
-                        "model" : {
-                          "type" : "string",
-                          "enum" : [ "dataset", "metric", "collection" ]
-                        }
-                      },
-                      "required" : [ "id", "model" ]
-                    }
+                  "collection_id" : {
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "use_verified_content" : {
+                    "type" : "boolean"
                   }
                 },
-                "required" : [ "items" ]
+                "additionalProperties" : false
               }
             }
-          }
-        },
-        "tags" : [ "/api/ee/metabot-v3/metabot" ]
-      }
-    },
-    "/api/ee/metabot-v3/metabot/{id}/entities/{model}/{model-id}" : {
-      "delete" : {
-        "summary" : "DELETE /api/ee/metabot-v3/metabot/{id}/entities/{model}/{model-id}",
-        "description" : "Remove an entity from this metabot's access list",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          }
-        }, {
-          "in" : "path",
-          "name" : "model",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "enum" : [ "dataset", "metric", "collection" ]
-          }
-        }, {
-          "in" : "path",
-          "name" : "model-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
           }
         },
         "tags" : [ "/api/ee/metabot-v3/metabot" ]
@@ -14973,62 +15186,6 @@ redirect_from:
           }
         },
         "tags" : [ "/api/ee/metabot-v3/metabot" ]
-      }
-    },
-    "/api/ee/metabot-v3/v2/agent-streaming" : {
-      "post" : {
-        "summary" : "POST /api/ee/metabot-v3/v2/agent-streaming",
-        "description" : "Send a chat message to the LLM via the AI Proxy.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "context" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.context.context"
-                  },
-                  "conversation_id" : {
-                    "description" : "value must be a valid UUID.",
-                    "type" : "string",
-                    "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-                  },
-                  "history" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.client.schema.messages"
-                  },
-                  "message" : {
-                    "type" : "string",
-                    "minLength" : 1
-                  },
-                  "metabot_id" : {
-                    "type" : "string"
-                  },
-                  "profile_id" : {
-                    "type" : "string"
-                  },
-                  "state" : {
-                    "type" : "object",
-                    "properties" : { }
-                  }
-                },
-                "required" : [ "message", "context", "conversation_id", "state" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/metabot-v3" ]
       }
     },
     "/api/ee/permission_debug/" : {
@@ -15974,9 +16131,14 @@ redirect_from:
                       "type" : "integer",
                       "minimum" : 1
                     }
+                  },
+                  "ui_display_type" : {
+                    "default" : "cron/raw",
+                    "type" : "string",
+                    "enum" : [ "cron/raw", "cron/builder" ]
                   }
                 },
-                "required" : [ "name", "schedule" ]
+                "required" : [ "name", "schedule", "ui_display_type" ]
               }
             }
           }
@@ -16079,6 +16241,10 @@ redirect_from:
                       "type" : "integer",
                       "minimum" : 1
                     }
+                  },
+                  "ui_display_type" : {
+                    "type" : "string",
+                    "enum" : [ "cron/raw", "cron/builder" ]
                   }
                 }
               }

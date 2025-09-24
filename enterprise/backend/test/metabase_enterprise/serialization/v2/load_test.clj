@@ -903,13 +903,15 @@
         (reset! card1s    (ts/create! :model/Card
                                       :name "the query"
                                       :dataset_query {:database (:id @db1s)
+                                                      :type :native
                                                       :native {:template-tags {"snippet: things"
-                                                                               {:id "e2d15f07-37b3-01fc-3944-2ff860a5eb46",
-                                                                                :name "snippet: filtered data",
-                                                                                :display-name "Snippet: Filtered Data",
-                                                                                :type :snippet,
-                                                                                :snippet-name "filtered data",
-                                                                                :snippet-id (:id @snippet1s)}}}}))
+                                                                               {:id           "e2d15f07-37b3-01fc-3944-2ff860a5eb46"
+                                                                                :name         "snippet: filtered data"
+                                                                                :display-name "Snippet: Filtered Data"
+                                                                                :type         :snippet
+                                                                                :snippet-name "filtered data"
+                                                                                :snippet-id   (:id @snippet1s)}}
+                                                               :query "SELECT 1;"}}))
         (ts/create! :model/User :first_name "Geddy" :last_name "Lee" :email "glee@rush.yyz")
 
         (testing "on extraction"
@@ -1186,8 +1188,8 @@
                                        :type :model
                                        :database_id (:id db)
                                        :dataset_query {:database (:id db)
-                                                       :native   {:type   :native
-                                                                  :native {:query "wow"}}})
+                                                       :type     :native
+                                                       :native   {:query "wow"}})
                 parent     (ts/create! :model/Collection :name "Parent Collection" :location "/")
                 _child     (ts/create! :model/Collection
                                        :name "Child Collection"
@@ -1304,6 +1306,7 @@
               (mt/with-log-messages-for-level [messages [metabase.models.serialization :warn]]
                 (let [ser            (vec (serdes.extract/extract {:no-settings       true
                                                                    :no-data-model     true
+                                                                   :no-transforms     true
                                                                    :continue-on-error true}))
                       {errors true
                        others false} (group-by #(instance? Exception %) ser)]
@@ -1314,7 +1317,8 @@
                                      (messages))))))))
         (testing "It's possible to skip a few errors during load"
           (let [ser     (vec (serdes.extract/extract {:no-settings   true
-                                                      :no-data-model true}))
+                                                      :no-data-model true
+                                                      :no-transforms true}))
                 changed (change-ser ser {(:entity_id c2) {:collection_id "does-not-exist"}})]
             (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
               (let [report (serdes.load/load-metabase! (ingestion-in-memory changed) {:continue-on-error true})]
@@ -1414,7 +1418,7 @@
                                             (t2/select-one [:model/Card :entity_id] :id (:id c1))))))
 
           (testing "Identity hashes end up in target db in place of entity ids"
-            (let [ser2 (vec (serdes.extract/extract {:no-settings true :no-data-model true}))]
+            (let [ser2 (vec (serdes.extract/extract {:no-settings true :no-data-model true :no-transforms true}))]
               (testing "\nWe exported identity hashes"
                 (doseq [e ser2
                         :when (:entity_id e)]
@@ -1447,7 +1451,7 @@
                              {:model "Field" :id "field"}]}
               (ts/extract-one "Field" (:id f2))))
 
-      (is (=? {:parent_id   ["mydb" nil "table" "field" "field"],
+      (is (=? {:parent_id   ["mydb" nil "table" "field" "field"]
                :serdes/meta [{:model "Database" :id "mydb"}
                              {:model "Table" :id "table"}
                              {:model "Field" :id "field"}

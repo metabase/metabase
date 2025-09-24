@@ -65,7 +65,6 @@
     #"^router.*"
     #"^semaphore$"
     #"^sequences$"
-    #"^sessions$"
     #"^watchdog$"
     ;; Rails / Active Record
     #"^schema_migrations$"

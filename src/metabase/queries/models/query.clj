@@ -148,7 +148,10 @@
       (parse-long card-id-str))))
 
 (defn collect-card-ids
-  "Return a sequence of model ids referenced in the MBQL `query`."
+  "Return a sequence of model ids referenced in the MBQL `query`.
+
+  DEPRECATED: Use [[metabase.lib.core/all-source-card-ids]] going forward."
+  {:deprecated "0.57.0"}
   [query]
   (let [ids (java.util.HashSet.)
         walker (fn [form]

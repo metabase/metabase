@@ -3,7 +3,7 @@ import Color from "color";
 import type { ColorGetter } from "metabase/visualizations/types";
 
 import { colors } from "./colors";
-import type { ColorPalette } from "./types";
+import type { ColorName, ColorPalette } from "./types";
 
 export const ACCENT_COUNT = 8;
 
@@ -51,10 +51,7 @@ export const aliases: Record<string, (palette: ColorPalette) => string> = {
  * When the hex values are needed, use the themeColor function
  * from Mantine's theme, i.e. `theme.fn.themeColor("text-light")`
  */
-export function color(
-  colorName: keyof ColorPalette,
-  palette?: ColorPalette,
-): string;
+export function color(colorName: ColorName, palette?: ColorPalette): ColorName;
 export function color(color: string, palette?: ColorPalette): string;
 export function color(color: any, palette: ColorPalette = colors) {
   const fullPalette = {

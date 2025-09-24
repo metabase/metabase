@@ -15,6 +15,9 @@
    [metabase.embedding.jwt :as embed]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.request.core :as request]
+   [metabase.tiles.api :as api.tiles]
+   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]))
 
@@ -144,3 +147,41 @@
      :token-params     token-params
      :query-params     (api.embed.common/parse-query-params query-params)
      :qp               qp.pivot/run-pivot-query)))
+
+(api.macros/defendpoint :get "/tiles/card/:token/:zoom/:x/:y/:lat-field/:lon-field"
+  "Generates a single tile image for an embedded Card using the map visualization."
+  [{:keys [token zoom x y lat-field lon-field]}
+   :- [:merge
+       :api.tiles/route-params
+       [:map
+        [:token string?]]]
+   {:keys [parameters]}
+   :- [:map
+       [:parameters {:optional true} ms/JSONString]]]
+  (let [unsigned-token   (check-and-unsign token)
+        card-id    (api.embed.common/unsigned-token->card-id unsigned-token)
+        parameters (json/decode+kw parameters)
+        lat-field    (json/decode+kw lat-field)
+        lon-field    (json/decode+kw lon-field)]
+    (request/as-admin
+      (api.tiles/process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field))))
+
+(api.macros/defendpoint :get "/tiles/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+  "Generates a single tile image for a Card on an embedded Dashboard using the map visualization."
+  [{:keys [token dashcard-id card-id zoom x y lat-field lon-field]}
+   :- [:merge
+       :api.tiles/route-params
+       [:map
+        [:token       string?]
+        [:dashcard-id ms/PositiveInt]
+        [:card-id     ms/PositiveInt]]]
+   {:keys [parameters]}
+   :- [:map
+       [:parameters {:optional true} ms/JSONString]]]
+  (let [unsigned-token   (check-and-unsign token)
+        dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+        parameters       (json/decode+kw parameters)
+        lat-field        (json/decode+kw lat-field)
+        lon-field        (json/decode+kw lon-field)]
+    (request/as-admin
+      (api.tiles/process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field))))
