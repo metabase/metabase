@@ -315,13 +315,18 @@ H.describeWithSnowplowEE(
   () => {
     beforeEach(() => {
       H.resetSnowplow();
-      H.prepareSdkIframeEmbedTest({ signOut: false });
+      H.prepareSdkIframeEmbedTest({
+        enabledAuthMethods: ["jwt"],
+        signOut: false,
+      });
       H.enableTracking();
-      cy.signOut();
     });
 
     it("should send an Embedded Analytics JS usage event", () => {
+      cy.signOut();
+      cy.visit("http://localhost:4000");
       const frame = H.loadSdkIframeEmbedTestPage({
+        origin: "http://different-than-metabase-instance.com",
         elements: [
           {
             component: "metabase-dashboard",
@@ -404,6 +409,26 @@ H.describeWithSnowplowEE(
           },
         },
       });
+    });
+
+    it("should not send an Embedded Analytics JS usage event in the preview", () => {
+      cy.visit("/embed-js");
+
+      H.waitForSimpleEmbedIframesToLoad();
+      H.getSimpleEmbedIframeContent().within(() => {
+        cy.findByText("Orders in a dashboard").should("be.visible");
+      });
+
+      H.expectUnstructuredSnowplowEvent(
+        {
+          event: "setup",
+          global: {
+            auth_method: "session",
+          },
+        },
+        // Expect that the usage event shouldn't be sent
+        0,
+      );
     });
   },
 );

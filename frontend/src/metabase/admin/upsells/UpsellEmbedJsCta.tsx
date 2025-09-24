@@ -1,21 +1,23 @@
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { isEEBuild } from "metabase/lib/utils";
-import { PLUGIN_ADMIN_SETTINGS, PLUGIN_EMBEDDING } from "metabase/plugins";
+import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { Box } from "metabase/ui";
 
 import { UpsellCta } from "./components/UpsellCta";
 import { trackUpsellClicked } from "./components/analytics";
 import { useUpsellLink } from "./components/use-upsell-link";
 
-export function useUpsellSdkCta() {
-  const campaign = "embedding-interactive";
+export function useUpsellEmbedJsCta({
+  embedFlowUrl,
+}: {
+  embedFlowUrl: string;
+}) {
+  const campaign = "embedded-analytics-js";
   const location = "static-embed-popover";
 
-  const isInteractiveEmbeddingEnabled = useSelector(
-    PLUGIN_EMBEDDING.isInteractiveEmbeddingEnabled,
-  );
+  const isEmbedJsEnabled = useHasTokenFeature("embedding_simple");
 
   const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFlow({
     campaign,
@@ -30,10 +32,8 @@ export function useUpsellSdkCta() {
     location,
   });
 
-  if (isInteractiveEmbeddingEnabled) {
-    return {
-      internalLink: "/admin/embedding/interactive",
-    };
+  if (isEmbedJsEnabled) {
+    return { internalLink: embedFlowUrl };
   }
 
   return {
@@ -43,9 +43,9 @@ export function useUpsellSdkCta() {
   };
 }
 
-export function UpsellSdkCta() {
+export function UpsellEmbedJsCta({ embedFlowUrl }: { embedFlowUrl: string }) {
   const { url, internalLink, triggerUpsellFlow, trackUpsell } =
-    useUpsellSdkCta();
+    useUpsellEmbedJsCta({ embedFlowUrl });
 
   if (!isEEBuild()) {
     return null;
