@@ -14,6 +14,8 @@ import { HeaderActions, HeaderRoot } from "./CollectionHeader.styled";
 import { CollectionInfoSidebarToggle } from "./CollectionInfoSidebarToggle";
 import { CollectionNewButton } from "./CollectionNewButton";
 import { CollectionPermissions } from "./CollectionPermissions";
+import { CollectionRepresentationExport } from "./CollectionRepresentationExport";
+import { CollectionRepresentationImport } from "./CollectionRepresentationImport";
 import CollectionTimeline from "./CollectionTimeline";
 import { CollectionUpload } from "./CollectionUpload";
 
@@ -54,6 +56,12 @@ const CollectionHeader = ({
       />
       {!isTrash && (
         <HeaderActions data-testid="collection-menu">
+          {!isInstanceAnalytics && (
+            <CollectionRepresentationExport collection={collection} />
+          )}
+          {!isInstanceAnalytics && (
+            <CollectionRepresentationImport collection={collection} />
+          )}
           {!isInstanceAnalytics && hasCuratePermissions && (
             <CollectionNewButton />
           )}
