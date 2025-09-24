@@ -655,13 +655,12 @@ export function setup2ndStageBreakoutFilter() {
   H.popover().within(() => {
     getPopoverItem("Product → Category", 1).scrollIntoView().click();
   });
+  closeToasts();
 
   H.getDashboardCard(1).findByText("Select…").click();
   H.popover().within(() => {
     getPopoverItem("Product → Category", 1).scrollIntoView().click();
   });
-
-  closeToasts();
 
   H.getDashboardCard(2).findByText("Select…").click();
   H.popover().within(() => {

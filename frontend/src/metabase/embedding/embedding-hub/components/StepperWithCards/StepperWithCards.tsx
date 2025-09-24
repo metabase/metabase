@@ -41,6 +41,21 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
     return null;
   }
 
+  // Find the next actionable card (first undone, unlocked card in the first incomplete step)
+  const nextCard = (() => {
+    const firstIncompleteStep = steps.find(
+      (step) => !step.cards.every((card) => card.done || card.optional),
+    );
+
+    if (!firstIncompleteStep) {
+      return null;
+    }
+
+    return firstIncompleteStep.cards.find(
+      (card) => !card.done && !card.locked && !card.optional,
+    );
+  })();
+
   return (
     <Stepper
       active={0}
@@ -72,17 +87,22 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                       ? card.clickAction.onClick
                       : undefined;
 
+                  const isNextCard = nextCard && nextCard.id === card.id;
+
                   return (
                     <CardAction card={card} key={card.id}>
                       <Card
                         className={cx(S.stepCard, {
+                          [S.requiredStepCard]: !card.optional,
                           [S.optionalStepCard]: card.optional,
                           [S.lockedStepCard]: card.locked,
+                          [S.nextStepCard]: isNextCard,
                         })}
                         component={onClick ? "button" : undefined}
                         onClick={onClick}
                         disabled={card.locked}
                         data-testid={`step-card-${card.id}`}
+                        data-next-step={isNextCard}
                       >
                         <Stack justify="space-between" h="100%">
                           <Stack gap="xs" h="100%">
@@ -111,18 +131,35 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                             <Flex justify="flex-end">
                               {match(card)
                                 .with({ done: true }, () => (
-                                  <Text
-                                    size="sm"
-                                    c="var(--mb-color-success-darker)"
-                                  >
-                                    {t`Done`}
-                                  </Text>
+                                  <Group gap="xs">
+                                    <Icon
+                                      name="check"
+                                      c="var(--mb-color-success-darker)"
+                                      size={12}
+                                    />
+                                    <Text
+                                      size="sm"
+                                      c="var(--mb-color-success-darker)"
+                                    >
+                                      {t`Done`}
+                                    </Text>
+                                  </Group>
                                 ))
                                 .with({ locked: true }, () => (
-                                  <Icon
-                                    name="lock"
-                                    c="var(--mb-color-text-secondary)"
-                                  />
+                                  <Group gap="xs">
+                                    <Icon
+                                      name="lock"
+                                      c="var(--mb-color-text-secondary)"
+                                      size={12}
+                                    />
+
+                                    <Text
+                                      c="var(--mb-color-text-secondary)"
+                                      fz={12}
+                                    >
+                                      {t`Complete the other steps to unlock`}
+                                    </Text>
+                                  </Group>
                                 ))
                                 .with({ optional: true }, () => (
                                   <Text
@@ -168,6 +205,10 @@ const CardAction = ({
         return children;
       }
 
-      return <Link to={to}>{children}</Link>;
+      return (
+        <Link to={to} className={S.stepCardLink}>
+          {children}
+        </Link>
+      );
     })
     .otherwise(() => children);

@@ -42,7 +42,11 @@ import type {
   RegularCollectionId,
 } from "metabase-types/api";
 
-import { trackDocumentCreated, trackDocumentUpdated } from "../analytics";
+import {
+  trackDocumentBookmark,
+  trackDocumentCreated,
+  trackDocumentUpdated,
+} from "../analytics";
 import {
   clearDraftCards,
   openVizSettingsSidebar,
@@ -248,6 +252,11 @@ export const DocumentPage = ({
     if (!documentId) {
       return;
     }
+
+    if (!isBookmarked) {
+      trackDocumentBookmark();
+    }
+
     isBookmarked
       ? deleteBookmark({ type: "document", id: documentId })
       : createBookmark({ type: "document", id: documentId });

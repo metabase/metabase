@@ -893,7 +893,7 @@ H.describeWithSnowplowEE("document comments", () => {
       Comments.getCommentByText("Reply 1").should("be.visible");
     });
 
-    it("should be possible to resolve a thread when the first comment is deleted", () => {
+    it("should be possible to resolve and unresolve a thread when the first comment is deleted", () => {
       startNewCommentIn1ParagraphDocument();
 
       cy.realType("Main comment");
@@ -928,6 +928,14 @@ H.describeWithSnowplowEE("document comments", () => {
 
       cy.findByTestId("comments-resolved-tab").should("be.visible");
       cy.findByTestId("discussion-comment-deleted").should("not.exist");
+
+      cy.log("unresolving a thread when the first comment is deleted");
+      cy.findByRole("tab", { name: "Resolved (1)" }).click();
+      cy.findByTestId("discussion-comment-deleted").realHover();
+      cy.findByLabelText("Re-open").click();
+
+      cy.findAllByRole("tab").should("have.length", 0);
+      Comments.getNewThreadInput().should("be.visible");
     });
 
     it("should be possible to resolve a thread created by another user", () => {
@@ -1529,6 +1537,7 @@ H.describeWithSnowplowEE("document comments", () => {
               },
             ],
           },
+          html: "<a href='#'>Robert Tableton</a>",
         }).then(({ body: comment }) => {
           H.getInbox().then((response: any) => {
             const emails = response.body;
@@ -1863,6 +1872,7 @@ function createComment(
   nodeId: string,
   text: string,
   parent_comment_id: CommentId | null = null,
+  html?: string,
 ) {
   return H.createComment({
     target_type: "document",
@@ -1879,6 +1889,7 @@ function createComment(
         },
       ],
     },
+    html: html ?? `<p>${text}</p>`,
   });
 }
 

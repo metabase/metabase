@@ -37,7 +37,8 @@
    #"/collections/([^/]*)\.yaml$"              :collection
    #"/snippets/(.*)\.yaml"                     :snippet
    #"/databases/.*/schemas/(.*)"               :schema
-   #"/databases/(.*)\.yaml"                    :database])
+   #"/databases/(.*)\.yaml"                    :database
+   #"/transforms/(.*)\.yaml"                   :transform])
 
 (defn- file-type
   "Find out entity type by file path"
@@ -97,13 +98,13 @@
               (testing "API respects parameters"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :all_collections false :data_model false :settings true)]
-                  (is (= #{:log :dir :settings}
+                  (is (= #{:log :dir :settings :transform}
                          (tar-file-types f)))))
 
               (testing "We can export just a single collection"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :collection (:id coll) :data_model false :settings false)]
-                  (is (= #{:log :dir :dashboard :card :collection}
+                  (is (= #{:log :dir :dashboard :card :collection :transform}
                          (tar-file-types f)))))
 
               (testing "We can export two collections"
@@ -119,18 +120,18 @@
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               ;; eid:... syntax is kept for backward compat
                                               :collection (str "eid:" (:entity_id coll)) :data_model false :settings false)]
-                  (is (= #{:log :dir :dashboard :card :collection}
+                  (is (= #{:log :dir :dashboard :card :collection :transform}
                          (tar-file-types f)))))
 
               (testing "We can export that collection using entity id"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :collection (:entity_id coll) :data_model false :settings false)]
-                  (is (= #{:log :dir :dashboard :card :collection}
+                  (is (= #{:log :dir :dashboard :card :collection :transform}
                          (tar-file-types f)))))
 
               (testing "Default export: all-collections, data-model, settings"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {})]
-                  (is (= #{:log :dir :dashboard :card :collection :settings :schema :database}
+                  (is (= #{:transform :log :dir :dashboard :card :collection :settings :schema :database}
                          (tar-file-types f)))))
 
               (testing "On exception API returns log"
@@ -200,7 +201,7 @@
                     ;; we're going to re-use it for import, so a copy is necessary
                       ba  (#'api.serialization/ba-copy res)]
                   (testing "We get only our data and a log file in an archive"
-                    (is (= 4
+                    (is (= 12
                            (with-open [tar (open-tar ba)]
                              (count
                               (for [^TarArchiveEntry e (u.compress/entries tar)
@@ -208,7 +209,7 @@
                                 (do
                                   (condp re-find (.getName e)
                                     #"/export.log$" (testing "Three lines in a log for data files"
-                                                      (is (= (+ #_extract 3 #_store 3)
+                                                      (is (= (+ #_extract 11 #_store 11)
                                                              (count (line-seq (io/reader tar))))))
                                     nil)
                                   (.getName e))))))))
@@ -222,7 +223,7 @@
                              "settings"        false
                              "field_values"    false
                              "duration_ms"     (every-pred number? pos?)
-                             "count"           3
+                             "count"           11
                              "error_count"     0
                              "source"          "api"
                              "secrets"         false
@@ -238,7 +239,7 @@
                                                     {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                                     {:file ba})]
                       (testing "We get our data items back"
-                        (is (= #{"Collection" "Dashboard" "Card" "Database"}
+                        (is (= #{"Collection" "Dashboard" "Card" "Database" "TransformTag" "TransformJob"}
                                (log-types (line-seq (io/reader (io/input-stream res)))))))
                       (testing "And they hit the db"
                         (is (= (:name dash) (t2/select-one-fn :name :model/Dashboard :entity_id (:entity_id dash))))
@@ -248,8 +249,8 @@
                                  "direction"     "import"
                                  "duration_ms"   pos?
                                  "source"        "api"
-                                 "models"        "Card,Collection,Dashboard"
-                                 "count"         3
+                                 "models"        "Card,Collection,Dashboard,TransformJob,TransformTag"
+                                 "count"         11
                                  "error_count"   0
                                  "success"       true
                                  "error_message" nil}
@@ -299,7 +300,7 @@
                                                       :continue_on_error true)
                             log (slurp (io/input-stream res))]
                         (testing "3 header lines, then card+database+coll, error, then dashboard+coll"
-                          (is (= #{"Dashboard" "Card" "Database" "Collection"}
+                          (is (= #{"Dashboard" "Card" "Database" "Collection" "TransformTag" "TransformJob"}
                                  (log-types (str/split-lines log))))
                           (is (re-find #"Failed to read file for Collection DoesNotExist" log)))
                         (testing "Snowplow event about error was sent"
@@ -308,9 +309,9 @@
                                    "direction"   "import"
                                    "source"      "api"
                                    "duration_ms" int?
-                                   "count"       2
+                                   "count"       10
                                    "error_count" 1
-                                   "models"      "Collection,Dashboard"}
+                                   "models"      "Collection,Dashboard,TransformJob,TransformTag"}
                                   (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))))))
 
                 (testing "Client error /api/ee/serialization/import"
@@ -371,7 +372,7 @@
                         (doseq [^TarArchiveEntry e (u.compress/entries tar)]
                           (condp re-find (.getName e)
                             #"/export.log$" (testing "Three lines in a log for data files"
-                                              (is (= (+ #_extract 3 #_error 1 #_store 2)
+                                              (is (= (+ #_extract 11 #_error 1 #_store 10)
                                                      (count (line-seq (io/reader tar))))))
                             nil))))
                     (testing "Snowplow export event was sent"
@@ -383,7 +384,7 @@
                                "settings"        false
                                "field_values"    false
                                "duration_ms"     pos?
-                               "count"           2
+                               "count"           10
                                "error_count"     1
                                "source"          "api"
                                "secrets"         false

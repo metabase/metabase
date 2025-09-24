@@ -656,8 +656,7 @@ describe("issue 28756", () => {
 
   const TOAST_TIMEOUT_SAFETY_MARGIN = 1000;
   const TOAST_TIMEOUT = DASHBOARD_SLOW_TIMEOUT + TOAST_TIMEOUT_SAFETY_MARGIN;
-  const TOAST_MESSAGE =
-    "Would you like to be notified when this dashboard is done loading?";
+  const TOAST_MESSAGE = "Want to get notified when this dashboard loads?";
 
   function restrictCollectionForNonAdmins(collectionId) {
     cy.request("GET", "/api/collection/graph").then(
