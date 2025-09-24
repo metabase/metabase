@@ -7,9 +7,10 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { CodeMirror } from "metabase/common/components/CodeMirror";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import EditorS from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/CodeMirrorEditor.module.css";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   Button,
   Collapse,
@@ -29,6 +30,7 @@ import {
   type MetabotAgentEditSuggestionChatMessage,
   setSuggestedTransform,
 } from "metabase-enterprise/metabot/state";
+import * as Lib from "metabase-lib";
 import type { DatasetQuery, Transform } from "metabase-types/api";
 
 const PreviewContent = ({
@@ -97,6 +99,7 @@ export const AgentSuggestionMessage = ({
   const { suggestedTransform } = message.payload;
 
   const dispatch = useDispatch();
+  const metadata = useSelector(getMetadata);
 
   const url = useLocation();
   const isViewing = url.pathname?.startsWith(
@@ -130,22 +133,42 @@ export const AgentSuggestionMessage = ({
   const oldSource = originalTransform ? getSourceCode(originalTransform) : "";
   const newSource = getSourceCode(suggestedTransform);
 
-  const handleFocus = (config?: { skipToSave?: boolean }) => {
-    const url = suggestedTransform.id
-      ? `/admin/transforms/${suggestedTransform.id}/query`
+  const parseTemplateTags = (query: DatasetQuery): DatasetQuery => {
+    // Round-tripping through Lib.nativeQuery ensures template tags (e.g. model & snippet references)
+    // are parsed so that the query can execute successfully
+    if (query.type === "native" && query?.database && query.native?.query) {
+      const metadataProvider = Lib.metadataProvider(query.database, metadata);
+      const libQuery = Lib.nativeQuery(
+        query.database,
+        metadataProvider,
+        query.native.query,
+      );
+      return Lib.toLegacyQuery(libQuery);
+    }
+    return query;
+  };
+
+  const handleFocus = (
+    config?: { skipToSave?: boolean },
+    transformToUse?: Transform,
+  ) => {
+    const transform = transformToUse || suggestedTransform;
+    const url = transform.id
+      ? `/admin/transforms/${transform.id}/query`
       : `/admin/transforms/new/native${config?.skipToSave ? "?autoSave=true" : ""}`;
     dispatch(push(url) as UnknownAction);
-    dispatch(setSuggestedTransform(suggestedTransform));
+    dispatch(setSuggestedTransform(transform));
   };
 
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const handleSave = async (query: DatasetQuery) => {
     if (suggestedTransform.id) {
+      const processedQuery = parseTemplateTags(query);
       const { error } = await updateTransform({
         id: suggestedTransform.id,
         source: {
           type: "query",
-          query,
+          query: processedQuery,
         },
       });
 
@@ -161,6 +184,15 @@ export const AgentSuggestionMessage = ({
 
   const handleAccept = async () => {
     if (!isViewing && !suggestedTransform.id) {
+      const processedQuery = parseTemplateTags(suggestedTransform.source.query);
+      const processedTransform = {
+        ...suggestedTransform,
+        source: {
+          ...suggestedTransform.source,
+          query: processedQuery,
+        },
+      };
+      dispatch(setSuggestedTransform(processedTransform));
       handleFocus({ skipToSave: true });
     }
 
