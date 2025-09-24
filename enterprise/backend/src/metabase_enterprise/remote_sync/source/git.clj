@@ -201,9 +201,9 @@
     (push-branch! source)))
 
 (defn branches
-  "Return the branches in the repo"
-  [{:keys [^Git git]}]
-  (->> (call-command (.branchList git))
+  "Return the branches in the remote repo"
+  [{:keys [^Git git] :as source}]
+  (->> (call-remote-command (.lsRemote git) source)
        (filter #(str/starts-with? (.getName ^Ref %) "refs/heads/"))
        (remove #(.isSymbolic ^Ref %))
        (map #(str/replace-first (.getName ^Ref %) "refs/heads/" ""))

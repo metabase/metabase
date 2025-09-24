@@ -144,7 +144,9 @@
 (deftest branches
   (mt/with-temp-dir [remote-dir nil]
     (let [[source _remote] (init-source! "master" remote-dir :branches ["branch-1" "branch-2"])]
-      (is (= ["branch-1" "branch-2" "master"] (source.p/branches source))))))
+      ;; add extra branch to remote to check it is picked up
+      (git-working-create-branch! _remote "branch-3")
+      (is (= ["branch-1" "branch-2" "branch-3" "master"] (source.p/branches source))))))
 ;
 (deftest list-files
   (mt/with-temp-dir [remote-dir nil]
