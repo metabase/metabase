@@ -435,6 +435,7 @@
                               :expressions/today               true
                               ;; Index sync is turned off across the application as it is not used ATM.
                               :index-info                      false
+                              :python-transforms               true
                               :transforms/python               true
                               :database-routing                true}]
   (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))

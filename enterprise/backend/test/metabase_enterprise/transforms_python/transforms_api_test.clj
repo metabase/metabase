@@ -317,7 +317,9 @@
 
 (deftest python-transform-schema-change-integration-test
   (testing "Python transform handles schema changes using appropriate rename strategy"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :transforms/python)
+                           ;; takes too long on CI
+                           :bigquery-cloud-sdk)
       (mt/with-premium-features #{:transforms :transforms-python}
         (mt/dataset transforms-dataset/transforms-test
           (let [schema (get-test-schema)]

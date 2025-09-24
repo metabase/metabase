@@ -67,7 +67,8 @@
         (transforms.execute/execute-python-transform! transform {:run-method :manual})
         (let [table (transforms.tu/wait-for-table table-name 10000)
               columns (t2/select :model/Field :table_id (:id table) {:order-by [:position]})
-              column-names (mapv :name columns)
+              column-names (filterv (fn [x] (not= x "_id")) ;; for mongo
+                                    (map :name columns))
               rows (transforms.tu/table-rows table-name)]
           {:columns column-names
            :rows rows})))))

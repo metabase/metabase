@@ -371,7 +371,8 @@
             (driver/drop-table! driver db-id qualified-table-2)))))))
 
 (deftest rename-table-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :rename)
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                             :+features [:rename]})
     (testing "rename-table! should rename a single table correctly"
       (let [db-id           (mt/id)
             driver          driver/*driver*

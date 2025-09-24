@@ -56,9 +56,11 @@
 
 (defn table-rows
   [table-name]
-  (mt/rows (mt/process-query {:database (mt/id)
-                              :query    {:source-table (t2/select-one-pk :model/Table :name table-name)}
-                              :type     :query})))
+  (->>
+   (mt/rows (mt/process-query {:database (mt/id)
+                               :query    {:source-table (t2/select-one-pk :model/Table :name table-name)}
+                               :type     :query}))
+   (map (fn [x] (if (= :mongo driver/*driver*) (rest x) x)))))
 
 (defn parse-timestamp
   "Parse a local datetime and convert it to a ZonedDateTime in the default timezone."

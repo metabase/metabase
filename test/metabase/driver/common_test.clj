@@ -130,7 +130,7 @@
                                                   {:name qualified-table-name
                                                    :columns columns}
                                                   data-source)]
-                (when-let [inserted-rows (and (not (#{:bigquery-cloud-sdk :snowflake} driver)) ;table-rows-seq not implemented
+                (when-let [inserted-rows (and (not (#{:bigquery-cloud-sdk :snowflake :mongo} driver)) ;table-rows-seq not implemented
                                               (driver/table-rows-seq driver/*driver* (mt/db) {:name table-name
                                                                                               :schema schema-name}))]
                   (is (= (count data) (count inserted-rows)) "Should insert all test rows including nulls"))))
