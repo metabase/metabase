@@ -1347,7 +1347,7 @@ LIMIT
         "contain",
         "Last ran a few seconds ago successfully.",
       );
-      getRunStatus().should(
+      getRunSection().should(
         "contain",
         "This run succeeded before it had a chance to cancel.",
       );
@@ -2265,6 +2265,10 @@ function getCancelButton() {
 
 function getRunStatus() {
   return cy.findByTestId("run-status");
+}
+
+function getRunSection() {
+  return cy.findByTestId("run-section");
 }
 
 function getRunListLink() {
