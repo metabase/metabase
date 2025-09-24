@@ -14,6 +14,7 @@ import type {
 } from "metabase-types/api";
 
 import { RunButton } from "../../../components/RunButton";
+import { RunStatus } from "../../../components/RunStatus";
 import { SplitSection } from "../../../components/SplitSection";
 import type { TransformJobInfo } from "../types";
 
@@ -38,7 +39,11 @@ export function ScheduleSection({
         <ScheduleWidget job={job} onChangeSchedule={onScheduleChange} />
       </Box>
       <Divider />
-      <Group px="xl" py="md" justify="end">
+      <Group px="xl" py="md" justify="space-between">
+        <RunStatus
+          run={job?.last_run ?? null}
+          neverRunMessage={t`This job hasn’t been run before.`}
+        />
         <RunButtonSection job={job} />
       </Group>
     </SplitSection>

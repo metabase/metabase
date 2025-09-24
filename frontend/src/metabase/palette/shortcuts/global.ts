@@ -133,4 +133,13 @@ export const globalShortcuts = {
     shortcut: ["g h"],
     shortcutGroup: "global" as const,
   },
+
+  "navigate-embed-js": {
+    get name() {
+      return t`Create a new embed`;
+    },
+
+    shortcut: ["c e"],
+    shortcutGroup: "global" as const,
+  },
 };

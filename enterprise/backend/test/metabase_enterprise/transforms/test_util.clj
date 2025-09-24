@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
@@ -68,3 +69,27 @@
   "Parse a local datetime and convert it to a string encoding a ZonedDateTime in the default timezone."
   ^String [timestamp-string]
   (-> timestamp-string parse-instant str))
+
+(defmulti delete-schema!
+  "Deletes a schema."
+  {:arglists '([driver db schema])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod delete-schema! :default [_driver _db _schema] nil)
+
+(doseq [driver [:postgres :snowflake]]
+  (defmethod delete-schema! driver [driver db schema]
+    (let [conn-spec (driver/connection-spec driver db)
+          sql [[(format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema)]]]
+      (driver/execute-raw-queries! driver/*driver* conn-spec sql))))
+
+(defmethod delete-schema! :sqlserver [driver db schema]
+  (let [conn-spec (driver/connection-spec driver db)
+        sql [[(format "IF EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') DROP SCHEMA [%s];" schema schema)]]]
+    (driver/execute-raw-queries! driver/*driver* conn-spec sql)))
+
+(defmethod delete-schema! :clickhouse [driver db schema]
+  (let [conn-spec (driver/connection-spec driver db)
+        sql [[(format "DROP DATABASE IF EXISTS `%s`;" schema)]]]
+    (driver/execute-raw-queries! driver/*driver* conn-spec sql)))

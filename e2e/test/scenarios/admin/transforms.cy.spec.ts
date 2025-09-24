@@ -566,7 +566,6 @@ LIMIT
       getTagsInput().type("New tag");
       H.popover().findByText("New tag").click();
       cy.wait("@createTag");
-      H.popover().findByText("New tag").should("be.visible");
       H.undoToast().should("contain.text", "Transform tags updated");
     });
 
@@ -622,7 +621,6 @@ LIMIT
       getTagsInput().type("New tag");
       H.popover().findByText("New tag").click();
       cy.wait("@createTag");
-      H.popover().findByText("New tag").should("be.visible");
 
       cy.log("Navigate to transform B");
       getNavSidebar().findByText("Transforms").click();
@@ -1347,7 +1345,7 @@ LIMIT
         "contain",
         "Last ran a few seconds ago successfully.",
       );
-      getRunStatus().should(
+      getRunSection().should(
         "contain",
         "This run succeeded before it had a chance to cancel.",
       );
@@ -1628,12 +1626,34 @@ describe("scenarios > admin > transforms > jobs", () => {
         event: "transform_job_trigger_manual_run",
         triggered_from: "job-page",
       });
+
+      getJobPage()
+        .findByText("Last ran a few seconds ago successfully.")
+        .should("be.visible");
+
       getNavSidebar().findByText("Runs").click();
       getContentTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("Success").should("be.visible");
         cy.findByText("Manual").should("be.visible");
       });
+    });
+
+    it("should display the error message from a failed run", () => {
+      H.createTransformTag({ name: "New tag" }).then(({ body: tag }) => {
+        createSqlTransform({
+          sourceQuery: "SELECT * FROM abc",
+          tagIds: [tag.id],
+        });
+        H.createTransformJob(
+          { name: "New job", tag_ids: [tag.id] },
+          { visitTransformJob: true },
+        );
+      });
+      runJobAndWaitForFailure();
+      getJobPage().findByText("Last run failed a few seconds ago.");
+      getRunErrorInfoButton().click();
+      H.modal().should("contain.text", 'relation "abc" does not exist');
     });
   });
 
@@ -2245,6 +2265,10 @@ function getRunStatus() {
   return cy.findByTestId("run-status");
 }
 
+function getRunSection() {
+  return cy.findByTestId("run-section");
+}
+
 function getRunListLink() {
   return cy.findByRole("link", { name: "See all runs" });
 }
@@ -2310,7 +2334,7 @@ function getLastRunAtFilterWidget() {
 }
 
 function getNextRunFilterWidget() {
-  return cy.findByRole("group", { name: "Next run" });
+  return cy.findByRole("group", { name: "Next run at" });
 }
 
 function getStatusFilterWidget() {
@@ -2359,6 +2383,11 @@ function runTransformAndWaitForFailure() {
 function runJobAndWaitForSuccess() {
   getRunButton().click();
   getRunButton().should("have.text", "Ran successfully");
+}
+
+function runJobAndWaitForFailure() {
+  getRunButton().click();
+  getRunButton().should("have.text", "Run failed");
 }
 
 function createMbqlTransform({
