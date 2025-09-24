@@ -269,6 +269,54 @@ Key details:
 - Can accept parameters for parameterized queries
 - Works for any card type (question, metric, or model)
 
+### Loading cards into the notebook editor
+For models and metrics, we'll want to use a pattern similar to this to load up their queries in the notebook editor.
+
+For models only, if based on SQL, we'll use our code mirror component.
+
+```
+import { useDispatch } from "metabase/lib/redux";
+  import { loadMetadataForCard } from "metabase/questions/actions";
+  import { Notebook } from "metabase/querying/notebook/components/Notebook";
+  import Question from "metabase-lib/v1/Question";
+  import type { Card } from "metabase-types/api";
+
+  // In your workbench component
+  export const WorkbenchNotebook = ({ card }: { card: Card }) => {
+    const dispatch = useDispatch();
+    const metadata = useSelector(getMetadata);
+    const [question, setQuestion] = useState<Question | null>(null);
+
+    useEffect(() => {
+      const loadData = async () => {
+        // Use the generic metadata loader
+        await dispatch(loadMetadataForCard(card));
+
+        // Create question after metadata is loaded
+        const freshMetadata = getMetadata(store.getState());
+        const questionInstance = new Question(card, freshMetadata);
+        setQuestion(questionInstance);
+      };
+
+      if (card) {
+        loadData();
+      }
+    }, [card, dispatch]);
+
+    if (!question) {
+      return <div>Loading...</div>;
+    }
+
+    return (
+      <Notebook
+        question={question}
+        updateQuestion={setQuestion}
+        isResultDirty={false}
+        reportTimezone="UTC"
+      />
+    );
+  };
+```
 
 ### Other
 - Only use ui components from "metabase/ui"
@@ -279,6 +327,7 @@ Key details:
 - We have an example of how to do a tool layout in the transforms work, but its not necessarily fully set up to be reused.
 - **Metrics**: ✅ COMPLETED - Tool layout implemented with MetricsApp, MetricsEntitiesList, and MetricsDetails components. Uses proper data access pattern for SearchResponse.data.
 - **Models**: ✅ COMPLETED - Tool layout implemented with ModelsApp, ModelsEntitiesList, and ModelsDetails components. Uses proper data access pattern for SearchResponse.data. Route added at `/bench/models`.
+- Models and metrics need to load their queries in the notebook editor component. See above section on pattern.
 - Segments needs updated to use the new tool layout and detail views.
 - Metadata is working and does not need modified at this time.
 - We need to move Metabot to its own panel.
