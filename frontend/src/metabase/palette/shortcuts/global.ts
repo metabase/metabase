@@ -139,8 +139,7 @@ export const globalShortcuts = {
       return t`Create a new embed`;
     },
 
-    // no shortcuts. command palette only.
-    shortcut: [],
+    shortcut: ["c e"],
     shortcutGroup: "global" as const,
   },
 };
