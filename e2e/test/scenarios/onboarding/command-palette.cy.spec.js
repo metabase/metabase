@@ -388,6 +388,16 @@ describe("command palette", () => {
     });
   });
 
+  it("should show the 'Create a new embed' command palette item", () => {
+    cy.visit("/");
+    cy.findByRole("button", { name: /Search/ }).click();
+
+    H.commandPalette().within(() => {
+      H.commandPaletteInput().should("exist").type("new embed");
+      cy.findByText("Create a new embed").should("be.visible");
+    });
+  });
+
   describe("ee", () => {
     beforeEach(() => {
       H.activateToken("bleeding-edge");
