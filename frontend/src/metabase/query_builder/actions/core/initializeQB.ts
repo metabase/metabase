@@ -115,9 +115,8 @@ export function deserializeCard(serializedCard: string) {
 async function fetchAndPrepareSavedQuestionCards(
   cardId: string | number,
   dispatch: Dispatch,
-  getState: GetState,
 ) {
-  const card = await loadCard(cardId, { dispatch, getState });
+  const card = await loadCard(cardId, { dispatch });
   const originalCard = { ...card };
 
   // for showing the "started from" lineage correctly when adding filters/breakouts and when going back and forth
@@ -128,7 +127,6 @@ async function fetchAndPrepareSavedQuestionCards(
 async function fetchAndPrepareAdHocQuestionCards(
   deserializedCard: Card,
   dispatch: Dispatch,
-  getState: GetState,
 ) {
   if (!deserializedCard.original_card_id) {
     return {
@@ -139,7 +137,6 @@ async function fetchAndPrepareAdHocQuestionCards(
 
   const originalCard = await loadCard(deserializedCard.original_card_id, {
     dispatch,
-    getState,
   });
 
   if (cardIsEquivalent(deserializedCard, originalCard)) {
@@ -181,12 +178,8 @@ export async function resolveCards({
     };
   }
   return cardId
-    ? fetchAndPrepareSavedQuestionCards(cardId, dispatch, getState)
-    : fetchAndPrepareAdHocQuestionCards(
-        deserializedCard as Card,
-        dispatch,
-        getState,
-      );
+    ? fetchAndPrepareSavedQuestionCards(cardId, dispatch)
+    : fetchAndPrepareAdHocQuestionCards(deserializedCard as Card, dispatch);
 }
 
 async function loadDatabases(dispatch: any) {

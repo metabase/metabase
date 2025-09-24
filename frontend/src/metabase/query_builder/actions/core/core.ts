@@ -110,13 +110,13 @@ export const setCardAndRun = (
   nextCard: Card,
   { shouldUpdateUrl = true } = {},
 ) => {
-  return async (dispatch: Dispatch, getState: GetState) => {
+  return async (dispatch: Dispatch) => {
     // clone
     const card = copy(nextCard);
 
     const originalCard = card.original_card_id
       ? // If the original card id is present, dynamically load its information for showing lineage
-        await loadCard(card.original_card_id, { dispatch, getState })
+        await loadCard(card.original_card_id, { dispatch })
       : // Otherwise, use a current card as the original card if the card has been saved
         // This is needed for checking whether the card is in dirty state or not
         card.id
@@ -151,12 +151,7 @@ export const navigateToNewCardInsideQB = createThunkAction(
         // Do not reload questions with breakouts when clicked on a legend item
       } else if (cardIsEquivalent(previousCard, nextCard)) {
         // This is mainly a fallback for scenarios where a visualization legend is clicked inside QB
-        dispatch(
-          setCardAndRun(
-            await loadCard(nextCard.id, { dispatch, getState }),
-            {},
-          ),
-        );
+        dispatch(setCardAndRun(await loadCard(nextCard.id, { dispatch }), {}));
       } else {
         // when navigating in the "raw" table mode, preserve the original viz settings
         const isRawTable = getIsShowingRawTable(getState());
