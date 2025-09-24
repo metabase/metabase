@@ -26,7 +26,7 @@ describe("Select", () => {
     expect(screen.getByText("option b")).toBeInTheDocument();
   });
 
-  it("should not break on contional rendered option", () => {
+  it("should not break on conditionally rendered option", () => {
     const condition = false;
 
     const renderFn = () =>
