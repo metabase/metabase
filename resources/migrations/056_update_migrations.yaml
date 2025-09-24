@@ -839,6 +839,17 @@ databaseChangeLog:
               column:
                 name: created_at
 
+  - changeSet:
+      id: v56.2025-09-24T11:27:00
+      author: piranha
+      comment: Add an index on report_card.type since we're using this field for filtering all the time
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_type
+            columns:
+              - column:
+                  name: type
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
