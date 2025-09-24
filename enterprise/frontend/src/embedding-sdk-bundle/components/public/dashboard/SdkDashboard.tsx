@@ -148,7 +148,6 @@ const SdkDashboardInner = ({
   children,
   dataPickerProps,
   onVisualizationChange,
-  adHocQuestionHeight,
 }: SdkDashboardInnerProps) => {
   const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
     onLoad,
@@ -323,7 +322,6 @@ const SdkDashboardInner = ({
               onNavigateBack={onNavigateBackToDashboard}
               {...drillThroughQuestionProps}
               onVisualizationChange={onVisualizationChange}
-              height={adHocQuestionHeight}
             >
               {AdHocQuestionView && <AdHocQuestionView />}
             </SdkAdHocQuestion>

@@ -47,14 +47,9 @@ export type DashboardEventHandlersProps = {
    * A callback function that triggers when a question is opened from a dashboard card
    * or when the user changes the visualization type of a question.
    *
-   * @param display the new display type
+   * @param visualization the new visualization type
    */
-  onVisualizationChange?: (display: CardDisplayType) => void;
-
-  /**
-   * Height of the ad-hoc question view when opened from a dashboard card.
-   */
-  adHocQuestionHeight?: number | string;
+  onVisualizationChange?: (visualization: CardDisplayType) => void;
 };
 
 /**
