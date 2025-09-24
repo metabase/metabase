@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Link } from "react-router";
+import { match } from "ts-pattern";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
@@ -17,13 +18,9 @@ import {
 import { EmbeddingToggle } from "../../EmbeddingToggle";
 import S from "../EmbeddingSdkSettings.module.css";
 
-interface LinkItem {
-  type: "link" | "button";
-  icon?: IconName;
-  title: string;
-  href?: string;
-  to?: string;
-}
+type LinkItem =
+  | { type: "link"; icon: IconName; title: string; href: string }
+  | { type: "button"; title: string; to: string };
 
 export function SdkSettingsCard({
   title,
@@ -46,32 +43,24 @@ export function SdkSettingsCard({
 
   const hasLinksContent = links && links.length > 0;
 
-  const renderLink = (linkItem: LinkItem, index: number) => {
-    const { type, icon, title, href, to } = linkItem;
-
-    if (type === "button" && to) {
-      return (
+  const renderLink = (linkItem: LinkItem, index: number) =>
+    match(linkItem)
+      .with({ type: "button" }, ({ to }) => (
         <Link key={index} to={to} className={CS.cursorPointer}>
           <Button variant="brand" size="sm">
             {title}
           </Button>
         </Link>
-      );
-    }
-
-    if (type === "link" && icon) {
-      return (
+      ))
+      .with({ type: "link" }, ({ icon, title, href }) => (
         <ExternalLink key={index} href={href}>
           <Group gap="sm" fw="bold">
             <Icon name={icon} size={14} />
             <span>{title}</span>
           </Group>
         </ExternalLink>
-      );
-    }
-
-    return null;
-  };
+      ))
+      .exhaustive();
 
   return (
     <Flex
