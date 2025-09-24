@@ -142,26 +142,6 @@ export function EmbeddingSdkSettings() {
       <UpsellDevInstances location="embedding-page" />
 
       <SdkSettingsCard
-        title={t`SDK for React`}
-        description={t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`}
-        settingKey="enable-embedding-sdk"
-        links={[
-          {
-            type: "link",
-            icon: "bolt",
-            title: t`Quick start`,
-            href: sdkQuickStartUrl,
-          },
-          {
-            type: "link",
-            icon: "reference",
-            title: t`Documentation`,
-            href: sdkDocumentationUrl,
-          },
-        ]}
-      />
-
-      <SdkSettingsCard
         title={t`Embedded Analytics JS`}
         description={t`An easy-to-use library that lets you embed Metabase entities like charts, dashboards, or even the query builder into your own application using customizable components.`}
         settingKey="enable-embedding-simple"
@@ -193,6 +173,26 @@ export function EmbeddingSdkSettings() {
             />
           ) : undefined
         }
+      />
+
+      <SdkSettingsCard
+        title={t`SDK for React`}
+        description={t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`}
+        settingKey="enable-embedding-sdk"
+        links={[
+          {
+            type: "link",
+            icon: "bolt",
+            title: t`Quick start`,
+            href: sdkQuickStartUrl,
+          },
+          {
+            type: "link",
+            icon: "reference",
+            title: t`Documentation`,
+            href: sdkDocumentationUrl,
+          },
+        ]}
       />
 
       <Box py="lg" px="xl" className={S.SectionCard}>
