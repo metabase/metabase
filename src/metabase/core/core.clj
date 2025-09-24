@@ -117,9 +117,9 @@
 
 (defn- signal-handler
   "Create a signal handler that logs the received signal and then delegates to the original handler."
-  [signal-name original-handler]
+  [^String signal-name ^SignalHandler original-handler]
   (reify SignalHandler
-    (handle [_ sig]
+    (handle [_ ^Signal sig]
       (log/warnf "Received system signal: SIG%s" (.getName sig))
       (when original-handler
         (try
