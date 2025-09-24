@@ -8,7 +8,7 @@ import type {
 } from "metabase/querying/filters/types";
 import * as Lib from "metabase-lib";
 
-import { DEFAULT_VALUE } from "./constants";
+import { DEFAULT_VALUE, TABS } from "./constants";
 
 export function isRelativeValue(
   value: DatePickerValue | undefined,
@@ -133,4 +133,29 @@ export function formatDateRange({
     offsetUnit,
     includeCurrent: options?.includeCurrent,
   });
+}
+
+export function getDefaultValue(
+  availableDirections: RelativeIntervalDirection[],
+) {
+  if (availableDirections.length === 0) {
+    return DEFAULT_VALUE;
+  }
+
+  return setDirection(DEFAULT_VALUE, availableDirections[0]);
+}
+
+export function getAvailableTabs(
+  initialValue: RelativeDatePickerValue | undefined,
+  availableDirections: RelativeIntervalDirection[],
+) {
+  const initialDirection = getDirection(
+    initialValue ?? getDefaultValue(availableDirections),
+  );
+
+  return TABS.filter(
+    (tab) =>
+      tab.direction === initialDirection ||
+      availableDirections.includes(tab.direction),
+  );
 }

@@ -1,4 +1,5 @@
 (ns metabase.query-processor.streaming.xlsx
+  (:refer-clojure :exclude [mapv some])
   (:require
    [clojure.string :as str]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
@@ -16,7 +17,8 @@
    [metabase.util.currency :as currency]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [metabase.util.performance :refer [mapv some]])
   (:import
    (java.io OutputStream)
    (java.time

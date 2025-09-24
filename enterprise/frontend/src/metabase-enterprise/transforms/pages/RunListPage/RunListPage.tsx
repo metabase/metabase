@@ -14,7 +14,7 @@ import type { TransformRun } from "metabase-types/api";
 
 import type { RunListParams } from "../../types";
 
-import { FilterList } from "./FilterList";
+import { RunFilterList } from "./RunFilterList";
 import { RunList } from "./RunList";
 import { PAGE_SIZE } from "./constants";
 import { getParsedParams } from "./utils";
@@ -98,7 +98,7 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
   }
   return (
     <Stack data-testid="run-list-page">
-      <FilterList transforms={transforms} tags={tags} params={params} />
+      <RunFilterList transforms={transforms} tags={tags} params={params} />
       <RunList runs={data.data} totalCount={data.total} params={params} />
     </Stack>
   );

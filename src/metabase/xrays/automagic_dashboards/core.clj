@@ -149,6 +149,10 @@
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
@@ -163,6 +167,7 @@
    [metabase.xrays.automagic-dashboards.interesting :as interesting]
    [metabase.xrays.automagic-dashboards.names :as names]
    [metabase.xrays.automagic-dashboards.populate :as populate]
+   [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [metabase.xrays.related :as related]
    [toucan2.core :as t2]))
@@ -179,7 +184,7 @@
   {:arglists '([entity])}
   mi/model)
 
-(defmethod ->root :model/Table
+(mu/defmethod ->root :model/Table :- ::ads/root
   [table]
   {:entity                     table
    :full-name                  (:display_name table)
@@ -189,7 +194,7 @@
    :url                        (format "%stable/%s" public-endpoint (u/the-id table))
    :dashboard-templates-prefix ["table"]})
 
-(defmethod ->root :model/Segment
+(mu/defmethod ->root :model/Segment :- ::ads/root
   [segment]
   (let [table (->> segment :table_id (t2/select-one :model/Table :id))]
     {:entity                     segment
@@ -202,37 +207,43 @@
      :url                        (format "%ssegment/%s" public-endpoint (u/the-id segment))
      :dashboard-templates-prefix ["table"]}))
 
-(defmethod ->root :xrays/Metric
-  [metric]
-  (let [table (->> metric :table_id (t2/select-one :model/Table :id))]
+(mu/defmethod ->root :xrays/Metric :- ::ads/root
+  [metric :- ::ads/metric]
+  (let [table (some->> metric :table_id (t2/select-one :model/Table :id))]
     {:entity                     metric
      :full-name                  (if (:id metric)
                                    (trun "{0} metric" "{0} metrics" (:name metric))
                                    (:name metric))
      :short-name                 (:name metric)
      :source                     table
-     :database                   (:db_id table)
+     :database                   (or (:db_id table)
+                                     (:xrays/database-id metric))
      ;; We use :id here as it might not be a concrete field but rather one from a nested query which
      ;; does not have an ID.
      :url                        (format "%smetric/%s" public-endpoint (:id metric))
      :dashboard-templates-prefix ["metric"]}))
 
-(defmethod ->root :model/Field
-  [field]
+(mu/defmethod ->root :model/Field :- ::ads/root
+  [field :- ::ads/field]
   (let [table (field/table field)]
     {:entity                     field
      :full-name                  (trun "{0} field" "{0} fields" (:display_name field))
      :short-name                 (:display_name field)
      :source                     table
-     :database                   (:db_id table)
+     :database                   (or (:db_id table) (:xrays/database-id field))
      ;; We use :id here as it might not be a concrete metric but rather one from a nested query
      ;; which does not have an ID.
      :url                        (format "%sfield/%s" public-endpoint (:id field))
      :dashboard-templates-prefix ["field"]}))
 
-(def ^:private ^{:arglists '([card-or-question])} nested-query?
+(defn- source-card-id [card-or-question]
+  (binding [lib.schema/*HACK-disable-join-alias-in-field-ref-validation* true]
+    (some-> card-or-question :dataset_query not-empty lib-be/normalize-query lib/source-card-id)))
+
+(defn- nested-query?
   "Is this card or question derived from another model or question?"
-  (comp some? #_{:clj-kondo/ignore [:deprecated-var]} qp.util/query->source-card-id :dataset_query))
+  [card-or-question]
+  (some? (source-card-id card-or-question)))
 
 (def ^:private ^{:arglists '([card-or-question])} native-query?
   "Is this card or question native (SQL)?"
@@ -240,7 +251,7 @@
 
 (defn- source-question
   [card-or-question]
-  (when-let [source-card-id #_{:clj-kondo/ignore [:deprecated-var]} (qp.util/query->source-card-id (:dataset_query card-or-question))]
+  (when-let [source-card-id (source-card-id card-or-question)]
     (t2/select-one :model/Card :id source-card-id)))
 
 (defn- table-like?
@@ -272,7 +283,7 @@
     (native-query? card)    (-> card (assoc :entity_type :entity/GenericTable))
     :else                   (->> card table-id (t2/select-one :model/Table :id))))
 
-(defmethod ->root :model/Card
+(mu/defmethod ->root :model/Card :- ::ads/root
   [card]
   (let [source (source card)]
     {:entity                     card
@@ -286,18 +297,20 @@
                                     "table"
                                     "question")]}))
 
-(defmethod ->root :model/Query
-  [query]
-  (let [source (source query)]
+(mu/defmethod ->root :model/Query :- ::ads/root
+  [query :- [:map
+             [:database-id ::lib.schema.id/database]]]
+  (let [source (source query)
+        root   {:database (:database-id query), :source source}]
     {:entity                     query
      :source                     source
      :database                   (:database-id query)
      :query-filter               (get-in query [:dataset_query :query :filter])
      :full-name                  (cond
                                    (native-query? query) (tru "Native query")
-                                   (table-like? query) (-> source ->root :full-name)
-                                   :else (names/question-description {:source source} query))
-     :short-name                 (names/source-name {:source source})
+                                   (table-like? query)   (-> source ->root :full-name)
+                                   :else                 (names/question-description root query))
+     :short-name                 (names/source-name root)
      :url                        (format "%sadhoc/%s" public-endpoint
                                          (magic.util/encode-base64-json (:dataset_query query)))
      :dashboard-templates-prefix [(if (table-like? query)
@@ -392,8 +405,11 @@
         :when (some-> target mi/can-read?)]
     (-> target field/table (assoc :link id))))
 
-(def ^:private ^{:arglists '([source])} source->db
-  (comp (partial t2/select-one :model/Database :id) (some-fn :db_id :database_id)))
+(defn- source->db [source]
+  (let [db-id (or ((some-fn :db_id :database_id) source)
+                  (throw (ex-info "Source is missing Database ID"
+                                  {:source source})))]
+    (t2/select-one :model/Database :id db-id)))
 
 (defn- relevant-fields
   "Source fields from tables that are applicable to the entity being x-rayed."
@@ -423,11 +439,11 @@
           (constantly source-fields))
         (constantly [])))))
 
-(defn- make-base-context
+(mu/defn- make-base-context :- ::ads/context
   "Create the underlying context to which we will add metrics, dimensions, and filters.
 
   This is applicable to all dashboard templates."
-  [{:keys [source] :as root}]
+  [{:keys [source] :as root} :- ::ads/root]
   {:pre [source]}
   (let [tables        (concat [source] (when (mi/instance-of? :model/Table source)
                                          (linked-tables source)))
@@ -450,12 +466,12 @@
                                                (assoc group :title (or comparison_title title))))))
        (instantiate-metadata context available-metrics {}))))
 
-(defn- generate-base-dashboard
+(mu/defn- generate-base-dashboard
   "Produce the \"base\" dashboard from the base context for an item and a dashboard template.
   This includes dashcards and global filters, but does not include related items and is not yet populated.
   Repeated calls of this might be generated (e.g. the main dashboard and related) then combined once using
   create dashboard."
-  [{root :root :as base-context}
+  [{root :root :as base-context} :- ::ads/context
    {template-cards      :cards
     :keys               [dashboard_filters]
     :as                 dashboard-template}
@@ -539,8 +555,9 @@
          (map ->related-entity)
          (hash-map :drilldown-fields))))
 
-(defn- comparisons
-  [root]
+(mu/defn- comparisons
+  [root :- [:map
+            [:database ::lib.schema.id/database]]]
   {:compare (concat
              (for [segment (->> root :entity related/related :segments (map ->root))]
                {:url         (str (:url root) "/compare/segment/" (-> segment :entity u/the-id))
@@ -658,9 +675,9 @@
               (comparisons root))
        (fill-related max-related (get related-selectors (-> root :entity mi/model)))))
 
-(defn- generate-dashboard
+(mu/defn- generate-dashboard
   "Produce a fully-populated dashboard from the base context for an item and a dashboard template."
-  [{{:keys [show url query-filter] :as root} :root :as base-context}
+  [{{:keys [show url query-filter] :as root} :root :as base-context} :- ::ads/context
    {:as dashboard-template}
    {grounded-dimensions :dimensions :as grounded-values}]
   (let [show      (or show max-cards)
@@ -679,9 +696,9 @@
          :auto_apply_filters true
          :width "fixed"))))
 
-(defn- automagic-dashboard
+(mu/defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
-  [{:keys [dashboard-template dashboard-templates-prefix] :as root}]
+  [{:keys [dashboard-template dashboard-templates-prefix] :as root} :- ::ads/root]
   (let [base-context    (make-base-context root)
         {template-dimensions :dimensions
          template-metrics    :metrics
@@ -718,8 +735,9 @@
   [segment opts]
   (automagic-dashboard (merge (->root segment) opts)))
 
-(defmethod automagic-analysis :xrays/Metric
-  [metric opts]
+(mu/defmethod automagic-analysis :xrays/Metric
+  [metric :- ::ads/metric
+   opts]
   (automagic-dashboard (merge (->root metric) opts)))
 
 (mu/defn- collect-metrics :- [:maybe [:sequential (ms/InstanceOf :xrays/Metric)]]
@@ -747,14 +765,18 @@
                           (= (:table_id field) (table-id question)))]
     field))
 
-(defn- decompose-question
-  [root question opts]
+(mu/defn- decompose-question
+  [root :- ::ads/root
+   question
+   opts]
   (letfn [(analyze [x]
             (try
-              (automagic-analysis x (assoc opts
-                                           :source       (:source root)
-                                           :query-filter (:query-filter root)
-                                           :database     (:database root)))
+              (automagic-analysis
+               (assoc x :xrays/database-id (:database root))
+               (assoc opts
+                      :source       (:source root)
+                      :query-filter (:query-filter root)
+                      :database     (:database root)))
               (catch Throwable e
                 (throw (ex-info (tru "Error decomposing question: {0}" (ex-message e))
                                 {:root root, :question question, :object x}
@@ -830,8 +852,9 @@
                             {:cell-query cell-query
                              :cell-url   cell-url}))))
 
-(defmethod automagic-analysis :model/Field
-  [field opts]
+(mu/defmethod automagic-analysis :model/Field
+  [field :- ::ads/field
+   opts]
   (automagic-dashboard (merge (->root field) opts)))
 
 (defn- load-tables-with-enhanced-table-stats

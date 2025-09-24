@@ -9,6 +9,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { Schedule } from "metabase/common/components/Schedule/Schedule";
 import type { FormTextInputProps } from "metabase/forms";
 import {
+  Form,
   FormProvider,
   FormRadioGroup,
   FormSubmitButton,
@@ -53,7 +54,6 @@ import Styles from "./PerformanceApp.module.css";
 import {
   FormWrapper,
   LoaderInButton,
-  StyledForm,
   StyledFormButtonsGroup,
 } from "./StrategyForm.styled";
 
@@ -218,8 +218,13 @@ const StrategyFormBody = ({
 
   return (
     <FormWrapper>
-      <StyledForm
-        style={{ overflow: isInSidebar ? undefined : "auto" }}
+      <Form
+        display="flex"
+        style={{
+          overflow: isInSidebar ? undefined : "auto",
+          flexDirection: "column",
+          flexGrow: 1,
+        }}
         aria-labelledby={headingId}
         data-testid={`strategy-form-for-${targetModel}-${targetId}`}
       >
@@ -306,7 +311,7 @@ const StrategyFormBody = ({
           isInSidebar={isInSidebar}
           dirty={dirty}
         />
-      </StyledForm>
+      </Form>
     </FormWrapper>
   );
 };

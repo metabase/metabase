@@ -7,6 +7,7 @@ import type {
   DatePickerOperator,
   DatePickerShortcut,
   DatePickerValue,
+  RelativeIntervalDirection,
 } from "metabase/querying/filters/types";
 import {
   deserializeDateParameterValue,
@@ -19,6 +20,7 @@ type DateAllOptionsWidgetProps = {
   value: ParameterValueOrArray | null | undefined;
   availableOperators?: DatePickerOperator[];
   availableShortcuts?: DatePickerShortcut[];
+  availableDirections?: RelativeIntervalDirection[];
   submitButtonLabel?: string;
   onChange: (value: string) => void;
 };
@@ -26,6 +28,7 @@ type DateAllOptionsWidgetProps = {
 export function DateAllOptionsWidget({
   value,
   availableOperators,
+  availableDirections,
   submitButtonLabel = t`Apply`,
   onChange,
   availableShortcuts,
@@ -41,6 +44,7 @@ export function DateAllOptionsWidget({
       value={pickerValue}
       availableOperators={availableOperators}
       availableShortcuts={availableShortcuts}
+      availableDirections={availableDirections}
       renderSubmitButton={({ isDisabled }) => (
         <Button type="submit" variant="filled" disabled={isDisabled}>
           {submitButtonLabel}

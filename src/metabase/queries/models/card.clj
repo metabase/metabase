@@ -18,6 +18,7 @@
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -213,12 +214,7 @@
 
 (defn- source-card-id
   [query]
-  (when (map? query)
-    (let [query-type (lib/normalized-query-type query)]
-      (case query-type
-        :query      (-> query mbql.normalize/normalize #_{:clj-kondo/ignore [:deprecated-var]} qp.util/query->source-card-id)
-        :mbql/query (-> query lib/normalize lib.util/source-card-id)
-        nil))))
+  (some-> query not-empty lib-be/normalize-query lib/source-card-id))
 
 (defn- card->integer-table-ids
   "Return integer source table ids for card's :dataset_query."
