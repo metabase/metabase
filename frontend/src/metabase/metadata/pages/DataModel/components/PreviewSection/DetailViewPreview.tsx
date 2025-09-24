@@ -2,20 +2,11 @@ import { memo, useMemo } from "react";
 import { t } from "ttag";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
-import { useListTableForeignKeysQuery } from "metabase/api/table";
 import { getErrorMessage } from "metabase/api/utils";
 import { NotFound } from "metabase/common/components/ErrorPages/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
-import {
-  DetailsGroup,
-  Header,
-  Relationships,
-} from "metabase/detail-view/components";
-import {
-  getEntityIcon,
-  getHeaderColumns,
-  getRowName,
-} from "metabase/detail-view/utils";
+import { DetailsGroup, Header } from "metabase/detail-view/components";
+import { getEntityIcon, getHeaderColumns } from "metabase/detail-view/utils";
 import { Box, Group, Stack, rem } from "metabase/ui";
 import type {
   DatabaseId,
@@ -72,8 +63,6 @@ const DetailViewPreviewInner = ({
     _refetchDeps: field,
   });
 
-  const { data: tableForeignKeys } = useListTableForeignKeysQuery(tableId);
-
   const error = queryError ? getErrorMessage(queryError) : undefined;
   const hasPermissionError = queryError && is403Error(queryError);
   const hasDataError = queryResult?.status === "failed";
@@ -90,17 +79,6 @@ const DetailViewPreviewInner = ({
 
   const headerColumns = useMemo(() => getHeaderColumns(columns), [columns]);
 
-  const rowId = useMemo(() => {
-    const firstValue = rowData?.[0];
-    if (typeof firstValue === "string" || typeof firstValue === "number") {
-      return firstValue;
-    }
-    return 1;
-  }, [rowData]);
-
-  const rowName = useMemo(() => {
-    return getRowName(columns, rowData) || rowId;
-  }, [columns, rowData, rowId]);
   const icon = getEntityIcon(table?.entity_type);
 
   if (isFetching) {
@@ -143,24 +121,6 @@ const DetailViewPreviewInner = ({
           )}
         </Stack>
       </Group>
-
-      {table && tableForeignKeys && tableForeignKeys.length > 0 && (
-        <Box
-          flex="1"
-          bg="var(--mb-color-background-light)"
-          px={rem(56)}
-          py={rem(48)}
-        >
-          <Relationships
-            columns={columns}
-            row={rowData}
-            rowId={rowId}
-            rowName={rowName}
-            table={table}
-            tableForeignKeys={tableForeignKeys}
-          />
-        </Box>
-      )}
     </Stack>
   );
 };
