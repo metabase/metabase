@@ -11,7 +11,7 @@ import {
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
 } from "metabase/lib/formatting";
-import { Box, Radio, Select, Stack, Switch, Text } from "metabase/ui";
+import { Autocomplete, Box, Radio, Select, Stack, Switch, Text } from "metabase/ui";
 import type { FormattingSettings } from "metabase-types/api";
 
 import { SetByEnvVar } from "./AdminSettingInput";
@@ -92,7 +92,7 @@ export function FormattingWidget() {
       ) : (
         <>
           <SettingsSection title={t`Dates and times`}>
-            <FormattingInput
+            <Autocomplete
               id="date_style"
               label={t`Date style`}
               value={dateStyle}
@@ -105,8 +105,7 @@ export function FormattingWidget() {
                   },
                 })
               }
-              inputType="select"
-              options={
+              data={
                 dateStyleOptions.map(({ name, value }) => ({
                   label: name,
                   value,

@@ -136,15 +136,15 @@ export const DATE_COLUMN_SETTINGS = {
       return t`Date style`;
     },
     widget: "select",
-    getDefault: ({ unit }) => {
+    getDefault: ({ unit }, settings) => {
       // Grab the first option's value. If there were no options (for
       // hour-of-day probably), use an empty format string instead.
       const [{ value = "" } = {}] = getDateStyleOptionsForUnit(unit);
-      return value;
+      return settings["date_style"];
     },
     isValid: ({ unit }, settings) => {
       const options = getDateStyleOptionsForUnit(unit);
-      return !!_.findWhere(options, { value: settings["date_style"] });
+      return settings["date_style"];
     },
     getProps: ({ unit }, settings) => ({
       options: getDateStyleOptionsForUnit(
