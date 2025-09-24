@@ -10,7 +10,18 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- clean-change-log [f]
+  (let [old-models (t2/select :model/RemoteSyncChangeLog)]
+    (try
+      (t2/delete! :model/RemoteSyncChangeLog)
+      (f)
+      (finally
+        (t2/delete! :model/RemoteSyncChangeLog)
+        (when (seq old-models)
+          (t2/insert! :model/RemoteSyncChangeLog old-models))))))
+
 (use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :each clean-change-log)
 
 ;;; ------------------------------------------------------------------------------------------------
 ;;; Tests for dirty-collection?
