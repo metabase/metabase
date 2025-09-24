@@ -6,7 +6,7 @@ import {
   useState,
 } from "react";
 import { useLocation } from "react-use";
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 import _ from "underscore";
 
 import { useSearchQuery } from "metabase/api";
@@ -73,23 +73,19 @@ export const SdkIframeEmbedSetupProvider = ({
   }, [location.search]);
 
   const defaultSettings = useMemo(() => {
-    const { resourceType, resourceId } = urlParams;
-
-    if (resourceType === "dashboard") {
-      return getDefaultSdkIframeEmbedSettings(
-        "dashboard",
-        resourceId ?? EMBED_FALLBACK_DASHBOARD_ID,
+    return match([urlParams.resourceType, urlParams.resourceId])
+      .with(["dashboard", P.nonNullable], ([, id]) =>
+        getDefaultSdkIframeEmbedSettings("dashboard", id),
+      )
+      .with(["question", P.nonNullable], ([, id]) =>
+        getDefaultSdkIframeEmbedSettings("chart", id),
+      )
+      .otherwise(() =>
+        getDefaultSdkIframeEmbedSettings(
+          "dashboard",
+          recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
+        ),
       );
-    }
-
-    if (resourceType === "question" && resourceId) {
-      return getDefaultSdkIframeEmbedSettings("chart", resourceId);
-    }
-
-    return getDefaultSdkIframeEmbedSettings(
-      "dashboard",
-      recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
-    );
   }, [recentDashboards, urlParams]);
 
   const [currentStep, setCurrentStep] = useState<SdkIframeEmbedSetupStep>(
