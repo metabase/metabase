@@ -2,6 +2,11 @@ import type { RowValue } from "metabase-types/api";
 
 export type Row = Record<string, RowValue>;
 
+// Parses the output of a Python transform (given as JSON-lines)
+// into a set of headers and rows.
+//
+// TODO: The server should return a non-stringified JSON array of rows,
+// not a string.
 export function parseOutput(output: string): {
   headers: string[];
   rows: Row[];
@@ -15,11 +20,15 @@ export function parseOutput(output: string): {
   const rows: Row[] = [];
 
   for (const line of lines) {
-    const data = JSON.parse(line) as Row;
-    for (const key in data) {
-      headers.add(key);
+    try {
+      const data = JSON.parse(line) as Row;
+      for (const key in data) {
+        headers.add(key);
+      }
+      rows.push(data);
+    } catch (err) {
+      // noop
     }
-    rows.push(data);
   }
 
   return {
