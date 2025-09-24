@@ -193,6 +193,7 @@ export const getColors = (isDarkMode: boolean) => {
   return isDarkMode ? darkColors : colors;
 };
 
+// TODO: Hardcoded `dark` strings came from `dark-mode` branch. Replace with variables.
 const colorConfig = {
   "accent-gray-dark": {
     light: baseColors.orion[20],
@@ -200,9 +201,9 @@ const colorConfig = {
   },
   "accent-gray-light": {
     light: baseColors.orion[5],
-    dark: baseColors.orion[5],
+    dark: "#2C2E33",
   },
-  "accent-gray": { light: baseColors.orion[10], dark: baseColors.orion[10] },
+  "accent-gray": { light: baseColors.orion[10], dark: "#373A40" },
   "admin-navbar": {
     light: baseColors.octopus[60],
     dark: baseColors.octopus[60],
@@ -213,7 +214,7 @@ const colorConfig = {
   },
   "background-disabled": {
     light: baseColors.orion[10],
-    dark: baseColors.orion[10],
+    dark: "#2C2E33",
   },
   "background-error-secondary": {
     light: baseColors.lobster[5],
@@ -221,29 +222,29 @@ const colorConfig = {
   },
   "background-hover": {
     light: baseColors.brand[10],
-    dark: baseColors.brand[10],
+    dark: "#373A40",
   },
   "background-info": { light: baseColors.orion[5], dark: baseColors.orion[5] },
   "background-inverse": {
     light: baseColors.orion[80],
     dark: baseColors.orion[80],
   },
-  "background-light": { light: baseColors.orion[5], dark: baseColors.orion[5] },
+  "background-light": { light: baseColors.orion[5], dark: "#25262B" },
   "background-selected": {
     light: baseColors.brand[40],
     dark: baseColors.brand[40],
   },
-  background: { light: baseColors.white, dark: baseColors.white },
+  background: { light: baseColors.white, dark: "#1A1B1E" },
   "bg-black-alpha-60": {
     light: `color-mix(in srgb, ${baseColors.orion[80]} 60%, transparent)`,
     dark: `color-mix(in srgb, ${baseColors.orion[80]} 60%, transparent)`,
   },
-  "bg-black": { light: baseColors.orion[80], dark: baseColors.orion[80] },
-  "bg-dark": { light: baseColors.orion[40], dark: baseColors.orion[40] },
+  "bg-black": { light: baseColors.orion[80], dark: "#1A1B1E" },
+  "bg-dark": { light: baseColors.orion[40], dark: "#373A40" },
   "bg-darker": { light: baseColors.orion[70], dark: baseColors.orion[70] },
   "bg-error": { light: baseColors.lobster[10], dark: baseColors.lobster[10] },
-  "bg-light": { light: baseColors.orion[5], dark: baseColors.orion[5] },
-  "bg-medium": { light: baseColors.orion[10], dark: baseColors.orion[10] },
+  "bg-light": { light: baseColors.orion[5], dark: "#25262B" },
+  "bg-medium": { light: baseColors.orion[10], dark: "#2C2E33" },
   "bg-night": { light: baseColors.orion[70], dark: baseColors.orion[70] },
   "bg-white-alpha-15": {
     light: `color-mix(in srgb, ${baseColors.white} 15%, transparent)`,
@@ -251,7 +252,7 @@ const colorConfig = {
   },
   "bg-white": {
     light: baseColors.white,
-    dark: baseColors.white,
+    dark: "#1A1B1E", // TODO: Use base color
   },
   "bg-yellow": {
     light: baseColors.dubloon[5],
@@ -267,7 +268,7 @@ const colorConfig = {
   },
   border: {
     light: baseColors.orion[20],
-    dark: baseColors.orion[20],
+    dark: "#373A40",
   },
   "brand-alpha-04": {
     light: `color-mix(in srgb, ${baseColors.blue[40]} 4%, transparent)`,
@@ -287,31 +288,31 @@ const colorConfig = {
   },
   "brand-light": {
     light: `color-mix(in srgb, ${baseColors.blue[40]}, #fff 80%)`,
-    dark: `color-mix(in srgb, ${baseColors.blue[40]}, #fff 80%)`,
+    dark: "#1A3A52",
   },
   "brand-lighter": {
     light: `color-mix(in srgb, ${baseColors.blue[40]}, #fff 90%)`,
-    dark: `color-mix(in srgb, ${baseColors.blue[40]}, #fff 90%)`,
+    dark: "#0F2A3C",
   },
   brand: {
     light: baseBrand,
-    dark: baseColors.lobster[70],
+    dark: baseBrand,
   },
   danger: {
     light: baseColors.lobster[50],
-    dark: baseColors.lobster[50],
+    dark: "#FF6B6B",
   },
   error: {
     light: baseColors.lobster[50],
-    dark: baseColors.lobster[50],
+    dark: "#FF6B6B",
   },
   filter: {
     light: baseColors.octopus[50],
-    dark: baseColors.octopus[50],
+    dark: "#9775FA",
   },
   focus: {
     light: baseColors.blue[20],
-    dark: baseColors.blue[20],
+    dark: "#1A3A52",
   },
   "icon-primary-disabled": {
     light: baseColors.orion[30],
@@ -359,7 +360,7 @@ const colorConfig = {
   },
   shadow: {
     light: "hsla(0, 0%, 0%, 0.13)",
-    dark: "hsla(0, 0%, 0%, 0.13)",
+    dark: "rgba(0, 0, 0, 0.25)",
   },
   "success-darker": {
     light: baseColors.palm[60],
@@ -367,11 +368,11 @@ const colorConfig = {
   },
   success: {
     light: baseColors.palm[50],
-    dark: baseColors.palm[50],
+    dark: "#51CF66",
   },
   summarize: {
     light: baseColors.palm[40],
-    dark: baseColors.palm[40],
+    dark: "#69DB7C",
   },
   "switch-off": {
     light: baseColors.orion[10],
@@ -391,7 +392,7 @@ const colorConfig = {
   },
   "text-dark": {
     light: baseColors.orion[80],
-    dark: baseColors.orion[80],
+    dark: "#C1C2C5",
   },
   "text-disabled": {
     light: baseColors.orion[50],
@@ -403,23 +404,23 @@ const colorConfig = {
   },
   "text-light": {
     light: baseColors.orion[40],
-    dark: baseColors.orion[40],
+    dark: "#909296",
   },
   "text-medium": {
     light: baseColors.orion[60],
-    dark: baseColors.orion[60],
+    dark: "#A6A7AB",
   },
   "text-primary": {
     light: baseColors.orion[80],
-    dark: baseColors.orion[80],
+    dark: "#C1C2C5",
   },
   "text-secondary-inverse": {
     light: baseColors.orion[30],
-    dark: baseColors.orion[30],
+    dark: "#6C6E73",
   },
   "text-secondary": {
     light: baseColors.orion[60],
-    dark: baseColors.orion[60],
+    dark: "#A6A7AB",
   },
   "text-selected": {
     light: baseColors.white,
@@ -427,7 +428,7 @@ const colorConfig = {
   },
   "text-tertiary": {
     light: baseColors.orion[40],
-    dark: baseColors.orion[40],
+    dark: "#909296",
   },
   "text-white-alpha-85": {
     light: `color-mix(in srgb, ${baseColors.white} 85%, transparent)`,
@@ -435,7 +436,7 @@ const colorConfig = {
   },
   "text-white": {
     light: baseColors.white,
-    dark: baseColors.white,
+    dark: "#1A1B1E",
   },
   "tooltip-background-focused": {
     light: `color-mix(in srgb, ${baseColors.orion[80]} 50%, #000)`,
@@ -455,12 +456,12 @@ const colorConfig = {
   },
   warning: {
     light: baseColors.dubloon[30],
-    dark: baseColors.dubloon[30],
+    dark: "#FFD43B",
   },
 
   white: {
     light: baseColors.white,
-    dark: baseColors.white,
+    dark: "#1A1B1E",
   },
   // Legacy colors (keeping existing ones for backward compatibility)
   accent0: {
