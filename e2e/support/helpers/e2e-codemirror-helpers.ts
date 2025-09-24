@@ -122,7 +122,18 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
           return;
         }
 
-        insert(part);
+        // realType does not support → arrow, so we replace it with ->, which the editor
+        // expands into →
+        const unexpanded = part.replaceAll(/→/g, "->");
+        const alphabet =
+          "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789^[]()-,.;_!@#$%&*+=/<>\" ':;\\\n}";
+        if (unexpanded.split("").some((char) => !alphabet.includes(char))) {
+          throw new Error(
+            `unknown character in codeMirrorHelpers.type in ${part}`,
+          );
+        }
+
+        insert(unexpanded);
       });
 
       return helpers;
@@ -138,14 +149,13 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
         .then((lines) => {
           const text: string[] = [];
           lines.each((_, line) => {
+            const placeholder = line.querySelector(".cm-placeholder");
+            if (placeholder) {
+              return;
+            }
             text.push(line.textContent ?? "");
           });
-          const value = text.join("\n");
-          const placeholder = "SELECT * FROM TABLE_NAME";
-          if (value === placeholder) {
-            return "";
-          }
-          return value;
+          return text.join("\n");
         });
     },
     completions() {
