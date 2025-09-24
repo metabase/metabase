@@ -212,15 +212,15 @@ describe("embed modal display", () => {
 
         H.getEmbedModalSharingPane().within(() => {
           cy.findByText("Static embedding").should("be.visible");
-          cy.findByText("Interactive embedding").should("be.visible");
+          cy.findByText("Embedded Analytics JS").should("be.visible");
 
-          cy.findByRole("link", { name: "Interactive embedding" }).should(
+          cy.findByRole("link", { name: "Embedded Analytics JS" }).should(
             "have.attr",
             "href",
             "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedding-interactive&utm_content=static-embed-popover&source_plan=oss",
           );
 
-          cy.findByRole("article", { name: "Interactive embedding" }).within(
+          cy.findByRole("article", { name: "Embedded Analytics JS" }).within(
             () => {
               cy.findByText("Learn more").should("be.visible");
               cy.findByText("Disabled.").should("not.exist");
