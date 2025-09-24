@@ -179,7 +179,7 @@ describe("embed modal display", () => {
   });
 
   describe("when the user has a paid instance", () => {
-    it("should display a disabled state and a link to the Interactive embedding settings", () => {
+    it("should display a disabled state and a link to the Embedded Analytics JS settings", () => {
       H.activateToken("pro-self-hosted");
       H.visitDashboard("@dashboardId");
 
@@ -187,14 +187,14 @@ describe("embed modal display", () => {
 
       H.getEmbedModalSharingPane().within(() => {
         cy.findByText("Static embedding").should("be.visible");
-        cy.findByText("Interactive embedding").should("be.visible");
+        cy.findByText("Embedded Analytics JS").should("be.visible");
 
-        cy.findByRole("article", { name: "Interactive embedding" }).within(
+        cy.findByRole("article", { name: "Embedded Analytics JS" }).within(
           () => {
             cy.findByText("Disabled.").should("be.visible");
             cy.findByText("Enable in admin settings")
               .should("be.visible")
-              .and("have.attr", "href", "/admin/embedding/interactive");
+              .and("have.attr", "href", "/admin/embedding/modular");
           },
         );
       });
