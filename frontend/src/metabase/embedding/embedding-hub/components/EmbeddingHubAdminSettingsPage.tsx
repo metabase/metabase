@@ -22,7 +22,7 @@ export const EmbeddingHubAdminSettingsPage = () => {
 
       <EmbeddingHub />
 
-      <Stack ml="2.9rem">
+      <Stack ml="2.7rem">
         <RelatedSettingsSection
           items={getModularEmbeddingRelatedSettingItems()}
         />

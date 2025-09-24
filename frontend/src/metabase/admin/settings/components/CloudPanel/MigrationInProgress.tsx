@@ -21,6 +21,7 @@ import {
 
 import { MigrationCard } from "./CloudPanel.styled";
 import type { InProgressCloudMigration, InProgressStates } from "./utils";
+import { getMigrationUrl } from "./utils";
 
 interface MigrationInProgressProps {
   migration: InProgressCloudMigration;
@@ -52,12 +53,14 @@ export const MigrationInProgress = ({
     await cancelCloudMigration();
     dispatch(
       addUndo({
-        icon: "info_filled",
+        icon: "info",
         message: t`Migration to Metabase Cloud has been canceled.`,
         undo: false,
       }),
     );
   };
+
+  const migrationUrl = getMigrationUrl(checkoutUrl, migration);
 
   return (
     <>
@@ -103,7 +106,7 @@ export const MigrationInProgress = ({
               <Button
                 mt="md"
                 component={ExternalLink}
-                href={checkoutUrl}
+                href={migrationUrl}
                 variant="filled"
               >{t`Go to Metabase Store`}</Button>
             </Flex>

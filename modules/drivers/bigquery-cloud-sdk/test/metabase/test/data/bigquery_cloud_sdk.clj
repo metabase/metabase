@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase-enterprise.transforms.test-util :as transforms.test-util]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -471,6 +472,9 @@
 (defmethod tx/drop-view! :bigquery-cloud-sdk
   [driver database view-name options]
   (apply execute! (sql.tx/drop-view-sql driver database view-name options)))
+
+(defmethod transforms.test-util/delete-schema! :bigquery-cloud-sdk [_driver _db schema]
+  (destroy-dataset! schema))
 
 (comment
   "REPL utilities for static datasets"
