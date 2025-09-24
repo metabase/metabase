@@ -57,10 +57,12 @@
   (->IngestableSource source (atom nil)))
 
 (defmethod source.p/->ingestable GitSource
-  [{:keys [git url branch token] :as source}]
+  [{:keys [git url token] :as source}]
   (git/fetch! source)
-  (when-let [commit-ref (git/->commit-id source branch)]
-    (->IngestableSource (git/->GitSource git url commit-ref token) (atom nil))))
+  (if-let [commit-ref (git/->commit-id source)]
+    (->IngestableSource (git/->GitSource git url commit-ref token) (atom nil))
+    (throw (ex-info (str "Unable to find branch " (:commit-ish source) " to read from") {:url url
+                                                                                         :branch (:commit-ish source)}))))
 
 (defn- remote-sync-path
   [opts entity]
