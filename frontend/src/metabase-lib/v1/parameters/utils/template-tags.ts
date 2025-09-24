@@ -5,6 +5,7 @@ import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
 import { getTemplateTagFromTarget } from "metabase-lib/v1/parameters/utils/targets";
+import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
 import type {
   Card,
   Parameter,
@@ -89,6 +90,10 @@ export function getTemplateTagParameters(
 
 export function getTemplateTags(card: Card, metadata: Metadata): TemplateTag[] {
   const question = new Question(card, metadata);
+  // this code path is used by the last audit v1 query, `bad_table`
+  if (InternalQuery.isDatasetQueryType(question.datasetQuery())) {
+    return [];
+  }
   const query = question.query();
   const { isNative } = Lib.queryDisplayInfo(query);
   return isNative ? Object.values(Lib.templateTags(question.query())) : [];

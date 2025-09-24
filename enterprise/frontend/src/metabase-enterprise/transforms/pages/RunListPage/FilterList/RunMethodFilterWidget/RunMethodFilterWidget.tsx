@@ -41,9 +41,9 @@ export function RunMethodFilterWidget({
     <Popover opened={isOpened} position="bottom-start" onDismiss={close}>
       <Popover.Target>
         <FilterFieldSet
-          label={t`Run method`}
+          label={t`Trigger`}
           displayValue={getDisplayValue(runMethods)}
-          icon="calendar"
+          icon="play"
           onClick={toggle}
           onRemove={handleRemove}
         />

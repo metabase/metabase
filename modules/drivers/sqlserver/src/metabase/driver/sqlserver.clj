@@ -65,7 +65,8 @@
                               :test/jvm-timezone-setting              false
                               :metadata/table-existence-check         true
                               :transforms/python                      true
-                              :transforms/table                       true}]
+                              :transforms/table                       true
+                              :jdbc/statements                        false}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
@@ -813,11 +814,6 @@
   [driver inner-query]
   (let [parent-method (get-method sql.qp/preprocess :sql)]
     (fix-order-bys (parent-method driver inner-query))))
-
-;; In order to support certain native queries that might return results at the end, we have to use only prepared
-;; statements (see #9940)
-(defmethod sql-jdbc.execute/statement-supported? :sqlserver [_]
-  false)
 
 ;; SQL server only supports setting holdability at the connection level, not the statement level, as per
 ;; https://docs.microsoft.com/en-us/sql/connect/jdbc/using-holdability?view=sql-server-ver15
