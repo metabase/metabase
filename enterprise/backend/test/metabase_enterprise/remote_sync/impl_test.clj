@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.impl :as impl]
+   [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.search.core :as search]
@@ -16,142 +17,175 @@
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [f]
                       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+                        (t2/delete! :model/RemoteSyncTask)
                         (mt/with-model-cleanup [:model/RemoteSyncChangeLog] (f)))))
 
 ;; import! tests
 
 (deftest import!-with-no-source-configured-test
   (testing "import! with no source configured"
-    (with-redefs [source/source-from-settings (constantly nil)]
-      (let [result (impl/import! "test-branch")]
-        (is (= :error (:status result)))
-        (is (re-find #"Remote sync source is not enabled" (:message result)))))))
+    (mt/with-temp [:model/User user {:first_name "Test" :last_name "User" :email "test@example.com"}
+                   :model/RemoteSyncTask {task-id :id} {:sync_task_type "import" :initiated_by (:id user)}]
+      (with-redefs [source/source-from-settings (constantly nil)]
+        (let [result (impl/import! task-id "test-branch")]
+          (is (= :error (:status result)))
+          (is (re-find #"Remote sync source is not enabled" (:message result))))))))
 
 (deftest import!-successful-with-specific-collections-test
   (testing "import! successful with specific collections"
-    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}
+    (mt/with-temp [:model/User user {:first_name "Test" :last_name "User" :email "test@example.com"}
+                   :model/RemoteSyncTask {task-id :id} {:sync_task_type "import" :initiated_by (:id user)}
+                   :model/Collection {coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}
                    :model/Card {_card-id :id} {:name "Test Card" :collection_id coll-id :entity_id "test-card-1xxxxxxxxxx"}]
-      (let [mock-test-branch (test-helpers/create-mock-source :branch "test-branch")]
-        (with-redefs [source/source-from-settings (constantly mock-test-branch)]
-          (let [result (impl/import! "test-branch" ["test-collection-1xxxx"])]
+      (let [mock-source (test-helpers/create-mock-source)]
+        (with-redefs [source/source-from-settings (constantly mock-source)]
+          (let [result (impl/import! task-id "test-branch" ["test-collection-1xxxx"])]
             (is (= :success (:status result)))
             (is (= "Successfully reloaded from git repository" (:message result)))))))))
 
 (deftest import!-successful-without-collections-test
   (testing "import! successful without collections (imports all remote-synced)"
-    (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
-      (let [mock-main (test-helpers/create-mock-source)]
-        (with-redefs [source/source-from-settings (constantly mock-main)]
-          (let [result (impl/import! "test-branch")]
+    (mt/with-temp [:model/User user {:first_name "Test" :last_name "User" :email "test@example.com"}
+                   :model/RemoteSyncTask {task-id :id} {:sync_task_type "import" :initiated_by (:id user)}
+                   :model/Collection {_coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
+      (let [mock-source (test-helpers/create-mock-source)]
+        (with-redefs [source/source-from-settings (constantly mock-source)]
+          (let [result (impl/import! task-id "test-branch")]
             (is (= :success (:status result)))))))))
 
 (deftest import!-with-branch-parameter-test
   (testing "import! with branch parameter uses provided branch"
-    (let [custom-files {"custom-branch" {"collections/custom-collection.yaml"
-                                         (test-helpers/generate-collection-yaml "custom-collection-idx" "Custom Collection")}}
-          mock-main (test-helpers/create-mock-source :initial-files custom-files)]
-      (with-redefs [source/source-from-settings (constantly mock-main)]
-        (let [result (impl/import! "custom-branch")]
-          (is (= :success (:status result))))))))
+    (mt/with-temp [:model/User user {:first_name "Test" :last_name "User" :email "test@example.com"}
+                   :model/RemoteSyncTask {task-id :id} {:sync_task_type "import" :initiated_by (:id user)}]
+      (let [custom-files {"custom-branch" {"collections/custom-collection.yaml"
+                                           (test-helpers/generate-collection-yaml "custom-collection-idx" "Custom Collection")}}
+            mock-source (test-helpers/create-mock-source :initial-files custom-files)]
+        (with-redefs [source/source-from-settings (constantly mock-source)]
+          (let [result (impl/import! task-id "custom-branch")]
+            (is (= :success (:status result)))))))))
 
 (deftest import!-falls-back-to-settings-branch-test
   (testing "import! falls back to settings branch when no branch provided"
-    (let [mock-main (test-helpers/create-mock-source)]
-      (with-redefs [source/source-from-settings (constantly mock-main)]
-        (let [result (impl/import! nil)]
-          (is (= :success (:status result))))))))
+    (mt/with-temp [:model/User user {:first_name "Test" :last_name "User" :email "test@example.com"}
+                   :model/RemoteSyncTask {task-id :id} {:sync_task_type "import" :initiated_by (:id user)}]
+      (let [mock-source (test-helpers/create-mock-source)]
+        (with-redefs [source/source-from-settings (constantly mock-source)]
+          (let [result (impl/import! task-id nil)]
+            (is (= :success (:status result)))))))))
 
 (deftest import!-handles-network-errors-test
   (testing "import! handles network errors"
-    (let [mock-main (test-helpers/create-mock-source :fail-mode :network-error)]
-      (with-redefs [source/source-from-settings (constantly mock-main)]
-        (let [result (impl/import! "main" ["collection-1"])]
-          (is (= :error (:status result)))
-          (is (re-find #"Network error" (:message result))))))))
+    (mt/with-temp [:model/User user {:first_name "Test" :last_name "User" :email "test@example.com"}
+                   :model/RemoteSyncTask {task-id :id} {:sync_task_type "import" :initiated_by (:id user)}]
+      (let [mock-source (test-helpers/create-mock-source :fail-mode :network-error)]
+        (with-redefs [source/source-from-settings (constantly mock-source)]
+          (let [result (impl/import! task-id "main" ["collection-1"])]
+            (is (= :error (:status result)))
+            (is (re-find #"Network error" (:message result)))))))))
 
 (deftest import!-handles-authentication-errors-test
   (testing "import! handles authentication errors"
-    (let [mock-main (test-helpers/create-mock-source :fail-mode :auth-error)]
-      (with-redefs [source/source-from-settings (constantly mock-main)]
-        (let [result (impl/import! "main")]
-          (is (= :error (:status result)))
-          (is (re-find #"Authentication failed" (:message result))))))))
+    (mt/with-temp [:model/User user {:first_name "Test" :last_name "User" :email "test@example.com"}
+                   :model/RemoteSyncTask {task-id :id} {:sync_task_type "import" :initiated_by (:id user)}]
+      (let [mock-source (test-helpers/create-mock-source :fail-mode :auth-error)]
+        (with-redefs [source/source-from-settings (constantly mock-source)]
+          (let [result (impl/import! task-id "main")]
+            (is (= :error (:status result)))
+            (is (re-find #"Authentication failed" (:message result)))))))))
 
 (deftest import!-handles-repository-not-found-errors-test
   (testing "import! handles repository not found errors"
-    (let [mock-main (test-helpers/create-mock-source :fail-mode :repo-not-found)]
-      (with-redefs [source/source-from-settings (constantly mock-main)]
-        (let [result (impl/import! "main")]
-          (is (= :error (:status result)))
-          (is (re-find #"Repository not found" (:message result))))))))
+    (mt/with-temp [:model/User user {:first_name "Test" :last_name "User" :email "test@example.com"}
+                   :model/RemoteSyncTask {task-id :id} {:sync_task_type "import" :initiated_by (:id user)}]
+      (let [mock-source (test-helpers/create-mock-source :fail-mode :repo-not-found)]
+        (with-redefs [source/source-from-settings (constantly mock-source)]
+          (let [result (impl/import! task-id "main")]
+            (is (= :error (:status result)))
+            (is (re-find #"Repository not found" (:message result)))))))))
 
 (deftest import!-handles-branch-errors-test
   (testing "import! handles branch errors"
-    (let [mock-main (test-helpers/create-mock-source :fail-mode :branch-error)]
-      (with-redefs [source/source-from-settings (constantly mock-main)]
-        (let [result (impl/import! "nonexistent-branch")]
-          (is (= :error (:status result)))
-          (is (re-find #"Branch error:" (:message result))))))))
+    (mt/with-temp [:model/User user {:first_name "Test" :last_name "User" :email "test@example.com"}
+                   :model/RemoteSyncTask {task-id :id} {:sync_task_type "import" :initiated_by (:id user)}]
+      (let [mock-source (test-helpers/create-mock-source :fail-mode :branch-error)]
+        (with-redefs [source/source-from-settings (constantly mock-source)]
+          (let [result (impl/import! task-id "nonexistent-branch")]
+            (is (= :error (:status result)))
+            (is (re-find #"Branch error:" (:message result)))))))))
 
 (deftest import!-handles-generic-errors-test
   (testing "import! handles generic errors"
-    (let [mock-main (test-helpers/create-mock-source :fail-mode :list-files-error)]
-      (with-redefs [source/source-from-settings (constantly mock-main)]
-        (let [result (impl/import! "main")]
-          (is (= :error (:status result)))
-          (is (re-find #"Failed to reload from git repository" (:message result))))))))
+    (mt/with-temp [:model/User user {:first_name "Test" :last_name "User" :email "test@example.com"}
+                   :model/RemoteSyncTask {task-id :id} {:sync_task_type "import" :initiated_by (:id user)}]
+      (let [mock-source (test-helpers/create-mock-source :fail-mode :list-files-error)]
+        (with-redefs [source/source-from-settings (constantly mock-source)]
+          (let [result (impl/import! task-id "main")]
+            (is (= :error (:status result)))
+            (is (re-find #"Failed to reload from git repository" (:message result)))))))))
 
 ;; export! tests
 
 (deftest export!-with-no-source-configured-test
   (testing "export! with no source configured"
-    (with-redefs [source/source-from-settings (constantly nil)]
-      (let [result (impl/export! "test-branch" "Test commit")]
-        (is (= :error (:status result)))
-        (is (re-find #"Remote sync source is not enabled" (:message result)))))))
+    (mt/with-temp [:model/User user {:first_name "Test" :last_name "User" :email "test@example.com"}
+                   :model/RemoteSyncTask {task-id :id} {:sync_task_type "export" :initiated_by (:id user)}]
+      (with-redefs [source/source-from-settings (constantly nil)]
+        (let [result (impl/export! task-id "test-branch" "Test commit")]
+          (is (= :error (:status result)))
+          (is (re-find #"Remote sync source is not enabled" (:message result))))))))
 
 (deftest export!-successful-with-specific-collections-test
   (testing "export! successful with specific collections"
-    (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
-      (let [mock-main (test-helpers/create-mock-source)]
-        (with-redefs [source/source-from-settings (constantly mock-main)]
-          (let [result (impl/export! "test-branch" "Test commit message" ["test-collection-1xxxx"])]
+    (mt/with-temp [:model/User user {:first_name "Test" :last_name "User" :email "test@example.com"}
+                   :model/RemoteSyncTask {task-id :id} {:sync_task_type "export" :initiated_by (:id user)}
+                   :model/Collection {_coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
+      (let [mock-source (test-helpers/create-mock-source)]
+        (with-redefs [source/source-from-settings (constantly mock-source)]
+          (let [result (impl/export! task-id "test-branch" "Test commit message" ["test-collection-1xxxx"])]
             (is (= :success (:status result)))))))))
 
 (deftest export!-successful-with-default-collections-test
   (testing "export! successful with default collections"
-    (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
-      (let [mock-main (test-helpers/create-mock-source)]
-        (with-redefs [source/source-from-settings (constantly mock-main)]
-          (let [result (impl/export! "test-branch" "Test commit message")]
+    (mt/with-temp [:model/User user {:first_name "Test" :last_name "User" :email "test@example.com"}
+                   :model/RemoteSyncTask {task-id :id} {:sync_task_type "export" :initiated_by (:id user)}
+                   :model/Collection {_coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
+      (let [mock-source (test-helpers/create-mock-source)]
+        (with-redefs [source/source-from-settings (constantly mock-source)]
+          (let [result (impl/export! task-id "test-branch" "Test commit message")]
             (is (= :success (:status result)))))))))
 
 (deftest export!-handles-extraction-failure-test
   (testing "export! handles extraction failure"
     ;; This test simulates when the serialization extraction fails
     ;; We can trigger this by having no valid collections to export
-    (let [mock-main (test-helpers/create-mock-source)]
-      (with-redefs [source/source-from-settings (constantly mock-main)]
-        ;; Try to export a non-existent collection
-        (let [result (impl/export! "test-branch" "Test commit message" ["nonexistentcollection"])]
-          ;; The export should still succeed but with no entities to export
-          (is (= :success (:status result))))))))
+    (mt/with-temp [:model/User user {:first_name "Test" :last_name "User" :email "test@example.com"}
+                   :model/RemoteSyncTask {task-id :id} {:sync_task_type "export" :initiated_by (:id user)}]
+      (let [mock-source (test-helpers/create-mock-source)]
+        (with-redefs [source/source-from-settings (constantly mock-source)]
+          ;; Try to export a non-existent collection
+          (let [result (impl/export! task-id "test-branch" "Test commit message" ["nonexistentcollection"])]
+            ;; The export should still succeed but with no entities to export
+            (is (= :success (:status result)))))))))
 
 (deftest export!-handles-store-failure-test
   (testing "export! handles store failure"
-    (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
-      (let [mock-main (test-helpers/create-mock-source :fail-mode :store-error)]
-        (with-redefs [source/source-from-settings (constantly mock-main)]
-          (let [result (impl/export! "test-branch" "Test commit message" ["test-collection-1xxxx"])]
+    (mt/with-temp [:model/User user {:first_name "Test" :last_name "User" :email "test@example.com"}
+                   :model/RemoteSyncTask {task-id :id} {:sync_task_type "export" :initiated_by (:id user)}
+                   :model/Collection {_coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
+      (let [mock-source (test-helpers/create-mock-source :fail-mode :store-error)]
+        (with-redefs [source/source-from-settings (constantly mock-source)]
+          (let [result (impl/export! task-id "test-branch" "Test commit message" ["test-collection-1xxxx"])]
             (is (= :error (:status result)))
             (is (re-find #"Failed to export to git repository" (:message result)))))))))
 
 (deftest export!-handles-network-errors-during-write-test
   (testing "export! handles network errors during write"
-    (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
-      (let [mock-main (test-helpers/create-mock-source :fail-mode :network-error)]
-        (with-redefs [source/source-from-settings (constantly mock-main)]
-          (let [result (impl/export! "test-branch" "Test commit message" ["test-collection-1xxxx"])]
+    (mt/with-temp [:model/User user {:first_name "Test" :last_name "User" :email "test@example.com"}
+                   :model/RemoteSyncTask {task-id :id} {:sync_task_type "export" :initiated_by (:id user)}
+                   :model/Collection {_coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
+      (let [mock-source (test-helpers/create-mock-source :fail-mode :network-error)]
+        (with-redefs [source/source-from-settings (constantly mock-source)]
+          (let [result (impl/export! task-id "test-branch" "Test commit message" ["test-collection-1xxxx"])]
             (is (= :error (:status result)))
             (is (re-find #"Failed to export to git repository" (:message result)))))))))
 
@@ -165,7 +199,9 @@
         (with-redefs [source/source-from-settings (constantly mock-main)]
 
           ;; First export - verify it succeeds and files are written to the mock source
-          (let [export-result (impl/export! "test-branch" "Test export" ["test-collection-1xxxx"])]
+          (let [export-task (t2/insert-returning-instance! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (:id (first (t2/select :model/User)))})
+                export-result (impl/export! (:id export-task) "test-branch" "Test export" ["test-collection-1xxxx"])]
+            (remote-sync.task/complete-sync-task! (:id export-task))
             (is (= :success (:status export-result)))
 
             ;; Verify files were written to the mock source atom
@@ -177,7 +213,9 @@
               (is (some #(str/includes? % "card") (keys files-after-export)))))
 
           ;; Then import - verify it succeeds and processes the exported files
-          (let [import-result (impl/import! "test-branch" ["test-collection-1xxxx"])]
+          (let [import-task (t2/insert-returning-instance! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (:id (first (t2/select :model/User)))})
+                import-result (impl/import! (:id import-task) "test-branch" ["test-collection-1xxxx"])]
+            (remote-sync.task/complete-sync-task! (:id import-task))
             (is (= :success (:status import-result)))
             (is (= "Successfully reloaded from git repository" (:message import-result)))
 
@@ -209,7 +247,8 @@
         (with-redefs [source/source-from-settings (constantly mock-main)]
 
           ;; Import only collection 1 - this exercises the cleanup logic for collection 2
-          (let [result (impl/import! "test-branch")]
+          (let [import-task (t2/insert-returning-instance! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (:id (first (t2/select :model/User)))})
+                result (impl/import! (:id import-task) "test-branch")]
             (is (= :success (:status result))))
 
           ;; Verify the entities still exist (real cleanup would require more complex setup)
@@ -219,8 +258,51 @@
 
 (deftest error-handling-propagation-through-private-functions-test
   (testing "error handling propagation through private functions"
-    (let [mock-main (test-helpers/create-mock-source :fail-mode :network-error)]
-      (with-redefs [source/source-from-settings (constantly mock-main)]
-        (let [result (impl/import! "test-branch" ["test-collection"])]
+    (let [mock-source (test-helpers/create-mock-source :fail-mode :network-error)]
+      (with-redefs [source/source-from-settings (constantly mock-source)]
+        (let [import-task (t2/insert-returning-instance! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (:id (first (t2/select :model/User)))})
+              result (impl/import! (:id import-task) "test-branch" ["test-collection"])]
           (is (= :error (:status result)))
           (is (re-find #"Network error" (:message result))))))))
+
+(deftest import!-calls-update-progress-with-expected-values-test
+  (testing "import! calls update-progress! with expected progress values"
+    (mt/with-temp [:model/User user {:first_name "Test" :last_name "User" :email "test@example.com"}
+                   :model/RemoteSyncTask {task-id :id} {:sync_task_type "import" :initiated_by (:id user)}
+                   :model/Collection {_coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
+      (let [mock-source (test-helpers/create-mock-source)
+            progress-calls (atom [])]
+        (with-redefs [source/source-from-settings (constantly mock-source)
+                      remote-sync.task/update-progress!
+                      (fn [task-id progress]
+                        (swap! progress-calls conj {:task-id task-id :progress progress}))]
+          (let [result (impl/import! task-id "test-branch")]
+            (is (= :success (:status result)))
+            ;; Verify progress was called with expected values
+            (is (= 3 (count @progress-calls)))
+            (is (= task-id (:task-id (first @progress-calls))))
+            (is (= task-id (:task-id (second @progress-calls))))
+            (is (= task-id (:task-id (nth @progress-calls 2))))
+            ;; Check progress values are in expected sequence
+            (is (= 0.7 (:progress (first @progress-calls))))
+            (is (= 0.8 (:progress (second @progress-calls))))
+            (is (= 0.9 (:progress (nth @progress-calls 2))))))))))
+
+(deftest export!-calls-update-progress-with-expected-values-test
+  (testing "export! calls update-progress! with expected progress values"
+    (mt/with-temp [:model/User user {:first_name "Test" :last_name "User" :email "test@example.com"}
+                   :model/RemoteSyncTask {task-id :id} {:sync_task_type "export" :initiated_by (:id user)}
+                   :model/Collection {_coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
+      (let [mock-source (test-helpers/create-mock-source)
+            progress-calls (atom [])]
+        (with-redefs [source/source-from-settings (constantly mock-source)
+                      remote-sync.task/update-progress!
+                      (fn [task-id progress]
+                        (swap! progress-calls conj {:task-id task-id :progress progress}))]
+          (let [result (impl/export! task-id "test-branch" "Test commit" ["test-collection-1xxxx"])]
+            (is (= :success (:status result)))
+            ;; Verify progress was called with expected values
+            (is (= 1 (count @progress-calls)))
+            (is (= task-id (:task-id (first @progress-calls))))
+            ;; Check progress value is expected
+            (is (= 0.8 (:progress (first @progress-calls))))))))))

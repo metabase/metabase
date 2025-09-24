@@ -4,17 +4,30 @@
    [medley.core :as m]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-change-log :as change-log]
+   [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defn- async-import!
+  [branch]
+  (let [{task-id :id} (remote-sync.task/create-sync-task! "import" api/*current-user-id*)]
+    (u.jvm/in-virtual-thread*
+     (let [result (impl/import! task-id branch)]
+       (case (:status result)
+         :success (remote-sync.task/complete-sync-task! task-id)
+         :error (remote-sync.task/fail-sync-task! task-id (:message result))
+         (remote-sync.task/fail-sync-task! task-id "Unexpected Error"))))
+    task-id))
 
 (api.macros/defendpoint :post "/import"
   "Reload Metabase content from Git repository source of truth.
@@ -32,20 +45,8 @@
   (when-not (settings/remote-sync-enabled)
     (throw (ex-info "Git sync is paused. Please resume it to perform import operations."
                     {:status-code 400})))
-  (let [result (impl/import! branch)]
-    (case (:status result)
-      :success
-      "Success"
-
-      :error
-      {:status 400
-       :body {:status "error"
-              :message (:message result)}}
-
-      ;; Fallback for unexpected result format
-      {:status 500
-       :body {:status "error"
-              :message "Unexpected error occurred during reload"}})))
+  {:status :success
+   :task_id (async-import! (or branch (settings/remote-sync-branch)))})
 
 (api.macros/defendpoint :get "/:collection-id/is-dirty"
   "Check if this instance or a specific collection has remote sync changes that are not saved."
@@ -85,20 +86,17 @@
   (when-not (settings/remote-sync-enabled)
     (throw (ex-info "Git sync is paused. Please resume it to perform export operations."
                     {:status-code 400})))
-  (let [result (impl/export! (or branch (settings/remote-sync-branch))
-                             (or message "Exported from Metabase")
-                             (if (some? collection_id) [(t2/select-one-fn :entity_id [:model/Collection :entity_id] :id collection_id)] nil))]
-    (case (:status result)
-      :success "Success"
-
-      :error
-      {:status 400
-       :body {:status "error"
-              :message (:message result)}}
-
-      {:status 500
-       :body {:status "error"
-              :message "Unexpected error occurred during export"}})))
+  (let [{task-id :id} (remote-sync.task/create-sync-task! "export" api/*current-user-id*)]
+    (u.jvm/in-virtual-thread*
+     (let [result (impl/export! (or branch (settings/remote-sync-branch))
+                                (or message "Exported from Metabase")
+                                (if (some? collection_id) [(t2/select-one-fn :entity_id [:model/Collection :entity_id] :id collection_id)] nil))]
+       (case (:status result)
+         :success (remote-sync.task/complete-sync-task! task-id)
+         :error (remote-sync.task/fail-sync-task! task-id (:message result))
+         (remote-sync.task/fail-sync-task! task-id "Unexpected Error"))))
+    {:message "Export task started"
+     :task_id task-id}))
 
 (api.macros/defendpoint :put "/settings"
   "Update Git Sync related settings. You must be a superuser to do this."
@@ -117,13 +115,12 @@
     (settings/check-and-update-remote-settings! settings)
     (when (and (settings/remote-sync-enabled)
                (= "import" (settings/remote-sync-type)))
-      (impl/import! nil))
+      {:success true
+       :task_id (async-import! (settings/remote-sync-branch))})
     (catch Exception e
       (throw (ex-info "Invalid git settings"
                       {:error (.getMessage e)
-                       :status-code 400}
-                      e))))
-  {:success true})
+                       :status-code 400})))))
 
 (api.macros/defendpoint :get "/branches"
   "Get list of branches from the configured git source.
