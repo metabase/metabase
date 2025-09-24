@@ -139,29 +139,26 @@ export const AgentSuggestionMessage = ({
   const newSource = getSourceCode(suggestedTransform);
 
   const parseTemplateTags = (source: TransformSource): TransformSource => {
-    // Round-tripping through Question.create and native query methods ensures template tags
-    // (e.g. model & snippet references) are parsed so that the query can execute successfully
+    // For unsaved native queries, ensure template tags (like #{{123-my-model}}) are parsed from query text
     const query = source.query;
-    const question = Question.create({ dataset_query: query, metadata });
-    const libQuery = question.query();
-    const { isNative } = Lib.queryDisplayInfo(libQuery);
+    let question = Question.create({ dataset_query: query, metadata });
+    const { isNative } = Lib.queryDisplayInfo(question.query());
 
-    if (isNative) {
-      const nativeQuery = question.legacyNativeQuery();
-      if (nativeQuery) {
-        const queryText = nativeQuery.queryText();
-        // Process template tags by setting the query text
-        const updatedQuery = nativeQuery.setQueryText(queryText);
-        const processedQuery = updatedQuery.question().datasetQuery();
+    if (isNative && !question.isSaved()) {
+      question = question.setQuery(
+        Lib.withNativeQuery(
+          question.query(),
+          Lib.rawNativeQuery(question.query()),
+        ),
+      );
 
-        return {
-          ...source,
-          query: processedQuery,
-        };
-      }
+      return {
+        ...source,
+        query: question.datasetQuery(),
+      };
+    } else {
+      return source;
     }
-
-    return source;
   };
 
   const handleFocus = (
