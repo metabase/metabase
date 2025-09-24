@@ -53,7 +53,7 @@
                               :left-join                       (not driver-api/is-test?)
                               :describe-fks                    false
                               :actions                         false
-                              :metadata/key-constraints        (not driver-api/is-test?)
+                              :metadata/key-constraints        false
                               :database-routing                true
                               :transforms/table                true}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
