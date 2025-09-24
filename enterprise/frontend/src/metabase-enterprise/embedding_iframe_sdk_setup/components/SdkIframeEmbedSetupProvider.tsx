@@ -88,9 +88,18 @@ export const SdkIframeEmbedSetupProvider = ({
       );
   }, [recentDashboards, urlParams]);
 
-  const [currentStep, setCurrentStep] = useState<SdkIframeEmbedSetupStep>(
-    "select-embed-experience",
-  );
+  // Default to the embed options step if both resource type and id are provided.
+  // This is to skip the experience and resource selection steps as we know both.
+  const defaultStep: SdkIframeEmbedSetupStep = useMemo(() => {
+    if (urlParams.resourceType !== null && urlParams.resourceId !== null) {
+      return "select-embed-options";
+    }
+
+    return "select-embed-experience";
+  }, [urlParams]);
+
+  const [currentStep, setCurrentStep] =
+    useState<SdkIframeEmbedSetupStep>(defaultStep);
 
   const settings = useMemo(() => {
     const latestSettings = rawSettings ?? defaultSettings;
