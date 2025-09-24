@@ -27,7 +27,7 @@
 
 (defn- normalize-variable-tag
   "Matches and normalizes a variable tag like {{my_var}}.
-   Returns [matched-content normalized-name] or nil if not a variable tag."
+   Returns normalized-name or nil if not a variable tag."
   [full-tag]
   (when-let [[_ content] (re-matches variable-tag-regex full-tag)]
     content))
@@ -62,7 +62,7 @@
 (defn- normalize-card-tag
   "Matches and normalizes a card tag like {{#123}} or {{#123-slug}}.
    Normalizes '#123-slug' -> '#123'.
-   Returns [matched-content normalized-name] or nil if not a card tag."
+   Returns normalized-name or nil if not a card tag."
   [full-tag]
   (when-let [[_ content _card-id _slug] (re-matches card-tag-regex full-tag)]
     ;; TODO: see tech debt issue #39378 and `native-test/card-tag-test`
