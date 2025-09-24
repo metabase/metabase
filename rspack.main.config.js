@@ -46,6 +46,8 @@ const PORT = process.env.PORT || 8080;
 const isDevMode = IS_DEV_MODE;
 const shouldEnableHotRefresh = WEBPACK_BUNDLE === "hot";
 
+console.log("isDevMode", isDevMode);
+
 // If you want to test metabase locally with a custom domain, either use
 // `metabase.local` or add your custom domain via the `MB_TEST_CUSTOM_DOMAINS`
 // environment variable so that rspack will allow requests from them.
