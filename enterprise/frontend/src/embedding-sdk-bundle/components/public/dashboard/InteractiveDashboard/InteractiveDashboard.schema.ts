@@ -51,6 +51,7 @@ const propsSchema: Yup.SchemaOf<InteractiveDashboardProps> = Yup.object({
   withDownloads: Yup.mixed().optional(),
   withTitle: Yup.mixed().optional(),
   onVisualizationChange: Yup.mixed().optional(),
+  adHocQuestionHeight: Yup.mixed().optional(),
 }).noUnknown();
 
 export const interactiveDashboardSchema: FunctionSchema = {

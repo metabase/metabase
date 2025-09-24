@@ -2,7 +2,6 @@ import {
   type CSSProperties,
   type PropsWithChildren,
   type ReactNode,
-  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -35,7 +34,6 @@ import {
   toggleSidebar,
   updateDashboardAndCards,
 } from "metabase/dashboard/actions";
-import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import {
@@ -231,22 +229,6 @@ const SdkDashboardInner = ({
   const { modalContent, show } = useConfirmation();
   const isDashboardDirty = useSelector(getIsDirty);
 
-  const navigateToNewCardFromDashboardCallback = useCallback(
-    (options: NavigateToNewCardFromDashboardOpts) => {
-      onVisualizationChange?.(options.nextCard.display as CardDisplayType);
-
-      if (navigateToNewCardFromDashboard) {
-        return navigateToNewCardFromDashboard(options);
-      }
-      return onNavigateToNewCardFromDashboard(options);
-    },
-    [
-      onNavigateToNewCardFromDashboard,
-      navigateToNewCardFromDashboard,
-      onVisualizationChange,
-    ],
-  );
-
   if (isLocaleLoading) {
     return (
       <SdkDashboardStyledWrapper className={className} style={style}>
@@ -283,7 +265,11 @@ const SdkDashboardInner = ({
       ref={dashboardContextProviderRef}
       dashboardId={dashboardId}
       parameterQueryParams={initialParameters}
-      navigateToNewCardFromDashboard={navigateToNewCardFromDashboardCallback}
+      navigateToNewCardFromDashboard={
+        navigateToNewCardFromDashboard !== undefined
+          ? navigateToNewCardFromDashboard
+          : onNavigateToNewCardFromDashboard
+      }
       onNewQuestion={() => {
         if (isDashboardDirty) {
           show({
