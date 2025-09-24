@@ -157,7 +157,16 @@ const tempStorageSlice = createSlice({
   },
 });
 
+const darkModeSlice = createSlice({
+  name: "isDarkMode",
+  initialState: false,
+  reducers: {
+    toggleDarkMode: (state) => !state,
+  },
+});
+
 export const { setTempSetting } = tempStorageSlice.actions;
+export const { toggleDarkMode } = darkModeSlice.actions;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default combineReducers({
@@ -172,4 +181,5 @@ export default combineReducers({
   },
   isErrorDiagnosticsOpen,
   tempStorage: tempStorageSlice.reducer,
+  isDarkMode: darkModeSlice.reducer,
 });
