@@ -2,5 +2,16 @@
   "base": {
     "name": "master",
     "hash": "4b99060f46ece458745f5211f26744f4e5d92185"
+  },
+  "upstream": {
+    "branch": "emb-846-replace-interactive-embedding-card-in-embed-modal-with-embed"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 63942,
+        "gqlID": "PR_kwDOAczgH86qKHa5"
+      }
+    }
   }
 }
