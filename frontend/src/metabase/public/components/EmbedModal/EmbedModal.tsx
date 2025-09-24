@@ -82,7 +82,7 @@ const EmbedModalTitle = ({ applicationName }: { applicationName: string }) => (
   <Stack gap="sm">
     <Text fw="bold" fz="h2">{t`Embed ${applicationName}`}</Text>
 
-    <Link to="/admin/embedding/modular" className={CS.link}>
+    <Link to="/admin/embedding/modular" className={CS.link} target="_blank">
       <Group gap="xs">
         <Text c="brand">{t`Embedding settings`}</Text>
         <Icon c="brand" name="external" />
