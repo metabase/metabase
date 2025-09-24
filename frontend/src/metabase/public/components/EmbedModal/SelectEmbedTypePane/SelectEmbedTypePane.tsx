@@ -53,7 +53,15 @@ export function SelectEmbedTypePane({
   // Selecting "Embedded Analytics JS" should link to the embed flow.
   // TODO(EMB-848): pre-select dashboard and question when embed flow is opened from the embed sharing modal
   const embedFlowUrl = useMemo(() => {
-    return `/embed-js?resource_type=${resourceType}&resource_id=${resource.id}`;
+    const params = new URLSearchParams();
+
+    params.set("resource_type", resourceType);
+
+    if (resource.id) {
+      params.set("resource_id", resource.id.toString());
+    }
+
+    return "/embed-js?" + params.toString();
   }, [resourceType, resource.id]);
 
   const { url } = useUpsellEmbedJsCta({ embedFlowUrl });
