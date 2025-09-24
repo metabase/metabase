@@ -18,6 +18,7 @@ type SearchEventSchema = {
   request_id?: string | null;
   offset?: number | null;
   entity_model?: string | null;
+  entity_id?: number | null;
   search_term_hash?: string | null;
   search_term?: string | null;
 };
