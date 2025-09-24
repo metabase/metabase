@@ -295,6 +295,10 @@
   "Should we allow users to use transforms?"
   :transforms)
 
+(define-premium-feature ^{:added "0.57.0"} enable-python-transforms?
+  "Should we allow users to use Python transforms?"
+  :transforms-python)
+
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
    :ai_sql_fixer                   (enable-ai-sql-fixer?)
@@ -340,6 +344,7 @@
    :sso_saml                       (enable-sso-saml?)
    :table_data_editing             (table-data-editing?)
    :transforms                     (enable-transforms?)
+   :transforms-python              (enable-python-transforms?)
    :upload_management              (enable-upload-management?)
    :whitelabel                     (enable-whitelabeling?)})
 

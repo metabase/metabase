@@ -101,6 +101,7 @@
         trigger (build-trigger job-id schedule)]
     (task/schedule-task! job trigger)))
 
+;; TODO: should this be part of transformjob hooks?
 (defn update-job!
   "Update the trigger for a transform job."
   [job-id schedule]

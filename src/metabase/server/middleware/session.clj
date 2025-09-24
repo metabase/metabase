@@ -198,7 +198,7 @@
     (u.password/verify-password passed-api-key "" api-key)
     (do-useless-hash)))
 
-(mu/defn- current-user-info-for-api-key :- [:maybe ::request.schema/current-user-info]
+(mu/defn current-user-info-for-api-key :- [:maybe ::request.schema/current-user-info]
   "Return User ID and superuser status for an API Key with `api-key-id"
   [api-key :- [:maybe :string]]
   (when (and api-key

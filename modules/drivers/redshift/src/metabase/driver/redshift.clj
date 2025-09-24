@@ -550,6 +550,7 @@
 (defmethod type->database-type :type/TextLike [_] [[:varchar 65535]])
 (defmethod type->database-type :type/Text [_] [[:varchar 65535]])
 (defmethod type->database-type :type/Number [_] [:bigint])
+(defmethod type->database-type :type/BigInteger [_] [:bigint])
 (defmethod type->database-type :type/Integer [_] [:integer])
 (defmethod type->database-type :type/Float [_] [(keyword "double precision")])
 (defmethod type->database-type :type/Boolean [_] [:boolean])

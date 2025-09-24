@@ -78,6 +78,8 @@ import type {
   ModelCacheRefreshStatus,
   ParameterId,
   Pulse,
+  PythonTransformSource,
+  PythonTransformTableAliases,
   Revision,
   Series,
   TableId,
@@ -835,4 +837,32 @@ export type TransformsPlugin = {
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
   getAdminPaths: () => [],
   getAdminRoutes: () => null,
+};
+
+export type PythonTransformsPlugin = {
+  PythonRunnerSettingsPage: ComponentType;
+  getAdminRoutes: () => ReactNode;
+  getTransformsNavLinks: () => ReactNode;
+  getCreateTransformsMenuItems: () => ReactNode;
+  TransformEditor: ComponentType<{
+    initialSource: {
+      type: "python";
+      body: string;
+      "source-database": DatabaseId | undefined;
+      "source-tables": PythonTransformTableAliases;
+    };
+    isNew?: boolean;
+    isSaving?: boolean;
+    isRunnable?: boolean;
+    onSave: (newSource: PythonTransformSource) => void;
+    onCancel: () => void;
+  }>;
+};
+
+export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
+  PythonRunnerSettingsPage: NotFoundPlaceholder,
+  TransformEditor: NotFoundPlaceholder,
+  getAdminRoutes: () => null,
+  getTransformsNavLinks: () => null,
+  getCreateTransformsMenuItems: () => null,
 };

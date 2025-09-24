@@ -224,6 +224,7 @@
 (defmethod type->database-type :type/Float [_] [[:raw "Nullable(Float64)"]])
 (defmethod type->database-type :type/Integer [_] [[:raw "Nullable(Int32)"]])
 (defmethod type->database-type :type/Number [_] [[:raw "Nullable(Int64)"]])
+(defmethod type->database-type :type/BigInteger [_] [[:raw "Nullable(Int64)"]])
 (defmethod type->database-type :type/Text [_] [[:raw "Nullable(String)"]])
 (defmethod type->database-type :type/TextLike [_] [[:raw "Nullable(String)"]])
 (defmethod type->database-type :type/Date [_] [[:raw "Nullable(Date32)"]])

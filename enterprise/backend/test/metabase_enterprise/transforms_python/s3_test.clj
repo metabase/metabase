@@ -20,9 +20,6 @@
 
 (set! *warn-on-reflection* true)
 
-(comment
-  (remove-ns (ns-name *ns*)))
-
 (defn- s3-endpoint-running? []
   (try
     (http/head (transforms-python.settings/python-runner-url) {:throw-exceptions false})

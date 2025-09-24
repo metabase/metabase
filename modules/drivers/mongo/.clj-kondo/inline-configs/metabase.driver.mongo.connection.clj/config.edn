@@ -1,0 +1,1 @@
+{:lint-as {metabase.driver.mongo.connection/with-mongo-client clojure.core/let, metabase.driver.mongo.connection/with-mongo-database clojure.core/let}, :config-in-call {metabase.driver.mongo.connection/with-mongo-client {:ignore [:unresolved-symbol :type-mismatch]}, metabase.driver.mongo.connection/with-mongo-database {:ignore [:unresolved-symbol :type-mismatch]}}}

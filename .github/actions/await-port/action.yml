@@ -11,6 +11,18 @@ runs:
     - name: Wait for port ${{ inputs.port }} to be ready
       shell: bash
       run: |
+        echo "Waiting for port ${{ inputs.port }} to be ready..."
+        timeout=300  # 5 minutes timeout
+        elapsed=0
         while ! nc -z localhost ${{ inputs.port }}; do
-          sleep 0.1;
+          if [ $elapsed -ge $timeout ]; then
+            echo "❌ Timeout waiting for port ${{ inputs.port }} after ${timeout} seconds"
+            exit 1
+          fi
+          sleep 1
+          elapsed=$((elapsed + 1))
+          if [ $((elapsed % 10)) -eq 0 ]; then
+            echo "  Still waiting for port ${{ inputs.port }}... ($elapsed seconds)"
+          fi
         done
+        echo "✅ Port ${{ inputs.port }} is ready!"

@@ -7,11 +7,11 @@
 
 (setting/defsetting transform-timeout
   (deferred-tru "The timeout for a transform job, in minutes.")
-  :type       :integer
+  :type :integer
   :visibility :internal
-  :default    (* 4 60)
-  :feature    :transforms
-  :doc        false
-  :export?    false
+  :default (* 4 60)
+  :feature :transforms
+  :doc false
+  :export? false
   :encryption :no
-  :audit      :getter)
+  :audit :getter)

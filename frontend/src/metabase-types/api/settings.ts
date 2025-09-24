@@ -322,6 +322,7 @@ export const tokenFeatures = [
   "documents",
   "semantic_search",
   "transforms",
+  "transforms-python",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -673,6 +674,14 @@ export interface EnterpriseSettings extends Settings {
   "saml-group-mappings": Record<string, GroupId[]> | null;
   "database-replication-enabled": boolean | null;
   "database-replication-connections"?: DatabaseReplicationConnections | null;
+  "python-execution-server-url"?: string | null;
+  "python-storage-s-3-endpoint"?: string | null;
+  "python-storage-s-3-region"?: string | null;
+  "python-storage-s-3-bucket"?: string | null;
+  "python-storage-s-3-access-key"?: string | null;
+  "python-storage-s-3-secret-key"?: string | null;
+  "python-storage-s-3-container-endpoint"?: string | null;
+  "python-storage-s-3-path-style-access"?: boolean | null;
   "embedding-hub-test-embed-snippet-created": boolean;
   "embedding-hub-production-embed-snippet-created": boolean;
   /**

@@ -307,6 +307,7 @@
 (defmethod type->database-type :type/Decimal [_] [:DECIMAL])
 (defmethod type->database-type :type/Float [_] [:DOUBLE])
 (defmethod type->database-type :type/Number [_] [:BIGINT])
+(defmethod type->database-type :type/BigInteger [_] [:BIGINT])
 (defmethod type->database-type :type/Integer [_] [:INTEGER])
 (defmethod type->database-type :type/Text [_] [:TEXT])
 (defmethod type->database-type :type/Time [_] [:TIME])

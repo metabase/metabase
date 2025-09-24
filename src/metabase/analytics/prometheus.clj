@@ -627,7 +627,7 @@
   (spit "metrics" (iapetos.export/text-format (:registry system)))
 
   ;; See all metrics that match a given prefix:
-  ; (filter #(.startsWith % "metabase_search_") (clojure.string/split-lines (iapetos.export/text-format (:registry system))))
+                                        ; (filter #(.startsWith % "metabase_search_") (clojure.string/split-lines (iapetos.export/text-format (:registry system))))
 
   ;; need to restart the server to see the metrics? use:
   (shutdown!)

@@ -31,5 +31,5 @@ export function getResponseErrorMessage(error: unknown): string | undefined {
 }
 
 export function isResourceNotFoundError(error: any) {
-  return error?.status === 404;
+  return error instanceof Object && "status" in error && error.status === 404;
 }

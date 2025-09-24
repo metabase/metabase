@@ -8,6 +8,7 @@
    [metabase-enterprise.transforms.models.transform-transform-tag]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
+   [metabase-enterprise.transforms.test-util :as transforms.tu]
    [metabase-enterprise.transforms.test-util :refer [parse-instant with-transform-cleanup! utc-timestamp get-test-schema]]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
@@ -281,24 +282,6 @@
                                                      :name   table-name}})]
             (mt/user-http-request :crowberto :delete 204 (format "ee/transform/%s/table" (:id resp)))))))))
 
-(defn- test-run
-  [transform-id]
-  (let [resp      (mt/user-http-request :crowberto :post 202 (format "ee/transform/%s/run" transform-id))
-        timeout-s 10 ; 10 seconds is our timeout to finish execution and sync
-        limit     (+ (System/currentTimeMillis) (* timeout-s 1000))]
-    (is (=? {:message "Transform run started"}
-            resp))
-    (loop []
-      (when (> (System/currentTimeMillis) limit)
-        (throw (ex-info (str "Transform run timed out after " timeout-s " seconds") {})))
-      (let [resp   (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" transform-id))
-            status (some-> resp :last_run :status keyword)]
-        (when-not (contains? #{:started :succeeded} status)
-          (throw (ex-info (str "Transform run failed with status " status) {:resp resp})))
-        (when-not (some? (:table resp))
-          (Thread/sleep 100)
-          (recur))))))
-
 (defn- check-query-results
   "Verifies that a transform successfully created a table with expected data.
 
@@ -337,19 +320,6 @@
           (str "Expected " (count ids) " rows with category " category
                " in table " table-name ", but got " actual-count)))))
 
-(defn- wait-for-table
-  "Wait for a table to appear in metadata, with timeout.
-   Copied from execute_test.clj - will consolidate later."
-  [table-name timeout-ms]
-  (let [mp    (mt/metadata-provider)
-        limit (+ (System/currentTimeMillis) timeout-ms)]
-    (loop []
-      (Thread/sleep 200)
-      (when (> (System/currentTimeMillis) limit)
-        (throw (ex-info "table has not been created" {:table-name table-name, :timeout-ms timeout-ms})))
-      (or (m/find-first (comp #{table-name} :name) (lib.metadata/tables mp))
-          (recur)))))
-
 (deftest execute-transform-test
   (testing "transform execution with :transforms/table target"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -369,8 +339,8 @@
                                         :target target1}
                     {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
                                                              original)
-                    _                  (do (test-run transform-id)
-                                           (wait-for-table table1-name 5000))
+                    _                  (do (transforms.tu/test-run transform-id)
+                                           (transforms.tu/wait-for-table table1-name 5000))
                     _                  (is (true? (transforms.util/target-table-exists? original)))
                     _                  (check-query-results table1-name [5 11 16] "Gadget")
                     updated            {:name        "Doohickey Products"
@@ -382,8 +352,8 @@
                         (->
                          (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" transform-id) updated)
                          (update-in [:source :query] mbql.normalize/normalize))))
-                (test-run transform-id)
-                (wait-for-table table2-name 5000)
+                (transforms.tu/test-run transform-id)
+                (transforms.tu/wait-for-table table2-name 5000)
                 (is (true? (transforms.util/target-table-exists? original)))
                 (is (true? (transforms.util/target-table-exists? updated)))
                 (check-query-results table2-name [2 3 4 13] "Doohickey")))))))))

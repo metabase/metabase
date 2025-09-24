@@ -3,6 +3,7 @@ import type { TagDescription } from "@reduxjs/toolkit/query";
 import { TAG_TYPES, provideUserTags } from "metabase/api/tags";
 import type {
   Comment,
+  PythonLibrary,
   Transform,
   TransformJob,
   TransformRun,
@@ -23,6 +24,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "transform-job",
   "transform-job-via-tag",
   "transform-run",
+  "python-transform-library",
 ] as const;
 
 export type EnterpriseTagType = (typeof ENTERPRISE_TAG_TYPES)[number];
@@ -109,6 +111,12 @@ export function provideTransformJobListTags(
   jobs: TransformJob[],
 ): TagDescription<EnterpriseTagType>[] {
   return [listTag("transform-job"), ...jobs.flatMap(provideTransformJobTags)];
+}
+
+export function providePythonLibraryTags(
+  library: PythonLibrary,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("python-transform-library", library.path)];
 }
 
 export function provideCommentListTags(

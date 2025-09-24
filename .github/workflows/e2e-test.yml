@@ -60,6 +60,14 @@ jobs:
       CYPRESS_IS_EMBEDDING_SDK: "${{ inputs.name == 'embedding-sdk' }}"
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - name: Setup python-runner
+        env:
+          METABASE_AUTOMATION_USER_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        run: ./.github/scripts/setup-python-runner.sh
 
       - name: Prepare Docker containers
         uses: ./.github/actions/e2e-prepare-containers
