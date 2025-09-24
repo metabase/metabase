@@ -18,15 +18,27 @@ import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 import type { CollectionId } from "metabase-types/api";
 
-export type SdkIframeMessageWithMessageId<TMessage> = TMessage & {
-  data: { messageId: string };
+export type SdkIframeEventBusCalledFunctionName = "fetchStaticToken";
+
+export type SdkIframeEventFunctionCallMessageHandler = (
+  handlerData: SdkIframeFunctionCallHandlerData,
+  message: SdkIframeEmbedTagFunctionCallMessage,
+) => void | Promise<void>;
+
+export type SdkIframeFunctionCallHandlerData = {
+  functionCallMessageType: SdkIframeEmbedTagFunctionCallMessage["type"];
+  functionResultMessageType: SdkIframeEmbedFunctionResultMessage["type"];
+  handler: SdkIframeEventFunctionCallMessageHandler;
 };
 
 /** Events that the embed.js script listens for */
 export type SdkIframeEmbedTagMessage =
   | SdkIframeEmbedTagIframeReadyMessage
   | SdkIframeEmbedTagRequestSessionTokenMessage
-  | SdkIframeEmbedTagFetchStaticTokenMessage;
+  | SdkIframeEmbedTagFunctionCallMessage;
+
+export type SdkIframeEmbedTagFunctionCallMessage =
+  SdkIframeEmbedTagFetchStaticTokenMessage;
 
 export type SdkIframeEmbedTagIframeReadyMessage = {
   type: "metabase.embed.iframeReady";
@@ -35,9 +47,10 @@ export type SdkIframeEmbedTagRequestSessionTokenMessage = {
   type: "metabase.embed.requestSessionToken";
 };
 export type SdkIframeEmbedTagFetchStaticTokenMessage = {
-  type: "metabase.embed.fetchStaticToken";
-  data: MetabaseFetchStaticTokenFnData & {
+  type: "metabase.embed.functionCall.fetchStaticToken";
+  data: {
     messageId: string;
+    params: MetabaseFetchStaticTokenFnData;
   };
 };
 
@@ -47,7 +60,10 @@ export type SdkIframeEmbedMessage =
   | SdkIframeEmbedSubmitSessionTokenMessage
   | SdkIframeEmbedReportAuthenticationError
   | SdkIframeEmbedReportAnalytics
-  | SdkIframeEmbedSetStaticTokenMessage;
+  | SdkIframeEmbedFunctionResultMessage;
+
+export type SdkIframeEmbedFunctionResultMessage =
+  SdkIframeEmbedSetStaticTokenMessage;
 
 export type SdkIframeEmbedSetSettingsMessage = {
   type: "metabase.embed.setSettings";
@@ -74,10 +90,10 @@ export type SdkIframeEmbedReportAnalytics = {
   };
 };
 export type SdkIframeEmbedSetStaticTokenMessage = {
-  type: "metabase.embed.fetchStaticTokenResult";
+  type: "metabase.embed.functionResult.fetchStaticToken";
   data: {
     messageId: string;
-    staticToken: UserBackendJwtResponse;
+    result: UserBackendJwtResponse;
   };
 };
 
