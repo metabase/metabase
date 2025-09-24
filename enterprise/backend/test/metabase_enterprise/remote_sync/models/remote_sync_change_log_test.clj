@@ -4,24 +4,15 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.models.remote-sync-change-log :as change-log]
+   [metabase-enterprise.remote-sync.test-helpers :as remote-sync.th]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(defn- clean-change-log [f]
-  (let [old-models (t2/select :model/RemoteSyncChangeLog)]
-    (try
-      (t2/delete! :model/RemoteSyncChangeLog)
-      (f)
-      (finally
-        (t2/delete! :model/RemoteSyncChangeLog)
-        (when (seq old-models)
-          (t2/insert! :model/RemoteSyncChangeLog old-models))))))
-
 (use-fixtures :once (fixtures/initialize :db))
-(use-fixtures :each clean-change-log)
+(use-fixtures :each remote-sync.th/clean-change-log)
 
 ;;; ------------------------------------------------------------------------------------------------
 ;;; Tests for dirty-collection?

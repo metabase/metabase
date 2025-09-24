@@ -164,63 +164,65 @@
               (is (contains? response :message)))))))))
 
 (deftest is-dirty-endpoint-test
-  (testing "GET /api/ee/remote-sync/:collection-id/is-dirty"
+  (test-helpers/with-clean-change-log
+    (testing "GET /api/ee/remote-sync/:collection-id/is-dirty"
 
-    (testing "returns false when collection is not dirty"
-      (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"
-                                                      :type "remote-synced"
-                                                      :entity_id "test-collection-1xxxx"
-                                                      :location "/"}]
-        (with-redefs [change-log/dirty-collection? (constantly false)]
-          (let [response (mt/user-http-request :crowberto :get 200 (format "ee/remote-sync/%d/is-dirty" coll-id))]
-            (is (= {:is_dirty false} response))))))
+      (testing "returns false when collection is not dirty"
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"
+                                                        :type "remote-synced"
+                                                        :entity_id "test-collection-1xxxx"
+                                                        :location "/"}]
+          (with-redefs [change-log/dirty-collection? (constantly false)]
+            (let [response (mt/user-http-request :crowberto :get 200 (format "ee/remote-sync/%d/is-dirty" coll-id))]
+              (is (= {:is_dirty false} response))))))
 
-    (testing "returns true when collection is dirty"
-      (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"
-                                                      :type "remote-synced"
-                                                      :entity_id "test-collection-1xxxx"
-                                                      :location "/"}]
-        (with-redefs [change-log/dirty-collection? (constantly true)]
-          (let [response (mt/user-http-request :crowberto :get 200 (format "ee/remote-sync/%d/is-dirty" coll-id))]
-            (is (= {:is_dirty true} response))))))
+      (testing "returns true when collection is dirty"
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"
+                                                        :type "remote-synced"
+                                                        :entity_id "test-collection-1xxxx"
+                                                        :location "/"}]
+          (with-redefs [change-log/dirty-collection? (constantly true)]
+            (let [response (mt/user-http-request :crowberto :get 200 (format "ee/remote-sync/%d/is-dirty" coll-id))]
+              (is (= {:is_dirty true} response))))))
 
-    (testing "requires superuser permissions"
-      (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"
-                                                      :type "remote-synced"
-                                                      :entity_id "test-collection-1xxxx"
-                                                      :location "/"}]
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 (format "ee/remote-sync/%d/is-dirty" coll-id))))))))
+      (testing "requires superuser permissions"
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"
+                                                        :type "remote-synced"
+                                                        :entity_id "test-collection-1xxxx"
+                                                        :location "/"}]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (format "ee/remote-sync/%d/is-dirty" coll-id)))))))))
 
 (deftest dirty-endpoint-test
-  (testing "GET /api/ee/remote-sync/:collection-id/dirty"
+  (test-helpers/with-clean-change-log
+    (testing "GET /api/ee/remote-sync/:collection-id/dirty"
 
-    (testing "returns empty list when no dirty models"
-      (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"
-                                                      :type "remote-synced"
-                                                      :entity_id "test-collection-1xxxx"
-                                                      :location "/"}]
-        (with-redefs [change-log/dirty-for-collection (constantly [])]
-          (let [response (mt/user-http-request :crowberto :get 200 (format "ee/remote-sync/%d/dirty" coll-id))]
-            (is (= {:dirty []} response))))))
-
-    (testing "returns dirty models when they exist"
-      (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"
-                                                      :type "remote-synced"
-                                                      :entity_id "test-collection-1xxxx"
-                                                      :location "/"}]
-        (let [dirty-models [{:id 1 :model "Collection"} {:id 2 :model "Card"}]]
-          (with-redefs [change-log/dirty-for-collection (constantly dirty-models)]
+      (testing "returns empty list when no dirty models"
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"
+                                                        :type "remote-synced"
+                                                        :entity_id "test-collection-1xxxx"
+                                                        :location "/"}]
+          (with-redefs [change-log/dirty-for-collection (constantly [])]
             (let [response (mt/user-http-request :crowberto :get 200 (format "ee/remote-sync/%d/dirty" coll-id))]
-              (is (= {:dirty dirty-models} response)))))))
+              (is (= {:dirty []} response))))))
 
-    (testing "requires superuser permissions"
-      (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"
-                                                      :type "remote-synced"
-                                                      :entity_id "test-collection-1xxxx"
-                                                      :location "/"}]
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 (format "ee/remote-sync/%d/dirty" coll-id))))))))
+      (testing "returns dirty models when they exist"
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"
+                                                        :type "remote-synced"
+                                                        :entity_id "test-collection-1xxxx"
+                                                        :location "/"}]
+          (let [dirty-models [{:id 1 :model "Collection"} {:id 2 :model "Card"}]]
+            (with-redefs [change-log/dirty-for-collection (constantly dirty-models)]
+              (let [response (mt/user-http-request :crowberto :get 200 (format "ee/remote-sync/%d/dirty" coll-id))]
+                (is (= {:dirty dirty-models} response)))))))
+
+      (testing "requires superuser permissions"
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"
+                                                        :type "remote-synced"
+                                                        :entity_id "test-collection-1xxxx"
+                                                        :location "/"}]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (format "ee/remote-sync/%d/dirty" coll-id)))))))))
 
 (deftest settings-endpoint-test
   (testing "PUT /api/ee/remote-sync/settings"

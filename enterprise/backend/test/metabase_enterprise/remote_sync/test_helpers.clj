@@ -3,7 +3,8 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (defn generate-collection-yaml
   "Generates YAML content for a collection.
@@ -214,3 +215,20 @@ width: fixed
 
         files-atom (atom (or initial-files default-files))]
     (->MockLibrarySource "test-source" "https://test.example.com" fail-mode files-atom)))
+
+(defn clean-change-log
+  "Reset the change-log table before running tests to prevent existing extries from affecting dirty state checks"
+  [f]
+  (let [old-models (t2/select :model/RemoteSyncChangeLog)]
+    (try
+      (t2/delete! :model/RemoteSyncChangeLog)
+      (f)
+      (finally
+        (t2/delete! :model/RemoteSyncChangeLog)
+        (when (seq old-models)
+          (t2/insert! :model/RemoteSyncChangeLog old-models))))))
+
+(defmacro with-clean-change-log
+  "Macro to wrap a body to execute in a clean change log table"
+  [& body]
+  `(clean-change-log (fn [] ~@body)))
