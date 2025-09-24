@@ -99,7 +99,6 @@ function TransformPageSidebar({ params }: TransformPageSidebarProps) {
         icon="list"
         active={pathname === runListUrl}
       />
-      <AdminNavItem label={t`Runs`} path={getRunListUrl()} icon="list" />
       {PLUGIN_TRANSFORMS_PYTHON.getTransformsNavLinks()}
     </AdminNavWrapper>
   );
