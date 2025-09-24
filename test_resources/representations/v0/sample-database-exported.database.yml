@@ -4,7 +4,7 @@ name: Sample Database
 engine: h2
 description: Some example data for you to play around with.
 connection_details:
-  db: file:/home/galdre/programming/world/metabase-3/plugins/sample-database.db;USER=GUEST;PASSWORD=guest
+  db: file:plugins/sample-database.db;USER=GUEST;PASSWORD=guest
 schemas:
   - name: PUBLIC
     tables:
