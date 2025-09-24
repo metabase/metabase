@@ -11,6 +11,7 @@ import { useMount, useUnmount } from "react-use";
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -35,7 +36,7 @@ import { navigateToCardFromDocument } from "metabase-enterprise/documents/action
 import { trackDocumentReplaceCard } from "metabase-enterprise/documents/analytics";
 import { getUnresolvedComments } from "metabase-enterprise/documents/components/Editor/CommentsMenu";
 import { EDITOR_STYLE_BOUNDARY_CLASS } from "metabase-enterprise/documents/components/Editor/constants";
-import { useCommentsButton } from "metabase-enterprise/documents/components/Editor/hooks/useCommentsButton";
+import { useCommentsButtonProps } from "metabase-enterprise/documents/components/Editor/hooks/useCommentsButtonProps";
 import {
   loadMetadataForDocumentCard,
   openVizSettingsSidebar,
@@ -210,14 +211,17 @@ export const CardEmbedComponent = memo(
       () => getUnresolvedComments(threads).length,
       [threads],
     );
+    const commentsPath = document
+      ? `/document/${document.id}/comments/${_id}`
+      : "";
     const {
       component, // don't use Link component here since it messes with tiptap's link handling
-      to: commentsPath,
+      to: commentsButtonTo,
       ...commentsButtonProps
-    } = useCommentsButton({
+    } = useCommentsButtonProps({
       active: isOpen,
       disabled: hasUnsavedChanges,
-      href: document ? `/document/${document.id}/comments/${_id}` : "",
+      href: commentsPath,
       unresolvedCommentsCount,
     });
 
@@ -645,11 +649,10 @@ export const CardEmbedComponent = memo(
                       </Menu.Target>
                       <Menu.Dropdown>
                         <Menu.Item
-                          onClick={() => {
-                            commentsPath && dispatch(push(commentsPath));
-                          }}
-                          disabled={!commentsPath}
                           leftSection={<Icon name="add_comment" size={14} />}
+                          component={ForwardRefLink}
+                          to={commentsPath}
+                          disabled={!commentsButtonTo}
                         >
                           {t`Comment`}
                         </Menu.Item>

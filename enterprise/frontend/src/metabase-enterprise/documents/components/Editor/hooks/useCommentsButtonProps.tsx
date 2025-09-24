@@ -10,7 +10,7 @@ interface CommentsButtonOptions {
   unresolvedCommentsCount: number;
 }
 
-export const useCommentsButton = ({
+export const useCommentsButtonProps = ({
   active,
   disabled,
   href,

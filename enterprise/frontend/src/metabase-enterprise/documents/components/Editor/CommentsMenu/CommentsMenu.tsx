@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { Box, Button, type ButtonProps, rem } from "metabase/ui";
 import type { CommentThread } from "metabase-enterprise/comments/types";
 
-import { useCommentsButton } from "../hooks/useCommentsButton";
+import { useCommentsButtonProps } from "../hooks/useCommentsButtonProps";
 
 import S from "./CommentsMenu.module.css";
 
@@ -37,7 +37,7 @@ export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
       () => getUnresolvedComments(threads).length,
       [threads],
     );
-    const commentsButtonProps = useCommentsButton({
+    const commentsButtonProps = useCommentsButtonProps({
       active,
       disabled,
       href,

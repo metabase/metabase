@@ -7,7 +7,9 @@ import {
 import type React from "react";
 import { useRef, useState } from "react";
 
+import { useSelector } from "metabase/lib/redux";
 import { Box, Flex } from "metabase/ui";
+import { getCommentSidebarOpen } from "metabase-enterprise/documents/selectors";
 
 import S from "./ResizeNode.module.css";
 
@@ -84,6 +86,8 @@ const ResizeNodeView = ({
   const [height, setHeight] = useState(attrs.height);
   const _height = useRef(attrs.height);
 
+  const shouldDisableResizing = useSelector(getCommentSidebarOpen);
+
   const computeHeight = (delta: number) => {
     const newHeight = _height.current + delta;
 
@@ -110,7 +114,9 @@ const ResizeNodeView = ({
       data-type="resizeNode"
     >
       <NodeViewContent className={S.content} />
-      <DragHandle onDrag={handleDrag} onDragEnd={handleDragEnd} />
+      {!shouldDisableResizing && (
+        <DragHandle onDrag={handleDrag} onDragEnd={handleDragEnd} />
+      )}
     </NodeViewWrapper>
   );
 };
@@ -135,13 +141,19 @@ const DragHandle = ({
     };
 
     window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", (e) => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      if (startY.current) {
-        onDragEnd?.(e.pageY - startY.current);
-        startY.current = null;
-      }
-    });
+    window.addEventListener(
+      "mouseup",
+      (e) => {
+        window.removeEventListener("mousemove", handleMouseMove);
+        if (startY.current) {
+          onDragEnd?.(e.pageY - startY.current);
+          startY.current = null;
+        }
+      },
+      {
+        once: true,
+      },
+    );
   };
 
   return (
