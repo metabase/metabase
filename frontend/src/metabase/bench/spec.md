@@ -278,8 +278,34 @@ Key details:
 - Transforms is basically working as expected.
 - We have an example of how to do a tool layout in the transforms work, but its not necessarily fully set up to be reused.
 - **Metrics**: ✅ COMPLETED - Tool layout implemented with MetricsApp, MetricsEntitiesList, and MetricsDetails components. Uses proper data access pattern for SearchResponse.data.
-- Models need to be adapted to use the tool layout and listing. Replace the components at the current routes with new ones.
+- **Models**: ✅ COMPLETED - Tool layout implemented with ModelsApp, ModelsEntitiesList, and ModelsDetails components. Uses proper data access pattern for SearchResponse.data. Route added at `/bench/models`.
 - Segments needs updated to use the new tool layout and detail views.
 - Metadata is working and does not need modified at this time.
 - We need to move Metabot to its own panel.
 - Create a small toolbar at the very bottom of the overall layout that makes it possible to independently collapse the main nav, the left hand panel, or the right hand panel, and metabot.
+
+### Sidebar Navigation Management
+When adding new routes to the bench application, remember to update the sidebar navigation in `frontend/src/metabase/bench/components/BenchSidebar/BenchSidebar.tsx`:
+
+1. **Add new nav items** to the `navItems` array with:
+   - `label`: Display name for the navigation item
+   - `icon`: Icon component (use appropriate Metabase icons)
+   - `path`: Route path that matches the route definition
+   - `description`: Tooltip description for the navigation item
+
+2. **Update existing items** when routes change:
+   - Ensure the `path` matches the actual route definition
+   - Update `description` if functionality changes
+   - Change `icon` if a different icon is more appropriate
+
+3. **Route consistency**: Always ensure that the sidebar paths match the route definitions in `/bench/routes.tsx`
+
+Example of adding a new navigation item:
+```typescript
+{
+  label: t`New Feature`,
+  icon: <Icon name="feature-icon" size={16} />,
+  path: "/bench/new-feature",
+  description: t`Description of the new feature`,
+}
+```

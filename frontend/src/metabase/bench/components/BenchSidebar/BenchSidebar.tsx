@@ -47,9 +47,9 @@ function BenchSidebarComponent({ isDarkMode, location }: BenchSidebarProps) {
     },
     {
       label: t`Models`,
-      icon: <Icon name="search" size={16} />,
-      path: "/bench/browse/models",
-      description: t`Browse models and metrics`,
+      icon: <Icon name="model" size={16} />,
+      path: "/bench/models",
+      description: t`Create and manage models`,
     },
   ];
 
