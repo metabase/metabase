@@ -138,16 +138,16 @@
     (testing "Should order by aggregation references correctly (#62885)"
       (let [mp      (mt/metadata-provider)
             query   (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                      (lib/aggregate (lib/count))
-                      (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :products :price))))
-                      (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :products :rating))))
-                      (lib/breakout (lib.metadata/field mp (mt/id :products :category)))
-                      (as-> $query (lib/order-by $query (lib.tu.notebook/find-col-with-spec
-                                                         $query
-                                                         (lib/orderable-columns $query)
-                                                         {}
-                                                         {:display-name "Sum of Rating"})))
-                      (lib/limit 4))
+                        (lib/aggregate (lib/count))
+                        (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :products :price))))
+                        (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :products :rating))))
+                        (lib/breakout (lib.metadata/field mp (mt/id :products :category)))
+                        (as-> $query (lib/order-by $query (lib.tu.notebook/find-col-with-spec
+                                                           $query
+                                                           (lib/orderable-columns $query)
+                                                           {}
+                                                           {:display-name "Sum of Rating"})))
+                        (lib/limit 4))
             results (qp/process-query query)]
         (mt/with-native-query-testing-context query
           (is (= ["Category"

@@ -1560,4 +1560,4 @@
                  qp.compile/compile
                  :query
                  (->> (driver/prettify-native-form :h2))
-                 str/split-lines ))))))
+                 str/split-lines))))))
