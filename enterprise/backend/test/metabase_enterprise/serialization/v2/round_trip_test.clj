@@ -171,7 +171,7 @@
               (is (nil? delta)
                   (str "Content mismatch for file: " (strip-base-path source-dir file)))
 
-             ;; Leave behind files for developers to inspect
+                ;; Leave behind files for developers to inspect
               (when (and (.exists dev-inspect-dir) delta)
                 (vreset! wrote-files? true)
                 (create-files-to-diff! ref-file out-file))))
