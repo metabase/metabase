@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useLocation } from "react-use";
 import { t } from "ttag";
 
 import { useExecutePythonMutation } from "metabase-enterprise/api/transform-python";
@@ -231,4 +232,10 @@ export function isPythonTransformSource(
   source: PythonTransformSourceDraft,
 ): source is PythonTransformSource {
   return source.type === "python" && source["source-database"] !== undefined;
+}
+
+export function useShouldShowPythonDebugger() {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  return params.get("debugger") === "1";
 }

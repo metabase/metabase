@@ -16,6 +16,7 @@ import { PythonEditorResults } from "./PythonEditorResults";
 import {
   isPythonTransformSource,
   updateTransformSignature,
+  useShouldShowPythonDebugger,
   useTestPythonTransform,
 } from "./utils";
 
@@ -85,8 +86,7 @@ export function PythonTransformEditor({
     }
   };
 
-  const showDebugger =
-    new URLSearchParams(window.location.search).get("debugger") === "1";
+  const showDebugger = useShouldShowPythonDebugger();
 
   const handleCmdEnter = () => {
     if (!showDebugger) {
