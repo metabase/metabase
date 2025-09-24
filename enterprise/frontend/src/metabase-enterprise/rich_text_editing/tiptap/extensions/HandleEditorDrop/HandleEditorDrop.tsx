@@ -98,6 +98,21 @@ export const HandleEditorDrop = Extension.create({
             }
           },
 
+          handleKeyDown: (view) => {
+            const { state } = view;
+            const { selection } = state;
+
+            // Check if we have a node selection on a cardEmbed
+            if (selection instanceof NodeSelection) {
+              const selectedNode = selection.node;
+              if (selectedNode.type.name === "cardEmbed") {
+                setTimeout(() => {
+                  cleanupFlexContainerNodes(view);
+                });
+              }
+            }
+          },
+
           transformPasted: (slice, view) => {
             const { content } = slice.content;
             const isPastingCardEmbed =

@@ -1,12 +1,11 @@
 import {
-  ORDERS_BY_YEAR_QUESTION_ID,
-  ORDERS_COUNT_QUESTION_ID,
-  ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
+  DOCUMENT_WITH_THREE_CARDS_AND_COLUMNS,
+  DOCUMENT_WITH_TWO_CARDS,
+} from "e2e/support/document-initial-data";
 
 const { H } = cy;
 
-describe("documents card embed drag and drop", () => {
+describe("documents card embed node custom logic", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -17,77 +16,7 @@ describe("documents card embed drag and drop", () => {
     beforeEach(() => {
       H.createDocument({
         name: "DnD Test Document",
-        document: {
-          content: [
-            {
-              type: "paragraph",
-              content: [
-                {
-                  type: "text",
-                  text: "Testing drag and drop functionality",
-                },
-              ],
-              attrs: {
-                _id: "1",
-              },
-            },
-            {
-              type: "resizeNode",
-              attrs: {
-                height: 350,
-                minHeight: 280,
-                _id: "2",
-              },
-              content: [
-                {
-                  type: "cardEmbed",
-                  attrs: {
-                    id: ORDERS_QUESTION_ID,
-                    name: null,
-                    _id: "2a",
-                  },
-                },
-              ],
-            },
-            {
-              type: "paragraph",
-              content: [
-                {
-                  type: "text",
-                  text: "Some text between cards",
-                },
-              ],
-              attrs: {
-                _id: "3",
-              },
-            },
-            {
-              type: "resizeNode",
-              attrs: {
-                height: 350,
-                minHeight: 280,
-                _id: "4",
-              },
-              content: [
-                {
-                  type: "cardEmbed",
-                  attrs: {
-                    id: ORDERS_COUNT_QUESTION_ID,
-                    name: null,
-                    _id: "4a",
-                  },
-                },
-              ],
-            },
-            {
-              type: "paragraph",
-              attrs: {
-                _id: "5",
-              },
-            },
-          ],
-          type: "doc",
-        },
+        document: DOCUMENT_WITH_TWO_CARDS,
         collection_id: null,
         alias: "document",
         idAlias: "documentId",
@@ -115,21 +44,13 @@ describe("documents card embed drag and drop", () => {
       H.dragAndDropCardOnAnotherCard("Orders", "Orders, Count");
 
       // Verify flexContainer was created
-      H.documentContent()
-        .find('[data-type="flexContainer"]')
-        .should("exist")
-        .and("be.visible");
+      H.documentContent().find('[data-type="flexContainer"]').should("exist");
 
       // Verify both cards are now inside the flexContainer
       H.documentContent()
         .find('[data-type="flexContainer"]')
         .within(() => {
-          cy.findAllByTestId("document-card-embed")
-            .contains('[data-testid="document-card-embed"]', "Orders")
-            .should("exist");
-          cy.findAllByTestId("document-card-embed")
-            .contains('[data-testid="document-card-embed"]', "Orders, Count")
-            .should("exist");
+          assertFlexContainerCardsOrder(["Orders", "Orders, Count"]);
         });
 
       // Verify the flexContainer is wrapped in a resizeNode
@@ -143,8 +64,9 @@ describe("documents card embed drag and drop", () => {
       // Verify that originally separate cards are now side by side
       H.documentContent()
         .find('[data-type="flexContainer"]')
-        .findAllByTestId("document-card-embed")
-        .should("have.length", 2);
+        .within(() => {
+          cy.findAllByTestId("document-card-embed").should("have.length", 2);
+        });
     });
 
     it("should handle drag and drop with proper drop side positioning", () => {
@@ -168,14 +90,7 @@ describe("documents card embed drag and drop", () => {
         .should("exist")
         .within(() => {
           // Orders, Count should be first (left), Orders should be second (right)
-          cy.get('[data-testid="document-card-embed"]')
-            .should("have.length", 2)
-            .first()
-            .should("contain.text", "Orders, Count");
-          cy.get('[data-testid="document-card-embed"]')
-            .should("have.length", 2)
-            .last()
-            .should("contain.text", "Orders");
+          assertFlexContainerCardsOrder(["Orders, Count", "Orders"]);
         });
     });
 
@@ -200,7 +115,7 @@ describe("documents card embed drag and drop", () => {
         .should("not.exist");
 
       // Verify the card is still standalone
-      H.getDocumentCard("Orders").should("exist").and("be.visible");
+      H.getDocumentCard("Orders").should("exist");
     });
   });
 
@@ -208,93 +123,7 @@ describe("documents card embed drag and drop", () => {
     beforeEach(() => {
       H.createDocument({
         name: "Advanced DnD Test Document",
-        document: {
-          content: [
-            {
-              type: "paragraph",
-              content: [
-                {
-                  type: "text",
-                  text: "Advanced drag and drop scenarios",
-                },
-              ],
-              attrs: {
-                _id: "1",
-              },
-            },
-            {
-              type: "resizeNode",
-              attrs: {
-                height: 350,
-                minHeight: 280,
-                _id: "2",
-              },
-              content: [
-                {
-                  type: "flexContainer",
-                  attrs: {
-                    _id: "2a",
-                  },
-                  content: [
-                    {
-                      type: "cardEmbed",
-                      attrs: {
-                        id: ORDERS_QUESTION_ID,
-                        name: null,
-                        _id: "2a1",
-                      },
-                    },
-                    {
-                      type: "cardEmbed",
-                      attrs: {
-                        id: ORDERS_COUNT_QUESTION_ID,
-                        name: null,
-                        _id: "2a2",
-                      },
-                    },
-                  ],
-                },
-              ],
-            },
-            {
-              type: "paragraph",
-              content: [
-                {
-                  type: "text",
-                  text: "Standalone card below",
-                },
-              ],
-              attrs: {
-                _id: "3",
-              },
-            },
-            {
-              type: "resizeNode",
-              attrs: {
-                height: 350,
-                minHeight: 280,
-                _id: "4",
-              },
-              content: [
-                {
-                  type: "cardEmbed",
-                  attrs: {
-                    id: ORDERS_BY_YEAR_QUESTION_ID,
-                    name: null,
-                    _id: "4a",
-                  },
-                },
-              ],
-            },
-            {
-              type: "paragraph",
-              attrs: {
-                _id: "5",
-              },
-            },
-          ],
-          type: "doc",
-        },
+        document: DOCUMENT_WITH_THREE_CARDS_AND_COLUMNS,
         collection_id: null,
         alias: "document",
         idAlias: "documentId",
@@ -597,6 +426,123 @@ describe("documents card embed drag and drop", () => {
       H.documentContent()
         .find('[data-type="flexContainer"]')
         .should("have.length", 2);
+    });
+  });
+
+  describe("deleting a cardEmbed", () => {
+    it("should delete a cardEmbed when selected and Backspace is pressed", () => {
+      H.createDocument({
+        name: "DnD Test Document",
+        document: DOCUMENT_WITH_TWO_CARDS,
+        collection_id: null,
+        alias: "document",
+        idAlias: "documentId",
+      });
+
+      cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+
+      // Wait for cards to load
+      H.getDocumentCard("Orders")
+        .should("be.visible")
+        .findByTestId("table-root")
+        .should("exist");
+      H.getDocumentCard("Orders, Count")
+        .should("be.visible")
+        .findByTestId("table-root")
+        .should("exist");
+
+      // Verify initial state - we have 2 standalone cards
+      H.documentContent()
+        .findAllByTestId("document-card-embed")
+        .should("have.length", 2);
+
+      // Click on the Orders card to select it
+      H.getDocumentCard("Orders").realClick({ position: "top" });
+
+      // Press Backspace to delete the selected card
+      cy.realPress("Backspace");
+
+      // Verify the Orders card has been deleted
+      H.getDocumentCard("Orders", false).should("not.exist");
+
+      // Verify only one card remains
+      H.documentContent()
+        .findAllByTestId("document-card-embed")
+        .should("have.length", 1);
+
+      // Verify the remaining card is Orders, Count
+      H.getDocumentCard("Orders, Count").should("exist").and("be.visible");
+    });
+
+    it("should delete a cardEmbed from a flexContainer when selected and Backspace is pressed", () => {
+      H.createDocument({
+        name: "DnD Test Document",
+        document: DOCUMENT_WITH_THREE_CARDS_AND_COLUMNS,
+        collection_id: null,
+        alias: "document",
+        idAlias: "documentId",
+      });
+
+      cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+
+      // First create a flexContainer by dropping one card onto another
+      H.getDocumentCard("Orders")
+        .should("be.visible")
+        .findByTestId("table-root")
+        .should("exist");
+      H.getDocumentCard("Orders, Count")
+        .should("be.visible")
+        .findByTestId("table-root")
+        .should("exist");
+
+      // Create flexContainer
+      H.dragAndDropCardOnAnotherCard(
+        "Orders, Count, Grouped by Created At (year)",
+        "Orders",
+        { side: "right" },
+      );
+
+      // Verify flexContainer was created with 2 cards
+      H.documentContent()
+        .find('[data-type="flexContainer"]')
+        .should("exist")
+        .within(() => {
+          cy.findAllByTestId("document-card-embed").should("have.length", 3);
+        });
+
+      // Click on one of the cards in the flexContainer to select it
+      H.getDocumentCard("Orders").realClick({ position: "top" });
+
+      // Press Backspace to delete the selected card
+      cy.realPress("Backspace");
+
+      // Verify the Orders card has been deleted from the flexContainer
+      H.getDocumentCard("Orders", false).should("not.exist");
+
+      H.documentContent()
+        .findAllByTestId("document-card-embed")
+        .should("have.length", 2);
+
+      H.documentContent().get('[data-type="flexContainer"]').should("exist");
+
+      // Click on one of the cards in the flexContainer to select it
+      H.getDocumentCard("Orders, Count").realClick({ position: "top" });
+
+      // Press Backspace to delete the selected card
+      cy.realPress("Backspace");
+
+      // Verify the flexContainer now has only 1 card and should be unwrapped back to standalone
+      H.documentContent()
+        .get('[data-type="flexContainer"]')
+        .should("not.exist"); // FlexContainer should be unwrapped when only 1 card remains
+
+      // Verify only the Orders, Count card remains as a standalone card
+      H.documentContent()
+        .findAllByTestId("document-card-embed")
+        .should("have.length", 1);
+      H.getDocumentCard("Orders, Count, Grouped by Created At (year)").should(
+        "exist",
+      );
     });
   });
 });

@@ -37,15 +37,19 @@ export const documentMetabotSuggestionItem = (name: RegExp | string) =>
 export const commandSuggestionItem = (name: RegExp | string) =>
   commandSuggestionDialog().findByRole("option", { name });
 
-export const getDocumentCard = (name: string) =>
-  documentContent()
+export const getDocumentCard = (name: string, expectCardExists = true) => {
+  const cardsResult = documentContent()
     .findAllByTestId("card-embed-title")
     .filter((index, el) => {
       // Filter elements based on custom logic, e.g., text content, class, etc.
       return el.innerText === name;
     })
-    .should("have.length", 1)
-    .closest('[data-testid="document-card-embed"]');
+    .should("have.length", expectCardExists ? 1 : 0);
+
+  return expectCardExists
+    ? cardsResult.closest('[data-testid="document-card-embed"]')
+    : cardsResult;
+};
 
 export const getDocumentCardResizeContainer = (name: string) =>
   getDocumentCard(name).closest('[data-type="resizeNode"]');
@@ -116,10 +120,8 @@ export function dragAndDropCardOnAnotherCard(
   targetCardTitle: string,
   {
     side = "left",
-    waitBeforeDrop = false,
   }: {
     side?: "left" | "right";
-    waitBeforeDrop?: boolean;
   } = {},
 ) {
   // Perform drag and drop: drag sourceCard card onto targetCard
@@ -147,10 +149,6 @@ export function dragAndDropCardOnAnotherCard(
             force: true,
           });
 
-          if (waitBeforeDrop) {
-            cy.wait(200);
-          }
-
           const targetRect = $ordersCountCard[0].getBoundingClientRect();
           // Calculate position for target card side drop (20% from left or 20% from right based on 'side' param)
           const sideX =
@@ -167,10 +165,6 @@ export function dragAndDropCardOnAnotherCard(
             scrollBehavior: false,
             force: true,
           });
-
-          if (waitBeforeDrop) {
-            cy.wait(200);
-          }
 
           getDocumentCard(sourceCardTitle).realMouseUp({
             scrollBehavior: false,
