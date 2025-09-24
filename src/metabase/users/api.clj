@@ -488,7 +488,8 @@
   ;; only allow updates if the specified account is active
   (api/let-404 [user-before-update (fetch-user :id id, :is_active true)]
     ;; Google/LDAP non-admin users can't change their email to prevent account hijacking
-    (api/check-403 (valid-email-update? user-before-update email))
+    (when (contains? body :email)
+      (api/check-403 (valid-email-update? user-before-update email)))
     ;; SSO users (JWT, SAML, LDAP, Google) can't change their first/last names
     (when (contains? body :first_name)
       (api/checkp (valid-name-update? user-before-update :first_name first_name)
