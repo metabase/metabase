@@ -10,18 +10,14 @@ import {
 } from "../../utils";
 
 export function getParsedParams(location: Location): JobListParams {
-  const {
-    transformTagIds,
-    lastRunStartTime,
-    lastRunStatuses,
-    nextRunStartTime,
-  } = location.query;
+  const { lastRunStartTime, lastRunStatuses, nextRunStartTime, tagIds } =
+    location.query;
 
   return {
     lastRunStartTime: parseString(lastRunStartTime),
     lastRunStatuses: parseList(lastRunStatuses, parseRunStatus),
     nextRunStartTime: parseString(nextRunStartTime),
-    transformTagIds: parseList(transformTagIds, parseInteger),
+    tagIds: parseList(tagIds, parseInteger),
   };
 }
 
@@ -29,6 +25,6 @@ export function hasFilterParams(params: JobListParams) {
   return (
     params.lastRunStartTime != null ||
     params.nextRunStartTime != null ||
-    params.transformTagIds != null
+    params.tagIds != null
   );
 }

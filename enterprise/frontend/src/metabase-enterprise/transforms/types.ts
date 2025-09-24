@@ -5,6 +5,19 @@ import type {
   TransformTagId,
 } from "metabase-types/api";
 
+export type TransformListParams = {
+  lastRunStartTime?: string;
+  lastRunStatuses?: TransformRunStatus[];
+  tagIds?: TransformTagId[];
+};
+
+export type JobListParams = {
+  lastRunStartTime?: string;
+  lastRunStatuses?: TransformRunStatus[];
+  nextRunStartTime?: string;
+  tagIds?: TransformTagId[];
+};
+
 export type RunListParams = {
   page?: number;
   statuses?: TransformRunStatus[];
@@ -13,11 +26,4 @@ export type RunListParams = {
   startTime?: string;
   endTime?: string;
   runMethods?: TransformRunMethod[];
-};
-
-export type JobListParams = {
-  lastRunStartTime?: string;
-  lastRunStatuses?: TransformRunStatus[];
-  nextRunStartTime?: string;
-  transformTagIds?: TransformTagId[];
 };

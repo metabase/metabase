@@ -49,7 +49,7 @@ export function JobFilterList({ params, tags }: FilterListProps) {
   };
 
   const handleTagsChange = (tagIds: TransformTagId[]) => {
-    dispatch(replace(getJobListUrl({ ...params, transformTagIds: tagIds })));
+    dispatch(replace(getJobListUrl({ ...params, tagIds })));
   };
 
   return (
@@ -73,7 +73,7 @@ export function JobFilterList({ params, tags }: FilterListProps) {
       />
       <TagFilterWidget
         label={t`Tags`}
-        tagIds={params.transformTagIds ?? []}
+        tagIds={params.tagIds ?? []}
         tags={tags}
         onChange={handleTagsChange}
       />
