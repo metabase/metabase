@@ -38,10 +38,9 @@ If you have your app running locally, and you're using the Pro Cloud version, or
 
 ## Enabling interactive embedding in Metabase
 
-1. Go to **Settings** > **Admin settings** > **Embedding**.
-2. Click **Enable**.
-3. Click **Interactive embedding**.
-4. Under **Authorized origins**, add the URL of the website or web app where you want to embed Metabase (such as `https://*.example.com`).
+1. Go to **Admin >Embedding > Interactive embedding**.
+2. Click **Enable interactive embedding**.
+3. Under **Authorized origins**, add the URL of the website or web app where you want to embed Metabase (such as `https://*.example.com`).
 
 ## Setting up embedding on your website
 

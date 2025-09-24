@@ -38,8 +38,8 @@ If you want to embed charts with additional interactive features, like [drill-do
 
 ## Turning on the embedding feature in Metabase
 
-1. Go to **Settings** > **Admin settings** > **Embedding**.
-2. Toggle the **Enable embedding**.
+1. Go to **Settings** > **Admin settings** > **Embedding > Static embedding**.
+2. Toggle **Enable static embedding**.
 
 ## Making a question or dashboard embeddable
 
@@ -164,9 +164,8 @@ The banner appears on static embeds created with Metabase's open-source version.
 
 Your embedding secret key is used to sign JWTs for all of your [embedding URLs](#adding-the-embedding-url-to-your-website).
 
-1. Go to **Settings** > **Admin settings** > **Embedding**.
-2. On the **Static embedding** card, click on **Manage**.
-3. Under **Regenerate secret key**, click **Regenerate key**.
+1. Go to **Admin** > **Embedding** > **Static embedding**.
+2. Under **Regenerate secret key**, click **Regenerate key**.
 
 This key is shared across all static embeds. Whoever has access to this key could get access to all embedded artifacts, so keep this key secure. If you regenerate this key, you'll need to update your server code with the new key.
 

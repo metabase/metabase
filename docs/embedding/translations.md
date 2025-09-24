@@ -21,6 +21,11 @@ The dictionary must be a CSV with these columns:
 
 > Don't put any sensitive data in the dictionary, since anyone can see the dictionary—including viewers of public links.
 
+To add a translation dictionary:
+
+1. Go to **Admin > Embedding > Static embedding**.
+2. Under **Translate embedded dashboards and question**, click **Upload translation dictionary**.
+
 Uploading a new dictionary will replace the existing dictionary.
 
 To remove a translation dictionary, upload a blank dictionary.
@@ -64,9 +69,9 @@ Exact translations also apply to strings that use punctuation and special charac
 
 Translations are case-insensitive. For example, if your translation dictionary has a translation:
 
-| Language | String      | Translation  |
-| -------- | ----------- | ------------ |
-| pt-BR    | Examples    | Exemplos     |
+| Language | String   | Translation |
+| -------- | -------- | ----------- |
+| pt-BR    | Examples | Exemplos    |
 
 `Examples`, `examples`, `EXAMPLES` would all be translated as `Exemplos`. That is, Metabase won't preserve the original case; it will output the exact translation string in the dictionary.
 
