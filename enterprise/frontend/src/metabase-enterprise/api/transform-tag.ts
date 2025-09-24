@@ -58,6 +58,8 @@ export const transformTagApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [
           listTag("transform-tag"),
+          // Invalidate transforms that are tagged with this tag, since
+          // they are not tagged with listTag("transform-tag").
           idTag("transform-tag", id),
         ]),
     }),

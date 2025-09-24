@@ -4,10 +4,9 @@ import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { useSetting } from "metabase/common/hooks";
 import { isResourceNotFoundError } from "metabase/lib/errors";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Anchor, Box, Divider, Group, Icon, Stack } from "metabase/ui";
+import { Anchor, Box, Divider, Group, Stack } from "metabase/ui";
 import {
   useCancelCurrentTransformRunMutation,
   useRunTransformMutation,
@@ -18,11 +17,10 @@ import { LogOutput } from "metabase-enterprise/transforms/components/LogOutput";
 import type { Transform, TransformTagId } from "metabase-types/api";
 
 import { RunButton } from "../../../components/RunButton";
-import { RunInfo } from "../../../components/RunInfo";
+import { RunStatus } from "../../../components/RunStatus";
 import { SplitSection } from "../../../components/SplitSection";
 import { TagMultiSelect } from "../../../components/TagMultiSelect";
 import { getRunListUrl } from "../../../urls";
-import { parseTimestampWithTimezone } from "../../../utils";
 
 type RunSectionProps = {
   transform: Transform;
@@ -60,119 +58,36 @@ type RunStatusSectionProps = {
 
 function RunStatusSection({ transform }: RunStatusSectionProps) {
   const { id, last_run } = transform;
-  const systemTimezone = useSetting("system-timezone");
 
-  const previousStatus = usePrevious(last_run?.status);
+  const status = last_run?.status;
+  const previousStatus = usePrevious(status);
 
-  if (last_run == null) {
-    return (
-      <Group gap="sm" data-testid="run-status">
-        <Icon c="text-secondary" name="calendar" />
-        <Box>{t`This transform hasn’t been run before.`}</Box>
-      </Group>
-    );
-  }
-
-  const { status, end_time, message } = last_run;
-  const endTime =
-    end_time != null
-      ? parseTimestampWithTimezone(end_time, systemTimezone)
-      : null;
-  const endTimeText = endTime != null ? endTime.fromNow() : null;
-
-  const runsInfo = (
-    <Anchor
-      key="link"
-      component={Link}
-      to={getRunListUrl({ transformIds: [id] })}
-    >
-      {t`See all runs`}
-    </Anchor>
+  const runExtra = status === "succeeded" && previousStatus === "canceling" && (
+    <Box
+      c="text-light"
+      ml="lg"
+    >{t`This run succeeded before it had a chance to cancel.`}</Box>
   );
 
-  const info =
-    message == null ? null : (
-      <RunInfo
-        status={status}
-        message={message}
-        endTime={endTime ? endTime.toDate() : null}
+  return (
+    <Stack gap={0}>
+      <RunStatus
+        run={last_run ?? null}
+        neverRunMessage={t`This transform hasn’t been run before.`}
+        runInfo={
+          <Anchor
+            key="link"
+            component={Link}
+            to={getRunListUrl({ transformIds: [id] })}
+          >
+            {t`See all runs`}
+          </Anchor>
+        }
       />
-    );
+      {runExtra}
+    </Stack>
+  );
 
-  switch (status) {
-    case "started":
-      return (
-        <Group gap="sm" data-testid="run-status">
-          <Icon c="text-primary" name="sync" />
-          <Box>{t`Run in progress…`}</Box>
-        </Group>
-      );
-    case "succeeded":
-      return (
-        <Stack gap={0} data-testid="run-status">
-          <Group gap="sm">
-            <Icon c="success" name="check_filled" />
-            <Box>
-              {endTimeText
-                ? t`Last ran ${endTimeText} successfully.`
-                : t`Last ran successfully.`}
-            </Box>
-            {runsInfo}
-          </Group>
-          {previousStatus === "canceling" && (
-            <Box
-              c="text-light"
-              ml="lg"
-            >{t`This run succeeded before it had a chance to cancel.`}</Box>
-          )}
-        </Stack>
-      );
-    case "failed":
-      return (
-        <Group gap={0} data-testid="run-status">
-          <Icon c="error" name="warning" mr="sm" />
-          <Box mr={info ? "xs" : "sm"}>
-            {endTimeText
-              ? t`Last run failed ${endTimeText}.`
-              : t`Last run failed.`}
-          </Box>
-          {info ?? runsInfo}
-        </Group>
-      );
-    case "timeout":
-      return (
-        <Group gap={0} data-testid="run-status">
-          <Icon c="error" name="warning" mr="sm" />
-          <Box mr={info ? "xs" : "sm"}>
-            {endTimeText
-              ? t`Last run timed out ${endTimeText}.`
-              : t`Last run timed out.`}
-          </Box>
-          {info ?? runsInfo}
-        </Group>
-      );
-    case "canceling":
-      return (
-        <Group gap="sm" data-testid="run-status">
-          <Icon c="text-secondary" name="close" />
-          <Box>{t`Canceling…`}</Box>
-        </Group>
-      );
-    case "canceled":
-      return (
-        <Group gap="sm" data-testid="run-status">
-          <Icon c="text-secondary" name="close" />
-          <Box>
-            {endTimeText
-              ? t`Last run was canceled ${endTimeText}.`
-              : t`Last run was canceled.`}
-          </Box>
-          {runsInfo}
-        </Group>
-      );
-    default:
-      return null;
-  }
 }
 
 type RunButtonSectionProps = {
