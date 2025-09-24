@@ -16,7 +16,7 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
       return helpers;
     },
     blur() {
-      helpers.get().get(".cm-editor").blur();
+      helpers.get().get(".cm-content").blur();
       return helpers;
     },
     selectAll() {
