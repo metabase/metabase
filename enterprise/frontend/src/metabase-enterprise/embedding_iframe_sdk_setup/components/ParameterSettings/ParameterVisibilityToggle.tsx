@@ -18,7 +18,7 @@ export const ParameterVisibilityToggle = ({
   onToggle,
 }: ParameterVisibilityToggleProps) => {
   // Only show toggle for dashboards, as question parameters cannot be hidden.
-  if (experience !== "dashboard") {
+  if (experience !== "dashboard" && experience !== "chart") {
     return null;
   }
 
