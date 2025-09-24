@@ -141,6 +141,8 @@ To define the configuration that applies to every embed on the page, use the `de
 
 - `apiKey: mb_YourAPIKey` (optional, for development only) - another way to preview embeds locally using an API key.
 
+- `fetchRequestToken: mb_YourAPIKey` (optional) - you can customize how the SDK fetches the refresh token for JWT authentication by specifying the `fetchRequestToken` function. See [customizing JWT authentication](./sdk/authentication.md#customizing-jwt-authentication).
+
 ### Theming
 
 You can specify colors, fonts, spacing, and other appearance options using the `theme` parameter in your embed configuration.

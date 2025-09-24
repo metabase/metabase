@@ -89,7 +89,7 @@ You can add some middleware in your backend to handle cross-domain requests.
 
 ## Customizing JWT authentication
 
-You can customize how the SDK fetches the refresh token by specifying the `fetchRefreshToken` function with the `defineMetabaseAuthConfig` function:
+You can customize how the SDK fetches the refresh token by specifying the `fetchRequestToken` function with the `defineMetabaseAuthConfig` function:
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/authentication/auth-config-jwt.tsx" snippet="example" %}
