@@ -1,6 +1,6 @@
 import type { MantineTheme } from "@mantine/core";
 
-import { color as legacyColor } from "metabase/lib/colors";
+import { colors , color as legacyColor } from "metabase/lib/colors";
 type ColorShades = MantineTheme["colors"]["dark"];
 
 const ORIGINAL_COLORS = [
@@ -22,41 +22,7 @@ const ORIGINAL_COLORS = [
 
 // these should only include semantic colors
 // for use in the UI
-const CUSTOM_COLORS = [
-  "bg-black",
-  "bg-dark",
-  "bg-light",
-  "bg-medium",
-  "bg-white",
-  "border",
-  "brand",
-  "brand-light",
-  "brand-lighter",
-  "danger",
-  "error",
-  "filter",
-  "focus",
-  "shadow",
-  "success",
-  "summarize",
-  "text-dark",
-  "text-light",
-  "text-medium",
-  "text-white",
-  "warning",
-  "white",
-  // TODO: Check with an adult and make sure this is okay
-  "text-primary",
-  "text-secondary",
-  "text-secondary-inverse",
-  "text-tertiary",
-  "background",
-  "background-hover",
-  "background-disabled",
-  "background-light",
-  "accent-gray",
-  "accent-gray-light",
-] as const;
+const CUSTOM_COLORS = Object.keys(colors);
 
 export function getColorShades(colorName: string): ColorShades {
   // yes this is silly, but it makes typescript so happy
