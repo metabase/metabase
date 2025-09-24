@@ -50,7 +50,7 @@ export const DATE_PICKER_UNITS = [
 ];
 
 export const DATE_PICKER_DIRECTIONS = [
-  "last" as const,
+  "past" as const,
   "current" as const,
-  "next" as const,
+  "future" as const,
 ];

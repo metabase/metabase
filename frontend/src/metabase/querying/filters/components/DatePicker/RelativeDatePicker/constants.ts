@@ -6,7 +6,7 @@ export const LAST_TAB: Tab = {
   get label() {
     return t`Previous`;
   },
-  direction: "last",
+  direction: "past",
 };
 
 export const CURRENT_TAB: Tab = {
@@ -20,7 +20,7 @@ export const NEXT_TAB: Tab = {
   get label() {
     return t`Next`;
   },
-  direction: "next",
+  direction: "future",
 };
 
 export const TABS = [LAST_TAB, CURRENT_TAB, NEXT_TAB];
