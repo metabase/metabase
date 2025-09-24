@@ -87,6 +87,7 @@
 (def ^:private driver-exotic-types
   "Driver-specific exotic types with test data."
   {:postgres {:columns [{:name "id" :type :type/Integer :nullable? false}
+                        {:name "bigint" :type :type/BigInteger :nullable? false}
                         {:name "created_tz" :type :type/DateTimeWithTZ :nullable? true}
                         {:name "uuid_field" :type :type/UUID :nullable? true}
                         {:name "json_field" :type :type/JSON :nullable? true}
@@ -94,10 +95,10 @@
                         {:name "int_array" :type :type/* :nullable? true :database-type "integer[]"}
                         {:name "text_array" :type :type/* :nullable? true :database-type "text[]"}
                         {:name "uuid_array" :type :type/* :nullable? true :database-type "uuid[]"}]
-              :data [[1 "2024-01-01T12:00:00Z" "550e8400-e29b-41d4-a716-446655440000" "{\"key\": \"value\"}" "192.168.1.1"
+              :data [[1 -9223372036854775808 "2024-01-01T12:00:00Z" "550e8400-e29b-41d4-a716-446655440000" "{\"key\": \"value\"}" "192.168.1.1"
                       "{1,2,3,4,5}" "{\"hello\",\"world\",\"test\"}" "{550e8400-e29b-41d4-a716-446655440000,123e4567-e89b-12d3-a456-426614174000}"]
-                     [2 nil nil nil nil nil nil nil]
-                     [3 "2024-02-01T09:15:30-05:00" nil nil nil "{}" "{}" "{}"]]}
+                     [2 0 nil nil nil nil nil nil nil]
+                     [3 nil "2024-02-01T09:15:30-05:00" nil nil nil "{}" "{}" "{}"]]}
 
    :mysql {:columns [{:name "id" :type :type/Integer :nullable? false}
                      {:name "json_field" :type :type/JSON :nullable? true}
@@ -268,6 +269,7 @@
 
               (case driver-key
                 :postgres (do
+                            (is (isa? (type-map "bigint") :type/BigInteger))
                             (is (isa? (type-map "uuid_field") :type/Text #_:type/UUID))
                             (is (isa? (type-map "json_field") :type/Text #_:type/JSON))
                             (is (isa? (type-map "ip_field") :type/Text #_:type/IPAddress)))
@@ -471,6 +473,7 @@
                                             (str "    # Merge with exotic types if available\n"
                                                  "    exotic_df = " source-table-name "_exotic.copy()\n"
                                                  "    df = df.merge(exotic_df, on='id', how='left', suffixes=('', '_exotic'))\n"
+                                                 "    df.attrs[\"source_metadata\"] = {**df.attrs.get(\"source_metadata\", {}), **exotic_df.attrs.get(\"source_metadata\", {})}"
                                                  "    \n"))
                                           "    # Return processed dataframe\n"
                                           "    return df")
