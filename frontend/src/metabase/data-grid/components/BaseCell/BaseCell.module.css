@@ -6,7 +6,7 @@
   width: 100%;
   cursor: default;
   border-bottom: 1px solid var(--mb-color-border-alpha-30);
-  padding: 0 12px;
+  padding: 0 16px;
   background-color: var(--cell-bg-color);
 }
 

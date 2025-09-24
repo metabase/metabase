@@ -20,6 +20,7 @@ import _ from "underscore";
 
 import {
   MIN_COLUMN_WIDTH,
+  ROW_HEIGHT,
   ROW_ID_COLUMN_ID,
   TRUNCATE_LONG_CELL_WIDTH,
 } from "metabase/data-grid/constants";
@@ -64,7 +65,7 @@ export const useDataGridInstance = <TData, TValue>({
   columnSizingMap: controlledColumnSizingMap,
   columnPinning: controlledColumnPinning,
   sorting,
-  defaultRowHeight = 36,
+  defaultRowHeight = ROW_HEIGHT,
   minGridWidth: minGridWidthProp,
   rowId,
   truncateLongCellWidth = TRUNCATE_LONG_CELL_WIDTH,

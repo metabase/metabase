@@ -2,15 +2,15 @@
   display: flex;
   width: 100%;
   height: 100%;
-  font-weight: 700;
-  align-items: flex-start;
-  padding-top: 9px;
-  padding-bottom: 9px;
+  font-weight: 500;
+  align-items: center;
+  padding-top: 12px;
+  padding-bottom: 12px;
   cursor: pointer;
 }
 
 .content {
-  line-height: 17px;
+  line-height: 20px;
   overflow: visible;
 }
 
@@ -25,8 +25,8 @@
 }
 
 .pill {
-  padding-top: 6px;
-  padding-bottom: 6px;
+  padding-top: 8px;
+  padding-bottom: 8px;
 }
 
 .pill .content {

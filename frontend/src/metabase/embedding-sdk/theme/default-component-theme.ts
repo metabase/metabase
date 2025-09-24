@@ -16,9 +16,9 @@ const units = (px: number) => ({
 });
 
 const FONT_SIZES = {
-  tableCell: units(12.5),
-  pivotTableCell: units(12),
-  label: units(12),
+  tableCell: units(14),
+  pivotTableCell: units(14),
+  label: units(14),
   goalLabel: units(14),
 };
 

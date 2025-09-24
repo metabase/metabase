@@ -199,7 +199,7 @@ export const PivotTableRoot = styled.div<PivotTableRootProps>`
 `;
 
 export const PivotTableSettingLabel = styled.span`
-  font-weight: 700;
+  font-weight: 500;
   color: var(--mb-color-text-dark);
 `;
 
