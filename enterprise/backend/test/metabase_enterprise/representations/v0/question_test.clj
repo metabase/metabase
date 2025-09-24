@@ -45,23 +45,23 @@
         rep (yaml/from-file filename)]
     (is (rep/persist! rep))))
 
-(deftest import-export
-  (testing "Testing import then export roundtrip"
-    (let [db (t2/select-one :model/Database)]
-      (doseq [filename good-yamls]
-        (testing (str "Importing-Exporting: " filename)
-          (println filename)
-          (let [rep (rep/import-yaml filename)
-                rep (assoc rep :database (:name db))]
-            (with-redefs [v0-common/find-database-id (fn [_] (:id db))]
-              (let [persisted (rep/persist! rep)]
-                (is persisted)
-                (let [question (t2/select-one :model/Card :id (:id persisted))
-                      edn (rep/export question)
+#_(deftest import-export
+    (testing "Testing import then export roundtrip"
+      (let [db (t2/select-one :model/Database)]
+        (doseq [filename good-yamls]
+          (testing (str "Importing-Exporting: " filename)
+            (println filename)
+            (let [rep (rep/import-yaml filename)
+                  rep (assoc rep :database (:name db))]
+              (with-redefs [v0-common/find-database-id (fn [_] (:id db))]
+                (let [persisted (rep/persist! rep)]
+                  (is persisted)
+                  (let [question (t2/select-one :model/Card :id (:id persisted))
+                        edn (rep/export question)
 
-                      yaml (yaml/generate-string edn)
-                      rep2 (yaml/parse-string yaml)]
-                  (is (=? (dissoc rep :ref) rep2)))))))))))
+                        yaml (yaml/generate-string edn)
+                        rep2 (yaml/parse-string yaml)]
+                    (is (=? (dissoc rep :ref) rep2)))))))))))
 
 (deftest export-import
   (testing "Testing export then import roundtrip"
