@@ -58,7 +58,7 @@ export function TableSelector({
   ) {
     if (item.model === "table") {
       // Filter available tables to exclude already selected ones (except current selection)
-      return !isConcreteTableId(item.id) || !selectedTableIds.includes(item.id);
+      return !isConcreteTableId(item.id) || selectedTableIds.includes(item.id);
     }
     if (item.model === "database") {
       return item.id !== database;
