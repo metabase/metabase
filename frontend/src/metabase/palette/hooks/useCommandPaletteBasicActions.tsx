@@ -221,6 +221,14 @@ export const useCommandPaletteBasicActions = ({
         id: "navigate-admin-settings",
         perform: () => dispatch(push("/admin/settings")),
       });
+
+      actions.push({
+        id: "navigate-embed-js",
+        section: "basic",
+        icon: "share",
+        keywords: "embed flow, new embed, embed js",
+        perform: () => dispatch(push("/embed-js")),
+      });
     }
 
     if (personalCollectionId) {
