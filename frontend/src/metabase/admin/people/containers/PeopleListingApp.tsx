@@ -11,11 +11,13 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import { Box, Button, Flex, Icon, Input, Tabs } from "metabase/ui";
+import { Box, Button, Flex, Icon, Input, Stack, Tabs } from "metabase/ui";
 
 import { PeopleList } from "../components/PeopleList";
 import { USER_STATUS, type UserStatus } from "../constants";
 import { usePeopleQuery } from "../hooks/use-people-query";
+
+import S from "./PeopleListingApp.module.css";
 
 const PAGE_SIZE = 25;
 
@@ -52,92 +54,94 @@ export function PeopleListingApp({ children }: { children: React.ReactNode }) {
   const buttonText =
     isAdmin && status === USER_STATUS.active ? t`Invite someone` : undefined;
 
-  useEffect(() => {
-    if (!hasDeactivatedUsers) {
-      updateStatus("active");
-    }
-  }, [hasDeactivatedUsers, updateStatus]);
-
   const handleTabChange = (tab: string | null) => {
     if (tab) {
       updateStatus(tab as UserStatus);
     }
   };
 
+  useEffect(() => {
+    if (!hasDeactivatedUsers) {
+      updateStatus("active");
+    }
+  }, [hasDeactivatedUsers, updateStatus]);
+
   return (
     <SettingsPageWrapper title={t`People`}>
-      <SettingsSection>
-        <LoadingAndErrorWrapper
-          error={error}
-          loading={isLoading || !currentUser}
-        >
-          <div data-testid="admin-panel">
-            {isAdmin && hasDeactivatedUsers && (
-              <Tabs mb="lg" value={status} onChange={handleTabChange}>
-                <Tabs.List>
-                  <Tabs.Tab value={USER_STATUS.active}>{t`Active`}</Tabs.Tab>
-                  <Tabs.Tab
-                    value={USER_STATUS.deactivated}
-                  >{t`Deactivated`}</Tabs.Tab>
-                </Tabs.List>
-              </Tabs>
-            )}
+      <Stack gap={0}>
+        {isAdmin && hasDeactivatedUsers && (
+          <Tabs value={status} onChange={handleTabChange} pl="md">
+            <Tabs.List className={S.tabs}>
+              <Tabs.Tab value={USER_STATUS.active}>{t`Active`}</Tabs.Tab>
+              <Tabs.Tab
+                value={USER_STATUS.deactivated}
+              >{t`Deactivated`}</Tabs.Tab>
+            </Tabs.List>
+          </Tabs>
+        )}
 
-            <Flex
-              align="center"
-              gap="xl"
-              justify="space-between"
-              mb="xl"
-              wrap="wrap"
-            >
-              <Input
-                miw="14rem"
-                fz="sm"
-                flex="1"
-                type="text"
-                placeholder={t`Find someone`}
-                value={searchInputValue}
-                onChange={handleSearchChange}
-                leftSection={
-                  <Icon c="text-secondary" name="search" size={16} />
-                }
-                rightSectionPointerEvents="all"
-                rightSection={
-                  searchInputValue === "" ? (
-                    <div /> // rendering null causes width change
-                  ) : (
-                    <Input.ClearButton
-                      c={"text-secondary"}
-                      onClick={() => updateSearchInputValue("")}
-                    />
-                  )
-                }
-              />
+        <SettingsSection>
+          <LoadingAndErrorWrapper
+            error={error}
+            loading={isLoading || !currentUser}
+          >
+            <div data-testid="admin-panel">
+              <Flex
+                align="center"
+                gap="xl"
+                justify="space-between"
+                mb="xl"
+                wrap="wrap"
+              >
+                <Input
+                  miw="14rem"
+                  fz="sm"
+                  flex="1"
+                  type="text"
+                  placeholder={t`Find someone`}
+                  value={searchInputValue}
+                  onChange={handleSearchChange}
+                  leftSection={
+                    <Icon c="text-secondary" name="search" size={16} />
+                  }
+                  rightSectionPointerEvents="all"
+                  rightSection={
+                    searchInputValue === "" ? (
+                      <div /> // rendering null causes width change
+                    ) : (
+                      <Input.ClearButton
+                        c={"text-secondary"}
+                        onClick={() => updateSearchInputValue("")}
+                      />
+                    )
+                  }
+                />
 
-              {buttonText && (
-                <Box>
-                  <Link to={Urls.newUser()}>
-                    <Button variant="filled">{buttonText}</Button>
-                  </Link>
-                </Box>
+                {buttonText && (
+                  <Box>
+                    <Link to={Urls.newUser()}>
+                      <Button variant="filled">{buttonText}</Button>
+                    </Link>
+                  </Box>
+                )}
+              </Flex>
+
+              {currentUser && (
+                <PeopleList
+                  groups={groups}
+                  isAdmin={isAdmin}
+                  currentUser={currentUser}
+                  query={query}
+                  onNextPage={handleNextPage}
+                  onPreviousPage={handlePreviousPage}
+                />
               )}
-            </Flex>
 
-            {currentUser && (
-              <PeopleList
-                groups={groups}
-                isAdmin={isAdmin}
-                currentUser={currentUser}
-                query={query}
-                onNextPage={handleNextPage}
-                onPreviousPage={handlePreviousPage}
-              />
-            )}
-
-            {children}
-          </div>
-        </LoadingAndErrorWrapper>
-      </SettingsSection>
+              {children}
+            </div>
+          </LoadingAndErrorWrapper>
+        </SettingsSection>
+      </Stack>
     </SettingsPageWrapper>
   );
 }
