@@ -197,17 +197,18 @@
 (defn- order-data [data viz-settings]
   (if (some? (::mb.viz/table-columns viz-settings))
     (let [;; Deduplicate table-columns by name to handle duplicated viz settings
-          deduped-table-columns     (->> (::mb.viz/table-columns viz-settings)
-                                         (m/index-by ::mb.viz/table-column-name)
-                                         vals)
-          deduped-viz-settings      (assoc viz-settings ::mb.viz/table-columns deduped-table-columns)
+          deduped-table-columns       (->> (::mb.viz/table-columns viz-settings)
+                                           (m/distinct-by ::mb.viz/table-column-name))
+          deduped-viz-settings        (assoc viz-settings ::mb.viz/table-columns deduped-table-columns)
           [ordered-cols output-order] (qp.streaming/order-cols (:cols data) deduped-viz-settings)
+          ;; table-columns from viz-settings only includes remapped columns, not the source columns
+          santized-ordered-cols       (map #(dissoc % :remapped_from :remapped_to) ordered-cols)
           keep-filtered-idx           (fn [row] (if output-order
                                                   (let [row-v (into [] row)]
                                                     (for [i output-order] (row-v i)))
                                                   row))
           ordered-rows                (map keep-filtered-idx (:rows data))]
-      [ordered-cols ordered-rows])
+      [santized-ordered-cols ordered-rows])
     [(:cols data) (:rows data)]))
 
 (defn- minibar-columns

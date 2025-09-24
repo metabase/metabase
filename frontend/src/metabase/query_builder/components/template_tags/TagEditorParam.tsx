@@ -316,7 +316,7 @@ class TagEditorParamInner extends Component<
         className={TagEditorParamS.TagContainer}
         data-testid={`tag-editor-variable-${tag.name}`}
       >
-        <ContainerLabel paddingTop>{t`Variable name`}</ContainerLabel>
+        <ContainerLabel>{t`Variable name`}</ContainerLabel>
         <Box component="h3" className={TagEditorParamS.TagName}>
           {tag.name}
         </Box>
