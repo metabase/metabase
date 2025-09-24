@@ -17,8 +17,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql.parameters.substitution
-    :as sql.params.substitution]
+   [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
    [metabase.driver.sql.util :as sql.u]
@@ -26,19 +25,8 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log])
   (:import
-   (java.sql
-    Connection
-    DatabaseMetaData
-    PreparedStatement
-    ResultSet
-    Time)
-   (java.time
-    LocalDate
-    LocalDateTime
-    LocalTime
-    OffsetDateTime
-    OffsetTime
-    ZonedDateTime)
+   (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Time)
+   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.time.format DateTimeFormatter)
    (java.util UUID)
    (net.sf.jsqlparser.schema Table)
@@ -321,12 +309,47 @@
   [_ hsql-form amount unit]
   (date-add unit amount hsql-form))
 
+;; The second argument to DATEADD() gets casted to a 32-bit integer. BIGINT is 64 bites, so we tend to run into
+;; integer overflow errors (especially for millisecond timestamps).
+;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
+;;
+;; NOTE: In SQL Server 2025 (17.x) + this is no longer
+;; true (https://learn.microsoft.com/en-us/sql/t-sql/functions/dateadd-transact-sql?view=sql-server-ver17):
+;;
+;; > In SQL Server 2025 (17.x) Preview, Azure SQL Database, Azure SQL Managed Instance and SQL database in Microsoft
+;; > Fabric Preview, number can be expressed as a bigint. This feature is in preview.
+
+(defn- supports-bigint-date-add? []
+  (some-> (driver-api/metadata-provider)
+          driver-api/database
+          :dbms-version
+          :semantic-version
+          first
+          (>= 17)))
+
+(defn- unix-timestamp->honeysql [expr unit num-per-minute]
+  (let [nineteen-seventy (h2x/cast :datetime2 (h2x/literal "1970-01-01 00:00:00.000"))]
+    (if (supports-bigint-date-add?)
+      (date-add unit expr nineteen-seventy)
+      (->> nineteen-seventy
+           (date-add :minute (h2x// expr num-per-minute))
+           (date-add unit (h2x/mod expr num-per-minute))))))
+
 (defmethod sql.qp/unix-timestamp->honeysql [:sqlserver :seconds]
-  [_ _ expr]
-  ;; The second argument to DATEADD() gets casted to a 32-bit integer. BIGINT is 64 bites, so we tend to run into
-  ;; integer overflow errors (especially for millisecond timestamps).
-  ;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
-  (date-add :minute (h2x// expr 60) (h2x/literal "1970-01-01")))
+  [_driver _precision expr]
+  (unix-timestamp->honeysql expr :second 60))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:sqlserver :milliseconds]
+  [_driver _precision expr]
+  (unix-timestamp->honeysql expr :millisecond (* 60 1000)))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:sqlserver :microseconds]
+  [_driver _precision expr]
+  (unix-timestamp->honeysql expr :microsecond (* 60 1000 1000)))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:sqlserver :nanoseconds]
+  [_driver _precision expr]
+  (unix-timestamp->honeysql expr :nanosecond (* 60 1000 1000 1000)))
 
 (defmethod sql.qp/float-dbtype :sqlserver
   [_]

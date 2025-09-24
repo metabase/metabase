@@ -240,8 +240,10 @@ function(bin) {
 ")
 
 (defmethod ->rvalue :metadata/column
-  [{coercion :coercion-strategy, ::keys [source-alias join-field] :as field}]
-  (let [field-name (str \$ (scope-with-join-field (field->name field) join-field source-alias))]
+  [{coercion :coercion-strategy, ::keys [source-alias join-field inherited?] :as field}]
+  (let [field-name (str \$ (scope-with-join-field (field->name field) join-field source-alias))
+        coercion   (when-not inherited?
+                     coercion)]
     (cond
       (isa? coercion :Coercion/UNIXNanoSeconds->DateTime)
       {:$dateFromParts {:millisecond {$divide [field-name 1000000]}, :year 1970, :timezone "UTC"}}
@@ -437,14 +439,15 @@ function(bin) {
 
 (defmethod ->rvalue :field
   [[_ id-or-name {:keys [temporal-unit join-alias] :as opts} :as field]]
-  (let [join-field (get-join-alias join-alias)
+  (let [join-field   (get-join-alias join-alias)
         source-alias (driver-api/qp.add.source-alias opts)]
     (cond-> (if (integer? id-or-name)
               (if-let [mapped (find-mapped-field-name field)]
                 (str \$ mapped)
                 (->rvalue (assoc (driver-api/field (driver-api/metadata-provider) id-or-name)
                                  ::source-alias source-alias
-                                 ::join-field join-field)))
+                                 ::join-field   join-field
+                                 ::inherited?   (not (pos-int? (driver-api/qp.add.source-table opts))))))
               (if-let [mapped (find-mapped-field-name field)]
                 (str \$ mapped)
                 (str \$ (scope-with-join-field (name id-or-name) join-field source-alias))))

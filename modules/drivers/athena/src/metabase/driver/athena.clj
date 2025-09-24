@@ -291,8 +291,20 @@
   (sql.qp/adjust-day-of-week driver [:day_of_week expr]))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:athena :seconds]
-  [_driver _seconds-or-milliseconds expr]
+  [_driver _precision expr]
   [:from_unixtime expr])
+
+(defmethod sql.qp/unix-timestamp->honeysql [:athena :milliseconds]
+  [_driver _precision expr]
+  [:from_unixtime_nanos (h2x/* expr 1000000)])
+
+(defmethod sql.qp/unix-timestamp->honeysql [:athena :microseconds]
+  [_driver _precision expr]
+  [:from_unixtime_nanos (h2x/* expr 1000)])
+
+(defmethod sql.qp/unix-timestamp->honeysql [:athena :nanoseconds]
+  [_driver _precision expr]
+  [:from_unixtime_nanos expr])
 
 (defmethod sql.qp/add-interval-honeysql-form :athena
   [_driver hsql-form amount unit]
