@@ -258,12 +258,14 @@
   "For MBQL 5 queries: for now, just convert it to legacy then hand off to the
   legacy implementation(s) of [[required-perms]]."
   [query perms-opts]
-  (-> query
-      lib/normalize
-      ;; allowing for now until we convert this namespace to be MBQL-5-only
-      #_{:clj-kondo/ignore [:discouraged-var]}
-      lib/->legacy-MBQL
-      (as-> $query (legacy-mbql-required-perms (lib/->metadata-provider query) $query perms-opts))))
+  (let [mp (when (lib/metadata-provider? (:lib/metadata query))
+             (:lib/metadata query))]
+    (-> query
+        lib/normalize
+        ;; allowing for now until we convert this namespace to be MBQL-5-only
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        lib/->legacy-MBQL
+        (as-> $query (legacy-mbql-required-perms mp $query perms-opts)))))
 
 (defn required-perms-for-query
   "Returns a map representing the permissions requried to run `query`. The map has the optional keys

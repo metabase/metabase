@@ -381,6 +381,11 @@
     [:* [:schema [:ref ::stage.additional]]]]
    [:ref ::stages.valid-refs]])
 
+(defn- normalize-query [query]
+  (when-let [query (common/normalize-map query)]
+    (cond-> query
+      (not (:lib/metadata query)) (dissoc :lib/metadata))))
+
 (defn- serialize-query [query]
   ;; this stuff all gets added in when you actually run a query with one of the QP entrypoints, and is not considered
   ;; to be part of the query itself. It doesn't get saved along with the query in the app DB.
@@ -397,8 +402,8 @@
   [:and
    [:map
     {:description      "Valid MBQL 5 query."
-     :decode/normalize common/normalize-map
-     :encode/serialize serialize-query}
+     :decode/normalize #'normalize-query
+     :encode/serialize #'serialize-query}
     [:lib/type [:=
                 {:decode/normalize common/normalize-keyword, :default :mbql/query}
                 :mbql/query]]

@@ -112,7 +112,15 @@
    (resolve-database nil query))
 
   ([metadata-provider :- [:maybe ::lib.metadata.protocols/metadata-provider]
-    query             :- [:maybe :map]]
+    query             :- [:maybe
+                          [:and
+                           :map
+                           [:multi {:dispatch (comp boolean empty?)}
+                            [true  [:= {:description "empty map"} {}]]
+                            [false [:map
+                                    [:database [:or
+                                                ::lib.schema.id/database
+                                                ::lib.schema.id/saved-questions-virtual-database]]]]]]]]
    (when (seq query)
      (let [query       (set/rename-keys query {"database" :database})
            database-id (resolved-database-id metadata-provider query)]

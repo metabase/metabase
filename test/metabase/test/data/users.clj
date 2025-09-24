@@ -176,31 +176,30 @@
   (locking tokens
     (reset! tokens {})))
 
-(def ^:private ^:dynamic *retrying-authentication*  false)
-
 (defn- client-fn [the-client username & args]
-  (try
-    (apply the-client (username->token username) args)
-    (catch ExceptionInfo e
-      (when-not (= (:status-code (ex-data e)) 401)
-        (throw e))
-      ;; wait for a lock on tokens, and then recursively try again.
-      (locking tokens
-        (try
-          (apply client-fn the-client username args)
-          (catch ExceptionInfo e
+  (letfn [(thunk []
+            (apply the-client (username->token username) args))
+          (rethrow-when-not-401 [e]
             (when-not (= (:status-code (ex-data e)) 401)
-              (throw e))
-            ;; still didn't work, clear the tokens and try one more time.
-            ;;
-            ;; If we're already recursively retrying throw an Exception so we don't recurse forever.
-            (when *retrying-authentication*
-              (throw (ex-info (format "Failed to authenticate %s after two tries: %s" username (ex-message e))
-                              {:user username}
-                              e)))
-            (binding [*retrying-authentication* true]
+              (throw e)))]
+    (try
+      (thunk)
+      (catch ExceptionInfo e
+        (rethrow-when-not-401 e)
+        ;; first retry: get lock, then try again.
+        (locking tokens
+          (try
+            (thunk)
+            (catch ExceptionInfo e
+              (rethrow-when-not-401 e)
+              ;; second retry: clear cached session tokens, then try again one last time
               (clear-cached-session-tokens!)
-              (apply client-fn the-client username args))))))))
+              (try
+                (thunk)
+                (catch ExceptionInfo e
+                  (throw (ex-info (format "Failed to authenticate %s after three tries: %s" username (ex-message e))
+                                  {:user username}
+                                  e)))))))))))
 
 (defn- user-request
   [the-client user & args]

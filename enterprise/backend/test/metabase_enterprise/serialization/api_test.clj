@@ -26,7 +26,7 @@
       (GzipCompressorInputStream.)
       (TarArchiveInputStream.)))
 
-(def FILE-TYPES
+(def ^:private file-types
   [#"([^/]+)?/$"                               :dir
    #"/settings.yaml$"                          :settings
    #"/export.log$"                             :log
@@ -46,7 +46,7 @@
   (some (fn [[re ftype]]
           (when-let [m (re-find re fname)]
             [ftype (when (vector? m) (second m))]))
-        (partition 2 FILE-TYPES)))
+        (partition 2 file-types)))
 
 (defn- log-types
   "Find out entity type by log message"
@@ -74,7 +74,7 @@
       (assoc m k "**ID**")
       m)))
 
-(defn extract-and-sanitize-exception-map [log]
+(defn- extract-and-sanitize-exception-map [log]
   (->> (re-find #"ERROR .* (\{.*\})(\n|$)" log)
        second
        read-string
