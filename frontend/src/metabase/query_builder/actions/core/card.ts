@@ -7,7 +7,7 @@ export async function loadCard(
   { dispatch, getState }: { dispatch: Dispatch; getState: GetState },
 ) {
   try {
-    await dispatch(
+    const result = (await dispatch(
       Questions.actions.fetch(
         { id: cardId },
         {
@@ -19,10 +19,12 @@ export async function loadCard(
           ], // complies with Card interface
         },
       ),
-    );
+    )) as {
+      payload?: { question?: { id?: number } };
+    };
 
     const question = Questions.selectors.getObject(getState(), {
-      entityId: cardId,
+      entityId: result?.payload?.question?.id ?? cardId,
     });
 
     return question?.card();

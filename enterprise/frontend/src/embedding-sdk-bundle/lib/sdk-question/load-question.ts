@@ -1,12 +1,15 @@
 import _ from "underscore";
 
+import type {
+  SdkDispatch,
+  SdkStoreState,
+} from "embedding-sdk-bundle/store/types";
 import type { LoadSdkQuestionParams } from "embedding-sdk-bundle/types/question";
 import { resolveCards } from "metabase/query_builder/actions";
 import { getParameterValuesForQuestion } from "metabase/query_builder/actions/core/parameterUtils";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
-import type { Dispatch, GetState } from "metabase-types/store";
 
 export const loadQuestionSdk =
   ({
@@ -17,8 +20,8 @@ export const loadQuestionSdk =
     targetDashboardId,
   }: LoadSdkQuestionParams) =>
   async (
-    dispatch: Dispatch,
-    getState: GetState,
+    dispatch: SdkDispatch,
+    getState: () => SdkStoreState,
   ): Promise<{ question: Question; originalQuestion?: Question }> => {
     const questionId = initQuestionId === "new" ? undefined : initQuestionId;
 
