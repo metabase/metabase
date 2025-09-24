@@ -18,9 +18,9 @@
       (if error-on-branches?
         (throw (Exception. "Repository not found"))
         branches))
-    (list-files [_ _] [])
-    (read-file [_ _ _] "")
-    (write-files! [_ _ _ _] nil)))
+    (list-files [_] [])
+    (read-file [_ _] "")
+    (write-files! [_ _ _] nil)))
 
 (use-fixtures :once (fixtures/initialize :db))
 (use-fixtures :each
@@ -260,4 +260,4 @@
       (testing "error handling for invalid settings"
         (let [response (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
                                              {:remote-sync-url "invalid-url"})]
-          (is (= "Failed to clone git repository: Invalid remote: origin" (:error response))))))))
+          (is (= "Unable to connect to git repository with the provided settings" (:error response))))))))
