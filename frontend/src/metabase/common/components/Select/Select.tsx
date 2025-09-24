@@ -144,9 +144,8 @@ class BaseSelect<
   _getSections(): SelectSection<TOption>[] {
     // normalize `children`/`options` into same format as `sections`
     const { children, sections, options } = this.props;
-
     if (children) {
-      const optionToItem = (option: any) => option?.props;
+      const optionToItem = (option: any) => option.props;
       const first = (Array.isArray(children) ? children[0] : children) as any;
       if (first && (first as ReactElement).type === OptionSection) {
         return Children.map(children, (child) => ({
@@ -154,9 +153,7 @@ class BaseSelect<
           items: Children.map((child as any).props.children, optionToItem),
         })) as any;
       } else if (first && first.type === Option) {
-        return [
-          { items: Children.map(children, optionToItem).filter(Boolean) },
-        ] as any;
+        return [{ items: Children.map(children, optionToItem) }] as any;
       }
     } else if (options) {
       if (this.props.optionSectionFn) {

@@ -26,20 +26,6 @@ describe("Select", () => {
     expect(screen.getByText("option b")).toBeInTheDocument();
   });
 
-  it("should not break on conditionally rendered option", () => {
-    const condition = false;
-
-    const renderFn = () =>
-      render(
-        <Select defaultValue="b">
-          <Option value="a">option a</Option>
-          {condition && <Option value="b">option b</Option>}
-        </Select>,
-      );
-
-    expect(renderFn).not.toThrow();
-  });
-
   it("should render a placeholder if none is selected", () => {
     render(
       <Select placeholder="choose an option">
