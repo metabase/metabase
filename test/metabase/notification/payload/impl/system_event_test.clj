@@ -127,8 +127,7 @@
     (testing "sent from invite page"
       (check false
              "You're invited to join SuperStar's Metabase"
-             [#"Crowberto's happiness and productivity over time"
-              #"Ngoc wants you to join them on Metabase"
+             [#"Ngoc wants you to join them on Metabase"
               #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*#new\"[^>]*>Join now</a>"])
 
       (testing "with sso enabled"
@@ -147,8 +146,7 @@
     (testing "sent from setup page"
       (check true
              "You're invited to join SuperStar's Metabase"
-             [#"Crowberto's happiness and productivity over time"
-              #"Ngoc could use your help setting up Metabase"
+             [#"Ngoc could use your help setting up Metabase"
               #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*#new\"[^>]*>"]))))
 
 (deftest notification-create-email-test

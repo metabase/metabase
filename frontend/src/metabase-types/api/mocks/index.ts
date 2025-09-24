@@ -1,7 +1,6 @@
 export * from "./actions";
 export * from "./activity";
 export * from "./ai-sql-fixer";
-export * from "./ai-sql-generation";
 export * from "./alert";
 export * from "./automagic-dashboards";
 export * from "./bookmark";
@@ -15,6 +14,7 @@ export * from "./field";
 export * from "./geojson";
 export * from "./group";
 export * from "./logger";
+export * from "./metabot";
 export * from "./modelIndexes";
 export * from "./models";
 export * from "./notification";

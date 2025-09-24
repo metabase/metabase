@@ -1,7 +1,7 @@
 import { usePrevious, useTimeout } from "@mantine/hooks";
 import type { FormikErrors } from "formik";
 import { useField } from "formik";
-import { type SetStateAction, useEffect, useState } from "react";
+import { type SetStateAction, useEffect, useRef, useState } from "react";
 import { c, t } from "ttag";
 
 import { Group, Icon, Text, Textarea, Transition } from "metabase/ui";
@@ -10,6 +10,7 @@ import { isEngineKey } from "metabase-types/guards";
 
 import type { FormLocation } from "../../types";
 import { setDatabaseFormValues } from "../../utils/schema";
+import { getSharedFieldStyleProps } from "../styles";
 
 import {
   connectionStringParsedFailed,
@@ -35,6 +36,7 @@ export function DatabaseConnectionStringField({
   location: FormLocation;
 }) {
   const [status, setStatus] = useState<"success" | "failure" | null>(null);
+  const lastParseStatusRef = useRef<"success" | "failure" | null>(null);
   const { start: delayedClearStatus, clear: clearTimeout } = useTimeout(
     () => setStatus(null),
     FEEDBACK_TIMEOUT,
@@ -46,6 +48,7 @@ export function DatabaseConnectionStringField({
   useEffect(() => {
     async function handleConnectionStringChange() {
       if (!connectionString || !isEngineKey(engineKey)) {
+        lastParseStatusRef.current = null;
         delayedClearStatus();
         return () => clearTimeout();
       }
@@ -55,8 +58,8 @@ export function DatabaseConnectionStringField({
       // it was not possible to parse the connection string
       if (!parsedValues) {
         setStatus("failure");
+        lastParseStatusRef.current = "failure";
         delayedClearStatus();
-        connectionStringParsedFailed(location);
         return () => clearTimeout();
       }
 
@@ -68,10 +71,11 @@ export function DatabaseConnectionStringField({
 
       // if there are no values, we couldn't get any details from the connection string
       const hasValues = hasNonUndefinedValue(fieldsMap);
-      setStatus(hasValues ? "success" : "failure");
+      const result = hasValues ? "success" : "failure";
+      setStatus(result);
+      lastParseStatusRef.current = result;
 
       delayedClearStatus();
-      connectionStringParsedSuccess(location);
 
       return () => {
         clearTimeout();
@@ -97,6 +101,18 @@ export function DatabaseConnectionStringField({
     setConnectionString,
   ]);
 
+  function handleBlur() {
+    if (lastParseStatusRef.current === "success") {
+      connectionStringParsedSuccess(location);
+    }
+
+    if (lastParseStatusRef.current === "failure") {
+      connectionStringParsedFailed(location);
+    }
+
+    lastParseStatusRef.current = null;
+  }
+
   if (!isEngineKey(engineKey)) {
     return null;
   }
@@ -118,14 +134,10 @@ export function DatabaseConnectionStringField({
       onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => {
         setConnectionString(event.target.value);
       }}
-      onPaste={(event: React.ClipboardEvent<HTMLTextAreaElement>) => {
-        event.preventDefault();
-        const clipboardData = event.clipboardData.getData("Text");
-        setConnectionString(clipboardData);
-      }}
-      mb="md"
       placeholder={placeholder}
       name="connection-string"
+      onBlur={handleBlur}
+      {...getSharedFieldStyleProps()}
     />
   );
 }
@@ -148,7 +160,7 @@ function ConnectionStringDescription({
       exitDelay={0}
     >
       {(styles) => (
-        <Group style={styles} top={0} pos="absolute" h="lg">
+        <Group style={styles} top={0} pos="absolute" h="lg" component="span">
           {t`You can use a connection string to pre-fill the details below.`}
         </Group>
       )}
@@ -170,8 +182,9 @@ function ConnectionStringDescription({
           c="danger"
           fw="bold"
           fz="sm"
+          component="span"
         >
-          <Group gap="xs">
+          <Group gap="xs" component="span">
             <Icon name="warning_round_filled" c="var(--mb-color-danger)" />
             {t`Couldn’t use this connection string.`}
           </Group>
@@ -195,8 +208,9 @@ function ConnectionStringDescription({
           c="success"
           fw="bold"
           fz="sm"
+          component="span"
         >
-          <Group gap="xs">
+          <Group gap="xs" component="span">
             <Icon
               name="check_filled"
               style={{ color: "var(--mb-color-success)" }}
@@ -208,7 +222,7 @@ function ConnectionStringDescription({
     </Transition>
   );
   return (
-    <Group h="lg" pos="relative">
+    <Group h="lg" pos="relative" component="span">
       {failureMessage}
       {defaultDescription}
       {successMessage}

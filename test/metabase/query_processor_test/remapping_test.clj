@@ -6,7 +6,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.util :as lib.util]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.pivot :as qp.pivot]
@@ -335,8 +334,8 @@
                                                     :aggregation  [[:sum $orders.quantity]]}
                                      :alias        "Orders"
                                      :condition    [:= $id &Orders.orders.product_id]
-                                     ;; we can get title since product_id is remapped to title
-                                     :fields       [&Orders.title
+                                     ;; we can get products.title since orders.product_id is remapped to title
+                                     :fields       [[:field %products.title {:source-field (mt/id :orders :product_id), :join-alias "Orders"}]
                                                     &Orders.*sum/Integer]}]
                          :fields   [$title $category]
                          :order-by [[:asc $id]]
@@ -429,7 +428,7 @@
 
 (deftest ^:parallel multiple-fk-remaps-test-in-joins-e2e-test
   (testing "Should be able to do multiple FK remaps via different FKs from Table A to Table B in a join"
-    (let [mp    (-> (mt/application-database-metadata-provider (mt/id))
+    (let [mp    (-> (mt/metadata-provider)
                     (lib.tu/remap-metadata-provider (mt/id :venues :category_id)
                                                     (mt/id :categories :name))
                     (lib.tu/remap-metadata-provider (mt/id :venues :id)
@@ -467,25 +466,21 @@
               ;;
               ;; The order of remaps is not important to the FE. If it changes in the future that is ok.
               ;;
-              ;; 2 remaps from the join against `VENUES`
-              "J__CATEGORIES__via__ID__NAME"
-              "J__CATEGORIES__via__CATEGORY_ID__NAME"
               ;; 2 remaps for the top-level query
               "CATEGORIES__via__CATEGORY_ID__NAME"
               "CATEGORIES__via__ID__NAME"
-              ;; BROKEN! This is a duplicate and should not be returned. Interestingly enough, both Lib and QP
-              ;; incorrectly calculate the set of returned columns and both include this. (Probably because Lib and QP
-              ;; use mostly the same code these days.)
-              "J__CATEGORIES__via__ID__NAME_2"]
+              ;; 2 remaps from the join against `VENUES`
+              "J__CATEGORIES__via__ID__NAME"
+              "J__CATEGORIES__via__CATEGORY_ID__NAME"]
              (map :lib/desired-column-alias (mt/cols results))))
       ;; The extra incorrect duplicate column seems to be sorta indetermiate? I've seen it match the value of
       ;; `J__CATEGORIES__via__ID__NAME` and `J__CATEGORIES__via__CATEGORY_ID__NAME` in different test runs and I'm not
       ;; sure why. Not bothering to debug since it's not even supposed to be returned anyway.
       ;;
-      ;;      <top-level :fields>          <join>                                           <join remaps>       <fields remaps>     <incorrect duplicate>
-      (is (=? [[11 2 "Stout Burgers & Beers" 1 "Red Medicine"          4  10.0646 -165.374 3 "African"  "Asian"  "Burger" "American" string?]
-               [11 3 "The Apple Pan"         2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 "American" "Burger" "Burger" "Artisan"  string?]
-               [29 4 "Wurstküche"            3 "The Apple Pan"         11 34.0406 -118.428 2 "Artisan"  "Burger" "German" "Asian"    string?]]
+      ;;      <top-level :fields>          <join>                                            <fields remaps>     <join remaps>
+      (is (=? [[11 2 "Stout Burgers & Beers" 1 "Red Medicine"          4  10.0646 -165.374 3 "Burger" "American" "African"  "Asian"]
+               [11 3 "The Apple Pan"         2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 "Burger" "Artisan"  "American" "Burger"]
+               [29 4 "Wurstküche"            3 "The Apple Pan"         11 34.0406 -118.428 2 "German" "Asian"    "Artisan"  "Burger"]]
               (mt/rows results))))))
 
 (deftest ^:parallel explicit-join-with-fields-and-implicitly-joined-remaps-test
@@ -551,7 +546,7 @@
                  (map :lib/desired-column-alias
                       (condp = f
                         #'lib/returned-columns
-                        (lib/returned-columns query -1 (lib.util/query-stage query -1) {:include-remaps? true})
+                        (lib/returned-columns query -1 -1 {:include-remaps? true})
 
                         #'qp.preprocess/query->expected-cols
                         (qp.preprocess/query->expected-cols query)))))))

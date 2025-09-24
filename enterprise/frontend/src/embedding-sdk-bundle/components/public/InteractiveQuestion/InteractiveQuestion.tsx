@@ -26,6 +26,8 @@ import {
   type SdkQuestionProps,
 } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
 
+import { interactiveQuestionSchema } from "./InteractiveQuestion.schema";
+
 /**
  * @interface
  * @expand
@@ -100,4 +102,5 @@ const subComponents: InteractiveQuestionComponents = {
 export const InteractiveQuestion = Object.assign(
   _InteractiveQuestion,
   subComponents,
+  { schema: interactiveQuestionSchema },
 );

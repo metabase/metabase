@@ -565,29 +565,22 @@ describe("scenarios > question > custom column", () => {
     H.CustomExpressionEditor.value().should("equal", "Sum([MyCC \\[2027\\]])");
   });
 
-  it(
-    "should work with `isNull` function (metabase#15922)",
-    { tags: "@skip" },
-    () => {
-      H.openOrdersTable({ mode: "notebook" });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Custom column").click();
-      H.enterCustomColumnDetails({
-        formula: "isnull([Discount])",
-        name: "No discount",
-      });
-      cy.button("Done").click();
+  it("should work with `isNull` function (metabase#15922)", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.getNotebookStep("data").button("Custom column").click();
+    H.enterCustomColumnDetails({
+      formula: "isnull([Discount])",
+      name: "No discount",
+    });
+    cy.button("Done").click();
 
-      H.visualize((response) => {
-        expect(response.body.error).to.not.exist;
-      });
+    H.visualize((response) => {
+      expect(response.body.error).to.not.exist;
+    });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("37.65");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("No discount");
-    },
-  );
+    cy.findAllByRole("gridcell").contains("37.65");
+    cy.findAllByTestId("header-cell").contains("No discount");
+  });
 
   it("should be able to add a date range filter to a custom column", () => {
     H.visitQuestionAdhoc({
@@ -849,22 +842,6 @@ describe("scenarios > question > custom column", () => {
       "coalesce([Tax], [User ID])",
     );
   });
-
-  // TODO: fixme!
-  it(
-    "should render custom expression helper near the custom expression field",
-    { tags: "@skip" },
-    () => {
-      H.openOrdersTable({ mode: "notebook" });
-      cy.findByLabelText("Custom column").click();
-
-      H.popover().within(() => {
-        H.enterCustomColumnDetails({ formula: "floor" });
-
-        H.checkExpressionEditorHelperPopoverPosition();
-      });
-    },
-  );
 
   it("should allow to use `if` function", () => {
     H.openProductsTable({ mode: "notebook" });

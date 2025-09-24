@@ -128,10 +128,18 @@ import dyno_component from "./dyno.svg?component";
 import dyno_source from "./dyno.svg?source";
 import edit_document_component from "./edit_document.svg?component";
 import edit_document_source from "./edit_document.svg?source";
+import edit_document_outlined_component from "./edit_document_outlined.svg?component";
+import edit_document_outlined_source from "./edit_document_outlined.svg?source";
 import ellipsis_component from "./ellipsis.svg?component";
 import ellipsis_source from "./ellipsis.svg?source";
 import embed_component from "./embed.svg?component";
 import embed_source from "./embed.svg?source";
+import embed_interactive_component from "./embed_interactive.svg?component";
+import embed_interactive_source from "./embed_interactive.svg?source";
+import embed_modular_component from "./embed_modular.svg?component";
+import embed_modular_source from "./embed_modular.svg?source";
+import embed_static_component from "./embed_static.svg?component";
+import embed_static_source from "./embed_static.svg?source";
 import empty_component from "./empty.svg?component";
 import empty_source from "./empty.svg?source";
 import enter_or_return_component from "./enter_or_return.svg?component";
@@ -204,8 +212,6 @@ import index_component from "./index.svg?component";
 import index_source from "./index.svg?source";
 import info_component from "./info.svg?component";
 import info_source from "./info.svg?source";
-import info_filled_component from "./info_filled.svg?component";
-import info_filled_source from "./info_filled.svg?source";
 import info_outline_component from "./info_outline.svg?component";
 import info_outline_source from "./info_outline.svg?source";
 import insight_component from "./insight.svg?component";
@@ -258,6 +264,8 @@ import mail_component from "./mail.svg?component";
 import mail_source from "./mail.svg?source";
 import mail_filled_component from "./mail_filled.svg?component";
 import mail_filled_source from "./mail_filled.svg?source";
+import message_component from "./message.svg?component";
+import message_source from "./message.svg?source";
 import metabot_component from "./metabot.svg?component";
 import metabot_source from "./metabot.svg?source";
 import metabot_sad_component from "./metabot_sad.svg?component";
@@ -350,10 +358,14 @@ import section_component from "./section.svg?component";
 import section_source from "./section.svg?source";
 import segment_component from "./segment.svg?component";
 import segment_source from "./segment.svg?source";
+import send_component from "./send.svg?component";
+import send_source from "./send.svg?source";
 import share_component from "./share.svg?component";
 import share_source from "./share.svg?source";
 import shield_component from "./shield.svg?component";
 import shield_source from "./shield.svg?source";
+import shield_outline_component from "./shield_outline.svg?component";
+import shield_outline_source from "./shield_outline.svg?source";
 import sidebar_closed_component from "./sidebar_closed.svg?component";
 import sidebar_closed_source from "./sidebar_closed.svg?source";
 import sidebar_open_component from "./sidebar_open.svg?component";
@@ -364,6 +376,8 @@ import slack_colorized_component from "./slack_colorized.svg?component";
 import slack_colorized_source from "./slack_colorized.svg?source";
 import smartscalar_component from "./smartscalar.svg?component";
 import smartscalar_source from "./smartscalar.svg?source";
+import smile_component from "./smile.svg?component";
+import smile_source from "./smile.svg?source";
 import snail_component from "./snail.svg?component";
 import snail_source from "./snail.svg?source";
 import snippet_component from "./snippet.svg?component";
@@ -408,6 +422,8 @@ import table_component from "./table.svg?component";
 import table_source from "./table.svg?source";
 import table2_component from "./table2.svg?component";
 import table2_source from "./table2.svg?source";
+import test_tube_component from "./test_tube.svg?component";
+import test_tube_source from "./test_tube.svg?source";
 import text_bold_component from "./text_bold.svg?component";
 import text_bold_source from "./text_bold.svg?source";
 import text_italic_component from "./text_italic.svg?component";
@@ -713,6 +729,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: edit_document_component,
       source: edit_document_source,
     },
+    edit_document_outlined: {
+      component: edit_document_outlined_component,
+      source: edit_document_outlined_source,
+    },
     ellipsis: {
       component: ellipsis_component,
       source: ellipsis_source,
@@ -865,10 +885,6 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: info_component,
       source: info_source,
     },
-    info_filled: {
-      component: info_filled_component,
-      source: info_filled_source,
-    },
     info_outline: {
       component: info_outline_component,
       source: info_outline_source,
@@ -977,6 +993,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: mail_filled_component,
       source: mail_filled_source,
     },
+    message: {
+      component: message_component,
+      source: message_source,
+    },
     metabot: {
       component: metabot_component,
       source: metabot_source,
@@ -1080,6 +1100,18 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     progress: {
       component: progress_component,
       source: progress_source,
+    },
+    embed_interactive: {
+      component: embed_interactive_component,
+      source: embed_interactive_source,
+    },
+    embed_modular: {
+      component: embed_modular_component,
+      source: embed_modular_source,
+    },
+    embed_static: {
+      component: embed_static_component,
+      source: embed_static_source,
     },
     pulse: {
       component: pulse_component,
@@ -1193,9 +1225,17 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: segment_component,
       source: segment_source,
     },
+    send: {
+      component: send_component,
+      source: send_source,
+    },
     shield: {
       component: shield_component,
       source: shield_source,
+    },
+    shield_outline: {
+      component: shield_outline_component,
+      source: shield_outline_source,
     },
     sidebar_closed: {
       component: sidebar_closed_component,
@@ -1216,6 +1256,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     smartscalar: {
       component: smartscalar_component,
       source: smartscalar_source,
+    },
+    smile: {
+      component: smile_component,
+      source: smile_source,
     },
     snail: {
       component: snail_component,
@@ -1407,6 +1451,7 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     table_spaced: { component: table_component, source: table_source },
     collection: { component: folder_component, source: folder_source },
     beaker: { component: formula_component, source: formula_source },
+    test_tube: { component: test_tube_component, source: test_tube_source },
     eye_filled: { component: eye_component, source: eye_source },
   };
 
@@ -1476,8 +1521,12 @@ export type IconName =
   | "download"
   | "dyno"
   | "edit_document"
+  | "edit_document_outlined"
   | "ellipsis"
   | "embed"
+  | "embed_interactive"
+  | "embed_modular"
+  | "embed_static"
   | "empty"
   | "enter_or_return"
   | "expand"
@@ -1514,7 +1563,6 @@ export type IconName =
   | "horizontal_bar"
   | "hourglass"
   | "info"
-  | "info_filled"
   | "info_outline"
   | "insight"
   | "int"
@@ -1542,6 +1590,7 @@ export type IconName =
   | "lock_filled"
   | "mail"
   | "mail_filled"
+  | "message"
   | "metabot"
   | "metabot_sad"
   | "metric"
@@ -1574,6 +1623,8 @@ export type IconName =
   | "revert"
   | "sankey"
   | "share"
+  | "send"
+  | "smile"
   | "split"
   | "sql"
   | "subscription"
@@ -1597,6 +1648,7 @@ export type IconName =
   | "section"
   | "segment"
   | "shield"
+  | "shield_outline"
   | "sidebar_closed"
   | "sidebar_open"
   | "slack"
@@ -1652,6 +1704,7 @@ export type IconName =
   | "table_spaced"
   | "collection"
   | "beaker"
+  | "test_tube"
   | "eye_filled";
 
 export const iconNames = Object.keys(Icons) as unknown as IconName[];

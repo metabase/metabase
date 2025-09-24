@@ -8,6 +8,8 @@ import { useCollectionQuery, useLocale } from "metabase/common/hooks";
 import { CreateDashboardModal as CreateDashboardModalCore } from "metabase/dashboard/containers/CreateDashboardModal";
 import { useSelector } from "metabase/lib/redux";
 
+import { createDashboardModalSchema } from "./CreateDashboardModal.schema";
+
 /**
  * @expand
  * @category CreateDashboardModal
@@ -68,6 +70,7 @@ const CreateDashboardModalInner = ({
   );
 };
 
-export const CreateDashboardModal = withPublicComponentWrapper(
-  CreateDashboardModalInner,
+export const CreateDashboardModal = Object.assign(
+  withPublicComponentWrapper(CreateDashboardModalInner),
+  { schema: createDashboardModalSchema },
 );

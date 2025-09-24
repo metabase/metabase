@@ -516,6 +516,7 @@
            public-sharing
            queries
            query-processor
+           request
            server
            settings
            tiles
@@ -547,6 +548,13 @@
            settings
            util}}
 
+  glossary
+  {:team "Workflows"
+   :api  #{metabase.glossary.api}
+   :uses #{api
+           models
+           util}}
+
   indexed-entities
   {:team "UX West"
    :api  #{metabase.indexed-entities.api
@@ -574,7 +582,6 @@
    :api  #{metabase.legacy-mbql.normalize
            metabase.legacy-mbql.predicates
            metabase.legacy-mbql.schema
-           metabase.legacy-mbql.schema.helpers
            metabase.legacy-mbql.util}
    :uses #{lib
            models
@@ -591,8 +598,7 @@
            metabase.lib.field
            metabase.lib.field.resolution
            metabase.lib.filter
-           metabase.lib.filter.desugar
-           metabase.lib.filter.desugar.jvm
+           metabase.lib.filter.desugar.jvm ; only so [[metabase.legacy-mbql.jvm-util]] can use defined regexes
            metabase.lib.init
            metabase.lib.join.util
            metabase.lib.metadata
@@ -1614,6 +1620,18 @@
            util
            enterprise/harbormaster}}
 
+  enterprise/comments
+  {:team "Workflows"
+   :api  #{metabase-enterprise.comments.api
+           metabase-enterprise.comments.init}
+   :uses #{api
+           channel
+           events
+           models
+           request
+           users
+           util}}
+
   enterprise/content-translation
   {:team "UX West"
    :api  #{metabase-enterprise.content-translation.dictionary
@@ -1712,6 +1730,17 @@
            settings
            util}}
 
+  enterprise/embedding-hub
+  {:team "Embedding"
+   :api  #{metabase-enterprise.embedding-hub.api}
+   :uses #{api
+           appearance
+           audit-app
+           embedding
+           premium-features
+           util
+           enterprise/sso}}
+
   enterprise/gsheets
   {:team "Cloud"
    :api  #{metabase-enterprise.gsheets.api
@@ -1784,10 +1813,12 @@
            pulse
            query-processor
            request
+           search
            server
            settings
            sync
            system
+           task
            users
            util
            warehouse-schema
@@ -1948,8 +1979,10 @@
   {:team "Querying"
    :api  #{metabase-enterprise.transforms.api
            metabase-enterprise.transforms.core
-           metabase-enterprise.transforms.init}
-   :uses #{api
+           metabase-enterprise.transforms.init
+           metabase-enterprise.transforms.util}
+   :uses #{analytics
+           api
            app-db
            config
            driver
@@ -1965,7 +1998,24 @@
            sync
            task
            task-history
-           util}}
+           upload
+           util
+           enterprise/transforms-python}}
+
+  enterprise/transforms-python
+  {:team "Querying"
+   :api  #{metabase-enterprise.transforms-python.api
+           metabase-enterprise.transforms-python.init
+           metabase-enterprise.transforms-python.settings}
+   :uses #{api
+           app-db
+           config
+           driver
+           models
+           query-processor
+           settings
+           util
+           enterprise/transforms}}
 
   enterprise/upload-management
   {:team "UX West"

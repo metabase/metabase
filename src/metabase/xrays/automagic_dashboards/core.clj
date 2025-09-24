@@ -232,7 +232,7 @@
 
 (def ^:private ^{:arglists '([card-or-question])} nested-query?
   "Is this card or question derived from another model or question?"
-  (comp some? qp.util/query->source-card-id :dataset_query))
+  (comp some? #_{:clj-kondo/ignore [:deprecated-var]} qp.util/query->source-card-id :dataset_query))
 
 (def ^:private ^{:arglists '([card-or-question])} native-query?
   "Is this card or question native (SQL)?"
@@ -240,7 +240,7 @@
 
 (defn- source-question
   [card-or-question]
-  (when-let [source-card-id (qp.util/query->source-card-id (:dataset_query card-or-question))]
+  (when-let [source-card-id #_{:clj-kondo/ignore [:deprecated-var]} (qp.util/query->source-card-id (:dataset_query card-or-question))]
     (t2/select-one :model/Card :id source-card-id)))
 
 (defn- table-like?

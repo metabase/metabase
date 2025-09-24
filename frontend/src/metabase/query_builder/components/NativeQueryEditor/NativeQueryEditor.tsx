@@ -277,7 +277,6 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             hasEditingSidebar={hasEditingSidebar}
             question={question}
             query={query}
-            onChange={this.onChange}
             focus={this.focus}
             canChangeDatabase={canChangeDatabase}
             sidebarFeatures={sidebarFeatures}
@@ -290,13 +289,13 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             isShowingTemplateTagsEditor={this.props.isShowingTemplateTagsEditor}
             setIsNativeEditorOpen={this.props.setIsNativeEditorOpen}
             snippets={this.props.snippets}
-            nativeEditorSelectedText={this.props.nativeEditorSelectedText}
             editorContext={this.props.editorContext}
             onSetDatabaseId={this.props.onSetDatabaseId}
             isShowingSnippetSidebar={this.props.isShowingSnippetSidebar}
             isNativeEditorOpen={this.props.isNativeEditorOpen}
             toggleEditor={this.props.toggleEditor}
             toggleDataReference={this.props.toggleDataReference}
+            toggleSnippetSidebar={this.props.toggleSnippetSidebar}
             setParameterValue={this.props.setParameterValue}
             setDatasetQuery={this.props.setDatasetQuery}
             onFormatQuery={canFormatQuery ? this.handleFormatQuery : undefined}

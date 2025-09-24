@@ -127,7 +127,10 @@ const configs = {
       openMode: args["--open"] || process.env.OPEN_UI === "true",
     };
 
-    return sdkComponentConfig;
+    const userArgs = await parseArguments(args);
+
+    const finalConfig = Object.assign({}, sdkComponentConfig, userArgs);
+    return finalConfig;
   },
 };
 

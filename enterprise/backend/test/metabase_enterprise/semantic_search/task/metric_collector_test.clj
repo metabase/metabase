@@ -67,11 +67,10 @@
 (deftest metric-collector-test
   (mt/with-premium-features #{:semantic-search}
     (mt/with-prometheus-system! [_ system]
-      (let [pgvector       semantic.tu/db
+      (let [pgvector       (semantic.env/get-pgvector-datasource!)
             index-metadata (semantic.tu/unique-index-metadata)
             model semantic.tu/mock-embedding-model]
-        (with-redefs [semantic.env/get-pgvector-datasource! (fn [] pgvector)
-                      semantic.env/get-index-metadata (fn [] index-metadata)
+        (with-redefs [semantic.env/get-index-metadata (fn [] index-metadata)
                       semantic.env/get-configured-embedding-model (fn [] model)]
           (testing "Missing tables are handled gracefully"
             (let [result (try

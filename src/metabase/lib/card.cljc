@@ -55,8 +55,8 @@
 
 (mu/defn- infer-returned-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   [metadata-providerable                 :- ::lib.schema.metadata/metadata-providerable
-   {card-query :dataset-query :as _card} :- :map]
-  (when (some? card-query)
+   {card-query :dataset-query :as _card} :- ::lib.schema.metadata/card]
+  (when (seq card-query)
     (lib.metadata.calculation/returned-columns (lib.query/query metadata-providerable card-query))))
 
 (mu/defn- ->card-metadata-column :- ::lib.schema.metadata/column
@@ -125,8 +125,9 @@
                                 (sequential? cols) cols))]
      (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
            card-id           (when card-or-id-or-nil (u/the-id card-or-id-or-nil))
-           field-ids         (keep :id cols)
-           fields            (lib.metadata.protocols/metadatas metadata-provider :metadata/column field-ids)
+           field-ids         (not-empty (into #{} (keep :id) cols))
+           fields            (when field-ids
+                               (lib.metadata.protocols/metadatas metadata-provider {:lib/type :metadata/column, :id field-ids}))
            field-id->field   (m/index-by :id fields)]
        (mapv #(->card-metadata-column metadata-provider % card-id (get field-id->field (:id %))) cols)))))
 
@@ -169,7 +170,7 @@
   "If `card` itself has a source card that is a Model, return that Model's columns."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card                  :- ::lib.schema.metadata/card]
-  (when-let [card-query (some->> (:dataset-query card) (lib.query/query metadata-providerable))]
+  (when-let [card-query (some->> (:dataset-query card) not-empty (lib.query/query metadata-providerable))]
     (when-let [source-card-id (lib.util/source-card-id card-query)]
       (when-not (= source-card-id (:id card))
         (let [source-card (lib.metadata/card metadata-providerable source-card-id)]
@@ -273,3 +274,22 @@
   "Is the query's source-card a model?"
   [query :- ::lib.schema/query]
   (= (source-card-type query) :model))
+
+(mu/defn card->underlying-query :- ::lib.schema/query
+  "Given a `card` return the underlying query that would be run if executing the Card directly. This is different from
+
+    (lib/query mp (lib.metadata/card mp card-id))
+
+  in that this creates a query based on the Card's `:dataset-query` (attaching `:result-metadata` to the last stage)
+  rather than a query that has an empty stage with a `:source-card`.
+
+  This is useful in cases where we want to splice in a Card's query directly (e.g., sanboxing) or for parameter
+  calculation purposes."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   card                  :- ::lib.schema.metadata/card]
+  (let [mp                                                            (lib.metadata/->metadata-provider metadata-providerable)
+        {card-query :dataset-query, result-metadata :result-metadata} card]
+    (cond-> (lib.query/query mp card-query)
+      result-metadata (lib.util/update-query-stage -1 (fn [stage]
+                                                        (->> (assoc stage :lib/stage-metadata (lib.util/->stage-metadata result-metadata))
+                                                             (lib.normalize/normalize ::lib.schema/stage)))))))

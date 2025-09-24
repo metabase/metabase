@@ -21,7 +21,8 @@
   clause."
   {:arglists '([x binning])}
   (fn [x _binning]
-    (lib.dispatch/dispatch-value x)) :hierarchy lib.hierarchy/hierarchy)
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
 
 (mu/defn with-binning
   "Add binning to an MBQL clause or something that can be converted to an MBQL clause.

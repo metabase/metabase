@@ -28,7 +28,6 @@
   (:require
    [clojure.data :as data]
    [medley.core :as m]
-   [metabase.legacy-mbql.schema.helpers :as helpers]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -61,6 +60,7 @@
     ::lib.schema.id/field
     :string]])
 
+;;; TODO (Cam 9/16/25) -- use [[metabase.lib.schema.util/mbql-clause-distinct-key]] for this
 (mu/defn- simplify-ref-options :- ::simplified-ref
   [a-ref :- ::lib.schema.ref/ref]
   (lib/update-options a-ref (fn [opts]
@@ -227,7 +227,13 @@
 
 (mr/def ::query-and-remaps
   [:map
-   [:remaps [:maybe (helpers/distinct [:sequential ::external-remapping])]]
+   [:remaps [:maybe [:and
+                     [:sequential ::external-remapping]
+                     [:fn
+                      {:error/message "empty or distinct"}
+                      (fn [remappings]
+                        (or (empty? remappings)
+                            (apply distinct? remappings)))]]]]
    [:query  ::lib.schema/query]])
 
 (mu/defn- add-fk-remaps-to-fields :- [:maybe ::lib.schema/fields]
@@ -273,42 +279,54 @@
 
 (mu/defn- add-fk-remaps-to-join :- [:maybe ::lib.schema.join/join]
   "Update Join `:fields` to add entries for remapped columns. Update the join's last stage "
-  [query                       :- ::lib.schema/query
+  [original-query              :- ::lib.schema/query
+   updated-query               :- ::lib.schema/query
    path                        :- ::lib.walk/path
    {:keys [fields], :as join}  :- ::lib.schema.join/join]
-  (when (and (sequential? fields) ; `:fields :all` should have already been resolved by this point.
+  (when (and (sequential? fields)       ; `:fields :all` should have already been resolved by this point.
              (seq fields))
-    (let [join-last-stage-path (into (vec path) [:stages (dec (count (:stages join)))])]
-      (when-let [last-stage-infos (remap-column-infos query join-last-stage-path)]
+    (let [original-join-field-ids               (into #{}
+                                                      (keep :id)
+                                                      (lib.walk/apply-f-for-stage-at-path
+                                                       lib/join-fields-to-add-to-parent-stage
+                                                       original-query path join {:include-remaps? false}))
+          original-join-fields-includes-source? (fn [remap-info]
+                                                  (some (fn [path]
+                                                          (contains? original-join-field-ids (get-in remap-info path)))
+                                                        [[:dimension :field-id]
+                                                         ;; (not sure this is really something we want to support,
+                                                         ;; but [[metabase.query-processor-test.remapping-test/remapped-columns-in-joined-source-queries-test]]
+                                                         ;; alleges that you can include just the remapped column in
+                                                         ;; join `:fields` and it's supposed to work)
+                                                         [:dimension :human-readable-field-id]]))
+          join-last-stage-path                  (into (vec path) [:stages (dec (count (:stages join)))])]
+      (if-let [last-stage-infos (->> (remap-column-infos updated-query join-last-stage-path)
+                                     (filter original-join-fields-includes-source?)
+                                     not-empty)]
+        ;; we have remaps to add, add them to join `:fields`
         (let [infos      (for [info last-stage-infos]
                            (-> info
                                (update :original-field-clause lib/with-join-alias (:alias join))
                                (update :new-field-clause      lib/with-join-alias (:alias join))))
               new-fields (into
                           []
-                          ;; TODO (Cam 7/25/25) the join fields may already include a remap, but `:source-field` or
-                          ;; other distinguishing information doesn't get propagated in refs beyond the stage where the
-                          ;; implicit join happens; thus we should ignore any duplicates with the same `:source-field`.
-                          ;; Joins with multiple remaps to the same table still work because we switch to using name
-                          ;; refs e.g. `NAME` and `NAME_2` instead of duplicate ID refs in this situation --
-                          ;; see [[multiple-fk-remaps-test-in-joins-e2e-test]].
-                          (m/distinct-by (fn [field-ref]
-                                           (-> field-ref
-                                               simplify-ref-options
-                                               (lib/update-options dissoc :source-field))))
+                          (m/distinct-by simplify-ref-options)
                           (add-fk-remaps-to-fields infos fields))]
-          (assoc join :fields new-fields))))))
+          (assoc join :fields new-fields))
+        ;; there are no remaps to add, discard any changes that happen inside of the join (such as adding additional
+        ;; joins to power remaps that we're not using)
+        (get-in original-query path)))))
 
 (mu/defn- add-fk-remaps :- ::query-and-remaps
   "Add any Fields needed for `:external` remappings to the `:fields` clause of the query, and update `:order-by` and
   `breakout` clauses as needed. Returns a map with `:query` (the updated query) and `:remaps` (a sequence
   of [[:sequential ::external-remapping]] information maps)."
-  [query :- ::lib.schema/query]
-  (let [query' (lib.walk/walk query
+  [original-query :- ::lib.schema/query]
+  (let [query' (lib.walk/walk original-query
                               (fn [query path-type path stage-or-join]
                                 (case path-type
                                   :lib.walk/stage (add-fk-remaps-to-stage query path stage-or-join)
-                                  :lib.walk/join  (add-fk-remaps-to-join query path stage-or-join))))
+                                  :lib.walk/join  (add-fk-remaps-to-join original-query query path stage-or-join))))
         remaps (::remaps (lib/query-stage query' -1))]
     {:query  (lib.walk/walk-stages
               query'
@@ -395,7 +413,7 @@
    {{::keys [original-field-dimension-id new-field-dimension-id]} :options
     :as                                          column} :- :map
    {dimension-id      :id
-    from-name         :field_name
+    from-name         :field-name
     from-display-name :name
     to-name           :human-readable-field-name} :- ::external-remapping]
   (log/trace "Considering column\n"
@@ -461,7 +479,10 @@
 
 ;;;; Transform to add additional cols to results
 
-(defn- create-remapped-col [col-name remapped-from base-type]
+(mu/defn- create-remapped-col
+  [col-name      :- :string
+   remapped-from :- :string
+   base-type     :- ::lib.schema.common/base-type]
   {:description   nil
    :id            nil
    :table_id      nil
@@ -520,7 +541,8 @@
     :as                                                    col} :- ::column-with-optional-base-type]
   (when (seq values)
     (let [remap-from       (:name col)
-          stringified-mask (qp.store/miscellaneous-value [::large-int/column-index-mask])]
+          ;; existing usage -- don't use going forward
+          stringified-mask #_{:clj-kondo/ignore [:deprecated-var]} (qp.store/miscellaneous-value [::large-int/column-index-mask])]
       {:col-index       idx
        :from            remap-from
        :to              remap-to

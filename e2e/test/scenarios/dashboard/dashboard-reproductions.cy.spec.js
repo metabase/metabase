@@ -103,7 +103,7 @@ describe("issue 61013", () => {
     H.getDashboardCards().should("have.length", 1);
     H.getDashboardCard(0).within(() => {
       cy.findByText("Orders question").should("be.visible");
-      cy.findByText("2,000 rows").should("be.visible");
+      cy.findByText("Showing first 2,000 rows").should("be.visible");
     });
 
     cy.findByTestId("edit-bar")
@@ -115,7 +115,7 @@ describe("issue 61013", () => {
     H.getDashboardCards().should("have.length", 1);
     H.getDashboardCard(0).within(() => {
       cy.findByText("Orders question").should("be.visible");
-      cy.findByText("2,000 rows").should("be.visible");
+      cy.findByText("Showing first 2,000 rows").should("be.visible");
     });
   });
 
@@ -656,8 +656,7 @@ describe("issue 28756", () => {
 
   const TOAST_TIMEOUT_SAFETY_MARGIN = 1000;
   const TOAST_TIMEOUT = DASHBOARD_SLOW_TIMEOUT + TOAST_TIMEOUT_SAFETY_MARGIN;
-  const TOAST_MESSAGE =
-    "Would you like to be notified when this dashboard is done loading?";
+  const TOAST_MESSAGE = "Want to get notified when this dashboard loads?";
 
   function restrictCollectionForNonAdmins(collectionId) {
     cy.request("GET", "/api/collection/graph").then(
@@ -2178,5 +2177,30 @@ describe("issue 53370", () => {
         });
       });
     //
+  });
+});
+
+describe("issue 63176", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not be possible to save a dashboard with an empty name and the correct error should be displayed (metabase#63176)", () => {
+    cy.visit("/");
+    H.newButton().click();
+    H.popover().findByText("Dashboard").click();
+    H.modal().within(() => {
+      cy.findByPlaceholderText("What is the name of your dashboard?").type(" ");
+      cy.button("Create").click();
+
+      cy.findByText("value must be a non-blank string.").should("be.visible");
+      cy.findByPlaceholderText("What is the name of your dashboard?").should(
+        "have.attr",
+        "aria-invalid",
+        "true",
+      );
+      cy.button("Failed").should("be.visible");
+    });
   });
 });

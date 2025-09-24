@@ -4,7 +4,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
@@ -29,25 +28,9 @@
             (lib.metadata.calculation/display-name query stage-number table-metadata :long))
           (i18n/tru "Table {0}" (pr-str source-table))))))
 
-(def ^:private ^{:arglists '([rf])} remove-hidden-default-fields-xform
-  "Remove Fields that shouldn't be visible from the default Fields for a source Table.
-  See [[metabase.query-processor.middleware.add-implicit-clauses/table->sorted-fields*]]."
-  (remove (fn [{:keys [visibility-type], active? :active, :as _col}]
-            (or (false? active?)
-                (#{:sensitive :retired} (some-> visibility-type keyword))))))
-
-(defn- sort-default-fields
-  "Sort default Fields for a source Table. See [[metabase.warehouse-schema.models.table/field-order-rule]]."
-  [field-metadatas]
-  (sort-by (fn [{field-name :name, :keys [position], :as _field-metadata}]
-             [(or position 0) (u/lower-case-en (or field-name ""))])
-           field-metadatas))
-
 (mu/defmethod lib.metadata.calculation/returned-columns-method :metadata/table :- ::lib.metadata.calculation/returned-columns
   [query _stage-number table-metadata _options]
-  (when-let [cols (lib.metadata/fields query (:id table-metadata))]
-    (into []
-          (comp remove-hidden-default-fields-xform
-                (map #(assoc % :lib/source :source/table-defaults))
-                (lib.field.util/add-source-and-desired-aliases-xform query))
-          (sort-default-fields cols))))
+  (into []
+        (comp (map #(assoc % :lib/source :source/table-defaults))
+              (lib.field.util/add-source-and-desired-aliases-xform query))
+        (lib.metadata/active-fields query (:id table-metadata))))

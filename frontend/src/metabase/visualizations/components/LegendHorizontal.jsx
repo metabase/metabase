@@ -18,6 +18,7 @@ export default class LegendHorizontal extends Component {
       className,
       titles,
       colors,
+      dotSize,
       hiddenIndices = [],
       hovered,
       onHoverChange,
@@ -53,6 +54,7 @@ export default class LegendHorizontal extends Component {
                 }}
                 title={title}
                 color={colors[index % colors.length]}
+                dotSize={dotSize}
                 isMuted={isMuted}
                 isVisible={isVisible}
                 showTooltip={false}

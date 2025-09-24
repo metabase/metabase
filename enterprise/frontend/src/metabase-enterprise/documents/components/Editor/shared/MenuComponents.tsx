@@ -2,6 +2,7 @@ import type { DOMAttributes } from "react";
 import { t } from "ttag";
 
 import {
+  Avatar,
   Group,
   Icon,
   type IconName,
@@ -9,7 +10,8 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import type { SearchModel } from "metabase-types/api";
+
+import type { SuggestionModel } from "../types";
 
 import S from "./MenuItems.module.css";
 
@@ -24,8 +26,9 @@ export interface MenuItem {
   label: string;
   description?: string;
   action: () => void;
-  model?: SearchModel;
+  model?: SuggestionModel;
   id?: number | string;
+  href?: string;
 }
 
 export const MenuItemComponent = ({
@@ -46,7 +49,12 @@ export const MenuItemComponent = ({
     {...rest}
   >
     <Group gap="sm" wrap="nowrap" align="center">
-      <Icon name={item.icon} size={16} color={item.iconColor || "inherit"} />
+      {item.model === "user" && <Avatar name={item.label} size={16} />}
+
+      {item.model !== "user" && (
+        <Icon name={item.icon} size={16} color={item.iconColor || "inherit"} />
+      )}
+
       <Stack gap={2} className={S.menuItemStack}>
         <Text size="md" lh="lg" c="inherit">
           {item.label}

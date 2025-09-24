@@ -1,5 +1,6 @@
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery } from "./query";
+import type { ScheduleDisplayType } from "./settings";
 import type { Table } from "./table";
 
 export type TransformId = number;
@@ -47,7 +48,13 @@ export type TransformRun = {
   transform?: Transform;
 };
 
-export type TransformRunStatus = "started" | "succeeded" | "failed" | "timeout";
+export type TransformRunStatus =
+  | "started"
+  | "succeeded"
+  | "failed"
+  | "timeout"
+  | "canceling"
+  | "canceled";
 
 export type TransformRunMethod = "manual" | "cron";
 
@@ -63,6 +70,7 @@ export type TransformJob = {
   name: string;
   description: string | null;
   schedule: string;
+  ui_display_type: ScheduleDisplayType;
   created_at: string;
   updated_at: string;
 
@@ -93,6 +101,7 @@ export type CreateTransformJobRequest = {
   name: string;
   description?: string | null;
   schedule: string;
+  ui_display_type?: ScheduleDisplayType;
   tag_ids?: TransformTagId[];
 };
 
@@ -101,6 +110,7 @@ export type UpdateTransformJobRequest = {
   name?: string;
   description?: string | null;
   schedule?: string;
+  ui_display_type?: ScheduleDisplayType;
   tag_ids?: TransformTagId[];
 };
 
@@ -111,6 +121,11 @@ export type CreateTransformTagRequest = {
 export type UpdateTransformTagRequest = {
   id: TransformJobId;
   name?: string;
+};
+
+export type RunTransformResponse = {
+  run_id: TransformRunId;
+  message?: string;
 };
 
 export type ListTransformJobsRequest = {

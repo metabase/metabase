@@ -44,6 +44,7 @@ export default class LegendItem extends Component {
       title,
       color,
       icon,
+      dotSize,
       showDot,
       showTitle,
       isVisible,
@@ -70,6 +71,7 @@ export default class LegendItem extends Component {
           CS.noDecoration,
           DashboardS.fullscreenNormalText,
           DashboardS.fullscreenNightText,
+          DashboardS.DashboardChartLegend,
           EmbedFrameS.fullscreenNightText,
           CS.flex,
           CS.alignCenter,
@@ -100,6 +102,7 @@ export default class LegendItem extends Component {
           >
             <LegendItemDot
               color={color}
+              dotSize={dotSize}
               isVisible={isVisible}
               onClick={onToggleSeriesVisibility}
             />
