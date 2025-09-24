@@ -52,7 +52,7 @@ export function getTileUrl(params: TileUrlParams): string {
       !isUuid(dashboardId) && // public dashboard
       !isJWT(dashboardId) // embedded dashboard
     ) {
-      throw Error("dashboardId must be an int, an uuid or a jwt");
+      throw new Error("dashboardId must be an int, an uuid or a jwt");
     }
 
     const isPublicDashboard = uuid;
