@@ -297,7 +297,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
 
         getTableLink().click();
         H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
-        H.assertQueryBuilderRowCount(3);
+        H.assertQueryBuilderRowCount(1);
       },
     );
 
@@ -1217,13 +1217,16 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
     });
 
     it("should be able to update a Python query", () => {
+      setPythonRunnerSettings();
       cy.log("create a new transform");
       H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
         (id) => {
           createPythonTransform({
             body: dedent`
-          def transform(foo: DataFrame):
-            return pd.DataFrame({"foo": 42 })
+          import pandas as pd
+
+          def transform(foo):
+            return pd.DataFrame([{"foo": 42 }])
         `,
             sourceTables: { foo: id },
             visitTransform: true,
@@ -1233,7 +1236,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
 
       cy.log("update the query");
       getTransformPage().findByRole("link", { name: "Edit script" }).click();
-      H.PythonEditor.type("{backspace}{backspace} + 10 })");
+      H.PythonEditor.type("{backspace}{backspace}{backspace} + 10 }])");
 
       getQueryEditor().button("Save changes").click();
       cy.wait("@updateTransform");
@@ -1514,12 +1517,13 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       "should be possible to use the common library",
       { tags: ["@transforms-python"] },
       () => {
+        setPythonRunnerSettings();
         createPythonLibrary(
           "common.py",
           dedent`
-          def useful_calculation(a, b):
-          return a + b
-      `,
+            def useful_calculation(a, b):
+              return a + b
+          `,
         );
 
         visitTransformListPage();
@@ -1531,7 +1535,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
           import pandas as pd
 
           def transform():
-          return pd.DataFrame({"foo": common.useful_calculation(1, 2)})
+          return pd.DataFrame([{"foo": common.useful_calculation(1, 2)}])
         `,
         );
 
@@ -1564,12 +1568,30 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         runTransformAndWaitForSuccess();
         getTableLink().click();
         H.queryBuilderHeader()
-          .findByText("Transform Table")
+          .findByText("Python Transform")
           .should("be.visible");
-        H.assertQueryBuilderRowCount(3);
+        H.assertQueryBuilderRowCount(1);
+        cy.findByTestId("scalar-value").should("have.text", "3");
         H.expectUnstructuredSnowplowEvent({
           event: "transform_created",
         });
+
+        cy.log("update the common library and run the transform again");
+        cy.go("back");
+        createPythonLibrary(
+          "common.py",
+          dedent`
+            def useful_calculation(a, b):
+              return a + b + 40
+          `,
+        );
+        runTransformAndWaitForSuccess();
+        getTableLink().click();
+        H.queryBuilderHeader()
+          .findByText("Python Transform")
+          .should("be.visible");
+        H.assertQueryBuilderRowCount(1);
+        cy.findByTestId("scalar-value").should("have.text", "43");
       },
     );
 
