@@ -164,12 +164,12 @@ describe("EmbeddingSdkSettings (OSS)", () => {
       .getAllByTestId("sdk-setting-card")
       .find((card) => card.textContent?.includes("Embedded Analytics JS"));
 
-    // Upsell should be shown
+    // Upsell and documentation should be shown
     expect(card).toHaveTextContent("Try for free");
+    expect(card).toHaveTextContent("Documentation");
 
-    // Call-to-action and link should not be shown
+    // Call-to-action should not be shown
     expect(card).not.toHaveTextContent("New embed");
-    expect(card).not.toHaveTextContent("Documentation");
   });
 });
 
