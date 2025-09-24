@@ -185,6 +185,28 @@ describe("scenarios > question > snippets", () => {
       .click();
     H.modal().findByText("select 'foo'").should("be.visible");
   });
+  it("should handle snippet tags with trailing spaces correctly", () => {
+    cy.log("create a snippet");
+    H.createSnippet({
+      name: "category filter",
+      content: "category = {{category}}",
+    });
+      196 +      H.startNewNativeQuestion();
+      198 +      cy.log("type a query with snippet tags containing trailing spaces");
+    H.NativeEditor.type(
+      "select id from products where {{snippet: category filter }}",
+    );
+      203 +      cy.log("verify snippet reference is recognized");
+    cy.findByTestId("native-query-top-bar").within(() => {
+      cy.findByPlaceholderText("Category").should("be.visible");
+    });
+      208 +      cy.log("verify the query can be run with the parameter");
+    cy.findByTestId("native-query-top-bar")
+      .findByPlaceholderText("Category")
+      .type("Widget");
+    cy.findByTestId("native-query-editor-container").icon("play").click();
+    H.assertQueryBuilderRowCount(54);
+  });
 });
 
 describe("scenarios > question > snippets (OSS)", { tags: "@OSS" }, () => {
