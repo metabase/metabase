@@ -11,7 +11,7 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
       return cy.get(`[data-testid=${testId}] .cm-content`);
     },
     focus() {
-      helpers.get().should("be.visible").click();
+      helpers.get().should("be.visible").click("right");
       helpers.get().get(".cm-editor").should("have.class", "cm-focused");
       return helpers;
     },
@@ -31,17 +31,20 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
       cy.realPress(["Backspace"]);
       return helpers;
     },
-    type(text: string, options: TypeOptions = {}) {
-      if (options.focus) {
-        focus();
+    type(
+      text: string,
+      { focus = true, delay = 10, allowFastSet = false }: TypeOptions = {},
+    ) {
+      if (focus) {
+        helpers.focus();
       }
 
-      if (options.allowFastSet) {
+      if (allowFastSet) {
         // Enter the formula in one go
         // HACK: we do invoke("text") instead of type() because type() does not work on
         // CodeMirror elements in Cypress. realType() would work but some of the formulas
         // contain special characters that are not supported by realType().
-        helpers.get().findByRole("textbox").invoke("text", text);
+        helpers.get().invoke("text", text);
 
         // invoke("text") does not trigger the validator, so we need to trigger it manually
         // by typing something
@@ -56,9 +59,7 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
       const parts = text.replaceAll("{{", "{{}{{}").split(/(\{[^}]+\})/);
 
       function insert(text: string) {
-        cy.realType(text, {
-          pressDelay: options.delay,
-        });
+        cy.realType(text, { pressDelay: delay });
       }
 
       // HACK: realType does not accept a lot of common escape sequences,
@@ -126,7 +127,7 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
         // expands into →
         const unexpanded = part.replaceAll(/→/g, "->");
         const alphabet =
-          "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789^[]()-,.;_!@#$%&*+=/<>\" ':;\\\n}";
+          "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789^[]()-,.;_!@#$%&*+=/<>\" ':;\\\n{}";
         if (unexpanded.split("").some((char) => !alphabet.includes(char))) {
           throw new Error(
             `unknown character in codeMirrorHelpers.type in ${part}`,

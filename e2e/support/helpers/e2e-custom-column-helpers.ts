@@ -117,5 +117,11 @@ export const CustomExpressionEditor = codeMirrorHelpers(
         .contains(name)
         .first();
     },
+    blur() {
+      cy.findByTestId("expression-editor").click("bottomRight", {
+        force: true,
+      });
+      return CustomExpressionEditor;
+    },
   },
 );
