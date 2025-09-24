@@ -82,12 +82,14 @@
                                          :target_type "document"
                                          :target_id doc-id))))
           (testing "creates and returns comments for entity"
-            (let [created   (mt/user-http-request :rasta :post 200 "ee/comment/"
+            (let [content   (tiptap [:p "New comment"])
+                  created   (mt/user-http-request :rasta :post 200 "ee/comment/"
                                                   {:target_type "document"
                                                    :target_id   doc-id
-                                                   :content     {:text "New comment"}})
+                                                   :content     content
+                                                   :html        "<p>New comment</p>"})
                   expected1 {:id          int?
-                             :content     {:text "New comment"}
+                             :content     content
                              :target_type "document"
                              :target_id   doc-id
                              :creator     {:id (mt/user->id :rasta)}
@@ -108,13 +110,15 @@
                         (first (swap-vals! mt/inbox empty)))))
 
               (testing "creates a reply to an existing comment"
-                (let [child     (mt/user-http-request :crowberto :post 200 "ee/comment/"
+                (let [content2  (tiptap [:p "Other comment"])
+                      child     (mt/user-http-request :crowberto :post 200 "ee/comment/"
                                                       {:target_type       "document"
                                                        :target_id         doc-id
                                                        :parent_comment_id (:id created)
-                                                       :content           {:text "Other comment"}})
+                                                       :content           content2
+                                                       :html              "<p>Other comment</p>"})
                       expected2 {:id                int?
-                                 :content           {:text "Other comment"}
+                                 :content           content2
                                  :target_type       "document"
                                  :target_id         doc-id
                                  :creator           {:id (mt/user->id :crowberto)}
@@ -137,7 +141,8 @@
                                                      {:target_type       "document"
                                                       :target_id         doc-id
                                                       :parent_comment_id (:id created)
-                                                      :content           {:text "Third comment in a thread"}})]
+                                                      :content           (tiptap [:p "Third comment in a thread"])
+                                                      :html              "<p>Third comment in a thread</p>"})]
                   (is (=? {(:email (mt/fetch-user :rasta))
                            [{:subject "Comment on New Document"
                              :body    [{:content (relaxed-re
@@ -154,9 +159,10 @@
                                                 {:target_type     "document"
                                                  :target_id       doc-id
                                                  :child_target_id part-id
-                                                 :content         {:text "Part comment"}})]
+                                                 :content         (tiptap [:p "Part comment"])
+                                                 :html            "<p>Part comment</p>"})]
               (is (=? {:id              int?
-                       :content         {:text "Part comment"}
+                       :content         {:type "doc"}
                        :target_type     "document"
                        :target_id       doc-id
                        :child_target_id part-id
@@ -178,7 +184,8 @@
                                                   :target_id   doc-id
                                                   :content     (tiptap
                                                                 [:smartLink {:model    "user"
-                                                                             :entityId (mt/user->id :crowberto)}])})]
+                                                                             :entityId (mt/user->id :crowberto)}])
+                                                  :html        "<p>Mention of @crowberto :)</p>"})]
               (is (=? {(:email (mt/fetch-user :lucky))     [{:subject "Comment on New Document"}]
                        (:email (mt/fetch-user :crowberto)) [{:subject "Comment on New Document"}]}
                       (first (swap-vals! mt/inbox empty)))))))))))
@@ -259,7 +266,7 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection {restricted-col :id}        {:name "Restricted Collection"}
                      :model/Document   {restricted-doc-id :id}     {:collection_id restricted-col
-                                                                    :name "Restricted Document"}
+                                                                    :name          "Restricted Document"}
                      :model/Comment    {restricted-comment-id :id} {:target_id restricted-doc-id}]
 
         (mt/with-model-cleanup [:model/Comment]
@@ -274,7 +281,8 @@
                    (mt/user-http-request :lucky :post 403 "ee/comment/"
                                          {:target_type "document"
                                           :target_id   restricted-doc-id
-                                          :content     {:text "Comment by lucky"}}))))
+                                          :content     (tiptap "Comment by lucky")
+                                          :html        "You shall not pass"}))))
 
           (testing "PUT /api/ee/comment/:id - users without document access cannot update comments"
             (is (= "You don't have permissions to do that."

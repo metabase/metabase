@@ -761,7 +761,10 @@
     :database-replication
 
     ;; whether this driver supports checking table writeable permissions
-    :metadata/table-writable-check})
+    :metadata/table-writable-check
+
+    ;; Does this driver support creating a java.sql.Statement via a Connection?
+    :jdbc/statements})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?

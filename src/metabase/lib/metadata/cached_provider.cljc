@@ -1,6 +1,7 @@
 (ns metabase.lib.metadata.cached-provider
   (:require
-   #?@(:clj ([pretty.core :as pretty]))
+   #?@(:clj ([metabase.util.json :as json]
+             [pretty.core :as pretty]))
    [clojure.set :as set]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -159,3 +160,10 @@
   ^CachedProxyMetadataProvider [metadata-provider]
   (log/debugf "Wrapping %s in CachedProxyMetadataProvider" (pr-str metadata-provider))
   (->CachedProxyMetadataProvider (atom {}) metadata-provider))
+
+#?(:clj
+   ;; do not encode MetadataProviders to JSON, just generate `nil` instead.
+   (json/add-encoder
+    CachedProxyMetadataProvider
+    (fn [_mp json-generator]
+      (json/generate-nil nil json-generator))))

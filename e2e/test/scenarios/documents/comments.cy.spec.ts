@@ -1537,6 +1537,7 @@ H.describeWithSnowplowEE("document comments", () => {
               },
             ],
           },
+          html: "<a href='#'>Robert Tableton</a>",
         }).then(({ body: comment }) => {
           H.getInbox().then((response: any) => {
             const emails = response.body;
@@ -1871,6 +1872,7 @@ function createComment(
   nodeId: string,
   text: string,
   parent_comment_id: CommentId | null = null,
+  html?: string,
 ) {
   return H.createComment({
     target_type: "document",
@@ -1887,6 +1889,7 @@ function createComment(
         },
       ],
     },
+    html: html ?? `<p>${text}</p>`,
   });
 }
 

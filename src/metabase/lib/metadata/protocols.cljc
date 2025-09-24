@@ -150,7 +150,12 @@
   "Whether `x` is a [[metadata-provider?]], or has one attached at `:lib/metadata` (i.e., a query)."
   [x]
   (or (metadata-provider? x)
-      (some-> x :lib/metadata metadata-providerable?)))
+      (some-> x :lib/metadata metadata-providerable?)
+      ;; function with the signature
+      ;;
+      ;;    (f database-id) => metadata-provider
+      (fn? x)
+      (var? x)))
 
 (mr/def ::metadata-providerable
   "Something that can be used to get a MetadataProvider. Either a MetadataProvider, or a map with a MetadataProvider in
@@ -355,6 +360,8 @@
 ;;; single call to the underlying ApplicationDatabaseMetadataProvider... Fetch stuff already present in the cache
 ;;; without needing a lock, but if we need to fetch something from the parent provider wait for a lock to do it.
 ;;; -- Cam
+;;;
+;;; TODO (Cam 9/22/25) -- if we have this, do we still need [[store-metadata!]] and [[store-metadatas!]]?
 (mu/defn warm-cache
   "Convenience for warming a `CachedMetadataProvider` for side-effects. Checks whether the provider is a cached
   metadata provider, and, if it is, calls [[metadatas]] to fetch the objects in question and warm the cache."
