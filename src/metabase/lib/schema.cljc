@@ -393,7 +393,8 @@
 (mr/def ::query
   [:and
    [:map
-    {:decode/normalize common/normalize-map
+    {:description      "Valid MBQL 5 query."
+     :decode/normalize common/normalize-map
      :encode/serialize serialize-query}
     [:lib/type [:=
                 {:decode/normalize common/normalize-keyword, :default :mbql/query}
@@ -437,3 +438,17 @@
      :expressions  ":expressions is not allowed in the top level of a query, only in MBQL stages"
      :filters      ":filters is not allowed in the top level of a query, only in MBQL stages"
      :source-table ":source-table is not allowed in the top level of a query, only in MBQL stages"})])
+
+(defn native-only-query?
+  "Whether MBQL 5 `query` only has a single native stage (and is thus pure-native). This is the equivalent of the old
+  `:type :native` queries in MBQL <= 4."
+  [query]
+  (and (map? query)
+       (= (count (:stages query)) 1)
+       (= (get-in query [:stages 0 :lib/type]) :mbql.stage/native)))
+
+(mr/def ::native-only-query
+  "Schema for a pure-native query with one single native stage."
+  [:and
+   [:ref ::query]
+   [:fn {:error/message "native-only query"} native-only-query?]])
