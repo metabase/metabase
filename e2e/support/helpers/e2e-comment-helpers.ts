@@ -1,7 +1,5 @@
 import type { DocumentId } from "metabase-types/api";
 
-import { modal } from "./e2e-ui-elements-helpers";
-
 export const Comments = {
   getDocumentNodeButton,
   getDocumentNodeButtons,
@@ -15,6 +13,8 @@ export const Comments = {
   reopenCommentByText,
   openAllComments,
   reactToComment,
+  getSidebar,
+  closeSidebar,
 };
 
 function getDocumentNodeButton({
@@ -59,7 +59,7 @@ function getCommentByText(text: string | RegExp) {
 
 function openAllComments() {
   cy.findByRole("link", { name: "Show all comments" }).click();
-  cy.findByRole("dialog").should("contain.text", "All comments");
+  getSidebar().should("contain.text", "All comments");
 }
 
 function getEmojiPicker() {
@@ -89,7 +89,7 @@ function reopenCommentByText(text: string | RegExp) {
 }
 
 function reactToComment(comment: string | RegExp, emoji: string) {
-  modal().within(() => {
+  getSidebar().within(() => {
     getCommentByText(comment)
       .realHover()
       .within(() => {
@@ -100,4 +100,12 @@ function reactToComment(comment: string | RegExp, emoji: string) {
   getEmojiPicker().within(() => {
     cy.findByText(emoji).click();
   });
+}
+
+function getSidebar() {
+  return cy.findByTestId("comments-sidebar");
+}
+
+function closeSidebar() {
+  cy.icon("close").click();
 }

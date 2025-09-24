@@ -287,39 +287,55 @@ H.describeWithSnowplow(suiteTitle, () => {
     );
   });
 
-  it("toggles save button for exploration", () => {
-    navigateToEmbedOptionsStep({ experience: "exploration" });
+  ["exploration", "chart"].forEach((experience) => {
+    it(`toggles save button for ${experience}`, () => {
+      navigateToEmbedOptionsStep({
+        experience,
+        ...(experience === "chart" && { resourceName: QUESTION_NAME }),
+      });
 
-    H.getSimpleEmbedIframeContent().within(() => {
-      cy.findByText("Orders").click();
-      cy.findByText("Visualize").click();
+      if (experience === "exploration") {
+        cy.log("visualize a question to enable the save button");
+        H.getSimpleEmbedIframeContent().within(() => {
+          cy.findByText("Orders").click();
+          cy.findByText("Visualize").click();
+        });
+      }
+
+      getEmbedSidebar()
+        .findByLabelText("Allow people to save new questions")
+        .should("not.be.checked");
+
+      cy.log("save button should be hidden by default");
+      H.getSimpleEmbedIframeContent().findByText("Save").should("not.exist");
+
+      cy.log("turn on save option");
+      getEmbedSidebar()
+        .findByLabelText("Allow people to save new questions")
+        .click()
+        .should("be.checked");
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_option_changed",
+        event_detail: "isSaveEnabled",
+      });
+
+      if (experience === "chart") {
+        cy.log("select a different visualization to enable the save button");
+        H.getSimpleEmbedIframeContent().within(() => {
+          cy.findByText("Table").click();
+          H.popover().findByText("Number").click();
+        });
+      }
+
+      H.getSimpleEmbedIframeContent().within(() => {
+        cy.findByText("Save").should("be.visible");
+      });
+
+      cy.log("snippet should be updated");
+      getEmbedSidebar().findByText("Get Code").click();
+      codeBlock().should("contain", 'is-save-enabled="true"');
     });
-
-    getEmbedSidebar()
-      .findByLabelText("Allow users to save new questions")
-      .should("not.be.checked");
-
-    cy.log("save button should be hidden by default");
-    H.getSimpleEmbedIframeContent().findByText("Save").should("not.exist");
-
-    cy.log("turn on save option");
-    getEmbedSidebar()
-      .findByLabelText("Allow users to save new questions")
-      .click()
-      .should("be.checked");
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_option_changed",
-      event_detail: "isSaveEnabled",
-    });
-
-    H.getSimpleEmbedIframeContent().within(() => {
-      cy.findByText("Save").should("be.visible");
-    });
-
-    cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", 'is-save-enabled="true"');
   });
 
   it("can toggle read-only setting for browser", () => {

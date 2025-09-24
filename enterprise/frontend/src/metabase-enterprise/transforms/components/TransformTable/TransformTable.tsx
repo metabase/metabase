@@ -30,8 +30,8 @@ export function TransformTable({ transforms }: TransformTableProps) {
             className={S.row}
             onClick={() => handleRowClick(transform)}
           >
-            <td>{transform.name}</td>
-            <td>{transform.target.name}</td>
+            <td className={S.wrap}>{transform.name}</td>
+            <td className={S.wrap}>{transform.target.name}</td>
           </tr>
         ))}
       </AdminContentTable>

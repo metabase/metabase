@@ -7,7 +7,7 @@ title: Database users, roles, and privileges
 We recommend creating a `metabase` database user with the following database roles:
 
 - [`analytics` for read access](#minimum-database-privileges) to any schemas or tables used for analysis.
-- Optional [`metabase_actions` for write access](#privileges-to-enable-actions) to tables used for Metabase actions.
+- Optional [`metabase_actions` for write access](#privileges-to-enable-actions-and-editable-table-data) to tables used for Metabase actions.
 - Optional [`metabase_model_persistence` for write access](#privileges-to-enable-model-persistence) to the schema used for Metabase model persistence.
 - Optional [`metabase_transforms` for write access](#privileges-to-enable-transforms) to the schema used for Metabase transforms.
 
@@ -87,25 +87,25 @@ GRANT ALL PRIVILEGES ON "database" TO metabase;
 
 This is a good option if you're connecting to a local database for development or testing.
 
-## Privileges to enable actions
+## Privileges to enable actions and editable table data
 
-[Actions](../actions/introduction.md) let Metabase write back to specific tables in your database.
+Both [actions](../actions/introduction.md) and the [editable table data](../data-modeling/editable-tables.md) let Metabase write back to specific tables in your database.
 
-In addition to the [minimum database privileges](#minimum-database-privileges), you'll need to grant write access to any tables used with actions:
+In addition to the [minimum database privileges](#minimum-database-privileges), you'll need to grant write access to any tables you want to be able to write to.
 
-- Create a new role called `metabase_actions`.
-- Give the role `INSERT`, `UPDATE`, and `DELETE` privileges to any tables used with Metabase actions.
-- Give the `metabase_actions` role to the `metabase` user.
+- Create a new role called `metabase_writer`.
+- Give the role `INSERT`, `UPDATE`, and `DELETE` privileges to the relevant tables.
+- Give the `metabase_writer` role to the `metabase` user.
 
 ```sql
--- Create a role to bundle database privileges for Metabase actions.
-CREATE ROLE metabase_actions WITH LOGIN;
+-- Create a role to bundle database privileges for Metabase writing to your database.
+CREATE ROLE metabase_writer WITH LOGIN;
 
--- Grant write privileges to the TABLE used with Metabase actions.
-GRANT INSERT, UPDATE, DELETE ON "your_table" IN SCHEMA "your_schema" TO metabase_actions;
+-- Grant write privileges to the TABLE
+GRANT INSERT, UPDATE, DELETE ON "your_table" IN SCHEMA "your_schema" TO metabase_writer;
 
 -- Grant role to the metabase user.
-GRANT metabase_actions TO metabase;
+GRANT metabase_writer TO metabase;
 ```
 
 ## Privileges to enable model persistence
@@ -183,7 +183,7 @@ Let's say you have customers named Tangerine and Lemon:
 - Create roles to bundle privileges specific to each customer's use case. For example:
   - `tangerine_queries` to bundle read privileges for people to query and create stored procedures against the Tangerine schema.
   - `lemon_queries` to bundle read privileges for people to query tables in the Lemon schema.
-  - `lemon_actions` to bundle the write privileges needed to create [actions](#privileges-to-enable-actions) on a Lemonade table in the Lemon schema.
+  - `lemon_actions` to bundle the write privileges needed to create [actions](#privileges-to-enable-actions-and-editable-table-data) on a Lemonade table in the Lemon schema.
 - Add each user to their respective roles.
 
 ```sql

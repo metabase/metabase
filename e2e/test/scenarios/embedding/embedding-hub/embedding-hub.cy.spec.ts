@@ -110,17 +110,47 @@ describe("scenarios - embedding hub", () => {
         .should("be.visible");
     });
 
-    it('"Create models" link should navigate correctly', () => {
+    [
+      { dbId: 1, dbName: "sample db" },
+      { dbId: 2, dbName: "sqlite db" },
+    ].forEach(({ dbId, dbName }) => {
+      it(`"Create models" step should be marked in ${dbName} as done after creating a model`, () => {
+        if (dbId === 2) {
+          H.addSqliteDatabase(dbName);
+        }
+
+        cy.log("Create a native query model via API");
+        H.createNativeQuestion(
+          {
+            name: "Test Model",
+            type: "model",
+            database: dbId,
+            native: { query: "SELECT 1 as t" },
+          },
+          { visitQuestion: true },
+        );
+
+        cy.log("Navigate to embedding setup guide");
+        cy.visit("/admin/embedding/setup-guide");
+
+        cy.log("'Create models' should now be marked as done");
+        cy.findByTestId("admin-layout-content")
+          .findByText("Create models")
+          .closest("button")
+          .scrollIntoView()
+          .findByText("Done", { timeout: 10_000 })
+          .should("be.visible");
+      });
+    });
+
+    it('"Embed in your code" card should take you to the embed flow', () => {
       cy.visit("/admin/embedding/setup-guide");
 
-      cy.log("Find and click on 'Create models' link");
       cy.findByTestId("admin-layout-content")
-        .findByText("Create models")
-        .first()
+        .findByText("Embed in your code")
         .click();
 
-      cy.log("Should navigate to model creation page");
-      cy.url().should("include", "/model/new");
+      cy.url().should("include", "/embed-js?auth_method=user_session");
     });
 
     it("Embed in production step should be locked until JWT is enabled", () => {
@@ -143,6 +173,82 @@ describe("scenarios - embedding hub", () => {
         .should("be.visible")
         .closest("button")
         .icon("lock")
+        .should("not.exist");
+    });
+
+    it("embedding checklist should show up on the embedding homepage", () => {
+      cy.request("PUT", "/api/setting/embedding-homepage", {
+        value: "visible",
+      });
+
+      cy.visit("/");
+
+      cy.findAllByText("Get started with Embedded Analytics JS")
+        .first()
+        .should("be.visible");
+
+      cy.get("main").within(() => {
+        cy.findByText("Create models").should("be.visible");
+        cy.findByText("Generate a dashboard").should("be.visible");
+        cy.findByText("Add data").should("be.visible").click();
+      });
+
+      cy.log("Sanity check: add data modal should open");
+      cy.findByRole("dialog").within(() => {
+        cy.findByRole("heading", { name: "Add data" }).should("be.visible");
+      });
+    });
+
+    it("embedding checklist should not show up on the embedding homepage if not enabled", () => {
+      cy.visit("/");
+
+      cy.get("main")
+        .findByText("Get started with Embedded Analytics JS")
+        .should("not.exist");
+    });
+
+    it("overflow menu > customize homepage opens modal with correct title", () => {
+      cy.request("PUT", "/api/setting/embedding-homepage", {
+        value: "visible",
+      });
+
+      cy.visit("/");
+
+      cy.log("Click overflow menu button on the embedding homepage");
+      cy.get("main").within(() => {
+        cy.findByLabelText("More options").click();
+      });
+
+      H.menu().findByText("Customize homepage").click();
+
+      cy.findByRole("dialog").within(() => {
+        cy.findByText("Pick a dashboard to appear on the homepage").should(
+          "be.visible",
+        );
+      });
+    });
+
+    it("overflow menu > dismiss guide hides the embedding homepage", () => {
+      cy.request("PUT", "/api/setting/embedding-homepage", {
+        value: "visible",
+      });
+
+      cy.visit("/");
+
+      cy.get("main")
+        .findByText("Get started with Embedded Analytics JS")
+        .should("be.visible");
+
+      cy.log("Click overflow menu button on the embedding homepage");
+      cy.get("main").within(() => {
+        cy.findByLabelText("More options").click();
+      });
+
+      H.menu().findByText("Dismiss guide").click();
+
+      cy.log("Verify guide is dismissed and no longer visible");
+      cy.get("main")
+        .findByText("Get started with Embedded Analytics JS")
         .should("not.exist");
     });
   });

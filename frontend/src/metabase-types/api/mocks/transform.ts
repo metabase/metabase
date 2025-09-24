@@ -94,6 +94,7 @@ export function createMockTransformJob(
     name: "Job",
     description: null,
     schedule: "0 0 0 * * ? *",
+    ui_display_type: "cron/builder",
     created_at: "2000-01-01T00:00:00Z",
     updated_at: "2000-01-01T00:00:00Z",
     ...opts,

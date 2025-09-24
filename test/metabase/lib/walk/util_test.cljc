@@ -2,7 +2,9 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.walk.util :as lib.walk.util]
    [metabase.util.malli :as mu]))
@@ -44,3 +46,44 @@
                                         [:field {} 2]
                                         [:field {} "wow"]]
                          :source-table 1}]})))))
+
+(deftest ^:parallel all-source-card-ids-legacy-native-query-template-tags-test
+  (let [query {:database 1
+               :type     :native
+               :native   {:query         "SELECT *;"
+                          :template-tags {"tag_1" {:type    :card
+                                                   :card-id 100}
+                                          "tag_2" {:type    :card
+                                                   :card-id 200}}}}]
+    (mu/disable-enforcement
+      (is (= #{100 200}
+             (lib/all-source-card-ids (lib/query meta/metadata-provider query)))))))
+
+(deftest ^:parallel all-source-card-ids-legacy-query-source-card-test
+  (let [query {:database 1
+               :type     :query
+               :query    {:source-query {:source-table "card__1000"}}}]
+    (is (= #{1000}
+           (lib/all-source-card-ids (lib/query meta/metadata-provider query))))))
+
+(deftest ^:parallel all-source-card-ids-pmbql-native-query-template-tags-test
+  (let [query (lib/query meta/metadata-provider {:lib/type      :mbql.stage/native
+                                                 :native        "SELECT *;"
+                                                 :template-tags {"tag_1" {:name         "tag_1"
+                                                                          :display-name "Tag 1"
+                                                                          :type         :card
+                                                                          :card-id      100}
+                                                                 "tag_2" {:name         "tag_2"
+                                                                          :display-name "Tag 2"
+                                                                          :type         :card
+                                                                          :card-id      200}}})]
+    (is (= #{100 200}
+           (lib/all-source-card-ids (lib/query meta/metadata-provider query))))))
+
+(deftest ^:parallel all-source-card-ids-source-card-test
+  (let [mp      (lib.tu/metadata-provider-with-cards-for-queries
+                 meta/metadata-provider
+                 [(lib/query meta/metadata-provider (lib.metadata/table meta/metadata-provider (meta/id :venues)))])
+        query-with-source-card (lib/query mp (lib.metadata/card mp 1))]
+    (is (= #{1}
+           (lib/all-source-card-ids query-with-source-card)))))

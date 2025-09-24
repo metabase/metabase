@@ -1,4 +1,5 @@
 import type { MetabaseError } from "embedding-sdk-bundle/errors";
+import type { MetabaseErrorCode } from "embedding-sdk-bundle/errors/error-code";
 import type { MetabaseAuthMethod } from "embedding-sdk-bundle/types";
 import type { MetabaseEmbeddingSessionToken } from "embedding-sdk-bundle/types/refresh-token";
 import type {
@@ -9,6 +10,7 @@ import type {
   SqlParameterValues,
 } from "embedding-sdk-package";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
+import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 import type { CollectionId } from "metabase-types/api";
 
 /** Events that the embed.js script listens for */
@@ -32,7 +34,14 @@ export type SdkIframeEmbedMessage =
   | {
       type: "metabase.embed.reportAuthenticationError";
       data: {
-        error: MetabaseError<string, unknown>;
+        error: MetabaseError<MetabaseErrorCode, unknown>;
+      };
+    }
+  | {
+      type: "metabase.embed.reportAnalytics";
+      data: {
+        usageAnalytics: EmbeddedAnalyticsJsEventSchema;
+        embedHostUrl: string;
       };
     };
 
@@ -148,6 +157,14 @@ export type SdkIframeEmbedTemplateSettings =
 /** Settings used by the sdk embed route */
 export type SdkIframeEmbedSettings = SdkIframeEmbedBaseSettings &
   SdkIframeEmbedTemplateSettings;
+
+export type SdkIframeEmbedElementSettings = SdkIframeEmbedBaseSettings &
+  (
+    | DashboardEmbedOptions
+    | QuestionEmbedOptions
+    | (Omit<ExplorationEmbedOptions, "questionId"> & { questionId: "new" })
+    | BrowserEmbedOptions
+  );
 
 export type SdkIframeEmbedEvent = { type: "ready" };
 

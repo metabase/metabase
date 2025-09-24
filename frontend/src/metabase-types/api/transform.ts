@@ -1,6 +1,7 @@
 import type { DatabaseId } from "./database";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery } from "./query";
+import type { ScheduleDisplayType } from "./settings";
 import type { ConcreteTableId, Table } from "./table";
 
 export type TransformId = number;
@@ -81,6 +82,7 @@ export type TransformJob = {
   name: string;
   description: string | null;
   schedule: string;
+  ui_display_type: ScheduleDisplayType;
   created_at: string;
   updated_at: string;
 
@@ -111,6 +113,7 @@ export type CreateTransformJobRequest = {
   name: string;
   description?: string | null;
   schedule: string;
+  ui_display_type?: ScheduleDisplayType;
   tag_ids?: TransformTagId[];
 };
 
@@ -119,6 +122,7 @@ export type UpdateTransformJobRequest = {
   name?: string;
   description?: string | null;
   schedule?: string;
+  ui_display_type?: ScheduleDisplayType;
   tag_ids?: TransformTagId[];
 };
 
