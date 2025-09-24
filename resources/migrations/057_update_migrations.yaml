@@ -512,7 +512,7 @@ databaseChangeLog:
               - column:
                   name: transform_id
                   type: int
-                  remarks: 'Identifier for the transform'
+                  remarks: "Identifier for the transform"
                   constraints:
                     nullable: false
                     referencedTableName: transform
@@ -522,39 +522,39 @@ databaseChangeLog:
               - column:
                   name: run_method
                   type: varchar(255)
-                  remarks: 'Method used to execute the transform job'
+                  remarks: "Method used to execute the transform job"
                   constraints:
                     nullable: false
               - column:
                   name: status
                   type: varchar(50)
-                  remarks: 'Current status of the transform job (running, completed, failed, etc.)'
+                  remarks: "Current status of the transform job (running, completed, failed, etc.)"
                   constraints:
                     nullable: false
               - column:
                   name: is_active
                   type: ${boolean.type}
-                  remarks: 'True only for currently running jobs, null for the others'
+                  remarks: "True only for currently running jobs, null for the others"
                   constraints:
                     nullable: true
                     defaultValue: true
               - column:
                   name: start_time
                   type: ${timestamp_type}
-                  remarks: 'When the transform job started'
+                  remarks: "When the transform job started"
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   name: end_time
                   type: ${timestamp_type}
-                  remarks: 'When the transform job completed (null if still running)'
+                  remarks: "When the transform job completed (null if still running)"
                   constraints:
                     nullable: true
               - column:
                   name: message
                   type: ${text.type}
-                  remarks: 'Human-readable message about the run; may contain error message in case status is error'
+                  remarks: "Human-readable message about the run; may contain error message in case status is error"
                   constraints:
                     nullable: true
 
@@ -648,7 +648,7 @@ databaseChangeLog:
               - column:
                   name: time
                   type: ${timestamp_type}
-                  remarks: 'The time of the request'
+                  remarks: "The time of the request"
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
@@ -700,7 +700,7 @@ databaseChangeLog:
               - column:
                   name: built_in_type
                   type: varchar(255)
-                  remarks: 'Type of the built-in transform tag: hourly, daily, weekly, monthly.'
+                  remarks: "Type of the built-in transform tag: hourly, daily, weekly, monthly."
                   constraints:
                     nullable: true
 
@@ -761,7 +761,7 @@ databaseChangeLog:
               - column:
                   name: built_in_type
                   type: varchar(255)
-                  remarks: 'Type of the built-in transform job: hourly, daily, weekly, monthly.'
+                  remarks: "Type of the built-in transform job: hourly, daily, weekly, monthly."
                   constraints:
                     nullable: true
 
@@ -941,45 +941,45 @@ databaseChangeLog:
               - column:
                   name: job_id
                   type: bigint
-                  remarks: 'Identifier for the transform job'
+                  remarks: "Identifier for the transform job"
                   constraints:
                     nullable: false
               - column:
                   name: run_method
                   type: varchar(255)
-                  remarks: 'Method used to execute the transform job'
+                  remarks: "Method used to execute the transform job"
                   constraints:
                     nullable: false
               - column:
                   name: status
                   type: varchar(50)
-                  remarks: 'Current status of the transform job (running, completed, failed, etc.)'
+                  remarks: "Current status of the transform job (running, completed, failed, etc.)"
                   constraints:
                     nullable: false
               - column:
                   name: is_active
                   type: ${boolean.type}
-                  remarks: 'True only for currently running jobs, null for the others'
+                  remarks: "True only for currently running jobs, null for the others"
                   constraints:
                     nullable: true
                     defaultValue: true
               - column:
                   name: start_time
                   type: ${timestamp_type}
-                  remarks: 'When the transform job started'
+                  remarks: "When the transform job started"
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   name: end_time
                   type: ${timestamp_type}
-                  remarks: 'When the tranform job completed (null if still running)'
+                  remarks: "When the tranform job completed (null if still running)"
                   constraints:
                     nullable: true
               - column:
                   name: message
                   type: ${text.type}
-                  remarks: 'Human-readable message about the run; may contain error message in case status is error'
+                  remarks: "Human-readable message about the run; may contain error message in case status is error"
                   constraints:
                     nullable: true
               - column:
@@ -998,50 +998,50 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-        id: v57.2025-08-22T00:13:00
-        author: ranquild
-        comment: Create built-in transform tags
-        changes:
-          - sql: >-
-              INSERT INTO transform_tag(name, entity_id, built_in_type) VALUES
-              ('hourly', 'wYLcUPbtF7jVPO0duGGHR', 'hourly'),
-              ('daily', 'dUW7nvQHQBdA0Rx0gJckI', 'daily'),
-              ('weekly', 'qPGCJu7t97kn-X07_fgSj', 'weekly'),
-              ('monthly', 'DeeJHc81qKhD9qWINISO8', 'monthly');
-        rollback:
-          - sql: DELETE FROM transform_tag WHERE built_in_type IS NOT NULL;
+      id: v57.2025-08-22T00:13:00
+      author: ranquild
+      comment: Create built-in transform tags
+      changes:
+        - sql: >-
+            INSERT INTO transform_tag(name, entity_id, built_in_type) VALUES
+            ('hourly', 'wYLcUPbtF7jVPO0duGGHR', 'hourly'),
+            ('daily', 'dUW7nvQHQBdA0Rx0gJckI', 'daily'),
+            ('weekly', 'qPGCJu7t97kn-X07_fgSj', 'weekly'),
+            ('monthly', 'DeeJHc81qKhD9qWINISO8', 'monthly');
+      rollback:
+        - sql: DELETE FROM transform_tag WHERE built_in_type IS NOT NULL;
 
   - changeSet:
-        id: v57.2025-08-22T00:14:00
-        author: ranquild
-        comment: Create built-in transform jobs
-        changes:
-          - sql: >-
-              INSERT INTO transform_job(name, description, schedule, entity_id, built_in_type) VALUES
-              ('Hourly job', 'Executes transforms tagged with ''hourly'' every hour', '0 0 * * * ? *', 'RognTgBT2fXaxoQh4ws7z', 'hourly'),
-              ('Daily job', 'Executes transforms tagged with ''daily'' once per day', '0 0 0 * * ? *', 'PJahvcoF61oX5T4uCT_FY', 'daily'),
-              ('Weekly job', 'Executes transforms tagged with ''weekly'' once per week', '0 0 0 ? * 1 *', 'lXIFa2SUrXLgaLZJx33oU', 'weekly'),
-              ('Monthly job', 'Executes transforms tagged with ''monthly'' once per month', '0 0 0 1 * ? *', 'CL1TVitmzJrDjdjvO2xmN', 'monthly');
-        rollback:
-          - sql: DELETE FROM transform_job WHERE built_in_type IS NOT NULL;
+      id: v57.2025-08-22T00:14:00
+      author: ranquild
+      comment: Create built-in transform jobs
+      changes:
+        - sql: >-
+            INSERT INTO transform_job(name, description, schedule, entity_id, built_in_type) VALUES
+            ('Hourly job', 'Executes transforms tagged with ''hourly'' every hour', '0 0 * * * ? *', 'RognTgBT2fXaxoQh4ws7z', 'hourly'),
+            ('Daily job', 'Executes transforms tagged with ''daily'' once per day', '0 0 0 * * ? *', 'PJahvcoF61oX5T4uCT_FY', 'daily'),
+            ('Weekly job', 'Executes transforms tagged with ''weekly'' once per week', '0 0 0 ? * 1 *', 'lXIFa2SUrXLgaLZJx33oU', 'weekly'),
+            ('Monthly job', 'Executes transforms tagged with ''monthly'' once per month', '0 0 0 1 * ? *', 'CL1TVitmzJrDjdjvO2xmN', 'monthly');
+      rollback:
+        - sql: DELETE FROM transform_job WHERE built_in_type IS NOT NULL;
 
   - changeSet:
-        id: v57.2025-08-22T00:15:00
-        author: ranquild
-        comment: Create associations between built-in transform jobs and tags
-        changes:
-          - sql: >-
-              INSERT INTO transform_job_transform_tag(job_id, tag_id, entity_id, position)
-              SELECT job.id, tag.id, job.entity_id, 0 AS position
-              FROM transform_job AS job
-              JOIN transform_tag AS tag ON job.built_in_type = tag.built_in_type
-              WHERE job.built_in_type IS NOT NULL AND tag.built_in_type IS NOT NULL;
-        rollback:
-          - sql: >-
-              DELETE FROM transform_job_transform_tag
-              WHERE
-                job_id IN (SELECT id FROM transform_job WHERE built_in_type IS NOT NULL) AND
-                tag_id IN (SELECT id FROM transform_tag WHERE built_in_type IS NOT NULL);
+      id: v57.2025-08-22T00:15:00
+      author: ranquild
+      comment: Create associations between built-in transform jobs and tags
+      changes:
+        - sql: >-
+            INSERT INTO transform_job_transform_tag(job_id, tag_id, entity_id, position)
+            SELECT job.id, tag.id, job.entity_id, 0 AS position
+            FROM transform_job AS job
+            JOIN transform_tag AS tag ON job.built_in_type = tag.built_in_type
+            WHERE job.built_in_type IS NOT NULL AND tag.built_in_type IS NOT NULL;
+      rollback:
+        - sql: >-
+            DELETE FROM transform_job_transform_tag
+            WHERE
+              job_id IN (SELECT id FROM transform_job WHERE built_in_type IS NOT NULL) AND
+              tag_id IN (SELECT id FROM transform_tag WHERE built_in_type IS NOT NULL);
 
   - changeSet:
       id: v57.2025-08-22T00:15:01
@@ -1085,7 +1085,7 @@ databaseChangeLog:
                   name: data_authority
                   remarks: Indicates the data authority status - unconfigured, authoritative, computed, or ingested
                   type: varchar(20)
-                  defaultValue: 'unconfigured'
+                  defaultValue: "unconfigured"
                   constraints:
                     nullable: false
 
@@ -1352,6 +1352,155 @@ databaseChangeLog:
               - column:
                   name: comment_id
       rollback: # will be removed along the table
+
+  - changeSet:
+      id: v57.2025-09-11T10:00:00
+      author: qnkhuat
+      comment: Add python_library table for storing Python transform user modules
+      changes:
+        - createTable:
+            tableName: python_library
+            remarks: Store Python library code for user modules in transforms
+            columns:
+              - column:
+                  name: id
+                  type: integer
+                  autoIncrement: true
+                  remarks: Primary key for python_library
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_python_library
+              - column:
+                  name: path
+                  type: varchar(254)
+                  remarks: Path identifier for the library
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uk_python_library_path
+              - column:
+                  name: source
+                  type: ${text.type}
+                  remarks: Python source code for user modules
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When the record was created
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: current_timestamp
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: When the record was last updated
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: current_timestamp
+
+  - changeSet:
+      id: v57.2025-09-12T16:08:00
+      author: piranha
+      comment: Create glossary table
+      changes:
+        - createTable:
+            tableName: glossary
+            remarks: Table to store glossary terms and their definitions
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key identifier for glossary entries
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: term
+                  type: varchar(255)
+                  remarks: The glossary term or phrase being defined
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: definition
+                  type: ${text.type}
+                  remarks: The detailed definition or explanation of the term
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when comment was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when comment was last updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-09-16T12:55:00
+      author: stasgavrylov
+      comment: Add content_html column to comment table for storing HTML-rendered content
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: comment
+                columnName: content_html
+      changes:
+        - addColumn:
+            tableName: comment
+            columns:
+              - column:
+                  name: content_html
+                  type: ${text.type}
+                  remarks: HTML-rendered version of the comment content
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-09-19T11:30:20
+      author: ranquild
+      comment: Add transform_job.ui_display_type
+      changes:
+        - addColumn:
+            tableName: transform_job
+            columns:
+              - column:
+                  name: ui_display_type
+                  remarks: The display type of the schedule, used for the UI only; "cron/raw" or "cron/builder".
+                  type: varchar(32)
+                  defaultValue: 'cron/raw'
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-09-19T12:30:20
+      author: ranquild
+      comment: Set transform_job.ui_display_type for built-in jobs
+      changes:
+        - update:
+            tableName: transform_job
+            columns:
+              - column:
+                  name: ui_display_type
+                  value: 'cron/builder'
+            where: built_in_type IS NOT NULL
+      rollback:
+        - update:
+            tableName: transform_job
+            columns:
+              - column:
+                  name: ui_display_type
+                  value: 'cron/raw'
+            where: built_in_type IS NOT NULL
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

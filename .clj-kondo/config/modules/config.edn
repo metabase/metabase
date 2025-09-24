@@ -502,6 +502,7 @@
            metabase.embedding.init
            metabase.embedding.jwt
            metabase.embedding.settings
+           metabase.embedding.util
            metabase.embedding.validation}
    :uses #{analytics
            api
@@ -516,6 +517,7 @@
            public-sharing
            queries
            query-processor
+           request
            server
            settings
            tiles
@@ -545,6 +547,13 @@
    :uses #{api
            permissions
            settings
+           util}}
+
+  glossary
+  {:team "Workflows"
+   :api  #{metabase.glossary.api}
+   :uses #{api
+           models
            util}}
 
   indexed-entities
@@ -1012,6 +1021,7 @@
            metabase.request.schema}
    :uses #{api
            config
+           embedding
            permissions ; FIXME
            session
            settings
@@ -1617,6 +1627,7 @@
    :api  #{metabase-enterprise.comments.api
            metabase-enterprise.comments.init}
    :uses #{api
+           channel
            events
            models
            request
@@ -1721,7 +1732,6 @@
            settings
            util}}
 
-
   enterprise/embedding-hub
   {:team "Embedding"
    :api  #{metabase-enterprise.embedding-hub.api}
@@ -1805,10 +1815,12 @@
            pulse
            query-processor
            request
+           search
            server
            settings
            sync
            system
+           task
            users
            util
            warehouse-schema
@@ -1969,8 +1981,10 @@
   {:team "Querying"
    :api  #{metabase-enterprise.transforms.api
            metabase-enterprise.transforms.core
-           metabase-enterprise.transforms.init}
-   :uses #{api
+           metabase-enterprise.transforms.init
+           metabase-enterprise.transforms.util}
+   :uses #{analytics
+           api
            app-db
            config
            driver
@@ -1986,7 +2000,24 @@
            sync
            task
            task-history
-           util}}
+           upload
+           util
+           enterprise/transforms-python}}
+
+  enterprise/transforms-python
+  {:team "Querying"
+   :api  #{metabase-enterprise.transforms-python.api
+           metabase-enterprise.transforms-python.init
+           metabase-enterprise.transforms-python.settings}
+   :uses #{api
+           app-db
+           config
+           driver
+           models
+           query-processor
+           settings
+           util
+           enterprise/transforms}}
 
   enterprise/upload-management
   {:team "UX West"

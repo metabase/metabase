@@ -72,3 +72,14 @@ function parseMethod(value: unknown): TransformRunMethod | undefined {
   }
   return undefined;
 }
+
+export function hasFilterParams(params: RunListParams) {
+  return (
+    params.statuses != null ||
+    params.transformIds != null ||
+    params.transformTagIds != null ||
+    params.startTime != null ||
+    params.endTime != null ||
+    params.runMethods != null
+  );
+}

@@ -30,7 +30,7 @@ export function openMetabotViaShortcutKey(assertVisibility = true) {
     assertChatVisibility("not.visible");
   }
 
-  cy.realPress(["Meta", "b"]);
+  cy.get("body").type("{ctrl+b}{cmd+b}");
 
   if (assertVisibility) {
     assertChatVisibility("visible");
@@ -42,7 +42,7 @@ export function closeMetabotViaShortcutKey(assertVisibility = true) {
     assertChatVisibility("visible");
   }
 
-  cy.realPress(["Meta", "b"]);
+  cy.get("body").type("{ctrl+b}{cmd+b}");
 
   if (assertVisibility) {
     assertChatVisibility("not.visible");
@@ -93,7 +93,7 @@ export function lastChatMessage() {
 
 export const mockMetabotResponse = (response: StaticResponse) => {
   return cy
-    .intercept("POST", "/api/ee/metabot-v3/v2/agent-streaming", (req) => {
+    .intercept("POST", "/api/ee/metabot-v3/agent-streaming", (req) => {
       req.reply({
         ...response,
         headers: {

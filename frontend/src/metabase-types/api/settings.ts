@@ -38,6 +38,7 @@ export const engineKeys = [
   "databricks",
   "druid-jdbc",
   "druid",
+  "mongo",
   "mysql",
   "oracle",
   "postgres",
@@ -160,6 +161,8 @@ export type ScheduleDayType =
   | "sat";
 
 export type ScheduleFrameType = "first" | "mid" | "last";
+
+export type ScheduleDisplayType = "cron/builder" | "cron/raw" | null;
 
 export interface FontFile {
   src: string;
