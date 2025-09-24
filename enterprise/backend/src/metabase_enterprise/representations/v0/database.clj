@@ -1,7 +1,12 @@
 (ns metabase-enterprise.representations.v0.database
   (:require
+   [clj-yaml.core :as yaml]
+   [clojure.string :as str]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2]))
 
 ;;; ------------------------------------ Schema Definitions ------------------------------------
 
@@ -98,3 +103,112 @@
    [:description {:optional true} ::description]
    [:connection_details {:optional true} ::connection-details]
    [:schemas {:optional true} [:sequential ::schema]]])
+
+;;; ------------------------------------ Export Functions ------------------------------------
+
+(defn- get-fk-reference
+  "Get the foreign key reference in TABLE.COLUMN format"
+  [fk-target-field-id]
+  (when fk-target-field-id
+    (when-let [target-field (t2/select-one [:model/Field :name :table_id] :id fk-target-field-id)]
+      (when-let [target-table-name (t2/select-one-fn :name :model/Table :id (:table_id target-field))]
+        (str target-table-name "." (:name target-field))))))
+
+(defn- process-field
+  [field]
+  (let [fk-ref (when (:fk_target_field_id field)
+                 (get-fk-reference (:fk_target_field_id field)))]
+    (cond-> {:name (:name field)
+             :type (or (:database_type field)
+                       (name (or (:base_type field) :unknown)))}
+      (:description field)                 (assoc :description (:description field))
+      (= (:database_required field) false) (assoc :nullable true)
+      (:pk field)                          (assoc :pk true)
+      fk-ref                               (assoc :fk fk-ref))))
+
+(defn- get-table-columns
+  "Get all columns for a table with their metadata"
+  [table-id]
+  (->> (t2/select :model/Field :table_id table-id :active true)
+       (mapv process-field)))
+
+(defn- process-schema-tables
+  [[schema-name tables]]
+  {:name   (or schema-name "PUBLIC")
+   :tables (vec (for [table tables]
+                  (cond-> {:name (:name table)}
+                    (:description table) (assoc :description (:description table))
+                    :always              (assoc :columns (get-table-columns (:id table))))))})
+
+(defn- get-database-schemas
+  "Get all schemas, tables, and columns for a database"
+  [database-id]
+  (->> (t2/select :model/Table :db_id database-id :active true)
+       (group-by :schema)
+       (mapv process-schema-tables)))
+
+(defn- sanitize-connection-details
+  "Remove sensitive fields from connection details using Metabase's official list"
+  [details]
+  (when details
+    (reduce-kv (fn [m k v]
+                 (if (contains? driver.u/default-sensitive-fields (keyword k))
+                   m
+                   (assoc m k v)))
+               {}
+               details)))
+
+(defn- get-database-ref
+  "Generate a ref field for a database"
+  [db]
+  (when-let [db-name (:name db)]
+    (-> db-name
+        u/lower-case-en
+        (str/replace #"[^a-z0-9-_]+" "-")
+        (str/replace #"^-+|-+$" ""))))
+
+(defn database->representation
+  "Export a Database entity to its v0 representation format"
+  ([database-id] (database->representation database-id {}))
+  ([database-id {:keys [include-schemas? include-connection-details?]
+                 :or   {include-schemas?            true
+                        include-connection-details? true}}]
+   (when-let [db (t2/select-one :model/Database :id database-id)]
+     (let [base-rep {:type   :v0/database
+                     :ref    (or (get-database-ref db) "database")
+                     :name   (:name db)
+                     :engine (name (:engine db))}
+           details  (when (and include-connection-details? (:details db))
+                      (sanitize-connection-details (:details db)))]
+       (cond-> base-rep
+         (:description db) (assoc :description (:description db))
+         (seq details)     (assoc :connection_details details)
+         include-schemas?  (assoc :schemas (get-database-schemas database-id)))))))
+
+(defn database->yaml
+  "Export a Database entity to YAML representation format
+   Options for YAML formatting (in :dumper-options):
+   - :flow-style - :auto (default), :block (expanded), :flow (compact)
+   - :indent - block indentation (default 2)
+   - :indicator-indent - indentation for - indicators (default 0)"
+  ([database-id] (database->yaml database-id {}))
+  ([database-id opts]
+   (let [dumper-opts (merge {:flow-style :auto
+                             :indent 2}
+                            (:dumper-options opts))
+         export-opts (dissoc opts :dumper-options)]
+     (-> (database->representation database-id export-opts)
+         (update :type name) ; Convert keyword to string for YAML
+         (yaml/generate-string :dumper-options dumper-opts)))))
+
+(defn database->pretty-yaml
+  "Export a Database entity to YAML with fully expanded block style.
+   This produces the most readable output with each field on its own line."
+  ([database-id] (database->pretty-yaml database-id {}))
+  ([database-id opts]
+   (database->yaml database-id
+                   (assoc opts :dumper-options
+                          {:flow-style            :block
+                           :indent                2
+                           :indicator-indent      2
+                           :indent-with-indicator true}))))

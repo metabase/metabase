@@ -1,0 +1,285 @@
+type: database
+ref: sample-database
+name: Sample Database
+engine: h2
+description: Some example data for you to play around with.
+connection_details:
+  db: file:/home/galdre/programming/world/metabase-3/plugins/sample-database.db;USER=GUEST;PASSWORD=guest
+schemas:
+  - name: PUBLIC
+    tables:
+      - name: ACCOUNTS
+        description: Information on customer accounts registered with Piespace. Each account represents a new organization signing up for on-demand pies.
+        columns:
+          - name: ID
+            type: BIGINT
+          - name: TRIAL_CONVERTED
+            type: BOOLEAN
+            nullable: true
+          - name: LEGACY_PLAN
+            type: BOOLEAN
+            nullable: true
+          - name: SEATS
+            type: INTEGER
+            nullable: true
+          - name: EMAIL
+            type: CHARACTER VARYING
+            nullable: true
+          - name: CREATED_AT
+            type: TIMESTAMP
+            nullable: true
+          - name: LAST_NAME
+            type: CHARACTER VARYING
+            nullable: true
+          - name: CANCELED_AT
+            type: TIMESTAMP
+            nullable: true
+          - name: SOURCE
+            type: CHARACTER VARYING
+            nullable: true
+          - name: FIRST_NAME
+            type: CHARACTER VARYING
+            nullable: true
+          - name: TRIAL_ENDS_AT
+            type: TIMESTAMP
+            nullable: true
+          - name: PLAN
+            type: CHARACTER VARYING
+            nullable: true
+          - name: ACTIVE_SUBSCRIPTION
+            type: BOOLEAN
+            nullable: true
+          - name: LONGITUDE
+            type: DOUBLE PRECISION
+            nullable: true
+          - name: COUNTRY
+            type: CHARACTER
+            nullable: true
+          - name: LATITUDE
+            type: DOUBLE PRECISION
+            nullable: true
+      - name: ANALYTIC_EVENTS
+        description: Piespace does some anonymous analytics tracking on how users interact with their platform. They’ve only had time to implement a few events, but you know how it is. Pies come first.
+        columns:
+          - name: ID
+            type: BIGINT
+          - name: EVENT
+            type: CHARACTER VARYING
+            nullable: true
+          - name: TIMESTAMP
+            type: TIMESTAMP
+            nullable: true
+          - name: ACCOUNT_ID
+            type: BIGINT
+            nullable: true
+            fk: ACCOUNTS.ID
+          - name: PAGE_URL
+            type: CHARACTER VARYING
+            nullable: true
+          - name: BUTTON_LABEL
+            type: CHARACTER VARYING
+            nullable: true
+      - name: FEEDBACK
+        description: With each order of pies sent out, Piespace includes a place for customers to submit feedback and review their order.
+        columns:
+          - name: ID
+            type: BIGINT
+          - name: ACCOUNT_ID
+            type: BIGINT
+            nullable: true
+            fk: ACCOUNTS.ID
+          - name: DATE_RECEIVED
+            type: TIMESTAMP
+            nullable: true
+          - name: RATING_MAPPED
+            type: CHARACTER VARYING
+            nullable: true
+          - name: EMAIL
+            type: CHARACTER VARYING
+            nullable: true
+          - name: RATING
+            type: SMALLINT
+            nullable: true
+          - name: BODY
+            type: CHARACTER LARGE OBJECT
+            nullable: true
+      - name: INVOICES
+        description: Confirmed payments from Piespace’s customers. Most accounts pay for their pie subscription on a monthly basis.
+        columns:
+          - name: ID
+            type: BIGINT
+          - name: PLAN
+            type: CHARACTER VARYING
+            nullable: true
+          - name: EXPECTED_INVOICE
+            type: BOOLEAN
+            nullable: true
+          - name: ACCOUNT_ID
+            type: BIGINT
+            nullable: true
+            fk: ACCOUNTS.ID
+          - name: DATE_RECEIVED
+            type: TIMESTAMP
+            nullable: true
+          - name: PAYMENT
+            type: DOUBLE PRECISION
+            nullable: true
+      - name: ORDERS
+        description: Confirmed Sample Company orders for a product, from a user.
+        columns:
+          - name: ID
+            type: BIGINT
+            description: This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens.
+            nullable: true
+          - name: PRODUCT_ID
+            type: INTEGER
+            description: The product ID. This is an internal identifier for the product, NOT the SKU.
+            nullable: true
+            fk: PRODUCTS.ID
+          - name: QUANTITY
+            type: INTEGER
+            description: Number of products bought.
+            nullable: true
+          - name: CREATED_AT
+            type: TIMESTAMP
+            description: The date and time an order was submitted.
+            nullable: true
+          - name: DISCOUNT
+            type: DOUBLE PRECISION
+            description: Discount amount.
+            nullable: true
+          - name: USER_ID
+            type: INTEGER
+            description: The id of the user who made this order. Note that in some cases where an order was created on behalf of a customer who phoned the order in, this might be the employee who handled the request.
+            nullable: true
+            fk: PEOPLE.ID
+          - name: TAX
+            type: DOUBLE PRECISION
+            description: This is the amount of local and federal taxes that are collected on the purchase. Note that other governmental fees on some products are not included here, but instead are accounted for in the subtotal.
+            nullable: true
+          - name: TOTAL
+            type: DOUBLE PRECISION
+            description: The total billed amount.
+            nullable: true
+          - name: SUBTOTAL
+            type: DOUBLE PRECISION
+            description: The raw, pre-tax cost of the order. Note that this might be different in the future from the product price due to promotions, credits, etc.
+            nullable: true
+      - name: PEOPLE
+        description: Information on the user accounts registered with Sample Company.
+        columns:
+          - name: ID
+            type: BIGINT
+            description: A unique identifier given to each user.
+            nullable: true
+          - name: CREATED_AT
+            type: TIMESTAMP
+            description: The date the user record was created. Also referred to as the user’s "join date"
+            nullable: true
+          - name: PASSWORD
+            type: CHARACTER VARYING
+            description: This is the salted password of the user. It should not be visible
+            nullable: true
+          - name: EMAIL
+            type: CHARACTER VARYING
+            description: The contact email for the account.
+            nullable: true
+          - name: BIRTH_DATE
+            type: DATE
+            description: The date of birth of the user
+            nullable: true
+          - name: LONGITUDE
+            type: DOUBLE PRECISION
+            description: This is the longitude of the user on sign-up. It might be updated in the future to the last seen location.
+            nullable: true
+          - name: LATITUDE
+            type: DOUBLE PRECISION
+            description: This is the latitude of the user on sign-up. It might be updated in the future to the last seen location.
+            nullable: true
+          - name: SOURCE
+            type: CHARACTER VARYING
+            description: 'The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter'
+            nullable: true
+          - name: ZIP
+            type: CHARACTER
+            description: The postal code of the account’s billing address
+            nullable: true
+          - name: STATE
+            type: CHARACTER
+            description: The state or province of the account’s billing address
+            nullable: true
+          - name: NAME
+            type: CHARACTER VARYING
+            description: The name of the user who owns an account
+            nullable: true
+          - name: CITY
+            type: CHARACTER VARYING
+            description: The city of the account’s billing address
+            nullable: true
+          - name: ADDRESS
+            type: CHARACTER VARYING
+            description: The street address of the account’s billing address
+            nullable: true
+      - name: PRODUCTS
+        description: Includes a catalog of all the products ever sold by the famed Sample Company.
+        columns:
+          - name: ID
+            type: BIGINT
+            description: The numerical product number. Only used internally. All external communication should use the title or EAN.
+            nullable: true
+          - name: PRICE
+            type: DOUBLE PRECISION
+            description: The list price of the product. Note that this is not always the price the product sold for due to discounts, promotions, etc.
+            nullable: true
+          - name: RATING
+            type: DOUBLE PRECISION
+            description: The average rating users have given the product. This ranges from 1 - 5
+            nullable: true
+          - name: CREATED_AT
+            type: TIMESTAMP
+            description: The date the product was added to our catalog.
+            nullable: true
+          - name: CATEGORY
+            type: CHARACTER VARYING
+            description: 'The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget'
+            nullable: true
+          - name: EAN
+            type: CHARACTER
+            description: The international article number. A 13 digit number uniquely identifying the product.
+            nullable: true
+          - name: TITLE
+            type: CHARACTER VARYING
+            description: The name of the product as it should be displayed to customers.
+            nullable: true
+          - name: VENDOR
+            type: CHARACTER VARYING
+            description: The source of the product.
+            nullable: true
+      - name: REVIEWS
+        description: Reviews that Sample Company customers have left on our products.
+        columns:
+          - name: ID
+            type: BIGINT
+            description: A unique internal identifier for the review. Should not be used externally.
+            nullable: true
+          - name: CREATED_AT
+            type: TIMESTAMP
+            description: The day and time a review was written by a user.
+            nullable: true
+          - name: BODY
+            type: CHARACTER VARYING
+            description: The review the user left. Limited to 2000 characters.
+            nullable: true
+          - name: PRODUCT_ID
+            type: INTEGER
+            description: The product the review was for
+            nullable: true
+            fk: PRODUCTS.ID
+          - name: RATING
+            type: SMALLINT
+            description: The rating (on a scale of 1-5) the user left.
+            nullable: true
+          - name: REVIEWER
+            type: CHARACTER VARYING
+            description: The user who left the review
+            nullable: true
