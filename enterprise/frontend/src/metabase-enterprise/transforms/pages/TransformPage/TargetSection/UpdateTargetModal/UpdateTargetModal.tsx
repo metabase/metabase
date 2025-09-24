@@ -31,6 +31,7 @@ import {
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
 import { SchemaFormSelect } from "metabase-enterprise/transforms/components/SchemaFormSelect";
+import { sourceDatabaseId } from "metabase-enterprise/transforms/utils";
 import type { Transform, UpdateTransformRequest } from "metabase-types/api";
 
 type UpdateTargetModalProps = {
@@ -83,12 +84,7 @@ function UpdateTargetForm({
   onClose,
 }: UpdateTargetFormProps) {
   const { source, target, table } = transform;
-  const databaseId =
-    source.type === "query"
-      ? source.query.database
-      : source.type === "python"
-        ? source["source-database"]
-        : undefined;
+  const databaseId = sourceDatabaseId(source);
   const [updateTransform] = useUpdateTransformMutation();
   const [deleteTransformTarget] = useDeleteTransformTargetMutation();
   const initialValues = useMemo(() => getInitialValues(transform), [transform]);
