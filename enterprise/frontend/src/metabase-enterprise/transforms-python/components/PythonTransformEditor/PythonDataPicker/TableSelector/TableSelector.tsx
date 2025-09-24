@@ -23,6 +23,8 @@ import type {
   TableId,
 } from "metabase-types/api";
 
+import { isConcreteTableId } from "../utils";
+
 import S from "./TableSelector.module.css";
 
 export function TableSelector({
@@ -125,8 +127,4 @@ function getDataPickerValue(table: Table | undefined) {
     db_id: table.db_id,
     schema: table.schema,
   };
-}
-
-function isConcreteTableId(id: TableId | undefined): id is ConcreteTableId {
-  return typeof id === "number";
 }

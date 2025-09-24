@@ -23,6 +23,7 @@ import { TableSelector } from "./TableSelector";
 import type { TableSelection } from "./types";
 import {
   getInitialTableSelections,
+  isConcreteTableId,
   selectionsToTableAliases,
   slugify,
 } from "./utils";
@@ -225,7 +226,7 @@ function SelectionInput({
   }
 
   function handleTableChange(table: Table | undefined) {
-    if (!table) {
+    if (!table || !isConcreteTableId(table.id)) {
       onChange({
         ...selection,
         tableId: undefined,

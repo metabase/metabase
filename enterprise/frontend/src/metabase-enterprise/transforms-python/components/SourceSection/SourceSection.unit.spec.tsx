@@ -1,6 +1,6 @@
 import { setupTableEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import type { Table, Transform } from "metabase-types/api";
+import type { ConcreteTableId, Table, Transform } from "metabase-types/api";
 import { createMockTable } from "metabase-types/api/mocks";
 import {
   createMockPythonTransformSource,
@@ -56,8 +56,8 @@ describe("SourceSection", () => {
       transform: createMockTransform({
         source: createMockPythonTransformSource({
           sourceTables: {
-            orders: TABLE_A.id,
-            customers: TABLE_B.id,
+            orders: TABLE_A.id as ConcreteTableId,
+            customers: TABLE_B.id as ConcreteTableId,
           },
         }),
       }),

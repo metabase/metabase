@@ -1,5 +1,9 @@
 import { slugify as toSlug } from "metabase/lib/formatting";
-import type { PythonTransformTableAliases } from "metabase-types/api";
+import type {
+  ConcreteTableId,
+  PythonTransformTableAliases,
+  TableId,
+} from "metabase-types/api";
 
 import type { TableSelection } from "./types";
 
@@ -58,4 +62,10 @@ export function slugify(
     }
   }
   return name;
+}
+
+export function isConcreteTableId(
+  id: TableId | undefined,
+): id is ConcreteTableId {
+  return typeof id === "number";
 }
