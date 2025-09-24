@@ -46,14 +46,14 @@ describe("useLogVersionInfo", () => {
   describe("SDK version compatibility", () => {
     it("should show a message when the SDK version is not compatible with the Metabase version", async () => {
       await setup({
-        sdkPackageVersion: "0.52.10",
-        sdkBundleVersion: "v1.55.0",
+        sdkPackageVersion: "0.55.10",
+        sdkBundleVersion: "v1.52.0",
       });
 
       expect(
         getWarnMessages().filter((message) =>
           message.includes(
-            "SDK package version 0.52.10 is not compatible with SDK bundle version v1.55.0, this might cause issues.",
+            "SDK package version 0.55.10 is not compatible with SDK bundle version v1.52.0, this might cause issues.",
           ),
         ),
       ).toHaveLength(1);
@@ -61,7 +61,7 @@ describe("useLogVersionInfo", () => {
 
     it("should not show a warning when the SDK version is compatible with the Metabase version", async () => {
       await setup({
-        sdkPackageVersion: "0.55.10",
+        sdkPackageVersion: "0.52.10",
         sdkBundleVersion: "v1.55.1",
       });
 

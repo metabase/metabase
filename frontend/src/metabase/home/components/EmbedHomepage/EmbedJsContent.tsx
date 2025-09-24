@@ -48,7 +48,7 @@ export const EmbedJsContent = ({
       >{t`Embedded analytics JS`}</Text>
       <Text mb="md">
         {/* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */}
-        {t`Embedded analytics JS is a JavaScript library built on top of Metabase’s Embedded analytics SDK for React, but it does not require using React or setting up full SDK embedding. Unlike with interactive embedding, where you embed the entire Metabase app in an iframe, Embedded analytics JS lets you choose from a set of predefined components like a single chart, a dashboard with optional drill-through, or query builder, and customize those components.`}
+        {t`A JavaScript library built on top of Metabase’s React SDK that lets you embed individual components (charts, dashboards, query builder) using plain JS — no React setup required. You get per-component controls like drill-through, parameters, downloads, theming.`}
       </Text>
       {showImage && (
         <EmbedJsImage

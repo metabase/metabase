@@ -12,6 +12,7 @@ export * from "./collection";
 export * from "./dashboard";
 export * from "./database";
 export * from "./dataset";
+export * from "./glossary";
 export * from "./entity-id";
 export * from "./field";
 export * from "./google";

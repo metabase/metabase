@@ -4,7 +4,7 @@
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
-   [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
+   [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup! delete-schema!]]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -146,33 +146,37 @@
 (deftest transform-schema-created-if-needed-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table :schemas]})
     (mt/dataset transforms-dataset/transforms-test
-      (with-transform-cleanup! [target-table {:type   "table"
-                                              :schema (str "transform_schema_" (mt/random-name))
-                                              :name   "widget_products"}]
-        (let [mp (mt/metadata-provider)
-              transforms-products (lib.metadata/table mp (mt/id :transforms_products))
-              products-category (lib.metadata/field mp (mt/id :transforms_products :category))
-              products-id (lib.metadata/field mp (mt/id :transforms_products :id))
-              query (-> (lib/query mp transforms-products)
-                        (lib/filter (lib/= products-category "Widget"))
-                        (lib/order-by products-id :asc))]
-          (mt/with-temp [:model/Transform transform {:name   "transform"
-                                                     :source {:type  :query
-                                                              :query query}
-                                                     :target target-table}]
-            (transforms.execute/run-mbql-transform! transform {:run-method :manual})
-            (let [_            (transforms.tu/wait-for-table (:name target-table) 10000)
-                  table-result (lib.metadata/table mp (mt/id (keyword (:name target-table))))
-                  query-result (->> (lib/query mp table-result)
-                                    (qp/process-query)
-                                    (mt/formatted-rows [int str str 2.0 str])
-                                    (sort-by first <))]
-              (is (= [[1 "Widget A" "Widget" 19.99 "2024-01-01T10:00:00Z"]
-                      [7 "Widget B" "Widget" 24.99 "2024-01-07T10:00:00Z"]
-                      [9 "Widget C" "Widget" 14.99 "2024-01-09T10:00:00Z"]
-                      [10 "Widget D" "Widget" 34.99 "2024-01-10T10:00:00Z"]
-                      [15 "Widget E" "Widget" 44.99 "2024-01-15T10:00:00Z"]]
-                     query-result)))))))))
+      (let [schema (str "transform_schema_" (mt/random-name))]
+        (try
+          (with-transform-cleanup! [target-table {:type   :table
+                                                  :schema schema
+                                                  :name   "widget_products"}]
+            (let [mp (mt/metadata-provider)
+                  transforms-products (lib.metadata/table mp (mt/id :transforms_products))
+                  products-category (lib.metadata/field mp (mt/id :transforms_products :category))
+                  products-id (lib.metadata/field mp (mt/id :transforms_products :id))
+                  query (-> (lib/query mp transforms-products)
+                            (lib/filter (lib/= products-category "Widget"))
+                            (lib/order-by products-id :asc))]
+              (mt/with-temp [:model/Transform transform {:name   "transform"
+                                                         :source {:type  :query
+                                                                  :query query}
+                                                         :target target-table}]
+                (transforms.execute/run-mbql-transform! transform {:run-method :manual})
+                (let [_            (transforms.tu/wait-for-table (:name target-table) 10000)
+                      table-result (lib.metadata/table mp (mt/id (keyword (:name target-table))))
+                      query-result (->> (lib/query mp table-result)
+                                        (qp/process-query)
+                                        (mt/formatted-rows [int str str 2.0 str])
+                                        (sort-by first <))]
+                  (is (= [[1 "Widget A" "Widget" 19.99 "2024-01-01T10:00:00Z"]
+                          [7 "Widget B" "Widget" 24.99 "2024-01-07T10:00:00Z"]
+                          [9 "Widget C" "Widget" 14.99 "2024-01-09T10:00:00Z"]
+                          [10 "Widget D" "Widget" 34.99 "2024-01-10T10:00:00Z"]
+                          [15 "Widget E" "Widget" 44.99 "2024-01-15T10:00:00Z"]]
+                         query-result))))))
+          (finally
+            (delete-schema! driver/*driver* (mt/db) schema)))))))
 
 ;; TODO(rileythomp, 2025-08-28): Make this test driver agnostic
 (deftest no-create-schema-permissions-test

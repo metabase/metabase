@@ -959,52 +959,6 @@
                  (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) {:cache_ttl nil})
                  (:cache_ttl (mt/user-http-request :crowberto :get 200 (str "card/" (u/the-id card)))))))))))
 
-(deftest pivot-card-cache-test
-  #_(testing "Pivot queries are cached correctly"
-      (let [existing-config (t2/select-one :model/CacheConfig :model_id 0 :model "root")]
-        (try
-          (when existing-config
-            (t2/delete! :model/CacheConfig :model_id 0 :model "root"))
-          (t2/delete! :model/QueryCache)
-          (mt/with-temp
-            [:model/CacheConfig _ {:model_id 0
-                                   :model "root"
-                                   :strategy "ttl"
-                                   :config {:multiplier 100
-                                            :min_duration_ms 1}}
-             :model/Card card (assoc (api.pivots/pivot-card)
-                                     :type :question
-                                     :name "Test Pivot Card")]
-            (testing "First pivot query execution is not cached"
-              (let [response (mt/user-http-request :rasta :post 202
-                                                   (format "card/pivot/%d/query" (u/the-id card))
-                                                   {:ignore_cache false})]
-                (is (nil? (:cached response)))
-                (is (some? (:data response)))))
-
-            (testing "Second pivot query execution is cached"
-              (let [response (mt/user-http-request :rasta :post 202
-                                                   (format "card/pivot/%d/query" (u/the-id card))
-                                                   {:ignore_cache false})]
-                (is (some? (:cached response)))
-                (is (some? (:data response)))))
-
-            (testing "Cached pivot query returns same results"
-              (let [uncached-response (mt/user-http-request :rasta :post 202
-                                                            (format "card/pivot/%d/query" (u/the-id card))
-                                                            {:ignore_cache true})
-
-                    cached-response (mt/user-http-request :rasta :post 202
-                                                          (format "card/pivot/%d/query" (u/the-id card))
-                                                          {:ignore_cache false})]
-                (is (nil? (:cached uncached-response)))
-                (is (some? (:cached cached-response)))
-                (is (= (get-in uncached-response [:data :rows])
-                       (get-in cached-response [:data :rows]))))))
-          (finally
-            (when existing-config
-              (t2/insert! :model/CacheConfig existing-config)))))))
-
 (deftest saving-card-fetches-correct-metadata
   (testing "make sure when saving a Card the correct query metadata is fetched (if incorrect)"
     (mt/with-non-admin-groups-no-root-collection-perms
