@@ -44,9 +44,12 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
-    // Check the Simple Embedding toggle
-    const toggles = screen.getAllByRole("switch");
-    await userEvent.click(toggles[1]); // Second toggle is for Simple SDK Embedding
+    // Enable Embedded Analytics JS
+    const toggle = await screen.findByRole("switch", {
+      name: "Embedded Analytics JS toggle",
+    });
+
+    await userEvent.click(toggle);
 
     // Should show the legalese modal
     expect(screen.getByRole("dialog")).toBeInTheDocument();
@@ -62,8 +65,11 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
       showSdkEmbedTerms: false,
     });
 
-    const toggles = screen.getAllByRole("switch");
-    await userEvent.click(toggles[1]); // Second toggle is for Simple SDK Embedding
+    const toggle = await screen.findByRole("switch", {
+      name: "Embedded Analytics JS toggle",
+    });
+
+    await userEvent.click(toggle);
     await userEvent.click(screen.getByText("Agree and continue"));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
