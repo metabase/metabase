@@ -75,6 +75,7 @@ export function parseListFromUrl<T>(
   if (Array.isArray(value)) {
     return value.map(parseItem).filter(isNotNull);
   }
+  return undefined;
 }
 
 export function parseNumberFromUrl(value: unknown) {
