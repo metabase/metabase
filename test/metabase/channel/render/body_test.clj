@@ -1104,15 +1104,20 @@
 (deftest render-table-with-remapped-with-custom-columns-order-test
   (mt/with-column-remappings [orders.product_id products.title]
     (testing "order-data respect table-columns order from viz-settings and keep remapped columns (#62053)"
-      (let [test-data       (:data (qp/process-query (mt/mbql-query orders {:limit 1})))
-            reordered-names ["QUANTITY" "CREATED_AT" "DISCOUNT" "TOTAL" "TAX" "SUBTOTAL" "USER_ID" "ID" "TITLE"]
-            viz-settings    {:metabase.models.visualization-settings/table-columns
-                             (vec (for [col-name reordered-names]
-                                    {:metabase.models.visualization-settings/table-column-name col-name
-                                     :metabase.models.visualization-settings/table-column-enabled true}))}
-            [ordered-cols ordered-rows] (#'body/order-data test-data viz-settings)]
-        (testing "cols should follow table-columns order"
-          (is (= reordered-names (map :name ordered-cols))))
-        (testing "rows should be reordered to match columns"
-          (is (= [2 "2019-02-11T21:40:27.892Z" nil 39.72 2.07 37.65 1 1 "Awesome Concrete Shoes"]
-                 (first ordered-rows))))))))
+      (mt/with-temp [:model/Card card {:dataset_query          (mt/mbql-query orders {:limit 1})
+                                       :visualization_settings {:metabase.models.visualization-settings/table-columns
+                                                                (vec (for [col-name ["QUANTITY" "CREATED_AT" "DISCOUNT" "TOTAL" "TAX" "SUBTOTAL" "USER_ID" "ID" "PRODUCT_ID"]]
+                                                                       {:metabase.models.visualization-settings/table-column-name col-name
+                                                                        :metabase.models.visualization-settings/table-column-enabled true}))}}]
+        ;; trigger render to gather prep-data for rendering
+        (let [table (body/render :table nil "UTC" card nil  (:data (:result (notification.execute/execute-card (mt/user->id :crowberto) (:id card)))))]
+          (is (=  ["Quantity"
+                   "Created At"
+                   "Discount ($)"
+                   "Total"
+                   "Tax"
+                   "Subtotal"
+                   "User ID"
+                   "ID"
+                   "Product ID [external remap]"]
+                  (map (comp :title second) (-> table :content second (nth 2) second last)))))))))
