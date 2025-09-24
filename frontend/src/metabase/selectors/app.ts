@@ -269,6 +269,10 @@ export const getIsDndAvailable = (state: State) => {
   return state.app.isDndAvailable;
 };
 
+export const getIsDarkMode = (state: State) => {
+  return state.app.isDarkMode;
+};
+
 export const getCustomHomePageDashboardId = createSelector(
   [getUser],
   (user) => user?.custom_homepage?.dashboard_id || null,

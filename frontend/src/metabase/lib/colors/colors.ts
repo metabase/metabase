@@ -189,6 +189,13 @@ const baseColors = {
   },
 };
 
+export const getColors = (isDarkMode: boolean) => {
+  return {
+    ...colors,
+    brand: isDarkMode ? baseColors.lobster[70] : colors.brand,
+  };
+};
+
 export const colors = {
   "accent-gray-dark": baseColors.orion[20],
   "accent-gray-light": baseColors.orion[5],
