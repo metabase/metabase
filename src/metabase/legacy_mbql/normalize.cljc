@@ -414,13 +414,13 @@
                                 u/->snake_case_en
                                 u/->kebab-case-en) k)
                            v (case k
-                               (:base_type
-                                :effective_type
-                                :semantic_type
+                               (:semantic_type
                                 :visibility_type
                                 :source
                                 :unit
                                 :lib/source) (keyword v)
+                               (:effective_type
+                                :base_type)  (or (keyword v) :type/*)
                                :field_ref    (normalize-field-ref v)
                                :fingerprint  (normalize-fingerprint v)
                                :binning_info (m/update-existing v :binning_strategy keyword)
