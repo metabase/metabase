@@ -3,6 +3,7 @@ import { match } from "ts-pattern";
 
 import { trackSchemaEvent } from "metabase/lib/analytics";
 import { isWithinIframe } from "metabase/lib/dom";
+import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 
 import type {
   SdkIframeEmbedMessage,
@@ -10,6 +11,11 @@ import type {
 } from "../types/embed";
 
 type Handler = (event: MessageEvent<SdkIframeEmbedMessage>) => void;
+
+type UsageAnalytics = {
+  usage: EmbeddedAnalyticsJsEventSchema;
+  embedHostUrl: string;
+};
 
 export function useSdkIframeEmbedEventBus({
   onSettingsChanged,
@@ -20,6 +26,9 @@ export function useSdkIframeEmbedEventBus({
 } {
   const [embedSettings, setEmbedSettings] =
     useState<SdkIframeEmbedSettings | null>(null);
+  const [usageAnalytics, setUsageAnalytics] = useState<UsageAnalytics | null>(
+    null,
+  );
 
   useEffect(() => {
     const messageHandler: Handler = (event) => {
@@ -33,7 +42,10 @@ export function useSdkIframeEmbedEventBus({
           onSettingsChanged?.(data);
         })
         .with({ type: "metabase.embed.reportAnalytics" }, ({ data }) => {
-          trackSchemaEvent("embedded_analytics_js", data);
+          setUsageAnalytics({
+            usage: data.usageAnalytics,
+            embedHostUrl: data.embedHostUrl,
+          });
         });
     };
 
@@ -47,5 +59,34 @@ export function useSdkIframeEmbedEventBus({
     };
   }, [onSettingsChanged]);
 
+  useEffect(() => {
+    if (embedSettings?.instanceUrl && usageAnalytics) {
+      const isEmbeddedAnalyticsJsPreview = isMetabaseInstance(
+        embedSettings.instanceUrl,
+        usageAnalytics.embedHostUrl,
+      );
+      if (!isEmbeddedAnalyticsJsPreview) {
+        trackSchemaEvent("embedded_analytics_js", usageAnalytics.usage);
+      }
+    }
+  }, [embedSettings?.instanceUrl, usageAnalytics]);
+
   return { embedSettings };
+}
+
+export function isMetabaseInstance(instanceUrl: string, embedHostUrl: string) {
+  const instanceUrlObject = new URL(instanceUrl);
+  const embedHostObject = new URL(embedHostUrl);
+
+  const normalizedInstanceUrl =
+    instanceUrlObject.host + instanceUrlObject.pathname;
+  const normalizedEmbedHostUrl =
+    embedHostObject.host + embedHostObject.pathname;
+
+  /**
+   * This is to ensure Metabase at Subpath works. e.g. https://example.com/metabase and https://example.com/embed
+   * should be considered as a separate host. But https://example.com/metabase and https://example.com/metabase/dashboard/1
+   * are the same host.
+   */
+  return normalizedEmbedHostUrl.startsWith(normalizedInstanceUrl);
 }
