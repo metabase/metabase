@@ -82,11 +82,7 @@
       (let [schema (type->schema entity-type)]
         (if-not schema
           (throw (ex-info (str "Unknown type: " entity-type) {:type entity-type}))
-          ;; First decode, then validate
-          (let [decoder (m/decoder schema mt/json-transformer)
-                decoded (decoder representation')]
-            (mu/validate-throw schema decoded)
-            decoded)))
+          (mu/validate-throw schema representation')))
       (throw (ex-info "Missing required field: type" {:representation representation})))))
 
 ;;;;;;;;;;;
