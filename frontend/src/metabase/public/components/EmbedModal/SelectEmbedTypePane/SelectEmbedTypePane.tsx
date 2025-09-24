@@ -50,8 +50,6 @@ export function SelectEmbedTypePane({
   getPublicUrl,
   goToNextStep,
 }: SelectEmbedTypePaneProps) {
-  // Selecting "Embedded Analytics JS" should link to the embed flow.
-  // TODO(EMB-848): pre-select dashboard and question when embed flow is opened from the embed sharing modal
   const embedFlowUrl = useMemo(() => {
     const params = new URLSearchParams();
 
@@ -155,19 +153,20 @@ export function SelectEmbedTypePane({
             illustration={<EmbeddedJsIllustration />}
             isDisabled={isEmbedJsAvailable && !isEmbedJsEnabled}
             disabledLink="/admin/embedding/modular"
+            actionHint={
+              !isEmbedJsAvailable ? (
+                <UpsellEmbedJsCta embedFlowUrl={embedFlowUrl} />
+              ) : undefined
+            }
           >
             <List>
               <List.Item>{t`A simple way to embed using plain JavaScript`}</List.Item>
               <List.Item>{t`Embed static or interactive dashboards and charts with drill-down, the query builder or let people browse and manage collections.`}</List.Item>
               <List.Item>
-                {t`Advanced customizations for styling.`}{" "}
+                {t`Advanced customizations for styling.`} <br />{" "}
                 {!isEmbedJsAvailable && <LearnMore url={url} />}
               </List.Item>
             </List>
-
-            {!isEmbedJsAvailable && (
-              <UpsellEmbedJsCta embedFlowUrl={embedFlowUrl} />
-            )}
           </SharingPaneButton>
         </MaybeLinkEmbedJs>
 

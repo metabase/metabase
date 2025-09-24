@@ -6,7 +6,7 @@ import {
   useState,
 } from "react";
 import { useLocation } from "react-use";
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 import _ from "underscore";
 
 import { useSearchQuery } from "metabase/api";
@@ -60,17 +60,33 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const modelCount = searchData?.total ?? 0;
 
-  // Embedding Hub: pre-specifies the auth method to use
-  const authMethodOverride = useMemo(() => {
-    return new URLSearchParams(location.search).get("auth_method");
+  // EmbeddingHub passes `auth_method`.
+  // EmbedContentModal passes `resource_type` and `resource_id`.
+  const urlParams = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+
+    return {
+      authMethod: params.get("auth_method"),
+      resourceType: params.get("resource_type"),
+      resourceId: params.get("resource_id"),
+    };
   }, [location.search]);
 
   const defaultSettings = useMemo(() => {
-    return getDefaultSdkIframeEmbedSettings(
-      "dashboard",
-      recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
-    );
-  }, [recentDashboards]);
+    return match([urlParams.resourceType, urlParams.resourceId])
+      .with(["dashboard", P.nonNullable], ([, id]) =>
+        getDefaultSdkIframeEmbedSettings("dashboard", id),
+      )
+      .with(["question", P.nonNullable], ([, id]) =>
+        getDefaultSdkIframeEmbedSettings("chart", id),
+      )
+      .otherwise(() =>
+        getDefaultSdkIframeEmbedSettings(
+          "dashboard",
+          recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
+        ),
+      );
+  }, [recentDashboards, urlParams]);
 
   const [currentStep, setCurrentStep] = useState<SdkIframeEmbedSetupStep>(
     "select-embed-experience",
@@ -176,8 +192,8 @@ export const SdkIframeEmbedSetupProvider = ({
 
         // Override the persisted settings if `auth_method` is specified.
         // This is used for Embedding Hub.
-        ...(authMethodOverride !== null && {
-          useExistingUserSession: authMethodOverride === "user_session",
+        ...(urlParams.authMethod !== null && {
+          useExistingUserSession: urlParams.authMethod === "user_session",
         }),
       });
 
@@ -188,7 +204,7 @@ export const SdkIframeEmbedSetupProvider = ({
     isEmbedSettingsLoaded,
     settings,
     isRecentsLoading,
-    authMethodOverride,
+    urlParams,
   ]);
 
   return (
