@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.api
   (:require
    [clojure.string :as str]
+   [diehard.core :as dh]
    [medley.core :as m]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-change-log :as change-log]
@@ -11,6 +12,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
@@ -18,16 +20,38 @@
 
 (set! *warn-on-reflection* true)
 
+(def cluster-lock ::remote-sync-task)
+
+(defn- run-async!
+  [ttype f]
+  (let [{task-id :id
+         existing? :existing?}
+        (cluster-lock/with-cluster-lock cluster-lock
+          (if-let [{id :id} (remote-sync.task/current-task)]
+            {:existing? true :id id}
+            (remote-sync.task/create-sync-task! ttype api/*current-user-id*)))]
+    (api/check-400 (not existing?) "Remote sync in progress")
+    (u.jvm/in-virtual-thread*
+     (dh/with-timeout {:interrupt? true
+                       :timeout-ms (settings/remote-sync-task-time-limit-ms)}
+       (let [result (f task-id)]
+         (case (:status result)
+           :success (remote-sync.task/complete-sync-task! task-id)
+           :error (remote-sync.task/fail-sync-task! task-id (:message result))
+           (remote-sync.task/fail-sync-task! task-id "Unexpected Error")))))
+    task-id))
+
 (defn- async-import!
   [branch]
-  (let [{task-id :id} (remote-sync.task/create-sync-task! "import" api/*current-user-id*)]
-    (u.jvm/in-virtual-thread*
-     (let [result (impl/import! task-id branch)]
-       (case (:status result)
-         :success (remote-sync.task/complete-sync-task! task-id)
-         :error (remote-sync.task/fail-sync-task! task-id (:message result))
-         (remote-sync.task/fail-sync-task! task-id "Unexpected Error"))))
-    task-id))
+  (run-async! "import" (fn [task-id] (impl/import! (source/source-from-settings) task-id branch))))
+
+(defn- async-export!
+  [branch message collection]
+  (run-async! "export" (fn [task-id] (impl/export! (source/source-from-settings)
+                                                   task-id
+                                                   branch
+                                                   message
+                                                   collection))))
 
 (api.macros/defendpoint :post "/import"
   "Reload Metabase content from Git repository source of truth.
@@ -86,17 +110,15 @@
   (when-not (settings/remote-sync-enabled)
     (throw (ex-info "Git sync is paused. Please resume it to perform export operations."
                     {:status-code 400})))
-  (let [{task-id :id} (remote-sync.task/create-sync-task! "export" api/*current-user-id*)]
-    (u.jvm/in-virtual-thread*
-     (let [result (impl/export! (or branch (settings/remote-sync-branch))
-                                (or message "Exported from Metabase")
-                                (if (some? collection_id) [(t2/select-one-fn :entity_id [:model/Collection :entity_id] :id collection_id)] nil))]
-       (case (:status result)
-         :success (remote-sync.task/complete-sync-task! task-id)
-         :error (remote-sync.task/fail-sync-task! task-id (:message result))
-         (remote-sync.task/fail-sync-task! task-id "Unexpected Error"))))
-    {:message "Export task started"
-     :task_id task-id}))
+  {:message "Export task started"
+   :task_id (async-export! (or branch (settings/remote-sync-branch))
+                           (or message "Exported from Metabase")
+                           (if (some? collection_id) [(t2/select-one-fn :entity_id [:model/Collection :entity_id] :id collection_id)] nil))})
+
+(api.macros/defendpoint :get "/current-task"
+  "Get the current sync task"
+  []
+  (remote-sync.task/most-recent-task))
 
 (api.macros/defendpoint :put "/settings"
   "Update Git Sync related settings. You must be a superuser to do this."

@@ -87,10 +87,10 @@
 
 (defn import!
   "Reloads the Metabase entities from the git repo"
-  [task-id branch & [collections]]
+  [source task-id branch & [collections]]
   (log/info "Reloading remote entities from the remote source")
   (let [sync-timestamp (t/instant)]
-    (if-let [source (source/source-from-settings)]
+    (if source
       (try
         ;; Load all entities from Git first - this handles creates/updates via entity_id matching
         (let [load-result (u/prog1 (serdes/with-cache
@@ -133,10 +133,10 @@
 
 (defn export!
   "Exports the synced collections to the source repo"
-  ([task-id branch message]
-   (export! task-id branch message nil))
-  ([task-id branch message collections]
-   (if-let [source (source/source-from-settings)]
+  ([source task-id branch message]
+   (export! source task-id branch message nil))
+  ([source task-id branch message collections]
+   (if source
      (let [collections (or (seq collections) (t2/select-fn-set :entity_id :model/Collection :type "remote-synced" :location "/"))]
        (try
          (serdes/with-cache

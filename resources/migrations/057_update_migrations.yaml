@@ -1605,7 +1605,8 @@ databaseChangeLog:
                   type: ${timestamp_type}
                   remarks: Timestamp when the sync task started
                   constraints:
-                    nullable: true
+                    nullable: false
+                  defaultValueComputed: current_timestamp
               - column:
                   name: ended_at
                   type: ${timestamp_type}
@@ -1617,7 +1618,8 @@ databaseChangeLog:
                   type: ${timestamp_type}
                   remarks: Timestamp of the last progress update
                   constraints:
-                    nullable: true
+                    nullable: false
+                  defaultValueComputed: current_timestamp
               - column:
                   name: initiated_by
                   type: int
