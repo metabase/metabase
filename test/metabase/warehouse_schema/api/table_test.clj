@@ -868,7 +868,7 @@
                                       :type          :model
                                       :dataset_query (mt/mbql-query venues)}]
       (let [card-virtual-table-id (str "card__" (:id model))
-            metric-query          {:database 2
+            metric-query          {:database (mt/id)
                                    :type     "query"
                                    :query    {:source-table card-virtual-table-id
                                               :aggregation  [["count"]]}}]
