@@ -24,6 +24,13 @@
   (api/check-superuser)
   (python-library/update-python-library-source! path (:source body)))
 
+(api.macros/defendpoint :get "/library-completions/:path"
+  "Get completion information for functions in a Python library by path."
+  [{:keys [path]} :- [:map [:path :string]]
+   _query-params]
+  (api/check-superuser)
+  (python-library/get-python-library-completions path))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transforms-python` routes."
   (handlers/routes
