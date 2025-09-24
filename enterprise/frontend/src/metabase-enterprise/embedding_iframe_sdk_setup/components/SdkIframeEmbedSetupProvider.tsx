@@ -60,17 +60,37 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const modelCount = searchData?.total ?? 0;
 
-  // Embedding Hub: pre-specifies the auth method to use
-  const authMethodOverride = useMemo(() => {
-    return new URLSearchParams(location.search).get("auth_method");
+  // EmbeddingHub passes `auth_method`.
+  // EmbedContentModal passes `resource_type` and `resource_id`.
+  const urlParams = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+
+    return {
+      authMethod: params.get("auth_method"),
+      resourceType: params.get("resource_type"),
+      resourceId: params.get("resource_id"),
+    };
   }, [location.search]);
 
   const defaultSettings = useMemo(() => {
+    const { resourceType, resourceId } = urlParams;
+
+    if (resourceType === "dashboard") {
+      return getDefaultSdkIframeEmbedSettings(
+        "dashboard",
+        resourceId ?? EMBED_FALLBACK_DASHBOARD_ID,
+      );
+    }
+
+    if (resourceType === "question" && resourceId) {
+      return getDefaultSdkIframeEmbedSettings("chart", resourceId);
+    }
+
     return getDefaultSdkIframeEmbedSettings(
       "dashboard",
       recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
     );
-  }, [recentDashboards]);
+  }, [recentDashboards, urlParams]);
 
   const [currentStep, setCurrentStep] = useState<SdkIframeEmbedSetupStep>(
     "select-embed-experience",
@@ -176,8 +196,8 @@ export const SdkIframeEmbedSetupProvider = ({
 
         // Override the persisted settings if `auth_method` is specified.
         // This is used for Embedding Hub.
-        ...(authMethodOverride !== null && {
-          useExistingUserSession: authMethodOverride === "user_session",
+        ...(urlParams.authMethod !== null && {
+          useExistingUserSession: urlParams.authMethod === "user_session",
         }),
       });
 
@@ -188,7 +208,7 @@ export const SdkIframeEmbedSetupProvider = ({
     isEmbedSettingsLoaded,
     settings,
     isRecentsLoading,
-    authMethodOverride,
+    urlParams,
   ]);
 
   return (

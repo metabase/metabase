@@ -95,3 +95,18 @@ describe("Embed flow > forward and backward navigation", () => {
     expect(screen.getByRole("button", { name: "Back" })).toBeDisabled();
   });
 });
+
+describe("Embed flow > pre-selection via url parameter", () => {
+  it("pre-selects question when resource_type=question is in URL", async () => {
+    setup({
+      simpleEmbeddingEnabled: true,
+      urlSearchParams: "?resource_type=question&resource_id=456",
+    });
+
+    const chartRadio = screen.getByRole("radio", { name: /Chart/ });
+    expect(chartRadio).toBeChecked();
+
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByText("Select a chart to embed")).toBeInTheDocument();
+  });
+});

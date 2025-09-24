@@ -50,8 +50,6 @@ export function SelectEmbedTypePane({
   getPublicUrl,
   goToNextStep,
 }: SelectEmbedTypePaneProps) {
-  // Selecting "Embedded Analytics JS" should link to the embed flow.
-  // TODO(EMB-848): pre-select dashboard and question when embed flow is opened from the embed sharing modal
   const embedFlowUrl = useMemo(() => {
     const params = new URLSearchParams();
 
