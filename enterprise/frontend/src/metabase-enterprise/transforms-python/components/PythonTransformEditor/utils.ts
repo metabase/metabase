@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 
+import { getErrorMessage } from "metabase/api/utils";
 import { useExecutePythonMutation } from "metabase-enterprise/api/transform-python";
 import type {
   ExecutePythonTransformResponse,
@@ -193,25 +194,10 @@ export function useTestPythonTransform(
           setData({ error: t`Python script execution was canceled` });
           return;
         }
-
-        if ("message" in error && typeof error.message === "string") {
-          setData({ error: error.message });
-          return;
-        }
-
-        if (
-          "data" in error &&
-          typeof error.data === "object" &&
-          error.data !== null &&
-          "error" in error.data &&
-          typeof error.data.error === "string"
-        ) {
-          setData({ error: error?.data?.error });
-          return;
-        }
       }
 
-      setData({ error: t`An unknown error occurred` });
+      const errorMessage = getErrorMessage(error, t`An unknown error occurred`);
+      setData({ error: errorMessage });
     }
   };
 
