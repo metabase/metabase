@@ -1057,7 +1057,7 @@
                     (is (str/includes? svg "#0005FF"))))))))))))
 
 (deftest order-data-handles-duplicated-table-columns-test
-  (testing "order-data function handles duplicated table columns correctly"
+  (testing "order-data function handles duplicated table columns correctly (#62053)"
     (let [test-cols [{:name "ID" :display_name "ID" :base_type :type/BigInteger}
                      {:name "NAME" :display_name "Name" :base_type :type/Text}]
           test-rows [[1 "Alice"] [2 "Bob"]]
@@ -1079,3 +1079,40 @@
         (is (= 2 (count ordered-rows)))
         (is (= [1 "Alice"] (first ordered-rows)))
         (is (= [2 "Bob"] (second ordered-rows)))))))
+
+(deftest order-data-respect-table-columns-order-test
+  (testing "order-data respect table-columns order from viz-settings (#62053)"
+    (let [col-names ["ID" "NAME" "EMAIL" "PHONE" "ADDRESS" "CITY" "STATE" "ZIP" "COUNTRY" "CREATED_AT"]
+          test-cols (vec (for [col-name col-names]
+                           {:name         col-name
+                            :display_name col-name
+                            :base_type    :type/Text}))
+          test-rows [[1 "Alice" "alice@example.com" "555-1234" "123 Main St" "Boston" "MA" "02101" "USA" "2024-01-01"]]
+          test-data {:cols test-cols :rows test-rows}
+          reordered-names ["EMAIL" "NAME" "CITY" "STATE" "ZIP" "ID" "PHONE" "ADDRESS" "COUNTRY" "CREATED_AT"]
+          viz-settings {:metabase.models.visualization-settings/table-columns
+                        (vec (for [col-name reordered-names]
+                               {:metabase.models.visualization-settings/table-column-name col-name
+                                :metabase.models.visualization-settings/table-column-enabled true}))}
+          [ordered-cols ordered-rows] (#'body/order-data test-data viz-settings)]
+      (testing "cols should follow table-columns order"
+        (is (= reordered-names (map :name ordered-cols))))
+      (testing "rows should be reordered to match columns"
+        (is (= ["alice@example.com" "Alice" "Boston" "MA" "02101" 1 "555-1234" "123 Main St" "USA" "2024-01-01"]
+               (first ordered-rows)))))))
+
+(deftest render-table-with-remapped-with-custom-columns-order-test
+  (mt/with-column-remappings [orders.product_id products.title]
+    (testing "order-data respect table-columns order from viz-settings and keep remapped columns (#62053)"
+      (let [test-data       (:data (qp/process-query (mt/mbql-query orders {:limit 1})))
+            reordered-names ["QUANTITY" "CREATED_AT" "DISCOUNT" "TOTAL" "TAX" "SUBTOTAL" "USER_ID" "ID" "TITLE"]
+            viz-settings    {:metabase.models.visualization-settings/table-columns
+                             (vec (for [col-name reordered-names]
+                                    {:metabase.models.visualization-settings/table-column-name col-name
+                                     :metabase.models.visualization-settings/table-column-enabled true}))}
+            [ordered-cols ordered-rows] (#'body/order-data test-data viz-settings)]
+        (testing "cols should follow table-columns order"
+          (is (= reordered-names (map :name ordered-cols))))
+        (testing "rows should be reordered to match columns"
+          (is (= [2 "2019-02-11T21:40:27.892Z" nil 39.72 2.07 37.65 1 1 "Awesome Concrete Shoes"]
+                 (first ordered-rows))))))))
