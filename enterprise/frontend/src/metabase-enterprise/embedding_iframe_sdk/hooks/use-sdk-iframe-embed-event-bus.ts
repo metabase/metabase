@@ -63,6 +63,7 @@ export function useSdkIframeEmbedEventBus({
 
           if (isExpectedMessage) {
             window.clearTimeout(waitTimeout);
+            window.removeEventListener("message", messageHandler);
             resolve(message.data.result as TResult);
           }
         };
