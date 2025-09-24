@@ -75,6 +75,7 @@ export type SearchClickEvent = ValidateEvent<{
   search_engine: string | null;
   request_id: string | null;
   entity_model: string | null;
+  entity_id: number | null;
   search_term_hash: string | null;
   search_term: string | null;
 }>;
