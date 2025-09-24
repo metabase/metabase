@@ -20,6 +20,11 @@ import type {
   TimelineEvent,
 } from "metabase-types/api";
 
+type DataReferenceStackItem = {
+  type: string;
+  item: unknown;
+};
+
 interface NativeQueryRightSidebarProps {
   question: Question;
   timelineEvents: TimelineEvent[];
@@ -51,6 +56,9 @@ interface NativeQueryRightSidebarProps {
   getEmbeddedParameterVisibility: (
     slug: string,
   ) => EmbeddingParameterVisibility;
+  dataReferenceStack: DataReferenceStackItem[];
+  popDataReferenceStack: () => void;
+  pushDataReferenceStack: () => void;
 }
 
 export const NativeQueryRightSidebar = (

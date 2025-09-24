@@ -55,6 +55,7 @@ import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   DatasetColumn,
   Field,
+  ModelIndex,
   RawSeries,
   ResultsMetadata,
   VisualizationSettings,
@@ -72,6 +73,10 @@ import { EditorTabs } from "./EditorTabs";
 import { EDITOR_TAB_INDEXES } from "./constants";
 
 type MetadataDiff = Record<string, Partial<Field>>;
+type DataReferenceStackItem = {
+  type: string;
+  item: unknown;
+};
 
 export type DatasetEditorInnerProps = {
   question: Question;
@@ -115,6 +120,9 @@ export type DatasetEditorInnerProps = {
   toggleDataReference: () => void;
   toggleSnippetSidebar: () => void;
   forwardedRef?: React.Ref<HTMLDivElement>;
+  dataReferenceStack: DataReferenceStackItem[];
+  popDataReferenceStack: () => void;
+  pushDataReferenceStack: () => void;
 };
 
 const INITIAL_NOTEBOOK_EDITOR_HEIGHT = 500;
@@ -136,7 +144,7 @@ function mapStateToProps(state: any) {
 const mapDispatchToProps = { setDatasetEditorTab };
 
 function getSidebar(
-  props: DatasetEditorInnerProps & { modelIndexes?: unknown },
+  props: DatasetEditorInnerProps & { modelIndexes?: ModelIndex[] },
   {
     datasetEditorTab,
     isQueryError,

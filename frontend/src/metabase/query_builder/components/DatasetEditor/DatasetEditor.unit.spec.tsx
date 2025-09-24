@@ -60,6 +60,9 @@ const defaultDatasetEditorProps = {
   toggleSnippetSidebar: noop,
   toggleTemplateTagsEditor: noop,
   runDirtyQuestionQuery: noop,
+  dataReferenceStack: [],
+  popDataReferenceStack: noop,
+  pushDataReferenceStack: noop,
 };
 
 const renderDatasetEditor = async (card: Card | UnsavedCard) => {
