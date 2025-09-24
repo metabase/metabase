@@ -6,7 +6,7 @@
   Implementation-agnostic! The graph representation is wrapped by a protocol exported from this module, which can be
   used to write graph searches which can run in memory, against AppDB, on the filesystem, etc.
 
-  Each graph defines an arbitrary **key**. This can be any map key, such as a number, a `[type id]` pair, etc."
+  Each graph defines an arbitrary **key**. This can be any hash map key, such as a number, a `[type id]` pair, etc."
   (:require
    #?@(:cljs ([flatland.ordered.set :as oset]))
    [metabase.util.malli.registry :as mr]
