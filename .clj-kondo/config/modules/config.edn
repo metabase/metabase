@@ -1625,6 +1625,7 @@
    :api  #{metabase-enterprise.comments.api
            metabase-enterprise.comments.init}
    :uses #{api
+           channel
            events
            models
            request
@@ -1812,10 +1813,12 @@
            pulse
            query-processor
            request
+           search
            server
            settings
            sync
            system
+           task
            users
            util
            warehouse-schema
