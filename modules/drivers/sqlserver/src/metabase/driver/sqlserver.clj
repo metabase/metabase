@@ -56,8 +56,6 @@
                               :now                                    true
                               :regex                                  false
                               :test/jvm-timezone-setting              false
-                              :metadata/table-existence-check         true
-                              :transforms/table                       true
                               :jdbc/statements                        false}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 

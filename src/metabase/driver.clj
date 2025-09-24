@@ -714,12 +714,6 @@
     ;; Does this driver support Metabase's database routing feature?
     :database-routing
 
-    ;; Does this driver support replication?
-    :database-replication
-
-    ;; whether this driver supports checking table writeable permissions
-    :metadata/table-writable-check
-
     ;; Does this driver support creating a java.sql.Statement via a Connection?
     :jdbc/statements})
 
