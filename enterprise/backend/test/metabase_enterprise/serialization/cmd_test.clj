@@ -190,7 +190,7 @@
                          "settings"        true
                          "field_values"    false
                          "duration_ms"     pos?
-                         "count"           3
+                         "count"           11
                          "source"          "cli"
                          "secrets"         false
                          "success"         true
@@ -205,8 +205,8 @@
                          "direction"     "import"
                          "duration_ms"   pos?
                          "source"        "cli"
-                         "models"        "Card,Collection,Setting"
-                         "count"         3
+                         "models"        "Card,Collection,Setting,TransformJob,TransformTag"
+                         "count"         11
                          "success"       true
                          "error_message" nil}
                         (-> (snowplow-test/pop-event-data-and-user-id!) first :data))))

@@ -20,7 +20,7 @@ import {
   getIcon,
 } from "metabase/lib/icon";
 import { useDispatch } from "metabase/lib/redux";
-import { type UrlableModel, modelToUrl } from "metabase/lib/urls/modelToUrl";
+import { modelToUrl } from "metabase/lib/urls/modelToUrl";
 import { extractEntityId } from "metabase/lib/urls/utils";
 import { Icon } from "metabase/ui";
 import {
@@ -39,7 +39,11 @@ import type {
   MentionableUser,
   Table,
 } from "metabase-types/api";
-import { isObject } from "metabase-types/guards";
+
+import {
+  entityToUrlableModel,
+  isMentionableUser,
+} from "../shared/suggestionUtils";
 
 import styles from "./SmartLinkNode.module.css";
 
@@ -155,6 +159,10 @@ export const SmartLink = Node.create<{
         default: null,
         parseHTML: (element) => element.getAttribute("data-label"),
       },
+      href: {
+        default: "/",
+        parseHTML: (element) => element.getAttribute("data-href"),
+      },
     };
   },
 
@@ -170,22 +178,25 @@ export const SmartLink = Node.create<{
     ];
   },
 
-  renderHTML({ node, HTMLAttributes }) {
-    const { entityId, model } = node.attrs;
+  renderHTML({ node }) {
+    const { entityId, model, label, href } = node.attrs;
 
     return [
-      "span",
+      "a",
       mergeAttributes(
-        HTMLAttributes,
         {
           "data-type": "smart-link",
           "data-entity-id": entityId,
           "data-model": model,
-          "data-label": node.attrs.label ?? undefined,
+          "data-label": label ?? undefined,
+          "data-site-url": this.options.siteUrl,
+          href: this.options.siteUrl + href ?? "",
+          style: "text-decoration: none;",
         },
         this.options.HTMLAttributes,
       ),
-      `{% entity id="${entityId}" model="${model}" %}`,
+      // 0 is Tiptap’s “content placeholder,” which tells it to render the node’s inner content.
+      label ?? 0,
     ];
   },
 
@@ -406,29 +417,6 @@ export const SmartLinkComponent = memo(
 
 SmartLinkComponent.displayName = "SmartLinkComponent";
 
-function entityToUrlableModel(
-  entity: SmartLinkEntity,
-  model: SuggestionModel | null,
-): UrlableModel {
-  const result: UrlableModel = {
-    id: entity.id as number, // it is string | number in reality, but then gets casted to a string in "modelToUrl"
-    model: (entity as Dashboard).model || model || "",
-    name: isMentionableUser(entity) ? entity.common_name : entity.name,
-  };
-
-  if ("db_id" in entity && entity.db_id) {
-    result.database = {
-      id: entity.db_id,
-    };
-  }
-
-  if ("database_id" in entity && entity.database_id) {
-    result.database = { id: entity.database_id };
-  }
-
-  return result;
-}
-
 function entityToObjectWithModel(
   entity: SmartLinkEntity,
   model: SuggestionModel | null,
@@ -438,8 +426,4 @@ function entityToObjectWithModel(
     display: (entity as Card).display as CardDisplayType,
     is_personal: (entity as Collection).is_personal,
   };
-}
-
-function isMentionableUser(value: unknown): value is MentionableUser {
-  return isObject(value) && typeof value.common_name === "string";
 }

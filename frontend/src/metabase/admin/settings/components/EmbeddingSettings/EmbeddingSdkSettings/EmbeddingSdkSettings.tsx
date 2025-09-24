@@ -255,7 +255,7 @@ export function EmbeddingSdkSettings() {
               {isEmbeddingAvailable && (
                 <HoverCard position="bottom">
                   <HoverCard.Target>
-                    <Icon name="info_filled" c="text-medium" cursor="pointer" />
+                    <Icon name="info" c="text-medium" cursor="pointer" />
                   </HoverCard.Target>
 
                   <HoverCard.Dropdown>
@@ -302,11 +302,7 @@ export function EmbeddingSdkSettings() {
       >
         <Flex gap="sm">
           <Box>
-            <Icon
-              color="var(--mb-color-text-secondary)"
-              name="info_filled"
-              mt="2px"
-            />
+            <Icon color="var(--mb-color-text-secondary)" name="info" mt="2px" />
           </Box>
 
           <Text c="text-medium" lh="lg">
