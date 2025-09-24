@@ -268,13 +268,15 @@
   (let [{:keys [used-fields returned-fields bad-sql]} (->> (macaw/parsed-query native-query)
                                                            macaw/->ast
                                                            (sql.references/field-references driver))
-        check-fields #(every? (fn [col-spec]
+        check-fields #(mapcat (fn [col-spec]
                                 (->> (resolve-field driver metadata-provider col-spec)
-                                     (every? (comp not ::bad-reference))))
+                                     (filter ::bad-reference)))
                               %)]
-    (and (not bad-sql)
-         (check-fields used-fields)
-         (check-fields returned-fields))))
+    (-> (concat (when bad-sql
+                  [{:error :bad-sql}])
+                (check-fields used-fields)
+                (check-fields returned-fields))
+        distinct)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Convenience Imports                                               |

@@ -352,6 +352,7 @@
  [lib.metadata.composed-provider
   composed-metadata-provider]
  [lib.native
+  add-parameters-for-template-tags
   engine
   extract-template-tags
   has-template-tag-variables?

@@ -326,3 +326,48 @@
   [query :- ::lib.schema/query]
   (assert-native-query (lib.util/query-stage query 0))
   (:engine (lib.metadata/database query)))
+
+(defn- get-parameter-value [tag-name {:keys [type id widget-type]}]
+  ;; note that the actual values chosen are completely arbitrary.  We just need to provide some
+  ;; value so that the query will compile.
+  (case type
+    :text {:id id,
+           :type :string/=,
+           :value ["foo"],
+           :target ["variable" ["template-tag" tag-name]]}
+    :number {:id id,
+             :type :number/=,
+             :value ["0"],
+             :target ["variable" ["template-tag" tag-name]]}
+    :date {:id id,
+           :type :date/single,
+           :value "1970-01-01",
+           :target ["variable" ["template-tag" tag-name]]}
+    :boolean {:id id,
+              :type :boolean/=,
+              :value [false],
+              :target ["variable" ["template-tag" tag-name]]}
+    :dimension {:id id,
+                :type :string/=,
+                :value ["foo"],
+                :target ["dimension" ["template-tag" tag-name]]}
+    :temporal-unit {:id id,
+                    :type :temporal-unit,
+                    :value "week",
+                    :target ["dimension" ["template-tag" tag-name]]}
+    nil))
+
+(defn add-parameters-for-template-tags
+  [query]
+  (let [template-tags (-> (lib.util/query-stage query 0)
+                          :template-tags)
+        parameters (:parameters query)
+        params-by-id (m/index-by :id parameters)
+        new-parameters (into []
+                             (keep (fn [[tag-name {:keys [id] :as tag}]]
+                                     (or (params-by-id id)
+                                         (get-parameter-value tag-name tag))))
+
+                             template-tags)]
+    (cond-> query
+      (seq new-parameters) (assoc :parameters new-parameters))))

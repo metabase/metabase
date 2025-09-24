@@ -67,8 +67,8 @@
                   driver     (:engine (lib.metadata/database provider))
                   bad-refs   (case query-type
                                :mbql.stage/mbql   (lib/find-bad-refs query)
-                               :mbql.stage/native (not (deps.native/validate-native-query driver provider query)))]]
-      (when bad-refs
+                               :mbql.stage/native (deps.native/validate-native-query driver provider query))]]
+      (when (seq bad-refs)
         (vswap! errors assoc-in [entity-type id] bad-refs)))
     @errors))
 
