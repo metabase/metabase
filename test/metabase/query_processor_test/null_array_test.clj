@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.null-array-test
+(ns ^:mb/driver-tests metabase.query-processor-test.null-array-test
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]

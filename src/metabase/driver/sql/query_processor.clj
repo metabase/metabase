@@ -521,15 +521,15 @@
 
 (defmethod unix-timestamp->honeysql [:sql :milliseconds]
   [driver _ expr]
-  (unix-timestamp->honeysql driver :seconds (h2x// expr 1000)))
+  (unix-timestamp->honeysql driver :seconds (h2x// expr 1000.0)))
 
 (defmethod unix-timestamp->honeysql [:sql :microseconds]
   [driver _ expr]
-  (unix-timestamp->honeysql driver :seconds (h2x// expr 1000000)))
+  (unix-timestamp->honeysql driver :seconds (h2x// expr 1000000.0)))
 
 (defmethod unix-timestamp->honeysql [:sql :nanoseconds]
   [driver _ expr]
-  (unix-timestamp->honeysql driver :seconds (h2x// expr 1000000000)))
+  (unix-timestamp->honeysql driver :seconds (h2x// expr 1000000000.0)))
 
 (defmulti cast-temporal-byte
   "Cast a byte field"
