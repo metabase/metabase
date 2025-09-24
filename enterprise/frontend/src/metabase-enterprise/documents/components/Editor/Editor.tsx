@@ -6,6 +6,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import cx from "classnames";
 import type React from "react";
 import { useEffect, useMemo } from "react";
+import { useLatest, usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
@@ -37,6 +38,7 @@ import { createSuggestionRenderer } from "metabase-enterprise/rich_text_editing/
 import S from "./Editor.module.css";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 import type { CardEmbedRef } from "./types";
+
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
   CardEmbed.name,
   MetabotNode.name,
@@ -160,18 +162,20 @@ export const Editor: React.FC<EditorProps> = ({
   );
 
   // Handle content updates when initialContent changes
+  const previousContentRef = useLatest(usePrevious(initialContent));
   useEffect(() => {
+    const previousContent = previousContentRef.current;
     if (editor && initialContent !== undefined) {
       // Use Promise.resolve() to avoid flushSync warning
       Promise.resolve().then(() => {
         editor
           .chain()
-          .setMeta("addToHistory", false)
+          .setMeta("addToHistory", previousContent != null)
           .setContent(initialContent || "")
           .run();
       });
     }
-  }, [editor, initialContent]);
+  }, [editor, initialContent, previousContentRef]);
 
   // Notify parent when editor is ready
   useEffect(() => {

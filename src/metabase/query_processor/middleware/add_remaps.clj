@@ -25,6 +25,7 @@
   `name` is `:remapped_from` `:category_id`.
 
   See also [[metabase.parameters.chain-filter]] for another explanation of remapping."
+  (:refer-clojure :exclude [mapv select-keys some])
   (:require
    [clojure.data :as data]
    [medley.core :as m]
@@ -46,7 +47,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [mapv select-keys some]]))
 
 (mr/def ::simplified-ref
   [:tuple
@@ -60,6 +62,7 @@
     ::lib.schema.id/field
     :string]])
 
+;;; TODO (Cam 9/16/25) -- use [[metabase.lib.schema.util/mbql-clause-distinct-key]] for this
 (mu/defn- simplify-ref-options :- ::simplified-ref
   [a-ref :- ::lib.schema.ref/ref]
   (lib/update-options a-ref (fn [opts]
@@ -309,16 +312,7 @@
                                (update :new-field-clause      lib/with-join-alias (:alias join))))
               new-fields (into
                           []
-                          ;; TODO (Cam 7/25/25) the join fields may already include a remap, but `:source-field` or
-                          ;; other distinguishing information doesn't get propagated in refs beyond the stage where the
-                          ;; implicit join happens; thus we should ignore any duplicates with the same `:source-field`.
-                          ;; Joins with multiple remaps to the same table still work because we switch to using name
-                          ;; refs e.g. `NAME` and `NAME_2` instead of duplicate ID refs in this situation --
-                          ;; see [[multiple-fk-remaps-test-in-joins-e2e-test]].
-                          (m/distinct-by (fn [field-ref]
-                                           (-> field-ref
-                                               simplify-ref-options
-                                               (lib/update-options dissoc :source-field))))
+                          (m/distinct-by simplify-ref-options)
                           (add-fk-remaps-to-fields infos fields))]
           (assoc join :fields new-fields))
         ;; there are no remaps to add, discard any changes that happen inside of the join (such as adding additional
@@ -421,7 +415,7 @@
    {{::keys [original-field-dimension-id new-field-dimension-id]} :options
     :as                                          column} :- :map
    {dimension-id      :id
-    from-name         :field_name
+    from-name         :field-name
     from-display-name :name
     to-name           :human-readable-field-name} :- ::external-remapping]
   (log/trace "Considering column\n"
@@ -487,7 +481,10 @@
 
 ;;;; Transform to add additional cols to results
 
-(defn- create-remapped-col [col-name remapped-from base-type]
+(mu/defn- create-remapped-col
+  [col-name      :- :string
+   remapped-from :- :string
+   base-type     :- ::lib.schema.common/base-type]
   {:description   nil
    :id            nil
    :table_id      nil
@@ -546,7 +543,8 @@
     :as                                                    col} :- ::column-with-optional-base-type]
   (when (seq values)
     (let [remap-from       (:name col)
-          stringified-mask (qp.store/miscellaneous-value [::large-int/column-index-mask])]
+          ;; existing usage -- don't use going forward
+          stringified-mask #_{:clj-kondo/ignore [:deprecated-var]} (qp.store/miscellaneous-value [::large-int/column-index-mask])]
       {:col-index       idx
        :from            remap-from
        :to              remap-to

@@ -1,10 +1,10 @@
 (ns metabase.lib.util.match
   "Internal implementation of the MBQL `match` and `replace` macros. Don't use these directly."
-  (:refer-clojure :exclude [replace])
+  (:refer-clojure :exclude [every? run! some mapv replace])
   (:require
    [clojure.core.match]
-   [clojure.walk :as walk]
    [metabase.lib.util.match.impl]
+   [metabase.util.performance :as perf :refer [every? run! some mapv]]
    [net.cgrand.macrovich :as macros]))
 
 (defn- generate-pattern
@@ -35,7 +35,7 @@
 (defn- rewrite-recurs
   "Replace any `recur` forms with ones that include the implicit `&parents` arg."
   [fn-name result-form]
-  (walk/postwalk
+  (perf/postwalk
    (fn [form]
      (if (recur-form? form)
        ;; we *could* use plain `recur` here, but `core.match` cannot apply code size optimizations if a `recur` form
@@ -382,6 +382,9 @@
 
 (defmacro match-lite
   "Pattern matching macro, simplified version of [[clojure.core.match]].
+
+  TODO (Cam 9/16/25) -- what exactly is the difference between this and [[match]]? It doesn't recurse? Someone please
+  write an explanation here.
 
   Usage:
   (match-lite value

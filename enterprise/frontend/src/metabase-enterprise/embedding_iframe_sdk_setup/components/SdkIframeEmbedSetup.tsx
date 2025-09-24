@@ -1,12 +1,24 @@
 import { useState } from "react";
 import { ResizableBox } from "react-resizable";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import "react-resizable/css/styles.css";
 
 import noResultsSource from "assets/img/no_results.svg";
+import { useUpdateSettingsMutation } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
-import { Box, Button, Card, Flex, Group, Image, Stack } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Card,
+  Flex,
+  Group,
+  Icon,
+  Image,
+  Stack,
+} from "metabase/ui";
+import type { SettingKey } from "metabase-types/api";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 import { useSdkIframeEmbedNavigation } from "../hooks";
@@ -16,18 +28,49 @@ import S from "./SdkIframeEmbedSetup.module.css";
 import { SdkIframeEmbedSetupProvider } from "./SdkIframeEmbedSetupProvider";
 
 const SdkIframeEmbedSetupContent = () => {
-  const { currentStep } = useSdkIframeEmbedSetupContext();
+  const [updateSettings] = useUpdateSettingsMutation();
+  const { currentStep, settings } = useSdkIframeEmbedSetupContext();
 
   const isSimpleEmbeddingEnabled = useSetting("enable-embedding-simple");
 
-  const {
-    handleNext,
-    handleBack,
-    canGoNext,
-    canGoBack,
-    isLastStep,
-    StepContent,
-  } = useSdkIframeEmbedNavigation();
+  const { handleNext, handleBack, canGoBack, StepContent } =
+    useSdkIframeEmbedNavigation();
+
+  function handleEmbedDone() {
+    // Embedding Hub: track step completion
+    const settingKey: SettingKey = settings.useExistingUserSession
+      ? "embedding-hub-test-embed-snippet-created"
+      : "embedding-hub-production-embed-snippet-created";
+
+    updateSettings({ [settingKey]: true });
+
+    window.history.back();
+  }
+
+  const nextStepButton = match(currentStep)
+    .with("get-code", () => (
+      <Button
+        variant="filled"
+        onClick={handleEmbedDone}
+        leftSection={<Icon name="check_filled" />}
+      >
+        {t`Done`}
+      </Button>
+    ))
+    .with("select-embed-options", () => (
+      <Button variant="filled" onClick={handleNext}>
+        {t`Get Code`}
+      </Button>
+    ))
+    .otherwise(() => (
+      <Button
+        variant="filled"
+        onClick={handleNext}
+        disabled={!isSimpleEmbeddingEnabled}
+      >
+        {t`Next`}
+      </Button>
+    ));
 
   return (
     <Box className={S.Container}>
@@ -46,15 +89,7 @@ const SdkIframeEmbedSetupContent = () => {
               {t`Back`}
             </Button>
 
-            {!isLastStep && (
-              <Button
-                variant="filled"
-                onClick={handleNext}
-                disabled={!canGoNext || !isSimpleEmbeddingEnabled}
-              >
-                {currentStep === "select-embed-options" ? t`Get Code` : t`Next`}
-              </Button>
-            )}
+            {nextStepButton}
           </Group>
         </Box>
       </SidebarResizer>

@@ -26,13 +26,17 @@ export function parseTimestampWithTimezone(
 export function formatStatus(status: TransformRunStatus) {
   switch (status) {
     case "started":
-      return t`In-progress`;
+      return t`In progress`;
     case "succeeded":
       return t`Success`;
     case "failed":
       return `Failed`;
     case "timeout":
       return t`Timeout`;
+    case "canceling":
+      return t`Canceling`;
+    case "canceled":
+      return t`Canceled`;
   }
 }
 

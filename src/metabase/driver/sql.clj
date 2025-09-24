@@ -1,5 +1,6 @@
 (ns metabase.driver.sql
   "Shared code for all drivers that use SQL under the hood."
+  (:refer-clojure :exclude [some])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -15,6 +16,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [some]]
    [potemkin :as p]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))

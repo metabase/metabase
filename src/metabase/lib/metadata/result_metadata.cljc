@@ -6,6 +6,7 @@
 
   Traditionally this code lived in the [[metabase.query-processor.middleware.annotate]] namespace, where it is still
   used today."
+  (:refer-clojure :exclude [mapv select-keys some update-keys every?])
   (:require
    #?@(:clj
        ([metabase.config.core :as config]))
@@ -32,7 +33,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf]))
+   [metabase.util.performance :refer [mapv select-keys some update-keys every?]]))
 
 (mr/def ::col
   ;; TODO (Cam 6/19/25) -- I think we should actually namespace all the keys added here (to make it clear where they
@@ -62,7 +63,7 @@
   from the driver to values calculated by Lib."
   [driver-col :- [:maybe ::col]
    lib-col    :- [:maybe ::col]]
-  (let [driver-col (perf/update-keys driver-col u/->kebab-case-en)]
+  (let [driver-col (update-keys driver-col u/->kebab-case-en)]
     (merge lib-col
            (m/filter-vals some? driver-col)
            ;; Prefer our inferred base type if the driver returned `:type/*` and ours is more specific
@@ -282,19 +283,37 @@
    col   :- ::kebab-cased-map]
   (when (= (:lib/type col) :metadata/column)
     (let [remove-join-alias? (remove-join-alias-from-broken-field-ref? query col)]
-      (-> (if-let [original-ref (:lib/original-ref-for-result-metadata-purposes-only col)]
-            (cond-> original-ref
-              remove-join-alias? (lib.join/with-join-alias nil))
-            (binding [lib.ref/*ref-style* :ref.style/broken-legacy-qp-results]
-              (let [col (cond-> col
-                          remove-join-alias? (lib.join/with-join-alias nil)
-                          remove-join-alias? (assoc ::remove-join-alias? true))]
-                (->> (merge
-                      col
-                      (when-not remove-join-alias?
-                        (when-let [previous-join-alias (:lib/original-join-alias col)]
-                          {:metabase.lib.join/join-alias previous-join-alias, :lib/source :source/joins})))
-                     lib.ref/ref))))
+      (-> (binding [lib.ref/*ref-style* :ref.style/broken-legacy-qp-results]
+            (let [col (cond-> col
+                        remove-join-alias? (-> (lib.join/with-join-alias nil)
+                                               (assoc ::remove-join-alias? true)))
+                  [tag opts id-or-name, :as field-ref] (->> (merge
+                                                             col
+                                                             (when-not remove-join-alias?
+                                                               (when-let [previous-join-alias (:lib/original-join-alias col)]
+                                                                 {:metabase.lib.join/join-alias previous-join-alias, :lib/source :source/joins})))
+                                                            lib.ref/ref)]
+              (cond
+                ;; if original ref in the query used an ID then `:field-ref` should as well for historic
+                ;; reasons.
+                (and (or (= (:lib/original-ref-style-for-result-metadata-purposes col) :original-ref-style/id)
+                         ;; for historic reasons implicit fields should also come back with ID refs...
+                         ;; traditionally that's what the middleware added
+                         (and (:id col)
+                              (:qp/implicit-field? col))
+                         (and (:id col)
+                              ;; don't force ID refs when it would result in duplicates (probably not
+                              ;; needed since [[deduplicate-field-refs]] will fix this anyway?)
+                              (= (:lib/deduplicated-name col) (:lib/original-name col))
+                              (not (= (:lib/original-ref-style-for-result-metadata-purposes col) :original-ref-style/name))))
+                     (string? id-or-name))
+                [tag (dissoc opts :base-type) (:id col)]
+
+                (pos-int? id-or-name)
+                [tag (dissoc opts :base-type) id-or-name]
+
+                :else
+                field-ref)))
           ;; broken legacy field refs in results medtadata should never have `:effective-type`
           (lib.options/update-options dissoc :effective-type)
           lib.convert/->legacy-MBQL
@@ -369,7 +388,7 @@
                      lib-cols)]
       (->> initial-cols
            (map (fn [col]
-                  (perf/update-keys col u/->kebab-case-en)))
+                  (update-keys col u/->kebab-case-en)))
            ((fn [cols]
               (cond-> cols
                 (seq lib-cols) (merge-cols lib-cols))))
@@ -403,7 +422,7 @@
 ;;; keep it around but I don't have time to update a million tests. Why do columns have `:lib/uuid` anyway? They
 ;;; should maybe have `:lib/source-uuid` but I don't think they should have `:lib/uuid`.
 (defn- remove-lib-uuids [col]
-  (dissoc col :lib/uuid :lib/source-uuid :lib/original-ref-for-result-metadata-purposes-only))
+  (dissoc col :lib/uuid :lib/source-uuid :lib/original-ref-style-for-result-metadata-purposes))
 
 (mu/defn- col->legacy-metadata :- ::kebab-cased-map
   "Convert Lib-style `:metadata/column` column metadata to the `snake_case` legacy format we've come to know and love

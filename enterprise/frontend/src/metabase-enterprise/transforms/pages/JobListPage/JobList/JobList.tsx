@@ -1,23 +1,26 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { getErrorMessage } from "metabase/api/utils";
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
-import { Card, Flex } from "metabase/ui";
+import { Card, FixedSizeIcon, Flex, Loader } from "metabase/ui";
 import {
+  useListTransformJobTransformsQuery,
   useListTransformJobsQuery,
   useListTransformTagsQuery,
 } from "metabase-enterprise/api";
 import { TimezoneIndicator } from "metabase-enterprise/transforms/components/TimezoneIndicator";
 import type { JobListParams } from "metabase-enterprise/transforms/types";
-import type { TransformJob } from "metabase-types/api";
+import type { TransformJob, TransformJobId } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
 import { TagList } from "../../../components/TagList";
 import { getJobUrl } from "../../../urls";
 import { parseTimestampWithTimezone } from "../../../utils";
+import { hasFilterParams } from "../utils";
 
 import S from "./JobList.module.css";
 
@@ -50,7 +53,10 @@ export function JobList({ params }: { params: JobListParams }) {
   }
 
   if (jobs.length === 0) {
-    return <ListEmptyState label={t`No jobs yet`} />;
+    const hasFilters = hasFilterParams(params);
+    return (
+      <ListEmptyState label={hasFilters ? t`No jobs found` : t`No jobs yet`} />
+    );
   }
 
   return (
@@ -59,10 +65,12 @@ export function JobList({ params }: { params: JobListParams }) {
         columnTitles={[
           t`Job`,
           <Flex align="center" gap="xs" key="last-run-at">
-            {t`Last run at`} <TimezoneIndicator />
+            <span className={S.nowrap}>{t`Last run at`}</span>{" "}
+            <TimezoneIndicator />
           </Flex>,
           <Flex align="center" gap="xs" key="next-run">
-            {t`Next run`} <TimezoneIndicator />
+            <span className={S.nowrap}>{t`Next run`}</span>{" "}
+            <TimezoneIndicator />
           </Flex>,
           t`Transforms`,
           t`Tags`,
@@ -74,7 +82,7 @@ export function JobList({ params }: { params: JobListParams }) {
             className={S.row}
             onClick={() => handleRowClick(job)}
           >
-            <td>{job.name}</td>
+            <td className={S.wrap}>{job.name}</td>
             <td className={S.nowrap}>
               {job.last_run?.start_time
                 ? parseTimestampWithTimezone(
@@ -91,8 +99,10 @@ export function JobList({ params }: { params: JobListParams }) {
                   ).format("lll")
                 : null}
             </td>
-            <td className={S.nowrap}></td>
-            <td>
+            <td className={S.nowrap}>
+              <JobTransformCount jobId={job.id} />
+            </td>
+            <td className={S.wrap}>
               <TagList tags={tags} tagIds={job.tag_ids ?? []} />
             </td>
           </tr>
@@ -100,4 +110,23 @@ export function JobList({ params }: { params: JobListParams }) {
       </AdminContentTable>
     </Card>
   );
+}
+
+type JobTransformCountProps = {
+  jobId: TransformJobId;
+};
+
+function JobTransformCount({ jobId }: JobTransformCountProps) {
+  const {
+    data = [],
+    isLoading,
+    error,
+  } = useListTransformJobTransformsQuery(jobId);
+  if (isLoading) {
+    return <Loader size="sm" />;
+  }
+  if (error != null) {
+    return <FixedSizeIcon name="warning" tooltip={getErrorMessage(error)} />;
+  }
+  return <>{data.length}</>;
 }

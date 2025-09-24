@@ -7,7 +7,7 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
-   [metabase.lib.card :as lib.card]
+   [metabase.lib.card]
    [metabase.lib.column-group :as lib.column-group]
    [metabase.lib.common :as lib.common]
    [metabase.lib.convert :as lib.convert]
@@ -31,8 +31,10 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util]
    [metabase.lib.limit :as lib.limit]
+   [metabase.lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
+   [metabase.lib.metadata.protocols]
    [metabase.lib.metric :as lib.metric]
    [metabase.lib.native :as lib.native]
    [metabase.lib.normalize :as lib.normalize]
@@ -43,20 +45,23 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
+   [metabase.lib.schema]
    [metabase.lib.schema.util]
    [metabase.lib.segment :as lib.segment]
+   [metabase.lib.serialize]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.swap :as lib.swap]
    [metabase.lib.table :as lib.table]
    [metabase.lib.template-tags :as lib.template-tags]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.walk.util]
    [metabase.util.namespaces :as shared.ns]))
 
 (comment lib.aggregation/keep-me
          lib.binning/keep-me
          lib.breakout/keep-me
-         lib.card/keep-me
+         metabase.lib.card
          lib.column-group/keep-me
          lib.common/keep-me
          lib.convert/keep-me
@@ -80,8 +85,10 @@
          lib.join/keep-me
          metabase.lib.join.util/keep-me
          lib.limit/keep-me
+         metabase.lib.metadata/keep-me
          lib.metadata.calculation/keep-me
          lib.metadata.composed-provider/keep-me
+         metabase.lib.metadata.protocols/keep-me
          lib.metric/keep-me
          lib.native/keep-me
          lib.normalize/keep-me
@@ -91,14 +98,17 @@
          lib.query/keep-me
          lib.ref/keep-me
          lib.remove-replace/keep-me
+         metabase.lib.schema/keep-me
          metabase.lib.schema.util/keep-me
          lib.segment/keep-me
+         metabase.lib.serialize/keep-me
          lib.stage/keep-me
          lib.swap/keep-me
          lib.table/keep-me
          lib.template-tags/keep-me
          lib.temporal-bucket/keep-me
-         lib.util/keep-me)
+         lib.util/keep-me
+         metabase.lib.walk.util/keep-me)
 
 (shared.ns/import-fns
  [lib.aggregation
@@ -138,6 +148,8 @@
   breakouts
   breakouts-metadata
   remove-all-breakouts]
+ [metabase.lib.card
+  card->underlying-query]
  [lib.column-group
   columns-group-columns
   group-columns]
@@ -146,6 +158,7 @@
  [lib.convert
   ->legacy-MBQL
   ->pMBQL
+  legacy-default-join-alias
   without-cleaning]
  [metabase.lib.convert.metadata-to-legacy
   lib-metadata-column->legacy-metadata-column
@@ -326,6 +339,9 @@
   current-limit
   limit
   max-rows-limit]
+ [metabase.lib.metadata
+  ->metadata-provider
+  general-cached-value]
  [lib.metadata.calculation
   column-name
   describe-query
@@ -339,6 +355,10 @@
   visible-columns]
  [lib.metadata.composed-provider
   composed-metadata-provider]
+ [metabase.lib.metadata.protocols
+  cached-metadata-provider-with-cache?
+  metadata-provider?
+  metadata-providerable?]
  [lib.native
   engine
   extract-template-tags
@@ -397,9 +417,13 @@
   rename-join
   replace-clause
   replace-join]
+ [metabase.lib.schema
+  native-only-query?]
  [metabase.lib.schema.util]
  [lib.segment
   available-segments]
+ [metabase.lib.serialize
+  prepare-for-serialization]
  [lib.stage
   append-stage
   drop-stage
@@ -421,11 +445,26 @@
   temporal-bucket
   with-temporal-bucket]
  [lib.util
+  clause?
+  clause-of-type?
   fresh-uuids
+  mbql-stage?
   native-stage?
   normalized-query-type
+  normalized-mbql-version
   previous-stage
   previous-stage-number
   query-stage
   source-table-id
-  update-query-stage])
+  source-card-id
+  update-query-stage]
+ [metabase.lib.walk.util
+  all-field-ids
+  all-source-card-ids
+  all-source-table-ids
+  all-template-tag-field-ids
+  all-template-tag-snippet-ids
+  all-template-tags
+  all-template-tags-map
+  all-template-tags-id->field-ids
+  any-native-stage?])

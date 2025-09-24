@@ -4,6 +4,7 @@ import { denormalize, normalize, schema } from "normalizr";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { automagicDashboardsApi, dashboardApi } from "metabase/api";
 import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import {
@@ -25,8 +26,7 @@ import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
-import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
-import Dashboards from "metabase/entities/dashboards";
+import { entityCompatibleQuery } from "metabase/lib/entities";
 import type { Deferred } from "metabase/lib/promise";
 import { defer } from "metabase/lib/promise";
 import { createAsyncThunk, createThunkAction } from "metabase/lib/redux";
@@ -57,6 +57,7 @@ import type {
   DashboardId,
   Dataset,
   DatasetQuery,
+  ParameterValuesMap,
   QuestionDashboardCard,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
@@ -650,7 +651,7 @@ export const fetchDashboard = createAsyncThunk(
       options: { preserveParameters = false, clearCache = true } = {},
     }: {
       dashId: DashboardId;
-      queryParams: ParameterValues;
+      queryParams: ParameterValuesMap;
       options?: { preserveParameters?: boolean; clearCache?: boolean };
     },
     { getState, dispatch, rejectWithValue },
@@ -713,12 +714,14 @@ export const fetchDashboard = createAsyncThunk(
             { subPath, dashboard_load_id: dashboardLoadId },
             { cancelled: fetchDashboardCancellation.promise },
           ),
-          dispatch(
-            Dashboards.actions.fetchXrayMetadata({
+          entityCompatibleQuery(
+            {
               entity,
               entityId,
               dashboard_load_id: dashboardLoadId,
-            }),
+            },
+            dispatch,
+            automagicDashboardsApi.endpoints.getXrayDashboardQueryMetadata,
           ),
         ]);
         result = {
@@ -744,11 +747,11 @@ export const fetchDashboard = createAsyncThunk(
             { dashId: dashId, dashboard_load_id: dashboardLoadId },
             { cancelled: fetchDashboardCancellation.promise },
           ),
-          dispatch(
-            Dashboards.actions.fetchMetadata({
-              id: dashId,
-              dashboard_load_id: dashboardLoadId,
-            }),
+          entityCompatibleQuery(
+            { id: dashId, dashboard_load_id: dashboardLoadId },
+            dispatch,
+            dashboardApi.endpoints.getDashboardQueryMetadata,
+            { forceRefetch: false },
           ),
         ]);
         result = response;

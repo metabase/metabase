@@ -6,7 +6,7 @@
   Some primitives below are duplicated from [[metabase.util.malli.schema]] since that's not `.cljc`. Other stuff is
   copied from [[metabase.legacy-mbql.schema]] so this can exist completely independently; hopefully at some point in the
   future we can deprecate that namespace and eventually do away with it entirely."
-  (:refer-clojure :exclude [ref])
+  (:refer-clojure :exclude [ref every? some])
   (:require
    [medley.core :as m]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -34,7 +34,8 @@
    [metabase.lib.schema.template-tag :as template-tag]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [every? some]]))
 
 (comment metabase.lib.schema.expression.arithmetic/keep-me
          metabase.lib.schema.expression.conditional/keep-me
@@ -68,9 +69,10 @@
      ;; are the parameters we pass in for a `PreparedStatement` for `?` placeholders. These can be anything, including
      ;; nil.
      ;;
-     ;; TODO -- pretty sure this is supposed to be `:params`, not `:args`, and this is allowed to be anything rather
-     ;; than just `literal`... I think we're using the `literal` schema tho for either normalization or serialization
-     [:args {:optional true} [:sequential ::literal/literal]]
+     ;; This schema is `[:or ::literal/literal :any]` so Malli encoding [[metabase.lib.serialize]] will use it if
+     ;; applicable... e.g. a Java time type will get serialized to a
+     ;; string (see [[metabase.lib.serialize-test/encode-java-time-types-in-native-query-args-test]])
+     [:params {:optional true} [:maybe [:sequential [:or [:ref ::literal/literal] :any]]]]
      ;; the Table/Collection/etc. that this query should be executed against; currently only used for MongoDB, where it
      ;; is required.
      [:collection {:optional true} ::common/non-blank-string]
@@ -93,7 +95,8 @@
      :limit        "MBQL stage keys like :limit are not allowed in a native query stage."
      :order-by     "MBQL stage keys like :order-by are not allowed in a native query stage."
      :offset       "MBQL stage keys like :offset are not allowed in a native query stage."
-     :page         "MBQL stage keys like :page are not allowed in a native query stage."})])
+     :page         "MBQL stage keys like :page are not allowed in a native query stage."
+     :args         "Native query parameters should use :params, not :args."})])
 
 (mr/def ::breakout
   [:ref ::ref/ref])
@@ -263,7 +266,6 @@
     :decode/normalize normalize-stage
     :encode/serialize #(dissoc %
                                ;; this stuff is all added at runtime by QP middleware.
-                               :params
                                :parameters
                                :lib/stage-metadata
                                ;; TODO (Cam 8/7/25) -- wait a minute, `:middleware` is not supposed to be added here,
@@ -392,7 +394,8 @@
 (mr/def ::query
   [:and
    [:map
-    {:decode/normalize common/normalize-map
+    {:description      "Valid MBQL 5 query."
+     :decode/normalize common/normalize-map
      :encode/serialize serialize-query}
     [:lib/type [:=
                 {:decode/normalize common/normalize-keyword, :default :mbql/query}
@@ -436,3 +439,17 @@
      :expressions  ":expressions is not allowed in the top level of a query, only in MBQL stages"
      :filters      ":filters is not allowed in the top level of a query, only in MBQL stages"
      :source-table ":source-table is not allowed in the top level of a query, only in MBQL stages"})])
+
+(defn native-only-query?
+  "Whether MBQL 5 `query` only has a single native stage (and is thus pure-native). This is the equivalent of the old
+  `:type :native` queries in MBQL <= 4."
+  [query]
+  (and (map? query)
+       (= (count (:stages query)) 1)
+       (= (get-in query [:stages 0 :lib/type]) :mbql.stage/native)))
+
+(mr/def ::native-only-query
+  "Schema for a pure-native query with one single native stage."
+  [:and
+   [:ref ::query]
+   [:fn {:error/message "native-only query"} native-only-query?]])

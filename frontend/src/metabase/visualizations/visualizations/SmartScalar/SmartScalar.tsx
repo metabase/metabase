@@ -17,7 +17,6 @@ import {
   ScalarValue,
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue/ScalarValue";
-import { ScalarTitleContainer } from "metabase/visualizations/components/ScalarValue/ScalarValue.styled";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
@@ -168,25 +167,24 @@ interface ScalarPeriodProps {
 
 function ScalarPeriod({ period, onClick }: ScalarPeriodProps) {
   return (
-    <ScalarTitleContainer data-testid="scalar-period" lines={1}>
-      <Text
-        component="h3"
-        ta="center"
-        style={{ overflow: "hidden", cursor: onClick && "pointer" }}
-        fw={700}
-        size="0.875rem"
-        className={cx(
-          DashboardS.fullscreenNormalText,
-          DashboardS.fullscreenNightText,
-          EmbedFrameS.fullscreenNightText,
-        )}
-        onClick={onClick}
-      >
-        <Ellipsified tooltip={period} lines={1} placement="bottom">
-          {period}
-        </Ellipsified>
-      </Text>
-    </ScalarTitleContainer>
+    <Text
+      data-testid="scalar-period"
+      component="h3"
+      ta="center"
+      style={{ cursor: onClick && "pointer" }}
+      fw={700}
+      lh="1rem"
+      className={cx(
+        DashboardS.fullscreenNormalText,
+        DashboardS.fullscreenNightText,
+        EmbedFrameS.fullscreenNightText,
+      )}
+      onClick={onClick}
+    >
+      <Ellipsified tooltip={period} lines={1} placement="bottom">
+        {period}
+      </Ellipsified>
+    </Text>
   );
 }
 

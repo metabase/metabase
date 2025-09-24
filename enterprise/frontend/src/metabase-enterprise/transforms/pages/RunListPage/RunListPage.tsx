@@ -1,4 +1,5 @@
 import type { Location } from "history";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -8,10 +9,12 @@ import {
   useListTransformTagsQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
+import { POLLING_INTERVAL } from "metabase-enterprise/transforms/constants";
+import type { TransformRun } from "metabase-types/api";
 
 import type { RunListParams } from "../../types";
 
-import { FilterList } from "./FilterList";
+import { RunFilterList } from "./RunFilterList";
 import { RunList } from "./RunList";
 import { PAGE_SIZE } from "./constants";
 import { getParsedParams } from "./utils";
@@ -46,20 +49,28 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
     endTime,
     runMethods,
   } = params;
+
+  const [isPolling, setIsPolling] = useState(false);
+
   const {
     data,
     isLoading: isLoadingRuns,
     error: runsError,
-  } = useListTransformRunsQuery({
-    offset: page * PAGE_SIZE,
-    limit: PAGE_SIZE,
-    statuses,
-    transform_ids: transformIds,
-    transform_tag_ids: transformTagIds,
-    start_time: startTime,
-    end_time: endTime,
-    run_methods: runMethods,
-  });
+  } = useListTransformRunsQuery(
+    {
+      offset: page * PAGE_SIZE,
+      limit: PAGE_SIZE,
+      statuses,
+      transform_ids: transformIds,
+      transform_tag_ids: transformTagIds,
+      start_time: startTime,
+      end_time: endTime,
+      run_methods: runMethods,
+    },
+    {
+      pollingInterval: POLLING_INTERVAL,
+    },
+  );
   const {
     data: transforms = [],
     isLoading: isLoadingTransforms,
@@ -73,14 +84,26 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
   const isLoading = isLoadingRuns || isLoadingTransforms || isLoadingTags;
   const error = runsError ?? transformsError ?? tagsError;
 
+  if (isPolling !== isPollingNeeded(data?.data)) {
+    setIsPolling(isPollingNeeded(data?.data));
+  }
+
   if (!data || isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
+  const shouldPoll = isPollingNeeded(data.data);
+  if (shouldPoll !== isPolling) {
+    setIsPolling(shouldPoll);
+  }
   return (
     <Stack data-testid="run-list-page">
-      <FilterList transforms={transforms} tags={tags} params={params} />
+      <RunFilterList transforms={transforms} tags={tags} params={params} />
       <RunList runs={data.data} totalCount={data.total} params={params} />
     </Stack>
   );
+}
+
+export function isPollingNeeded(transformRuns?: TransformRun[]) {
+  return transformRuns?.some((run) => run.status === "started") ?? false;
 }

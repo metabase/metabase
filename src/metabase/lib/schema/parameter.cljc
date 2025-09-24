@@ -24,6 +24,7 @@
   (:require
    #?@(:clj
        ([flatland.ordered.map :as ordered-map]))
+   [malli.core :as mc]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli.registry :as mr]))
 
@@ -143,6 +144,7 @@
    :boolean/=               {:type :boolean, :operator :variadic, :allowed-for #{:boolean :boolean/=}}))
 
 (mr/def ::type
+  "Valid parameter :type"
   (into [:enum {:error/message    "valid parameter type"
                 :decode/normalize lib.schema.common/normalize-keyword}]
         (keys types)))
@@ -183,12 +185,12 @@
 (defn- normalize-legacy-ref [legacy-ref]
   ((#?(:clj requiring-resolve :cljs resolve) 'metabase.legacy-mbql.normalize/normalize-field-ref) legacy-ref))
 
-(mr/def ::legacy-field-ref
+(mr/def ::target.legacy-field-ref
   [:ref
    {:decode/normalize normalize-legacy-ref}
    :metabase.legacy-mbql.schema/field])
 
-(mr/def ::legacy-expression-ref
+(mr/def ::target.legacy-expression-ref
   [:ref
    {:decode/normalize normalize-legacy-ref}
    :metabase.legacy-mbql.schema/expression])
@@ -198,9 +200,10 @@
            :error/fn (fn [{:keys [value]} _]
                        (str "Invalid :dimension target: must be a :field, :template-tag, or :expression, got: "
                             (pr-str value)))}
-   [:field        [:ref ::legacy-field-ref]]
-   [:expression   [:ref ::legacy-expression-ref]]
-   [:template-tag [:ref ::template-tag]]])
+   [:expression   [:ref ::target.legacy-expression-ref]]
+   [:template-tag [:ref ::template-tag]]
+   ;; other stuff like MBQL 3 `:fk->` and `:field-id` need to get converted to MBQL 4 `:field`
+   [::mc/default  [:ref ::target.legacy-field-ref]]])
 
 ;;; TODO (Cam 8/8/25) -- is options supposed to be non-empty? It it supposed to be removed from `:dimension` if it's
 ;;; empty? Unclear. I don't think it matters tho.
@@ -213,6 +216,24 @@
 ;;; real MBQL clause tho.
 (mr/def ::dimension
   [:catn
+   ;; this `:decode/normalize` function seems unnecessary but it improves the errors a lot: without it we won't
+   ;; normalize the tag if the target or options are invalid:
+   ;;
+   ;; without:
+   ;;
+   ;;    (metabase.lib.core/normalize ::target ["dimension" ["template-tags" "category"]])
+   ;;    ;; WARN lib.normalize :: Error normalizing MBQL 5: [["should be :dimension"]]
+   ;;    {:value ["dimension" ["template-tags" "category"]], :schema :metabase.lib.schema.parameter/target}
+   ;;
+   ;; with:
+   ;;
+   ;;    ;; WARN lib.normalize :: Error normalizing MBQL 5: [nil ["Invalid :dimension target: must be a :field, :template-tag, or :expression, got: [\"template-tags\" \"category\"]"]]
+   ;;    {:value [:dimension ["template-tags" "category"]], :schema :metabase.lib.schema.parameter/target}
+   {:decode/normalize (fn [dimension]
+                        (if (and (sequential? dimension)
+                                 (string? (first dimension)))
+                          (update (vec dimension) 0 keyword)
+                          dimension))}
    [:tag     [:= {:decode/normalize lib.schema.common/normalize-keyword} :dimension]]
    [:target  ::dimension.target]
    [:options [:? [:maybe ::dimension.options]]]])
@@ -232,7 +253,7 @@
            :error/message "A :variable target must be a (legacy) :field or :template-tag"
            :error/fn      (fn [{:keys [value]} _]
                             (str "Invalid :variable target: must be a :field or :template-tag, got: " (pr-str value)))}
-   [:field        [:ref ::legacy-field-ref]]
+   [:field        [:ref ::target.legacy-field-ref]]
    [:template-tag [:ref ::template-tag]]])
 
 (mr/def ::variable
@@ -245,9 +266,12 @@
            :error/fn (fn [{:keys [value]} _]
                        (str "Invalid parameter :target, must be either :field, :dimension, or :variable; got: "
                             (pr-str value)))}
-   [:field     [:ref ::legacy-field-ref]]
-   [:dimension [:ref ::dimension]]
-   [:variable  [:ref ::variable]]])
+   ;; TODO (Cam 9/12/25) -- the old legacy MBQL schema also said `:expression` refs where allowed here, but I don't
+   ;; know if we actually did allow that in practice.
+   [:dimension    [:ref ::dimension]]
+   [:variable     [:ref ::variable]]
+   ;; MBQL 3 refs like `:field-id` should get normalized to `:field`
+   [::mc/default  [:ref ::target.legacy-field-ref]]])
 
 (defn- normalize-parameter
   [param]
@@ -261,14 +285,19 @@
             (nil? l) (assoc :type :number/<=, :value [u])))
         param))))
 
+(mr/def ::id
+  [:ref ::lib.schema.common/non-blank-string])
+
 (mr/def ::parameter
+  "Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as
+  part of the `:parameters` list in a query."
   [:and
    [:map
     {:decode/normalize normalize-parameter}
     [:type [:ref ::type]]
     ;; TODO -- these definitely SHOULD NOT be optional but a ton of tests aren't passing them in like they should be.
     ;; At some point we need to go fix those tests and then make these keys required
-    [:id       {:optional true} ::lib.schema.common/non-blank-string]
+    [:id       {:optional true} [:ref ::id]]
     [:target   {:optional true} [:ref ::target]]
     ;; not specified if the param has no value. TODO - make this stricter; type of `:value` should be validated based
     ;; on the [[ParameterType]]
@@ -285,4 +314,5 @@
     {:dimension ":dimension is not allowed in a parameter, you probably meant to use :target [:dimension ...] instead."})])
 
 (mr/def ::parameters
+  "Schema for a list of `:parameters` as passed in to a query."
   [:sequential [:ref ::parameter]])

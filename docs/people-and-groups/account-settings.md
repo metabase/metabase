@@ -1,5 +1,6 @@
 ---
 title: Account settings
+summary: Update your profile, change your password, view login history, manage notifications, and customize your Metabase experience.
 redirect_from:
   - /docs/latest/users-guide/account-settings
 ---
@@ -34,3 +35,5 @@ This isn't an in-Metabase setting, but just so you know: you can disable UI anim
 ## Notifications
 
 If you subscribe or are added to dashboard subscriptions or alerts, you’ll be able to manage those notifications here (as well as on the relevant question or dashboard themselves).
+
+Metabase excludes notificatione for [comments](../documents/introduction.md#comment-notifications) from this page.

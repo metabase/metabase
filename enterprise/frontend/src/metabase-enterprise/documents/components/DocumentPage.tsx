@@ -1,7 +1,6 @@
 import { useForceUpdate } from "@mantine/hooks";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
-import cx from "classnames";
 import dayjs from "dayjs";
 import type { Location } from "history";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
@@ -43,7 +42,11 @@ import type {
   RegularCollectionId,
 } from "metabase-types/api";
 
-import { trackDocumentCreated, trackDocumentUpdated } from "../analytics";
+import {
+  trackDocumentBookmark,
+  trackDocumentCreated,
+  trackDocumentUpdated,
+} from "../analytics";
 import {
   clearDraftCards,
   openVizSettingsSidebar,
@@ -105,7 +108,6 @@ export const DocumentPage = ({
   const [sendToast] = useToast();
 
   const documentId = entityId === "new" ? "new" : extractEntityId(entityId);
-  const previousDocumentId = usePrevious(documentId);
   const [isNavigationScheduled, scheduleNavigation] = useCallbackEffect();
   const isNewDocument = documentId === "new";
 
@@ -165,25 +167,6 @@ export const DocumentPage = ({
     // warn if you try to navigate away with unsaved changes
     return hasUnsavedChanges();
   });
-
-  // Reset state when document changes
-  useEffect(() => {
-    if (documentId !== previousDocumentId) {
-      dispatch(setHasUnsavedChanges(false));
-      if (isNewDocument && previousDocumentId !== "new") {
-        setDocumentTitle("");
-        setDocumentContent(null);
-        dispatch(resetDocuments());
-      }
-    }
-  }, [
-    documentId,
-    previousDocumentId,
-    isNewDocument,
-    setDocumentTitle,
-    setDocumentContent,
-    dispatch,
-  ]);
 
   // Reset state when we navigate back to /new
   const resetDocument = useCallback(() => {
@@ -269,6 +252,11 @@ export const DocumentPage = ({
     if (!documentId) {
       return;
     }
+
+    if (!isBookmarked) {
+      trackDocumentBookmark();
+    }
+
     isBookmarked
       ? deleteBookmark({ type: "document", id: documentId })
       : createBookmark({ type: "document", id: documentId });
@@ -417,105 +405,98 @@ export const DocumentPage = ({
   );
 
   return (
-    <>
-      <Box
-        className={cx(styles.documentPage, {
-          [styles.commentsOpened]: commentSidebarOpen,
-        })}
-      >
-        <SetTitle title={documentData?.name || t`New document`} />
-        {documentData?.archived && <DocumentArchivedEntityBanner />}
-        <Box className={styles.contentArea}>
-          <Box className={styles.mainContent}>
-            <Box className={styles.documentContainer}>
-              <DocumentHeader
-                document={documentData}
-                documentTitle={documentTitle}
-                isNewDocument={isNewDocument}
-                canWrite={canWrite ?? false}
-                showSaveButton={showSaveButton ?? false}
-                isBookmarked={isBookmarked}
-                onTitleChange={setDocumentTitle}
-                onSave={() => {
-                  if (isNewDocument) {
-                    setCollectionPickerMode("save");
-                  } else {
-                    handleSave();
-                  }
-                }}
-                onMove={() => setCollectionPickerMode("move")}
-                onToggleBookmark={handleToggleBookmark}
-                onArchive={() => handleUpdate({ archived: true })}
-                hasComments={hasComments}
-              />
-              <Editor
-                onEditorReady={setEditorInstance}
-                onCardEmbedsChange={updateCardEmbeds}
-                onQuestionSelect={handleQuestionSelect}
-                initialContent={documentContent}
-                onChange={handleChange}
-                editable={canWrite}
-                isLoading={isDocumentLoading}
-              />
-            </Box>
-          </Box>
-
-          {selectedQuestionId &&
-            selectedEmbedIndex !== null &&
-            editorInstance && (
-              <Box
-                className={styles.sidebar}
-                data-testid="document-card-sidebar"
-              >
-                <EmbedQuestionSettingsSidebar
-                  cardId={selectedQuestionId}
-                  editorInstance={editorInstance}
-                />
-              </Box>
-            )}
-
-          {collectionPickerMode && (
-            <CollectionPickerModal
-              title={t`Where should we save this document?`}
-              onClose={() => setCollectionPickerMode(null)}
-              value={{ id: "root", model: "collection" }}
-              options={{
-                showPersonalCollections: true,
-                showRootCollection: true,
-              }}
-              onChange={async (collection) => {
-                if (collectionPickerMode === "save") {
-                  handleSave(canonicalCollectionId(collection.id));
-                  setCollectionPickerMode(null);
-                } else if (collectionPickerMode === "move") {
-                  handleUpdate({
-                    collection_id: canonicalCollectionId(collection.id),
-                  });
+    <Box className={styles.documentPage}>
+      <SetTitle title={documentData?.name || t`New document`} />
+      {documentData?.archived && <DocumentArchivedEntityBanner />}
+      <Box className={styles.contentArea}>
+        <Box className={styles.mainContent}>
+          <Box className={styles.documentContainer}>
+            <DocumentHeader
+              document={documentData}
+              documentTitle={documentTitle}
+              isNewDocument={isNewDocument}
+              canWrite={canWrite ?? false}
+              showSaveButton={showSaveButton ?? false}
+              isBookmarked={isBookmarked}
+              onTitleChange={setDocumentTitle}
+              onSave={() => {
+                if (isNewDocument) {
+                  setCollectionPickerMode("save");
+                } else {
+                  handleSave();
                 }
               }}
+              onMove={() => setCollectionPickerMode("move")}
+              onToggleBookmark={handleToggleBookmark}
+              onArchive={() => handleUpdate({ archived: true })}
+              hasComments={hasComments}
             />
-          )}
-          <LeaveRouteConfirmModal
-            // `key` remounts this modal when navigating between different documents or to a new document.
-            // The `route` doesn't change in that scenario which prevents the modal from closing when you confirm you want to discard your changes.
-            key={location.key}
-            isEnabled={hasUnsavedChanges() && !isNavigationScheduled}
-            route={route}
-          />
-
-          <LeaveConfirmModal
-            // only applies when going from /new -> /new
-            opened={
-              hasUnsavedChanges() &&
-              isNewDocument &&
-              location.key !== previousLocationKey
-            }
-            onConfirm={resetDocument}
-            onClose={() => forceUpdate()}
-          />
+            <Editor
+              onEditorReady={setEditorInstance}
+              onCardEmbedsChange={updateCardEmbeds}
+              onQuestionSelect={handleQuestionSelect}
+              initialContent={documentContent}
+              onChange={handleChange}
+              editable={canWrite}
+              isLoading={isDocumentLoading}
+            />
+          </Box>
         </Box>
+
+        {selectedQuestionId &&
+          selectedEmbedIndex !== null &&
+          editorInstance && (
+            <Box className={styles.sidebar} data-testid="document-card-sidebar">
+              <EmbedQuestionSettingsSidebar
+                cardId={selectedQuestionId}
+                editorInstance={editorInstance}
+              />
+            </Box>
+          )}
+
+        {collectionPickerMode && (
+          <CollectionPickerModal
+            title={t`Where should we save this document?`}
+            onClose={() => setCollectionPickerMode(null)}
+            value={{ id: "root", model: "collection" }}
+            options={{
+              showPersonalCollections: true,
+              showRootCollection: true,
+            }}
+            onChange={async (collection) => {
+              if (collectionPickerMode === "save") {
+                handleSave(canonicalCollectionId(collection.id));
+                setCollectionPickerMode(null);
+              } else if (collectionPickerMode === "move") {
+                handleUpdate({
+                  collection_id: canonicalCollectionId(collection.id),
+                });
+              }
+            }}
+          />
+        )}
+
+        {children}
+
+        <LeaveRouteConfirmModal
+          // `key` remounts this modal when navigating between different documents or to a new document.
+          // The `route` doesn't change in that scenario which prevents the modal from closing when you confirm you want to discard your changes.
+          key={location.key}
+          isEnabled={hasUnsavedChanges() && !isNavigationScheduled}
+          route={route}
+        />
+
+        <LeaveConfirmModal
+          // only applies when going from /new -> /new
+          opened={
+            hasUnsavedChanges() &&
+            isNewDocument &&
+            location.key !== previousLocationKey
+          }
+          onConfirm={resetDocument}
+          onClose={() => forceUpdate()}
+        />
       </Box>
-      {children}
-    </>
+    </Box>
   );
 };

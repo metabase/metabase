@@ -28,6 +28,7 @@
 (def ^:private ^:const tile-size             256.0)
 (def ^:private ^:const pixel-origin          (double (/ tile-size 2)))
 (def ^:private ^:const pin-size              6)
+(def ^:private ^:const pin-size-half         (/ pin-size 2))
 (def ^:private ^:const pixels-per-lon-degree (double (/ tile-size 360)))
 (def ^:private ^:const pixels-per-lon-radian (double (/ tile-size (* 2 Math/PI))))
 
@@ -97,12 +98,15 @@
               map-pixel  {:x (int (Math/floor (* (point :x) num-tiles)))
                           :y (int (Math/floor (* (point :y) num-tiles)))}
               tile-pixel {:x (mod (map-pixel :x) tile-size)
-                          :y (mod (map-pixel :y) tile-size)}]
+                          :y (mod (map-pixel :y) tile-size)}
+              ;; cx/cy is needed to put center of a pin at the tile-pixel position
+              cx   (- (tile-pixel :x) pin-size-half)
+              cy   (- (tile-pixel :y) pin-size-half)]
           ;; now draw a "pin" at the given tile pixel location
           (.setColor graphics color-white)
-          (.fillRect graphics (tile-pixel :x) (tile-pixel :y) pin-size pin-size)
+          (.fillRect graphics cx cy pin-size pin-size)
           (.setColor graphics color-blue)
-          (.fillRect graphics (inc (tile-pixel :x)) (inc (tile-pixel :y)) (- pin-size 2) (- pin-size 2))))
+          (.fillRect graphics (inc cx) (inc cy) (- pin-size 2) (- pin-size 2))))
       (catch Throwable e
         (.printStackTrace e))
       (finally
@@ -168,6 +172,8 @@
 
 (defn- result->points
   [{{:keys [rows cols]} :data} lat-field-ref lon-field-ref]
+  ;; existing usages, don't use this going forward.
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (let [lat-key (qp.util/field-ref->key lat-field-ref)
         lon-key (qp.util/field-ref->key lon-field-ref)
         find-fn (fn [lat-or-lon-key]

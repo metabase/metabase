@@ -1,6 +1,6 @@
 (ns metabase.legacy-mbql.util
   "Utilitiy functions for working with MBQL queries."
-  (:refer-clojure :exclude [replace])
+  (:refer-clojure :exclude [replace some mapv every?])
   (:require
    #?@(:clj
        [[metabase.legacy-mbql.jvm-util :as mbql.jvm-u]
@@ -10,12 +10,14 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.schema.helpers :as schema.helpers]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.namespaces :as shared.ns]
+   [metabase.util.performance :refer [some mapv every?]]
    [metabase.util.time :as u.time]))
 
 (shared.ns/import-fns
@@ -27,7 +29,7 @@
 (mu/defn normalize-token :- [:or :keyword :string]
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
-  [token :- schema.helpers/KeywordOrString]
+  [token :- [:or :keyword :string]]
   (let [s (u/qualified-name token)]
     (if (str/starts-with? s "type/")
       ;; TODO (Cam 8/12/25) -- there's tons of code using incorrect parameter types or normalizing base types
@@ -42,10 +44,6 @@
           #?(:clj u/lower-case-en :cljs str/lower-case)
           (str/replace \_ \-)
           keyword))))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                       Functions for manipulating queries                                       |
-;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- combine-compound-filters-of-type
   {:deprecated "0.57.0"}
@@ -134,29 +132,6 @@
             stage-had-source-card)
       n
       (recur source-query (inc n)))))
-
-(defn- map-stages*
-  "Helper for [[map-stages]]; call that instead."
-  [f {:keys [source-query] :as inner-query}]
-  (if source-query
-    ;; Recursive case: Call `map-stages*` on the `:source-query`, then `f` on this stage. Increment the stage count.
-    (let [[new-source-query stage-count] (map-stages* f source-query)]
-      [(-> (assoc inner-query :source-query new-source-query)
-           (f stage-count))
-       (inc stage-count)])
-    ;; Base case: No `:source-query`, so just call `f` and return a `stage-count` of 1.
-    [(f inner-query 0) 1]))
-
-(defn map-stages
-  "Given a function `(f inner-query stage-number)`, recursively calls it on the stages of this (legacy MBQL)
-  `inner-query`.
-
-  The calls run postorder, that is the earliest/innermost stage first.
-
-  Returns the updated `inner-query`."
-  [f inner-query]
-  (let [[updated-inner-query _stage-count] (map-stages* f inner-query)]
-    updated-inner-query))
 
 (defn desugar-inside
   "Rewrite `:inside` filter clauses as a pair of `:between` clauses."
@@ -543,7 +518,7 @@
   #_{:clj-kondo/ignore [:deprecated-var]}
   (-> filter-clause desugar-filter-clause negate* simplify-compound-filter))
 
-(mu/defn query->source-table-id :- [:maybe pos-int?]
+(mu/defn query->source-table-id :- [:maybe ::lib.schema.id/table]
   "Return the source Table ID associated with `query`, if applicable; handles nested queries as well. If `query` is
   `nil`, returns `nil`.
 
@@ -575,26 +550,6 @@
     ;; otherwise resolve the source Table
     :else
     source-table-id))
-
-(mu/defn join->source-table-id :- [:maybe pos-int?]
-  "Like `query->source-table-id`, but for a join."
-  [join]
-  (query->source-table-id {:type :query, :query join}))
-
-(mu/defn add-order-by-clause :- mbql.s/MBQLQuery
-  "Add a new `:order-by` clause to an MBQL `inner-query`. If the new order-by clause references a Field that is
-  already being used in another order-by clause, this function does nothing."
-  [inner-query     :- mbql.s/MBQLQuery
-   [dir orderable] :- ::mbql.s/OrderBy]
-  (let [existing-orderables (into #{}
-                                  (map (fn [[_dir orderable]]
-                                         orderable))
-                                  (:order-by inner-query))]
-    (if (existing-orderables orderable)
-      ;; Field already referenced, nothing to do
-      inner-query
-      ;; otherwise add new clause at the end
-      (update inner-query :order-by (comp vec distinct conj) [dir orderable]))))
 
 (defn dispatch-by-clause-name-or-class
   "Dispatch function perfect for use with multimethods that dispatch off elements of an MBQL query. If `x` is an MBQL
@@ -655,8 +610,6 @@
          (throw (ex-info (i18n/tru "No aggregation at index: {0}" index) {:index index})))
      ;; keep recursing deeper into the query until we get to the same level the aggregation reference was defined at
      (recur {:query (get-in query [:query :source-query])} index (dec nesting-level)))))
-
-;;; --------------------------------- Unique names & transforming ags to have names ----------------------------------
 
 (defn unique-name-generator
   "Return a function that can be used to uniquify string names. Function maintains an internal counter that will suffix
