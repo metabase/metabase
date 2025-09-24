@@ -1,11 +1,9 @@
-import { useMemo } from "react";
 import { Link } from "react-router";
 import { match } from "ts-pattern";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import {
-  Box,
   Button,
   Flex,
   Group,
@@ -37,10 +35,6 @@ export function SdkSettingsCard({
   links?: LinkItem[];
   rightSideContent?: React.ReactNode;
 }) {
-  const hasButton = useMemo(() => {
-    return links?.some((link) => link.type === "button");
-  }, [links]);
-
   const hasLinksContent = links && links.length > 0;
 
   const renderLink = (linkItem: LinkItem, index: number) =>
@@ -89,13 +83,9 @@ export function SdkSettingsCard({
       </Stack>
 
       {hasLinksContent && (
-        <Box
-          px="xl"
-          py={hasButton ? "0.7rem" : "md"}
-          className={S.CardLinksSection}
-        >
-          <Group gap="xl">{links?.map(renderLink)}</Group>
-        </Box>
+        <Group px="xl" className={S.CardLinksSection} h="3.5rem" gap="xl">
+          {links?.map(renderLink)}
+        </Group>
       )}
     </Flex>
   );
