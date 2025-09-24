@@ -3,11 +3,11 @@ import type { Location } from "history";
 import type { RunListParams } from "metabase-enterprise/transforms/types";
 
 import {
+  parseInteger,
   parseListFromUrl,
-  parseNumberFromUrl,
-  parseRunMethodFromUrl,
-  parseRunStatusFromUrl,
-  parseStringFromUrl,
+  parseRunMethod,
+  parseRunStatus,
+  parseString,
 } from "../../utils";
 
 export function getParsedParams(location: Location): RunListParams {
@@ -21,13 +21,13 @@ export function getParsedParams(location: Location): RunListParams {
     runMethods,
   } = location.query;
   return {
-    page: parseNumberFromUrl(page),
-    statuses: parseListFromUrl(statuses, parseRunStatusFromUrl),
-    transformIds: parseListFromUrl(transformIds, parseNumberFromUrl),
-    transformTagIds: parseListFromUrl(transformTagIds, parseNumberFromUrl),
-    startTime: parseStringFromUrl(startTime),
-    endTime: parseStringFromUrl(endTime),
-    runMethods: parseListFromUrl(runMethods, parseRunMethodFromUrl),
+    page: parseInteger(page),
+    statuses: parseListFromUrl(statuses, parseRunStatus),
+    transformIds: parseListFromUrl(transformIds, parseInteger),
+    transformTagIds: parseListFromUrl(transformTagIds, parseInteger),
+    startTime: parseString(startTime),
+    endTime: parseString(endTime),
+    runMethods: parseListFromUrl(runMethods, parseRunMethod),
   };
 }
 

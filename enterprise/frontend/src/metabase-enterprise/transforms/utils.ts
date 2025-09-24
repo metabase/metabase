@@ -78,20 +78,15 @@ export function parseListFromUrl<T>(
   return undefined;
 }
 
-export function parseNumberFromUrl(value: unknown) {
-  return typeof value === "string" ? parseFloat(value) : undefined;
+export function parseInteger(value: unknown) {
+  return typeof value === "string" ? parseInt(value, 10) : undefined;
 }
 
-export function parseStringFromUrl(value: unknown): string | undefined {
-  if (typeof value === "string") {
-    return value;
-  }
-  return undefined;
+export function parseString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
 }
 
-export function parseRunStatusFromUrl(
-  value: unknown,
-): TransformRunStatus | undefined {
+export function parseRunStatus(value: unknown): TransformRunStatus | undefined {
   switch (value) {
     case "started":
     case "succeeded":
@@ -103,9 +98,7 @@ export function parseRunStatusFromUrl(
   }
 }
 
-export function parseRunMethodFromUrl(
-  value: unknown,
-): TransformRunMethod | undefined {
+export function parseRunMethod(value: unknown): TransformRunMethod | undefined {
   switch (value) {
     case "manual":
     case "cron":

@@ -3,10 +3,10 @@ import type { Location } from "history";
 import type { JobListParams } from "metabase-enterprise/transforms/types";
 
 import {
+  parseInteger,
   parseListFromUrl,
-  parseNumberFromUrl,
-  parseRunStatusFromUrl,
-  parseStringFromUrl,
+  parseRunStatus,
+  parseString,
 } from "../../utils";
 
 export function getParsedParams(location: Location): JobListParams {
@@ -18,10 +18,10 @@ export function getParsedParams(location: Location): JobListParams {
   } = location.query;
 
   return {
-    lastRunStartTime: parseStringFromUrl(lastRunStartTime),
-    lastRunStatuses: parseListFromUrl(lastRunStatuses, parseRunStatusFromUrl),
-    nextRunStartTime: parseStringFromUrl(nextRunStartTime),
-    transformTagIds: parseListFromUrl(transformTagIds, parseNumberFromUrl),
+    lastRunStartTime: parseString(lastRunStartTime),
+    lastRunStatuses: parseListFromUrl(lastRunStatuses, parseRunStatus),
+    nextRunStartTime: parseString(nextRunStartTime),
+    transformTagIds: parseListFromUrl(transformTagIds, parseInteger),
   };
 }
 
