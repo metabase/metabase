@@ -3872,25 +3872,19 @@ function verifyObjectDetailPreview({
   row: [string, string];
 }) {
   const [label, value] = row;
-  const labelIndex = index * 2;
-  const valueIndex = labelIndex + 1;
 
   PreviewSection.getPreviewTypeInput().findByText("Detail").click();
   cy.wait("@dataset");
 
-  cy.findAllByTestId("object-details-table-cell").should((elements) => {
-    const index = [...elements].findIndex(
-      (element) => element.textContent?.trim() === label,
-    );
-    expect(index).to.eq(labelIndex);
-  });
+  cy.findAllByTestId("column-name")
+    .should("have.length", 8)
+    .eq(index - 1)
+    .should("contain", label);
 
-  cy.findAllByTestId("object-details-table-cell").should((elements) => {
-    const index = [...elements].findIndex(
-      (element) => element.textContent?.trim() === value,
-    );
-    expect(index).to.eq(valueIndex);
-  });
+  cy.findAllByTestId("value")
+    .should("have.length", 8)
+    .eq(index - 1)
+    .should("contain", value);
 }
 
 function verifyAndCloseToast(message: string) {
