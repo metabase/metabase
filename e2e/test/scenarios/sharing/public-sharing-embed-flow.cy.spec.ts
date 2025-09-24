@@ -30,12 +30,10 @@ describe("embed flow pre-selection from sharing modal", () => {
       expect(params.get("resource_id")).to.equal(String(ORDERS_DASHBOARD_ID));
     });
 
-    cy.findByRole("radio", { name: /Dashboard/ }).should("be.checked");
-    cy.findByRole("button", { name: "Next" }).click();
-
+    cy.log("should navigate to embed options step");
     getEmbedSidebar().within(() => {
-      cy.findByText("Select a dashboard to embed").should("be.visible");
-      cy.findByText("Orders in a dashboard").should("be.visible");
+      cy.findByText("Behavior").should("be.visible");
+      cy.findByText("Appearance").should("be.visible");
     });
 
     H.waitForSimpleEmbedIframesToLoad();
@@ -60,12 +58,10 @@ describe("embed flow pre-selection from sharing modal", () => {
       expect(params.get("resource_id")).to.equal(String(ORDERS_QUESTION_ID));
     });
 
-    cy.findByRole("radio", { name: /Chart/ }).should("be.checked");
-    cy.findByRole("button", { name: "Next" }).click();
-
+    cy.log("should navigate to embed options step");
     getEmbedSidebar().within(() => {
-      cy.findByText("Select a chart to embed").should("be.visible");
-      cy.findByText("Orders").should("be.visible");
+      cy.findByText("Behavior").should("be.visible");
+      cy.findByText("Appearance").should("be.visible");
     });
 
     H.waitForSimpleEmbedIframesToLoad();
