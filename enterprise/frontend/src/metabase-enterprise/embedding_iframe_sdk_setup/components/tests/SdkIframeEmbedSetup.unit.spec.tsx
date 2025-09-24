@@ -103,10 +103,16 @@ describe("Embed flow > pre-selection via url parameter", () => {
       urlSearchParams: "?resource_type=question&resource_id=456",
     });
 
-    const chartRadio = screen.getByRole("radio", { name: /Chart/ });
-    expect(chartRadio).toBeChecked();
+    // Starts at the "select embed options" step.
+    expect(screen.getByText("Behavior")).toBeInTheDocument();
+    expect(screen.getByText("Appearance")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    // Going back to the "select resource" step shows that it is expecting a chart.
+    await userEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(screen.getByText("Select a chart to embed")).toBeInTheDocument();
+
+    // Going back to the "select experience" step shows that it is expecting a chart.
+    await userEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByRole("radio", { name: /Chart/ })).toBeChecked();
   });
 });
