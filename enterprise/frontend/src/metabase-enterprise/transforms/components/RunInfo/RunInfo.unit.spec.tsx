@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
 
-import { RunErrorInfo } from "./RunErrorInfo";
+import { RunInfo } from "./RunInfo";
 
 type SetupOpts = {
   message?: string;
@@ -13,10 +13,12 @@ function setup({
   message = "Test error message",
   endTime = null,
 }: SetupOpts = {}) {
-  renderWithProviders(<RunErrorInfo message={message} endTime={endTime} />);
+  renderWithProviders(
+    <RunInfo status="failed" message={message} endTime={endTime} />,
+  );
 }
 
-describe("RunErrorInfo", () => {
+describe("RunInfo", () => {
   it("should show the error message when there is a date", async () => {
     const message = "Test error with end time";
     const endTime = new Date("2023-10-15T14:30:00");

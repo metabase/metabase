@@ -6,7 +6,10 @@ import type { SelectionRange } from "metabase/query_builder/components/NativeQue
 import { Center, Flex, Loader, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { DatasetQuery, NativeQuerySnippet } from "metabase-types/api";
+import type {
+  NativeQuerySnippet,
+  QueryTransformSource,
+} from "metabase-types/api";
 
 import { useQueryMetadata } from "../../hooks/use-query-metadata";
 import { useQueryResults } from "../../hooks/use-query-results";
@@ -29,21 +32,23 @@ import {
 } from "./utils";
 
 type QueryEditorProps = {
-  initialQuery: DatasetQuery;
+  initialSource: QueryTransformSource;
   isNew?: boolean;
   isSaving?: boolean;
-  onSave: (newQuery: DatasetQuery) => void;
+  onSave: (source: QueryTransformSource) => void;
   onCancel: () => void;
 };
 
 export function QueryEditor({
-  initialQuery,
+  initialSource,
   isNew = true,
   isSaving = false,
   onSave,
   onCancel,
 }: QueryEditorProps) {
-  const { question, isQueryDirty, setQuestion } = useQueryState(initialQuery);
+  const { question, isQueryDirty, setQuestion } = useQueryState(
+    initialSource.query,
+  );
   const { isInitiallyLoaded } = useQueryMetadata(question);
   const {
     result,
@@ -63,7 +68,7 @@ export function QueryEditor({
   };
 
   const handleSave = () => {
-    onSave(question.datasetQuery());
+    onSave({ type: "query", query: question.datasetQuery() });
   };
 
   const handleCmdEnter = () => {
