@@ -52,13 +52,14 @@ export const Discussion = ({
   const [deleteComment] = useDeleteCommentMutation();
   const [toggleReaction] = useToggleReactionMutation();
 
-  const handleSubmit = async (doc: DocumentContent) => {
+  const handleSubmit = async (doc: DocumentContent, html: string) => {
     const { error } = await createComment({
       child_target_id: effectiveChildTargetId,
       target_id: targetId,
       target_type: targetType,
       content: doc,
       parent_comment_id: parentCommentId,
+      html,
     });
 
     if (error) {

@@ -38,7 +38,7 @@
                               (a/>!! finished-chan e))))]
         ;; wait for `f` to actually start running before we kill it. Otherwise it may not get started at all
         (a/go
-          (a/alts!! [started-chan (a/timeout 1000)])
+          (a/alts! [started-chan (a/timeout 1000)])
           (a/close! result-chan))
         (is (instance?
              InterruptedException

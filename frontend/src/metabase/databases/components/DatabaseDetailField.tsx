@@ -14,11 +14,13 @@ import type {
   EngineKey,
 } from "metabase-types/api";
 
-import { FIELD_OVERRIDES } from "../../constants";
-import type { EngineFieldOverride } from "../../types";
-import { DatabaseHostnameWithProviderField } from "../DatabaseHostnameWithProviderField/DatabaseHostnameWithProviderField";
-import DatabaseInfoField from "../DatabaseInfoField";
-import DatabaseSectionField from "../DatabaseSectionField";
+import { FIELD_OVERRIDES } from "../constants";
+import type { EngineFieldOverride, FieldType } from "../types";
+
+import { DatabaseHostnameWithProviderField } from "./DatabaseHostnameWithProviderField/DatabaseHostnameWithProviderField";
+import DatabaseInfoField from "./DatabaseInfoField";
+import DatabaseSectionField from "./DatabaseSectionField";
+import { getSharedFieldStyleProps } from "./styles";
 
 export interface DatabaseDetailFieldProps {
   field: EngineField;
@@ -27,7 +29,7 @@ export interface DatabaseDetailFieldProps {
   engine: Engine | undefined;
 }
 
-const DatabaseDetailField = ({
+export const DatabaseDetailField = ({
   field,
   autoFocus,
   engineKey,
@@ -37,7 +39,7 @@ const DatabaseDetailField = ({
   const type = getFieldType(field, override);
   const props = {
     ...(autoFocus ? { autoFocus, "data-autofocus": autoFocus } : {}),
-    ...getFieldProps(field, override),
+    ...getFieldProps(field, override, type),
   };
 
   if (field.name === "host" && engineKey === "postgres") {
@@ -96,7 +98,11 @@ const getFieldType = (field: EngineField, override?: EngineFieldOverride) => {
   return override?.type ?? field.type;
 };
 
-const getFieldProps = (field: EngineField, override?: EngineFieldOverride) => {
+const getFieldProps = (
+  field: EngineField,
+  override: EngineFieldOverride | undefined,
+  type: FieldType | undefined,
+) => {
   const placeholder =
     override?.placeholder ?? field.placeholder ?? field.default;
 
@@ -107,10 +113,7 @@ const getFieldProps = (field: EngineField, override?: EngineFieldOverride) => {
     description: override?.description ?? field.description,
     placeholder: placeholder != null ? String(placeholder) : undefined,
     encoding: field["treat-before-posting"],
-    mb: "md",
-    labelProps: {
-      mb: "sm",
-    },
+    ...getSharedFieldStyleProps(type),
   };
 };
 
@@ -138,17 +141,14 @@ const getPasswordProps = (field: EngineField) => {
 
 const getSelectProps = (field: EngineField, override?: EngineFieldOverride) => {
   return {
-    data: convertEnginFeildOptionsToSelectOptions(
+    data: convertEngineFieldOptionsToSelectOptions(
       override?.options ?? field.options ?? [],
     ),
   };
 };
 
-const convertEnginFeildOptionsToSelectOptions = (
+const convertEngineFieldOptionsToSelectOptions = (
   options: EngineFieldOption[],
 ) => {
   return options.map((option) => ({ label: option.name, value: option.value }));
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DatabaseDetailField;
