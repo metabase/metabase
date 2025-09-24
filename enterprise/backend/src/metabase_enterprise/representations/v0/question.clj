@@ -102,7 +102,6 @@
       :display :table                   ; TODO: Default display type
       :dataset_query query
       :visualization_settings {}
-      ;; :creator_id
       :database_id database-id
       ;; :table_id
       ;; :archived

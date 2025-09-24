@@ -43,11 +43,12 @@
 
 ;;; -- Export --
 
+(defn model->card-type [model]
+  (let [kw (keyword (:model model))]
+    (get {:dataset :model :card :question} kw kw)))
+
 (defn- model->url [model]
-  (let [modelname (get {:dataset :model
-                        :card :question}
-                       (keyword (:model model)) (:model model))]
-    (format "/api/ee/representation/%s/%s" (name modelname) (:id model))))
+  (format "/api/ee/representation/%s/%s" (name (model->card-type model)) (:id model)))
 
 (defn children [collection]
   (->> (coll.api/collection-children collection {:show-dashboard-questions? true

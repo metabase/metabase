@@ -16,11 +16,14 @@
    [metabase-enterprise.representations.v0.question :as v0-question]
    [metabase-enterprise.representations.v0.snippet :as v0-snippet]
    [metabase-enterprise.representations.v0.transform :as v0-transform]
+   [metabase.collections.api :as coll.api]
+   [metabase.config.core :as config]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor :as qp]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.yaml :as mb-yaml]
+   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2])
   (:import
    [java.io File]))
@@ -63,7 +66,7 @@
 
 (defn validate
   "Validates a representation against its schema based on the type field.
-  
+
    The type field can be either:
    - Simple: 'question', 'collection' (defaults to v0)
    - Versioned: 'v0/question', 'v1/collection' (explicit version)
@@ -106,7 +109,7 @@
    Returns nil if the file cannot be parsed."
   [file]
   (try
-    (mb-yaml/from-file file)
+    (yaml/from-file file)
     (catch Exception e
       (log/error e "Failed to parse YAML file" file)
       nil)))
@@ -279,6 +282,68 @@
 (defn collection-items
   [id]
   (->> @static-assets :question (filter (comp #{id} :collection_id)) (map (fn [c] (assoc c :model "card")))))
+
+(def representations-export-dir "local/representations/")
+
+(defn- file-sys-name [id name suffix]
+  (str id "_" (str/replace (u/lower-case-en name) " " "_") suffix))
+
+(defn export-collection-representations
+  ([id] (export-collection-representations id representations-export-dir))
+  ([id path]
+   (let [collection (t2/select-one :model/Collection :id id)
+         coll-dir (file-sys-name id (:name collection) "/")
+         children (-> collection
+                      (coll.api/collection-children {:show-dashboard-questions? true :archived? false})
+                      :data)]
+     (.mkdirs (File. (str path coll-dir)))
+     (doseq [child children]
+       (let [child-id (:id child)
+             model-type (v0-coll/model->card-type child)]
+         (if (= model-type :collection)
+           (export-collection-representations child-id (str path coll-dir))
+           (try
+             (let [entity-yaml (->> model-type
+                                    (t2/select-one :model/Card :id child-id :type)
+                                    (export)
+                                    (yaml/generate-string))
+                   file-name (file-sys-name child-id (:name child) ".yaml")]
+               (spit (str path coll-dir file-name) entity-yaml))
+             (catch Exception e
+               (log/errorf e "Unable to export representation of type %s with id %s" model-type child-id)))))))))
+
+(defn import-collection-representations [id]
+  (let [collection (t2/select-one :model/Collection :id id)
+        coll-dir (file-sys-name id (:name collection) "/")
+        coll-path (str representations-export-dir coll-dir)]
+    (doseq [file (file-seq (io/file coll-path))]
+      (when (.isFile file)
+        (let [coll-id (-> (.getParent file)
+                          (str/split #"/")
+                          last
+                          (str/split #"_")
+                          first
+                          (Long/parseLong))
+              valid-repr (-> (slurp file)
+                             (yaml/parse-string)
+                             (validate))
+              id (-> (:ref valid-repr)
+                     (str/split #"-")
+                     (last)
+                     (Long/parseLong))]
+          (try
+            (let [toucan-model (case (:type valid-repr)
+                                 :v0/question (v0-question/yaml->toucan valid-repr)
+                                 :v0/model (v0-model/yaml->toucan valid-repr)
+                                 :v0/metric (v0-metric/yaml->toucan valid-repr))
+                  updated-card (assoc toucan-model
+                                      :id id
+                                      :collection_id coll-id
+                                      :updated_at (java.time.OffsetDateTime/now)
+                                      :creator_id config/internal-mb-user-id)]
+              (t2/update! :model/Card id updated-card))
+            (catch Exception e
+              (log/errorf e "Failed to ingest representation file %s" (.getName file)))))))))
 
 (comment
   (pst)

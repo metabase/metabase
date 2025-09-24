@@ -141,6 +141,24 @@
         (println (ex-message e))
         (pprint (ex-data e))))))
 
+(api.macros/defendpoint :post "/collection/:collection-id/export"
+  "Export all representations in a collection to the local filesystem"
+  [{:keys [collection-id]} :- :any
+   _query-params
+   _body-params
+   _request]
+  (rep/export-collection-representations (Long/parseLong collection-id))
+  "Ok")
+
+(api.macros/defendpoint :post "/collection/:collection-id/import"
+  "Import all representations from the local filesystem into a collection"
+  [{:keys [collection-id]} :- :any
+   _query-params
+   _body-params
+   _request]
+  (rep/import-collection-representations (Long/parseLong collection-id))
+  "Ok")
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/representations` routes."
   (handlers/routes
