@@ -217,7 +217,7 @@ describe("embed modal display", () => {
           cy.findByRole("link", { name: "Embedded Analytics JS" }).should(
             "have.attr",
             "href",
-            "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedding-interactive&utm_content=static-embed-popover&source_plan=oss",
+            "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedded-analytics-js&utm_content=static-embed-popover&source_plan=oss",
           );
 
           cy.findByRole("article", { name: "Embedded Analytics JS" }).within(
