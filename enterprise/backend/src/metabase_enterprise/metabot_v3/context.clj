@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.context
   (:require
    [clojure.java.io :as io]
+   [medley.core :as m]
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
    [metabase.config.core :as config]
    [metabase.util.json :as json]
@@ -53,28 +54,21 @@
                                           :api/endpoints)]
     (str "backend:/api/ee/metabot-tools" url)))
 
-(def ^:private max-database-tables
-  "If the number of tables in the database doesn't exceed this number, we send them all to the agent."
-  100)
-
 (defn- database-tables-for-context
-  "Get database tables formatted for metabot context, prioritizing tables used in the query (if provided), then filling up to the limit with most viewed tables."
-  ([database-id] (database-tables-for-context database-id nil))
-  ([database-id {:keys [all-tables-limit query] :or {all-tables-limit max-database-tables}}]
-   (when database-id
-     (try
-       (let [used-tables (if query
-                           (table-utils/used-tables query)
-                           [])
-             used-table-ids (set (map :id used-tables))]
-         (table-utils/database-tables database-id
-                                      {:all-tables-limit all-tables-limit
-                                       :priority-tables used-tables
-                                       :exclude-table-ids used-table-ids}))
-       (catch Exception e
-         (log/error e "Error getting database tables for context")
-         ;; If we can't get table info, just return empty - don't break the context
-         [])))))
+  "Get database tables formatted for metabot context. Only includes tables used in the query, formatted for API output.
+   Removes duplicate tables by id while preserving first occurrence order."
+  [{:keys [query]}]
+  (try
+    (if query
+      (let [used-tables (table-utils/used-tables query)
+            tables (table-utils/enhanced-database-tables (:database query)
+                                                         {:priority-tables used-tables
+                                                          :all-tables-limit (count used-tables)})]
+        (m/distinct-by :id tables))
+      [])
+    (catch Exception e
+      (log/error e "Error getting database tables for context")
+      [])))
 
 (defn- enhance-context-with-schema
   "Enhance context by adding table schema information for native queries"
@@ -84,10 +78,9 @@
           (mapv (fn [item]
                   (if (and (#{:native "native"} (get-in item [:query :type]))
                            (get-in item [:query :database]))
-                    (let [database-id (get-in item [:query :database])
-                          tables (database-tables-for-context database-id {:query (:query item)})]
+                    (let [tables (database-tables-for-context {:query (:query item)})]
                       (if (seq tables)
-                        (assoc item :database_schema tables)
+                        (assoc item :used_tables tables)
                         item))
                     item))
                 user-viewing)]

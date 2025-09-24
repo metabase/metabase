@@ -28,6 +28,7 @@ export interface MenuItem {
   action: () => void;
   model?: SuggestionModel;
   id?: number | string;
+  href?: string;
 }
 
 export const MenuItemComponent = ({
