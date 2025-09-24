@@ -399,7 +399,8 @@
 
 (mu/defn- normalize-fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]
   [fingerprint :- [:maybe :map]]
-  (lib.normalize/normalize ::lib.schema.metadata.fingerprint/fingerprint fingerprint))
+  (when fingerprint
+    (lib.normalize/normalize ::lib.schema.metadata.fingerprint/fingerprint fingerprint)))
 
 (mu/defn normalize-source-metadata
   "Normalize source/results metadata for a single column."
