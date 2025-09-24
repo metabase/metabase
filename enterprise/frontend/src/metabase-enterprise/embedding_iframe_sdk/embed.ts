@@ -20,7 +20,9 @@ import type {
   SdkIframeEmbedEventHandler,
   SdkIframeEmbedMessage,
   SdkIframeEmbedSettings,
+  SdkIframeEmbedTagFunctionCallMessage,
   SdkIframeEmbedTagMessage,
+  SdkIframeFunctionCallHandlerData,
 } from "./types/embed";
 import { attributeToSettingKey, parseAttributeValue } from "./webcomponents";
 
@@ -134,6 +136,9 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
   protected abstract _attributeNames: readonly string[];
 
   static readonly VERSION = "1.1.0";
+
+  private readonly functionCallMessageHandlerDataList: SdkIframeFunctionCallHandlerData[] =
+    [];
 
   private _isEmbedReady: boolean = false;
   private _eventHandlers: Map<
@@ -388,6 +393,20 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
       return;
     }
 
+    const functionCallHandler = this.functionCallMessageHandlerDataList.find(
+      (data) => data.functionCallMessageType === event.data.type,
+    );
+
+    if (functionCallHandler) {
+      await functionCallHandler?.handler.call(
+        this,
+        functionCallHandler,
+        event.data as SdkIframeEmbedTagFunctionCallMessage,
+      );
+
+      return;
+    }
+
     if (event.data.type === "metabase.embed.iframeReady") {
       if (this._isEmbedReady) {
         return;
@@ -412,7 +431,21 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
     data: Message["data"],
   ) {
     if (this._iframe?.contentWindow) {
-      this._iframe.contentWindow.postMessage({ type, data }, "*");
+      const normalizedData = Object.fromEntries(
+        Object.entries(data).map(([key, value]) => {
+          // Function is replaced with a random identifier, because it cannot be converted to a string (without eval usage)
+          if (typeof value === "function") {
+            return [key, Math.random().toString()];
+          }
+
+          return [key, value];
+        }),
+      );
+
+      this._iframe.contentWindow.postMessage(
+        { type, data: normalizedData },
+        "*",
+      );
     }
   }
 

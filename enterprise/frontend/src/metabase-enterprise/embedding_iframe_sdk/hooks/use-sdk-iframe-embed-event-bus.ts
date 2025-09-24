@@ -1,13 +1,18 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { match } from "ts-pattern";
 
 import { trackSchemaEvent } from "metabase/lib/analytics";
 import { isWithinIframe } from "metabase/lib/dom";
+import { uuid } from "metabase/lib/uuid";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 
 import type {
+  SdkIframeEmbedFunctionResultMessage,
   SdkIframeEmbedMessage,
   SdkIframeEmbedSettings,
+  SdkIframeEmbedTagFunctionCallMessage,
+  SdkIframeEmbedTagMessage,
+  SdkIframeEventBusCalledFunctionName,
 } from "../types/embed";
 
 type Handler = (event: MessageEvent<SdkIframeEmbedMessage>) => void;
@@ -17,17 +22,78 @@ type UsageAnalytics = {
   embedHostUrl: string;
 };
 
+// The parent frame logic may be async, so we give it up to 15 seconds to respond to cover possible slow network connection
+const WAIT_FOR_FUNCTION_RESULT_MESSAGE_MAX_WAIT_TIME = 15000;
+
 export function useSdkIframeEmbedEventBus({
   onSettingsChanged,
 }: {
   onSettingsChanged?: (settings: SdkIframeEmbedSettings) => void;
-}): {
-  embedSettings: SdkIframeEmbedSettings | null;
-} {
+}) {
   const [embedSettings, setEmbedSettings] =
     useState<SdkIframeEmbedSettings | null>(null);
   const [usageAnalytics, setUsageAnalytics] = useState<UsageAnalytics | null>(
     null,
+  );
+
+  const sendMessage = useCallback((message: SdkIframeEmbedTagMessage) => {
+    window.parent.postMessage(message, "*");
+  }, []);
+
+  const waitForIncomingMessage = useCallback(
+    async <
+      TResult extends SdkIframeEmbedFunctionResultMessage["data"]["result"],
+    >(
+      functionName: SdkIframeEventBusCalledFunctionName,
+      messageId: string,
+    ): Promise<TResult> => {
+      return new Promise<TResult>((resolve, reject) => {
+        let waitTimeout = 0;
+
+        waitTimeout = window.setTimeout(() => {
+          window.removeEventListener("message", messageHandler);
+          reject(new Error("Timeout waiting for incoming message"));
+        }, WAIT_FOR_FUNCTION_RESULT_MESSAGE_MAX_WAIT_TIME);
+
+        const messageHandler = (event: MessageEvent<SdkIframeEmbedMessage>) => {
+          const message = event.data as SdkIframeEmbedFunctionResultMessage;
+          const isExpectedMessage =
+            message.type === `metabase.embed.functionResult.${functionName}` &&
+            message.data?.messageId === messageId;
+
+          if (isExpectedMessage) {
+            window.clearTimeout(waitTimeout);
+            resolve(message.data.result as TResult);
+          }
+        };
+
+        window.addEventListener("message", messageHandler);
+      });
+    },
+    [],
+  );
+
+  const transferFunctionCallMessages = useCallback(
+    async <
+      TFunctionCallMessage extends SdkIframeEmbedTagFunctionCallMessage,
+      TFunctionResultMessage extends SdkIframeEmbedFunctionResultMessage,
+    >(
+      functionName: SdkIframeEventBusCalledFunctionName,
+      params: TFunctionCallMessage["data"]["params"],
+    ): Promise<TFunctionResultMessage["data"]["result"]> => {
+      const messageId = uuid();
+
+      sendMessage({
+        type: `metabase.embed.functionCall.${functionName}`,
+        data: {
+          messageId,
+          params,
+        },
+      });
+
+      return waitForIncomingMessage(functionName, messageId);
+    },
+    [sendMessage, waitForIncomingMessage],
   );
 
   useEffect(() => {
@@ -52,15 +118,15 @@ export function useSdkIframeEmbedEventBus({
     window.addEventListener("message", messageHandler);
 
     // notify embed.js that the iframe is ready
-    window.parent.postMessage({ type: "metabase.embed.iframeReady" }, "*");
+    sendMessage({ type: "metabase.embed.iframeReady" });
 
     return () => {
       window.removeEventListener("message", messageHandler);
     };
-  }, [onSettingsChanged]);
+  }, [onSettingsChanged, sendMessage]);
 
   useEffect(() => {
-    if (embedSettings?.instanceUrl && usageAnalytics) {
+    if (embedSettings?.instanceUrl && usageAnalytics?.embedHostUrl) {
       const isEmbeddedAnalyticsJsPreview = isMetabaseInstance(
         embedSettings.instanceUrl,
         usageAnalytics.embedHostUrl,
@@ -71,7 +137,7 @@ export function useSdkIframeEmbedEventBus({
     }
   }, [embedSettings?.instanceUrl, usageAnalytics]);
 
-  return { embedSettings };
+  return { sendMessage, transferFunctionCallMessages, embedSettings };
 }
 
 export function isMetabaseInstance(instanceUrl: string, embedHostUrl: string) {
