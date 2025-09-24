@@ -154,9 +154,9 @@ class BaseSelect<
           items: Children.map((child as any).props.children, optionToItem),
         })) as any;
       } else if (first && first.type === Option) {
-        return [{ items: Children.map(children, optionToItem) }].filter(
-          Boolean,
-        ) as any;
+        return [
+          { items: Children.map(children, optionToItem).filter(Boolean) },
+        ] as any;
       }
     } else if (options) {
       if (this.props.optionSectionFn) {
