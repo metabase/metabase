@@ -39,6 +39,7 @@
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.common :as api]
    [metabase.channel.urls :as urls]
+   [metabase.embedding.util :as embed.util]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
@@ -135,7 +136,7 @@
   [req]
   (let [redirect (get-in req [:params :redirect])
         origin (get-in req [:headers "origin"])
-        embedding-sdk-header? (sso-utils/is-embedding-sdk-header? req)]
+        embedding-sdk-header? (embed.util/has-react-sdk-header? req)]
     (cond
       ;; Case 1: Embedding SDK header is present - use ACS URL with token and origin
       embedding-sdk-header?
@@ -162,7 +163,7 @@
   (premium-features/assert-has-feature :sso-saml (tru "SAML-based authentication"))
   (check-saml-enabled)
   (let [redirect (get-in req [:params :redirect])
-        embedding-sdk-header? (sso-utils/is-embedding-sdk-header? req)
+        embedding-sdk-header? (embed.util/has-react-sdk-header? req)
         redirect-url (construct-redirect-url req)]
     (sso-utils/check-sso-redirect redirect)
     (try

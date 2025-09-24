@@ -115,8 +115,3 @@
       (throw (ex-info (tru "Invalid redirect URL")
                       {:status-code  400
                        :redirect-url redirect-url})))))
-
-(defn is-embedding-sdk-header?
-  "Check if the client has indicated it is from the react embedding sdk"
-  [request]
-  (= (get-in request [:headers "x-metabase-client"]) "embedding-sdk-react"))
