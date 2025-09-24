@@ -20,7 +20,7 @@ parameter_mappings: []
 dataset_query:
   database: My Database
   native:
-    native: select 1
+    query: select 1
   type: native
 result_metadata: null
 visualization_settings:

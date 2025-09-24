@@ -1209,7 +1209,7 @@
    [:display-name ::lib.schema.common/non-blank-string]
    ;; TODO -- `:id` is actually 100% required but we have a lot of tests that don't specify it because this constraint
    ;; wasn't previously enforced; we need to go in and fix those tests and make this non-optional
-   [:id {:optional true} ::lib.schema.common/non-blank-string]])
+   [:id {:optional true} [:ref ::lib.schema.template-tag/id]]])
 
 ;; Example:
 ;;

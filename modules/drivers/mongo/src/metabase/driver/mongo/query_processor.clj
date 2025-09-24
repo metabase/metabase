@@ -1779,7 +1779,7 @@ function(bin) {
   (let [query (update query :query preprocess)]
     (binding [*query* query
               *next-alias-index* (volatile! 0)]
-      (let [source-table-name (if-let [source-table-id (driver-api/query->source-table-id query)]
+      (let [source-table-name (if-let [source-table-id #_{:clj-kondo/ignore [:deprecated-var]} (driver-api/query->source-table-id query)]
                                 (:name (driver-api/table (driver-api/metadata-provider) source-table-id))
                                 (query->collection-name query))
             compiled (mbql->native-rec (:query query))]

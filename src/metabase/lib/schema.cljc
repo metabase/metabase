@@ -305,7 +305,8 @@
   See [[metabase.driver.sql.query-processor-test/join-source-queries-with-joins-test]] for example.
 
   This doesn't really make sense IMO (you should use string field refs to refer to things from a previous
-  stage...right?) but for now we'll have to allow it until we can figure out how to go fix all of the old broken queries.
+  stage...right?) but for now we'll have to allow it until we can figure out how to go fix all of the old broken
+  queries.
 
   Also, it's apparently legal to use a join alias to refer to a column that comes from a join in a source Card, and
   there is no way for us to know what joins exist in the source Card without a metadata provider, so we're just going
@@ -326,8 +327,18 @@
               (mapcat join-aliases-in-join (:joins stage)))]
       (set (join-aliases-in-stage stage)))))
 
-(defn- join-ref-error-for-stages [stages]
-  (when (sequential? stages)
+(def ^:dynamic *HACK-disable-join-alias-in-field-ref-validation*
+  "Whether to validate join aliases in field refs. This is only disable-able as a hack to support X-Rays code which
+  generates fragments of stages that drop joins and then adds them again after the fact
+  in [[metabase.xrays.automagic-dashboards.core/preserve-entity-element]]. Once we port X-Rays to use Lib we can fix
+  the hackiness and hopefully take this out."
+  false)
+
+(defn- join-ref-error-for-stages
+  "Return an error messages if we find a field ref that uses a `:join-alias` for a join that doesn't exist."
+  [stages]
+  (when (and (not *HACK-disable-join-alias-in-field-ref-validation*)
+             (sequential? stages))
     (loop [visible-join-alias? (constantly false), i 0, [stage & more] stages]
       (let [visible-join-alias? (some-fn visible-join-alias? (visible-join-alias?-fn stage))]
         (or
@@ -339,20 +350,12 @@
          (when (seq more)
            (recur visible-join-alias? (inc i) more)))))))
 
-(def ^:private ^{:arglists '([stages])} ref-error-for-stages
-  "Like [[ref-error-for-stage]], but validate references in the context of a sequence of several stages; for validations
-  that can't be done on the basis of just a single stage. For example join alias validation needs to take into account
-  previous stages."
-  ;; this var is ultimately redundant for now since it just points to one function but I'm leaving it here so we can
-  ;; add more stuff to it the future as we validate more things.
-  join-ref-error-for-stages)
-
 (mr/def ::stages.valid-refs
   [:fn
    {:error/message "Valid references for all query stages"
     :error/fn      (fn [{stages :value} _]
-                     (ref-error-for-stages stages))}
-   (complement ref-error-for-stages)])
+                     (join-ref-error-for-stages stages))}
+   (complement #'join-ref-error-for-stages)])
 
 (defn- normalize-stages [stages]
   (when (sequential? stages)
@@ -379,6 +382,11 @@
     [:* [:schema [:ref ::stage.additional]]]]
    [:ref ::stages.valid-refs]])
 
+(defn- normalize-query [query]
+  (when-let [query (common/normalize-map query)]
+    (cond-> query
+      (not (:lib/metadata query)) (dissoc :lib/metadata))))
+
 (defn- serialize-query [query]
   ;; this stuff all gets added in when you actually run a query with one of the QP entrypoints, and is not considered
   ;; to be part of the query itself. It doesn't get saved along with the query in the app DB.
@@ -395,8 +403,8 @@
   [:and
    [:map
     {:description      "Valid MBQL 5 query."
-     :decode/normalize common/normalize-map
-     :encode/serialize serialize-query}
+     :decode/normalize #'normalize-query
+     :encode/serialize #'serialize-query}
     [:lib/type [:=
                 {:decode/normalize common/normalize-keyword, :default :mbql/query}
                 :mbql/query]]

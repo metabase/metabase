@@ -144,17 +144,6 @@
                                   e))))]
     (buddy-hash/sha3-256 (json/encode (select-keys-for-hashing query)))))
 
-;;; --------------------------------------------- Query Source Card IDs ----------------------------------------------
-
-(defn query->source-card-id
-  "Return the ID of the Card used as the \"source\" query of this query, if applicable; otherwise return `nil`."
-  {:deprecated "0.57.0"}
-  ^Integer [outer-query]
-  (let [source-table (get-in outer-query [:query :source-table])]
-    (when (string? source-table)
-      (when-let [[_ card-id-str] (re-matches #"^card__(\d+$)" source-table)]
-        (Integer/parseInt card-id-str)))))
-
 ;;; ------------------------------------------- Metadata Combination Utils --------------------------------------------
 
 (defn field-ref->key
