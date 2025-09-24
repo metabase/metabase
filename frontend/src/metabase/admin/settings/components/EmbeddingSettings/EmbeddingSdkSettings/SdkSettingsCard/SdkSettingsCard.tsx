@@ -45,7 +45,7 @@ export function SdkSettingsCard({
 
   const renderLink = (linkItem: LinkItem, index: number) =>
     match(linkItem)
-      .with({ type: "button" }, ({ to }) => (
+      .with({ type: "button" }, ({ to, title }) => (
         <Link key={index} to={to} className={CS.cursorPointer}>
           <Button variant="brand" size="sm">
             {title}
