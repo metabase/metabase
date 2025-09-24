@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.add-implicit-joins
   "Middleware that creates corresponding `:joins` for Tables referred to by `:field` clauses with `:source-field` info
   in the options and adds `:join-alias` info to those `:field` clauses."
-  (:refer-clojure :exclude [alias])
+  (:refer-clojure :exclude [alias mapv some])
   (:require
    [better-cond.core :as b]
    [clojure.set :as set]
@@ -22,7 +22,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [mapv some]]))
 
 (defn- implicitly-joined-fields
   "Find fields that come from implicit join in form `x`, presumably a query.

@@ -26,7 +26,6 @@ import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
-import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { entityCompatibleQuery } from "metabase/lib/entities";
 import type { Deferred } from "metabase/lib/promise";
 import { defer } from "metabase/lib/promise";
@@ -58,6 +57,7 @@ import type {
   DashboardId,
   Dataset,
   DatasetQuery,
+  ParameterValuesMap,
   QuestionDashboardCard,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
@@ -651,7 +651,7 @@ export const fetchDashboard = createAsyncThunk(
       options: { preserveParameters = false, clearCache = true } = {},
     }: {
       dashId: DashboardId;
-      queryParams: ParameterValues;
+      queryParams: ParameterValuesMap;
       options?: { preserveParameters?: boolean; clearCache?: boolean };
     },
     { getState, dispatch, rejectWithValue },

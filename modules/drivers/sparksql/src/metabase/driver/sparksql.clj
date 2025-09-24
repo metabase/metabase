@@ -1,4 +1,5 @@
 (ns metabase.driver.sparksql
+  (:refer-clojure :exclude [select-keys every?])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -16,7 +17,8 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.util.honey-sql-2 :as h2x])
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.performance :refer [select-keys every?]])
   (:import
    (java.sql Connection ResultSet Types)))
 
@@ -226,9 +228,6 @@
         (.close stmt)
         (throw e)))))
 
-;; the current HiveConnection doesn't support .createStatement
-(defmethod sql-jdbc.execute/statement-supported? :sparksql [_] false)
-
 (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
                               :expression-aggregations         true
@@ -242,7 +241,8 @@
                               :test/jvm-timezone-setting       false
                               ;; disabled for now, see issue #40991 to fix this.
                               :window-functions/cumulative     false
-                              :database-routing                false}]
+                              :database-routing                false
+                              :jdbc/statements                 false}]
   (defmethod driver/database-supports? [:sparksql feature] [_driver _feature _db] supported?))
 
 (defmethod sql.qp/quote-style :sparksql

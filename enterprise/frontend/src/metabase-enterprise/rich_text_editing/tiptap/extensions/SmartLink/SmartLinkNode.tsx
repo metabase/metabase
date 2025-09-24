@@ -190,7 +190,7 @@ export const SmartLink = Node.create<{
           "data-model": model,
           "data-label": label ?? undefined,
           "data-site-url": this.options.siteUrl,
-          href: this.options.siteUrl + href ?? "",
+          href: this.options.siteUrl + href,
           style: "text-decoration: none;",
         },
         this.options.HTMLAttributes,

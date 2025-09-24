@@ -345,9 +345,9 @@
 ;;; |                                                 CARD-SPECIFIC                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn- card->template-tag-param-id->field-ids :- [:maybe [:map-of
-                                                             ::lib.schema.template-tag/id
-                                                             [:set ::lib.schema.id/field]]]
+(mu/defn- card->template-tag-param-id->field-ids :- [:map-of
+                                                     ::lib.schema.common/non-blank-string
+                                                     [:set ::lib.schema.id/field]]
   "Return a map of Param IDs to sets of Field IDs referenced by each template tag parameter in this `card`.
 
   Mostly used for determining Fields referenced by Cards for purposes other than processing queries. Filters out

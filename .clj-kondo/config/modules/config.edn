@@ -502,6 +502,7 @@
            metabase.embedding.init
            metabase.embedding.jwt
            metabase.embedding.settings
+           metabase.embedding.util
            metabase.embedding.validation}
    :uses #{analytics
            api
@@ -938,6 +939,7 @@
    :uses #{api
            legacy-mbql
            lib
+           lib-be
            models
            permissions
            query-processor
@@ -1020,6 +1022,7 @@
            metabase.request.schema}
    :uses #{api
            config
+           embedding
            permissions ; FIXME
            session
            settings
@@ -1470,6 +1473,7 @@
            driver
            legacy-mbql
            lib
+           lib-be
            models
            queries
            query-permissions
