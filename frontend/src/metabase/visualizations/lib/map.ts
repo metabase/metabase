@@ -240,7 +240,8 @@ function embedDashboardTileUrl(
   lonField: string,
   parameters?: unknown[],
 ): string {
-  let url = `/api/${IS_EMBED_PREVIEW ? "preview_" : ""}embed/tiles/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${zoom}/${coord.x}/${coord.y}/${latField}/${lonField}`;
+  const endpoint = IS_EMBED_PREVIEW ? "preview_embed" : "embed";
+  let url = `/api/${endpoint}/tiles/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${zoom}/${coord.x}/${coord.y}/${latField}/${lonField}`;
   if (parameters && parameters.length > 0) {
     url += `?parameters=${encodeURIComponent(JSON.stringify(parameters))}`;
   }
