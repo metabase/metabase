@@ -17,6 +17,7 @@ export type RunListParams = {
 
 export type JobListParams = {
   lastRunStartTime?: string;
+  lastRunStatuses?: TransformRunStatus[];
   nextRunStartTime?: string;
   transformTagIds?: TransformTagId[];
 };

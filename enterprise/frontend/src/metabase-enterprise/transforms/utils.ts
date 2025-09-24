@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { hasFeature } from "metabase/admin/databases/utils";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
+import { isNotNull } from "metabase/lib/types";
 import type {
   Database,
   TransformRunMethod,
@@ -61,4 +62,53 @@ export function doesDatabaseSupportTransforms(database?: Database): boolean {
     !database.router_database_id &&
     hasFeature(database, "transforms/table")
   );
+}
+
+export function parseListFromUrl<T>(
+  value: unknown,
+  parseItem: (value: unknown) => T | undefined,
+): T[] | undefined {
+  if (typeof value === "string") {
+    const item = parseItem(value);
+    return item != null ? [item] : [];
+  }
+  if (Array.isArray(value)) {
+    return value.map(parseItem).filter(isNotNull);
+  }
+}
+
+export function parseNumberFromUrl(value: unknown) {
+  return typeof value === "string" ? parseFloat(value) : undefined;
+}
+
+export function parseStringFromUrl(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    return value;
+  }
+  return undefined;
+}
+
+export function parseRunStatusFromUrl(
+  value: unknown,
+): TransformRunStatus | undefined {
+  switch (value) {
+    case "started":
+    case "succeeded":
+    case "failed":
+    case "timeout":
+      return value;
+    default:
+      return undefined;
+  }
+}
+
+export function parseRunMethodFromUrl(
+  value: unknown,
+): TransformRunMethod | undefined {
+  switch (value) {
+    case "manual":
+    case "cron":
+      return value;
+  }
+  return undefined;
 }
