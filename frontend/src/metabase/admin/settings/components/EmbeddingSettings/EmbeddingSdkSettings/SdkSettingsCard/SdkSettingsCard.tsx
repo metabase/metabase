@@ -68,12 +68,12 @@ export function SdkSettingsCard({
       className={S.SectionCard}
       data-testid="sdk-setting-card"
     >
-      <Stack gap="xs" px="xl" py="lg">
+      <Stack gap="sm" px="xl" py="lg">
         <Text fz="h3" fw={600} c="text-dark">
           {title}
         </Text>
 
-        <Text c="var(--mb-color-text-secondary)" lh="lg" mb="sm">
+        <Text c="var(--mb-color-text-secondary)" lh="lg" mb="md">
           {description}
         </Text>
 
@@ -91,7 +91,7 @@ export function SdkSettingsCard({
       {hasLinksContent && (
         <Box
           px="xl"
-          py={hasButton ? "sm" : "md"}
+          py={hasButton ? "0.7rem" : "md"}
           className={S.CardLinksSection}
         >
           <Group gap="xl">{links?.map(renderLink)}</Group>
