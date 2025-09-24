@@ -699,7 +699,8 @@
              (setFloat [index val] (.setFloat stmt index val))
              (setDouble [index val] (.setDouble stmt index val))
              (cancel [] (.cancel stmt))
-             (close [] (.close stmt)))]
+             (close [] (.close stmt))
+             (isClosed [] (.isClosed stmt)))]
     (sql-jdbc.execute/set-parameters! driver ps params)
     ps))
 
@@ -722,7 +723,8 @@
         (catch Throwable e (handle-execution-error e))))
     (setMaxRows [nb] (.setMaxRows stmt nb))
     (cancel [] (.cancel stmt))
-    (close [] (.close stmt))))
+    (close [] (.close stmt))
+    (isClosed [] (.isClosed stmt))))
 
 (defmethod sql-jdbc.execute/prepared-statement :starburst
   [driver ^Connection conn ^String sql params]
@@ -738,8 +740,7 @@
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
           (log/debug e "Error setting prepared statement fetch direction to FETCH_FORWARD")))
-      (if
-       (.useExplicitPrepare ^TrinoConnection (.unwrap conn TrinoConnection))
+      (if (.useExplicitPrepare ^TrinoConnection (.unwrap conn TrinoConnection))
         (proxy-prepared-statement driver conn stmt params)
         (proxy-optimized-prepared-statement driver conn stmt params))
       (catch Throwable e
@@ -768,7 +769,8 @@
       (getResultSet [] (.getResultSet stmt))
       (setMaxRows [nb] (.setMaxRows stmt nb))
       (cancel [] (.cancel stmt))
-      (close [] (.close stmt)))))
+      (close [] (.close stmt))
+      (isClosed [] (.isClosed stmt)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Prepared Statement Substitutions                                      |
