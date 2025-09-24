@@ -27,7 +27,7 @@ export function useQueryResults(
       ? Question.create({
           dataset_query: lastRunQuery,
           metadata,
-          visualization_settings: question.settings(),
+          visualization_settings: currentQuestion.settings(),
         })
       : null;
     const result = results ? results[0] : null;

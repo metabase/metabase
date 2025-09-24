@@ -7,9 +7,10 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { CodeMirror } from "metabase/common/components/CodeMirror";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import EditorS from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/CodeMirrorEditor.module.css";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   Button,
   Collapse,
@@ -29,7 +30,13 @@ import {
   type MetabotAgentEditSuggestionChatMessage,
   setSuggestedTransform,
 } from "metabase-enterprise/metabot/state";
-import type { DatasetQuery, Transform } from "metabase-types/api";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import type {
+  DatasetQuery,
+  Transform,
+  TransformSource,
+} from "metabase-types/api";
 
 const PreviewContent = ({
   oldSource,
@@ -97,6 +104,7 @@ export const AgentSuggestionMessage = ({
   const { suggestedTransform } = message.payload;
 
   const dispatch = useDispatch();
+  const metadata = useSelector(getMetadata);
 
   const url = useLocation();
   const isViewing = url.pathname?.startsWith(
@@ -130,23 +138,57 @@ export const AgentSuggestionMessage = ({
   const oldSource = originalTransform ? getSourceCode(originalTransform) : "";
   const newSource = getSourceCode(suggestedTransform);
 
-  const handleFocus = (config?: { skipToSave?: boolean }) => {
-    const url = suggestedTransform.id
-      ? `/admin/transforms/${suggestedTransform.id}/query`
+  const parseTemplateTags = (source: TransformSource): TransformSource => {
+    // For unsaved native queries, ensure template tags (like #{{123-my-model}}) are parsed from query text
+    const query = source.query;
+    let question = Question.create({ dataset_query: query, metadata });
+    const { isNative } = Lib.queryDisplayInfo(question.query());
+
+    if (isNative && !question.isSaved()) {
+      question = question.setQuery(
+        Lib.withNativeQuery(
+          question.query(),
+          Lib.rawNativeQuery(question.query()),
+        ),
+      );
+
+      return {
+        ...source,
+        query: question.datasetQuery(),
+      };
+    } else {
+      return source;
+    }
+  };
+
+  const handleFocus = (
+    config?: { skipToSave?: boolean },
+    transformToUse?: Transform,
+  ) => {
+    const transform = transformToUse || suggestedTransform;
+
+    const processedSource = parseTemplateTags(transform.source);
+    const processedTransform = {
+      ...transform,
+      source: processedSource,
+    };
+
+    const url = transform.id
+      ? `/admin/transforms/${transform.id}/query`
       : `/admin/transforms/new/native${config?.skipToSave ? "?autoSave=true" : ""}`;
     dispatch(push(url) as UnknownAction);
-    dispatch(setSuggestedTransform(suggestedTransform));
+    dispatch(setSuggestedTransform(processedTransform));
   };
 
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const handleSave = async (query: DatasetQuery) => {
     if (suggestedTransform.id) {
+      // Create a temporary source to process template tags
+      const tempSource = { ...suggestedTransform.source, query };
+      const processedSource = parseTemplateTags(tempSource);
       const { error } = await updateTransform({
         id: suggestedTransform.id,
-        source: {
-          type: "query",
-          query,
-        },
+        source: processedSource,
       });
 
       if (error) {
@@ -161,6 +203,12 @@ export const AgentSuggestionMessage = ({
 
   const handleAccept = async () => {
     if (!isViewing && !suggestedTransform.id) {
+      const processedSource = parseTemplateTags(suggestedTransform.source);
+      const processedTransform = {
+        ...suggestedTransform,
+        source: processedSource,
+      };
+      dispatch(setSuggestedTransform(processedTransform));
       handleFocus({ skipToSave: true });
     }
 
