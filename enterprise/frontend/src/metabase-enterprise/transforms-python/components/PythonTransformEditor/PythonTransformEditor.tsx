@@ -14,6 +14,7 @@ import { PythonDataPicker } from "./PythonDataPicker";
 import { PythonEditorBody } from "./PythonEditorBody";
 import { PythonEditorResults } from "./PythonEditorResults";
 import {
+  getValidationResult,
   isPythonTransformSource,
   updateTransformSignature,
   useShouldShowPythonDebugger,
@@ -101,12 +102,7 @@ export function PythonTransformEditor({
 
   useHotkeys([["mod+Enter", handleCmdEnter]], []);
 
-  const canSave = Boolean(
-    source.body.trim() &&
-      source["source-database"] &&
-      source["source-tables"] &&
-      Object.keys(source["source-tables"]).length > 0,
-  );
+  const validationResult = getValidationResult(source);
 
   return (
     <Stack
@@ -119,9 +115,10 @@ export function PythonTransformEditor({
       <EditorHeader
         isNew={isNew}
         isSaving={isSaving}
-        canSave={canSave && (isNew || isSourceDirty)}
         onSave={handleSave}
         onCancel={onCancel}
+        validationResult={validationResult}
+        isQueryDirty={isSourceDirty}
       />
       <Flex h="100%" w="100%">
         <PythonDataPicker
