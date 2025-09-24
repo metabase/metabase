@@ -14,14 +14,26 @@ import {
 
 import { SdkIframeEmbedSetup } from "../SdkIframeEmbedSetup";
 
+const mockUseLocation = jest.fn();
+
+jest.mock("react-use", () => ({
+  ...jest.requireActual("react-use"),
+  useLocation: () => mockUseLocation(),
+}));
+
 export const setup = (options?: {
   simpleEmbeddingEnabled?: boolean;
   jwtReady?: boolean;
+  urlSearchParams?: string;
 }) => {
   setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"]);
   setupDashboardEndpoints(createMockDashboard());
   setupUpdateSettingsEndpoint();
   setupUpdateSettingEndpoint();
+
+  mockUseLocation.mockReturnValue({
+    search: options?.urlSearchParams || "",
+  });
 
   renderWithProviders(<SdkIframeEmbedSetup />, {
     storeInitialState: createMockState({

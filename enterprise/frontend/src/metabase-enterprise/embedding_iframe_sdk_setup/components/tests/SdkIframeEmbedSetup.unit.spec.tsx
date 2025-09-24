@@ -95,3 +95,24 @@ describe("Embed flow > forward and backward navigation", () => {
     expect(screen.getByRole("button", { name: "Back" })).toBeDisabled();
   });
 });
+
+describe("Embed flow > pre-selection via url parameter", () => {
+  it("pre-selects question when resource_type=question is in URL", async () => {
+    setup({
+      simpleEmbeddingEnabled: true,
+      urlSearchParams: "?resource_type=question&resource_id=456",
+    });
+
+    // Starts at the "select embed options" step.
+    expect(screen.getByText("Behavior")).toBeInTheDocument();
+    expect(screen.getByText("Appearance")).toBeInTheDocument();
+
+    // Going back to the "select resource" step shows that it is expecting a chart.
+    await userEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByText("Select a chart to embed")).toBeInTheDocument();
+
+    // Going back to the "select experience" step shows that it is expecting a chart.
+    await userEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByRole("radio", { name: /Chart/ })).toBeChecked();
+  });
+});
