@@ -7,7 +7,7 @@ summary: Upload a translation dictionary to translate questions and dashboards i
 
 {% include plans-blockquote.html feature="Translation of embedded content" convert_pro_link_to_embbedding=true %}
 
-For now, translations are only available for [static embeds](./static-embedding.md), not Interactive embedding or the Embedded analytics SDK.
+For now, translations are only available for [static embeds](./static-embedding.md), not Interactive embedding or the Embedded analytics JS/SDK.
 
 You can upload a translation dictionary to translate strings both in Metabase content (like dashboard titles) and in the data itself (like column names and values).
 
@@ -23,7 +23,7 @@ The dictionary must be a CSV with these columns:
 
 To add a translation dictionary:
 
-1. Go to **Admin > Embedding > Static embedding**.
+1. Go to **Admin > Embedding > Static**.
 2. Under **Translate embedded dashboards and question**, click **Upload translation dictionary**.
 
 Uploading a new dictionary will replace the existing dictionary.

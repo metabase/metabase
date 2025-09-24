@@ -38,7 +38,7 @@ If you have your app running locally, and you're using the Pro Cloud version, or
 
 ## Enabling interactive embedding in Metabase
 
-1. Go to **Admin >Embedding > Interactive embedding**.
+1. Go to **Admin > Embedding > Interactive**.
 2. Click **Enable interactive embedding**.
 3. Under **Authorized origins**, add the URL of the website or web app where you want to embed Metabase (such as `https://*.example.com`).
 
@@ -128,7 +128,7 @@ Note that your interactive embed must be compatible with Safari to run on _any_ 
 
 If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), you can tell Metabase to set the session cookie's SameSite value to "none".
 
-You can set session cookie's SameSite value in **Admin settings** > **Embedding** > **Interactive embedding** > **SameSite cookie setting**.
+You can set session cookie's SameSite value in **Admin settings** > **Embedding** > **Interactive** > **SameSite cookie setting**.
 
 SameSite values include:
 

@@ -27,7 +27,7 @@ You could also use the dashboard's [Entity ID](../installation-and-operation/ser
 
 ### Enable interactive embedding
 
-In Metabase, click on the **gear** icon in the upper right and go to **Admin > Embedding > Interactive Embedding** and click on the **Enable interactive embedding** toggle.
+In Metabase, click on the **gear** icon in the upper right and go to **Admin > Embedding > Interactive Embedding** and toggle on **Enable interactive embedding**.
 
 Under **Authorized origins**, add the URL of the website or web app where you want to embed Metabase. If you're running your app locally, you can add localhost and specify the port number, e.g. `http://localhost:8080`.
 

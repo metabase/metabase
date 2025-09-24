@@ -16,7 +16,7 @@ With the Embedded analytics SDK, you can embed individual Metabase components wi
 
 ## [Embedded analytics JS](./embedded-analytics-js.md)
 
-Embed dashboards, questions, or the query builder in your app with JavaScript (no React required). Built on the Embedded analytics SDK with per-component controls and theming.
+Embed dashboards, questions, or the query builder in your app with JavaScript (no React required). Built on the Embedded analytics SDK with per-component controls and theming. Integrate your app's auth with Metabase SSO.
 
 ## [Embedded analytics SDK quickstart](./sdk/quickstart.md)
 
@@ -32,7 +32,7 @@ You can pass parameters between Metabase and your website via the embedding URL 
 
 ## [Interactive embedding](./interactive-embedding.md)
 
-The solution to self-service customer analytics: embed the full Metabase app in your app. Interactive embedding integrates with your data permissions to let people slice and dice data on their own using Metabase's query builder.
+Interactive embedding allows you to embed full Metabase app in an iframe. Interactive embedding integrates with your data permissions to let people slice and dice data on their own using Metabase's query builder.
 
 ## [Interactive embedding quickstart](./interactive-embedding-quick-start-guide.md)
 
