@@ -225,7 +225,7 @@ export const useCommandPaletteBasicActions = ({
       actions.push({
         id: "navigate-embed-js",
         section: "basic",
-        icon: "share",
+        icon: "embed",
         keywords: "embed flow, new embed, embed js",
         perform: () => dispatch(push("/embed-js")),
       });
