@@ -1283,13 +1283,15 @@
 ;;  aggregation REFERENCE e.g. the ["aggregation" 0] fields we allow in order-by
 (defmethod ->honeysql [:sql :aggregation]
   [driver [_ index]]
-  (driver-api/match-one
-    (nth (:aggregation *inner-query*) index)
+  (driver-api/match-one (nth (:aggregation *inner-query*) index)
+    [:aggregation-options ag (options :guard driver-api/qp.add.source-alias)]
+    (->honeysql driver (h2x/identifier :field-alias (driver-api/qp.add.source-alias options)))
+
     [:aggregation-options ag (options :guard :name)]
     (->honeysql driver (h2x/identifier :field-alias (:name options)))
 
-    [:aggregation-options ag _]
-    #_:clj-kondo/ignore
+    [:aggregation-options ag options]
+    #_{:clj-kondo/ignore [:invalid-arity]}
     (recur ag)
 
     ;; For some arcane reason we name the results of a distinct aggregation "count", everything else is named the

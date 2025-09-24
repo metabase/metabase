@@ -14,6 +14,7 @@
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as u.memo]
    [metabase.util.performance :as perf]
@@ -497,6 +498,11 @@
   This is useful for an API request, or group fo API requests like a dashboard load, to reduce appdb traffic."
   nil)
 
+(defn metadata-provider-cache
+  "The currently bound [[*metadata-provider-cache*]], for Potemkin-export friendliness."
+  []
+  *metadata-provider-cache*)
+
 (defmacro with-metadata-provider-cache
   "Wrapper to create a [[*metadata-provider-cache*]] for the duration of the `body`.
 
@@ -518,3 +524,9 @@
   (if-let [cache-atom *metadata-provider-cache*]
     (cache.wrapped/lookup-or-miss cache-atom database-id application-database-metadata-provider-factory)
     (application-database-metadata-provider-factory database-id)))
+
+;;; do not encode MetadataProviders to JSON, just generate `nil` instead.
+(json/add-encoder
+ UncachedApplicationDatabaseMetadataProvider
+ (fn [_mp json-generator]
+   (json/generate-nil nil json-generator)))

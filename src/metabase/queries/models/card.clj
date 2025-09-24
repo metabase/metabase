@@ -224,6 +224,8 @@
   "Return integer source table ids for card's :dataset_query."
   [card]
   (when-some [query (-> card :dataset_query :query)]
+    ;; existing usage -- do not use in new code
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (not-empty (filter pos-int? (lib.util/collect-source-tables query)))))
 
 (defn- prefetch-tables-for-cards!
