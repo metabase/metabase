@@ -5,6 +5,7 @@ import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 
 import { BenchApp } from "./BenchApp";
 import { BenchLayout } from "./BenchLayout";
+import { MetricsApp } from "./MetricsApp";
 import RevisionHistoryApp from "./metadata/containers/RevisionHistoryApp";
 import SegmentApp from "./metadata/containers/SegmentApp";
 import SegmentListApp from "./metadata/containers/SegmentListApp";
@@ -72,6 +73,7 @@ export function getBenchRoutes() {
       </Route>
 
       {/* METRICS V2 */}
+      <Route path="metrics" component={MetricsApp} />
       <Route path="metric">
         <IndexRoute component={QueryBuilder} />
         <Route path="notebook" component={QueryBuilder} />

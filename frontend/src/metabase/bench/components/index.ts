@@ -1,6 +1,8 @@
 export { BenchPanel } from "./Panel/Panel";
 export { TransformEntitiesList } from "./TransformEntitiesList/TransformEntitiesList";
+export { MetricsEntitiesList } from "./MetricsEntitiesList/MetricsEntitiesList";
 export { TransformDetails } from "./TransformDetails/TransformDetails";
+export { MetricsDetails } from "./MetricsDetails/MetricsDetails";
 export { QueryPreview } from "./QueryPreview/QueryPreview";
 export { BenchMetabot } from "./BenchMetabot/BenchMetabot";
 export { TransformExecutionCard } from "./TransformExecutionCard/TransformExecutionCard";

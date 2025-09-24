@@ -23,7 +23,7 @@ function BenchSidebarComponent({ isDarkMode, location }: BenchSidebarProps) {
   const navItems = [
     {
       label: t`Transforms`,
-      icon: <Icon name="code" size={16} />,
+      icon: <Icon name="sql" size={16} />,
       path: "/bench",
       description: t`SQL transform editor and management`,
     },
@@ -42,7 +42,7 @@ function BenchSidebarComponent({ isDarkMode, location }: BenchSidebarProps) {
     {
       label: t`Metrics`,
       icon: <Icon name="metric" size={16} />,
-      path: "/bench/browse/metrics",
+      path: "/bench/metrics",
       description: t`Create and manage metrics`,
     },
     {
@@ -84,7 +84,7 @@ function BenchSidebarComponent({ isDarkMode, location }: BenchSidebarProps) {
             to={item.path}
             label={item.label}
             description={item.description}
-            icon={item.icon}
+            leftSection={item.icon}
             active={isActive(item.path)}
             style={{
               borderRadius: "8px",
