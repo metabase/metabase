@@ -156,6 +156,21 @@ describe("EmbeddingSdkSettings (OSS)", () => {
 
     expect(within(toggleContainer!).getByText("Disabled")).toBeInTheDocument();
   });
+
+  it("should not show embed button and docs when Embedded Analytics JS is not available", async () => {
+    setup({ tokenFeatures: { embedding_simple: false } });
+
+    const card = screen
+      .getAllByTestId("sdk-setting-card")
+      .find((card) => card.textContent?.includes("Embedded Analytics JS"));
+
+    // Upsell should be shown
+    expect(card).toHaveTextContent("Try for free");
+
+    // Call-to-action and link should not be shown
+    expect(card).not.toHaveTextContent("New embed");
+    expect(card).not.toHaveTextContent("Documentation");
+  });
 });
 
 function assertLegaleseModal() {

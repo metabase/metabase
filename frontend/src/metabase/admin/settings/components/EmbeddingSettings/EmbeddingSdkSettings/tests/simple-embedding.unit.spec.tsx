@@ -92,26 +92,6 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
     expect(card).toHaveTextContent("Documentation");
   });
 
-  it("should not show embed button and docs when simple embedding is not available", async () => {
-    await setup({
-      isEmbeddingSdkEnabled: false,
-      isEmbeddingSimpleEnabled: false,
-      showSdkEmbedTerms: false,
-      tokenFeatures: { embedding_sdk: false, embedding_simple: false },
-    });
-
-    const card = screen
-      .getAllByTestId("sdk-setting-card")
-      .find((card) => card.textContent?.includes("Embedded Analytics JS"));
-
-    // Upsell should be shown
-    expect(card).toHaveTextContent("Try for free");
-
-    // Call-to-action and link should not be shown
-    expect(card).not.toHaveTextContent("New embed");
-    expect(card).not.toHaveTextContent("Documentation");
-  });
-
   describe("Authorized Origins input field", () => {
     it("should be disabled when both SDK and simple embedding are disabled", async () => {
       await setup({
