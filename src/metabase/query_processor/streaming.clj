@@ -1,4 +1,5 @@
 (ns metabase.query-processor.streaming
+  (:refer-clojure :exclude [every? some])
   (:require
    [clojure.string :as str]
    [metabase.analytics.core :as analytics]
@@ -18,7 +19,8 @@
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [every? some]])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
    (java.io OutputStream)
@@ -47,14 +49,17 @@
   "Deduplicate column names that would otherwise conflict.
 
   TODO: This function includes logic that is normally is done by the annotate middleware, but hasn't been run yet
-  at this point in the code. We should eventually refactor this (#17195)"
+  at this point in the code. We should eventually refactor this (#17195)
+
+  TODO (Cam 9/23/25) -- We should use [[metabase.lib.field.util/add-deduplicated-names]] to do this."
   [cols]
   (map (fn [col unique-name]
-         (let [col-with-display-name (if (:display_name col)
-                                       col
-                                       (assoc col :display_name (:name col)))]
-           (assoc col-with-display-name :name unique-name)))
+         (-> col
+             (cond-> (not (:display_name col)) (assoc :display_name (:name col)))
+             (assoc :name unique-name)))
        cols
+       ;; existing usage -- do not use going forward
+       #_{:clj-kondo/ignore [:deprecated-var]}
        (mbql.u/uniquify-names (map :name cols))))
 
 (defn- validate-table-columns

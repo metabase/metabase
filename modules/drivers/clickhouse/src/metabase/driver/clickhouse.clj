@@ -53,7 +53,7 @@
                               :left-join                       (not driver-api/is-test?)
                               :describe-fks                    false
                               :actions                         false
-                              :metadata/key-constraints        (not driver-api/is-test?)
+                              :metadata/key-constraints        false
                               :database-routing                true
                               :transforms/table                true}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
@@ -323,3 +323,9 @@
   [driver conn-spec schema]
   (let [sql [[(format "CREATE DATABASE IF NOT EXISTS `%s`;" schema)]]]
     (driver/execute-raw-queries! driver conn-spec sql)))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(defmethod driver/describe-table-fks :clickhouse
+  [_driver _database _table]
+  (log/warn "Clickhouse does not support foreign keys. `describe-table-fks` should not have been called!")
+  #{})

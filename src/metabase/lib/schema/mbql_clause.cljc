@@ -1,11 +1,13 @@
 (ns metabase.lib.schema.mbql-clause
+  (:refer-clojure :exclude [every?])
   (:require
    [malli.core :as mc]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.types.core]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [every?]]))
 
 (comment metabase.types.core/keep-me)
 
