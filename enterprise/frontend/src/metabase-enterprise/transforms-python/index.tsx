@@ -11,6 +11,7 @@ import { FullWidthTransformPageLayout } from "metabase-enterprise/transforms/pag
 import { getNewTransformFromTypeUrl } from "metabase-enterprise/transforms/urls";
 
 import { PythonTransformEditor } from "./components/PythonTransformEditor";
+import { SourceSection } from "./components/SourceSection";
 import { SHARED_LIB_IMPORT_PATH } from "./constants";
 import { PythonLibraryEditorPage } from "./pages/PythonLibraryEditorPage";
 import { PythonRunnerSettingsPage } from "./pages/PythonRunnerSettingsPage";
@@ -18,6 +19,8 @@ import { getPythonLibraryUrl } from "./urls";
 
 if (hasPremiumFeature("transforms-python")) {
   PLUGIN_TRANSFORMS_PYTHON.PythonRunnerSettingsPage = PythonRunnerSettingsPage;
+  PLUGIN_TRANSFORMS_PYTHON.TransformEditor = PythonTransformEditor;
+  PLUGIN_TRANSFORMS_PYTHON.SourceSection = SourceSection;
 
   PLUGIN_TRANSFORMS_PYTHON.getAdminRoutes = () => (
     <Route component={FullWidthTransformPageLayout}>
@@ -48,6 +51,4 @@ if (hasPremiumFeature("transforms-python")) {
       {t`Python script`}
     </Menu.Item>
   );
-
-  PLUGIN_TRANSFORMS_PYTHON.TransformEditor = PythonTransformEditor;
 }

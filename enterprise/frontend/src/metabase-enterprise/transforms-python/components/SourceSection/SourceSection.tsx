@@ -4,14 +4,13 @@ import { skipToken, useGetTableQuery } from "metabase/api";
 import Link from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { Box, Group, Icon, type IconName, Loader, Stack } from "metabase/ui";
-import type { Transform } from "metabase-types/api";
-
-import { SplitSection } from "../../../components/SplitSection";
+import { SplitSection } from "metabase-enterprise/transforms/components/SplitSection";
 import {
   getBrowseDatabaseUrl,
   getBrowseSchemaUrl,
   getQueryBuilderUrl,
-} from "../../../urls";
+} from "metabase-enterprise/transforms/urls";
+import type { Transform } from "metabase-types/api";
 
 import S from "./SourceSection.module.css";
 

@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { Stack } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
 import type { Transform, TransformId } from "metabase-types/api";
@@ -15,7 +16,6 @@ import { HeaderSection } from "./HeaderSection";
 import { ManageSection } from "./ManageSection";
 import { NameSection } from "./NameSection";
 import { RunSection } from "./RunSection";
-import { SourceSection } from "./SourceSection";
 import { TargetSection } from "./TargetSection";
 import {
   isTransformCanceling,
@@ -65,7 +65,7 @@ export function TransformPage({ params }: TransformPageProps) {
         <NameSection transform={transform} />
       </Stack>
       <RunSection transform={transform} />
-      <SourceSection transform={transform} />
+      <PLUGIN_TRANSFORMS_PYTHON.SourceSection transform={transform} />
       <TargetSection transform={transform} />
       <ManageSection transform={transform} />
       <DependenciesSection transform={transform} />

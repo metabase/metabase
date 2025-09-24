@@ -85,6 +85,7 @@ import type {
   TableId,
   Timeline,
   TimelineEvent,
+  Transform,
   User,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -841,9 +842,7 @@ export const PLUGIN_TRANSFORMS: TransformsPlugin = {
 
 export type PythonTransformsPlugin = {
   PythonRunnerSettingsPage: ComponentType;
-  getAdminRoutes: () => ReactNode;
-  getTransformsNavLinks: () => ReactNode;
-  getCreateTransformsMenuItems: () => ReactNode;
+  SourceSection: ComponentType<{ transform: Transform }>;
   TransformEditor: ComponentType<{
     initialSource: {
       type: "python";
@@ -857,11 +856,15 @@ export type PythonTransformsPlugin = {
     onSave: (newSource: PythonTransformSource) => void;
     onCancel: () => void;
   }>;
+  getAdminRoutes: () => ReactNode;
+  getTransformsNavLinks: () => ReactNode;
+  getCreateTransformsMenuItems: () => ReactNode;
 };
 
 export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
   PythonRunnerSettingsPage: NotFoundPlaceholder,
   TransformEditor: NotFoundPlaceholder,
+  SourceSection: PluginPlaceholder,
   getAdminRoutes: () => null,
   getTransformsNavLinks: () => null,
   getCreateTransformsMenuItems: () => null,
