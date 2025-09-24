@@ -31,7 +31,12 @@ import {
   setSuggestedTransform,
 } from "metabase-enterprise/metabot/state";
 import * as Lib from "metabase-lib";
-import type { DatasetQuery, Transform } from "metabase-types/api";
+import Question from "metabase-lib/v1/Question";
+import type {
+  DatasetQuery,
+  Transform,
+  TransformSource,
+} from "metabase-types/api";
 
 const PreviewContent = ({
   oldSource,
@@ -133,19 +138,30 @@ export const AgentSuggestionMessage = ({
   const oldSource = originalTransform ? getSourceCode(originalTransform) : "";
   const newSource = getSourceCode(suggestedTransform);
 
-  const parseTemplateTags = (query: DatasetQuery): DatasetQuery => {
-    // Round-tripping through Lib.nativeQuery ensures template tags (e.g. model & snippet references)
-    // are parsed so that the query can execute successfully
-    if (query.type === "native" && query?.database && query.native?.query) {
-      const metadataProvider = Lib.metadataProvider(query.database, metadata);
-      const libQuery = Lib.nativeQuery(
-        query.database,
-        metadataProvider,
-        query.native.query,
-      );
-      return Lib.toLegacyQuery(libQuery);
+  const parseTemplateTags = (source: TransformSource): TransformSource => {
+    // Round-tripping through Question.create and native query methods ensures template tags
+    // (e.g. model & snippet references) are parsed so that the query can execute successfully
+    const query = source.query;
+    const question = Question.create({ dataset_query: query, metadata });
+    const libQuery = question.query();
+    const { isNative } = Lib.queryDisplayInfo(libQuery);
+
+    if (isNative) {
+      const nativeQuery = question.legacyNativeQuery();
+      if (nativeQuery) {
+        const queryText = nativeQuery.queryText();
+        // Process template tags by setting the query text
+        const updatedQuery = nativeQuery.setQueryText(queryText);
+        const processedQuery = updatedQuery.question().datasetQuery();
+
+        return {
+          ...source,
+          query: processedQuery,
+        };
+      }
     }
-    return query;
+
+    return source;
   };
 
   const handleFocus = (
@@ -153,23 +169,29 @@ export const AgentSuggestionMessage = ({
     transformToUse?: Transform,
   ) => {
     const transform = transformToUse || suggestedTransform;
+
+    const processedSource = parseTemplateTags(transform.source);
+    const processedTransform = {
+      ...transform,
+      source: processedSource,
+    };
+
     const url = transform.id
       ? `/admin/transforms/${transform.id}/query`
       : `/admin/transforms/new/native${config?.skipToSave ? "?autoSave=true" : ""}`;
     dispatch(push(url) as UnknownAction);
-    dispatch(setSuggestedTransform(transform));
+    dispatch(setSuggestedTransform(processedTransform));
   };
 
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const handleSave = async (query: DatasetQuery) => {
     if (suggestedTransform.id) {
-      const processedQuery = parseTemplateTags(query);
+      // Create a temporary source to process template tags
+      const tempSource = { ...suggestedTransform.source, query };
+      const processedSource = parseTemplateTags(tempSource);
       const { error } = await updateTransform({
         id: suggestedTransform.id,
-        source: {
-          type: "query",
-          query: processedQuery,
-        },
+        source: processedSource,
       });
 
       if (error) {
@@ -184,13 +206,10 @@ export const AgentSuggestionMessage = ({
 
   const handleAccept = async () => {
     if (!isViewing && !suggestedTransform.id) {
-      const processedQuery = parseTemplateTags(suggestedTransform.source.query);
+      const processedSource = parseTemplateTags(suggestedTransform.source);
       const processedTransform = {
         ...suggestedTransform,
-        source: {
-          ...suggestedTransform.source,
-          query: processedQuery,
-        },
+        source: processedSource,
       };
       dispatch(setSuggestedTransform(processedTransform));
       handleFocus({ skipToSave: true });
