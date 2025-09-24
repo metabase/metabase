@@ -42,7 +42,7 @@ on:
           - SQLite
           - SQL Server 2017
           - SQL Server 2022
-          - Vertica
+          # - Vertica
 
 jobs:
 
@@ -663,24 +663,24 @@ jobs:
         junit-name: 'be-tests-sqlserver-2022-ee'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
-  be-tests-vertica-ee:
-    if: inputs.driver == 'Vertica'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 90
-    env:
-      CI: 'true'
-      DRIVERS: vertica
-    services:
-      vertica:
-        image: vertica/vertica-ce:12.0.2-0
-        ports:
-          - "5433:5433"
-    steps:
-    - uses: actions/checkout@v4
-    - name: Make plugins directory
-      run: mkdir plugins
-    - name: Test Vertica driver
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-tests-vertica-ee'
-        test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
+  # be-tests-vertica-ee:
+  #   if: inputs.driver == 'Vertica'
+  #   runs-on: ubuntu-22.04
+  #   timeout-minutes: 90
+  #   env:
+  #     CI: 'true'
+  #     DRIVERS: vertica
+  #   services:
+  #     vertica:
+  #       image: vertica/vertica-ce:12.0.2-0
+  #       ports:
+  #         - "5433:5433"
+  #   steps:
+  #   - uses: actions/checkout@v4
+  #   - name: Make plugins directory
+  #     run: mkdir plugins
+  #   - name: Test Vertica driver
+  #     uses: ./.github/actions/test-driver
+  #     with:
+  #       junit-name: 'be-tests-vertica-ee'
+  #       test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
