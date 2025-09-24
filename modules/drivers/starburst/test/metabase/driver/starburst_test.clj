@@ -22,7 +22,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
-   (java.sql Connection)))
+   (java.sql Connection ResultSet)))
 
 (set! *warn-on-reflection* true)
 
