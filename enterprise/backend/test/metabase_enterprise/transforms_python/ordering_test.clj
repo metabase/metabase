@@ -9,7 +9,8 @@
 
 (defn- make-transform [query & [name schema]]
   (let [name (or name (mt/random-name))
-        default-schema (some-> driver/*driver* driver.sql/default-schema)
+        default-schema (when (get-method driver.sql/default-schema driver/*driver*)
+                         (driver.sql/default-schema driver/*driver*))
         schema (or schema default-schema "public")]
     {:source {:type :query
               :query query}
@@ -20,7 +21,8 @@
 
 (defn- make-python-transform [source-tables & [name schema target-db]]
   (let [name (or name (mt/random-name))
-        default-schema (some-> driver/*driver* driver.sql/default-schema)
+        default-schema (when (get-method driver.sql/default-schema driver/*driver*)
+                         (driver.sql/default-schema driver/*driver*))
         schema (or schema default-schema "public")
         target-db (or target-db (mt/id))]
     {:source {:type "python"

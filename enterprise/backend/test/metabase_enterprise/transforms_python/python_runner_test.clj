@@ -481,7 +481,10 @@
           (is (= {"id"           (if (= :snowflake driver) :type/Number :type/Integer)
                   "price"        :type/Float
                   "active"       :type/Boolean
-                  "created_tz"   (if (= :snowflake driver) :type/DateTimeWithTZ :type/DateTimeWithLocalTZ)
+                  "created_tz"   (case driver
+                                   :snowflake :type/DateTimeWithTZ
+                                   :sqlserver :type/DateTimeWithZoneOffset
+                                   :type/DateTimeWithLocalTZ)
                   "created_at"   :type/DateTime
                   "created_date" :type/Date
                   "description"  :type/Text}
