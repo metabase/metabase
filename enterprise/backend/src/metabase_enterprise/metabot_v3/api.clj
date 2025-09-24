@@ -81,6 +81,13 @@
   (metabot-v3.context/log body :llm.log/fe->be)
   (streaming-request body))
 
+(api.macros/defendpoint :post "/feedback"
+  "Echo Metabot feedback for MVP; returns whatever is posted."
+  [_route-params
+   _query-params
+   feedback :- :map]
+  feedback)
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-v3` routes."
   (handlers/routes
