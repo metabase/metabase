@@ -83,7 +83,7 @@ To have Metabot generate SQL for you:
 3. Type cmd+b on Mac, ctrl+b on Windows, to open up the [chat sidebar](#the-metabot-chat-sidebar).
 4. Ask it to "Write a SQL query that..." and type your prompt.
 
-Metabot will generate the SQL for you, but it won't run the query. This gives you a chance to inspect the code before running it. The native editor is designed to be read-only (so don't worry about Metabot dropping any tables), but you should still check the query to make sure it targets the data you want.
+Metabot will generate the SQL for you, but it won't run the query. This gives you a chance to inspect the code before running it.
 
 If you don't specify a specific table in a natural language question, Metabot will only check the first 100 tables in the currently selected database. If your question pertains to tables other than those first 100 tables, Metabot may hallucinate the tables it needs, and the query will fail.
 
