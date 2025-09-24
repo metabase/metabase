@@ -103,6 +103,7 @@ export function parseRunMethod(value: unknown): TransformRunMethod | undefined {
     case "manual":
     case "cron":
       return value;
+    default:
+      return undefined;
   }
-  return undefined;
 }
