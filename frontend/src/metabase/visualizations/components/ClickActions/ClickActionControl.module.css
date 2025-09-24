@@ -25,4 +25,5 @@
 
 .ClickActionButtonIcon {
   margin-right: 0.2rem;
+  color: var(--mb-color-text-medium);
 }
