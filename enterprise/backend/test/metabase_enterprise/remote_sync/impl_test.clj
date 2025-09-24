@@ -161,7 +161,7 @@
   (testing "complete import-export workflow"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}
                    :model/Card {card-id :id} {:name "Test Card" :collection_id coll-id :entity_id "test-card-1xxxxxxxxxx"}]
-      (let [mock-main (test-helpers/create-mock-source)]
+      (let [mock-main (test-helpers/create-mock-source :branch "test-branch")]
         (with-redefs [source/source-from-settings (constantly mock-main)]
 
           ;; First export - verify it succeeds and files are written to the mock source
@@ -205,7 +205,7 @@
                                        (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection 1")
                                        "cards/test-card-1.yaml"
                                        (test-helpers/generate-card-yaml "test-card-1xxxxxxxxxx" "Test Card 1" "test-collection-1xxxx")}}
-            mock-main (test-helpers/create-mock-source :initial-files test-files)]
+            mock-main (test-helpers/create-mock-source :initial-files test-files :branch "test-branch")]
         (with-redefs [source/source-from-settings (constantly mock-main)]
 
           ;; Import only collection 1 - this exercises the cleanup logic for collection 2
