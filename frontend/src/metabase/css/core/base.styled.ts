@@ -10,7 +10,9 @@ export const rootStyle = css`
   height: 100%; /* ensure the entire page will fill the window */
   display: flex;
   flex-direction: column;
-  background-color: var(--mb-color-bg-light);
+  /* TODO: Via https://github.com/metabase/metabase/pull/63765/files#r2363422928 */
+  /* "Note to self - I think this actually needs to be bg-secondary and then some other overrides aren't needed." */
+  background-color: var(--mb-color-bg-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 `;
