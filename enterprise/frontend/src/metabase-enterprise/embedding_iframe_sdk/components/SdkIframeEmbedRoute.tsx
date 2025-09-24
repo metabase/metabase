@@ -10,7 +10,9 @@ import {
 import { SdkBreadcrumbsProvider } from "embedding-sdk-bundle/components/private/SdkBreadcrumbs";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion";
+import { getSdkStore } from "embedding-sdk-bundle/store";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
+import { createTracker } from "metabase/lib/analytics-untyped";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { Box } from "metabase/ui";
 
@@ -31,8 +33,13 @@ const onSettingsChanged = (settings: SdkIframeEmbedSettings) => {
     settings?.useExistingUserSession || false;
 };
 
+const store = getSdkStore();
+createTracker(store);
+
 export const SdkIframeEmbedRoute = () => {
-  const { embedSettings } = useSdkIframeEmbedEventBus({ onSettingsChanged });
+  const { embedSettings } = useSdkIframeEmbedEventBus({
+    onSettingsChanged,
+  });
 
   // The embed settings won't be available until the parent sends it via postMessage.
   // The SDK will show its own loading indicator, so we don't need to show it twice.
@@ -68,7 +75,12 @@ export const SdkIframeEmbedRoute = () => {
   });
 
   return (
-    <MetabaseProvider authConfig={authConfig} theme={theme} locale={locale}>
+    <MetabaseProvider
+      authConfig={authConfig}
+      theme={theme}
+      locale={locale}
+      reduxStore={store}
+    >
       <Box h="100vh" bg={theme?.colors?.background}>
         <SdkIframeEmbedView settings={embedSettings} />
       </Box>
