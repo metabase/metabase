@@ -5,6 +5,7 @@
    [metabase-enterprise.remote-sync.events :as lib.events]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
+   [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
@@ -88,17 +89,17 @@
   [branch & [collections]]
   (log/info "Reloading remote entities from the remote source")
   (let [sync-timestamp (t/instant)]
-    (if-let [source (source/source-from-settings)]
+    (if-let [source (source/source-from-settings branch)]
       (try
         ;; Load all entities from Git first - this handles creates/updates via entity_id matching
         (let [load-result (serdes/with-cache
                             (if (seq collections)
                               (reduce (fn [accum collection]
                                         (merge-with conj accum
-                                                    (serialization/load-metabase! (source/ingestable-source source (or branch (settings/remote-sync-branch)))
+                                                    (serialization/load-metabase! (source.p/->ingestable source)
                                                                                   :root-dependency-path [{:id collection :model "Collection"}])))
                                       {} collections)
-                              (serialization/load-metabase! (source/ingestable-source source (or branch (settings/remote-sync-branch))))))
+                              (serialization/load-metabase! (source.p/->ingestable source))))
               ;; Extract entity_ids by model from the :seen paths
               imported-entities (->> (:seen load-result)
                                      (map last) ; Get the last element of each path (the entity itself)
@@ -142,7 +143,7 @@
                                        :include-field-values     :false
                                        :include-database-secrets :false
                                        :continue-on-error        false})
-               (source/store! source branch message)))
+               (source/store! source message)))
          (doseq [collection collections]
            (lib.events/publish-remote-sync! "export" nil api/*current-user-id*
                                             {:target-branch branch

@@ -154,7 +154,7 @@ width: fixed
 "
             name entity-id collection-id entity-id (str/replace (u/lower-case-en name) #"\s+" "_") dashcards-yaml)))
 
-(defrecord MockLibrarySource [source-id base-url fail-mode files-atom]
+(defrecord MockLibrarySource [source-id base-url branch fail-mode files-atom]
   source.p/LibrarySource
   (branches [_this]
     (case fail-mode
@@ -164,7 +164,7 @@ width: fixed
       ;; Default success case
       {"main" "main-ref" "develop" "develop-ref"}))
 
-  (list-files [_this branch]
+  (list-files [_this]
     (case fail-mode
       :list-files-error (throw (Exception. "Failed to list files"))
       :network-error (throw (java.net.UnknownHostException. "Remote host not found"))
@@ -174,7 +174,7 @@ width: fixed
       ;; Default success case - return files from atom
       (keys (get @files-atom branch {}))))
 
-  (read-file [_this branch path]
+  (read-file [_this path]
     (case fail-mode
       :read-file-error (throw (Exception. "Failed to read file"))
       :network-error (throw (java.net.UnknownHostException. "Remote host not found"))
@@ -184,7 +184,7 @@ width: fixed
       ;; Default success case - return file content from atom
       (get-in @files-atom [branch path] "")))
 
-  (write-files! [_this branch _message files]
+  (write-files! [_this _message files]
     (case fail-mode
       :write-files-error (throw (Exception. "Failed to write files"))
       :store-error (throw (Exception. "Store failed"))
@@ -194,8 +194,9 @@ width: fixed
 
 (defn create-mock-source
   "Create a mock LibrarySource for testing"
-  [& {:keys [fail-mode initial-files]
-      :or {fail-mode nil
+  [& {:keys [branch fail-mode initial-files]
+      :or {branch "main"
+           fail-mode nil
            initial-files nil}}]
   (let [default-files {"main" {"collections/M-Q4pcV0qkiyJ0kiSWECl_some_collection/M-Q4pcV0qkiyJ0kiSWECl_some_collection.yaml"
                                (generate-collection-yaml "M-Q4pcV0qkiyJ0kiSWECl" "Some Collection")
@@ -214,7 +215,7 @@ width: fixed
                                   (generate-card-yaml "test-dev-cardxxxxxxxx" "Dev Card" "test-dev-collectionxx")}}
 
         files-atom (atom (or initial-files default-files))]
-    (->MockLibrarySource "test-source" "https://test.example.com" fail-mode files-atom)))
+    (->MockLibrarySource "test-source" "https://test.example.com" branch fail-mode files-atom)))
 
 (defn clean-change-log
   "Reset the change-log table before running tests to prevent existing extries from affecting dirty state checks"

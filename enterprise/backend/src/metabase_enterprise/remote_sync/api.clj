@@ -117,11 +117,12 @@
     (settings/check-and-update-remote-settings! settings)
     (when (and (settings/remote-sync-enabled)
                (= "import" (settings/remote-sync-type)))
-      (impl/import! (settings/remote-sync-branch)))
+      (impl/import! nil))
     (catch Exception e
       (throw (ex-info "Invalid git settings"
                       {:error (.getMessage e)
-                       :status-code 400}))))
+                       :status-code 400}
+                      e))))
   {:success true})
 
 (api.macros/defendpoint :get "/branches"

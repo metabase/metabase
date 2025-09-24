@@ -59,22 +59,22 @@
   (testing "POST /api/ee/remote-sync/import"
 
     (testing "successful import with default branch"
-      (let [mock-source (test-helpers/create-mock-source)]
+      (let [mock-main (test-helpers/create-mock-source)]
         (mt/with-temporary-setting-values [remote-sync-enabled true
                                            remote-sync-url "https://github.com/test/repo.git"
                                            remote-sync-token "test-token"
                                            remote-sync-branch "main"]
-          (with-redefs [source/source-from-settings (constantly mock-source)]
+          (with-redefs [source/source-from-settings (constantly mock-main)]
             (is (= "Success"
                    (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {})))))))
 
     (testing "successful import with specific branch"
-      (let [mock-source (test-helpers/create-mock-source)]
+      (let [mock-develop (test-helpers/create-mock-source :branch "develop")]
         (mt/with-temporary-setting-values [remote-sync-enabled true
                                            remote-sync-url "https://github.com/test/repo.git"
                                            remote-sync-token "test-token"
                                            remote-sync-branch "main"]
-          (with-redefs [source/source-from-settings (constantly mock-source)]
+          (with-redefs [source/source-from-settings (constantly mock-develop)]
             (is (= "Success"
                    (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:branch "feature-branch"})))))))
 
@@ -90,12 +90,12 @@
                  response)))))
 
     (testing "error handling for import failure"
-      (let [mock-source (test-helpers/create-mock-source :fail-mode :network-error)]
+      (let [mock-main (test-helpers/create-mock-source :fail-mode :network-error)]
         (mt/with-temporary-setting-values [remote-sync-enabled true
                                            remote-sync-url "https://github.com/test/repo.git"
                                            remote-sync-token "test-token"
                                            remote-sync-branch "main"]
-          (with-redefs [source/source-from-settings (constantly mock-source)]
+          (with-redefs [source/source-from-settings (constantly mock-main)]
             (let [response (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import" {})]
               (is (contains? response :status))
               (is (= "error" (:status response)))
@@ -105,22 +105,22 @@
   (testing "POST /api/ee/remote-sync/export"
 
     (testing "successful export with default settings"
-      (let [mock-source (test-helpers/create-mock-source)]
+      (let [mock-main (test-helpers/create-mock-source)]
         (mt/with-temporary-setting-values [remote-sync-enabled true
                                            remote-sync-url "https://github.com/test/repo.git"
                                            remote-sync-token "test-token"
                                            remote-sync-branch "main"]
-          (with-redefs [source/source-from-settings (constantly mock-source)]
+          (with-redefs [source/source-from-settings (constantly mock-main)]
             (is (= "Success"
                    (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {})))))))
 
     (testing "successful export with custom branch and message"
-      (let [mock-source (test-helpers/create-mock-source)]
+      (let [mock-main (test-helpers/create-mock-source)]
         (mt/with-temporary-setting-values [remote-sync-enabled true
                                            remote-sync-url "https://github.com/test/repo.git"
                                            remote-sync-token "test-token"
                                            remote-sync-branch "main"]
-          (with-redefs [source/source-from-settings (constantly mock-source)]
+          (with-redefs [source/source-from-settings (constantly mock-main)]
             (is (= "Success"
                    (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export"
                                          {:branch "feature-branch" :message "Custom export message"})))))))
@@ -130,12 +130,12 @@
                                                       :type "remote-synced"
                                                       :entity_id "test-collection-1xxxx"
                                                       :location "/"}]
-        (let [mock-source (test-helpers/create-mock-source)]
+        (let [mock-main (test-helpers/create-mock-source)]
           (mt/with-temporary-setting-values [remote-sync-enabled true
                                              remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
-            (with-redefs [source/source-from-settings (constantly mock-source)]
+            (with-redefs [source/source-from-settings (constantly mock-main)]
               (is (= "Success"
                      (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export"
                                            {:collection_id coll-id}))))))))
@@ -152,12 +152,12 @@
                  response)))))
 
     (testing "error handling for export failure"
-      (let [mock-source (test-helpers/create-mock-source :fail-mode :write-files-error)]
+      (let [mock-main (test-helpers/create-mock-source :fail-mode :write-files-error)]
         (mt/with-temporary-setting-values [remote-sync-enabled true
                                            remote-sync-url "https://github.com/test/repo.git"
                                            remote-sync-token "test-token"
                                            remote-sync-branch "main"]
-          (with-redefs [source/source-from-settings (constantly mock-source)]
+          (with-redefs [source/source-from-settings (constantly mock-main)]
             (let [response (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {})]
               (is (contains? response :status))
               (is (= "error" (:status response)))
@@ -227,9 +227,9 @@
 (deftest settings-endpoint-test
   (testing "PUT /api/ee/remote-sync/settings"
 
-    (let [mock-source (test-helpers/create-mock-source)]
+    (let [mock-main (test-helpers/create-mock-source)]
       (with-redefs [settings/check-git-settings (constantly nil)
-                    source/source-from-settings (constantly mock-source)]
+                    source/source-from-settings (constantly mock-main)]
         (testing "successful settings update"
           (mt/with-temporary-setting-values [remote-sync-enabled false
                                              remote-sync-type "export"]

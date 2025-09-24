@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [mb.hawk.assert-exprs.approximately-equal :as approximately-equal]
    [metabase.audit-app.impl :as audit]
    [metabase.config.core :as config]
    [metabase.lib.convert :as lib.convert]
@@ -1072,7 +1071,7 @@
                :actor {:id (mt/user->id :rasta)}}))))
 
       (testing "Card with library dependencies can be moved to library collection"
-        (mt/with-temp [:model/Collection {another-library-coll-id :id} {:type "remote-synced" :location #p (str "/" library-coll-id "/")}
+        (mt/with-temp [:model/Collection {another-library-coll-id :id} {:type "remote-synced" :location (str "/" library-coll-id "/")}
                        :model/Card {library-source-card-id :id} {:collection_id another-library-coll-id
                                                                  :name "Library source card"}
                        :model/Card movable-card {:collection_id regular-coll-id

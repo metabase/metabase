@@ -1,10 +1,11 @@
 (ns metabase-enterprise.remote-sync.settings
   (:require
    [metabase-enterprise.remote-sync.source.git :as git]
-   [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defsetting remote-sync-enabled
   (deferred-tru "Is Git sync currently enabled?")
@@ -65,10 +66,10 @@
 (defn check-git-settings
   "Check that the given settings are valid and update if they are. Throws exception if they are not."
   [{:keys [remote-sync-url remote-sync-token remote-sync-branch]}]
-  (let [source (git/git-source remote-sync-url remote-sync-token)
-        branch-exists (boolean (get (set (source.p/branches source)) remote-sync-branch))]
-    (when-not branch-exists
-      (throw (ex-info "Branch not found" {:branch remote-sync-branch})))))
+  (try
+    (git/git-source remote-sync-url remote-sync-branch remote-sync-token)
+    (catch Exception e
+      (throw (ex-info "Unable to connect to git repository with the provided settings" {:cause (.getMessage e)} e)))))
 
 (defn check-and-update-remote-settings!
   "Check that the given git settings are valid and update if they are. Throws exception if they are not."
