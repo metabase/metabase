@@ -20,8 +20,8 @@ import type {
   TableId,
 } from "metabase-types/api";
 
+import { DetailViewPreview } from "./DetailViewPreview";
 import { FilteringPreview } from "./FilteringPreview";
-import { ObjectDetailPreview } from "./ObjectDetailPreview";
 import S from "./PreviewSection.module.css";
 import { TablePreview } from "./TablePreview";
 import type { PreviewType } from "./types";
@@ -93,10 +93,11 @@ const PreviewSectionBase = ({
         )}
 
         {previewType === "detail" && (
-          <ObjectDetailPreview
+          <DetailViewPreview
             databaseId={databaseId}
             field={field}
             fieldId={fieldId}
+            table={table}
             tableId={tableId}
           />
         )}
