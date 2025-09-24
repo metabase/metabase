@@ -3,7 +3,6 @@ import cx from "classnames";
 import { useCallback, useState } from "react";
 
 import { useToast } from "metabase/common/hooks";
-import { downloadObjectAsJson } from "metabase/lib/download";
 import {
   ActionIcon,
   Flex,
@@ -12,6 +11,7 @@ import {
   type IconName,
   Text,
 } from "metabase/ui";
+import { useSubmitMetabotFeedbackMutation } from "metabase-enterprise/api/metabot";
 import type {
   MetabotChatMessage,
   MetabotErrorMessage,
@@ -260,11 +260,16 @@ export const Messages = ({
     modal: undefined,
   });
 
+  const [submitMetabotFeedback] = useSubmitMetabotFeedbackMutation();
+
   const submitFeedback = async (metabotFeedback: MetabotFeedback) => {
     const { message_id, positive } = metabotFeedback.feedback;
 
-    downloadObjectAsJson(metabotFeedback, `metabot-feedback-${message_id}`);
-    sendToast({ icon: "check", message: "Feedback downloaded successfully" });
+    const { data, error } = await submitMetabotFeedback(metabotFeedback);
+
+    console.log("METABOT FEEDBACK", data, error);
+
+    sendToast({ icon: "check", message: "Feedback submitted" });
 
     setFeedbackState((prevState) => ({
       submitted: {
