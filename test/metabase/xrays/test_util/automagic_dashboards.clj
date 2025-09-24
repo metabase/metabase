@@ -8,12 +8,6 @@
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]))
 
-(defmacro with-dashboard-cleanup!
-  "Execute body and cleanup all dashboard elements created."
-  [& body]
-  `(mt/with-model-cleanup [:model/Card :model/Dashboard :model/Collection :model/DashboardCard]
-     ~@body))
-
 (defn- collect-urls
   [dashboard]
   (->> dashboard

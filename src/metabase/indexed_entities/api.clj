@@ -47,10 +47,10 @@
     (ensure-type :type/Integer pk_ref metadata)
     (ensure-type :type/Text value_ref metadata)
     ;; todo: do we care if there's already an index on that model?
-    (let [model-index (model-index/create {:model-id   model_id
-                                           :pk-ref     pk_ref
-                                           :value-ref  value_ref
-                                           :creator-id api/*current-user-id*})]
+    (let [model-index (model-index/create! {:model-id   model_id
+                                            :pk-ref     pk_ref
+                                            :value-ref  value_ref
+                                            :creator-id api/*current-user-id*})]
       (analytics/track-event! :snowplow/model
                               {:event    :index-model-entities-enabled
                                :model-id model_id})

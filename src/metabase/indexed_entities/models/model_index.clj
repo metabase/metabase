@@ -165,7 +165,7 @@
   []
   (u.cron/schedule-map->cron-string (sync.schedules/randomly-once-a-day)))
 
-(defn create
+(defn create!
   "Create a model index"
   [{:keys [model-id pk-ref value-ref creator-id]}]
   (t2/insert-returning-instance! :model/ModelIndex
