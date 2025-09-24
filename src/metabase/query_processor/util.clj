@@ -1,10 +1,10 @@
 (ns metabase.query-processor.util
   "Utility functions used by the global query processor and middleware functions."
+  (:refer-clojure :exclude [select-keys])
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver :as driver]
    ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
@@ -19,7 +19,8 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf :refer [select-keys]]))
 
 (set! *warn-on-reflection* true)
 
@@ -82,7 +83,7 @@
   "We don't want two queries to have different hashes because their map keys are in different orders, now do we? Convert
   all the maps to sorted maps so queries are serialized to JSON in an identical order."
   [x]
-  (walk/postwalk
+  (perf/postwalk
    (fn [x]
      (if (and (map? x)
               (not (sorted? x)))

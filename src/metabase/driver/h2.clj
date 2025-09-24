@@ -1,4 +1,5 @@
 (ns metabase.driver.h2
+  (:refer-clojure :exclude [some every?])
   (:require
    [clojure.math.combinatorics :as math.combo]
    [clojure.string :as str]
@@ -18,7 +19,8 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [some every?]])
   (:import
    (java.sql
     Clob

@@ -1,5 +1,6 @@
 (ns metabase.query-processor.parameters.dates
   "Shared code for handling datetime parameters, used by both MBQL and native params implementations."
+  (:refer-clojure :exclude [every? some])
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
@@ -15,6 +16,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [every? some]]
    [metabase.util.time :as u.time])
   (:import
    (java.time.temporal Temporal)))

@@ -6,6 +6,7 @@
 
   Traditionally this code lived in the [[metabase.query-processor.middleware.annotate]] namespace, where it is still
   used today."
+  (:refer-clojure :exclude [mapv select-keys some update-keys every?])
   (:require
    #?@(:clj
        ([metabase.config.core :as config]))
@@ -32,7 +33,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf]))
+   [metabase.util.performance :refer [mapv select-keys some update-keys every?]]))
 
 (mr/def ::col
   ;; TODO (Cam 6/19/25) -- I think we should actually namespace all the keys added here (to make it clear where they
@@ -62,7 +63,7 @@
   from the driver to values calculated by Lib."
   [driver-col :- [:maybe ::col]
    lib-col    :- [:maybe ::col]]
-  (let [driver-col (perf/update-keys driver-col u/->kebab-case-en)]
+  (let [driver-col (update-keys driver-col u/->kebab-case-en)]
     (merge lib-col
            (m/filter-vals some? driver-col)
            ;; Prefer our inferred base type if the driver returned `:type/*` and ours is more specific
@@ -387,7 +388,7 @@
                      lib-cols)]
       (->> initial-cols
            (map (fn [col]
-                  (perf/update-keys col u/->kebab-case-en)))
+                  (update-keys col u/->kebab-case-en)))
            ((fn [cols]
               (cond-> cols
                 (seq lib-cols) (merge-cols lib-cols))))
