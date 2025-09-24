@@ -193,7 +193,6 @@ export const getColors = (isDarkMode: boolean) => {
   return isDarkMode ? darkColors : colors;
 };
 
-// TODO: Hardcoded `dark` strings came from `dark-mode` branch. Replace with variables.
 const colorConfig = {
   "accent-gray-dark": {
     light: baseColors.orion[20],
@@ -497,6 +496,40 @@ const colorConfig = {
     dark: "#7172AD",
   },
   // ...whitelabelColors, // TODO: Figure out where/how to define this
+
+  // TODO: These were newly added in `dark-mode` branch. Fold these in above, and replace their hardcoded values with variables.
+  "bg-primary": {
+    light: "#FFFFFF",
+    dark: "#1A1B1E",
+  },
+  "bg-secondary": {
+    light: "#F9FBFC",
+    dark: "#25262B",
+  },
+  "bg-tertiary": {
+    light: "#EDF2F5",
+    dark: "#2C2E33",
+  },
+  "bg-hover": {
+    light: "#F9FBFC",
+    dark: "#373A40",
+  },
+  overlay: {
+    light: "hsla(225, 7.1%, 11%, 40%)",
+    dark: "hsla(225, 7.1%, 31%, 40%)",
+  },
+  "text-inverse": {
+    light: "#FFFFFF",
+    dark: "#1A1B1E",
+  },
+  "border-primary": {
+    light: "#EEECEC",
+    dark: "#373A40",
+  },
+  "border-secondary": {
+    light: "#DCDFE0",
+    dark: "#2C2E33",
+  },
 };
 
 export const colors = {
