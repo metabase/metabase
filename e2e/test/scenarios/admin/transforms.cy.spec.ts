@@ -293,7 +293,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
           triggered_from: "transform-page",
         });
 
-        getPythonRunSection().should("contain", "Executing Python transform");
+        getRunSection().should("contain", "Executing Python transform");
 
         getTableLink().click();
         H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
@@ -2841,10 +2841,6 @@ function assertOptionNotSelected(name: string) {
 
 function editorSidebar() {
   return cy.findByTestId("editor-sidebar");
-}
-
-function getPythonRunSection() {
-  return getTransformPage().findByTestId("run-section");
 }
 
 function getPythonDataPicker() {
