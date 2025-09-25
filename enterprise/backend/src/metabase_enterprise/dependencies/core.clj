@@ -40,6 +40,59 @@
    (let [dependents (or dependents (deps.graph/transitive-dependents graph updated-entities))]
      (deps.provider/override-metadata-provider base-provider updated-entities dependents))))
 
+(defmulti check-query-inner
+  "Given a `MetadataProvider` and a lib query, find any bad refs in that query."
+  (fn [_mp driver query]
+    (-> (lib/query-stage query 0)
+        :lib/type)))
+
+(defmethod check-query-inner :mbql.stage/mbql
+  [mp _driver query]
+  (lib/find-bad-refs query))
+
+(defmethod check-query-inner :mbql.stage/native
+  [mp driver query]
+  (deps.native/validate-native-query driver mp query))
+
+(defn- check-query
+  "Given a `MetadataProvider` and a query, find any bad refs in that query."
+  [mp driver query]
+  (check-query-inner mp driver (lib/query mp query)))
+
+(defmulti check-entity
+  "Given a `MetadataProvider`, and entity type, and an entity id, find any bad refs in that entity."
+  (fn [_mp entity-type _entity-id]
+    entity-type))
+
+(defmethod check-entity :card
+  [mp entity-type entity-id]
+  (let [query (:dataset-query (lib.metadata/card mp entity-id))
+        driver (:engine (lib.metadata/database mp))]
+    (check-query mp driver query)))
+
+(defmethod check-entity :transform
+  [mp entity-type entity-id]
+  (let [{{target-schema :schema target-name :name} :target
+         {:keys [query]} :source
+         :as transform} (lib.metadata/transform mp entity-id)
+        driver (:engine (lib.metadata/database mp))
+        output-table (some #(when (and (= (:schema %) target-schema)
+                                       (= (:name %) target-name))
+                              %)
+                           (lib.metadata/tables mp))
+        output-fields (lib.metadata/active-fields mp (:id output-table))
+        {:keys [duplicate-fields]} (reduce (fn [{:keys [seen duplicate-fields]}
+                                                {name :name :as field}]
+                                             (if (seen name)
+                                               {:seen seen
+                                                :duplicate-fields (conj duplicate-fields field)}
+                                               {:seen (conj seen name)
+                                                :duplicate-fields duplicate-fields}))
+                                           {:seen #{}
+                                            :bad nil}
+                                           output-fields)]
+    (into duplicate-fields (check-query mp driver query))))
+
 (mu/defn- check-query-soundness ;; :- [:map-of ::lib.schema.id/card [:sequential ::lib.schema.mbql-clause/clause]]
   "Given a `MetadataProvider` as returned by [[metadata-provider]], scan all its updated entities and their dependents
   to check that everything is still sound.
@@ -55,19 +108,9 @@
   [provider :- ::lib.schema.metadata/metadata-provider]
   (let [overrides (deps.provider/all-overrides provider)
         errors    (volatile! {})]
-    (doseq [[entity-type ->query] [[:card      (fn [card-id]
-                                                 (:dataset-query (lib.metadata/card provider card-id)))]
-                                   [:transform (fn [transform-id]
-                                                 (get-in (lib.metadata/transform provider transform-id)
-                                                         [:source :query]))]]
-            id                    (get overrides entity-type)
-            :let [raw-query  (->query id)
-                  query      (lib/query provider raw-query)
-                  query-type (:lib/type (lib/query-stage query 0))
-                  driver     (:engine (lib.metadata/database provider))
-                  bad-refs   (case query-type
-                               :mbql.stage/mbql   (lib/find-bad-refs query)
-                               :mbql.stage/native (deps.native/validate-native-query driver provider query))]]
+    (doseq [[entity-type ids] overrides
+            id ids
+            :let [bad-refs (check-entity provider entity-type id)]]
       (when (seq bad-refs)
         (vswap! errors assoc-in [entity-type id] bad-refs)))
     @errors))
