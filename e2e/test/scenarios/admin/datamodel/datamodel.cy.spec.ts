@@ -2521,7 +2521,7 @@ describe("scenarios > admin > datamodel", () => {
 
           cy.log("verify preview");
           verifyObjectDetailPreview({
-            row: ["Product ID", "1"],
+            row: ["Product ID", "Awesome Concrete Shoes"],
           });
           verifyTablePreview({
             column: "Product ID",
@@ -2661,7 +2661,7 @@ describe("scenarios > admin > datamodel", () => {
           cy.log("verify preview");
           FieldSection.getPreviewButton().click();
           verifyObjectDetailPreview({
-            row: ["Product ID", "1"],
+            row: ["Product ID", "Awesome Concrete Shoes"],
           });
           verifyTablePreview({
             column: "Product ID",
