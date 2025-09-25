@@ -355,3 +355,9 @@
       (t/is (= :false-value (lib.util.match/match-lite false
                               true :true-value
                               false :false-value))))))
+
+(t/deftest ^:parallel same-result-with-different-bindings-test
+  (t/testing "result here should not be treated as a common because it refers to different bindings in branches"
+    (t/is (= 1 (lib.util.match/match-lite [1 2]
+                 [(a :guard (odd? a)) (b :guard (even? b))] (- b a)
+                 [(b :guard (even? b)) (a :guard (odd? a))] (- b a))))))

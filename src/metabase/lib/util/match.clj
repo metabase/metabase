@@ -351,7 +351,9 @@
                              (process-pattern pattern value-sym all-vectors?))
         {:keys [common-bindings common-conditions all-bindings all-conditions]}
         (collect-common processed-patterns)
-        same-result? (apply = (map second pairs))
+        same-result? (and (apply = (map second pairs))
+                          ;; Only allow extracting same result if there are no individual bindings in branches.
+                          (every? empty? all-bindings))
         value-binding (if (or (= value-sym value) recursive?)
                         [] [value-sym value])
         body `(let [~@value-binding
