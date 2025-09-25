@@ -153,7 +153,7 @@ Tools (as listed above) should have the same basic layout that's comprised of a 
 
 
 # Left panel
- This is where left panel tools (mostly lists) will go.
+This is where left panel tools (mostly lists) will go. All listing components should use `NavLink` from "metabase/ui" as a wrapper for individual items in the list to provide consistent styling and interaction patterns.
 
 # Main view
 For most modes this will be either a notebook instance or a
