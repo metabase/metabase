@@ -20,6 +20,7 @@ import {
   Flex,
   Icon,
   Loader,
+  ScrollArea,
   Text,
   Tooltip,
 } from "metabase/ui";
@@ -159,7 +160,11 @@ export const SyncedCollectionsSidebarSection = ({
         confirmButtonText={t`Import from Git`}
         onConfirm={() => handleBranchChange(nextBranch)}
       >
-        {showConfirm && <ChangesLists collections={syncedCollections} />}
+        {showConfirm && (
+          <ScrollArea.Autosize mah="50dvh" offsetScrollbars type="hover">
+            <ChangesLists collections={syncedCollections} />
+          </ScrollArea.Autosize>
+        )}
       </ConfirmModal>
       {showPush && (
         <PushChangesModal
