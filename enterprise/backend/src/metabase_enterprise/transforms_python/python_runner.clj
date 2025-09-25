@@ -183,7 +183,7 @@
 
         payload                  {:code                code
                                   :library             (t2/select-fn->fn :path :source :model/PythonLibrary)
-                                  :timeout             30
+                                  :timeout             (* 30 60) ;; 30 mins harcoded for now
                                   :request_id          run-id
                                   :output_url          (:url output)
                                   :output_manifest_url (:url output-manifest)
