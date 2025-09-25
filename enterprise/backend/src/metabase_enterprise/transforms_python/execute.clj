@@ -1,7 +1,6 @@
 (ns metabase-enterprise.transforms-python.execute
   (:require
    [clojure.core.async :as a]
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.s3 :as s3]
@@ -17,8 +16,10 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.io Closeable File)
+   (java.io Closeable InputStream)
    (java.net SocketException)
+   (java.nio.file Files CopyOption)
+   (java.nio.file.attribute FileAttribute)
    (java.time Duration)))
 
 (set! *warn-on-reflection* true)
@@ -266,14 +267,15 @@
                          :body              body
                          :events            events}))
         (try
-          (let [temp-file (File/createTempFile "transform-output-" ".jsonl")]
+          (let [temp-path (Files/createTempFile "transform-output-" ".jsonl" (u/varargs FileAttribute))
+                temp-file (.toFile temp-path)]
             (when-not (seq (:fields output-manifest))
               (throw (ex-info "No fields in metadata"
                               {:metadata               output-manifest
                                :raw-body               body
                                :events                 events})))
             (try
-              (java.nio.file.Files/copy output-stream temp-file java.nio.file.StandardCopyOption/REPLACE_EXISTING)
+              (Files/copy ^InputStream output-stream temp-path (u/varargs CopyOption))
               (let [file-size (.length temp-file)]
                 (transforms.instrumentation/with-stage-timing [run-id :file-to-dwh]
                   (transfer-file-to-db driver db transform output-manifest temp-file))
