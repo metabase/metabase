@@ -2,6 +2,7 @@
   "Driver for ClickHouse databases"
   (:require
    [clojure.core.memoize :as memoize]
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -52,9 +53,11 @@
                               :window-functions/cumulative     (not driver-api/is-test?)
                               :left-join                       (not driver-api/is-test?)
                               :describe-fks                    false
+                              :rename                          true
                               :actions                         false
-                              :metadata/key-constraints        (not driver-api/is-test?)
+                              :metadata/key-constraints        false
                               :database-routing                true
+                              :transforms/python               true
                               :transforms/table                true}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
@@ -212,6 +215,28 @@
     :metabase.upload/datetime                 "Nullable(DateTime64(3))"
     :metabase.upload/offset-datetime          nil))
 
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for ClickHouse that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+(defmethod type->database-type :type/Boolean [_] [[:raw "Nullable(Boolean)"]])
+(defmethod type->database-type :type/Float [_] [[:raw "Nullable(Float64)"]])
+(defmethod type->database-type :type/Integer [_] [[:raw "Nullable(Int32)"]])
+(defmethod type->database-type :type/Number [_] [[:raw "Nullable(Int64)"]])
+(defmethod type->database-type :type/BigInteger [_] [[:raw "Nullable(Int64)"]])
+(defmethod type->database-type :type/Text [_] [[:raw "Nullable(String)"]])
+(defmethod type->database-type :type/TextLike [_] [[:raw "Nullable(String)"]])
+(defmethod type->database-type :type/Date [_] [[:raw "Nullable(Date32)"]])
+(defmethod type->database-type :type/Time [_] [[:raw "Nullable(Time)"]])
+(defmethod type->database-type :type/DateTime [_] [[:raw "Nullable(DateTime64(3))"]])
+;; we're lossy here
+(defmethod type->database-type :type/DateTimeWithTZ [_] [[:raw "Nullable(DateTime64(3, 'UTC'))"]])
+
+(defmethod driver/type->database-type :clickhouse
+  [_driver base-type]
+  (type->database-type base-type))
+
 (defmethod driver/table-name-length-limit :clickhouse
   [_driver]
   ;; FIXME: This is a lie because you're really limited by a filesystems' limits, because Clickhouse uses
@@ -219,7 +244,8 @@
   206)
 
 (defn- quote-name [s]
-  (let [parts (str/split (name s) #"\.")]
+  (let [s (if (and (keyword? s) (namespace s)) (str (namespace s) "." (name s)) s)
+        parts (filter identity (str/split (name s) #"\."))]
     (str/join "." (map #(str "`" % "`") parts))))
 
 (defn- create-table!-sql
@@ -241,7 +267,18 @@
    {:write? true}
    (fn [^java.sql.Connection conn]
      (with-open [stmt (.createStatement conn)]
-       (.execute stmt (create-table!-sql driver table-name column-definitions :primary-key primary-key))))))
+       (let [sql (create-table!-sql driver table-name column-definitions :primary-key primary-key)]
+         (.execute stmt sql))))))
+
+;; rename-tables!* only supported by the atomic engine
+;; https://clickhouse.com/docs/engines/database-engines/atomic#exchange-tables
+
+(defmethod driver/rename-table! :clickhouse
+  [_driver db-id old-table-name new-table-name]
+  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+    (with-open [stmt (.createStatement ^java.sql.Connection (:connection conn))]
+      (let [sql (format "RENAME TABLE %s TO %s" (quote-name old-table-name) (quote-name new-table-name))]
+        (.execute stmt sql)))))
 
 (defmethod driver/insert-into! :clickhouse
   [driver db-id table-name column-names values]
@@ -329,3 +366,9 @@
   [(format "RENAME TABLE %s TO %s;"
            (first (sql.qp/format-honeysql driver (keyword old-name)))
            (first (sql.qp/format-honeysql driver (keyword (namespace old-name) new-name))))])
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(defmethod driver/describe-table-fks :clickhouse
+  [_driver _database _table]
+  (log/warn "Clickhouse does not support foreign keys. `describe-table-fks` should not have been called!")
+  #{})

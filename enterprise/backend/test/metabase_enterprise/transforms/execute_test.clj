@@ -6,7 +6,8 @@
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
-   [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup! delete-schema!]]
+   [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup! delete-schema!]]
+   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.lib.core :as lib]
@@ -15,6 +16,7 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql :as sql.tx]
    [toucan2.core :as t2]
    [toucan2.util :as u]))
 
@@ -66,14 +68,14 @@
                                                          :query t1-query}
                                                 :target target1}]
               (transforms.execute/run-mbql-transform! t1 {:run-method :manual})
-              (let [table1       (wait-for-table table1-name 10000)
+              (let [table1       (transforms.tu/wait-for-table table1-name 10000)
                     t2-query     (make-query (->> table1 :name (table-name->qp-table (mt/metadata-provider))) "category" lib/= "Gizmo")]
                 (mt/with-temp [:model/Transform t2 {:name   "transform2"
                                                     :source {:type  :query
                                                              :query t2-query}
                                                     :target target2}]
                   (transforms.execute/run-mbql-transform! t2 {:run-method :cron})
-                  (let [table2      (wait-for-table table2-name 10000)
+                  (let [table2      (transforms.tu/wait-for-table table2-name 10000)
                         check-query (lib/aggregate (make-query (->> table2 :name (table-name->qp-table (mt/metadata-provider)))) (lib/count))
                         query-result (qp/process-query check-query)]
                     ;; The transforms-test dataset has exactly 4 Gizmo products (IDs 6, 8, 12, 14)
@@ -123,7 +125,7 @@
               (doseq [transform [transform-no-limit transform-limit]]
                 (transforms.execute/run-mbql-transform! transform {:run-method :manual})
                 (let [table-name (-> transform :target :name)
-                      _            (wait-for-table table-name 10000)
+                      _            (transforms.tu/wait-for-table table-name 10000)
                       table-result (lib.metadata/table mp (mt/id (keyword table-name)))
                       query-result (->> (lib/query mp table-result)
                                         (qp/process-query)
@@ -136,6 +138,24 @@
                           ["2024-01-21T00:00:00Z" 19.99]
                           ["2024-01-23T00:00:00Z" 14.99]]
                          query-result)))))))))))
+
+(deftest create-table-from-schema!-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (let [driver       driver/*driver*
+          db-id        (mt/id)
+          table-name   (mt/random-name)
+          schema-name  (sql.tx/session-schema driver)
+          table-schema {:name    (if schema-name
+                                   (keyword schema-name table-name)
+                                   (keyword table-name))
+                        :columns [{:name "id" :type :type/Integer :nullable? false}
+                                  {:name "name" :type :type/Text :nullable? true}]}]
+      (mt/as-admin
+        (testing "create-table-from-schema! should create the table successfully"
+          (transforms.util/create-table-from-schema! driver db-id table-schema)
+          (let [table-exists? (driver/table-exists? driver db-id {:schema schema-name :name table-name})]
+            (is (some? table-exists?) "Table should exist in the database schema")
+            (driver/drop-table! driver db-id (:name table-schema))))))))
 
 (deftest run-mbql-transform-created-schema-if-needed-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table :schemas]})
@@ -157,7 +177,8 @@
                                                                   :query query}
                                                          :target target-table}]
                 (transforms.execute/run-mbql-transform! transform {:run-method :manual})
-                (let [table-result      (wait-for-table (:name target-table) 10000)
+                (let [_            (transforms.tu/wait-for-table (:name target-table) 10000)
+                      table-result (lib.metadata/table mp (mt/id (keyword (:name target-table))))
                       query-result (->> (lib/query mp table-result)
                                         (qp/process-query)
                                         (mt/formatted-rows [int str str 2.0 str])
@@ -207,7 +228,7 @@
                                                                         :query query}
                                                                :target target-table}]
                       (transforms.execute/run-mbql-transform! transform {:run-method :manual})
-                      (let [_            (wait-for-table (:name target-table) 10000)
+                      (let [_            (transforms.tu/wait-for-table (:name target-table) 10000)
                             table-result (lib.metadata/table mp (mt/id (keyword (:name target-table))))
                             query-result (->> (lib/query mp table-result)
                                               (qp/process-query)

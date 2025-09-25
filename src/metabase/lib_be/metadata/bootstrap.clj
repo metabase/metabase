@@ -64,8 +64,9 @@
   (->BootstrapMetadataProvider))
 
 (mu/defn- resolve-database-id-for-source-card :- ::lib.schema.id/database
-  [source-card-id :- ::lib.schema.id/card]
-  (let [card (or (lib.metadata.protocols/card (bootstrap-metadata-provider) source-card-id)
+  [metadata-provider :- [:maybe ::lib.metadata.protocols/metadata-provider]
+   source-card-id    :- ::lib.schema.id/card]
+  (let [card (or (lib.metadata.protocols/card (or metadata-provider (bootstrap-metadata-provider)) source-card-id)
                  (throw (ex-info (i18n/tru "Card {0} does not exist." source-card-id)
                                  {:card-id source-card-id, :type :invalid-query, :status-code 404})))]
     (:database-id card)))
@@ -84,7 +85,8 @@
                     {:query query, :type :invalid-query}))))
 
 (mu/defn- resolved-database-id :- [:maybe ::lib.schema.id/database]
-  [query :- :map]
+  [metadata-provider :- [:maybe ::lib.metadata.protocols/metadata-provider]
+   query             :- :map]
   (when-not (= (query-type query) :internal)
     (let [database-id (:database query)]
       (cond
@@ -92,7 +94,7 @@
         database-id
 
         (= database-id lib.schema.id/saved-questions-virtual-database-id)
-        (resolve-database-id-for-source-card (source-card-id query))
+        (resolve-database-id-for-source-card metadata-provider (source-card-id query))
 
         :else
         (throw (ex-info (i18n/tru "Invalid query: missing or invalid Database ID (:database)")
@@ -106,9 +108,21 @@
                                 [:type [:= :internal]]]]]
   "If query has `:database` `-1337` (the legacy database ID for queries using a source Card that had an unknown
   database), resolve the correct database ID and assoc it into the query."
-  [query :- [:maybe :map]]
-  (when (seq query)
-    (let [query       (set/rename-keys query {"database" :database})
-          database-id (resolved-database-id query)]
-      (cond-> query
-        database-id (assoc :database database-id)))))
+  ([query]
+   (resolve-database nil query))
+
+  ([metadata-provider :- [:maybe ::lib.metadata.protocols/metadata-provider]
+    query             :- [:maybe
+                          [:and
+                           :map
+                           [:multi {:dispatch (comp boolean empty?)}
+                            [true  [:= {:description "empty map"} {}]]
+                            [false [:map
+                                    [:database [:or
+                                                ::lib.schema.id/database
+                                                ::lib.schema.id/saved-questions-virtual-database]]]]]]]]
+   (when (seq query)
+     (let [query       (set/rename-keys query {"database" :database})
+           database-id (resolved-database-id metadata-provider query)]
+       (cond-> query
+         database-id (assoc :database database-id))))))

@@ -34,7 +34,7 @@ export function getDirection(
   if (value == null || value.value === 0) {
     return "current";
   } else {
-    return value.value < 0 ? "last" : "next";
+    return value.value < 0 ? "past" : "future";
   }
 }
 
@@ -53,7 +53,7 @@ export function setDirection(
       : undefined;
   }
 
-  const sign = direction === "last" ? -1 : 1;
+  const sign = direction === "past" ? -1 : 1;
 
   if (!isIntervalValue(value)) {
     return {

@@ -6,6 +6,8 @@ import add_component from "./add.svg?component";
 import add_source from "./add.svg?source";
 import add_column_component from "./add_column.svg?component";
 import add_column_source from "./add_column.svg?source";
+import add_comment_component from "./add_comment.svg?component";
+import add_comment_source from "./add_comment.svg?source";
 import add_data_component from "./add_data.svg?component";
 import add_data_source from "./add_data.svg?source";
 import add_folder_component from "./add_folder.svg?component";
@@ -98,6 +100,8 @@ import code_block_component from "./code_block.svg?component";
 import code_block_source from "./code_block.svg?source";
 import combine_component from "./combine.svg?component";
 import combine_source from "./combine.svg?source";
+import comment_component from "./comment.svg?component";
+import comment_source from "./comment.svg?source";
 import company_component from "./company.svg?component";
 import company_source from "./company.svg?source";
 import compare_component from "./compare.svg?component";
@@ -264,8 +268,6 @@ import mail_component from "./mail.svg?component";
 import mail_source from "./mail.svg?source";
 import mail_filled_component from "./mail_filled.svg?component";
 import mail_filled_source from "./mail_filled.svg?source";
-import message_component from "./message.svg?component";
-import message_source from "./message.svg?source";
 import metabot_component from "./metabot.svg?component";
 import metabot_source from "./metabot.svg?source";
 import metabot_sad_component from "./metabot_sad.svg?component";
@@ -505,6 +507,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: add_to_dash_component,
       source: add_to_dash_source,
     },
+    add_comment: {
+      component: add_comment_component,
+      source: add_comment_source,
+    },
     ai: {
       component: ai_component,
       source: ai_source,
@@ -676,6 +682,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     company: {
       component: company_component,
       source: company_source,
+    },
+    comment: {
+      component: comment_component,
+      source: comment_source,
     },
     connections: {
       component: connections_component,
@@ -992,10 +1002,6 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     mail_filled: {
       component: mail_filled_component,
       source: mail_filled_source,
-    },
-    message: {
-      component: message_component,
-      source: message_source,
     },
     metabot: {
       component: metabot_component,
@@ -1465,6 +1471,7 @@ export type IconName =
   | "add_folder"
   | "add_row"
   | "add_to_dash"
+  | "add_comment"
   | "ai"
   | "alert"
   | "alert_filled"
@@ -1508,6 +1515,7 @@ export type IconName =
   | "compare"
   | "combine"
   | "company"
+  | "comment"
   | "currency"
   | "connections"
   | "contract"
@@ -1590,7 +1598,6 @@ export type IconName =
   | "lock_filled"
   | "mail"
   | "mail_filled"
-  | "message"
   | "metabot"
   | "metabot_sad"
   | "metric"

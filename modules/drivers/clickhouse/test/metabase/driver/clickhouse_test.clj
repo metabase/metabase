@@ -357,6 +357,19 @@
                                                                                                 "Failed to get server info"
                                                                                                 "Code: 516. DB::Exception: asdf: Authentication failed: password is incorrect, or there is no user with such name. (AUTHENTICATION_FAILED) (version 25.7.4.11 (official build))"]))))
 
+(deftest ^:parallel type->database-type-test
+  (testing "type->database-type multimethod returns correct ClickHouse types"
+    (are [base-type expected] (= expected (driver/type->database-type :clickhouse base-type))
+      :type/Boolean            [[:raw "Nullable(Boolean)"]]
+      :type/Float              [[:raw "Nullable(Float64)"]]
+      :type/Integer            [[:raw "Nullable(Int32)"]]
+      :type/Number             [[:raw "Nullable(Int64)"]]
+      :type/Text               [[:raw "Nullable(String)"]]
+      :type/TextLike           [[:raw "Nullable(String)"]]
+      :type/Date               [[:raw "Nullable(Date32)"]]
+      :type/DateTime           [[:raw "Nullable(DateTime64(3))"]]
+      :type/DateTimeWithTZ     [[:raw "Nullable(DateTime64(3, 'UTC'))"]])))
+
 (deftest ^:parallel query-with-cte-subquery-and-param-test
   (mt/test-driver :clickhouse
     (testing "a query with a CTE in a subquery and a parameter should work correctly"
