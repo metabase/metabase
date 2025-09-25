@@ -131,7 +131,7 @@ export type RunTransformResponse = {
 export type ListTransformJobsRequest = {
   last_run_start_time?: string;
   next_run_start_time?: string;
-  transform_tag_ids?: TransformTagId[];
+  tag_ids?: TransformTagId[];
 };
 
 export type ListTransformRunsRequest = {

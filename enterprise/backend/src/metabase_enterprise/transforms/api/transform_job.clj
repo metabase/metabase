@@ -172,21 +172,21 @@
 (api.macros/defendpoint :get "/"
   "Get all transform jobs."
   [_route-params
-   {:keys [last_run_start_time next_run_start_time transform_tag_ids]} :-
+   {:keys [last_run_start_time next_run_start_time tag_ids]} :-
    [:map
     [:last_run_start_time {:optional true} [:maybe ms/NonBlankString]]
     [:next_run_start_time {:optional true} [:maybe ms/NonBlankString]]
-    [:transform_tag_ids   {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
+    [:tag_ids   {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (log/info "Getting all transform jobs")
   (api/check-superuser)
   (let [jobs (t2/select :model/TransformJob {:order-by [[:created_at :desc]]})
-        transform-tag-ids (-> transform_tag_ids set not-empty)]
+        tag-ids (-> tag_ids set not-empty)]
     (into []
           (comp (map add-next-run)
                 (->date-field-filter-xf [:last_run :start_time] last_run_start_time)
                 (->date-field-filter-xf [:next_run :start_time] next_run_start_time)
-                (if transform-tag-ids
-                  (filter #(some transform-tag-ids (:tag_ids %)))
+                (if tag-ids
+                  (filter #(some tag-ids (:tag_ids %)))
                   identity)
                 (map #(update % :last_run transforms.util/localize-run-timestamps))
                 (map #(update % :next_run transforms.util/localize-run-timestamps)))

@@ -105,8 +105,8 @@
             (testing "listing without filtering"
               (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-job")]
                 (is (= our-job-ids (returned-job-ids response)))))
-            (testing "filtering by transform_tag_ids"
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-job" :transform_tag_ids [t2-id])]
+            (testing "filtering by tag_ids"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-job" :tag_ids [t2-id])]
                 (is (=? [{:schedule "0 0 0 * * ?"
                           :tag_ids [t2-id]
                           :name "Job 3"
