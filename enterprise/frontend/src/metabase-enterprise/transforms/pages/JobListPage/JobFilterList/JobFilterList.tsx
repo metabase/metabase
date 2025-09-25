@@ -2,7 +2,7 @@ import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
-import type { DatePickerShortcut } from "metabase/querying/filters/types";
+import type { RelativeIntervalDirection } from "metabase/querying/filters/types";
 import { Group } from "metabase/ui";
 import { getJobListUrl } from "metabase-enterprise/transforms/urls";
 import type { TransformTag, TransformTagId } from "metabase-types/api";
@@ -12,13 +12,21 @@ import { TimeFilterWidget } from "../../../components/TimeFilterWidget";
 import type { JobListParams } from "../../../types";
 
 type FilterListProps = {
-  tags: TransformTag[];
   params: JobListParams;
+  tags: TransformTag[];
 };
 
-const NO_SHORTCUTS: DatePickerShortcut[] = [];
+const PAST_INTERVAL_DIRECTIONS: RelativeIntervalDirection[] = [
+  "past",
+  "current",
+];
 
-export function JobFilterList({ tags, params }: FilterListProps) {
+const FUTURE_INTERVAL_DIRECTIONS: RelativeIntervalDirection[] = [
+  "current",
+  "future",
+];
+
+export function JobFilterList({ params, tags }: FilterListProps) {
   const dispatch = useDispatch();
 
   const handleLastRunStartTimeChange = (lastRunStartTime?: string) => {
@@ -38,13 +46,14 @@ export function JobFilterList({ tags, params }: FilterListProps) {
       <TimeFilterWidget
         label={t`Last run at`}
         value={params.lastRunStartTime}
+        availableDirections={PAST_INTERVAL_DIRECTIONS}
         onChange={handleLastRunStartTimeChange}
       />
       <TimeFilterWidget
-        label={t`Next run`}
+        label={t`Next run at`}
         value={params.nextRunStartTime}
+        availableDirections={FUTURE_INTERVAL_DIRECTIONS}
         onChange={handleNextRunStartTimeChange}
-        availableShortcuts={NO_SHORTCUTS}
       />
       <TagFilterWidget
         tagIds={params.transformTagIds ?? []}

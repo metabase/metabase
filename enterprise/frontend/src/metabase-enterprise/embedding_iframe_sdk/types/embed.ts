@@ -39,7 +39,10 @@ export type SdkIframeEmbedMessage =
     }
   | {
       type: "metabase.embed.reportAnalytics";
-      data: EmbeddedAnalyticsJsEventSchema;
+      data: {
+        usageAnalytics: EmbeddedAnalyticsJsEventSchema;
+        embedHostUrl: string;
+      };
     };
 
 // --- Embed Option Interfaces ---

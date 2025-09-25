@@ -519,3 +519,17 @@
     (testing (format "database-type %s" (pr-str database-type))
       (is (= exp-base-type
              (sql-jdbc.sync/database-type->base-type :redshift database-type))))))
+
+(deftest ^:parallel type->database-type-test
+  (testing "type->database-type multimethod returns correct Redshift types"
+    (are [base-type expected] (= expected (driver/type->database-type :redshift base-type))
+      :type/TextLike           [[:varchar 65535]]
+      :type/Text               [[:varchar 65535]]
+      :type/Integer            [:integer]
+      :type/Float              [(keyword "double precision")]
+      :type/Number             [:bigint]
+      :type/Boolean            [:boolean]
+      :type/Date               [:date]
+      :type/DateTime           [:timestamp]
+      :type/DateTimeWithTZ     [:timestamp-with-time-zone]
+      :type/Time               [:time])))

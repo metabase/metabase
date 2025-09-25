@@ -198,6 +198,8 @@
                                                            org.eclipse.jetty.ee9/jetty-ee9-servlet
                                                            org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server]}
   slingshot/slingshot                       {:mvn/version "0.12.2"}             ; enhanced throw/catch, used by other deps
+  software.amazon.awssdk/s3                 {:mvn/version "2.33.0"}             ; AWS SDK v2 for S3
+  software.amazon.awssdk/sts                {:mvn/version "2.33.0"}             ; Required for S3 client to use service account
   stencil/stencil                           {:mvn/version "0.5.0"}              ; Mustache templates for Clojure
   user-agent/user-agent                     {:mvn/version "0.1.1"}              ; User-Agent string parser, for Login History page & elsewhere
   weavejester/dependency                    {:mvn/version "1.0.0"}              ; Dependency graphs and topological sorting
@@ -284,6 +286,8 @@
                  "-Duser.country=US"
                  ;; Allow clojure goes fast tooling to work
                  "-Djdk.attach.allowAttachSelf"
+                 ;; have core.async report usages of blocking operations in go blocks
+                 "-Dclojure.core.async.go-checking=true"
                  ;; This will suppress the warning about dynamically loaded agents (like clj-memory-meter)
                  "-XX:+EnableDynamicAgentLoading"
                  ;; set the logging properties set in `metabase.core.bootstrap`. calling (dev) will load it but

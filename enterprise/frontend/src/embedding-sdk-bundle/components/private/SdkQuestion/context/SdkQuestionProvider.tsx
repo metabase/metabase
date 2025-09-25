@@ -50,6 +50,7 @@ export const SdkQuestionProvider = ({
   backToDashboard,
   getClickActionMode: userGetClickActionMode,
   navigateToNewCard: userNavigateToNewCard,
+  onVisualizationChange,
 }: SdkQuestionProviderProps) => {
   const handleCreateQuestion = useCreateQuestion();
   const handleSaveQuestion = useSaveQuestion();
@@ -159,6 +160,7 @@ export const SdkQuestionProvider = ({
     withDownloads,
     onRun,
     backToDashboard,
+    onVisualizationChange,
   };
 
   useEffect(() => {

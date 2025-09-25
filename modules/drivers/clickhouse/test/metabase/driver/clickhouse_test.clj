@@ -249,34 +249,36 @@
                                 :target [:dimension [:template-tag "category_name"]]
                                 :value  ["African"]}]}))))))))
 
-(deftest ^:parallel ternary-with-variable-test
-  (mt/test-driver :clickhouse
-    (testing "a query with a ternary and a variable should work correctly"
-      (is (= [[1 "African" 1]]
-             (mt/rows
-              (qp/process-query
-               {:database (mt/id)
-                :type :native
-                :native {:query "SELECT *, true ? 1 : 0 AS foo
-                                 FROM test_data.categories
-                                 WHERE name = {{category_name}};"
-                         :template-tags {"category_name" {:type         :text
-                                                          :name         "category_name"
-                                                          :display-name "Category Name"}}}
-                :parameters [{:type   :category
-                              :target [:variable [:template-tag "category_name"]]
-                              :value  "African"}]})))))))
+;; TODO(rileythomp, 2025-09-23): Enable when ClickHouse JDBC driver has been fixed
+#_(deftest ^:parallel ternary-with-variable-test
+    (mt/test-driver :clickhouse
+      (testing "a query with a ternary and a variable should work correctly"
+        (is (= [[1 "African" 1]]
+               (mt/rows
+                (qp/process-query
+                 {:database (mt/id)
+                  :type :native
+                  :native {:query "SELECT *, true ? 1 : 0 AS foo
+                                   FROM test_data.categories
+                                   WHERE name = {{category_name}};"
+                           :template-tags {"category_name" {:type         :text
+                                                            :name         "category_name"
+                                                            :display-name "Category Name"}}}
+                  :parameters [{:type   :category
+                                :target [:variable [:template-tag "category_name"]]
+                                :value  "African"}]})))))))
 
-(deftest ^:parallel line-comment-block-comment-test
-  (mt/test-driver :clickhouse
-    (testing "a query with a line comment followed by a block comment should work correctly"
-      (is (= [[1]]
-             (mt/rows
-              (qp/process-query
-               (mt/native-query
-                 {:query "-- foo
-                          /* comment */
-                          select 1;"}))))))))
+;; TODO(rileythomp, 2025-09-23): Enable when ClickHouse JDBC driver has been fixed
+#_(deftest ^:parallel line-comment-block-comment-test
+    (mt/test-driver :clickhouse
+      (testing "a query with a line comment followed by a block comment should work correctly"
+        (is (= [[1]]
+               (mt/rows
+                (qp/process-query
+                 (mt/native-query
+                   {:query "-- foo
+                            /* comment */
+                            select 1;"}))))))))
 
 (deftest ^:parallel subquery-with-cte-test
   (mt/test-driver :clickhouse
@@ -336,3 +338,32 @@
   (mt/test-driver :clickhouse
     (is (false? (driver/database-supports? driver/*driver* :uploads (mt/db))))
     (is (true? (driver/database-supports? driver/*driver* :uploads (assoc-in (mt/db) [:dbms_version :cloud] true))))))
+
+(deftest ^:parallel type->database-type-test
+  (testing "type->database-type multimethod returns correct ClickHouse types"
+    (are [base-type expected] (= expected (driver/type->database-type :clickhouse base-type))
+      :type/Boolean            [[:raw "Nullable(Boolean)"]]
+      :type/Float              [[:raw "Nullable(Float64)"]]
+      :type/Integer            [[:raw "Nullable(Int32)"]]
+      :type/Number             [[:raw "Nullable(Int64)"]]
+      :type/Text               [[:raw "Nullable(String)"]]
+      :type/TextLike           [[:raw "Nullable(String)"]]
+      :type/Date               [[:raw "Nullable(Date32)"]]
+      :type/DateTime           [[:raw "Nullable(DateTime64(3))"]]
+      :type/DateTimeWithTZ     [[:raw "Nullable(DateTime64(3, 'UTC'))"]])))
+
+(deftest ^:parallel query-with-cte-subquery-and-param-test
+  (mt/test-driver :clickhouse
+    (testing "a query with a CTE in a subquery and a parameter should work correctly"
+      (is (= [[1 "abc"]]
+             (mt/rows
+              (qp/process-query
+               {:database (mt/id)
+                :type :native
+                :native {:query "SELECT id, val FROM ( WITH foo AS ( SELECT 1 id, 'abc' val ) SELECT * FROM foo ) WHERE val = {{val}} LIMIT 1048575"
+                         :template-tags {"val" {:type :text
+                                                :name "val"
+                                                :display-name "Val"}}}
+                :parameters [{:type "string/="
+                              :target [:variable [:template-tag "val"]]
+                              :value ["abc"]}]})))))))

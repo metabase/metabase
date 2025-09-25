@@ -7,12 +7,16 @@
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.sync.core :as sync]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
   (:import
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -26,6 +30,24 @@
   (if schema
     (keyword schema name)
     (keyword name)))
+
+(defn query-transform?
+  "Check if this is a query transform: native query / mbql query."
+  [transform]
+  (= :query (-> transform :source :type keyword)))
+
+(defn python-transform?
+  "Check if this is a Python transform."
+  [transform]
+  (= :python (-> transform :source :type keyword)))
+
+(defn check-feature-enabled
+  "Checking whether we have proper feature flags for using a given transform."
+  [transform]
+  (if (python-transform? transform)
+    (and (premium-features/has-feature? :transforms)
+         (premium-features/has-feature? :transforms-python))
+    (premium-features/has-feature? :transforms)))
 
 (defn try-start-unless-already-running
   "Start a transform run, throwing an informative error if already running."
@@ -76,10 +98,18 @@
    (log/info "Syncing target" (pr-str target) "for transform")
    (activate-table-and-mark-computed! database target)))
 
+;; TODO this and target-database-id can be transforms multimethods?
+(defn target-database-id
+  "Return the target database id of a transform"
+  [transform]
+  (if (python-transform? transform)
+    (-> transform :target :database)
+    (-> transform :source :query :database)))
+
 (defn target-table-exists?
   "Test if the target table of a transform already exists."
-  [{:keys [source target] :as _transform}]
-  (let [db-id (-> source :query :database)
+  [{:keys [target] :as transform}]
+  (let [db-id (target-database-id transform)
         {driver :engine :as database} (t2/select-one :model/Database db-id)]
     (driver/table-exists? driver database target)))
 
@@ -118,10 +148,10 @@
 
 (defn delete-target-table!
   "Delete the target table of a transform and sync it from the app db."
-  [{:keys [id target source], :as _transform}]
+  [{:keys [id target], :as transform}]
   (when target
     (let [target (update target :type keyword)
-          database-id (-> source :query :database)
+          database-id (target-database-id transform)
           {driver :engine :as database} (t2/select-one :model/Database database-id)]
       (driver/drop-transform-target! driver database target)
       (log/info "Deactivating  target " (pr-str target) "for transform" id)
@@ -146,8 +176,10 @@
 (defn required-database-feature
   "Returns the database feature necessary to execute `transform`."
   [transform]
-  (case (-> transform :target :type)
-    "table"             :transforms/table))
+  (if (python-transform? transform)
+    :transforms/python
+    (case (-> transform :target :type)
+      "table"             :transforms/table)))
 
 (defn ->instant
   "Convert a temporal value `t` to an Instant in the system timezone."
@@ -177,6 +209,65 @@
   (-> run
       (u/update-some :start_time utc-timestamp-string)
       (u/update-some :end_time   utc-timestamp-string)))
+
+(mr/def ::column-definition
+  [:map
+   [:name :string]
+   [:type ::lib.schema.common/base-type]
+   [:nullable? {:optional true} :boolean]])
+
+(mr/def ::table-definition
+  [:map
+   [:name :keyword]
+   [:columns [:sequential ::column-definition]]
+   [:primary-key {:optional true} [:sequential :string]]])
+
+(mu/defn create-table-from-schema!
+  "Create a table from a table-schema"
+  [driver :- :keyword
+   database-id :- pos-int?
+   table-schema :- ::table-definition]
+  (let [{:keys [columns] table-name :name} table-schema
+        column-definitions (into {} (map (fn [{:keys [name type database-type]}]
+                                           (let [db-type (if database-type
+                                                           [[:raw database-type]]
+                                                           (try
+                                                             (driver/type->database-type driver type)
+                                                             (catch IllegalArgumentException _
+                                                               (log/warnf "Couldn't determine database type for type %s, fallback to Text" type)
+                                                               (driver/type->database-type driver :type/Text))))]
+                                             [name db-type])))
+                                 columns)
+        primary-key-opts (select-keys table-schema [:primary-key])]
+    (log/infof "Creating table %s with %d columns" table-name (count columns))
+    (driver/create-table! driver database-id table-name column-definitions primary-key-opts)))
+
+(defn drop-table!
+  "Drop a table in the database."
+  [driver database-id table-name]
+  (log/infof "Dropping table %s" table-name)
+  (driver/drop-table! driver database-id table-name))
+
+(defn temp-table-name
+  "Generate a temporary table name with the given suffix and current timestamp in seconds.
+   If table name would exceed max table name length for the driver, fallback to using a shorter base-name."
+  [driver base-table-name suffix]
+  {:pre [(keyword? base-table-name)]}
+  (let [suffix (str "_" suffix "_" (quot (System/currentTimeMillis) 1000))
+        max-len (or (driver/table-name-length-limit driver) Integer/MAX_VALUE)
+        max-prefix-len (- max-len (count suffix))
+        table-name (name base-table-name)
+        prefix (subs table-name 0 (min (count table-name) max-prefix-len))]
+    (assert (pos? max-prefix-len))
+    (keyword (namespace base-table-name)
+             (str prefix suffix))))
+
+(defn rename-tables!
+  "Rename multiple tables atomically within a transaction using the new driver/rename-tables method.
+   This is a simpler, composable operation that only handles renaming."
+  [driver database-id rename-map]
+  (log/infof "Renaming tables: %s" (pr-str rename-map))
+  (driver/rename-tables! driver database-id rename-map))
 
 (defn db-routing-enabled?
   "Returns whether or not the given database is either a router or destination database"

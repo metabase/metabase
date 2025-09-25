@@ -357,7 +357,7 @@
   [card]
   (into {} (for [[_ {param-id  :id
                      dimension :dimension}] (get-in card [:dataset_query :native :template-tags])
-                 :when                      dimension
+                 :when                      (and dimension param-id)
                  :let                       [field (mbql.u/unwrap-field-clause dimension)]
                  :when                      field]
              [param-id #{field}])))

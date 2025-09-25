@@ -173,16 +173,20 @@ export const skipDatabase = createAsyncThunk(
 export const SUBMIT_USER_INVITE = "metabase/setup/SUBMIT_USER_INVITE";
 export const submitUserInvite = createAsyncThunk(
   SUBMIT_USER_INVITE,
-  async (inviteInfo: InviteInfo, { dispatch }) => {
-    await dispatch(
-      userApi.endpoints.createUser.initiate({
-        email: inviteInfo.email,
-        first_name: inviteInfo.first_name || undefined,
-        last_name: inviteInfo.last_name || undefined,
-        source: "setup",
-      }),
-    ).unwrap();
-    dispatch(goToNextStep());
+  async (inviteInfo: InviteInfo, { dispatch, rejectWithValue }) => {
+    try {
+      await dispatch(
+        userApi.endpoints.createUser.initiate({
+          email: inviteInfo.email,
+          first_name: inviteInfo.first_name || undefined,
+          last_name: inviteInfo.last_name || undefined,
+          source: "setup",
+        }),
+      ).unwrap();
+      dispatch(goToNextStep());
+    } catch (error) {
+      return rejectWithValue(error);
+    }
   },
 );
 
