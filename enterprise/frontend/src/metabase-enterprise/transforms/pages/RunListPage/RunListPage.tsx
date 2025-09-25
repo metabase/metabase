@@ -106,5 +106,7 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
 }
 
 export function isPollingNeeded(runs: TransformRun[] = []) {
-  return runs.some((run) => run.status === "started");
+  return runs.some(
+    (run) => run.status === "started" || run.status === "canceling",
+  );
 }
