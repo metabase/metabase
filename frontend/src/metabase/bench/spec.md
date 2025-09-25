@@ -300,54 +300,143 @@ Key details:
 - Can accept parameters for parameterized queries
 - Works for any card type (question, metric, or model)
 
-### Loading cards into the notebook editor
+### Notebook Editor Integration
+
+#### Loading Existing Cards into the Notebook Editor
+
 For models and metrics, we'll want to use a pattern similar to this to load up their queries in the notebook editor.
 
 For models only, if based on SQL, we'll use our code mirror component.
 
-```
+```tsx
 import { useDispatch } from "metabase/lib/redux";
-  import { loadMetadataForCard } from "metabase/questions/actions";
-  import { Notebook } from "metabase/querying/notebook/components/Notebook";
-  import Question from "metabase-lib/v1/Question";
-  import type { Card } from "metabase-types/api";
+import { loadMetadataForCard } from "metabase/questions/actions";
+import { Notebook } from "metabase/querying/notebook/components/Notebook";
+import Question from "metabase-lib/v1/Question";
+import type { Card } from "metabase-types/api";
 
-  // In your workbench component
-  export const WorkbenchNotebook = ({ card }: { card: Card }) => {
-    const dispatch = useDispatch();
-    const metadata = useSelector(getMetadata);
-    const [question, setQuestion] = useState<Question | null>(null);
+// In your workbench component
+export const WorkbenchNotebook = ({ card }: { card: Card }) => {
+  const dispatch = useDispatch();
+  const metadata = useSelector(getMetadata);
+  const [question, setQuestion] = useState<Question | null>(null);
 
-    useEffect(() => {
-      const loadData = async () => {
-        // Use the generic metadata loader
-        await dispatch(loadMetadataForCard(card));
+  useEffect(() => {
+    const loadData = async () => {
+      // Use the generic metadata loader
+      await dispatch(loadMetadataForCard(card));
 
-        // Create question after metadata is loaded
-        const freshMetadata = getMetadata(store.getState());
-        const questionInstance = new Question(card, freshMetadata);
-        setQuestion(questionInstance);
-      };
+      // Create question after metadata is loaded
+      const freshMetadata = getMetadata(store.getState());
+      const questionInstance = new Question(card, freshMetadata);
+      setQuestion(questionInstance);
+    };
 
-      if (card) {
-        loadData();
-      }
-    }, [card, dispatch]);
-
-    if (!question) {
-      return <div>Loading...</div>;
+    if (card) {
+      loadData();
     }
+  }, [card, dispatch]);
 
-    return (
-      <Notebook
-        question={question}
-        updateQuestion={setQuestion}
-        isResultDirty={false}
-        reportTimezone="UTC"
-      />
-    );
-  };
+  if (!question) {
+    return <div>Loading...</div>;
+  }
+
+  return (
+    <Notebook
+      question={question}
+      updateQuestion={setQuestion}
+      isResultDirty={false}
+      reportTimezone="UTC"
+    />
+  );
+};
 ```
+
+#### Creating New Questions with the Notebook Editor
+
+When creating new questions (metrics, models, etc.) with the notebook editor, you must properly initialize the Question instance to ensure database selection works correctly.
+
+**❌ Common Mistake - Immediate Question Creation:**
+```tsx
+// DON'T DO THIS - Creates Question with database: null
+const initialQuery: DatasetQuery = {
+  type: "query",
+  database: null,
+  query: { "source-table": null },
+};
+
+const [question] = useState(() =>
+  Question.create({ dataset_query: initialQuery, metadata })
+);
+```
+
+**✅ Correct Pattern - Wait for Metadata and Use Database ID:**
+```tsx
+import { useSelector } from "metabase/lib/redux";
+import { getMetadata } from "metabase/selectors/metadata";
+import Question from "metabase-lib/v1/Question";
+
+export function NewEntityPage() {
+  const metadata = useSelector(getMetadata);
+  const [question, setQuestion] = useState<Question | null>(null);
+
+  // Create Question when metadata is available
+  useEffect(() => {
+    if (metadata && metadata.databasesList().length > 0) {
+      // Get the first available database
+      const firstDatabase = metadata.databasesList()[0];
+      
+      // Create Question with proper database ID
+      const newQuestion = Question.create({ 
+        databaseId: firstDatabase.id,
+        metadata 
+      });
+      
+      setQuestion(newQuestion);
+    }
+  }, [metadata]);
+
+  return (
+    <div>
+      {question ? (
+        <Notebook
+          question={question}
+          updateQuestion={setQuestion}
+          isDirty={false}
+          isRunnable={false}
+          isResultDirty={false}
+          reportTimezone={reportTimezone}
+          hasVisualizeButton={true}
+          readOnly={false}
+        />
+      ) : (
+        <div>Loading notebook editor...</div>
+      )}
+    </div>
+  );
+}
+```
+
+**Key Points for New Question Creation:**
+
+1. **Never create Question with `database: null`** - this breaks database selection UI
+2. **Always wait for metadata to be loaded** - use `useEffect` with metadata dependency
+3. **Use `databaseId` parameter** - don't manually construct DatasetQuery objects
+4. **Check `metadata.databasesList().length > 0`** - ensure databases are available
+5. **Provide loading state** - handle the case where Question isn't ready yet
+
+**Why This Pattern is Required:**
+
+- The notebook editor's database selector requires a valid database context
+- Question instances need complete metadata to function properly
+- Database selection UI won't work without proper initialization
+- Avoids race conditions between metadata loading and Question creation
+
+This pattern ensures that:
+- Database selection dropdown shows available databases
+- Tables can be selected from the chosen database
+- The notebook editor functions correctly from the start
+- No "broken" state where database selection appears empty
 
 ### Other
 - Only use ui components from "metabase/ui"
