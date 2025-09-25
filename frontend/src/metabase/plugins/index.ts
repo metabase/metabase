@@ -6,7 +6,6 @@ import React, {
   type ReactNode,
   type SetStateAction,
   useCallback,
-  useMemo,
 } from "react";
 import { t } from "ttag";
 
@@ -39,7 +38,6 @@ import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
 import { SearchButton } from "metabase/nav/components/search/SearchButton";
-import type { PaletteAction } from "metabase/palette/types";
 import {
   NotFoundPlaceholder,
   PluginPlaceholder,
@@ -711,8 +709,6 @@ export const PLUGIN_METABOT = {
         children,
       );
   },
-  useMetabotPalletteActions: (_searchText: string) =>
-    useMemo(() => [] as PaletteAction[], []),
   getAdminPaths: () => [] as AdminPath[],
   getAdminRoutes: () => PluginPlaceholder as unknown as React.ReactElement,
   getMetabotRoutes: () => null as React.ReactElement | null,
