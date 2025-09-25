@@ -115,6 +115,9 @@
             (testing "filtering by last_run_start_time"
               (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-job" :last_run_start_time "2025-08-26~")]
                 (is (= #{j2-id} (returned-job-ids response)))))
+            (testing "filtering by last_run_statuses"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-job" :last_run_statuses ["started" "succeeded"])]
+                (is (= #{j2-id} (returned-job-ids response)))))
             (testing "filtering by last_run_end_time without scheduled job"
               (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-job" :next_run_start_time "2025-08-26~")]
                 (is (= #{} (returned-job-ids response)))))

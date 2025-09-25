@@ -1116,6 +1116,7 @@ LIMIT
                 },
                 target: {
                   type: "table",
+                  database: WRITABLE_DB_ID,
                   name: TARGET_TABLE,
                   schema: TARGET_SCHEMA,
                 },
@@ -1229,6 +1230,7 @@ LIMIT
             },
             target: {
               type: "table",
+              database: WRITABLE_DB_ID,
               name: TARGET_TABLE,
               schema: TARGET_SCHEMA,
             },
@@ -1437,6 +1439,7 @@ LIMIT
           },
           target: {
             type: "table",
+            database: WRITABLE_DB_ID,
             name: TARGET_TABLE,
             schema: TARGET_SCHEMA,
           },
@@ -1997,13 +2000,12 @@ describe("scenarios > admin > transforms > jobs", () => {
     it("should be able to filter jobs ", () => {
       cy.log("run hourly job so know that was recently run");
       visitJobListPage();
-
       getContentTable().findByText("Hourly job").click();
       runJobAndWaitForSuccess();
 
       visitJobListPage();
 
-      function testLastRunFilter() {
+      function testLastRunDateFilter() {
         cy.log("no filters");
         getContentTable().within(() => {
           cy.findByText("Hourly job").should("be.visible");
@@ -2013,14 +2015,14 @@ describe("scenarios > admin > transforms > jobs", () => {
         });
 
         cy.log("last run at - add a filter");
-        getLastRunAtFilterWidget().click();
+        getLastRunDateFilterWidget().click();
         H.popover().findByText("Previous month").click();
 
-        getLastRunAtFilterWidget().should("contain", "Previous month");
+        getLastRunDateFilterWidget().should("contain", "Previous month");
         getContentTable().should("not.exist");
 
         cy.log("last run at filter - remove filter");
-        getLastRunAtFilterWidget().button("Remove filter").click();
+        getLastRunDateFilterWidget().button("Remove filter").click();
         getContentTable().within(() => {
           cy.findByText("Hourly job").should("be.visible");
           cy.findByText("Daily job").should("be.visible");
@@ -2029,7 +2031,42 @@ describe("scenarios > admin > transforms > jobs", () => {
         });
       }
 
-      function testNextRunFilter() {
+      function testLastRunStatusFilter() {
+        cy.log("no filters");
+        getContentTable().within(() => {
+          cy.findByText("Hourly job").should("be.visible");
+          cy.findByText("Daily job").should("be.visible");
+          cy.findByText("Weekly job").should("be.visible");
+          cy.findByText("Monthly job").should("be.visible");
+        });
+
+        cy.log("last run status - add a filter");
+        getLastRunStatusFilterWidget().click();
+        H.popover().within(() => {
+          cy.findByText("In progress").click();
+          cy.findByText("Success").click();
+          cy.button("Add filter").click();
+        });
+
+        getLastRunStatusFilterWidget().should("contain", "2 statuses");
+        getContentTable().within(() => {
+          cy.findByText("Hourly job").should("be.visible");
+          cy.findByText("Daily job").should("not.exist");
+          cy.findByText("Weekly job").should("not.exist");
+          cy.findByText("Monthly job").should("not.exist");
+        });
+
+        cy.log("last run at filter - remove filter");
+        getLastRunStatusFilterWidget().button("Remove filter").click();
+        getContentTable().within(() => {
+          cy.findByText("Hourly job").should("be.visible");
+          cy.findByText("Daily job").should("be.visible");
+          cy.findByText("Weekly job").should("be.visible");
+          cy.findByText("Monthly job").should("be.visible");
+        });
+      }
+
+      function testNextRunDateFilter() {
         cy.log("no filters");
         getContentTable().within(() => {
           cy.findByText("Hourly job").should("be.visible");
@@ -2039,7 +2076,7 @@ describe("scenarios > admin > transforms > jobs", () => {
         });
 
         cy.log("next run - add a filter");
-        getNextRunFilterWidget().click();
+        getNextRunDateFilterWidget().click();
         H.popover().within(() => {
           cy.findByText("Fixed date range…").click();
           cy.findByLabelText("Start date").clear().type("12/10/2024");
@@ -2047,14 +2084,14 @@ describe("scenarios > admin > transforms > jobs", () => {
           cy.button("Apply").click();
         });
 
-        getNextRunFilterWidget().should(
+        getNextRunDateFilterWidget().should(
           "contain",
           "December 10, 2024 - January 5, 2025",
         );
         getContentTable().should("not.exist");
 
         cy.log("next run filter - remove filter");
-        getNextRunFilterWidget().button("Remove filter").click();
+        getNextRunDateFilterWidget().button("Remove filter").click();
         getContentTable().within(() => {
           cy.findByText("Hourly job").should("be.visible");
           cy.findByText("Daily job").should("be.visible");
@@ -2127,8 +2164,9 @@ describe("scenarios > admin > transforms > jobs", () => {
         });
       }
 
-      testLastRunFilter();
-      testNextRunFilter();
+      testLastRunDateFilter();
+      testLastRunStatusFilter();
+      testNextRunDateFilter();
       testTagFilter();
     });
   });
@@ -2617,11 +2655,15 @@ function getTransformFilterWidget() {
   return cy.findByRole("group", { name: "Transform" });
 }
 
-function getLastRunAtFilterWidget() {
+function getLastRunDateFilterWidget() {
   return cy.findByRole("group", { name: "Last run at" });
 }
 
-function getNextRunFilterWidget() {
+function getLastRunStatusFilterWidget() {
+  return cy.findByRole("group", { name: "Last run status" });
+}
+
+function getNextRunDateFilterWidget() {
   return cy.findByRole("group", { name: "Next run at" });
 }
 
@@ -2712,6 +2754,7 @@ function createMbqlTransform({
         },
         target: {
           type: "table",
+          database: WRITABLE_DB_ID,
           name: targetTable,
           schema: targetSchema,
         },
@@ -2750,6 +2793,7 @@ function createSqlTransform({
       },
       target: {
         type: "table",
+        database: WRITABLE_DB_ID,
         name: targetTable,
         schema: targetSchema,
       },
