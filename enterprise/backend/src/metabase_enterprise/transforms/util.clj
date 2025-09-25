@@ -66,8 +66,8 @@
   "Execute a transform with cancellation support and proper error handling.
 
   Options:
-  - `:ex-message` change how caught exceptions are presented to the user in run logs, by default the same as"
-  [run-id driver {:keys [db-id conn-spec output-schema]} run-transform! & {:keys [ex-message] :or {ex-message ex-message}}]
+  - `:ex-message-fn` change how caught exceptions are presented to the user in run logs, by default the same as clojure.core/ex-message"
+  [run-id driver {:keys [db-id conn-spec output-schema]} run-transform! & {:keys [ex-message-fn] :or {ex-message-fn ex-message}}]
   ;; local run is responsible for status, using canceling lifecycle
   (try
     (when-not (driver/schema-exists? driver db-id output-schema)
@@ -80,7 +80,7 @@
       (transform-run/succeed-started-run! run-id)
       ret)
     (catch Throwable t
-      (transform-run/fail-started-run! run-id {:message (ex-message t)})
+      (transform-run/fail-started-run! run-id {:message (ex-message-fn t)})
       (throw t))
     (finally
       (canceling/chan-end-run! run-id))))

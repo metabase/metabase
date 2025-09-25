@@ -267,10 +267,11 @@
         (replace-python-logs! message-log events))
       (if (not= 200 status)
         (throw (ex-info "Python runner call failed"
-                        {:status-code           400
-                         :api-status-code       status
-                         :body                  body
-                         :events                events}))
+                        {:transform-message (i18n/tru "Python execution failure (exit code {0})" (:exit_code body "?"))
+                         :status-code       400
+                         :api-status-code   status
+                         :body              body
+                         :events            events}))
         (try
           (let [temp-file (File/createTempFile "transform-output-" ".jsonl")]
             (when-not (seq (:fields output-manifest))
@@ -290,10 +291,19 @@
           response
           (catch Exception e
             (log/error e "Failed to to create resulting table")
-            (throw (ex-info "Failed to create the resulting table" {} e))))))))
+            (throw (ex-info "Failed to create the resulting table"
+                            {:transform-message (or (:transform-message (ex-data e))
+                                                    ;; TODO keeping messaging the same at this level
+                                                    ;;  should be more specific in underlying calls
+                                                    (i18n/tru "Failed to create the resulting table"))}
+                            e))))))))
 
 (defn- exceptional-run-message [message-log ex]
-  (str/join "\n" (remove str/blank? [(message-log->transform-run-message message-log) (ex-message ex)])))
+  (str/join "\n" (remove str/blank? [(message-log->transform-run-message message-log)
+                                     (or (:transform-message (ex-data ex))
+                                         (if (instance? InterruptedException ex)
+                                           (i18n/tru "Transform interrupted")
+                                           (i18n/tru "Something went wrong")))])))
 
 (defn execute-python-transform!
   "Execute a Python transform by calling the python runner.
@@ -319,8 +329,8 @@
                                 (run-python-transform! transform db run-id cancel-chan message-log)
                                 (log! message-log (i18n/tru "Python execution finished successfully in {0}" (u.format/format-milliseconds (u/since-ms start-ms))))
                                 (save-log-to-transform-run-message! run-id message-log))
-            custom-ex-message #(exceptional-run-message message-log %)
-            result            (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn :ex-message custom-ex-message)]
+            ex-message-fn     #(exceptional-run-message message-log %)
+            result            (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn)]
         (transforms.instrumentation/with-stage-timing [run-id :table-sync]
           (transforms.util/sync-target! target db run-id))
         {:run_id run-id
