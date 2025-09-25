@@ -147,7 +147,7 @@ export function EmbeddingSdkSettings() {
         settingKey="enable-embedding-simple"
         isFeatureEnabled={isSimpleEmbedFeatureEnabled}
         links={[
-          ...(isSimpleEmbedEnabled
+          ...(isSimpleEmbedFeatureEnabled
             ? [
                 {
                   type: "button" as const,
