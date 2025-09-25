@@ -16,10 +16,11 @@ function BenchSidebarComponent({ location }: BenchSidebarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const isActive = (path: string) => {
-    if (path === "/bench") {
-      return (
-        currentPath === "/bench" || currentPath.startsWith("/bench/transform")
-      );
+    if (path === "/bench/overview") {
+      return currentPath === "/bench" || currentPath === "/bench/overview";
+    }
+    if (path === "/bench/transforms") {
+      return currentPath.startsWith("/bench/transform");
     }
     return currentPath.startsWith(path);
   };
@@ -77,9 +78,14 @@ function BenchSidebarComponent({ location }: BenchSidebarProps) {
 
   const navItems = [
     {
+      label: t`Overview`,
+      icon: <Icon name="home" size={16} />,
+      path: "/bench/overview",
+    },
+    {
       label: t`Transforms`,
       icon: <Icon name="sql" size={16} />,
-      path: "/bench",
+      path: "/bench/transforms",
     },
     {
       label: t`Table Metadata`,
@@ -177,18 +183,21 @@ function BenchSidebarComponent({ location }: BenchSidebarProps) {
       </Box>
 
       <Stack gap={4} px="md" style={{ flex: 1 }}>
-        {navItems.map((item) => (
-          <NavLink
-            key={item.path}
-            component={Link}
-            to={item.path}
-            label={item.label}
-            description={item.description}
-            leftSection={item.icon}
-            active={isActive(item.path)}
-            px="lg"
-            py="md"
-          />
+        {navItems.map((item, index) => (
+          <Box key={item.path}>
+            <NavLink
+              component={Link}
+              to={item.path}
+              label={item.label}
+              description={item.description}
+              leftSection={item.icon}
+              active={isActive(item.path)}
+              px="lg"
+              py="md"
+            />
+            {/* Add extra spacing after Overview */}
+            {index === 0 && <Box h="md" />}
+          </Box>
         ))}
       </Stack>
 

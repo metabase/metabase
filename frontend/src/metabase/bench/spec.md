@@ -500,7 +500,7 @@ Example of adding a new navigation item:
 
 ### Overview page
 
-The overview page does not use a tool layout and should instead welcome the current user using our greeting funciton and have a grid of cards that explains what each major tool is for along with a link to that section.
+The overview page does not use a tool layout and should instead welcome the current user using our greeting funciton and have a single row grid of cards that explains what each major tool is for along with a link to that section.
 
 
 ### Jobs and Runs

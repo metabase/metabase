@@ -1,7 +1,8 @@
-import { IndexRedirect, IndexRoute, Redirect, Route } from "react-router";
+import { IndexRedirect, Redirect, Route } from "react-router";
 
 import { BenchApp } from "./BenchApp";
 import { BenchLayout } from "./BenchLayout";
+import { BenchOverview } from "./BenchOverview";
 import { MetricsApp } from "./MetricsApp";
 import { ModelsApp } from "./ModelsApp";
 import { SegmentsApp } from "./SegmentsApp";
@@ -14,7 +15,9 @@ import { DataModel } from "./metadata/pages/DataModel/DataModel";
 export function getBenchRoutes() {
   return (
     <Route path="/bench" component={BenchLayout}>
-      <IndexRoute component={BenchApp} />
+      <IndexRedirect to="overview" />
+      <Route path="overview" component={BenchOverview} />
+      <Route path="transforms" component={BenchApp} />
       <Route path="transform/:transformId" component={BenchApp} />
       <Route path="metadata">
         <Route>
