@@ -2,7 +2,6 @@
   (:require
    [clj-http.client :as http]
    [clojure.java.io :as io]
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
@@ -204,17 +203,16 @@
                                    {:error string-if-error}))
                                string-if-error)))))
 
-;; temporary, we should not need to realize data/events files into memory longer term
 (defn read-output-objects
   "Temporary function that strings/jsons stuff in S3 and returns it for compatibility."
   [{:keys [s3-client bucket-name objects]}]
   (let [{:keys [output output-manifest events]} objects
-        output-content          (s3/read-to-string s3-client bucket-name (:path output) nil)
+        output-content          (s3/read-to-stream s3-client bucket-name (:path output) nil)
         output-manifest-content (s3/read-to-string s3-client bucket-name (:path output-manifest) "{}")
-        events-content          (s3/read-to-string s3-client bucket-name (:path events))]
-    {:output          output-content
+        events-content          (s3/read-to-stream s3-client bucket-name (:path events))]
+    {:output-stream   output-content
      :output-manifest (json/decode+kw output-manifest-content)
-     :events          (mapv json/decode+kw (str/split-lines events-content))}))
+     :events          (map json/decode+kw (line-seq (io/reader events-content)))}))
 
 (defn cancel-python-code-http-call!
   "Calls the /cancel endpoint of the python runner. Returns immediately."
