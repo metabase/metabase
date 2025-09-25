@@ -137,6 +137,14 @@ From left to right, taking up the full height of the view are panels.
 
 Metabot can always be opened or closed, alongside other.
 
+┌─────────────┬─────────────────────────────────────────────┐
+│             │ Toolbar (with toggle button)              │
+│  BenchSidebar├─────────────────┬───────────────────────────┤
+│ (Fixed Left)│ Main Content    │ Metabot (conditional)     │
+│             │ Panel           │ Panel                     │
+└─────────────┴─────────────────┴───────────────────────────┘
+
+
 ### Major modes
 Listed as major mode name, and layout type.
  - Overview (overview)
@@ -156,7 +164,7 @@ Tools (as listed above) should have the same basic layout that's comprised of a 
 This is where left panel tools (mostly lists) will go. All listing components should use `NavLink` from "metabase/ui" as a wrapper for individual items in the list to provide consistent styling and interaction patterns. NavLink components should not use the `description` property and should use `px="lg"` and `py="md"` by default for consistent spacing.
 
 # Main view
-For most modes this will be either a notebook instance or a
+For most modes this will be either a notebook instance or a sql editor.
 
 
 ### Gathering data
