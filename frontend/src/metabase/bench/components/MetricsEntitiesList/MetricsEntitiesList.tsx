@@ -35,7 +35,7 @@ export function MetricsEntitiesList({
       </Link>
 
       {metrics.length === 0 ? (
-        <Text size="sm" c="dimmed" ta="center" py="md">
+        <Text size="sm" ta="center" py="md">
           No metrics found
         </Text>
       ) : (
@@ -65,7 +65,7 @@ export function MetricsEntitiesList({
               <Text size="sm" style={{ flex: 1 }} truncate>
                 {metric.name}
               </Text>
-              <Text size="xs" c="dimmed">
+              <Text size="xs">
                 {metric.collection?.name || "No collection"}
               </Text>
             </Link>

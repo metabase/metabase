@@ -63,7 +63,7 @@ function BenchSidebarComponent({ location }: BenchSidebarProps) {
         <Text size="lg" fw="bold">
           {t`Metabase Bench`}
         </Text>
-        <Text size="sm" c="dimmed" mt={4}>
+        <Text size="sm" mt={4}>
           {t`Development & Data Management`}
         </Text>
       </Box>
@@ -88,9 +88,7 @@ function BenchSidebarComponent({ location }: BenchSidebarProps) {
 
       <Box px="md" mt="auto" pt="lg">
         <Divider mb="md" />
-        <Text size="xs" c="dimmed">
-          {t`Version 0.1.0`}
-        </Text>
+        <Text size="xs">{t`Version 0.1.0`}</Text>
       </Box>
     </Box>
   );

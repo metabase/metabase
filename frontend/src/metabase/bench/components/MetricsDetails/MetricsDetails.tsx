@@ -37,9 +37,7 @@ export function MetricsDetails({ params }: MetricsDetailsProps) {
           justifyContent: "center",
         }}
       >
-        <Text size="lg" c="dimmed">
-          Loading metric...
-        </Text>
+        <Text size="lg">Loading metric...</Text>
       </Box>
     );
   }
@@ -60,9 +58,7 @@ export function MetricsDetails({ params }: MetricsDetailsProps) {
             <Text size="lg" fw="bold">
               {metricData?.name}
             </Text>
-            <Text size="sm" c="dimmed">
-              Metric Definition
-            </Text>
+            <Text size="sm">Metric Definition</Text>
           </Box>
 
           <Box style={{ flex: 1, height: "400px" }}>
@@ -93,9 +89,7 @@ export function MetricsDetails({ params }: MetricsDetailsProps) {
             <Text size="lg" fw="bold">
               Query Results
             </Text>
-            <Text size="sm" c="dimmed">
-              Metric execution output
-            </Text>
+            <Text size="sm">Metric execution output</Text>
           </Box>
 
           <Box style={{ height: "calc(100% - 60px)", overflow: "auto" }}>
@@ -106,7 +100,7 @@ export function MetricsDetails({ params }: MetricsDetailsProps) {
               </Box>
             ) : queryResults ? (
               <Box p="md">
-                <Text size="sm" c="dimmed" mb="sm">
+                <Text size="sm" mb="sm">
                   {queryResults.data?.rows?.length || 0} rows returned
                 </Text>
                 {queryResults.data?.rows &&
@@ -127,9 +121,7 @@ export function MetricsDetails({ params }: MetricsDetailsProps) {
                             {row.map((cell, cellIndex) => (
                               <Table.Td key={cellIndex}>
                                 {cell === null ? (
-                                  <Text c="dimmed" fs="italic">
-                                    null
-                                  </Text>
+                                  <Text fs="italic">null</Text>
                                 ) : (
                                   String(cell)
                                 )}
@@ -140,12 +132,12 @@ export function MetricsDetails({ params }: MetricsDetailsProps) {
                     </Table.Tbody>
                   </Table>
                 ) : (
-                  <Text c="dimmed">No data returned</Text>
+                  <Text>No data returned</Text>
                 )}
               </Box>
             ) : (
               <Box p="md" ta="center">
-                <Text c="dimmed">No results available</Text>
+                <Text>No results available</Text>
               </Box>
             )}
           </Box>

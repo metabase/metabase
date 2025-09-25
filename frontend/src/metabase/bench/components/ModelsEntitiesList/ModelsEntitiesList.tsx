@@ -27,7 +27,7 @@ export function ModelsEntitiesList({
 
   if (models.length === 0) {
     return (
-      <Text size="sm" c="dimmed" ta="center" py="md">
+      <Text size="sm" ta="center" py="md">
         No models found
       </Text>
     );
@@ -61,9 +61,7 @@ export function ModelsEntitiesList({
           <Text size="sm" style={{ flex: 1 }} truncate>
             {model.name}
           </Text>
-          <Text size="xs" c="dimmed">
-            {model.collection?.name || "No collection"}
-          </Text>
+          <Text size="xs">{model.collection?.name || "No collection"}</Text>
         </Group>
       ))}
     </>

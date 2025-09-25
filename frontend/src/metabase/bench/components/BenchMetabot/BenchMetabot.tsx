@@ -59,7 +59,7 @@ export const BenchMetabot = () => {
         {/* Header */}
         <Box style={{ marginBottom: "16px" }}>
           <Flex justify="space-between" align="center">
-            <Text size="sm" c="dimmed">
+            <Text size="sm">
               {t`Metabot isn't perfect. Double-check results.`}
             </Text>
             <Tooltip label={t`Clear conversation`} position="bottom">

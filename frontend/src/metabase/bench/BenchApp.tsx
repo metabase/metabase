@@ -112,7 +112,7 @@ ORDER BY total_spent DESC;`);
                     {selectedTransform ? selectedTransform.name : "SQL Editor"}
                   </Text>
                   {selectedTransform && (
-                    <Text size="sm" c="dimmed">
+                    <Text size="sm">
                       Target:{" "}
                       {selectedTransform.target.schema
                         ? `${selectedTransform.target.schema}.`

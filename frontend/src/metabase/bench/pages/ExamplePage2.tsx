@@ -7,8 +7,8 @@ export function ExamplePage2() {
         Example Page 2
       </Title>
       <Text mb="lg">
-        This is the second example page showcasing a different layout with
-        cards and badges using Mantine components.
+        This is the second example page showcasing a different layout with cards
+        and badges using Mantine components.
       </Text>
       <Grid>
         <Grid.Col span={6}>
@@ -16,8 +16,9 @@ export function ExamplePage2() {
             <Text fw={500} size="lg" mb="xs">
               Feature Card 1
             </Text>
-            <Text size="sm" c="dimmed" mb="sm">
-              This card demonstrates Mantine's card component with shadow and border.
+            <Text size="sm" mb="sm">
+              This card demonstrates Mantine's card component with shadow and
+              border.
             </Text>
             <Badge color="blue" variant="light">
               New Feature
@@ -29,8 +30,9 @@ export function ExamplePage2() {
             <Text fw={500} size="lg" mb="xs">
               Feature Card 2
             </Text>
-            <Text size="sm" c="dimmed" mb="sm">
-              Another example card showing how multiple components work together.
+            <Text size="sm" mb="sm">
+              Another example card showing how multiple components work
+              together.
             </Text>
             <Badge color="green" variant="light">
               Stable

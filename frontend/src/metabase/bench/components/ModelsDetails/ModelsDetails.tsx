@@ -37,9 +37,7 @@ export function ModelsDetails({ model }: ModelsDetailsProps) {
           justifyContent: "center",
         }}
       >
-        <Text size="lg" c="dimmed">
-          Select a model to view its definition and results
-        </Text>
+        <Text size="lg">Select a model to view its definition and results</Text>
       </Box>
     );
   }
@@ -84,9 +82,7 @@ export function ModelsDetails({ model }: ModelsDetailsProps) {
             <Text size="lg" fw="bold">
               {model.name}
             </Text>
-            <Text size="sm" c="dimmed">
-              Model Definition
-            </Text>
+            <Text size="sm">Model Definition</Text>
           </Box>
 
           <Box style={{ flex: 1, height: "400px" }}>
@@ -127,9 +123,7 @@ export function ModelsDetails({ model }: ModelsDetailsProps) {
             <Text size="lg" fw="bold">
               Query Results
             </Text>
-            <Text size="sm" c="dimmed">
-              Model execution output
-            </Text>
+            <Text size="sm">Model execution output</Text>
           </Box>
 
           <Box style={{ height: "calc(100% - 60px)", overflow: "auto" }}>
@@ -140,7 +134,7 @@ export function ModelsDetails({ model }: ModelsDetailsProps) {
               </Box>
             ) : queryResults ? (
               <Box p="md">
-                <Text size="sm" c="dimmed" mb="sm">
+                <Text size="sm" mb="sm">
                   {queryResults.data?.rows?.length || 0} rows returned
                 </Text>
                 {queryResults.data?.rows &&
@@ -161,9 +155,7 @@ export function ModelsDetails({ model }: ModelsDetailsProps) {
                             {row.map((cell, cellIndex) => (
                               <Table.Td key={cellIndex}>
                                 {cell === null ? (
-                                  <Text c="dimmed" fs="italic">
-                                    null
-                                  </Text>
+                                  <Text fs="italic">null</Text>
                                 ) : (
                                   String(cell)
                                 )}
@@ -174,12 +166,12 @@ export function ModelsDetails({ model }: ModelsDetailsProps) {
                     </Table.Tbody>
                   </Table>
                 ) : (
-                  <Text c="dimmed">No data returned</Text>
+                  <Text>No data returned</Text>
                 )}
               </Box>
             ) : (
               <Box p="md" ta="center">
-                <Text c="dimmed">No results available</Text>
+                <Text>No results available</Text>
               </Box>
             )}
           </Box>

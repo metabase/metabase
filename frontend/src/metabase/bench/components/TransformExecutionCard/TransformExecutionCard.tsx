@@ -3,7 +3,17 @@ import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box, Card, Group, Icon, Stack, Text, Button, Loader, Tooltip } from "metabase/ui";
+import {
+  Box,
+  Card,
+  Group,
+  Icon,
+  Stack,
+  Text,
+  Button,
+  Loader,
+  Tooltip,
+} from "metabase/ui";
 import {
   useRunTransformMutation,
   useCancelCurrentTransformRunMutation,
@@ -17,7 +27,9 @@ interface TransformExecutionCardProps {
   transform?: Transform;
 }
 
-export function TransformExecutionCard({ transform }: TransformExecutionCardProps) {
+export function TransformExecutionCard({
+  transform,
+}: TransformExecutionCardProps) {
   const systemTimezone = useSetting("system-timezone");
   const [runTransform] = useRunTransformMutation();
   const [cancelTransform] = useCancelCurrentTransformRunMutation();
@@ -61,9 +73,7 @@ export function TransformExecutionCard({ transform }: TransformExecutionCardProp
   if (!transform) {
     return (
       <Card withBorder p="md">
-        <Text c="dimmed" size="sm">
-          {t`Select a transform to see execution details`}
-        </Text>
+        <Text size="sm">{t`Select a transform to see execution details`}</Text>
       </Card>
     );
   }
@@ -98,20 +108,24 @@ interface ExecutionStatusProps {
   transformId: number;
 }
 
-function ExecutionStatus({ lastRun, systemTimezone, transformId }: ExecutionStatusProps) {
+function ExecutionStatus({
+  lastRun,
+  systemTimezone,
+  transformId,
+}: ExecutionStatusProps) {
   if (!lastRun) {
     return (
       <Group gap="sm">
         <Icon c="text-secondary" name="calendar" size="sm" />
-        <Text size="sm" c="dimmed">
-          {t`This transform hasn't been run before.`}
-        </Text>
+        <Text size="sm">{t`This transform hasn't been run before.`}</Text>
       </Group>
     );
   }
 
   const { status, end_time, message } = lastRun;
-  const endTime = end_time ? parseTimestampWithTimezone(end_time, systemTimezone) : null;
+  const endTime = end_time
+    ? parseTimestampWithTimezone(end_time, systemTimezone)
+    : null;
   const endTimeText = endTime?.fromNow();
 
   switch (status) {
@@ -119,9 +133,7 @@ function ExecutionStatus({ lastRun, systemTimezone, transformId }: ExecutionStat
       return (
         <Group gap="sm">
           <Loader size="sm" />
-          <Text size="sm">
-            {t`Run in progress…`}
-          </Text>
+          <Text size="sm">{t`Run in progress…`}</Text>
         </Group>
       );
 
@@ -132,8 +144,7 @@ function ExecutionStatus({ lastRun, systemTimezone, transformId }: ExecutionStat
           <Text size="sm">
             {endTimeText
               ? t`Last ran ${endTimeText} successfully.`
-              : t`Last ran successfully.`
-            }
+              : t`Last ran successfully.`}
           </Text>
         </Group>
       );
@@ -146,8 +157,7 @@ function ExecutionStatus({ lastRun, systemTimezone, transformId }: ExecutionStat
             <Text size="sm">
               {endTimeText
                 ? t`Last run failed ${endTimeText}.`
-                : t`Last run failed.`
-              }
+                : t`Last run failed.`}
             </Text>
           </Group>
           {message && (
@@ -166,8 +176,7 @@ function ExecutionStatus({ lastRun, systemTimezone, transformId }: ExecutionStat
             <Text size="sm">
               {endTimeText
                 ? t`Last run timed out ${endTimeText}.`
-                : t`Last run timed out.`
-              }
+                : t`Last run timed out.`}
             </Text>
           </Group>
           {message && (
@@ -182,9 +191,7 @@ function ExecutionStatus({ lastRun, systemTimezone, transformId }: ExecutionStat
       return (
         <Group gap="sm">
           <Loader size="sm" />
-          <Text size="sm">
-            {t`Canceling…`}
-          </Text>
+          <Text size="sm">{t`Canceling…`}</Text>
         </Group>
       );
 
@@ -195,8 +202,7 @@ function ExecutionStatus({ lastRun, systemTimezone, transformId }: ExecutionStat
           <Text size="sm">
             {endTimeText
               ? t`Last run was canceled ${endTimeText}.`
-              : t`Last run was canceled.`
-            }
+              : t`Last run was canceled.`}
           </Text>
         </Group>
       );
@@ -220,11 +226,7 @@ function RunButton({ lastRun, isRecentRun, onRun, onCancel }: RunButtonProps) {
   if (isRunning) {
     return (
       <Group>
-        <Button
-          variant="filled"
-          leftSection={<Loader size="sm" />}
-          disabled
-        >
+        <Button variant="filled" leftSection={<Loader size="sm" />} disabled>
           {t`Running now…`}
         </Button>
         <Tooltip label={t`Cancel`}>
@@ -242,11 +244,7 @@ function RunButton({ lastRun, isRecentRun, onRun, onCancel }: RunButtonProps) {
 
   if (isCanceling) {
     return (
-      <Button
-        variant="filled"
-        leftSection={<Loader size="sm" />}
-        disabled
-      >
+      <Button variant="filled" leftSection={<Loader size="sm" />} disabled>
         {t`Canceling…`}
       </Button>
     );
@@ -260,7 +258,7 @@ function RunButton({ lastRun, isRecentRun, onRun, onCancel }: RunButtonProps) {
         buttonProps = {
           color: "green",
           leftSection: <Icon name="check" />,
-          children: t`Ran successfully`
+          children: t`Ran successfully`,
         };
         break;
       case "failed":
@@ -268,36 +266,28 @@ function RunButton({ lastRun, isRecentRun, onRun, onCancel }: RunButtonProps) {
         buttonProps = {
           color: "red",
           leftSection: <Icon name="warning" />,
-          children: t`Run failed`
+          children: t`Run failed`,
         };
         break;
       case "canceled":
         buttonProps = {
           variant: "outline",
           leftSection: <Icon name="close" />,
-          children: t`Canceled`
+          children: t`Canceled`,
         };
         break;
       default:
         buttonProps = {
           leftSection: <Icon name="play_outlined" />,
-          children: t`Run now`
+          children: t`Run now`,
         };
     }
 
-    return (
-      <Button
-        {...buttonProps}
-        onClick={onRun}
-      />
-    );
+    return <Button {...buttonProps} onClick={onRun} />;
   }
 
   return (
-    <Button
-      leftSection={<Icon name="play_outlined" />}
-      onClick={onRun}
-    >
+    <Button leftSection={<Icon name="play_outlined" />} onClick={onRun}>
       {t`Run now`}
     </Button>
   );

@@ -108,7 +108,7 @@ export function CollectionsCard({ transform }: CollectionsCardProps) {
       <Stack gap="md">
         <Title order={5}>Link to Collections</Title>
 
-        <Text c="dimmed">Select collections to show this transform output</Text>
+        <Text>Select collections to show this transform output</Text>
 
         {(!transform || !transform.table?.id) && (
           <Text c="red">
@@ -122,7 +122,7 @@ export function CollectionsCard({ transform }: CollectionsCardProps) {
           </Stack>
         </Box>
 
-        <Text c="dimmed" size="xs">
+        <Text size="xs">
           Selected collections will display this transform output
         </Text>
       </Stack>

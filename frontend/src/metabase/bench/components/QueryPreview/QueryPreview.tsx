@@ -70,9 +70,7 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
     if (!databaseId) {
       return (
         <Box p="md" style={{ textAlign: "center" }}>
-          <Text size="sm" c="dimmed">
-            Select a transform to preview queries
-          </Text>
+          <Text size="sm">Select a transform to preview queries</Text>
         </Box>
       );
     }
@@ -151,7 +149,7 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
           {isLoading && (
             <Box style={{ textAlign: "center" }} py="xl">
               <Loader size="md" />
-              <Text size="sm" c="dimmed" mt="md">
+              <Text size="sm" mt="md">
                 Executing query...
               </Text>
             </Box>
@@ -163,13 +161,9 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
                 <Text size="sm" fw={500}>
                   Results: {dataset.data.rows.length} rows
                 </Text>
-                <Text size="sm" c="dimmed">
-                  {dataset.data.cols.length} columns
-                </Text>
+                <Text size="sm">{dataset.data.cols.length} columns</Text>
                 {dataset.running_time && (
-                  <Text size="sm" c="dimmed">
-                    {dataset.running_time}ms
-                  </Text>
+                  <Text size="sm">{dataset.running_time}ms</Text>
                 )}
               </Group>
 
@@ -238,7 +232,7 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
                               }}
                             >
                               {cell === null ? (
-                                <Text size="xs" c="dimmed" fs="italic">
+                                <Text size="xs" fs="italic">
                                   null
                                 </Text>
                               ) : (
@@ -260,7 +254,7 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
                           : theme.colors.gray[0],
                       }}
                     >
-                      <Text size="sm" c="dimmed">
+                      <Text size="sm">
                         Showing first 100 of {dataset.data.rows.length} rows
                       </Text>
                     </Box>
@@ -278,7 +272,7 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
                     borderRadius: "4px",
                   }}
                 >
-                  <Text size="sm" c="dimmed">
+                  <Text size="sm">
                     Query executed successfully but returned no rows
                   </Text>
                 </Box>
@@ -289,7 +283,7 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
           {!shouldExecute && (
             <Box style={{ textAlign: "center" }} py="xl">
               <Icon name="play" size={32} color="var(--mantine-color-gray-4)" />
-              <Text size="sm" c="dimmed" mt="md">
+              <Text size="sm" mt="md">
                 Press ⌘↵ or click Run to execute the query
               </Text>
             </Box>

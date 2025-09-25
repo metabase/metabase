@@ -21,7 +21,7 @@ export function TransformEntitiesList({
 
   if (transforms.length === 0) {
     return (
-      <Text size="sm" c="dimmed" ta="center" py="md">
+      <Text size="sm" ta="center" py="md">
         No transforms found
       </Text>
     );
@@ -55,9 +55,7 @@ export function TransformEntitiesList({
           <Text size="sm" style={{ flex: 1 }} truncate>
             {transform.name}
           </Text>
-          <Text size="xs" c="dimmed">
-            {transform.target.name}
-          </Text>
+          <Text size="xs">{transform.target.name}</Text>
         </Group>
       ))}
     </>

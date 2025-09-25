@@ -70,7 +70,7 @@ export function NewMetricPage() {
               <Text size="xl" fw="bold">
                 New Metric
               </Text>
-              <Text size="sm" c="dimmed">
+              <Text size="sm">
                 Create a new metric using the notebook editor
               </Text>
             </Box>
@@ -104,7 +104,7 @@ export function NewMetricPage() {
             <Text size="lg" fw="bold">
               Metric Definition
             </Text>
-            <Text size="sm" c="dimmed">
+            <Text size="sm">
               Use the notebook editor to define your metric calculation
             </Text>
           </Box>
@@ -133,7 +133,7 @@ export function NewMetricPage() {
                   height: "100%",
                 }}
               >
-                <Text c="dimmed">Loading notebook editor...</Text>
+                <Text>Loading notebook editor...</Text>
               </Box>
             )}
           </Box>
