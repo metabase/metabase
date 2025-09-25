@@ -8,6 +8,8 @@ import S from "metabase/nav/components/search/SearchButton/SearchButton.module.c
 import { Button, Flex, Icon, Text, Tooltip, UnstyledButton } from "metabase/ui";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
+import { trackMetabotChatOpened } from "../../analytics";
+
 export const MetabotSearchButton = () => {
   const kbar = useKBar();
   const metabot = useMetabotAgent();
@@ -21,6 +23,8 @@ export const MetabotSearchButton = () => {
   const isSmallScreen = useIsSmallScreen();
 
   const label = c("'Search' here is a verb").t`Ask Metabot or search`;
+
+  const tooltipMessage = metabot.visible ? t`Close Metabot` : t`Open Metabot`;
 
   if (isSmallScreen) {
     return (
@@ -49,11 +53,17 @@ export const MetabotSearchButton = () => {
       <UnstyledButton
         className={S.iconButton}
         aria-label={t`Metabot`}
-        onClick={() => metabot.setVisible(!metabot.visible)}
+        onClick={() => {
+          if (!metabot.visible) {
+            trackMetabotChatOpened("search");
+          }
+
+          metabot.setVisible(!metabot.visible);
+        }}
       >
         <Tooltip
           offset={{ mainAxis: 20 }}
-          label={`${t`Open Metabot`} (${METAKEY}+b)`}
+          label={`${tooltipMessage} (${METAKEY}+b)`}
         >
           <Icon name="metabot" h="1rem" />
         </Tooltip>

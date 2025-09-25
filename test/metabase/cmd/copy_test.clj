@@ -38,6 +38,7 @@
     :model/QueryField
     :model/QueryTable
     :model/SearchIndexMetadata
+    :model/SemanticSearchTokenTracking
     :model/TaskHistory
     :model/UserKeyValue})
 

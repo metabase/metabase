@@ -265,9 +265,12 @@ describe("map", () => {
     });
 
     describe("embed dashboard", () => {
+      const jwt = "th1s-l00ks-lik3.a-jwt-t0k3n.bu7-1s-n07"; // embedded dashboards have a JWT instead of an id
+
       it("should generate url for embed dashboard without parameters", () => {
         const url = getTileUrl({
-          dashboardId: 10,
+          // embedded dashboards have a JWT instead of an id
+          dashboardId: jwt,
           dashcardId: 20,
           cardId: 30,
           zoom,
@@ -290,7 +293,7 @@ describe("map", () => {
         });
 
         const url = getTileUrl({
-          dashboardId: 10,
+          dashboardId: jwt,
           dashcardId: 20,
           cardId: 30,
           zoom,

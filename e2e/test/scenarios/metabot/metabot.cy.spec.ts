@@ -1,3 +1,5 @@
+import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+
 const { H } = cy;
 
 const loremIpsum =
@@ -7,16 +9,16 @@ describe("Metabot UI", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/ee/metabot-v3/v2/agent-streaming").as(
-      "agentReq",
+    cy.intercept("POST", "/api/ee/metabot-v3/agent-streaming").as("agentReq");
+    cy.intercept("GET", "/api/automagic-dashboards/database/*/candidates").as(
+      "xrayCandidates",
     );
-    cy.intercept("GET", "/api/session/properties").as("sessionProperties");
   });
 
   describe("OSS", { tags: "@OSS" }, () => {
     beforeEach(() => {
       cy.visit("/");
-      cy.wait("@sessionProperties");
+      cy.wait("@xrayCandidates");
     });
 
     it("should not be available in OSS", () => {
@@ -34,49 +36,7 @@ describe("Metabot UI", () => {
     beforeEach(() => {
       H.activateToken("bleeding-edge");
       cy.visit("/");
-      cy.wait("@sessionProperties");
-    });
-
-    it("should be able to be opened and closed", () => {
-      H.openMetabotViaSearchButton();
-      H.closeMetabotViaCloseButton();
-
-      H.openMetabotViaCommandPalette();
-      H.closeMetabotViaCloseButton();
-
-      // FIXME: shortcut keys aren't working in CI only, but work locally
-      // openMetabotViaShortcutKey();
-      // closeMetabotViaShortcutKey();
-    });
-
-    it("should allow a user to send a message to the agent and handle successful or failed responses", () => {
-      H.openMetabotViaSearchButton();
-      H.chatMessages().should("not.exist");
-
-      H.mockMetabotResponse({
-        statusCode: 200,
-        body: whoIsYourFavoriteResponse,
-      });
-      H.sendMetabotMessage("Who is your favorite?");
-
-      H.lastChatMessage().should("have.text", "You, but don't tell anyone.");
-
-      H.mockMetabotResponse({ statusCode: 500 });
-      H.sendMetabotMessage("Who is your favorite?");
-      H.lastChatMessage().should(
-        "have.text",
-        "Metabot is currently offline. Please try again later.",
-      );
-    });
-
-    it("should allow starting a new metabot conversation via the /metabot/new", () => {
-      H.mockMetabotResponse({
-        statusCode: 200,
-        body: whoIsYourFavoriteResponse,
-      });
-      cy.visit("/metabot/new?q=Who%20is%20your%20favorite%3F");
-      H.assertChatVisibility("visible");
-      H.lastChatMessage().should("have.text", "You, but don't tell anyone.");
+      cy.wait("@xrayCandidates");
     });
 
     describe("scroll management", () => {
@@ -173,6 +133,102 @@ d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
           const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight;
           expect(isAtBottom).to.be.true;
         });
+      });
+    });
+  });
+
+  H.describeWithSnowplowEE("metabot events", () => {
+    beforeEach(() => {
+      H.resetSnowplow();
+      H.restore();
+      cy.signInAsAdmin();
+      H.enableTracking();
+      H.activateToken("bleeding-edge");
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
+    it("should track Metabot chart explainer", () => {
+      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      cy.findByLabelText("Explain this chart").should("be.visible").click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "metabot_explain_chart_clicked",
+      });
+    });
+
+    describe("Metabot chat", () => {
+      beforeEach(() => {
+        cy.visit("/");
+        cy.wait("@xrayCandidates");
+      });
+
+      it("should be able to be opened and closed", () => {
+        H.openMetabotViaSearchButton();
+        H.expectUnstructuredSnowplowEvent({
+          event: "metabot_chat_opened",
+          triggered_from: "search",
+        });
+        H.closeMetabotViaCloseButton();
+
+        H.openMetabotViaCommandPalette();
+        H.expectUnstructuredSnowplowEvent({
+          event: "metabot_chat_opened",
+          triggered_from: "command_palette",
+        });
+        H.closeMetabotViaCloseButton();
+      });
+
+      it("should be controlled via keyboard shortcut", () => {
+        H.openMetabotViaShortcutKey();
+        H.expectUnstructuredSnowplowEvent({
+          event: "metabot_chat_opened",
+          triggered_from: "keyboard_shortcut",
+        });
+        H.closeMetabotViaShortcutKey();
+        cy.log("We don't track closing the chat via kbd");
+        H.expectUnstructuredSnowplowEvent(
+          {
+            event: "metabot_chat_opened",
+            triggered_from: "keyboard_shortcut",
+          },
+          1,
+        );
+      });
+
+      it("should allow a user to send a message to the agent and handle successful or failed responses", () => {
+        H.openMetabotViaSearchButton();
+        H.chatMessages().should("not.exist");
+
+        H.mockMetabotResponse({
+          statusCode: 200,
+          body: whoIsYourFavoriteResponse,
+        });
+        H.sendMetabotMessage("Who is your favorite?");
+        H.expectUnstructuredSnowplowEvent({
+          event: "metabot_request_sent",
+        });
+
+        H.lastChatMessage().should("have.text", "You, but don't tell anyone.");
+
+        H.mockMetabotResponse({ statusCode: 500 });
+        H.sendMetabotMessage("Who is your favorite?");
+        H.lastChatMessage().should(
+          "have.text",
+          "Metabot is currently offline. Please try again later.",
+        );
+      });
+
+      it("should allow starting a new metabot conversation via the /metabot/new", () => {
+        H.mockMetabotResponse({
+          statusCode: 200,
+          body: whoIsYourFavoriteResponse,
+        });
+        cy.visit("/metabot/new?q=Who%20is%20your%20favorite%3F");
+        H.assertChatVisibility("visible");
+        H.lastChatMessage().should("have.text", "You, but don't tell anyone.");
       });
     });
   });

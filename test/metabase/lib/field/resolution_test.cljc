@@ -1252,6 +1252,29 @@
                query -1
                [:field {:base-type :type/Integer, :lib/uuid "00000000-0000-0000-0000-000000000000"} "my_numberLiteral"]))))))
 
+(deftest ^:parallel resolve-incorrect-field-ref-for-expression-test-2
+  (testing "Do not recurse forever if expressions mutually reference one another somehow (#63743)"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 {:lib/type :mbql/query
+                  :stages   [{:lib/type     :mbql.stage/mbql
+                              :source-table (meta/id :venues)
+                              :fields       [[:expression {} "expr_1"]
+                                             [:expression {} "expr_2"]]
+                              :expressions  [[:field {:base-type :type/Integer, :lib/expression_name "expr_1"} "expr_2"]
+                                             [:field {:base-type :type/Integer, :lib/expression_name "expr_2"} "expr_1"]]}]})]
+      (is (=? {:base-type               :type/Integer
+               :display-name            "expr_2"
+               :name                    "expr_2"
+               :lib/expression-name     "expr_2"
+               :lib/source              :source/expressions
+               :lib/source-column-alias "expr_2"
+               :lib/source-uuid         "00000000-0000-0000-0000-000000000000"
+               :lib/type                :metadata/column}
+              (lib.field.resolution/resolve-field-ref
+               query -1
+               [:field {:base-type :type/Integer, :lib/uuid "00000000-0000-0000-0000-000000000000"} "expr_2"]))))))
+
 (deftest ^:parallel field-name-ref-in-first-stage-test
   (testing "Should be able to resolve a field name ref in the first stage of a query"
     (let [query (lib/query

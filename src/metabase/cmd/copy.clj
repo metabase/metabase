@@ -118,7 +118,6 @@
       :model/ConnectionImpersonation
       :model/Metabot
       :model/MetabotConversation
-      :model/MetabotEntity
       :model/MetabotMessage
       :model/MetabotPrompt])))
 

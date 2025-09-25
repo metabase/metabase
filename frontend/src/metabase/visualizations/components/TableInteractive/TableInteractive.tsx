@@ -809,6 +809,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         {...tableProps}
         styles={dataGridStyles}
         showRowsCount={isDashboard}
+        rowsTruncated={data.rows_truncated}
         isColumnReorderingDisabled={isColumnReorderingDisabled}
         emptyState={emptyState}
         onBodyCellClick={handleBodyCellClick}

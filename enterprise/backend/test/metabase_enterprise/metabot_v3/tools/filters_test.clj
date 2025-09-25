@@ -14,9 +14,9 @@
 (defn- by-name
   [dimensions dimension-name]
   (let [pred (if (string? dimension-name)
-               (comp #{dimension-name} :name)
-               (every-pred (comp #{(first dimension-name)} :table-reference)
-                           (comp #{(second dimension-name)} :name)))]
+               (comp #{dimension-name} :display_name)
+               (every-pred (comp #{(first dimension-name)} :table_reference)
+                           (comp #{(second dimension-name)} :display_name)))]
     (m/find-first pred dimensions)))
 
 (deftest ^:parallel query-metric-test
@@ -39,7 +39,7 @@
                                 :group-by []}))))
       (mt/with-current-user (mt/user->id :crowberto)
         (let [metric-details (metabot-v3.dummy-tools/metric-details metric-id)
-              ->field-id #(u/prog1 (-> metric-details :queryable-dimensions (by-name %) :field-id)
+              ->field-id #(u/prog1 (-> metric-details :queryable-dimensions (by-name %) :field_id)
                             (when-not <>
                               (throw (ex-info (str "Column " % " not found") {:column %}))))]
           (testing "Trivial query works."
@@ -179,7 +179,7 @@
       (let [model-details (-> (metabot-v3.dummy-tools/get-table-details {:model-id model-id})
                               :structured-output)
             model-card-id (str "card__" model-id)
-            ->field-id #(u/prog1 (-> model-details :fields (by-name %) :field-id)
+            ->field-id #(u/prog1 (-> model-details :fields (by-name %) :field_id)
                           (when-not <>
                             (throw (ex-info (str "Column " % " not found") {:column %}))))
             order-created-at-field-id (->field-id "Created At")]
@@ -316,7 +316,7 @@
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           table-id (mt/id :orders)
           table-details (#'metabot-v3.dummy-tools/table-details table-id {:metadata-provider mp})
-          ->field-id #(u/prog1 (-> table-details :fields (by-name %) :field-id)
+          ->field-id #(u/prog1 (-> table-details :fields (by-name %) :field_id)
                         (when-not <>
                           (throw (ex-info (str "Column " % " not found") {:column %}))))]
       (testing "Trivial query works."
@@ -376,7 +376,7 @@
       (mt/with-current-user (mt/user->id :crowberto)
         (let [model-details (#'metabot-v3.dummy-tools/card-details model-id)
               table-id (str "card__" model-id)
-              ->field-id #(u/prog1 (-> model-details :fields (by-name %) :field-id)
+              ->field-id #(u/prog1 (-> model-details :fields (by-name %) :field_id)
                             (when-not <>
                               (throw (ex-info (str "Column " % " not found") {:column %}))))]
           (testing "Trivial query works."
@@ -422,7 +422,7 @@
                                 :filters []}))))
       (mt/with-current-user (mt/user->id :crowberto)
         (let [report-details (#'metabot-v3.dummy-tools/card-details card-id)
-              ->field-id #(u/prog1 (-> report-details :fields (by-name %) :field-id)
+              ->field-id #(u/prog1 (-> report-details :fields (by-name %) :field_id)
                             (when-not <>
                               (throw (ex-info (str "Column " % " not found") {:column %}))))]
           (testing "Trivial query works."
@@ -463,7 +463,7 @@
         legacy-query (lib.convert/->legacy-MBQL query)
         query-details (mt/with-current-user (mt/user->id :crowberto)
                         (#'metabot-v3.dummy-tools/execute-query query-id legacy-query))
-        ->field-id #(u/prog1 (-> query-details :result-columns (by-name %) :field-id)
+        ->field-id #(u/prog1 (-> query-details :result-columns (by-name %) :field_id)
                       (when-not <>
                         (throw (ex-info (str "Column " % " not found") {:column %}))))
         input {:data-source {:query-id query-id}
@@ -490,3 +490,227 @@
           (is (=? expected
                   (metabot-v3.tools.filters/filter-records
                    (assoc input :data-source (select-keys query-details [:query]))))))))))
+
+(deftest ^:parallel query-datasource-table-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp (mt/metadata-provider)
+          table-id (mt/id :orders)
+          table-details (#'metabot-v3.dummy-tools/table-details table-id {:metadata-provider mp})
+          ->field-id #(u/prog1 (-> table-details :fields (by-name %) :field_id)
+                        (when-not <>
+                          (throw (ex-info (str "Column " % " not found") {:column %}))))]
+      (testing "Basic table query works"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :type :query
+                                             :query {:source-table table-id}}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id}))))
+
+      (testing "Table query with fields selection"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :type :query
+                                             :query {:source-table table-id
+                                                     :fields [[:field (mt/id :orders :created_at) {:base-type :type/DateTimeWithLocalTZ}]
+                                                              [:field (mt/id :orders :total) {:base-type :type/Float}]]}}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :fields [{:field-id (->field-id "Created At")}
+                           {:field-id (->field-id "Total")}]}))))
+
+      (testing "Table query with filters"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :type :query
+                                             :query {:source-table table-id
+                                                     :filter [:and
+                                                              [:> [:field (mt/id :orders :discount) {:base-type :type/Float}] 3]
+                                                              [:= [:field (mt/id :orders :user_id) {:base-type :type/Integer}] 10]]}}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :filters [{:field-id (->field-id "Discount")
+                             :operation :number-greater-than
+                             :value 3}
+                            {:field-id (->field-id "User ID")
+                             :operation :equals
+                             :value 10}]}))))
+
+      (testing "Table query with aggregations and grouping"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :type :query
+                                             :query {:source-table table-id
+                                                     :aggregation [[:sum [:field (mt/id :orders :subtotal) {:base-type :type/Float}]]
+                                                                   [:avg [:field (mt/id :orders :discount) {:base-type :type/Float}]]]
+                                                     :breakout [[:field (mt/id :orders :product_id) {:base-type :type/Integer}]]}}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :aggregations [{:field-id (->field-id "Subtotal")
+                                  :function :sum}
+                                 {:field-id (->field-id "Discount")
+                                  :function :avg}]
+                  :group-by [{:field-id (->field-id "Product ID")}]}))))
+
+      (testing "Table query with order by and limit"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :type :query
+                                             :query {:source-table table-id
+                                                     :order-by [[:asc [:field (mt/id :orders :created_at) {:base-type :type/DateTimeWithLocalTZ}]]
+                                                                [:desc [:field (mt/id :orders :total) {:base-type :type/Float}]]]
+                                                     :limit 100}}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :order-by [{:field {:field-id (->field-id "Created At")}
+                              :direction :asc}
+                             {:field {:field-id (->field-id "Total")}
+                              :direction :desc}]
+                  :limit 100}))))
+
+      (testing "Table query with temporal bucketing"
+        (is (=? {:structured-output {:type :query
+                                     :query-id string?
+                                     :query {:database (mt/id)
+                                             :type :query
+                                             :query {:source-table table-id
+                                                     :aggregation [[:count]]
+                                                     :breakout [[:field (mt/id :orders :created_at)
+                                                                 {:base-type :type/DateTimeWithLocalTZ
+                                                                  :temporal-unit :month}]]}}}}
+                (metabot-v3.tools.filters/query-datasource
+                 {:table-id table-id
+                  :aggregations [{:field-id (->field-id "Product ID")
+                                  :function :count}]
+                  :group-by [{:field-id (->field-id "Created At")
+                              :field-granularity :month}]})))))))
+
+(deftest ^:parallel query-datasource-model-test
+  (mt/with-temp [:model/Card {model-id :id} {:dataset_query (mt/mbql-query orders {})
+                                             :database_id (mt/id)
+                                             :name "Orders Model"
+                                             :description "Test model for orders"
+                                             :type :model}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [model-details (-> (metabot-v3.dummy-tools/get-table-details {:model-id model-id})
+                              :structured-output)
+            model-card-id (str "card__" model-id)
+            ->field-id #(u/prog1 (-> model-details :fields (by-name %) :field_id)
+                          (when-not <>
+                            (throw (ex-info (str "Column " % " not found") {:column %}))))]
+        (testing "Basic model query works"
+          (is (=? {:structured-output {:type :query
+                                       :query-id string?
+                                       :query (mt/mbql-query orders {:source-table model-card-id})}}
+                  (metabot-v3.tools.filters/query-datasource
+                   {:model-id model-id}))))
+
+        (testing "Model query with fields selection"
+          (is (=? {:structured-output {:type :query
+                                       :query-id string?
+                                       :query (mt/mbql-query orders
+                                                {:source-table model-card-id
+                                                 :fields [[:field "CREATED_AT" {:base-type :type/DateTimeWithLocalTZ}]
+                                                          [:field "TOTAL" {:base-type :type/Float}]]})}}
+                  (metabot-v3.tools.filters/query-datasource
+                   {:model-id model-id
+                    :fields [{:field-id (->field-id "Created At")}
+                             {:field-id (->field-id "Total")}]}))))
+
+        (testing "Model query with filters"
+          (is (=? {:structured-output {:type :query
+                                       :query-id string?
+                                       :query (mt/mbql-query orders
+                                                {:source-table model-card-id
+                                                 :filter [:and
+                                                          [:> [:field "DISCOUNT" {:base-type :type/Float}] 5]
+                                                          [:< [:field "SUBTOTAL" {:base-type :type/Float}] 100]]})}}
+                  (metabot-v3.tools.filters/query-datasource
+                   {:model-id model-id
+                    :filters [{:field-id (->field-id "Discount")
+                               :operation :number-greater-than
+                               :value 5}
+                              {:field-id (->field-id "Subtotal")
+                               :operation :number-less-than
+                               :value 100}]}))))
+
+        (testing "Model query with aggregations and grouping"
+          (is (=? {:structured-output {:type :query
+                                       :query-id string?
+                                       :query (mt/mbql-query orders
+                                                {:source-table model-card-id
+                                                 :aggregation [[:count]
+                                                               [:max [:field "TOTAL" {:base-type :type/Float}]]]
+                                                 :breakout [[:field "USER_ID" {:base-type :type/Integer}]]})}}
+                  (metabot-v3.tools.filters/query-datasource
+                   {:model-id model-id
+                    :aggregations [{:field-id (->field-id "Product ID")
+                                    :function :count}
+                                   {:field-id (->field-id "Total")
+                                    :function :max}]
+                    :group-by [{:field-id (->field-id "User ID")}]}))))
+
+        (testing "Model query with order by and limit"
+          (is (=? {:structured-output {:type :query
+                                       :query-id string?
+                                       :query (mt/mbql-query orders
+                                                {:source-table model-card-id
+                                                 :order-by [[:desc [:field "CREATED_AT" {:base-type :type/DateTimeWithLocalTZ}]]]
+                                                 :limit 50})}}
+                  (metabot-v3.tools.filters/query-datasource
+                   {:model-id model-id
+                    :order-by [{:field {:field-id (->field-id "Created At")}
+                                :direction :desc}]
+                    :limit 50}))))))))
+
+(deftest ^:parallel query-datasource-validation-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (testing "Error when neither table-id nor model-id provided"
+      (is (= {:output "Either table_id or model_id must be provided"}
+             (metabot-v3.tools.filters/query-datasource {}))))
+
+    (testing "Error when both table-id and model-id provided"
+      (is (= {:output "Cannot provide both table_id and model_id"}
+             (metabot-v3.tools.filters/query-datasource
+              {:table-id (mt/id :orders)
+               :model-id 123}))))
+
+    (testing "Error with invalid table-id"
+      (is (= {:output "Invalid table_id not-a-number"}
+             (metabot-v3.tools.filters/query-datasource
+              {:table-id "not-a-number"}))))
+
+    (testing "Error with invalid model-id"
+      (is (= {:output "Invalid model_id not-a-number"}
+             (metabot-v3.tools.filters/query-datasource
+              {:model-id "not-a-number"}))))
+
+    (testing "Error with non-existent table"
+      (is (= {:output (str "No table found with table_id " Integer/MAX_VALUE)}
+             (metabot-v3.tools.filters/query-datasource
+              {:table-id Integer/MAX_VALUE}))))
+
+    (testing "Error with non-existent model"
+      (is (= {:output (str "No model found with model_id " Integer/MAX_VALUE)}
+             (metabot-v3.tools.filters/query-datasource
+              {:model-id Integer/MAX_VALUE}))))))
+
+(deftest ^:parallel query-datasource-permissions-test
+  (mt/with-temp [:model/Card {model-id :id} {:dataset_query (mt/mbql-query orders {})
+                                             :database_id (mt/id)
+                                             :name "Orders Model"
+                                             :type :model}]
+    (testing "User without permissions gets error for table"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                            (metabot-v3.tools.filters/query-datasource
+                             {:table-id (mt/id :orders)}))))
+
+    (testing "User without permissions gets error for model"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                            (metabot-v3.tools.filters/query-datasource
+                             {:model-id model-id}))))))

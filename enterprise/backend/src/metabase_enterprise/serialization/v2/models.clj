@@ -36,7 +36,6 @@
    "Dimension"
    "ParameterCard"
    "DashboardCardSeries"
-   "MetabotEntity"
    "MetabotPrompt"
    "TimelineEvent"])
 
@@ -90,6 +89,7 @@
    "Revision"
    "SearchIndexMetadata"
    "Secret"
+   "SemanticSearchTokenTracking"
    "Session"
    "TaskHistory"
    "User"
