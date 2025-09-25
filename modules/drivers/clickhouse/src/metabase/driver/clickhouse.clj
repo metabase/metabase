@@ -64,34 +64,6 @@
 (def ^:private default-connection-details
   {:user "default" :password "" :dbname "default" :host "localhost" :port 8123})
 
-(defn- connection-details->spec* [details]
-  (let [;; ensure defaults merge on top of nils
-        details (reduce-kv (fn [m k v] (assoc m k (or v (k default-connection-details))))
-                           default-connection-details
-                           details)
-        {:keys [user password dbname host port ssl clickhouse-settings max-open-connections]} details
-        host   (cond ; JDBCv1 used to accept schema in the `host` configuration option
-                 (str/starts-with? host "http://")  (subs host 7)
-                 (str/starts-with? host "https://") (subs host 8)
-                 :else host)]
-    (-> {:classname                      "com.clickhouse.jdbc.ClickHouseDriver"
-         :subprotocol                    "clickhouse"
-         :subname                        (str "//" host ":" port "/" dbname)
-         :password                       (or password "")
-         :user                           user
-         :ssl                            (boolean ssl)
-         :use_server_time_zone_for_dates true
-         :product_name                   (format "metabase/%s" (:tag driver-api/mb-version-info))
-         :remember_last_set_roles        true
-         :http_connection_provider       "HTTP_URL_CONNECTION"
-         :jdbc_ignore_unsupported_values "true"
-         :jdbc_schema_term               "schema"
-         :select_sequential_consistency  true
-         :max_open_connections           (or max-open-connections 100)
-         ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
-         :custom_http_params             (or clickhouse-settings "")}
-        (sql-jdbc.common/handle-additional-options details :separator-style :url))))
-
 (defmethod sql-jdbc.execute/do-with-connection-with-options :clickhouse
   [driver db-or-id-or-spec {:keys [^String session-timezone _write?] :as options} f]
   (sql-jdbc.execute/do-with-resolved-connection
@@ -121,11 +93,36 @@
 
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]
-  (connection-details->spec* details))
+  (let [;; ensure defaults merge on top of nils
+        details (reduce-kv (fn [m k v] (assoc m k (or v (k default-connection-details))))
+                           default-connection-details
+                           details)
+        {:keys [user password dbname host port ssl clickhouse-settings max-open-connections]} details
+        host   (cond ; JDBCv1 used to accept schema in the `host` configuration option
+                 (str/starts-with? host "http://")  (subs host 7)
+                 (str/starts-with? host "https://") (subs host 8)
+                 :else host)]
+    (-> {:classname                      "com.clickhouse.jdbc.ClickHouseDriver"
+         :subprotocol                    "clickhouse"
+         :subname                        (str "//" host ":" port "/" dbname)
+         :password                       (or password "")
+         :user                           user
+         :ssl                            (boolean ssl)
+         :use_server_time_zone_for_dates true
+         :product_name                   (format "metabase/%s" (:tag driver-api/mb-version-info))
+         :remember_last_set_roles        true
+         :http_connection_provider       "HTTP_URL_CONNECTION"
+         :jdbc_ignore_unsupported_values "true"
+         :jdbc_schema_term               "schema"
+         :select_sequential_consistency  true
+         :max_open_connections           (or max-open-connections 100)
+         ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
+         :custom_http_params             (or clickhouse-settings "")}
+        (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
   ;; only cloud dbs support uploads
-  (boolean (-> db :dbms-version :cloud)))
+  (boolean (-> db :dbms_version :cloud)))
 
 (defmethod driver/can-connect? :clickhouse
   [driver details]

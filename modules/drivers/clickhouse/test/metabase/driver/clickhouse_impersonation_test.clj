@@ -1,15 +1,14 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse-impersonation-test
   "SET ROLE (connection impersonation feature) tests with single node or on-premise cluster setups."
   (:require
-   [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
    [metabase-enterprise.impersonation.util-test :as impersonation.tu]
    [metabase.driver :as driver]
-   [metabase.driver.clickhouse-version :as clickhouse.version]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.test-util :as driver.tu]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.sync.core :as sync.core]
    [metabase.test :as mt]
@@ -190,3 +189,39 @@
               (check-impersonation! "row_a,row_c" [["a"] ["c"]])
               (check-impersonation! "row_b,row_c" [["b"] ["c"]])
               (check-impersonation! "row_a,row_b,row_c" [["a"] ["b"] ["c"]]))))))))
+
+(defn- with-ssh-tunnel*! [tunnel-details f]
+  (let [base-details (t2/select-one-fn :details 'Database :id (mt/id))]
+    ;; Set up SSH tunnel
+    (t2/update! 'Database (mt/id) {:details (merge base-details tunnel-details)})
+    ;; Discard any existing connection pool to make sure the new one uses it.
+    (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
+    ;; Run the test body
+    (f)
+    ;; Clean up
+    (t2/update! 'Database (mt/id) {:details base-details})
+    (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))))
+
+(defmacro ^:private with-ssh-tunnel! [tunnel-details & body]
+  `(with-ssh-tunnel*! ~tunnel-details (^:once fn* [] ~@body)))
+
+(deftest clickhouse-ssh-tunnel-test
+  (mt/test-driver :clickhouse
+    (let [username "username"
+          password "password"]
+      (with-open [ssh-server (driver.tu/basic-auth-ssh-server username password)]
+        (let [tunnel-details {:tunnel-enabled true
+                              :tunnel-host "localhost"
+                              :tunnel-auth-option "password"
+                              :tunnel-port (.getPort ssh-server)
+                              :tunnel-user username
+                              :tunnel-pass password}]
+          (testing "can connect and query through ssh tunnel"
+            (with-ssh-tunnel! tunnel-details
+              (is (= 100
+                     (count (mt/rows (qp/process-query (mt/mbql-query venues))))))))
+          (testing "connection fails with wrong ssh credentials"
+            (with-ssh-tunnel! (assoc tunnel-details :tunnel-pass "wrong-password")
+              (is (thrown-with-msg?
+                   org.apache.sshd.common.SshException #"No more authentication methods available"
+                   (count (mt/rows (qp/process-query (mt/mbql-query venues)))))))))))))

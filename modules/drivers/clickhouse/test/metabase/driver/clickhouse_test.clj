@@ -331,3 +331,8 @@
   (is (= :username-or-password-incorrect (driver/humanize-connection-error-message :clickhouse ["Failed to create connection"
                                                                                                 "Failed to get server info"
                                                                                                 "Code: 516. DB::Exception: asdf: Authentication failed: password is incorrect, or there is no user with such name. (AUTHENTICATION_FAILED) (version 25.7.4.11 (official build))"]))))
+
+(deftest ^:parallel uploads-supported-test
+  (mt/test-driver :clickhouse
+    (is (false? (driver/database-supports? driver/*driver* :uploads (mt/db))))
+    (is (true? (driver/database-supports? driver/*driver* :uploads (assoc-in (mt/db) [:dbms_version :cloud] true))))))
