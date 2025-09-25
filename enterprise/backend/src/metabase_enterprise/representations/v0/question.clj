@@ -112,6 +112,32 @@
      (when-let [coll-id (v0-common/find-collection-id collection)]
        {:collection_id coll-id}))))
 
+(defn- update-database-for-import [question collection-ref]
+  (if (v0-common/ref? (:database question))
+    (let [ref (v0-common/unref (:database question))
+          db-entity-id (v0-common/entity-id ref nil)
+          db (t2/select-one :model/Database :entity_id db-entity-id)]
+      (assoc question :database (:id db)))
+    question))
+
+(defn- update-source-table-for-import [question collection-ref]
+  (let [table-ref (:source_table (:mbql_query question))]
+    (if (v0-common/ref? (:database table-ref))
+      (let [ref (v0-common/unref (:database table-ref))
+            db-entity-id (v0-common/entity-id ref nil)
+            db (t2/select-one :model/Database :entity_id db-entity-id)
+            table (t2/select-one :model/Table
+                                 :db_id (:id db)
+                                 :schema (:schema table-ref)
+                                 :name (:table table-ref))]
+        (assoc-in question [:mbql_query :source_table] (:id table)))
+      question)))
+
+(defn- patch-refs-for-import [question collection-ref]
+  (-> question
+      (update-database-for-import collection-ref)
+      (update-source-table-for-import collection-ref)))
+
 (defn persist!
   "Ingest a v0 question representation and create or update a Card (Question) in the database.
 
@@ -122,7 +148,8 @@
    Returns the created/updated Card."
   [representation & {:keys [creator-id]
                      :or {creator-id config/internal-mb-user-id}}]
-  (let [question-data (yaml->toucan representation :creator-id creator-id)
+  (let [representation (patch-refs-for-import representation nil)
+        question-data (yaml->toucan representation :creator-id creator-id)
         entity-id (:entity_id question-data)
         existing (when entity-id
                    (t2/select-one :model/Card :entity_id entity-id))]
@@ -137,37 +164,55 @@
 
 ;; -- Export --
 
-(defn ->ref [card]
-  (format "%s-%s" (name (:type card)) (:id card)))
-
 (defn- source-table-ref [table]
-  (cond
-    (vector? table)
-    (let [[db schema table] table]
-      {:database db
-       :schema   schema
-       :table    table})
+  (when-some [t (t2/select-one :model/Table table)]
+    (-> {:database (v0-common/->ref (:db_id t) :database)
+         :schema (:schema t)
+         :table (:name t)}
+        v0-common/remove-nils)))
 
-    (string? table)
-    (let [referred-card (t2/select-one :model/Card :entity_id table)]
-      (->ref referred-card))))
+(defn- table-ref [table-id]
+  (when-some [t (t2/select-one :model/Table table-id)]
+    (-> {:database (v0-common/->ref (:db_id t) :database)
+         :schema (:schema t)
+         :table (:name t)}
+        v0-common/remove-nils)))
 
-(defn- update-source-table [card]
-  (if-some [table (get-in card [:mbql_query :source-table])]
-    (update-in card [:mbql_query :source-table] source-table-ref)
-    card))
+(defn- update-source-table-for-export [query]
+  (if (-> query :query :source-table)
+    (assoc-in query [:query :source-table]
+              (table-ref (-> query :query :source-table)))
+    query))
 
-(defn- patch-refs [card]
-  (-> card
-      (update-source-table)))
+(defn- update-database-for-export [query]
+  (if (:database query)
+    (update query :database v0-common/->ref :database)
+    query))
+
+(defn- update-fields-for-export [query]
+  (clojure.walk/postwalk (fn [node]
+                           (if (and (vector? node)
+                                    (= :field (first node)))
+                             (let [[_ id] node
+                                   field (t2/select-one :model/Field id)
+                                   tr (table-ref (:table_id field))]
+                               (assoc tr :field (:name field)))
+                             node))
+                         query))
+
+(defn- patch-refs-for-export [query]
+  (-> query
+      (update-database-for-export)
+      (update-source-table-for-export)
+      (update-fields-for-export)))
 
 (defn export [card]
-  (let [query #_(:dataset_query card) (serdes/export-mbql (:dataset_query card))]
+  (let [query (patch-refs-for-export (:dataset_query card))]
     (prn query)
     (cond-> {:name (:name card)
              ;;:version "question-v0"
              :type (:type card)
-             :ref (->ref card)
+             :ref (v0-common/->ref (:id card) :question)
              :description (:description card)}
 
       (= :native (:type query))
@@ -178,11 +223,20 @@
       (assoc :mbql_query (:query query)
              :database (:database query))
 
-      ;;:always
-      ;;patch-refs
-
       :always
       v0-common/remove-nils)))
 
 (comment
+  (let [q (t2/select-one :model/Card :id 93)]
+    (clojure.data/diff (:dataset_query q)
+                       (patch-refs-for-export (:dataset_query q))))
+
+  (source-table-ref 2)
+
+  (v0-common/refs (export (t2/select-one :model/Card :id 93)))
+  (t2/select-one :model/Table 2)
+  (t2/select-one :model/Field 57)
+
+  (patch-refs-for-import (export (t2/select-one :model/Card :id 93)) nil)
+
   (clojure.pprint/pprint (export (t2/select-one :model/Card :id 123))))

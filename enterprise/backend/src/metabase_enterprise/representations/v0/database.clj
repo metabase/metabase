@@ -1,7 +1,13 @@
 (ns metabase-enterprise.representations.v0.database
   (:require
+   [clojure.set :as set]
+   [clojure.walk :as walk]
+   [metabase-enterprise.representations.v0.common :as v0-common]
+   [metabase.config.core :as config]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2]))
 
 ;;; ------------------------------------ Schema Definitions ------------------------------------
 
@@ -96,5 +102,52 @@
    [:name ::name]
    [:engine ::engine]
    [:description {:optional true} ::description]
-   [:connection_details {:optional true} ::connection-details]
+   [:connection_details :any]
    [:schemas {:optional true} [:sequential ::schema]]])
+
+(defn- hydrate-env-vars [database]
+  (walk/prewalk (fn [node]
+                  (if-some [var (v0-common/hydrate-env-var node)]
+                    (System/getenv var)
+                    node))
+                database))
+
+(defn yaml->toucan [representation & {:keys [creator-id]
+                                      :or {creator-id config/internal-mb-user-id}}]
+  (cond-> (-> representation
+              (set/rename-keys {:connection_details :details})
+              (select-keys [:name :engine :description :details])
+              (hydrate-env-vars))
+
+    creator-id
+    (assoc :creator_id creator-id)))
+
+(defn persist! [representation & {:keys [creator-id]
+                                  :or {creator-id config/internal-mb-user-id}}]
+  (let [representation (yaml->toucan representation :creator-id creator-id)]
+    (if-some [existing (t2/select-one :model/Database
+                                      :name   (:name   representation)
+                                      :engine (:engine representation))]
+      (do
+        (log/info "Updating existing database" (:name representation) "with ref" (:ref representation))
+        (t2/update! :model/Database (:id existing) representation)
+        (t2/select-one :model/Database :id (:id existing)))
+      (do
+        (log/info "Creating new database" (:name representation))
+        (first (t2/insert-returning-instances! :model/Database representation))))))
+
+(defn export [database]
+  (-> {:type :v0/database
+       :ref (v0-common/unref (v0-common/->ref (:id database) :database))
+       :name (:name database)
+       :engine (:engine database)
+       :description (not-empty (:description database))
+       :connection_details (:details database)
+       ;; need connection_details and schemas
+       }
+      v0-common/remove-nils))
+
+(comment
+
+  (:details (t2/select-one :model/Database :id 53))
+  (export (t2/select-one :model/Database :id 53)))

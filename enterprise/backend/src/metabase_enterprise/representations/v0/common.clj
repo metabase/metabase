@@ -1,8 +1,15 @@
 (ns metabase-enterprise.representations.v0.common
   (:require
+   [clojure.string :as str]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(defn entity-id [ref collection-ref]
+  (-> (str collection-ref "/" ref)
+      hash
+      str
+      u/generate-nano-id))
 
 (defn generate-entity-id
   "Generate a stable entity-id from the representation's collection-ref and its own ref."
@@ -10,10 +17,7 @@
   ;; Behold the beauty of this mechanism!
   ;; A bit hacky.
   ;; TODO: raw `:collection` key could be fragile; use name?
-  (-> (str (:collection representation) "/" (:ref representation))
-      hash
-      str
-      u/generate-nano-id))
+  (entity-id (:ref representation) (:collection representation)))
 
 (defn find-database-id
   "Find database ID by name or ref. Returns nil if not found."
@@ -71,3 +75,28 @@
               map
               (assoc map k v)))
           {} map))
+
+(defn ref? [x]
+  (and (string? x)
+       (str/starts-with? x "ref:")))
+
+(defn unref [x]
+  (when (ref? x)
+    (subs x 4)))
+
+(defn refs [entity]
+  (let [v (volatile! [])]
+    (clojure.walk/postwalk (fn [node]
+                             (when (ref? node)
+                               (vswap! v conj node))
+                             node)
+                           (dissoc entity :ref))
+    (set @v)))
+
+(defn ->ref [id type]
+  (format "ref:%s-%s" (name type) id))
+
+(defn hydrate-env-var [x]
+  (when (and (string? x)
+             (str/starts-with? x "env:"))
+    (subs x 4)))

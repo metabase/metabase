@@ -96,13 +96,14 @@
   [valid-representation]
   (case (:type valid-representation)
     :v0/question (v0-question/persist! valid-representation)
-    :v0/model (v0-model/persist! valid-representation)))
+    :v0/model    (v0-model/persist!    valid-representation)
+    :v0/database (v0-db/persist!       valid-representation)))
 
 (defn- translate*
   [valid-representation]
   (case (:type valid-representation)
     :v0/question (v0-question/yaml->toucan valid-representation)
-    :v0/model (v0-model/yaml->toucan valid-representation)))
+    :v0/model    (v0-model/yaml->toucan    valid-representation)))
 
 (defn import-yaml
   "Parse a YAML representation file and return the data structure.
@@ -136,10 +137,11 @@
   (case (t2/model t2-model)
     :model/Card (case (:type t2-model)
                   :question (v0-question/export t2-model)
-                  :model    (v0-model/export t2-model)
-                  :metric   (v0-metric/export t2-model))
-    :model/Collection (v0-coll/export t2-model)
-    :model/Transform  (v0-transform/export t2-model)))
+                  :model    (v0-model/export    t2-model)
+                  :metric   (v0-metric/export   t2-model))
+    :model/Collection (v0-coll/export      t2-model)
+    :model/Transform  (v0-transform/export t2-model)
+    :model/Database   (v0-db/export        t2-model)))
 
 (defn- write-em
   "Writes representations to a directory `dir`. Will take a collection-id and serialize the whole collection, creating a folder named <collection-name> there. Example, supposing a collection id of 8 with name \"custom\",
