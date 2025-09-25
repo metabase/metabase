@@ -13,7 +13,7 @@ import Collections from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DOCUMENTS } from "metabase/plugins";
-import { openDiagnostics, toggleDarkMode } from "metabase/redux/app";
+import { openDiagnostics } from "metabase/redux/app";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
 import {
   getHasDataAccess,
@@ -289,16 +289,4 @@ export const useCommandPaletteBasicActions = ({
     hasNativeWrite,
     hasModels,
   ]);
-
-  useRegisterShortcut(
-    [
-      {
-        perform: () => {
-          dispatch(toggleDarkMode());
-        },
-        id: "toggle-dark-mode",
-      },
-    ],
-    [],
-  );
 };

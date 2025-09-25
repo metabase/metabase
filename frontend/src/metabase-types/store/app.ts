@@ -43,5 +43,4 @@ export interface AppState {
   isDndAvailable: boolean;
   isErrorDiagnosticsOpen: boolean;
   tempStorage: TempStorage;
-  isDarkMode: boolean;
 }
