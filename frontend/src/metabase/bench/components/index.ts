@@ -8,3 +8,4 @@ export { BenchMetabot } from "./BenchMetabot/BenchMetabot";
 export { TransformExecutionCard } from "./TransformExecutionCard/TransformExecutionCard";
 export { CollectionsCard } from "./CollectionsCard";
 export { BenchSidebar } from "./BenchSidebar";
+export { BenchToolbar } from "./BenchToolbar";

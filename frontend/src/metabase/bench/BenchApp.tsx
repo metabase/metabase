@@ -14,7 +14,6 @@ import {
   TransformEntitiesList,
   TransformDetails,
   QueryPreview,
-  BenchMetabot,
   TransformExecutionCard,
   CollectionsCard,
 } from "./components";
@@ -198,57 +197,32 @@ ORDER BY total_spent DESC;`);
         {/* Right Panel - Properties/Tools */}
         <Panel defaultSize={20} minSize={15} maxSize={35}>
           <Box h="100%" style={{ display: "flex", flexDirection: "column" }}>
-            <Tabs
-              defaultValue="properties"
+            <Box
               style={{
                 height: "100%",
+                padding: "16px",
+                overflow: "auto",
                 display: "flex",
                 flexDirection: "column",
+                gap: "16px",
               }}
             >
-              <Tabs.List>
-                <Tabs.Tab value="properties">Properties</Tabs.Tab>
-                <Tabs.Tab value="metabot">Metabot</Tabs.Tab>
-              </Tabs.List>
+              <TransformDetails transformId={transformId} />
 
-              <Box style={{ flex: 1, overflow: "hidden" }}>
-                <Tabs.Panel
-                  value="properties"
-                  style={{ height: "100%", padding: "16px", overflow: "auto" }}
-                >
-                  <Box
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "16px",
-                    }}
-                  >
-                    <TransformDetails transformId={transformId} />
+              <TransformExecutionCard transform={selectedTransform} />
 
-                    <TransformExecutionCard transform={selectedTransform} />
+              <CollectionsCard transform={selectedTransform} />
 
-                    <CollectionsCard transform={selectedTransform} />
-
-                    <Box
-                      p="sm"
-                      style={{
-                        borderRadius: "4px",
-                      }}
-                    >
-                      <Text size="xs">Lines: {code.split("\n").length}</Text>
-                      <Text size="xs">Characters: {code.length}</Text>
-                    </Box>
-                  </Box>
-                </Tabs.Panel>
-
-                <Tabs.Panel
-                  value="metabot"
-                  style={{ height: "100%", padding: 0 }}
-                >
-                  <BenchMetabot />
-                </Tabs.Panel>
+              <Box
+                p="sm"
+                style={{
+                  borderRadius: "4px",
+                }}
+              >
+                <Text size="xs">Lines: {code.split("\n").length}</Text>
+                <Text size="xs">Characters: {code.length}</Text>
               </Box>
-            </Tabs>
+            </Box>
           </Box>
         </Panel>
       </PanelGroup>

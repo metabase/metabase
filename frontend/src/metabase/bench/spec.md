@@ -455,7 +455,7 @@ This pattern ensures that:
 - Segments needs updated to use the new tool layout and detail views.
 - Metadata is working and does not need modified at this time.
 - We need to move Metabot to its own panel.
-- Create a small toolbar at the very bottom of the overall layout that makes it possible to independently collapse the main nav, the left hand panel, or the right hand panel, and metabot.
+- Create a small toolbar at the very top of the layout next to the major mode navigation. This navbar should have left and right back buttons with chevron icons, a search input box, and an ActionIcon on the far right that toggles the Metabot side panel open / closed.
 
 ### Sidebar Navigation Management
 When adding new routes to the bench application, remember to update the sidebar navigation in `frontend/src/metabase/bench/components/BenchSidebar/BenchSidebar.tsx`:
