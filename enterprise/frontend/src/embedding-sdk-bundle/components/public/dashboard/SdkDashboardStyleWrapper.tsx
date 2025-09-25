@@ -19,8 +19,7 @@ export const SdkDashboardStyledWrapper = forwardRef(
         align="stretch"
         className={cx(className, CS.overflowAuto)}
         style={{
-          // Gives a chance to override the height if needed
-          height: "100vh",
+          minHeight: "100vh",
           ...style,
         }}
         ref={fullscreenRef}
