@@ -7,6 +7,7 @@
    [metabase-enterprise.remote-sync.test-helpers :as remote-sync.th]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -600,3 +601,234 @@
 
         (is (= 1 (count (change-log/dirty-for-collection (:id collection1)))))
         (is (empty? (change-log/dirty-for-collection (:id collection2))))))))
+
+ ;;; ------------------------------------------------------------------------------------------------
+;;; Tests for dirty-global? and dirty-for-global
+;;; ------------------------------------------------------------------------------------------------
+
+(deftest dirty-global?-basic-functionality-test
+  (testing "dirty-global? detects changes in any remote-synced collection"
+    (mt/with-temp [:model/Collection remote-col {:location "/" :type "remote-synced"}]
+      ;; No changes initially
+      (is (false? (change-log/dirty-global?))
+          "Should return false when no changes exist")
+
+      ;; Create a change in a remote-synced collection
+      (mt/with-temp [:model/Card card {:collection_id (:id remote-col)}
+                     :model/RemoteSyncChangeLog _ {:model_type "Card"
+                                                   :model_entity_id (:entity_id card)
+                                                   :sync_type "dirty"
+                                                   :status "pending"
+                                                   :most_recent true}]
+        (is (true? (change-log/dirty-global?))
+            "Should return true when changes exist in a remote-synced collection"))))
+
+  (testing "dirty-global? ignores changes in non-remote-synced collections"
+    (mt/with-temp [:model/Collection _ {:id 999 :location "/" :type "default"}
+                   :model/Card _ {:collection_id 999 :id 123 :entity_id "test-entity"}
+                   :model/RemoteSyncChangeLog _ {:model_type "Card"
+                                                 :model_entity_id "test-entity"
+                                                 :sync_type "dirty"
+                                                 :status "pending"
+                                                 :most_recent true}]
+      (is (false? (change-log/dirty-global?))
+          "Should return false when changes are only in non-remote-synced collections"))))
+
+(deftest dirty-global?-after-sync-test
+  (testing "dirty-global? returns false after successful sync"
+    (mt/with-temp [:model/Collection remote-col {:location "/" :type "remote-synced"}]
+      ;; Create a change
+      (mt/with-temp [:model/Card card {:collection_id (:id remote-col)}
+                     :model/RemoteSyncChangeLog _ {:model_type "Card"
+                                                   :model_entity_id (:entity_id card)
+                                                   :sync_type "dirty"
+                                                   :status "pending"
+                                                   :most_recent true
+                                                   :created_at #t "2024-01-01T00:00:00"}]
+        (is (true? (change-log/dirty-global?))
+            "Should have dirty items before sync")
+
+        ;; Simulate successful export sync
+        (mt/with-temp [:model/RemoteSyncChangeLog _ {:model_type "Collection"
+                                                     :model_entity_id (:entity_id remote-col)
+                                                     :sync_type "export"
+                                                     :status "success"
+                                                     :most_recent false
+                                                     :created_at #t "2024-01-02T00:00:00"}]
+          (is (false? (change-log/dirty-global?))
+              "Should return false after successful sync")))))
+
+  (testing "dirty-global? detects new changes after sync"
+    (mt/with-temp [:model/Collection remote-col {:location "/" :type "remote-synced"}
+                   :model/RemoteSyncChangeLog _ {:model_type "Collection"
+                                                 :model_entity_id (:entity_id remote-col)
+                                                 :sync_type "export"
+                                                 :status "success"
+                                                 :most_recent false
+                                                 :created_at #t "2024-01-01T00:00:00"}]
+
+      ;; Create a new change after the sync
+      (mt/with-temp [:model/Card card {:collection_id (:id remote-col)}
+                     :model/RemoteSyncChangeLog _ {:model_type "Card"
+                                                   :model_entity_id (:entity_id card)
+                                                   :sync_type "dirty"
+                                                   :status "pending"
+                                                   :most_recent true
+                                                   :created_at #t "2024-01-03T00:00:00"}]
+        (is (true? (change-log/dirty-global?))
+            "Should detect changes made after the last sync")))))
+
+(deftest dirty-for-global-basic-functionality-test
+  (testing "dirty-for-global returns all dirty items across remote-synced collections"
+    (mt/with-temp [:model/Collection remote-col {:location "/" :type "remote-synced"}]
+      ;; No dirty items initially
+      (is (empty? (change-log/dirty-for-global))
+          "Should return empty seq when no changes exist")
+
+      ;; Create multiple dirty items
+      (mt/with-temp [:model/Card card1 {:collection_id (:id remote-col)
+                                        :name "Test Card 1"}
+                     :model/Card card2 {:collection_id (:id remote-col)
+                                        :name "Test Card 2"}
+                     :model/Dashboard dashboard {:collection_id (:id remote-col)
+                                                 :name "Test Dashboard"}
+                     :model/RemoteSyncChangeLog _ {:model_type "Card"
+                                                   :model_entity_id (:entity_id card1)
+                                                   :sync_type "dirty"
+                                                   :status "pending"
+                                                   :most_recent true}
+                     :model/RemoteSyncChangeLog _ {:model_type "Card"
+                                                   :model_entity_id (:entity_id card2)
+                                                   :sync_type "dirty"
+                                                   :status "pending"
+                                                   :most_recent true}
+                     :model/RemoteSyncChangeLog _ {:model_type "Dashboard"
+                                                   :model_entity_id (:entity_id dashboard)
+                                                   :sync_type "dirty"
+                                                   :status "pending"
+                                                   :most_recent true}]
+
+        (let [results (change-log/dirty-for-global)]
+          (is (= 3 (count results))
+              "Should return all dirty items")
+          (is (= #{"Test Card 1" "Test Card 2" "Test Dashboard"}
+                 (set (map :name results)))
+              "Should include all dirty items with correct names")
+          (is (every? #(= "dirty" (:sync_status %)) results)
+              "All items should have sync_status of 'dirty'")))))
+
+  (testing "dirty-for-global includes items from nested collections"
+    (mt/with-temp [:model/Collection remote-col {:location "/" :type "remote-synced"}
+                   :model/Collection nested-col {:location (str "/" (:id remote-col) "/")
+                                                 :type "remote-synced"
+                                                 :name "Nested Collection"}
+                   :model/Card _ {:collection_id (u/the-id nested-col)
+                                  :name "Nested Card"
+                                  :entity_id "nested-entity"}
+                   :model/RemoteSyncChangeLog _ {:model_type "Card"
+                                                 :model_entity_id "nested-entity"
+                                                 :sync_type "dirty"
+                                                 :status "pending"
+                                                 :most_recent true}]
+
+      (let [results (change-log/dirty-for-global)]
+        (is (= 1 (count results))
+            "Should include items from nested collections")
+        (is (= "Nested Card" (:name (first results)))
+            "Should have correct nested item"))))
+
+  (testing "dirty-for-global respects model type variety"
+    (mt/with-temp [:model/Collection remote-col {:location "/" :type "remote-synced"}
+                   :model/Collection remote-snippet-col {:location "/" :type "remote-synced" :namespace "snippets"}
+                   :model/Card card {:collection_id (:id remote-col)
+                                     :name "Card Item"}
+                   :model/Dashboard dashboard {:collection_id (:id remote-col)
+                                               :name "Dashboard Item"}
+                   :model/Document doc {:collection_id (:id remote-col)
+                                        :name "Document Item"}
+                   :model/NativeQuerySnippet snippet {:collection_id (:id remote-snippet-col)
+                                                      :name "Snippet Item"}
+                   :model/RemoteSyncChangeLog _ {:model_type "Card"
+                                                 :model_entity_id (:entity_id card)
+                                                 :sync_type "dirty"
+                                                 :status "pending"
+                                                 :most_recent true}
+                   :model/RemoteSyncChangeLog _ {:model_type "Dashboard"
+                                                 :model_entity_id (:entity_id dashboard)
+                                                 :sync_type "dirty"
+                                                 :status "pending"
+                                                 :most_recent true}
+                   :model/RemoteSyncChangeLog _ {:model_type "Document"
+                                                 :model_entity_id (:entity_id doc)
+                                                 :sync_type "dirty"
+                                                 :status "pending"
+                                                 :most_recent true}
+                   :model/RemoteSyncChangeLog _ {:model_type "NativeQuerySnippet"
+                                                 :model_entity_id (:entity_id snippet)
+                                                 :sync_type "dirty"
+                                                 :status "pending"
+                                                 :most_recent true}]
+
+      (let [results (change-log/dirty-for-global)
+            models (set (map :model results))]
+        (is (= 4 (count results))
+            "Should return all model types")
+        (is (= #{"card" "dashboard" "document" "snippet"} models)
+            "Should include all different model types")))))
+
+(deftest dirty-for-global-after-sync-test
+  (testing "dirty-for-global returns empty after successful sync"
+    (mt/with-temp [:model/Collection remote-col {:location "/" :type "remote-synced"}]
+      ;; Create dirty items
+      (mt/with-temp [:model/Card card {:collection_id (:id remote-col)}
+                     :model/RemoteSyncChangeLog _ {:model_type "Card"
+                                                   :model_entity_id (:entity_id card)
+                                                   :sync_type "dirty"
+                                                   :status "pending"
+                                                   :most_recent true
+                                                   :created_at #t "2024-01-01T00:00:00"}]
+
+        ;; Verify dirty items exist
+        (is (= 1 (count (change-log/dirty-for-global)))
+            "Should have dirty items before sync")
+
+        ;; Simulate successful sync
+        (mt/with-temp [:model/RemoteSyncChangeLog _ {:model_type "Collection"
+                                                     :model_entity_id (:entity_id remote-col)
+                                                     :sync_type "export"
+                                                     :status "success"
+                                                     :most_recent false
+                                                     :created_at #t "2024-01-02T00:00:00"}]
+          (is (empty? (change-log/dirty-for-global))
+              "Should return empty after successful sync")))))
+
+  (testing "dirty-for-global only returns items changed after last sync"
+    (mt/with-temp [:model/Collection remote-col {:location "/" :type "remote-synced"}
+                   :model/RemoteSyncChangeLog _ {:model_type "Collection"
+                                                 :model_entity_id (:entity_id remote-col)
+                                                 :sync_type "export"
+                                                 :status "success"
+                                                 :most_recent false
+                                                 :created_at #t "2024-01-01T00:00:00"}]
+      ;; Create items with different timestamps
+      (mt/with-temp [:model/Card old-card {:collection_id (:id remote-col)
+                                           :name "Old Card"}
+                     :model/Card new-card {:collection_id (:id remote-col)
+                                           :name "New Card"}
+                     :model/RemoteSyncChangeLog _ {:model_type "Card"
+                                                   :model_entity_id (:entity_id old-card)
+                                                   :sync_type "dirty"
+                                                   :status "pending"
+                                                   :most_recent true
+                                                   :created_at #t "2023-12-31T00:00:00"}
+                     :model/RemoteSyncChangeLog _ {:model_type "Card"
+                                                   :model_entity_id (:entity_id new-card)
+                                                   :sync_type "dirty"
+                                                   :status "pending"
+                                                   :most_recent true
+                                                   :created_at #t "2024-01-02T00:00:00"}]
+        (let [results (change-log/dirty-for-global)]
+          (is (= 1 (count results))
+              "Should only return items changed after sync")
+          (is (= "New Card" (:name (first results)))
+              "Should return only the new card"))))))

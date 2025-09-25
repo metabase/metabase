@@ -72,12 +72,26 @@
   {:status :success
    :task_id (async-import! (or branch (settings/remote-sync-branch)))})
 
+(api.macros/defendpoint :get "/is-dirty"
+  "Check if any collection has remote sync changes that are not saved."
+  []
+  (api/check-superuser)
+  {:is_dirty (change-log/dirty-global?)})
+
 (api.macros/defendpoint :get "/:collection-id/is-dirty"
   "Check if this instance or a specific collection has remote sync changes that are not saved."
   [{:keys [collection-id]} :- [:map
                                [:collection-id {:optional true} pos-int?]]]
   (api/check-superuser)
   {:is_dirty (change-log/dirty-collection? collection-id)})
+
+(api.macros/defendpoint :get "/dirty"
+  "Return dirty models from a any remote-sync collection"
+  []
+  (api/check-superuser)
+  {:dirty (into []
+                (m/distinct-by (juxt :id :model))
+                (change-log/dirty-for-global))})
 
 (api.macros/defendpoint :get "/:collection-id/dirty"
   "Return dirty models from a given collection"

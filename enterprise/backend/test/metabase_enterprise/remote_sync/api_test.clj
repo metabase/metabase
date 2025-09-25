@@ -306,6 +306,183 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "ee/remote-sync/%d/dirty" coll-id)))))))))
 
+(deftest global-is-dirty-endpoint-test
+  (test-helpers/with-clean-change-log
+    (testing "GET /api/ee/remote-sync/is-dirty"
+
+      (testing "returns false when no remote-synced collections have changes"
+        (mt/with-temp [:model/Collection _ {:name "Remote Collection"
+                                            :type "remote-synced"
+                                            :entity_id "test-collection-1"
+                                            :location "/"}]
+          ;; No changes exist
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/is-dirty")]
+            (is (= {:is_dirty false} response)))))
+
+      (testing "returns true when any remote-synced collection has changes"
+        (mt/with-temp [:model/Collection remote-col {:name "Remote Collection"
+                                                     :type "remote-synced"
+                                                     :entity_id "test-collection-1"
+                                                     :location "/"}
+                       :model/Card card {:collection_id (:id remote-col)
+                                         :name "Test Card"}
+                       :model/RemoteSyncChangeLog _ {:model_type "Card"
+                                                     :model_entity_id (:entity_id card)
+                                                     :sync_type "dirty"
+                                                     :status "pending"
+                                                     :most_recent true}]
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/is-dirty")]
+            (is (= {:is_dirty true} response)))))
+
+      (testing "ignores changes in non-remote-synced collections"
+        (mt/with-temp [:model/Collection normal-col {:name "Normal Collection"
+                                                     :type "default"
+                                                     :entity_id "test-collection-2"
+                                                     :location "/"}
+                       :model/Card card {:collection_id (:id normal-col)
+                                         :name "Test Card"}
+                       :model/RemoteSyncChangeLog _ {:model_type "Card"
+                                                     :model_entity_id (:entity_id card)
+                                                     :sync_type "dirty"
+                                                     :status "pending"
+                                                     :most_recent true}]
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/is-dirty")]
+            (is (= {:is_dirty false} response)))))
+
+      (testing "requires superuser permissions"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 "ee/remote-sync/is-dirty")))))))
+
+(deftest global-dirty-endpoint-test
+  (test-helpers/with-clean-change-log
+    (testing "GET /api/ee/remote-sync/dirty"
+
+      (testing "returns empty list when no remote-synced collections have dirty models"
+        (mt/with-temp [:model/Collection _ {:name "Remote Collection"
+                                            :type "remote-synced"
+                                            :entity_id "test-collection-1"
+                                            :location "/"}]
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")]
+            (is (= {:dirty []} response)))))
+
+      (testing "returns all dirty models across remote-synced collections"
+        (mt/with-temp [:model/Collection remote-col1 {:name "Remote Collection 1"
+                                                      :type "remote-synced"
+                                                      :entity_id "test-collection-1"
+                                                      :location "/"}
+                       :model/Collection remote-col2 {:name "Remote Collection 2"
+                                                      :type "remote-synced"
+                                                      :entity_id "test-collection-2"
+                                                      :location "/"}
+                       :model/Card card1 {:collection_id (:id remote-col1)
+                                          :name "Card 1"}
+                       :model/Card card2 {:collection_id (:id remote-col2)
+                                          :name "Card 2"}
+                       :model/Dashboard dashboard {:collection_id (:id remote-col1)
+                                                   :name "Dashboard 1"}
+                       :model/RemoteSyncChangeLog _ {:model_type "Card"
+                                                     :model_entity_id (:entity_id card1)
+                                                     :sync_type "dirty"
+                                                     :status "pending"
+                                                     :most_recent true}
+                       :model/RemoteSyncChangeLog _ {:model_type "Card"
+                                                     :model_entity_id (:entity_id card2)
+                                                     :sync_type "dirty"
+                                                     :status "pending"
+                                                     :most_recent true}
+                       :model/RemoteSyncChangeLog _ {:model_type "Dashboard"
+                                                     :model_entity_id (:entity_id dashboard)
+                                                     :sync_type "dirty"
+                                                     :status "pending"
+                                                     :most_recent true}]
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
+                dirty-items (:dirty response)]
+            (is (= 3 (count dirty-items)))
+            (is (= #{"Card 1" "Card 2" "Dashboard 1"}
+                   (set (map :name dirty-items))))
+            (is (= #{"card" "dashboard"}
+                   (set (map :model dirty-items)))))))
+
+      (testing "returns dirty models from nested collections"
+        (mt/with-temp [:model/Collection remote-col {:name "Remote Collection"
+                                                     :type "remote-synced"
+                                                     :entity_id "test-collection-1"
+                                                     :location "/"}
+                       :model/Collection nested-col {:name "Nested Collection"
+                                                     :type "remote-synced"
+                                                     :location (str "/" (:id remote-col) "/")}
+                       :model/Card nested-card {:collection_id (:id nested-col)
+                                                :name "Nested Card"}
+                       :model/RemoteSyncChangeLog _ {:model_type "Card"
+                                                     :model_entity_id (:entity_id nested-card)
+                                                     :sync_type "dirty"
+                                                     :status "pending"
+                                                     :most_recent true}]
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
+                dirty-items (:dirty response)]
+            (is (= 1 (count dirty-items)))
+            (is (= "Nested Card" (:name (first dirty-items)))))))
+
+      (testing "excludes changes in non-remote-synced collections"
+        (mt/with-temp [:model/Collection remote-col {:name "Remote Collection"
+                                                     :type "remote-synced"
+                                                     :entity_id "test-collection-1"
+                                                     :location "/"}
+                       :model/Collection normal-col {:name "Normal Collection"
+                                                     :type "default"
+                                                     :entity_id "test-collection-2"
+                                                     :location "/"}
+                       :model/Card remote-card {:collection_id (:id remote-col)
+                                                :name "Remote Card"}
+                       :model/Card normal-card {:collection_id (:id normal-col)
+                                                :name "Normal Card"}
+                       :model/RemoteSyncChangeLog _ {:model_type "Card"
+                                                     :model_entity_id (:entity_id remote-card)
+                                                     :sync_type "dirty"
+                                                     :status "pending"
+                                                     :most_recent true}
+                       :model/RemoteSyncChangeLog _ {:model_type "Card"
+                                                     :model_entity_id (:entity_id normal-card)
+                                                     :sync_type "dirty"
+                                                     :status "pending"
+                                                     :most_recent true}]
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
+                dirty-items (:dirty response)]
+            ;; Should only return the card from the remote-synced collection
+            (is (= 1 (count dirty-items)))
+            (is (= "Remote Card" (:name (first dirty-items)))))))
+
+      (testing "deduplicates items with distinct-by"
+        ;; The API uses distinct-by to handle potential duplicates
+        (mt/with-temp [:model/Collection remote-col {:name "Remote Collection"
+                                                     :type "remote-synced"
+                                                     :entity_id "test-collection-1"
+                                                     :location "/"}
+                       :model/Card card {:collection_id (:id remote-col)
+                                         :name "Test Card"}
+                       ;; Create multiple change log entries for the same card
+                       :model/RemoteSyncChangeLog _ {:model_type "Card"
+                                                     :model_entity_id (:entity_id card)
+                                                     :sync_type "dirty"
+                                                     :status "pending"
+                                                     :most_recent false
+                                                     :created_at #t "2024-01-01T00:00:00"}
+                       :model/RemoteSyncChangeLog _ {:model_type "Card"
+                                                     :model_entity_id (:entity_id card)
+                                                     :sync_type "dirty"
+                                                     :status "pending"
+                                                     :most_recent true
+                                                     :created_at #t "2024-01-02T00:00:00"}]
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
+                dirty-items (:dirty response)]
+            ;; Should only return one item despite multiple change log entries
+            (is (= 1 (count dirty-items)))
+            (is (= "Test Card" (:name (first dirty-items)))))))
+
+      (testing "requires superuser permissions"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 "ee/remote-sync/dirty")))))))
+
 (deftest settings-endpoint-test
   (testing "PUT /api/ee/remote-sync/settings"
 

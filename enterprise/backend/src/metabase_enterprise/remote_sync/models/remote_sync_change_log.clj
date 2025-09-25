@@ -55,6 +55,7 @@
                 :collection.name
                 :collection.created_at
                 :collection.authority_level
+                [:collection.id :collection_id]
                 [nil :display]
                 [nil :query_type]
                 [nil :description]
@@ -65,6 +66,7 @@
                  :report_card.name
                  :report_card.created_at
                  [nil :authority_level]
+                 :report_card.collection_id
                  :report_card.display
                  :report_card.query_type
                  :report_card.description
@@ -75,6 +77,7 @@
               :document.name
               :document.created_at
               [nil :authority_level]
+              :document.collection_id
               [nil :display]
               [nil :query_type]
               [nil :description]
@@ -85,6 +88,7 @@
                       :report_dashboard.name
                       :report_dashboard.created_at
                       [nil :authority_level]
+                      :report_dashboard.collection_id
                       [nil :display]
                       [nil :query_type]
                       :report_dashboard.description
@@ -95,6 +99,7 @@
                           :native_query_snippet.name
                           :native_query_snippet.created_at
                           [nil :authority_level]
+                          :native_query_snippet.collection_id
                           [nil :display]
                           [nil :query_type]
                           [nil :description]
@@ -106,31 +111,45 @@
   "A honeysql select statement that returns dirty children of a collection or any sub items of this collection.
 
   Arguments:
-    col-id: the id of the collection to check
+    col-or-id (optional): the colleciton or the id of the collection to check, if omitted checks for any dirty
+      items in any remote-synced root
+    selection-options: mapping of model-type->honeysql for the select clause of the options
 
   Returns:
     the count of dirty objects in this collection"
-  [col-id select-options]
-  (when-let [{:keys [location] :as col} (t2/select-one :model/Collection :id col-id)]
-    (let [last-sync (last-sync-at col)
-          queries (mapv (fn [[table entity-type]]
-                          (let [entity-id-col (keyword (str (name table) ".entity_id"))]
-                            {:select (select-options table)
-                             :from [table]
-                             :join (cond-> [[:remote_sync_change_log :rs_change_log]
-                                            [:and
-                                             [:= :rs_change_log.model_entity_id entity-id-col]
-                                             [:= :rs_change_log.most_recent [:inline true]]
-                                             [:= :rs_change_log.model_type [:inline entity-type]]]]
-                                     (not= table :collection) (into [[:collection]
-                                                                     [:= (keyword (str (name table) ".collection_id")) :collection.id]]))
-                             :where [:and [:or
-                                           [:= :collection.id col-id]
-                                           [:like :collection.location [:inline (str location col-id "/%")]]]
-                                     (when last-sync
-                                       [:> :rs_change_log.created_at last-sync])]}))
-                        synced-models)]
-      {:union-all queries})))
+
+  ([select-options]
+   (some->> (t2/select :model/Collection :type "remote-synced" :location "/")
+            (map #(dirty-collection % select-options))
+            (keep :union-all)
+            not-empty
+            (mapcat identity)
+            (assoc nil :union-all)))
+  ([col-or-id select-options]
+   (when-let [{col-id :id
+               location :location
+               :as col} (if (map? col-or-id)
+                          col-or-id
+                          (t2/select-one :model/Collection :id col-or-id))]
+     (let [last-sync (last-sync-at col)
+           queries (mapv (fn [[table entity-type]]
+                           (let [entity-id-col (keyword (str (name table) ".entity_id"))]
+                             {:select (select-options table)
+                              :from [table]
+                              :join (cond-> [[:remote_sync_change_log :rs_change_log]
+                                             [:and
+                                              [:= :rs_change_log.model_entity_id entity-id-col]
+                                              [:= :rs_change_log.most_recent [:inline true]]
+                                              [:= :rs_change_log.model_type [:inline entity-type]]]]
+                                      (not= table :collection) (into [[:collection]
+                                                                      [:= (keyword (str (name table) ".collection_id")) :collection.id]]))
+                              :where [:and [:or
+                                            [:= :collection.id col-id]
+                                            [:like :collection.location [:inline (str location col-id "/%")]]]
+                                      (when last-sync
+                                        [:> :rs_change_log.created_at last-sync])]}))
+                         synced-models)]
+       {:union-all queries}))))
 
 (defn dirty-collection?
   "A boolean value reporting if the given collection has changes since the last sync
@@ -155,4 +174,23 @@
     seq of models that have changed since the last remote sync"
   [col-id]
   (when-let [dirty-query (dirty-collection col-id items-select)]
+    (t2/query dirty-query)))
+
+(defn dirty-global?
+  "A boolean value reporting if any collection has changes since the last sync
+
+  Returns:
+    boolean if the collection has changes or not"
+  []
+  (boolean
+   (when-let [dirty-query (dirty-collection exists-select)]
+     (:exists (t2/query-one {:select [[[:exists dirty-query] :exists]]})))))
+
+(defn dirty-for-global
+  "All models for any collection that are dirty along with a note about why their state is dirty
+
+  Returns:
+    seq of models that have changed since the last remote sync"
+  []
+  (when-let [dirty-query (dirty-collection items-select)]
     (t2/query dirty-query)))
