@@ -101,9 +101,7 @@ describe("command palette utils", () => {
       const searchIndex = results.findIndex(
         (action) => action === "Search results",
       );
-      const recentsIndex = results.findIndex(
-        (action) => action === "Recent items",
-      );
+      const recentsIndex = results.findIndex((action) => action === "Recents");
       const adminIndex = results.findIndex((action) => action === "Admin");
 
       [recentsIndex, actionsIndex, adminIndex, searchIndex].forEach(
