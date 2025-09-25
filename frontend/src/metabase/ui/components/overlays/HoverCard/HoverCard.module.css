@@ -2,4 +2,5 @@
   padding: 0;
   overflow: auto;
   background-color: var(--mb-color-bg-white);
+  border: 1px solid var(--mb-color-border);
 }

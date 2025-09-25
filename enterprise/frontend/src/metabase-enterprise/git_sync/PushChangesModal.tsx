@@ -161,7 +161,7 @@ export const ChangesLists = ({
           {idx > 0 && <Divider my="lg" />}
           <ChangesList
             collection={collection}
-            entities={changedEntities[collection.id]}
+            entities={changedEntities[collection.id] ?? []}
           />
         </Fragment>
       ))}

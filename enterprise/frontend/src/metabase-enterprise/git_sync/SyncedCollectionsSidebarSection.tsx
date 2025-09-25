@@ -18,6 +18,8 @@ import {
   Box,
   Button,
   Flex,
+  Group,
+  HoverCard,
   Icon,
   Loader,
   ScrollArea,
@@ -61,7 +63,7 @@ export const SyncedCollectionsSidebarSection = ({
 
   const isDirty = true; // TODO: check if any synced collection is dirty
 
-  const { status } = useSyncStatus();
+  const { status, message } = useSyncStatus();
 
   const isLoading = isImporting || status !== "idle";
 
@@ -93,7 +95,10 @@ export const SyncedCollectionsSidebarSection = ({
         <ErrorBoundary>
           <Flex justify="space-between">
             <Box>
-              <SidebarHeading>{t`Synced Collections`}</SidebarHeading>
+              <Group gap="sm">
+                <SidebarHeading>{t`Synced Collections`}</SidebarHeading>
+                {message && <SyncError message={message} />}
+              </Group>
               {isLoading ? (
                 <Box pl="xl" py="sm">
                   <Loader size="xs" />
@@ -224,3 +229,21 @@ const useSyncStatus = () => {
     message: syncResponse.data?.error_message ?? "",
   };
 };
+
+function SyncError({ message }: { message: string }) {
+  return (
+    <HoverCard>
+      <HoverCard.Target>
+        <Icon name="warning_round_filled" c="warning" />
+      </HoverCard.Target>
+      <HoverCard.Dropdown>
+        <Box p="md" style={{ maxWidth: 300 }}>
+          <Text fz="sm" fw="bold" component="span">{t`Sync error: `}</Text>
+          <Text fz="sm" lh="sm" component="span">
+            {message}
+          </Text>
+        </Box>
+      </HoverCard.Dropdown>
+    </HoverCard>
+  );
+}
