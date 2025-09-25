@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
 import type { ObjectWithModel } from "metabase/lib/icon";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { Group, Icon, Text } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 import type { Collection } from "metabase-types/api";
 
 export const CollectionAuthorityLevelDisplay = ({

@@ -7,13 +7,14 @@ import type { HTMLAttributes } from "react";
 import type { LinkProps } from "metabase/common/components/Link";
 import Link from "metabase/common/components/Link";
 import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
-import { color } from "metabase/lib/colors";
+import type { ColorName } from "metabase/lib/colors/types";
 import { Icon } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 interface RawMaybeLinkProps {
   to?: string;
-  activeColor?: string;
-  inactiveColor?: string;
+  activeColor?: ColorName;
+  inactiveColor?: ColorName;
   isSingleLine?: boolean;
 }
 

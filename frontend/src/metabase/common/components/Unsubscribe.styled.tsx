@@ -2,7 +2,7 @@
 import styled from "@emotion/styled";
 
 import MetabotLogo from "metabase/common/components/MetabotLogo";
-import { alpha, color, hueRotate } from "metabase/lib/colors";
+import { alpha, hueRotate } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 
@@ -65,5 +65,5 @@ export const CheckmarkIcon = styled(Icon)`
   border-radius: 100%;
   padding: 1rem;
   color: var(--mb-color-brand);
-  background: ${() => alpha(color("brand"), 0.3)};
+  background: ${() => alpha("brand", 0.3)};
 `;
