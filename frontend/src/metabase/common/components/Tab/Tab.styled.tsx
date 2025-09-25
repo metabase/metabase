@@ -2,9 +2,10 @@
 import styled from "@emotion/styled";
 
 import { focusOutlineStyle } from "metabase/common/style/input";
-import { alpha, color } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 interface TabProps {
   isSelected?: boolean;

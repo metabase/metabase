@@ -7,10 +7,11 @@ import { forwardRef } from "react";
 
 import Link from "metabase/common/components/Link";
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
-import { alpha, color, darken } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import type { IconProps } from "metabase/ui";
 import { Icon, Tooltip } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 export const SidebarIcon = styled(
   forwardRef<SVGSVGElement, IconProps & { isSelected: boolean }>(
@@ -39,7 +40,7 @@ const activeColorCSS = css`
 `;
 
 function getTextColor(isSelected: boolean) {
-  return isSelected ? color("brand") : darken(color("text-medium"), 0.25);
+  return isSelected ? color("brand") : color("text-primary");
 }
 
 type NodeRootProps = ComponentProps<typeof TreeNode.Root> & {

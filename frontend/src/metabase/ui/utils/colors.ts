@@ -1,6 +1,7 @@
 import type { MantineTheme } from "@mantine/core";
 
 import { colorConfig } from "metabase/lib/colors";
+import type { ColorName } from "metabase/lib/colors/types";
 type ColorShades = MantineTheme["colors"]["dark"];
 
 const ORIGINAL_COLORS = [
@@ -19,10 +20,6 @@ const ORIGINAL_COLORS = [
   "orange",
   "teal",
 ] as const;
-
-// these should only include semantic colors
-// for use in the UI
-const CUSTOM_COLORS = Object.keys(colorConfig);
 
 export function getColorShades(colorName: string): ColorShades {
   // yes this is silly, but it makes typescript so happy
@@ -61,6 +58,6 @@ export function getThemeColors(
  * @param colorName
  * @returns string referencing a css variable
  */
-export function color(colorName: (typeof CUSTOM_COLORS)[number]): string {
+export function color(colorName: ColorName): string {
   return `var(--mb-color-${colorName})`;
 }

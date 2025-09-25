@@ -3,8 +3,8 @@ import type { MouseEvent } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { color } from "metabase/lib/colors";
 import type { IconName } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 import type { RecentItem } from "metabase-types/api";
 
 import type { PaletteActionImpl } from "./types";
