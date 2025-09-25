@@ -44,7 +44,17 @@ export function ModelsApp({ params }: ModelsAppProps) {
         {/* Main Panel - Model Details and Results */}
         <Panel defaultSize={80} minSize={50}>
           <Box h="100%" p="md">
-            <ModelsDetails model={selectedModel} />
+            <Box
+              h="100%"
+              p="lg"
+              style={{
+                backgroundColor: "var(--mb-color-bg-white)",
+                border: "1px solid var(--mb-color-border)",
+                borderRadius: "8px",
+              }}
+            >
+              <ModelsDetails model={selectedModel} />
+            </Box>
           </Box>
         </Panel>
       </PanelGroup>

@@ -163,8 +163,20 @@ Tools (as listed above) should have the same basic layout that's comprised of a 
 # Left panel
 This is where left panel tools (mostly lists) will go. All listing components should use `NavLink` from "metabase/ui" as a wrapper for individual items in the list to provide consistent styling and interaction patterns. NavLink components should not use the `description` property and should use `px="lg"` and `py="md"` by default for consistent spacing.
 
+## Left Panel Background
+Left panel listing sidebars should use a secondary background color to distinguish them from the main content area.
+
 # Main view
 For most modes this will be either a notebook instance or a sql editor.
+
+## Main Content Area Styling
+Main editor content areas (notebook editor, SQL editor, etc.) should use a primary background with a border and rounded corners to delineate the content area and bring it forward visually from the surrounding interface. This creates better focus and hierarchy in the interface.
+
+**Implementation guidelines:**
+- Use primary background color for editor content areas
+- Apply border using `--mb-color-border` 
+- Use rounded corners (typically `border-radius: 8px`)
+- Ensure sufficient padding around the content
 
 
 ### Gathering data

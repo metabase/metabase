@@ -99,90 +99,104 @@ ORDER BY total_spent DESC;`);
 
         {/* Center Panel - Code Editor and Preview */}
         <Panel defaultSize={60} minSize={30}>
-          <PanelGroup direction="vertical">
-            {/* Code Editor */}
-            <Panel defaultSize={60} minSize={30}>
-              <Box
-                h="100%"
-                style={{ display: "flex", flexDirection: "column" }}
-              >
-                <Box p="md">
-                  <Text fw={500}>
-                    {selectedTransform ? selectedTransform.name : "SQL Editor"}
-                  </Text>
-                  {selectedTransform && (
-                    <Text size="sm">
-                      Target:{" "}
-                      {selectedTransform.target.schema
-                        ? `${selectedTransform.target.schema}.`
-                        : ""}
-                      {selectedTransform.target.name}
-                    </Text>
-                  )}
-                </Box>
+          <Box h="100%" p="md">
+            <PanelGroup direction="vertical">
+              {/* Code Editor */}
+              <Panel defaultSize={60} minSize={30}>
                 <Box
-                  style={{ flex: 1, position: "relative" }}
-                  className={styles.benchEditor}
+                  h="100%"
+                  p="md"
+                  style={{
+                    backgroundColor: "var(--mb-color-bg-white)",
+                    border: "1px solid var(--mb-color-border)",
+                    borderRadius: "8px",
+                    display: "flex",
+                    flexDirection: "column",
+                  }}
                 >
-                  <CodeMirror
-                    value={code}
-                    onChange={(value) => setCode(value)}
-                    height="100%"
-                    style={{
-                      height: "100%",
-                      fontSize: "14px",
-                    }}
-                    basicSetup={{
-                      lineNumbers: true,
-                      foldGutter: true,
-                      dropCursor: false,
-                      allowMultipleSelections: false,
-                    }}
-                    extensions={[
-                      ...language({ engine: "postgres" }),
-                      keymap.of([
-                        {
-                          key: "Mod-Enter",
-                          run: () => {
-                            handleRunQuery();
-                            return true;
+                  <Box mb="md">
+                    <Text fw={500}>
+                      {selectedTransform
+                        ? selectedTransform.name
+                        : "SQL Editor"}
+                    </Text>
+                    {selectedTransform && (
+                      <Text size="sm">
+                        Target:{" "}
+                        {selectedTransform.target.schema
+                          ? `${selectedTransform.target.schema}.`
+                          : ""}
+                        {selectedTransform.target.name}
+                      </Text>
+                    )}
+                  </Box>
+                  <Box
+                    style={{ flex: 1, position: "relative" }}
+                    className={styles.benchEditor}
+                  >
+                    <CodeMirror
+                      value={code}
+                      onChange={(value) => setCode(value)}
+                      height="100%"
+                      style={{
+                        height: "100%",
+                        fontSize: "14px",
+                      }}
+                      basicSetup={{
+                        lineNumbers: true,
+                        foldGutter: true,
+                        dropCursor: false,
+                        allowMultipleSelections: false,
+                      }}
+                      extensions={[
+                        ...language({ engine: "postgres" }),
+                        keymap.of([
+                          {
+                            key: "Mod-Enter",
+                            run: () => {
+                              handleRunQuery();
+                              return true;
+                            },
                           },
-                        },
-                      ]),
-                    ]}
-                    placeholder="Enter your SQL code here..."
+                        ]),
+                      ]}
+                      placeholder="Enter your SQL code here..."
+                    />
+                  </Box>
+                </Box>
+              </Panel>
+
+              <PanelResizeHandle
+                style={{
+                  height: "4px",
+                  cursor: "row-resize",
+                  borderRadius: "2px",
+                  margin: "2px 0",
+                }}
+              />
+
+              {/* Query Preview */}
+              <Panel defaultSize={40} minSize={20}>
+                <Box
+                  h="100%"
+                  p="md"
+                  style={{
+                    backgroundColor: "var(--mb-color-bg-white)",
+                    border: "1px solid var(--mb-color-border)",
+                    borderRadius: "8px",
+                    display: "flex",
+                    flexDirection: "column",
+                  }}
+                >
+                  <QueryPreview
+                    ref={queryPreviewRef}
+                    query={code}
+                    databaseId={selectedTransform?.source?.query?.database}
                   />
                 </Box>
-              </Box>
-            </Panel>
-
-            <PanelResizeHandle
-              style={{
-                height: "4px",
-                cursor: "row-resize",
-                borderRadius: "2px",
-                margin: "2px 0",
-              }}
-            />
-
-            {/* Query Preview */}
-            <Panel defaultSize={40} minSize={20}>
-              <Box
-                h="100%"
-                style={{
-                  borderRadius: "8px",
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-              >
-                <QueryPreview
-                  ref={queryPreviewRef}
-                  query={code}
-                  databaseId={selectedTransform?.source?.query?.database}
-                />
-              </Box>
-            </Panel>
-          </PanelGroup>
+              </Panel>
+            </PanelGroup>
+          </Box>
         </Panel>
 
         <PanelResizeHandle
