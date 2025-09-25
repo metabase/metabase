@@ -321,6 +321,8 @@ import { useDispatch } from "metabase/lib/redux";
 ### Other
 - Only use ui components from "metabase/ui"
 - Do not use "dimmed" with text color.
+- We are on a legacy version of react-router (v3)
+- Prefer simple links to routes vs using functions for navigation for user interaction (functions are ok if they happen post interaction)
 
 ### State of prototype and major remaining todos.
 - Transforms is basically working as expected.

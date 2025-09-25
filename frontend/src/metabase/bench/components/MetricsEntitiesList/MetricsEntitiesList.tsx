@@ -1,8 +1,9 @@
-import { ActionIcon, Group, Text } from "metabase/ui";
+import { ActionIcon, Button, Group, Text, Stack } from "metabase/ui";
 import { Icon } from "metabase/ui";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import type { Card } from "metabase-types/api";
+import { useNavigate } from "react-router";
 
 interface MetricsEntitiesListProps {
   selectedMetricId?: number;
@@ -14,6 +15,7 @@ export function MetricsEntitiesList({
   onMetricClick,
 }: MetricsEntitiesListProps) {
   const { data: searchResponse, isLoading, error } = useFetchMetrics();
+  const navigate = useNavigate();
 
   if (isLoading) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -25,47 +27,58 @@ export function MetricsEntitiesList({
 
   const metrics = searchResponse?.data || [];
 
-  if (metrics.length === 0) {
-    return (
-      <Text size="sm" c="dimmed" ta="center" py="md">
-        No metrics found
-      </Text>
-    );
-  }
+  const handleNewMetricClick = () => {
+    navigate("/bench/metric/new");
+  };
 
   return (
-    <>
-      {metrics.map((metric) => (
-        <Group
-          key={metric.id}
-          p="xs"
-          style={{
-            borderRadius: "4px",
-            cursor: "pointer",
-            backgroundColor:
-              selectedMetricId === metric.id
-                ? "var(--mantine-color-blue-1)"
-                : "transparent",
-            ":hover": {
+    <Stack spacing="md">
+      <Button
+        variant="light"
+        leftIcon={<Icon name="add" />}
+        onClick={handleNewMetricClick}
+        fullWidth
+      >
+        New Metric
+      </Button>
+
+      {metrics.length === 0 ? (
+        <Text size="sm" c="dimmed" ta="center" py="md">
+          No metrics found
+        </Text>
+      ) : (
+        metrics.map((metric) => (
+          <Group
+            key={metric.id}
+            p="xs"
+            style={{
+              borderRadius: "4px",
+              cursor: "pointer",
               backgroundColor:
                 selectedMetricId === metric.id
-                  ? "var(--mantine-color-blue-2)"
-                  : "var(--mantine-color-gray-1)",
-            },
-          }}
-          onClick={() => onMetricClick?.(metric)}
-        >
-          <ActionIcon variant="subtle" size="sm">
-            <Icon name="metric" />
-          </ActionIcon>
-          <Text size="sm" style={{ flex: 1 }} truncate>
-            {metric.name}
-          </Text>
-          <Text size="xs" c="dimmed">
-            {metric.collection?.name || "No collection"}
-          </Text>
-        </Group>
-      ))}
-    </>
+                  ? "var(--mantine-color-blue-1)"
+                  : "transparent",
+              ":hover": {
+                backgroundColor:
+                  selectedMetricId === metric.id
+                    ? "var(--mantine-color-blue-2)"
+                    : "var(--mantine-color-gray-1)",
+              },
+            }}
+            onClick={() => onMetricClick?.(metric)}
+          >
+            <ActionIcon variant="subtle" size="sm">
+              <Icon name="metric" />
+            </ActionIcon>
+            <Text size="sm" style={{ flex: 1 }} truncate>
+              {metric.name}
+            </Text>
+            <Text size="xs" c="dimmed">
+              {metric.collection?.name || "No collection"}
+            </Text>
+          </Group>
+        ))
+      )}
+    </Stack>
   );
 }
