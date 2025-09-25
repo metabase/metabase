@@ -124,7 +124,7 @@ To set a caching policy for a dashboard, you must have [curate access](../permis
 1. Go to your dashboard.
 2. Click on the three dots icon and choose **Edit settings**.
 3. By default, each question will use the question or database default. Click the current Caching policy to change it.
-4. Optional: to delete cache for all questions on a dashboard, click **Clear cache for this dashboard** at the bottom.
+4. Optional: to delete the cache for all questions on a dashboard, click **Clear cache for this dashboard** at the bottom.
 5. Save your changes.
 
 ### Question caching policy
