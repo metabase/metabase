@@ -7,6 +7,7 @@ import type { HoveredObject } from "metabase/visualizations/types";
 import type {
   DictionaryArray,
   MaybeTranslatedSeries,
+  RowValue,
   Series,
 } from "metabase-types/api";
 
@@ -133,9 +134,34 @@ export const translateFieldValuesInSeries = (
     }
     const untranslatedRows = singleSeries.data.rows.concat();
 
-    const translatedRows = singleSeries.data.rows.map((row) =>
-      row.map((value) => tc(value)),
-    );
+    let translatedRows: RowValue[][];
+
+    if (singleSeries.card?.display === "pie") {
+      const pieRows = singleSeries.card.visualization_settings?.["pie.rows"];
+      const keyToNameMap = pieRows
+        ? pieRows.reduce(
+            (acc, row) => {
+              acc[row.key] = row.name;
+              return acc;
+            },
+            {} as Record<string, string>,
+          )
+        : {};
+
+      translatedRows = singleSeries.data.rows.map((row) =>
+        row.map((value) => {
+          if (typeof value === "string" && keyToNameMap[value] !== undefined) {
+            return tc(keyToNameMap[value]);
+          }
+          return tc(value);
+        }),
+      );
+    } else {
+      translatedRows = singleSeries.data.rows.map((row) =>
+        row.map((value) => tc(value)),
+      );
+    }
+
     return {
       ...singleSeries,
       data: {
