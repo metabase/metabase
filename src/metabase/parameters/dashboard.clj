@@ -8,6 +8,7 @@
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.custom-values :as custom-values]
    [metabase.parameters.params :as params]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -31,7 +32,7 @@
     {:case-sensitive false}))
 
 (mu/defn- param->fields
-  [param :- ::lib.schema.parameter/parameter]
+  [param :- ::parameters.schema/parameter]
   (let [op      (param-type->op (:type param))
         options (or (:options param) (param-type->default-options (:type param)))]
     (for [field-id (params/dashboard-param->field-ids param)]

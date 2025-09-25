@@ -1,14 +1,26 @@
 (ns metabase.parameters.schema
   (:require
-   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.models.interface :as mi]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::human-readable-remapping-map
   "Schema for the map of actual value -> human-readable value. Cannot be empty."
   [:map-of {:min 1} :any [:maybe :string]])
+
+(mr/def ::legacy-ref
+  [:multi {:dispatch (fn [x]
+                       (if (and (vector? x)
+                                (#{:expression "expression"} (first x)))
+                         :expression
+                         :field))}
+   [:expression ::lib.schema.parameter/target.legacy-expression-ref]
+   [:field      ::lib.schema.parameter/target.legacy-field-ref]])
 
 (mr/def ::values-source-config
   "Schema for valid source_options within a Parameter"
@@ -16,8 +28,8 @@
   [:map
    [:values      {:optional true} [:* :any]]
    [:card_id     {:optional true} ::lib.schema.id/card]
-   [:value_field {:optional true} ::mbql.s/field-or-expression-ref]
-   [:label_field {:optional true} ::mbql.s/field-or-expression-ref]])
+   [:value_field {:optional true} [:ref ::legacy-ref]]
+   [:label_field {:optional true} [:ref ::legacy-ref]]])
 
 #_(def ParameterSource
     (mc/schema
@@ -57,14 +69,53 @@
    [:default              {:optional true} :any]
    [:sectionId            {:optional true} ::lib.schema.common/non-blank-string]
    [:temporal_units       {:optional true} [:sequential ::lib.schema.temporal-bucketing/unit]]
-   ;; TODO FIXME -- I've seen this key used in [[metabase.parameters.params/dashboard-param->field-ids]] but no idea
-   ;; what the expected shape is supposed to be. Please fixx
-   [:mappings             {:optional true} :any]])
+   [:mappings             {:optional true} [:maybe
+                                            [:or
+                                             [:sequential [:ref ::parameter-mapping]]
+                                             [:set [:ref ::parameter-mapping]]]]]])
+
+(mu/defn normalize-parameter :- ::parameter
+  "Normalize `parameter` when coming out of the application database or in via an API request."
+  [parameter]
+  (lib/normalize ::parameter parameter))
+
+(mr/def ::parameters
+  [:sequential [:ref ::parameter]])
+
+(mu/defn normalize-parameters :- ::parameters
+  "Normalize `parameters` when coming out of the application database or in via an API request."
+  [parameters]
+  (lib/normalize ::parameters parameters))
+
+(def transform-parameters
+  "Toucan 2 transform for columns that are sequences of Card/Dashboard parameters."
+  {:in  (comp mi/json-in normalize-parameters)
+   :out (comp (mi/catch-normalization-exceptions normalize-parameters) mi/json-out-with-keywordization)})
 
 (mr/def ::parameter-mapping
   "Schema for a valid Parameter Mapping"
   [:map
    {:description "parameter_mapping must be a map with :parameter_id and :target keys"}
-   [:parameter_id ::lib.schema.common/non-blank-string]
-   [:target       :any]
-   [:card_id      {:optional true} ::lib.schema.id/card]])
+   [:parameter_id ::lib.schema.parameter/id]
+   [:target       ::lib.schema.parameter/target]
+   [:card_id      {:optional true} ::lib.schema.id/card]
+   [:dashcard     {:optional true} :map]])
+
+(mu/defn normalize-parameter-mapping :- ::parameter-mapping
+  "Normalize `parameter-mappings` when coming out of the application database or in via an API request."
+  [parameter-mapping]
+  (lib/normalize ::parameter-mapping parameter-mapping))
+
+(mr/def ::parameter-mappings
+  [:sequential [:ref ::parameter-mapping]])
+
+(mu/defn normalize-parameter-mappings :- [:maybe ::parameter-mappings]
+  "Normalize `parameter-mappings` when coming out of the application database or in via an API request."
+  [parameter-mappings :- [:maybe [:sequential :map]]]
+  (when parameter-mappings
+    (lib/normalize ::parameter-mappings parameter-mappings)))
+
+(def transform-parameter-mappings
+  "Toucan 2 transform for columns that are sequences of Card/Dashboard parameter mappings."
+  {:in  (comp mi/json-in normalize-parameter-mappings)
+   :out (comp (mi/catch-normalization-exceptions normalize-parameter-mappings) mi/json-out-with-keywordization)})

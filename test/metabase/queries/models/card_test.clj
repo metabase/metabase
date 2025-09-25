@@ -832,7 +832,7 @@
                      :database_id   (mt/id)}
                     (t2/select-one :model/Card :id (u/the-id card))))))))))
 
-(deftest can-run-adhoc-query-test
+(deftest ^:parallel can-run-adhoc-query-test
   (let [metadata-provider (mt/metadata-provider)
         venues            (lib.metadata/table metadata-provider (mt/id :venues))
         query             (lib/query metadata-provider venues)]
@@ -861,9 +861,9 @@
             (is (false? (mi/can-read? card)))
             (is (false? (mi/can-write? card)))))))))
 
-(deftest breakouts-->identifier->action-fn-test
-  (are [b1 b2 expected--identifier->action] (= expected--identifier->action
-                                               (#'card/breakouts-->identifier->action b1 b2))
+(deftest ^:parallel breakouts->identifier->action-fn-test
+  (are [b1 b2 expected-identifier->action] (= expected-identifier->action
+                                               (#'card/breakouts->identifier->action b1 b2))
     [[:field 10 {:temporal-unit :day}]]
     nil
     nil
@@ -888,7 +888,7 @@
     [[:field 10 {:temporal-unit :year}]]
     nil))
 
-(deftest update-for-dashcard-fn-test
+(deftest ^:parallel update-for-dashcard-fn-test
   (are [indetifier->action quasi-dashcards expected-quasi-dashcards]
        (= expected-quasi-dashcards
           (#'card/updates-for-dashcards indetifier->action quasi-dashcards))

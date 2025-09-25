@@ -29,7 +29,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -40,7 +39,7 @@
 (defn assert-valid-parameters
   "Receive a Paremeterized Object and check if its parameters is valid."
   [{:keys [parameters]}]
-  (let [schema [:maybe [:sequential ::parameters.schema/parameter]]]
+  (let [schema [:maybe ::parameters.schema/parameters]]
     (when-not (mr/validate schema parameters)
       (throw (ex-info ":parameters must be a sequence of maps with :id and :type keys"
                       {:parameters parameters
@@ -301,7 +300,8 @@
             (for [mapping (:parameter_mappings dashcard)]
               {:dashcard              dashcard
                :param-mapping         mapping
-               :param-target-field-id (param-target->field-id (:target mapping) (:card dashcard))}))]
+               :param-target-field-id (when (:target mapping)
+                                        (param-target->field-id (:target mapping) (:card dashcard)))}))]
     (transduce (mapcat dashcard->param-dashcard-info)
                field-id-into-context-rf
                dashcards)))

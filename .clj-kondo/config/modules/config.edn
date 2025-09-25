@@ -765,6 +765,7 @@
   parameters
   {:team "Querying"
    :api  #{metabase.parameters.chain-filter
+           metabase.parameters.core
            metabase.parameters.custom-values
            metabase.parameters.dashboard
            metabase.parameters.field

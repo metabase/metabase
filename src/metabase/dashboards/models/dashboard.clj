@@ -12,6 +12,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.parameters.core :as parameters]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
@@ -66,7 +67,7 @@
   #{:last_viewed_at})
 
 (t2/deftransforms :model/Dashboard
-  {:parameters       mi/transform-card-parameters-list
+  {:parameters       parameters/transform-parameters
    :embedding_params mi/transform-json})
 
 (t2/define-before-delete :model/Dashboard
@@ -341,7 +342,7 @@
   [:map
    [:id ms/NonBlankString]
    [:name ms/NonBlankString]
-   [:mappings [:maybe [:set dashboard-card/ParamMapping]]]])
+   [:mappings [:maybe [:set ::parameters.schema/parameter-mapping]]]])
 
 (mu/defn- dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
   [dashboard :- [:map [:parameters [:maybe [:sequential :map]]]]]

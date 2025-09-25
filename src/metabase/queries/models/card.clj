@@ -16,7 +16,6 @@
    [metabase.content-verification.core :as moderation]
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.events.core :as events]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
@@ -28,8 +27,10 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.types.isa :as lib.types]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.parameters.core :as parameters]
    [metabase.parameters.params :as params]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -106,8 +107,8 @@
    :query_type             mi/transform-keyword
    :result_metadata        mi/transform-result-metadata
    :visualization_settings mi/transform-visualization-settings
-   :parameters             mi/transform-card-parameters-list
-   :parameter_mappings     mi/transform-parameters-list
+   :parameters             parameters/transform-parameters
+   :parameter_mappings     parameters/transform-parameter-mappings
    :type                   mi/transform-keyword})
 
 (doto :model/Card
@@ -986,12 +987,23 @@
     :query_type ;; these first three may not even be changeable
     :dataset_query})
 
-(defn- breakout-->identifier->refs
+(defn- mbql-clause->identifier-for-parameter-updates
+  "Get the unique key used to power the parameter mapping update stuff added in #49308. Key is an MBQL-5-style clause
+  but with an empty options clause."
+  [mbql-clause]
+  (if (lib/clause? mbql-clause)
+    (lib/update-options mbql-clause (constantly nil))
+    ;; Parameter mapping targets still use legacy MBQL field refs (for now)... future-proof ourselves a bit and handle
+    ;; either type.
+    (lib.util.match/match-lite mbql-clause
+      [:field (id-or-name :guard (some-fn string? pos-int?)) _opts] [:field nil id-or-name])))
+
+(defn- breakout->identifier->refs
   "Generate mapping of of _ref identifier_ -> #{_ref..._}.
 
   _ref identifier_ is a vector of first 2 elements of ref, eg. [:expression \"xix\"] or [:field 10]"
   [breakouts]
-  (-> (group-by #(subvec % 0 2) breakouts)
+  (-> (group-by mbql-clause->identifier-for-parameter-updates breakouts)
       (update-vals set)))
 
 (defn- action-for-identifier+refs
@@ -1001,27 +1013,27 @@
   the [[update-associated-parameters!]]'s docstring.
 
   _Action_ has a form of [<action> & args]."
-  [after--identifier->refs identifier before--refs]
-  (let [after--refs (get after--identifier->refs identifier #{})]
-    (when (and (= 1 (count before--refs) (count after--refs))
-               (not= before--refs after--refs))
-      [:update (first after--refs)])))
+  [after-identifier->refs identifier before-refs]
+  (let [after-refs (get after-identifier->refs identifier #{})]
+    (when (and (= 1 (count before-refs) (count after-refs))
+               (not= before-refs after-refs))
+      [:update (first after-refs)])))
 
-(defn- breakouts-->identifier->action
+(defn- breakouts->identifier->action
   "Generate mapping of _identifier_ -> _action_.
 
   _identifier_ is is a vector of first 2 elements of ref, eg. [:expression \"xix\"] or [:field 10]. Action is generated
   in [[action-for-identifier+refs]] and performed later in [[update-mapping]]."
   [breakout-before-update breakout-after-update]
-  (let [before--identifier->refs (breakout-->identifier->refs breakout-before-update)
-        after--identifier->refs  (breakout-->identifier->refs breakout-after-update)]
+  (let [before-identifier->refs (breakout->identifier->refs breakout-before-update)
+        after-identifier->refs  (breakout->identifier->refs breakout-after-update)]
     ;; Remove no-ops to avoid redundant db calls in [[update-associated-parameters!]].
-    (->> before--identifier->refs
-         (m/map-kv-vals #(action-for-identifier+refs after--identifier->refs %1 %2))
+    (->> before-identifier->refs
+         (m/map-kv-vals #(action-for-identifier+refs after-identifier->refs %1 %2))
          (m/filter-vals some?)
          not-empty)))
 
-(defn eligible-mapping?
+(defn- eligible-mapping?
   "Decide whether parameter mapping has strucuture so it can be updated presumably using [[update-mapping]]."
   [{[dim [ref-kind]] :target :as _mapping}]
   (and (= dim :dimension)
@@ -1029,11 +1041,12 @@
 
 (defn- update-mapping
   "Return modifed mapping according to action."
-  [identifier->action {[_dim ref] :target :as mapping}]
-  (let [identifier (subvec ref 0 2)
+  [identifier->action {[_dim field-ref] :target :as mapping}]
+  (let [identifier   (mbql-clause->identifier-for-parameter-updates field-ref)
         [action arg] (get identifier->action identifier)]
     (case action
-      :update (assoc-in mapping [:target 1] arg)
+      ;; allowed for now since parameter mappings still use Legacy MBQL fields refs (for now)
+      :update (assoc-in mapping [:target 1] #_{:clj-kondo/ignore [:discouraged-var]} (lib/->legacy-MBQL arg))
       mapping)))
 
 (defn- updates-for-dashcards
@@ -1046,7 +1059,7 @@
                    :when (not= parameter_mappings updated)]
                [id {:parameter_mappings updated}])))
 
-(defn- update-associated-parameters!
+(mu/defn- update-associated-parameters!
   "Update _parameter mappings_ of _dashcards_ that target modified _card_, to reflect the modification.
 
   This function handles only modifications to breakout.
@@ -1056,13 +1069,14 @@
   _parameter mappings_ have to be updated to target new, modified refs. This function takes care of that.
 
   First mappings of _identifier_ -> _action_ are generated. _identifier_ is described
-  eg. in [[breakouts-->identifier->action]] docstring. Then, dashcards are fetched and updates are generated
+  eg. in [[breakouts->identifier->action]] docstring. Then, dashcards are fetched and updates are generated
   by [[updates-for-dashcards]]. Updates are then executed."
-  [card-before card-after]
-  (let [card->breakout  #(-> % :dataset_query mbql.normalize/normalize :query :breakout)
-        breakout-before (card->breakout card-before)
-        breakout-after  (card->breakout card-after)]
-    (when-some [identifier->action (breakouts-->identifier->action breakout-before breakout-after)]
+  [card-before :- ::queries.schema/card
+   card-after  :- ::queries.schema/card]
+  (let [card->breakouts  #(some-> % :dataset_query not-empty lib/breakouts)
+        breakouts-before (card->breakouts card-before)
+        breakouts-after  (card->breakouts card-after)]
+    (when-some [identifier->action (breakouts->identifier->action breakouts-before breakouts-after)]
       (let [dashcards (t2/select :model/DashboardCard :card_id (some :id [card-after card-before]))
             updates   (updates-for-dashcards identifier->action dashcards)]
         ;; Beware. This can have negative impact on card update performance as queries are fired in sequence. I'm not
@@ -1108,7 +1122,7 @@
     (try
       (update-associated-parameters! card-before-update card-updates)
       (catch Throwable e
-        (log/error "Update of dependent card parameters failed!")
+        (log/error e "Update of dependent card parameters failed!")
         (log/debug e
                    "`card-before-update`:" (pr-str card-before-update)
                    "`card-updates`:" (pr-str card-updates)))))

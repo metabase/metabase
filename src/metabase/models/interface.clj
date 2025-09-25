@@ -286,13 +286,17 @@
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (def ^{:deprecated "0.57.0"} transform-parameters-list
-  "Transform for parameters list."
+  "Transform for parameters list.
+
+  DEPRECATED: Use [[metabase.parameters.schema/transform-parameters]] going forward."
   {:in  (comp json-in normalize-parameters-list)
    :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization)})
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (def ^{:deprecated "0.57.0"} transform-card-parameters-list
-  "Transform for parameters list."
+  "Transform for parameters list.
+
+  DEPRECATED: Use [[metabase.parameters.schema/transform-parameter-mappings]] going forward."
   {:in  (comp json-in normalize-card-parameters-list)
    :out (comp (catch-normalization-exceptions normalize-card-parameters-list) json-out-with-keywordization)})
 

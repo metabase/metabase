@@ -729,7 +729,7 @@
       (mt/with-log-messages-for-level [messages [metabase.parameters.params :error]]
         (is (some? (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id))))
         (is (=? [{:level   :error
-                  :message "Could not find matching field clause for target: [:dimension [:template-tag not-existed-filter]]"}]
+                  :message "Could not find matching field clause for target: [:dimension [:template-tag \"not-existed-filter\"]]"}]
                 (messages)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -2142,7 +2142,7 @@
                                                                    :parameter_mappings     [{:parameter_id "abc"
                                                                                              :card_id      123
                                                                                              :hash         "abc"
-                                                                                             :target       "foo"}]
+                                                                                             :target       [:dimension [:template-tag "foo"]]}]
                                                                    :visualization_settings {}}]
                                                       :tabs      []}))]
           ;; extra sure here because the dashcard we given has a negative id
@@ -2154,7 +2154,7 @@
                    :row                        4
                    :series                     []
                    :dashboard_tab_id           nil
-                   :parameter_mappings         [{:parameter_id "abc" :card_id 123, :hash "abc", :target "foo"}]
+                   :parameter_mappings         [{:parameter_id "abc" :card_id 123, :hash "abc", :target ["dimension" ["template-tag" "foo"]]}]
                    :visualization_settings     {}
                    :created_at                 true
                    :updated_at                 true
@@ -2168,7 +2168,7 @@
                    :size_y                 4
                    :col                    4
                    :row                    4
-                   :parameter_mappings     [{:parameter_id "abc", :card_id 123, :hash "abc", :target "foo"}]
+                   :parameter_mappings     [{:parameter_id "abc", :card_id 123, :hash "abc", :target [:dimension [:template-tag "foo"]]}]
                    :visualization_settings {}}]
                  (map (partial into {})
                       (t2/select [:model/DashboardCard :size_x :size_y :col :row :parameter_mappings :visualization_settings]
@@ -3248,7 +3248,8 @@
                                            :card_id      (:id card)
                                            :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
                                           {:parameter_id "_PRICE_"
-                                           :card_id      (:id card)}]})
+                                           :card_id      (:id card)
+                                           :target       [:dimension [:template-tag "WOW"]]}]})
         (testing "Since the _PRICE_ param is not mapped to a valid Field, it should get ignored"
           (mt/let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_" "_PRICE_" 4)]
             (is (= {:values          [["African"] ["American"] ["Artisan"]]

@@ -4,7 +4,8 @@
    [malli.util :as mut]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.lib.schema :as lib.schema]))
 
 (mr/def ::root
   [:map
@@ -20,7 +21,17 @@
     [:query-filter {:optional true} any?]]))
 
 (mr/def ::query
-  [:ref ::mbql.s/Query])
+  [:ref ::lib.schema/query])
+
+(mr/def ::card
+  [:map
+   [:dataset_query ::query]])
+
+(mr/def ::dashboard
+  [:map
+   [:cards     {:optional true} [:sequential ::card]]
+   [:dashcards {:optional true} [:sequential [:map
+                                              [:card [:maybe ::card]]]]]])
 
 (mr/def ::table-id-or-database-id
   [:and

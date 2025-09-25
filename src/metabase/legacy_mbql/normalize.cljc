@@ -1154,6 +1154,8 @@
   "Normalize the tokens in a Metabase query (i.e., make them all `lisp-case` keywords), rewrite deprecated clauses as
   up-to-date MBQL 2000, and remove empty clauses."
   [query]
+  (when (:lib/type query)
+    (throw (ex-info "Legacy MBQL normalization code cannot normalize MBQL >= 5" {:query query})))
   (try
     (-> query
         normalize-tokens
