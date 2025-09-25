@@ -162,19 +162,13 @@
     [:tag_ids   {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (log/info "Getting all transform jobs")
   (api/check-superuser)
-  (let [jobs (t2/select :model/TransformJob {:order-by [[:created_at :desc]]})
-        statuses (->> last_run_statuses (map keyword) set not-empty)
-        tag-ids (-> tag_ids set not-empty)]
+  (let [jobs (t2/select :model/TransformJob {:order-by [[:created_at :desc]]})]
     (into []
           (comp (map add-next-run)
                 (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
                 (transforms.util/->date-field-filter-xf [:next_run :start_time] next_run_start_time)
-                (if statuses
-                  (filter #(statuses (get-in % [:last_run :status])))
-                  identity)
-                (if tag-ids
-                  (filter #(some tag-ids (:tag_ids %)))
-                  identity)
+                (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
+                (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
                 (map #(update % :last_run transforms.util/localize-run-timestamps))
                 (map #(update % :next_run transforms.util/localize-run-timestamps)))
           (t2/hydrate jobs :tag_ids :last_run))))

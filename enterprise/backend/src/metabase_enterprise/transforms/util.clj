@@ -203,3 +203,19 @@
     (if range
       (filter #(matching-timestamp? % field-path range))
       identity)))
+
+(defn ->status-filter-xf
+  "Returns an xform for a transform run status filter."
+  [field-path statuses]
+  (let [statuses (->> statuses (map keyword) set not-empty)]
+    (if statuses
+      (filter #(statuses (get-in % field-path)))
+      identity)))
+
+(defn ->tag-filter-xf
+  "Returns an xform for a transform tag filter."
+  [field-path tag-ids]
+  (let [tag-ids (-> tag_ids set not-empty)]
+    (if tag-ids
+      (filter #(tag-ids (get-in % field-path)))
+      identity)))

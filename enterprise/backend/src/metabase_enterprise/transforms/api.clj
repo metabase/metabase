@@ -82,17 +82,11 @@
     [:last_run_statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
     [:tag_ids   {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (api/check-superuser)
-  (let [transforms (t2/select :model/Transform)
-        statuses (->> last_run_statuses (map keyword) set not-empty)
-        tag-ids (-> tag_ids set not-empty)]
+  (let [transforms (t2/select :model/Transform)]
     (into []
           (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
-                (if statuses
-                  (filter #(statuses (get-in % [:last_run :status])))
-                  identity)
-                (if tag-ids
-                  (filter #(some tag-ids (:tag_ids %)))
-                  identity)
+                (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
+                (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
                 (map #(update % :last_run transforms.util/localize-run-timestamps)))
           (t2/hydrate transforms :last_run :transform_tag_ids))))
 
