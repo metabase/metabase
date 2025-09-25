@@ -497,3 +497,24 @@ Example of adding a new navigation item:
   description: t`Description of the new feature`,
 }
 ```
+
+### Overview page
+
+The overview page does not use a tool layout and should instead welcome the current user using our greeting funciton and have a grid of cards that explains what each major tool is for along with a link to that section.
+
+
+### Jobs and Runs
+
+Jobs and runs should be migrated as is from the admin panel and placed at the bottom of the BenchSidebar.
+
+
+### Returning to the main app
+
+The workbench title in the top left should have a small chevron to the right of it and clicking it should present a dropdown menu of items that animates down from the app section title.
+
+- "Explore" with a rocket icon and right section text of cmd 1
+- "Workbench" with a notebook icon and right section text of cmd 2 - this is where I currently am.
+- "Admin" with a gear icon and right section text of cmd 3
+- <Divider> and then in smaller text below
+- Docs
+- Metabase Account
