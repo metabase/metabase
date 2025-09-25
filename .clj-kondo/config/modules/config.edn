@@ -473,6 +473,7 @@
    :api  #{metabase.embedding.api
            metabase.embedding.init
            metabase.embedding.settings
+           metabase.embedding.util
            metabase.embedding.validation}
    :uses #{analytics
            api
@@ -981,6 +982,7 @@
            metabase.request.init}
    :uses #{api
            config
+           embedding
            permissions                  ; FIXME
            session
            settings
