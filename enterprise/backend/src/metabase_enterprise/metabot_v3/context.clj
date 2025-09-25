@@ -61,7 +61,7 @@
   (when-let [query (case (:type item)
                      "transform" (-> item :source :query)
                      "adhoc" (-> item :query)
-                     nil)]
+                     (-> item :query))]
     (when (and (#{:native "native"} (:type query))
                (:database query))
       query)))
@@ -82,17 +82,48 @@
       (log/error e "Error getting database tables for context")
       [])))
 
+(defn- python-transform-db-and-table-ids
+  "Returns a map with :database-id and :table-ids, or nil if not a Python transform."
+  [item]
+  (when (and (= (:type item) "transform")
+             (= (get-in item [:source :type]) "python"))
+    (when-let [source-database (get-in item [:source :source-database])]
+      (when-let [source-tables (not-empty (get-in item [:source :source-tables]))]
+        {:database-id source-database
+         :table-ids (vals source-tables)}))))
+
+(defn- python-transform-tables-for-context
+  "Get tables for Python transform formatted for metabot context."
+  [{:keys [database-id table-ids]}]
+  (try
+    (when (and database-id (seq table-ids))
+      (when-let [tables (not-empty (table-utils/used-tables-from-ids database-id table-ids))]
+        (table-utils/enhanced-database-tables database-id
+                                              {:priority-tables tables
+                                               :all-tables-limit (count tables)})))
+    (catch Exception e
+      (log/error e "Error getting Python transform tables for context")
+      [])))
+
 (defn- enhance-context-with-schema
-  "Enhance context by adding table schema information for native queries & SQL transforms"
+  "Enhance context by adding table schema information for native queries, SQL transforms, and Python transforms"
   [context]
   (if-let [user-viewing (get context :user_is_viewing)]
     (let [enhanced-viewing
           (mapv (fn [item]
-                  (if-let [query (query-for-sql-parsing item)]
-                    (if-let [tables (seq (database-tables-for-context {:query query}))]
-                      (assoc item :used_tables tables)
-                      item)
-                    item))
+                  (or
+                   ;; Handle native queries and SQL transforms
+                   (when-let [query (query-for-sql-parsing item)]
+                     (when-let [tables (seq (database-tables-for-context {:query query}))]
+                       (assoc item :used_tables tables)))
+
+                   ;; Handle Python transforms
+                   (when-let [db-and-table-ids (python-transform-db-and-table-ids item)]
+                     (when-let [tables (seq (python-transform-tables-for-context db-and-table-ids))]
+                       (assoc item :used_tables tables)))
+
+                   ;; Unknown item: return unchanged
+                   item))
                 user-viewing)]
       (assoc context :user_is_viewing enhanced-viewing))
     context))
