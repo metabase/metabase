@@ -1696,10 +1696,12 @@
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (mt/with-temp [:model/Card _card {:dataset_query (venues-query)
                                           :public_uuid uuid}]
-          (is (png? (client/client :get 200 (format "public/tiles/card/%s/1/1/1?latField=%s&lonField=%s"
-                                                    uuid
-                                                    (codec/url-encode (tiles.api-test/encoded-lat-field-ref))
-                                                    (codec/url-encode (tiles.api-test/encoded-lon-field-ref)))))))))))
+          (let [lat-field (tiles.api-test/encoded-lat-field-ref)
+                lon-field (tiles.api-test/encoded-lon-field-ref)
+                url (str "public/tiles/card/" uuid "/1/1/1"
+                         "?latField=" (codec/url-encode lat-field)
+                         "&lonField=" (codec/url-encode lon-field))]
+            (is (png? (client/client :get 200 url)))))))))
 
 (deftest dashcard-tile-query-test
   (testing "GET api/public/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y with latField and lonField query params"
@@ -1709,12 +1711,12 @@
                        :model/Card          {card-id :id}      {:dataset_query (venues-query)}
                        :model/DashboardCard {dashcard-id :id}  {:card_id card-id
                                                                 :dashboard_id dashboard-id}]
-          (is (png? (client/client :get 200 (format "public/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1?latField=%s&lonField=%s"
-                                                    uuid
-                                                    dashcard-id
-                                                    card-id
-                                                    (codec/url-encode (tiles.api-test/encoded-lat-field-ref))
-                                                    (codec/url-encode (tiles.api-test/encoded-lon-field-ref)))))))))))
+          (let [lat-field (tiles.api-test/encoded-lat-field-ref)
+                lon-field (tiles.api-test/encoded-lon-field-ref)
+                url (str "public/tiles/dashboard/" uuid "/dashcard/" dashcard-id "/card/" card-id "/1/1/1"
+                         "?latField=" (codec/url-encode lat-field)
+                         "&lonField=" (codec/url-encode lon-field))]
+            (is (png? (client/client :get 200 url)))))))))
 
 ;;; --------------------------------- POST /oembed ----------------------------------
 
