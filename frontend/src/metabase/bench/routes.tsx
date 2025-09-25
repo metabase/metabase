@@ -4,11 +4,11 @@ import { BenchApp } from "./BenchApp";
 import { BenchLayout } from "./BenchLayout";
 import { MetricsApp } from "./MetricsApp";
 import { ModelsApp } from "./ModelsApp";
-import { NewMetricPage } from "./components/NewMetricPage/NewMetricPage";
-import RevisionHistoryApp from "./metadata/containers/RevisionHistoryApp";
+import { SegmentsApp } from "./SegmentsApp";
 import { MetricsDetails } from "./components/MetricsDetails/MetricsDetails";
-import SegmentApp from "./metadata/containers/SegmentApp";
-import SegmentListApp from "./metadata/containers/SegmentListApp";
+import { NewMetricPage } from "./components/NewMetricPage/NewMetricPage";
+import { NewSegmentPage } from "./components/NewSegmentPage/NewSegmentPage";
+import { SegmentsDetails } from "./components/SegmentsDetails/SegmentsDetails";
 import { DataModel } from "./metadata/pages/DataModel/DataModel";
 
 export function getBenchRoutes() {
@@ -43,10 +43,11 @@ export function getBenchRoutes() {
           />
         </Route>
       </Route>
-      <Route path="segments" component={SegmentListApp} />
-      <Route path="segment/create" component={SegmentApp} />
-      <Route path="segment/:id" component={SegmentApp} />
-      <Route path="segment/:id/revisions" component={RevisionHistoryApp} />
+      {/* SEGMENTS V2 - Tool layout with nested routes */}
+      <Route path="segments" component={SegmentsApp}>
+        <Route path="new" component={NewSegmentPage} />
+        <Route path=":segmentId" component={SegmentsDetails} />
+      </Route>
 
       {/* METRICS V2 */}
       <Route path="metrics" component={MetricsApp}>

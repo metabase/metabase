@@ -174,7 +174,7 @@ Main editor content areas (notebook editor, SQL editor, etc.) should use a prima
 
 **Implementation guidelines:**
 - Use primary background color for editor content areas
-- Apply border using `--mb-color-border` 
+- Apply border using `--mb-color-border`
 - Use rounded corners (typically `border-radius: 8px`)
 - Ensure sufficient padding around the content
 
@@ -466,16 +466,11 @@ This pattern ensures that:
 - Prefer simple links to routes vs using functions for navigation for user interaction (functions are ok if they happen post interaction)
 - Dark mode should be handled by the UI library not by individual components. Never directly access the theme inside of our components.
 
-### State of prototype and major remaining todos.
-- Transforms is basically working as expected.
-- We have an example of how to do a tool layout in the transforms work, but its not necessarily fully set up to be reused.
-- **Metrics**: ✅ COMPLETED - Tool layout implemented with MetricsApp, MetricsEntitiesList, and MetricsDetails components. Uses proper data access pattern for SearchResponse.data.
-- **Models**: ✅ COMPLETED - Tool layout implemented with ModelsApp, ModelsEntitiesList, and ModelsDetails components. Uses proper data access pattern for SearchResponse.data. Route added at `/bench/models`.
+### Major remaining todos.
+
 - Models and metrics need to load their queries in the notebook editor component. See above section on pattern.
 - Segments needs updated to use the new tool layout and detail views.
-- Metadata is working and does not need modified at this time.
-- We need to move Metabot to its own panel.
-- Create a small toolbar at the very top of the layout next to the major mode navigation. This navbar should have left and right back buttons with chevron icons, a search input box, and an ActionIcon on the far right that toggles the Metabot side panel open / closed.
+- Add a specific item toolbar in the detail view for the tools views inside of the main content card that has the name of the entity and any actions. Do not over abstract this and create a toolbar per item type.
 
 ### Sidebar Navigation Management
 When adding new routes to the bench application, remember to update the sidebar navigation in `frontend/src/metabase/bench/components/BenchSidebar/BenchSidebar.tsx`:
