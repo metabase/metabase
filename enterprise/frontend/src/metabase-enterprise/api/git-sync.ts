@@ -26,6 +26,7 @@ export type DirtyEntity = {
 
 export type CollectionDirtyResponse = {
   dirty: DirtyEntity[];
+  changedCollections: Record<number, boolean>;
 };
 
 export type CollectionIsDirtyResponse = {
@@ -100,29 +101,31 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
         tag("collection-is-dirty"),
       ],
     }),
-    getChangedEntities: builder.query<
-      CollectionDirtyResponse,
-      void
-    >({
+    getChangedEntities: builder.query<CollectionDirtyResponse, void>({
       query: () => ({
         url: `/api/ee/remote-sync/dirty`,
         method: "GET",
       }),
-      providesTags: () => [
-        tag("collection-dirty-entities"),
-      ],
+      providesTags: () => [tag("collection-dirty-entities")],
+      transformResponse: (response: CollectionDirtyResponse) => {
+        const collectionMap: Record<number, boolean> = {};
+        response.dirty.forEach((entity) => {
+          if (entity.collection_id) {
+            collectionMap[entity.collection_id] = true;
+          }
+        });
+        return {
+          dirty: response.dirty,
+          changedCollections: collectionMap,
+        };
+      },
     }),
-    hasChangedEntities: builder.query<
-      CollectionIsDirtyResponse,
-      void
-    >({
+    hasChangedEntities: builder.query<CollectionIsDirtyResponse, void>({
       query: () => ({
         url: `/api/ee/remote-sync/is-dirty`,
         method: "GET",
       }),
-      providesTags: () => [
-        tag("collection-is-dirty"),
-      ],
+      providesTags: () => [tag("collection-is-dirty")],
     }),
     updateGitSyncSettings: builder.mutation<void, GitSyncSettings>({
       query: (settings) => ({

@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
+import _ from "underscore";
 
 import { useAdminSetting } from "metabase/api/utils";
 import { getIcon } from "metabase/lib/icon";
@@ -130,27 +131,11 @@ const SyncStatusGroup = ({ syncStatus, entities }: SyncStatusGroupProps) => (
 );
 
 const ChangesLists = ({ collections }: { collections: Collection[] }) => {
-  return (
-    <Box>
-      {collections.map((collection, idx) => (
-        <Fragment key={collection.id}>
-          {idx > 0 && <Divider my="lg" />}
-          <ChangesList collection={collection} />
-        </Fragment>
-      ))}
-    </Box>
-  );
-};
-
-const ChangesList = ({ collection }: { collection: Collection }) => {
   const { data: dirtyData, isLoading: isLoadingChanges } =
-    useGetChangedEntitiesQuery(
-      undefined,
-      {
-        refetchOnMountOrArgChange: true,
-        refetchOnFocus: true,
-      },
-    );
+    useGetChangedEntitiesQuery(undefined, {
+      refetchOnMountOrArgChange: true,
+      refetchOnFocus: true,
+    });
 
   if (isLoadingChanges) {
     return (
@@ -160,7 +145,33 @@ const ChangesList = ({ collection }: { collection: Collection }) => {
     );
   }
 
-  const entities = dirtyData?.dirty || [];
+  const changedEntities = _.groupBy(
+    dirtyData?.dirty || [],
+    (entity) => entity.collection_id || 0,
+  );
+
+  return (
+    <Box>
+      {collections.map((collection, idx) => (
+        <Fragment key={collection.id}>
+          {idx > 0 && <Divider my="lg" />}
+          <ChangesList
+            collection={collection}
+            entities={changedEntities[collection.id]}
+          />
+        </Fragment>
+      ))}
+    </Box>
+  );
+};
+
+const ChangesList = ({
+  collection,
+  entities,
+}: {
+  collection: Collection;
+  entities: DirtyEntity[];
+}) => {
   const groupedEntities = groupEntitiesBySyncStatus(entities);
 
   const getStatusPriority = (status: string): number => {

@@ -13,7 +13,16 @@ import {
 } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import type { CollectionTreeItem } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
-import { Autocomplete, Box, Button, Flex, Icon, Loader, Text, Tooltip } from "metabase/ui";
+import {
+  Autocomplete,
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Loader,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import {
   EnterpriseApi,
   tag,
@@ -40,7 +49,8 @@ export const SyncedCollectionsSidebarSection = ({
   const { data } = useGetBranchesQuery();
   const { updateSetting, value: currentBranch } =
     useAdminSetting("remote-sync-branch");
-  const [importFromBranch, { isLoading: isImporting }] = useImportFromBranchMutation();
+  const [importFromBranch, { isLoading: isImporting }] =
+    useImportFromBranchMutation();
   const [showConfirm, { open: openConfirm, close: closeConfirm }] =
     useDisclosure(false);
   const [showPush, { open: openPush, close: closePush }] = useDisclosure(false);
@@ -50,9 +60,7 @@ export const SyncedCollectionsSidebarSection = ({
 
   const isDirty = true; // TODO: check if any synced collection is dirty
 
-  const { status, progress } = useSyncStatus();
-
-  console.log({ status })
+  const { status } = useSyncStatus();
 
   const isLoading = isImporting || status !== "idle";
 
@@ -66,7 +74,11 @@ export const SyncedCollectionsSidebarSection = ({
   };
 
   const handleBranchChange = async (branch: string) => {
-    await updateSetting({ key: "remote-sync-branch", value: branch, toast: false });
+    await updateSetting({
+      key: "remote-sync-branch",
+      value: branch,
+      toast: false,
+    });
     closeConfirm();
     await importFromBranch({ branch });
     setNextBranch(branch);
@@ -81,28 +93,34 @@ export const SyncedCollectionsSidebarSection = ({
           <Flex justify="space-between">
             <Box>
               <SidebarHeading>{t`Synced Collections`}</SidebarHeading>
-              {isLoading ? <Box pl="xl" py="sm"><Loader size="xs"  /></Box> : <Autocomplete
-                leftSection={<Icon name="schema" c="brand" size="sm" />}
-                rightSection={<Icon name="chevrondown" size={12} />}
-                data={branches}
-                styles={{ input: {
-                  border: "none", color: "var(--mb-color-brand)", fontWeight: "bold",
-                  cursor: "pointer"
-                } }}
-                value={nextBranch ?? "main"}
-                variant="unstyled"
-                onChange={setNextBranch}
-                placeholder={t`Select branch`}
-                disabled={isLoading}
-                onBlur={(e) => handleBranchSelect(e.target.value)}
-                limit={5}
-              />}
+              {isLoading ? (
+                <Box pl="xl" py="sm">
+                  <Loader size="xs" />
+                </Box>
+              ) : (
+                <Autocomplete
+                  leftSection={<Icon name="schema" c="brand" size="sm" />}
+                  rightSection={<Icon name="chevrondown" size={12} />}
+                  data={branches}
+                  styles={{
+                    input: {
+                      border: "none",
+                      color: "var(--mb-color-brand)",
+                      fontWeight: "bold",
+                      cursor: "pointer",
+                    },
+                  }}
+                  value={nextBranch ?? "main"}
+                  variant="unstyled"
+                  onChange={setNextBranch}
+                  placeholder={t`Select branch`}
+                  disabled={isLoading}
+                  onBlur={(e) => handleBranchSelect(e.target.value)}
+                  limit={5}
+                />
+              )}
             </Box>
-            <Button
-              variant="subtle"
-              onClick={openPush}
-              disabled={isLoading}
-            >
+            <Button variant="subtle" onClick={openPush} disabled={isLoading}>
               <Icon name="upload" c="brand" size={20} />
             </Button>
           </Flex>
@@ -155,7 +173,8 @@ export const SyncedCollectionsSidebarSection = ({
 const CollectionStatusBadge = ({ collection }: { collection: Collection }) => {
   const { data } = useGetChangedEntitiesQuery();
 
-  const isDirty = false;
+  const isDirty =
+    data?.changedCollections && collection?.id in data.changedCollections;
 
   // toDo: scan through changes and put badges next to changed collections
 
@@ -164,8 +183,8 @@ const CollectionStatusBadge = ({ collection }: { collection: Collection }) => {
   }
 
   return (
-    <Tooltip label={isDirty ? t`Unsynced changes` : t`All changes pushed`}>
-      <Box bdrs="50%" bg={isDirty ? "warning" : "success"} h={12} w={12} />
+    <Tooltip label={t`Unsynced changes`}>
+      <Box bdrs="50%" bg="warning" h={12} w={12} />
     </Tooltip>
   );
 };
@@ -174,24 +193,27 @@ const useSyncStatus = () => {
   const syncResponse = useGetCurrentSyncTaskQuery();
   const dispatch = useDispatch();
 
-
   useEffect(() => {
     const isDone = syncResponse.data && syncResponse.data.ended_at !== null;
     if (!isDone) {
       const timeout = setTimeout(() => {
-        dispatch(EnterpriseApi.util.invalidateTags([
-          tag("remote-sync-current-task"),
-        ]));
+        dispatch(
+          EnterpriseApi.util.invalidateTags([tag("remote-sync-current-task")]),
+        );
       }, SYNC_STATUS_DELAY);
       return () => clearTimeout(timeout);
+    } else {
+      dispatch(EnterpriseApi.util.invalidateTags([tag("collection-tree")]));
     }
   }, [syncResponse, dispatch]); // need whole object to retrigger on change
 
-  const isDone = !syncResponse.data || (syncResponse.data && syncResponse.data.ended_at !== null);
+  const isDone =
+    !syncResponse.data ||
+    (syncResponse.data && syncResponse.data.ended_at !== null);
 
   return {
-    status: isDone ? 'idle' : syncResponse.data?.sync_task_type,
+    status: isDone ? "idle" : syncResponse.data?.sync_task_type,
     progress: syncResponse.data?.progress ?? 0,
     message: syncResponse.data?.error_message ?? "",
-  }
-}
+  };
+};
