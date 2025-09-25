@@ -1,12 +1,12 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { t } from "ttag";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
-import { useGetTableQueryMetadataQuery } from "metabase/api/table";
 import { getErrorMessage } from "metabase/api/utils";
 import EmptyState from "metabase/common/components/EmptyState";
-import { DetailsGroup } from "metabase/detail-view/components";
-import { Repeat, Skeleton, Stack } from "metabase/ui";
+import { DetailsGroup, Header } from "metabase/detail-view/components";
+import { getEntityIcon, getHeaderColumns } from "metabase/detail-view/utils";
+import { Box, Repeat, Skeleton, Stack, rem } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/visualizations";
 import type {
   DatabaseId,
@@ -16,9 +16,11 @@ import type {
   FieldFilter,
   FieldId,
   FieldReference,
+  RawSeries,
   RowValues,
   TableId,
 } from "metabase-types/api";
+import { createMockCard } from "metabase-types/api/mocks";
 
 import { Error } from "./Error";
 import { getDataErrorMessage, is403Error } from "./utils";
@@ -36,15 +38,22 @@ const ObjectDetailPreviewBase = ({
   fieldId,
   tableId,
 }: Props) => {
-  const { error, isFetching, columns, row } = useDataSample({
+  const { error, isFetching, rawSeries } = useDataSample({
     databaseId,
     field,
     fieldId,
     tableId,
   });
 
-  const { data: table } = useGetTableQueryMetadataQuery({ id: tableId });
-  const hasData = columns != null && row != null;
+  const data = rawSeries?.[0]?.data;
+  const columns: DatasetColumn[] = useMemo(
+    () => data?.cols ?? [],
+    [data?.cols],
+  );
+  const row: RowValues | undefined = data?.rows[0];
+
+  const headerColumns = useMemo(() => getHeaderColumns(columns), [columns]);
+  const icon = getEntityIcon(field.table?.entity_type);
 
   if (isFetching) {
     return (
@@ -60,7 +69,7 @@ const ObjectDetailPreviewBase = ({
     return <Error message={error} />;
   }
 
-  if (!hasData) {
+  if (!data || !row || columns.length === 0) {
     return (
       <Stack h="100%" justify="center" p="md">
         <EmptyState title={t`No data to show`} />
@@ -69,8 +78,20 @@ const ObjectDetailPreviewBase = ({
   }
 
   return (
-    <Stack p="lg">
-      <DetailsGroup columns={columns} row={row} table={table} responsive />
+    <Stack gap={0} p="lg">
+      {headerColumns.length > 0 && (
+        <Box pb="md" pt="xs">
+          <Box ml={rem(-8)}>
+            <Header columns={columns} icon={icon} row={row} />
+          </Box>
+        </Box>
+      )}
+
+      {columns.length - headerColumns.length > 0 && (
+        <Box pt="xl">
+          <DetailsGroup columns={columns} row={row} table={field.table} />
+        </Box>
+      )}
     </Stack>
   );
 };
@@ -98,8 +119,7 @@ function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
   const base = {
     ...rest,
     error: rest.error ? getErrorMessage(rest.error) : undefined,
-    columns: undefined as DatasetColumn[] | undefined,
-    row: undefined as RowValues | undefined,
+    rawSeries: undefined,
   };
 
   if (rest?.status === "rejected" && is403Error(rest.error)) {
@@ -115,8 +135,7 @@ function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
       ...rest,
       error: getDataErrorMessage(data),
       isError: true,
-      columns: undefined,
-      row: undefined,
+      rawSeries: undefined,
     };
   }
 
@@ -124,15 +143,21 @@ function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
     return base;
   }
 
-  const remapped = extractRemappedColumns(data.data);
-  const columns: DatasetColumn[] = remapped.cols;
-  const row: RowValues | undefined = remapped.rows?.[0];
+  const rawSeries: RawSeries = [
+    {
+      card: createMockCard({
+        dataset_query: datasetQuery,
+        display: "object",
+        visualization_settings: {},
+      }),
+      data: extractRemappedColumns(data.data),
+    },
+  ];
 
   return {
     ...rest,
     error: undefined,
-    columns,
-    row,
+    rawSeries,
   };
 }
 
