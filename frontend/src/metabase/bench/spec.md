@@ -9,7 +9,7 @@ If data needs assembled from different databases or sources, relabled, organized
 ## Accessing the separate mode
 For right now, we access the workbench mode via the ProfileLink component and a link to /bench. This is a set of sub routes
 
-Sub routes without the rest of the app layout are achieved this way. All routes should be added to /bench/routes.tsx 
+Sub routes without the rest of the app layout are achieved this way. All routes should be added to /bench/routes.tsx
 
 ## Route Structure and Nested Composition
 
@@ -28,7 +28,7 @@ export function getBenchRoutes() {
   return (
     <Route path="/bench" component={BenchLayout}>
       <IndexRoute component={BenchApp} />
-      
+
       {/* METRICS - Tool layout with nested routes */}
       <Route path="metrics" component={MetricsApp}>
         <Route path="new" component={NewMetricPage} />
@@ -45,7 +45,7 @@ export function getBenchRoutes() {
 
 When creating tool layouts that show both a list and individual item details:
 
-1. **Parent Component (e.g., MetricsApp)**: 
+1. **Parent Component (e.g., MetricsApp)**:
    - Renders the tool layout with left panel (entities list) and main panel
    - Accepts `children` prop and renders it in the main panel
    - Does NOT handle URL params directly - lets React Router handle composition
@@ -68,7 +68,7 @@ export function MetricsApp({ children }: MetricsAppProps) {
       <Panel>
         <MetricsEntitiesList />
       </Panel>
-      
+
       {/* Main Panel - Shows child route content */}
       <Panel>
         {children}
@@ -88,14 +88,14 @@ interface MetricsDetailsProps {
 
 export function MetricsDetails({ params }: MetricsDetailsProps) {
   const metricId = parseInt(params.metricId, 10);
-  
+
   // Always load from API using route params
   const { data: metricData, isLoading } = useGetCardQuery({ id: metricId });
-  
+
   if (isLoading) {
     return <div>Loading...</div>;
   }
-  
+
   return (
     <div>
       <h1>{metricData?.name}</h1>
@@ -385,13 +385,13 @@ export function NewEntityPage() {
     if (metadata && metadata.databasesList().length > 0) {
       // Get the first available database
       const firstDatabase = metadata.databasesList()[0];
-      
+
       // Create Question with proper database ID
-      const newQuestion = Question.create({ 
+      const newQuestion = Question.create({
         databaseId: firstDatabase.id,
-        metadata 
+        metadata
       });
-      
+
       setQuestion(newQuestion);
     }
   }, [metadata]);
@@ -443,6 +443,7 @@ This pattern ensures that:
 - Do not use "dimmed" with text color.
 - We are on a legacy version of react-router (v3)
 - Prefer simple links to routes vs using functions for navigation for user interaction (functions are ok if they happen post interaction)
+- Dark mode should be handled by the UI library not by individual components. Never directly access the theme inside of our components.
 
 ### State of prototype and major remaining todos.
 - Transforms is basically working as expected.
