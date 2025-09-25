@@ -1,0 +1,25 @@
+---
+name: python-runner
+services:
+  localstack:
+    image: localstack/localstack:3.5.0
+    ports:
+      - "127.0.0.1:4566:4566" # LocalStack Gateway
+    environment:
+      - DEBUG=0
+    volumes:
+      - "/tmp/python-exec-localstack:/var/lib/localstack"
+  python-runner:
+    image: metabase/python-runner:beta
+    depends_on:
+      - localstack
+    ports:
+      - "127.0.0.1:5001:5000"
+    volumes:
+      - "/tmp/python-exec-work:/tmp/python-exec-work"
+    environment:
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - AUTH_TOKEN=dev-token-12345
