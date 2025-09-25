@@ -350,7 +350,7 @@
 (comment
   (pst)
   (v0-question/yaml->toucan (load-representation-yaml "/tmp/pre-loaded/c-2-card196324.card.yml"))
-  (ingest-representation (clj-yaml.core/parse-string (slurp "/tmp/pre-loaded/c-2-card196324.card.yml")))
+  (ingest-representation (clj-yaml/parse-string (slurp "/tmp/pre-loaded/c-2-card196324.card.yml")))
   (file-seq (io/file "/tmp/pre-loaded"))
   (fetch :collection -1)
   (populate-folder "/tmp/pre-loaded")
