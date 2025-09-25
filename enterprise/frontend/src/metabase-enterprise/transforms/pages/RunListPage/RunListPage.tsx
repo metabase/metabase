@@ -75,7 +75,7 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
     data: transforms = [],
     isLoading: isLoadingTransforms,
     error: transformsError,
-  } = useListTransformsQuery();
+  } = useListTransformsQuery({});
   const {
     data: tags = [],
     isLoading: isLoadingTags,

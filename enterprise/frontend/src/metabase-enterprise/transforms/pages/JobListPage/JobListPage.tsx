@@ -41,7 +41,6 @@ export function JobListPage({ location }: JobListPageProps) {
           {t`Create a job`}
         </Button>
       </Group>
-
       <JobFilterList params={params} tags={tags} />
       <JobList params={params} />
     </Stack>
