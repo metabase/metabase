@@ -20,7 +20,7 @@ export const PreviewQueryModal = ({
 
   return (
     <Modal opened onClose={onClose} title={t`Query preview`}>
-      <NativeQueryPreview question={question} parameters={parameters} />
+      <NativeQueryPreview query={question.query()} parameters={parameters} />
     </Modal>
   );
 };

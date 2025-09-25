@@ -21,33 +21,30 @@ import {
   Tooltip,
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import type { NativeDatasetResponse } from "metabase-types/api";
 
 import S from "./NativeQueryPreview.module.css";
 
 export function NativeQueryPreview({
-  question,
+  query,
   parameters = [],
 }: {
-  question: Question;
+  query: Lib.Query;
   parameters?: UiParameter[];
 }) {
-  const sourceQuery = question.query();
   const { data, error, isFetching } = useGetNativeDatasetQuery({
-    ...Lib.toLegacyQuery(sourceQuery),
+    ...Lib.toLegacyQuery(query),
     parameters,
   });
+
+  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const learnUrl = getLearnUrl(
     "grow-your-data-skills/learn-sql/debugging-sql/sql-syntax",
   );
-  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
-  const engine = question.database()?.engine;
-  const formattedQuery =
-    data != null && engine != null
-      ? formatNativeQuery(data.query, engine)
-      : undefined;
+  const engine = Lib.engine(query);
+  const formattedQuery = getFormattedQuery(data, engine);
   const formattedError = error ? getErrorMessage(error) : undefined;
 
   return (
@@ -84,13 +81,26 @@ export function NativeQueryPreview({
   );
 }
 
+function getFormattedQuery(
+  data: NativeDatasetResponse | undefined,
+  engine: string | null,
+) {
+  if (data == null) {
+    return null;
+  }
+  if (engine === null) {
+    return data.query;
+  }
+  return formatNativeQuery(data.query, engine);
+}
+
 function NativeCodePanel({
   value,
   engine,
   enableCopy,
 }: {
   value: string;
-  engine?: string;
+  engine?: string | null;
   enableCopy?: boolean;
 }) {
   const { copy, isCopied } = useCopyButton(value);

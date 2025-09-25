@@ -219,7 +219,7 @@ export function QueryEditor({
           opened={isPreviewQueryModalOpen}
           onClose={togglePreviewQueryModal}
         >
-          <NativeQueryPreview question={question} />
+          <NativeQueryPreview query={question.query()} />
         </Modal>
       )}
     </>
