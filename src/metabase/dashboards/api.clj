@@ -22,7 +22,7 @@
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.util.match :as lib.util.match]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.dashboard :as parameters.dashboard]
@@ -30,7 +30,6 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.validation :as public-sharing.validation]
-   ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
@@ -629,9 +628,9 @@
     (events/publish-event! :event/dashboard-delete {:object dashboard :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
-(defn- param-target->field-id [target query]
-  (when-let [field-clause (params/param-target->field-clause target {:dataset_query query})]
-    (lib.util.match/match-one field-clause [:field (id :guard integer?) _] id)))
+(mu/defn- param-target->field-id :- [:maybe ::lib.schema.id/field]
+  [target query]
+  (params/param-target->field-clause-id target {:dataset_query query}))
 
 ;; TODO -- should we only check *new* or *modified* mappings?
 (mu/defn- check-parameter-mapping-permissions

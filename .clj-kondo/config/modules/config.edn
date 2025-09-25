@@ -882,6 +882,7 @@
            config
            driver
            events
+           lib
            models
            notification
            permissions

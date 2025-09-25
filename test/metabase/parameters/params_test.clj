@@ -194,7 +194,7 @@
     (testing "card->template-tag-param-id->field-ids"
       (is (= {"11111111" #{(mt/id :venues :id)}
               "aaaaaaaa" #{}}
-             (#'params/card->template-tag-param-id->field-ids card))))
+             (#'params/card->template-tag-id->field-ids card))))
 
     (testing "card->template-tag-field-ids"
       (is (= #{(mt/id :venues :id)}
@@ -250,7 +250,7 @@
         (testing "card->template-tag-param-id->field-ids"
           (is (= {"11111111" #{(mt/id :orders :id)}
                   "aaaaaaaa" #{(mt/id :products :id)}}
-                 (#'params/card->template-tag-param-id->field-ids card))))
+                 (#'params/card->template-tag-id->field-ids card))))
         (testing "card->template-tag-field-ids"
           (is (= #{(mt/id :orders :id)
                    (mt/id :products :id)}

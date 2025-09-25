@@ -544,7 +544,7 @@
 
 (defn- post-process-card-row [row]
   (-> (t2/instance :model/Card row)
-      (update :dataset_query (:out mi/transform-metabase-query))
+      (update :dataset_query (:out mi/transform-mbql-query))
       (update :collection_preview api/bit->boolean)
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)))

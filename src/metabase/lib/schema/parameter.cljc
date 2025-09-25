@@ -286,7 +286,9 @@
         param))))
 
 (mr/def ::id
-  [:ref ::lib.schema.common/non-blank-string])
+  [:schema
+   {:api/regex lib.schema.common/url-encoded-string-regex}
+   [:ref ::lib.schema.common/non-blank-string]])
 
 (mr/def ::parameter
   "Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as
@@ -310,6 +312,7 @@
     [:slug     {:optional true} ::lib.schema.common/non-blank-string]
     [:default  {:optional true} :any]
     [:required {:optional true} :any]]
+   ::lib.schema.common/kebab-cased-map
    (lib.schema.common/disallowed-keys
     {:dimension ":dimension is not allowed in a parameter, you probably meant to use :target [:dimension ...] instead."})])
 

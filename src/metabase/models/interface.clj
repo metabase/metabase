@@ -196,11 +196,13 @@
 (defn- serialize-mbql5-query
   "Saving MBQL 5 queries​ we can assume MBQL 5 queries are normalized enough already, but remove the metadata provider
   before saving it, because it's not something that lends itself well to serialization."
+  {:deprecated "0.57.0"}
   [query]
   (dissoc query :lib/metadata))
 
 (defn- deserialize-mbql5-query
   "Reading MBQL 5 queries​: normalize them, then attach a MetadataProvider based on their Database."
+  {:deprecated "0.57.0"}
   [query]
   (let [metadata-provider (if (lib.metadata.protocols/metadata-provider? (:lib/metadata query))
                             ;; in case someone passes in an already-normalized query to [[maybe-normalize-query]] below,
@@ -212,11 +214,13 @@
 
 (mu/defn maybe-normalize-query
   "For top-level query maps like `Card.dataset_query`. Normalizes them on the way in & out."
+  {:deprecated "0.57.0"}
   [in-or-out :- [:enum :in :out]
    query]
   (letfn [(normalize [query]
             (let [f (if (= (lib/normalized-query-type query) :mbql/query)
                       ;; MBQL 5 queries
+                      #_{:clj-kondo/ignore [:deprecated-var]}
                       (case in-or-out
                         :in  serialize-mbql5-query
                         :out deserialize-mbql5-query)
@@ -235,46 +239,64 @@
   invalid queries (etc.) come out of the Database, it's best we handle normalization failures gracefully rather than
   letting the Exception cause the entire API call to fail because of one bad object. (See #8914 for more details.)"
   [f]
-  (fn [query]
+  (fn [x]
     (try
-      (doall (f query))
+      (doall (f x))
       (catch Throwable e
-        (log/errorf e "Unable to normalize:\n%s" (u/pprint-to-str 'red query))
+        (log/errorf e "Unable to normalize:\n%s" (u/pprint-to-str 'red x))
         nil))))
 
 (defn normalize-parameters-list
-  "Normalize `parameters` or `parameter-mappings` when coming out of the application database or in via an API request."
+  "Normalize `parameters` or `parameter-mappings` when coming out of the application database or in via an API request.
+
+  DEPRECATED: this normalized to legacy MBQL parameters, and will be removed soon."
+  {:deprecated "0.57.0"}
   [parameters]
+  ;; TODO (Cam 9/24/25) -- change this to do
+  ;;
+  ;;    (lib/normalize ::lib.schema.parameter/parameters x)
+  ;;
+  ;; This should probably also get moved into the `parameters` module, and we need to differentiate parameters and
+  ;; parameter mappings properly. See
+  ;; https://github.com/metabase/metabase/blob/2068111d887d54828cf5f18407535621f3ed074b/src/metabase/parameters/models/transforms.clj
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (or (mbql.normalize/normalize-fragment [:parameters] parameters)
       []))
 
 (defn- keywordize-temporal_units
+  {:deprecated "0.57.0"}
   [parameter]
   (m/update-existing parameter :temporal_units (fn [units] (mapv keyword units))))
 
-(defn normalize-card-parameters-list
+(defn  normalize-card-parameters-list
   "Normalize `parameters` of actions, cards, and dashboards when coming out of the application database."
+  {:deprecated "0.57.0"}
   [parameters]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (->> parameters
        normalize-parameters-list
        (mapv keywordize-temporal_units)))
 
-(def transform-metabase-query
-  "Transform for metabase-query."
+(def ^{:deprecated "0.57.0"} transform-mbql-query
+  "Transform for metabase-query.
+
+  DEPRECATED: Use [[metabase.lib-be.core/transform-query]] going forward."
   {:in  (comp json-in (partial maybe-normalize-query :in))
    :out (comp (catch-normalization-exceptions (partial maybe-normalize-query :out)) json-out-without-keywordization)})
 
-(def transform-parameters-list
+#_{:clj-kondo/ignore [:deprecated-var]}
+(def ^{:deprecated "0.57.0"} transform-parameters-list
   "Transform for parameters list."
   {:in  (comp json-in normalize-parameters-list)
    :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization)})
 
-(def transform-card-parameters-list
+#_{:clj-kondo/ignore [:deprecated-var]}
+(def ^{:deprecated "0.57.0"} transform-card-parameters-list
   "Transform for parameters list."
   {:in  (comp json-in normalize-card-parameters-list)
    :out (comp (catch-normalization-exceptions normalize-card-parameters-list) json-out-with-keywordization)})
 
-(def transform-field-ref
+(def ^{:deprecated "0.57.0"} transform-field-ref
   "Transform field refs"
   {:in  json-in
    :out (comp (catch-normalization-exceptions mbql.normalize/normalize-field-ref) json-out-with-keywordization)})

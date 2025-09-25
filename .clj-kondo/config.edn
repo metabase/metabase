@@ -570,8 +570,8 @@
    metabase.pulse.models.pulse-test/with-pulse-in-collection!                                                                hooks.common/with-four-bindings
    metabase.pulse.test-util/checkins-query-card                                                                              hooks.metabase.test.data/$ids
    metabase.queries.api.card-test/with-card-param-values-fixtures                                                            hooks.common/let-one-with-optional-value
-   metabase.queries.api.card-test/with-temp-native-card!                                                                     hooks.common/with-two-bindings
-   metabase.queries.api.card-test/with-temp-native-card-with-params!                                                         hooks.common/with-two-bindings
+   metabase.queries.api.card-test/with-temp-native-card                                                                      hooks.common/with-two-bindings
+   metabase.queries.api.card-test/with-temp-native-card-with-params                                                          hooks.common/with-two-bindings
    metabase.query-processor-test.expressions-test/calculate-bird-scarcity                                                    hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
    metabase.query-processor-test.filter-test/count-with-filter-clause                                                        hooks.metabase.test.data/$ids
    metabase.query-processor.middleware.cache-test/with-mock-cache!                                                           hooks.common/with-two-bindings

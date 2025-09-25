@@ -1,5 +1,5 @@
 (ns metabase.lib.schema.common
-  (:refer-clojure :exclude [update-keys #?@(:clj [some])])
+  (:refer-clojure :exclude [update-keys every? #?@(:clj [some])])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -8,7 +8,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.memoize :as u.memo]
-   [metabase.util.performance :refer [update-keys #?@(:clj [some])]]))
+   [metabase.util.performance :refer [update-keys every? #?@(:clj [some])]]))
 
 (comment metabase.types.core/keep-me)
 
@@ -268,3 +268,29 @@
    (def ^{:arglists '([& classes])} instance-of-class
      "Convenience for defining a Malli schema for an instance of a particular Class."
      (memoize instance-of-class*)))
+
+(defn- kebab-cased-key? [k]
+  (and (keyword? k)
+       (not (str/includes? (str k) "_"))))
+
+(defn- kebab-cased-map? [m]
+  (and (map? m)
+       (every? kebab-cased-key? (keys m))))
+
+(mr/def ::kebab-cased-map
+  [:fn
+   {:error/message "map with all kebab-cased keys"
+    :error/fn      (fn [{:keys [value]} _]
+                     (if-not (map? value)
+                       "map with all kebab-cased keys"
+                       (str "map with all kebab-cased keys, got: " (pr-str (remove kebab-cased-key? (keys value))))))}
+   kebab-cased-map?])
+
+(def url-encoded-string-regex
+  "Schema for a URL-encoded string
+
+  This matches strings containing:
+
+  - Unreserved characters: letters, digits, hyphens, periods, underscores, tildes
+  - Percent-encoded characters: `%` followed by exactly 2 hex digits"
+  #"(?:[A-Za-z0-9\-._~]|%[0-9A-Fa-f]{2})+")

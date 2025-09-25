@@ -1177,7 +1177,10 @@
   where this fragment would normally live in a full query.
 
     (normalize-fragment [:query :filter] [\"=\" 100 200])
-    ;;-> [:= [:field-id 100] 200]"
+    ;;-> [:= [:field-id 100] 200]
+
+  DEPRECATED -- this is notoriously unreliable, convert to MBQL 5 and use [[metabase.lib.normalize]] instead."
+  {:deprecated "0.57.0"}
   [path :- [:maybe [:sequential :keyword]]
    x]
   (if-not (seq path)

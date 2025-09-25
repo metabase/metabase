@@ -12,14 +12,14 @@
    [toucan2.core :as t2])
   (:import (com.fasterxml.jackson.core JsonParseException)))
 
-;; let's make sure the `transform-metabase-query`/`transform-metric-segment-definition`/`transform-parameters-list`
+;; let's make sure the `transform-mbql-query`/`transform-metric-segment-definition`/`transform-parameters-list`
 ;; normalization functions respond gracefully to invalid stuff when pulling them out of the Database. See #8914
 
 (deftest ^:parallel handle-bad-template-tags-test
   (testing (str "an malformed template tags map like the one below is invalid. Rather than potentially destroy an entire API "
                 "response because of one malformed Card, dump the error to the logs and return nil.")
     (is (= nil
-           ((:out mi/transform-metabase-query)
+           ((:out mi/transform-mbql-query)
             (json/encode
              {:database 1
               :type     :native
@@ -30,14 +30,14 @@
     ;; TODO -- we should make sure this returns a good error message so we don't have to dig thru the exception chain.
     (is (thrown?
          Exception
-         ((:in mi/transform-metabase-query)
+         ((:in mi/transform-mbql-query)
           {:database 1
            :type     :native
            :native   {:template-tags {100 [:field-id "WOW"]}}})))))
 
 (deftest ^:parallel normalize-empty-query-test
   (is (= {}
-         ((:out mi/transform-metabase-query) "{}"))))
+         ((:out mi/transform-mbql-query) "{}"))))
 
 (deftest handle-errors-gracefully-test
   (testing (str "Cheat and override the `normalization-tokens` function to always throw an Exception so we can make "
@@ -68,13 +68,16 @@
                  :updated_at (partial not= updated-at)}
                 (t2/select-one [:model/Table :id :name :updated_at] (u/the-id table))))))))
 
-(deftest timestamped-property-do-not-stomp-on-explicit-values-test
+(deftest ^:parallel timestamped-property-do-not-stomp-on-explicit-values-test
   (testing "The :timestamped property should not stomp on :created_at/:updated_at if they are explicitly specified"
     (mt/with-temp [:model/Field field]
       (testing "Nothing specified: use now() for both"
         (is (=? {:created_at java.time.temporal.Temporal
                  :updated_at java.time.temporal.Temporal}
-                field))))
+                field))))))
+
+(deftest ^:parallel timestamped-property-do-not-stomp-on-explicit-values-test-2
+  (testing "The :timestamped property should not stomp on :created_at/:updated_at if they are explicitly specified"
     (let [t                  #t "2022-10-13T19:21:00Z"
           expected-timestamp (t/offset-date-time "2022-10-13T19:21:00Z")]
       (testing "Explicitly specify :created_at"
@@ -91,12 +94,14 @@
 (defmethod mi/non-timestamped-fields :test-model/updated-at-tester [_]
   #{:non_timestamped :other})
 
-(deftest timestamped-property-skips-non-timestamped-fields-test
+(deftest ^:parallel timestamped-property-skips-non-timestamped-fields-test
   (testing "Does not add a timestamp if it only includes non-timestamped fields"
     (let [instance (-> (t2/instance :test-model/updated-at-tester {:non_timestamped nil})
                        (assoc :non_timestamped 1))]
       (is (= {:non_timestamped 1}
-             (#'mi/add-updated-at-timestamp instance)))))
+             (#'mi/add-updated-at-timestamp instance))))))
+
+(deftest ^:parallel timestamped-property-skips-non-timestamped-fields-test-2
   (testing "Adds a timestamp if it includes other fields"
     (let [instance (-> (t2/instance :test-model/updated-at-tester {:non_timestamped nil :included nil})
                        (assoc :non_timestamped 1)
@@ -219,9 +224,7 @@
                                                             {"toucan2.jdbc.query/sql-args" (str (apply str (repeat 247 "b")) "...")}]]}})
          (#'mi/json-in-with-eliding {"ex-data" {"toucan2/context-trace" [["execute SQL with class com.mchange.v2.c3p0.impl.NewProxyConnection"
                                                                           {"toucan2.jdbc.query/sql-args" (apply str (repeat 500 "b"))}]]}})))
-
   (is (= (json/encode {:a (repeat 50 "x")}) (#'mi/json-in-with-eliding {:a (repeat 500 "x")})))
-
   (testing "A passed string is not elided"
     (is (= (apply str (repeat 1000 "a")) (#'mi/json-in-with-eliding (apply str (repeat 1000 "a")))))))
 
