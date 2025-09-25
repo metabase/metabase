@@ -71,32 +71,32 @@ export function RunFilterList({
         transforms={transforms}
         onChange={handleTransformsChange}
       />
+      <TimeFilterWidget
+        label={t`Started at`}
+        value={params.startTime}
+        availableDirections={PAST_INTERVAL_DIRECTIONS}
+        onChange={handleStartTimeChange}
+      />
+      <TimeFilterWidget
+        label={t`Ended at`}
+        value={params.endTime}
+        availableDirections={PAST_INTERVAL_DIRECTIONS}
+        onChange={handleEndTimeChange}
+      />
       <StatusFilterWidget
         label={t`Status`}
         statuses={params.statuses ?? []}
         onChange={handleStatusesChange}
+      />
+      <RunMethodFilterWidget
+        runMethods={params.runMethods ?? []}
+        onChange={handleRunMethodsChange}
       />
       <TagFilterWidget
         label={t`Tags`}
         tagIds={params.transformTagIds ?? []}
         tags={tags}
         onChange={handleTagsChange}
-      />
-      <TimeFilterWidget
-        label={t`Start at`}
-        value={params.startTime}
-        availableDirections={PAST_INTERVAL_DIRECTIONS}
-        onChange={handleStartTimeChange}
-      />
-      <TimeFilterWidget
-        label={t`End at`}
-        value={params.endTime}
-        availableDirections={PAST_INTERVAL_DIRECTIONS}
-        onChange={handleEndTimeChange}
-      />
-      <RunMethodFilterWidget
-        runMethods={params.runMethods ?? []}
-        onChange={handleRunMethodsChange}
       />
     </Group>
   );
