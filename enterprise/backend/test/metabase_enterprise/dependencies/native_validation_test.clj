@@ -290,6 +290,9 @@
                (fake-query mp)
                (deps.native-validation/native-result-metadata driver mp)))))
 
+(defn- add-desired-column-alias [fields]
+  (map #(assoc % :lib/desired-column-alias (:name %)) fields))
+
 (deftest result-metadata-test
   (testing "Calculates result metadata"
     (let [mp (deps.tu/default-metadata-provider)
@@ -298,17 +301,17 @@
         (check-result-metadata
          driver mp
          "select * from orders"
-         (lib.metadata/fields mp (meta/id :orders))))
+         (add-desired-column-alias (lib.metadata/fields mp (meta/id :orders)))))
       (testing "Selecting a table wildcard"
         (check-result-metadata
          driver mp
          "select orders.* from orders"
-         (lib.metadata/fields mp (meta/id :orders))))
+         (add-desired-column-alias (lib.metadata/fields mp (meta/id :orders)))))
       (testing "Selecting a single col"
         (check-result-metadata
          driver mp
          "select total from orders"
-         [(lib.metadata/field mp (meta/id :orders :total))]))
+         (add-desired-column-alias [(lib.metadata/field mp (meta/id :orders :total))])))
       (testing "Selecting a nonexistent col"
         (check-result-metadata
          driver mp
@@ -321,7 +324,8 @@
          [{:lib/type :metadata/column,
            :base-type :type/Float,
            :semantic-type nil,
-           :name "NEW_SUBTOTAL",
+           :name "SUBTOTAL",
+           :lib/desired-column-alias "NEW_SUBTOTAL"
            :database-type "DOUBLE PRECISION",
            :display-name "Subtotal"}]))
       (testing "Selecting a custom col"
@@ -338,6 +342,7 @@
          driver mp
          "select total from orders union select subtotal from orders"
          [{:name "TOTAL",
+           :lib/desired-column-alias "TOTAL",
            :display-name "Total",
            :base-type :type/Float,
            :effective-type :type/Float,
@@ -347,6 +352,7 @@
          driver mp
          "select category from products union select title from products"
          [{:name "CATEGORY",
+           :lib/desired-column-alias "CATEGORY",
            :display-name "Category",
            :base-type :type/Text,
            :effective-type :type/Text,
