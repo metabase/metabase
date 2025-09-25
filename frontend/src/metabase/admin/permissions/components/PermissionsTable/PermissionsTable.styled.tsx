@@ -39,7 +39,7 @@ export const PermissionsTableCell = styled.td`
 
   &:first-of-type {
     max-width: 300px;
-    background: white;
+    background: var(--mb-color-white);
     left: 0;
     top: 0;
     position: sticky;
