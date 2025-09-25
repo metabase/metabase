@@ -6,13 +6,14 @@ import { jt, t } from "ttag";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { getIsNightMode } from "metabase/dashboard/selectors";
-import { color, lighten } from "metabase/lib/colors";
+import { lighten } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { Box, Flex, Text, Title, Tooltip, useMantineTheme } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 import {
   ScalarValue,
   ScalarWrapper,

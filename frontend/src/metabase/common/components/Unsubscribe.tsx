@@ -8,7 +8,6 @@ import { NotFound } from "metabase/common/components/ErrorPages";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import LogoIcon from "metabase/common/components/LogoIcon";
-import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
 import {
@@ -140,7 +139,7 @@ function SuccessfulRequestWrapper({
   return (
     <Stack align="center">
       <CheckmarkIcon name="check" size={30} />
-      <Text fw={700} c={color("text-medium")} mb="0.75rem" ta="center">
+      <Text fw={700} c="text-medium" mb="0.75rem" ta="center">
         {text}
       </Text>
       <Button primary onClick={action}>

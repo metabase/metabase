@@ -5,13 +5,13 @@ import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
 import {
   formatChangeWithSign,
   formatNumber,
   formatValue,
 } from "metabase/lib/formatting";
 import { formatNullable } from "metabase/lib/formatting/nullable";
+import { color } from "metabase/ui/utils/colors";
 import {
   FunnelNormalRoot,
   FunnelStart,
