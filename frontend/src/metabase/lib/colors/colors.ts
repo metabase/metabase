@@ -189,11 +189,7 @@ const baseColors = {
   },
 };
 
-export const getColors = (isDarkMode: boolean) => {
-  return isDarkMode ? darkColors : colors;
-};
-
-const colorConfig = {
+export const colorConfig = {
   "accent-gray-dark": {
     light: baseColors.orion[20],
     dark: baseColors.orion[20],
@@ -532,16 +528,10 @@ const colorConfig = {
   },
 };
 
+// TODO: Use theme-aware colors instead of this export
 export const colors = {
   ...Object.fromEntries(
     Object.entries(colorConfig).map(([k, v]) => [k, v.light]),
-  ),
-  ...whitelabelColors, // TODO: Figure out where/how to define this
-};
-
-const darkColors = {
-  ...Object.fromEntries(
-    Object.entries(colorConfig).map(([k, v]) => [k, v.dark]),
   ),
   ...whitelabelColors, // TODO: Figure out where/how to define this
 };
