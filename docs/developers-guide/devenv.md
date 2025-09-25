@@ -128,10 +128,6 @@ yarn test-unit # Run all tests at once
 yarn test-unit-watch # Watch for file changes
 ```
 
-### Custom FE development server port
-
-By default Rspack runs the development server on port `8088`. If you'd like use another port (e.g. to be able to run two dev servers at once), use the `MB_FRONTEND_DEV_PORT` environment variable.
-
 ## Backend development
 
 Clojure REPL is the main development tool for the backend. There are some directions below on how to setup your REPL for easier development.
@@ -153,15 +149,14 @@ use Metabase, don't forget to start the frontend as well (e.g. with `yarn build-
 
 ### Multiple Instances
 
-You can run multiple instances of Metabase on the same machine by specifying a different port for each instance.
+By default Rspack runs the development server on port `8088`. You can run multiple instances of Metabase on the same machine by specifying a different port for each instance.
 
 Frontend:
-- If you are running the frontend with `yarn build-hot`, set the `PORT` environment variable: `PORT=3001 MB_EDITION=ee yarn build-hot`
+- If you are running the frontend with `yarn build-hot`, set the `MB_FRONTEND_DEV_PORT` environment variable: `MB_FRONTEND_DEV_PORT=8089 MB_EDITION=ee yarn build-hot`
 - If you are building the frontend statically with `yarn build`, there is nothing different to do
 
 Backend:
-- Set the `MB_JETTY_PORT` environment variable
-- If you are running the frontend with `yarn build-hot`, set `MB_WEBPACK_PORT` to the same port as the `PORT` variable above
+- Set the `MB_JETTY_PORT` environment variable and `MB_FRONTEND_DEV_PORT` to the same one as for the frontend.
 
 ### The application database
 
