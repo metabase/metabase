@@ -157,7 +157,7 @@
                                    :display-name    (:name target)
                                    :visibility-type nil}))
         existing-cols  (when existing-table
-                         (lib.metadata/fields (inner-mp mp) (:id existing-table)))
+                         (lib/returned-columns (lib/query (inner-mp mp) existing-table)))
         output-cols    (delay
                          ;; Note that this will analyze the query with any upstream changes included!
                          (let [new-cols (get-returned-columns mp (:query source))
