@@ -7,13 +7,20 @@ import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
 import { isWithinIframe } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
-import { Box, Card, Center, Overlay, type OverlayProps } from "metabase/ui";
+import {
+  Box,
+  Card,
+  Center,
+  Overlay,
+  rem,
+  Stack,
+  type OverlayProps,
+} from "metabase/ui";
 
 import { useCommandPalette } from "../hooks/useCommandPalette";
 import { useCommandPaletteBasicActions } from "../hooks/useCommandPaletteBasicActions";
 
 import { PaletteInput } from "./Palette.styled";
-import { PaletteFooter } from "./PaletteFooter";
 import { PaletteResults } from "./PaletteResults";
 
 /**
@@ -63,13 +70,12 @@ const PaletteContainer = () => {
 
   return (
     <PaletteCard ref={ref}>
-      <Box w="100%" p="1.5rem" pb="0">
+      <Box w="100%" p="1.5rem" pb={0}>
         <PaletteInput
           defaultPlaceholder={t`Search for anything or jump somewhere…`}
         />
       </Box>
-      <PaletteResults />
-      <PaletteFooter />
+      <PaletteResults align="stretch" pb="lg" pt={rem(12)} />
     </PaletteCard>
   );
 };

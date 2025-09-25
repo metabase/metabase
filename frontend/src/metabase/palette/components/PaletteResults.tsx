@@ -3,7 +3,7 @@ import { useEffect, useMemo } from "react";
 import { useKeyPressEvent } from "react-use";
 import { t } from "ttag";
 
-import { Box, Flex } from "metabase/ui";
+import { Box, Flex, Stack, type StackProps } from "metabase/ui";
 
 import type { PaletteActionImpl } from "../types";
 import { navigateActionIndex, processResults } from "../utils";
@@ -13,7 +13,9 @@ import { PaletteResultList } from "./PaletteResultsList";
 
 const PAGE_SIZE = 4;
 
-export const PaletteResults = () => {
+type Props = Omit<StackProps, "children">;
+
+export const PaletteResults = (props: Props) => {
   // Used for finding actions within the list
   const { query } = useKBar();
 
@@ -53,7 +55,7 @@ export const PaletteResults = () => {
   });
 
   return (
-    <Flex align="stretch" direction="column" p="0.75rem 0">
+    <Stack {...props}>
       <PaletteResultList
         items={processedResults} // items needs to be a stable reference, otherwise the activeIndex will constantly be hijacked
         maxHeight={530}
@@ -93,6 +95,6 @@ export const PaletteResults = () => {
           );
         }}
       />
-    </Flex>
+    </Stack>
   );
 };
