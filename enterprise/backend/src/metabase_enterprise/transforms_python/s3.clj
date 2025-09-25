@@ -4,7 +4,7 @@
    [metabase.util.log :as log])
   (:import
    (clojure.lang IDeref)
-   (java.io Closeable File)
+   (java.io Closeable File ByteArrayInputStream)
    (java.net URI)
    (java.time Duration)
    (software.amazon.awssdk.auth.credentials AwsBasicCredentials StaticCredentialsProvider)
@@ -183,19 +183,29 @@
   (let [^PutObjectRequest request (put-object-request bucket-name key)]
     (.putObject s3-client request (RequestBody/fromFile file))))
 
-;; TODO optimize our ingestion to stream the data. reading a string will not work in any case for binary files.
+(defn read-to-stream
+  "Get back the contents of the given key as a stream."
+  ([s3-client bucket-name key] (read-to-stream s3-client bucket-name key ::throw))
+  ([^S3Client s3-client ^String bucket-name ^String key not-found]
+   (try
+     (let [^GetObjectRequest request (get-object-request bucket-name key)]
+       (.getObject s3-client request))
+     (catch NoSuchKeyException e
+       (cond
+         (identical? ::throw not-found)
+         (throw e)
+
+         (string? not-found)
+         (ByteArrayInputStream. (.getBytes ^String not-found "UTF-8"))
+
+         :else
+         not-found)))))
+
 (defn read-to-string
   "Get back the contents of the given key as a string."
   ([s3-client bucket-name key] (read-to-string s3-client bucket-name key ::throw))
   ([^S3Client s3-client ^String bucket-name ^String key not-found]
-   (try
-     (let [^GetObjectRequest request (get-object-request bucket-name key)
-           response                  (.getObject s3-client request)]
-       (slurp response))
-     (catch NoSuchKeyException e
-       (if (identical? ::throw not-found)
-         (throw e)
-         not-found)))))
+   (slurp (read-to-stream s3-client bucket-name key not-found))))
 
 (defn delete
   ;; TODO better error handling
