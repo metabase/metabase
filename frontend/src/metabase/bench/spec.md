@@ -441,6 +441,7 @@ This pattern ensures that:
 ### Other
 - Only use ui components from "metabase/ui"
 - Do not use "dimmed" with text color.
+- Never use Mantine color variables directly (e.g., `var(--mantine-color-gray-3)`). Always use Metabase color variables (e.g., `var(--mb-color-border)`) instead.
 - We are on a legacy version of react-router (v3)
 - Prefer simple links to routes vs using functions for navigation for user interaction (functions are ok if they happen post interaction)
 - Dark mode should be handled by the UI library not by individual components. Never directly access the theme inside of our components.

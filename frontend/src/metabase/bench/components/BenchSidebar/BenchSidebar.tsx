@@ -57,6 +57,7 @@ function BenchSidebarComponent({ location }: BenchSidebarProps) {
         padding: "16px 0",
         display: "flex",
         flexDirection: "column",
+        borderRight: "1px solid var(--mb-color-border)",
       }}
     >
       <Box px="md" pb="lg">
