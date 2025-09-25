@@ -26,7 +26,6 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.warehouse-schema.models.field-values :as field-values]
-   [ring.util.codec :as codec]
    [throttle.core :as throttle]
    [toucan2.core :as t2])
   (:import
@@ -1698,10 +1697,10 @@
                                           :public_uuid uuid}]
           (let [lat-field (tiles.api-test/encoded-lat-field-ref)
                 lon-field (tiles.api-test/encoded-lon-field-ref)
-                url (str "public/tiles/card/" uuid "/1/1/1"
-                         "?latField=" (codec/url-encode lat-field)
-                         "&lonField=" (codec/url-encode lon-field))]
-            (is (png? (client/client :get 200 url)))))))))
+                url (str "public/tiles/card/" uuid "/1/1/1")]
+            (is (png? (client/client :get 200 url
+                                     :latField lat-field
+                                     :lonField lon-field)))))))))
 
 (deftest dashcard-tile-query-test
   (testing "GET api/public/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y with latField and lonField query params"
@@ -1713,10 +1712,10 @@
                                                                 :dashboard_id dashboard-id}]
           (let [lat-field (tiles.api-test/encoded-lat-field-ref)
                 lon-field (tiles.api-test/encoded-lon-field-ref)
-                url (str "public/tiles/dashboard/" uuid "/dashcard/" dashcard-id "/card/" card-id "/1/1/1"
-                         "?latField=" (codec/url-encode lat-field)
-                         "&lonField=" (codec/url-encode lon-field))]
-            (is (png? (client/client :get 200 url)))))))))
+                url (str "public/tiles/dashboard/" uuid "/dashcard/" dashcard-id "/card/" card-id "/1/1/1")]
+            (is (png? (client/client :get 200 url
+                                     :latField lat-field
+                                     :lonField lon-field)))))))))
 
 ;;; --------------------------------- POST /oembed ----------------------------------
 
