@@ -4,11 +4,15 @@ import { Icon } from "metabase/ui";
 interface BenchToolbarProps {
   onMetabotToggle: () => void;
   isMetabotOpen: boolean;
+  onSidebarToggle: () => void;
+  isSidebarOpen: boolean;
 }
 
 export function BenchToolbar({
   onMetabotToggle,
   isMetabotOpen,
+  onSidebarToggle,
+  isSidebarOpen,
 }: BenchToolbarProps) {
   return (
     <Box
@@ -42,13 +46,24 @@ export function BenchToolbar({
         }}
       />
 
-      {/* Metabot toggle - far right */}
-      <ActionIcon
-        variant={isMetabotOpen ? "filled" : "subtle"}
-        onClick={onMetabotToggle}
-      >
-        <Icon name="insight" />
-      </ActionIcon>
+      {/* Right side toggles */}
+      <Group gap="xs">
+        {/* Sidebar toggle */}
+        <ActionIcon
+          variant={isSidebarOpen ? "subtle" : "filled"}
+          onClick={onSidebarToggle}
+        >
+          <Icon name={isSidebarOpen ? "sidebar_open" : "sidebar_closed"} />
+        </ActionIcon>
+
+        {/* Metabot toggle */}
+        <ActionIcon
+          variant={isMetabotOpen ? "filled" : "subtle"}
+          onClick={onMetabotToggle}
+        >
+          <Icon name="insight" />
+        </ActionIcon>
+      </Group>
     </Box>
   );
 }

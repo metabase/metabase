@@ -15,9 +15,14 @@ interface BenchLayoutProps {
 
 function BenchLayoutComponent({ children }: BenchLayoutProps) {
   const [isMetabotOpen, setIsMetabotOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const handleMetabotToggle = () => {
     setIsMetabotOpen(!isMetabotOpen);
+  };
+
+  const handleSidebarToggle = () => {
+    setIsSidebarOpen(!isSidebarOpen);
   };
 
   return (
@@ -29,8 +34,8 @@ function BenchLayoutComponent({ children }: BenchLayoutProps) {
           display: "flex",
         }}
       >
-        {/* Main nav on the far left */}
-        <BenchSidebar />
+        {/* Main nav on the far left - conditionally rendered */}
+        {isSidebarOpen && <BenchSidebar />}
 
         {/* Main content area taking up the full rest of the view */}
         <Box
@@ -45,6 +50,8 @@ function BenchLayoutComponent({ children }: BenchLayoutProps) {
           <BenchToolbar
             isMetabotOpen={isMetabotOpen}
             onMetabotToggle={handleMetabotToggle}
+            isSidebarOpen={isSidebarOpen}
+            onSidebarToggle={handleSidebarToggle}
           />
 
           {/* Horizontal series of panels below toolbar */}
