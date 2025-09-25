@@ -88,7 +88,6 @@ export const filterRecentItems: (items: RecentItem[]) => RecentItem[] = (
 
 export const getCommandPaletteIcon = (
   item: PaletteActionImpl,
-  isActive: boolean,
 ): { name: IconName; color: string } => {
   const icon = {
     name: item.icon as IconName,
@@ -96,14 +95,6 @@ export const getCommandPaletteIcon = (
       ? color(item.extra.iconColor)
       : "var(--mb-color-brand)",
   };
-
-  if (isActive) {
-    icon.color = "var(--mb-color-text-white)";
-  }
-
-  if (isActive && (item.icon === "folder" || item.icon === "collection")) {
-    icon.name = "folder_filled";
-  }
 
   return icon;
 };
