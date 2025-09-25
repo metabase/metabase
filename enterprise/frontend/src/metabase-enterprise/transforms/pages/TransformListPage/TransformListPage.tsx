@@ -16,7 +16,6 @@ type TransformListPageProps = {
 
 export function TransformListPage({ location }: TransformListPageProps) {
   const params = getParsedParams(location);
-
   const { data: tags = [], isLoading, error } = useListTransformTagsQuery();
 
   if (!tags || isLoading || error != null) {

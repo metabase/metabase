@@ -18,7 +18,6 @@ type JobListPageProps = {
 
 export function JobListPage({ location }: JobListPageProps) {
   const params = getParsedParams(location);
-
   const { data: tags = [], isLoading, error } = useListTransformTagsQuery();
 
   if (!tags || isLoading || error != null) {
