@@ -1,4 +1,4 @@
-import { ActionIcon, Button, Group, Stack, Text } from "metabase/ui";
+import { Button, NavLink, Stack, Text } from "metabase/ui";
 import { Icon } from "metabase/ui";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
@@ -40,36 +40,16 @@ export function MetricsEntitiesList({
         </Text>
       ) : (
         metrics.map((metric) => (
-          <Group
+          <NavLink
             key={metric.id}
-            p="xs"
-            style={{
-              borderRadius: "4px",
-              cursor: "pointer",
-              backgroundColor:
-                selectedMetricId === metric.id
-                  ? "var(--mantine-color-blue-1)"
-                  : "transparent",
-              ":hover": {
-                backgroundColor:
-                  selectedMetricId === metric.id
-                    ? "var(--mantine-color-blue-2)"
-                    : "var(--mantine-color-gray-1)",
-              },
-            }}
-          >
-            <Link to={`/bench/metrics/${metric.id}`}>
-              <ActionIcon variant="subtle" size="sm">
-                <Icon name="metric" />
-              </ActionIcon>
-              <Text size="sm" style={{ flex: 1 }} truncate>
-                {metric.name}
-              </Text>
-              <Text size="xs">
-                {metric.collection?.name || "No collection"}
-              </Text>
-            </Link>
-          </Group>
+            component={Link}
+            to={`/bench/metrics/${metric.id}`}
+            label={metric.name}
+            description={metric.collection?.name || "No collection"}
+            leftSection={<Icon name="metric" size={16} />}
+            active={selectedMetricId === metric.id}
+            onClick={() => onMetricClick?.(metric)}
+          />
         ))
       )}
     </Stack>

@@ -1,4 +1,4 @@
-import { ActionIcon, Group, Text } from "metabase/ui";
+import { NavLink, Text } from "metabase/ui";
 import { Icon } from "metabase/ui";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useListTransformsQuery } from "metabase-enterprise/api";
@@ -30,33 +30,14 @@ export function TransformEntitiesList({
   return (
     <>
       {transforms.map((transform) => (
-        <Group
+        <NavLink
           key={transform.id}
-          p="xs"
-          style={{
-            borderRadius: "4px",
-            cursor: "pointer",
-            backgroundColor:
-              selectedTransformId === transform.id
-                ? "var(--mantine-color-blue-1)"
-                : "transparent",
-            ":hover": {
-              backgroundColor:
-                selectedTransformId === transform.id
-                  ? "var(--mantine-color-blue-2)"
-                  : "var(--mantine-color-gray-1)",
-            },
-          }}
+          label={transform.name}
+          description={transform.target.name}
+          leftSection={<Icon name="model" size={16} />}
+          active={selectedTransformId === transform.id}
           onClick={() => onTransformClick?.(transform)}
-        >
-          <ActionIcon variant="subtle" size="sm">
-            <Icon name="model" />
-          </ActionIcon>
-          <Text size="sm" style={{ flex: 1 }} truncate>
-            {transform.name}
-          </Text>
-          <Text size="xs">{transform.target.name}</Text>
-        </Group>
+        />
       ))}
     </>
   );
