@@ -39,7 +39,7 @@ export const runQuestionOnNavigateSdk =
 
     // Fallback when a visualization legend is clicked
     if (cardIsEquivalent(previousCard, nextCard)) {
-      nextCard = await loadCard(nextCard.id, { dispatch });
+      nextCard = await loadCard(nextCard.id, { dispatch, getState });
     } else {
       nextCard = getCardAfterVisualizationClick(nextCard, previousCard);
       onClearQueryResults();
