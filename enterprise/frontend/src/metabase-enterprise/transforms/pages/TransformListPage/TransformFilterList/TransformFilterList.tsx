@@ -22,7 +22,7 @@ type TransformFilterListProps = {
 };
 
 const PAST_INTERVAL_DIRECTIONS: RelativeIntervalDirection[] = [
-  "last",
+  "past",
   "current",
 ];
 
