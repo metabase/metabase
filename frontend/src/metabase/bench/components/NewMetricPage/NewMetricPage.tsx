@@ -1,5 +1,5 @@
 import { Box, Stack, Text, useMantineTheme, Button, Group } from "metabase/ui";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useSelector, useDispatch } from "metabase/lib/redux";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -15,22 +15,27 @@ export function NewMetricPage() {
   const metadata = useSelector(getMetadata);
   const reportTimezone = useSetting("report-timezone-long");
 
-  // Create an empty ad-hoc question for metric creation
-  const initialQuery: DatasetQuery = {
-    type: "query",
-    database: null,
-    query: {
-      "source-table": null,
-    },
-  };
-
-  const [question, setQuestion] = useState<Question>(() =>
-    Question.create({ dataset_query: initialQuery, metadata }),
-  );
+  const [question, setQuestion] = useState<Question | null>(null);
 
   const [isRunnable, setIsRunnable] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [isResultDirty, setIsResultDirty] = useState(false);
+
+  // Create Question when metadata is available
+  useEffect(() => {
+    if (metadata && metadata.databasesList().length > 0) {
+      // Get the first available database
+      const firstDatabase = metadata.databasesList()[0];
+
+      // Create a new Question with the first available database
+      const newQuestion = Question.create({
+        databaseId: firstDatabase.id,
+        metadata,
+      });
+
+      setQuestion(newQuestion);
+    }
+  }, [metadata]);
 
   const handleUpdateQuestion = useCallback(async (newQuestion: Question) => {
     setQuestion(newQuestion);
@@ -126,7 +131,7 @@ export function NewMetricPage() {
           <Box
             style={{ flex: 1, height: "calc(100% - 60px)", overflow: "auto" }}
           >
-            {question && (
+            {question ? (
               <Notebook
                 question={question}
                 updateQuestion={handleUpdateQuestion}
@@ -138,6 +143,17 @@ export function NewMetricPage() {
                 hasVisualizeButton={true}
                 readOnly={false}
               />
+            ) : (
+              <Box
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  height: "100%",
+                }}
+              >
+                <Text c="dimmed">Loading notebook editor...</Text>
+              </Box>
             )}
           </Box>
         </Box>
