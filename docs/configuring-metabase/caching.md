@@ -122,11 +122,10 @@ If you have databases connected to Metabase that are set to **Use default** poli
 To set a caching policy for a dashboard, you must have [curate access](../permissions/collections.md#curate-access) to the dashboard's collection.
 
 1. Go to your dashboard.
-2. Click on the **info** icon.
-3. Click **Caching policy**.
-4. Select the [caching invalidation policy](#cache-invalidation-policies).
-5. Optional: turn on [refresh cache automatically](#refresh-cache-automatically).
-6. Save your changes.
+2. Click on the the three dots icon and choosing **Edit settings**.
+3. By default, each question will use the question or database default. Click the current Caching policy to change it.
+4. Optional: to delete cache for all questions on a dashboard, click **Clear cache for this dsahboard** at the bottom.
+5. Save your changes.
 
 ### Question caching policy
 
