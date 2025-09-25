@@ -130,7 +130,7 @@ yarn test-unit-watch # Watch for file changes
 
 ### Custom FE development server port
 
-By default the Rspack runs the development server on port `8088`. If you'd like to run it on another port (e.g. to be able to run two dev servers at once), use `MB_FRONTEND_DEV_PORT` environment variable.
+By default Rspack runs the development server on port `8088`. If you'd like use another port (e.g. to be able to run two dev servers at once), use the `MB_FRONTEND_DEV_PORT` environment variable.
 
 ## Backend development
 
