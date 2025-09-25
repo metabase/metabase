@@ -308,5 +308,5 @@
   [field-path tag-ids]
   (let [tag-ids (-> tag-ids set not-empty)]
     (if tag-ids
-      (filter #(tag-ids (get-in % field-path)))
+      (filter #(some tag-ids (get-in % field-path)))
       identity)))

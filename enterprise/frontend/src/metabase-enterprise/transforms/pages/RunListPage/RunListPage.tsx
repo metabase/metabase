@@ -68,7 +68,7 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
       run_methods: runMethods,
     },
     {
-      pollingInterval: POLLING_INTERVAL,
+      pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
     },
   );
   const {
@@ -92,10 +92,6 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  const shouldPoll = isPollingNeeded(data.data);
-  if (shouldPoll !== isPolling) {
-    setIsPolling(shouldPoll);
-  }
   return (
     <Stack data-testid="run-list-page">
       <RunFilterList params={params} transforms={transforms} tags={tags} />
@@ -109,6 +105,6 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
   );
 }
 
-export function isPollingNeeded(transformRuns?: TransformRun[]) {
-  return transformRuns?.some((run) => run.status === "started") ?? false;
+export function isPollingNeeded(runs: TransformRun[] = []) {
+  return runs.some((run) => run.status === "started");
 }

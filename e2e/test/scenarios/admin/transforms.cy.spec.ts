@@ -2638,11 +2638,11 @@ function getRunMethodFilterWidget() {
 }
 
 function getStartAtFilterWidget() {
-  return cy.findByRole("group", { name: "Start at" });
+  return cy.findByRole("group", { name: "Started at" });
 }
 
 function getEndAtFilterWidget() {
-  return cy.findByRole("group", { name: "End at" });
+  return cy.findByRole("group", { name: "Ended at" });
 }
 
 function visitTransformListPage() {
