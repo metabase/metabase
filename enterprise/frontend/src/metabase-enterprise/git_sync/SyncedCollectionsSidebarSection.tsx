@@ -59,9 +59,16 @@ export const SyncedCollectionsSidebarSection = ({
   const [showPush, { open: openPush, close: closePush }] = useDisclosure(false);
 
   const branches = data?.items?.length ? data.items : ["main"];
-  const [nextBranch, setNextBranch] = useState(currentBranch);
+  const [nextBranch, setNextBranch] = useState<string>(currentBranch ?? "main");
 
-  const isDirty = true; // TODO: check if any synced collection is dirty
+  useEffect(() => {
+    // keep next branch up to date if current branch changes
+    setNextBranch(currentBranch ?? "main");
+  }, [currentBranch]);
+
+  const { data: dirtyData } = useGetChangedEntitiesQuery();
+
+  const isDirty = !!(dirtyData?.dirty && dirtyData.dirty.length > 0);
 
   const { status, message } = useSyncStatus();
 
@@ -149,8 +156,8 @@ export const SyncedCollectionsSidebarSection = ({
               TreeNode={SidebarCollectionLink}
               role="tree"
               aria-label="collection-tree"
-              rightSection={(i) => {
-                return <CollectionStatusBadge collection={i as Collection} />;
+              rightSection={(item) => {
+                return <CollectionStatusBadge collection={item} />;
               }}
             />
           </Box>
@@ -182,7 +189,11 @@ export const SyncedCollectionsSidebarSection = ({
   );
 };
 
-const CollectionStatusBadge = ({ collection }: { collection: Collection }) => {
+const CollectionStatusBadge = ({
+  collection,
+}: {
+  collection: Pick<Collection, "id">;
+}) => {
   const { data } = useGetChangedEntitiesQuery();
 
   const isDirty =
