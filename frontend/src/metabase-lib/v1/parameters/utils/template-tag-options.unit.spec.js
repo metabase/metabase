@@ -92,12 +92,12 @@ describe("parameters/utils/template-tag-options", () => {
     });
 
     it("should return string options for a TextLike field", () => {
-      const addressField = {
+      const enumField = {
         ...field,
         isString: () => false,
         isStringLike: () => true,
       };
-      const availableOptions = getParameterOptionsForField(addressField);
+      const availableOptions = getParameterOptionsForField(enumField);
       expect(
         availableOptions.length > 0 &&
           availableOptions.every((option) => option.type.startsWith("string")),
