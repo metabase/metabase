@@ -79,6 +79,7 @@ const ThemeProviderInner = (props: ThemeProviderProps) => {
   return (
     <MantineProvider
       theme={theme}
+      forceColorScheme={resolvedColorScheme}
       getStyleNonce={() => window.MetabaseNonce ?? "metabase"}
       classNamesPrefix="mb-mantine"
       cssVariablesSelector={isEmbeddingSdk() ? ".mb-wrapper" : undefined}
