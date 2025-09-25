@@ -3,7 +3,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.premium-features.core :as premium-features]
+   [metabase-enterprise.semantic-search.util :as semantic.u]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -20,10 +20,11 @@
 
 (defn- trim-old-token-data!
   []
-  (log/info "Attempting to delete old semantic search usage data.")
-  (let [t (Timestamp/valueOf (.minusMonths (java.time.LocalDateTime/now) storage-months))]
-    (t2/delete! :model/SemanticSearchTokenTracking {:where [:< :created_at t]}))
-  (log/info "Semantic search old data cleanup successful."))
+  (when (semantic.u/semantic-search-available?)
+    (log/info "Attempting to delete old semantic search usage data.")
+    (let [t (Timestamp/valueOf (.minusMonths (java.time.LocalDateTime/now) storage-months))]
+      (t2/delete! :model/SemanticSearchTokenTracking {:where [:< :created_at t]}))
+    (log/info "Semantic search old data cleanup successful.")))
 
 (task/defjob ^{DisallowConcurrentExecution true
                :doc "Clean up inactive semantic search index tables"}
@@ -32,7 +33,7 @@
 
 (defmethod task/init! ::SemanticSearchUsageTrimmer
   [_]
-  (when (premium-features/has-feature? :semantic-search)
+  (when (semantic.u/semantic-search-available?)
     (let [job (jobs/build
                (jobs/of-type SemanticSearchUsageTrimmer)
                (jobs/with-identity trimmer-job-key))
