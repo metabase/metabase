@@ -53,7 +53,7 @@
                               :left-join                       (not driver-api/is-test?)
                               :describe-fks                    false
                               :actions                         false
-                              :metadata/key-constraints        (not driver-api/is-test?)
+                              :metadata/key-constraints        false
                               :database-routing                false}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
@@ -295,3 +295,9 @@
   [_ ^SQLException e]
   ;; the clickhouse driver doesn't set ErrorCode, we must parse it from the message
   (str/starts-with? (.getMessage e) "Code: 60."))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(defmethod driver/describe-table-fks :clickhouse
+  [_driver _database _table]
+  (log/warn "Clickhouse does not support foreign keys. `describe-table-fks` should not have been called!")
+  #{})
