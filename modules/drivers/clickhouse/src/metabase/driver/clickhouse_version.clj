@@ -46,7 +46,9 @@
   [_driver db]
   (get-clickhouse-version db))
 
-(defn dbms-version [db]
+(defn dbms-version
+  "Returns dbms version from a db that may be a snake-hating-map"
+  [db]
   ((some-fn :dbms-version :dbms_version) db))
 
 (defn is-at-least?
