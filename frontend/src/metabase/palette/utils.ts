@@ -84,7 +84,7 @@ export const findClosestActionIndex = (
 
 export const filterRecentItems: (items: RecentItem[]) => RecentItem[] = (
   items,
-) => items.filter((item) => item.model !== "collection").slice(0, 5);
+) => items.filter((item) => item.model !== "collection").slice(0, 10);
 
 export const getCommandPaletteIcon = (
   item: PaletteActionImpl,
