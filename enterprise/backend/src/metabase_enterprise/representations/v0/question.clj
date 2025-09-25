@@ -1,5 +1,7 @@
 (ns metabase-enterprise.representations.v0.question
   (:require
+   [clojure.string :as str]
+   [metabase-enterprise.representations.core :as rep]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.config.core :as config]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -178,10 +180,29 @@
          :table (:name t)}
         v0-common/remove-nils)))
 
+(defn- card-ref [s]
+  (let [[type id] (str/split s #"__")
+        id (Long/parseLong id)
+        rep (metabase-enterprise.representations.core/export (t2/select-one :model/Card :id id))]
+    ;; todo: remove this circularity
+    (str "ref:" (:ref rep))))
+
 (defn- update-source-table-for-export [query]
-  (if (-> query :query :source-table)
-    (assoc-in query [:query :source-table]
-              (table-ref (-> query :query :source-table)))
+  (if-some [st (-> query :query :source-table)]
+    (do
+      (prn [:here query])
+      (cond
+        (string? st)
+        (assoc-in query [:query :source-table]
+                  (card-ref st))
+
+        (number? st)
+        (assoc-in query [:query :source-table]
+                  (table-ref st))
+
+        :else
+        (throw (ex-info "Unknown source table type" {:query query
+                                                     :source-table st}))))
     query))
 
 (defn- update-database-for-export [query]
@@ -193,14 +214,20 @@
   (clojure.walk/postwalk (fn [node]
                            (if (and (vector? node)
                                     (= :field (first node)))
-                             (let [[_ id] node
-                                   field (t2/select-one :model/Field id)
-                                   tr (table-ref (:table_id field))]
-                               (assoc tr :field (:name field)))
+                             (let [[_ id] node]
+                               (cond
+                                 (string? id)
+                                 node
+
+                                 (number? id)
+                                 (let [field (t2/select-one :model/Field id)
+                                       tr (table-ref (:table_id field))]
+                                   (assoc tr :field (:name field)))))
                              node))
                          query))
 
 (defn- patch-refs-for-export [query]
+  (println "Query")
   (-> query
       (update-database-for-export)
       (update-source-table-for-export)
@@ -208,11 +235,10 @@
 
 (defn export [card]
   (let [query (patch-refs-for-export (:dataset_query card))]
-    (prn query)
     (cond-> {:name (:name card)
              ;;:version "question-v0"
              :type (:type card)
-             :ref (v0-common/->ref (:id card) :question)
+             :ref (v0-common/unref (v0-common/->ref (:id card) :question))
              :description (:description card)}
 
       (= :native (:type query))
@@ -224,6 +250,9 @@
              :database (:database query))
 
       :always
+      (doto prn)
+
+      :always
       v0-common/remove-nils)))
 
 (comment
@@ -233,7 +262,7 @@
 
   (source-table-ref 2)
 
-  (v0-common/refs (export (t2/select-one :model/Card :id 93)))
+  (export (t2/select-one :model/Card :id 97))
   (t2/select-one :model/Table 2)
   (t2/select-one :model/Field 57)
 

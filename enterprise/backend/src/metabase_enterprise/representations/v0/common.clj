@@ -91,7 +91,7 @@
                                (vswap! v conj node))
                              node)
                            (dissoc entity :ref))
-    (set @v)))
+    (set (map unref @v))))
 
 (defn ->ref [id type]
   (format "ref:%s-%s" (name type) id))

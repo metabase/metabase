@@ -9,6 +9,7 @@
    [malli.core :as m]
    [malli.transform :as mt]
    [metabase-enterprise.representations.v0.collection :as v0-coll]
+   [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.database :as v0-db]
    [metabase-enterprise.representations.v0.document :as v0-doc]
    [metabase-enterprise.representations.v0.metric :as v0-metric]
@@ -363,3 +364,46 @@
                                   :created_at (java.time.OffsetDateTime/now)})
   (type *1)
   (t2/select-one :model/Collection :id 2))
+
+(def ^:private type->model
+  {"question"  :model/Card
+   "metric"    :model/Card
+   "model"     :model/Card
+   "database"  :model/Database
+   "transform" :model/Transform})
+
+(defn- read-from-ref [ref]
+  (let [[type id] (str/split ref #"-")]
+    (export (t2/select-one (type->model type) :id (Long/parseLong id)))))
+
+(defn export-set [representation]
+  (loop [acc  #{representation}
+         prev #{}]
+    (if-some [new (seq (clojure.set/difference acc prev))]
+      (let [refs (set (mapcat v0-common/refs new))
+            reps (map read-from-ref refs)]
+        (recur (into acc reps) acc))
+      acc)))
+
+(defn yaml-files [dir]
+  (file-seq dir))
+
+(defn order-representations [representations]
+  (loop [acc []
+         remaining (set representations)]
+    (let [done (set (map :ref acc))]
+      (if (empty? remaining)
+        acc
+        (let [ready (filter #(clojure.set/subset? (v0-common/refs %) done)
+                            remaining)]
+          (recur (into acc ready) (clojure.set/difference remaining (set acc))))))))
+
+(comment
+  (export-set (export (t2/select-one :model/Card :id 97)))
+
+  (->> "eric-test"
+       java.io.File.
+       yaml-files
+       (filter #(str/ends-with? (.getName %) ".yml"))
+       (map import-yaml)
+       (order-representations)))
