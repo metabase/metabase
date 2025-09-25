@@ -67,22 +67,19 @@
   (testing "Testing export then import roundtrip"
     (doseq [query [(mt/native-query {:query "select 1"})
                    (mt/mbql-query users)]]
-      (prn query)
       (mt/with-temp [:model/Card question {:type :question
                                            :dataset_query query}]
         (let [edn (rep/export question)
               yaml (yaml/generate-string edn)
               rep (yaml/parse-string yaml)
               rep (rep/validate rep)
-              _ (clojure.pprint/pprint rep)
-              t2 (rep/yaml->toucan rep)
-              _ (clojure.pprint/pprint t2)
               question (rep/persist! rep)
               question (t2/select-one :model/Card :id (:id question))
-              _ (clojure.pprint/pprint question)
               edn (rep/export question)
               yaml (yaml/generate-string edn)
               rep2 (yaml/parse-string yaml)
 
               rep2 (rep/validate rep2)]
           (is (=? (dissoc rep :ref) rep2)))))))
+
+(deftest export-import-refs)
