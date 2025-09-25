@@ -1,6 +1,7 @@
 (ns metabase.lib.field.resolution
   "Code for resolving field metadata from a field ref. There's a lot of code here, isn't there? This is probably more
   complicated than it needs to be!"
+  (:refer-clojure :exclude [some select-keys])
   (:require
    #?@(:clj
        ([metabase.config.core :as config]))
@@ -24,7 +25,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [some select-keys]]))
 
 (mr/def ::id-or-name
   [:or :string ::lib.schema.id/field])
@@ -590,16 +592,20 @@
                                     :source/table-defaults
                                     :source/previous-stage)))))
 
+(def ^:private ^:dynamic *recursive-expression-resolution?* false)
+
 (defn- maybe-resolve-expression-in-current-stage [query stage-number id-or-name]
-  (when (string? id-or-name)
-    (when-some [expr (lib.expression/maybe-resolve-expression query stage-number id-or-name)]
-      (log/warn (u/format-color :red
-                                (str "Resolved field %s to an expression. Please remember to use :expression references"
-                                     " for expressions in the current stage -- using a :field ref is unsupported and may"
-                                     " not be allowed in the future.")
-                                (pr-str id-or-name)))
-      (-> (lib.expression/expression-metadata query stage-number expr)
-          (assoc :lib/source-column-alias id-or-name)))))
+  (when (and (string? id-or-name)
+             (not *recursive-expression-resolution?*))
+    (binding [*recursive-expression-resolution?* true]
+      (when-some [expr (lib.expression/maybe-resolve-expression query stage-number id-or-name)]
+        (log/warn (u/format-color :red
+                                  (str "Resolved field %s to an expression. Please remember to use :expression references"
+                                       " for expressions in the current stage -- using a :field ref is unsupported and may"
+                                       " not be allowed in the future.")
+                                  (pr-str id-or-name)))
+        (-> (lib.expression/expression-metadata query stage-number expr)
+            (assoc :lib/source-column-alias id-or-name))))))
 
 (mu/defn- resolve-from-previous-stage-or-source :- ::lib.metadata.calculation/visible-column
   [query        :- ::lib.schema/query

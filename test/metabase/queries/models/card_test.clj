@@ -625,7 +625,9 @@
   (testing "cards which have another card as the source depend on that card"
     (mt/with-temp [:model/Card card1 {:name "base card"}
                    :model/Card card2 {:name "derived card"
-                                      :dataset_query {:query {:source-table (str "card__" (:id card1))}}}]
+                                      :dataset_query {:database (mt/id)
+                                                      :type     :query
+                                                      :query    {:source-table (str "card__" (:id card1))}}}]
       (is (empty? (serdes/descendants "Card" (:id card1))))
       (is (= {["Card" (:id card1)] {"Card" (:id card2)}}
              (serdes/descendants "Card" (:id card2)))))))
@@ -635,12 +637,14 @@
     (mt/with-temp [:model/NativeQuerySnippet snippet {:name "category" :content "category = 'Gizmo'"}
                    :model/Card               card
                    {:name          "Business Card"
-                    :dataset_query {:native
-                                    {:template-tags {:snippet {:name         "snippet"
-                                                               :type         :snippet
-                                                               :snippet-name "snippet"
-                                                               :snippet-id   (:id snippet)}}
-                                     :query "select * from products where {{snippet}}"}}}]
+                    :dataset_query {:database (mt/id)
+                                    :type     :native
+                                    :native   {:template-tags {:snippet {:name         "snippet"
+                                                                         :display-name "Snippet"
+                                                                         :type         :snippet
+                                                                         :snippet-name "snippet"
+                                                                         :snippet-id   (:id snippet)}}
+                                               :query         "select * from products where {{snippet}}"}}}]
       (is (= {["NativeQuerySnippet" (:id snippet)] {"Card" (:id card)}}
              (serdes/descendants "Card" (:id card)))))))
 

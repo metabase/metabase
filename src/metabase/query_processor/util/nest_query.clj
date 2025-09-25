@@ -5,8 +5,8 @@
 
    (This namespace is here rather than in the shared MBQL lib because it relies on other QP-land utils like the QP
   refs stuff.)"
+  (:refer-clojure :exclude [mapv select-keys some])
   (:require
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.api.common :as api]
    ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
@@ -24,7 +24,8 @@
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf :refer [mapv select-keys some]]))
 
 (defn- all-fields-for-table [table-id]
   (->> (lib.metadata/fields (qp.store/metadata-provider) table-id)
@@ -98,7 +99,7 @@
 (defn- joined-fields [inner-query]
   (m/distinct-by
    normalize-clause
-   (lib.util.match/match (walk/prewalk (fn [x]
+   (lib.util.match/match (perf/prewalk (fn [x]
                                          (if (map? x)
                                            (dissoc x :source-query :source-metadata :temporal-unit)
                                            x))
