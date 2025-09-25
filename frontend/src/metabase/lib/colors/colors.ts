@@ -42,7 +42,7 @@ export const colors = {
   // --mb-base-color-lobster-10
   "bg-error": "hsla(0, 76%, 97%, 1)",
   shadow: "rgba(0,0,0,0.08)",
-  border: "#EEECEC",
+  border: "#dcdfe0", // orion-20
 
   /* Saturated colors for the SQL editor. Shouldn't be used elsewhere since they're not white-labelable. */
   "saturated-blue": "#2D86D4",

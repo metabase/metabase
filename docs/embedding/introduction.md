@@ -20,15 +20,9 @@ With the [Embedded analytics SDK](./sdk/introduction.md), you can embed individu
 
 ## Embedded analytics JS
 
-With [Embedded analytics JS](./embedded-analytics-js.md), you can embed individual Metabase components in your web app with JavaScript — no React required. Choose from dashboards, questions, or the query builder, and configure per‑component options like drill‑through, parameters, downloads, and theming.
+With [Embedded analytics JS](./embedded-analytics-js.md), you can embed individual Metabase components in your web app with JavaScript — no React required. Choose from dashboards, questions, or the query builder, and configure per‑component options like drill‑through, parameters, downloads, and theming. Embedded Analytics JS integrates with [SSO](securing-embeds.md) and [data permissions](../permissions/embedding.md).
 
-**When to use Embedded analytics JS**: you’re not using React (or want a drop‑in script) and want to embed Metabase components with per‑component controls and theming.
-
-## Interactive embedding
-
-Interactive embedding is the only kind of embedding that [integrates with SSO and data permissions](./interactive-embedding.md) to enable true self-service access to the underlying data.
-
-**When to use interactive embedding**: you want to [offer multi-tenant, self-service analytics](https://www.metabase.com/blog/why-full-app-embedding). With interactive embedding, people can create their own questions, dashboards, models, and more, with row and column security policies determining which data they can access.
+**When to use Embedded analytics JS**: You want to [offer multi-tenant, self-service analytics](https://www.metabase.com/blog/why-full-app-embedding), you’re not using React (or want a drop‑in script) and want to embed Metabase components with per‑component controls and theming.
 
 ## Static embedding
 
@@ -41,6 +35,10 @@ Also known as signed embedding, [static embedding](./static-embedding.md) is a s
 If you'd like to share your data with the good people of the internet, admins can create a [public link](./public-links.md) or embed a question or dashboard directly in your website.
 
 **When to use public links and embeds**: public links and embeds are good for one-off charts and dashboards. Admins can use them when you just need to show someone a chart or dashboard without giving people access to your Metabase. And you don't care who sees the data; you want to make those stats available to everyone.
+
+## Interactive embedding
+
+[Interactive embedding](./interactive-embedding.md) allows you to embed the entire Metabase app in an iframe, and integrate Metabase SSO with your app's authentication.
 
 ## Comparison of embedding types
 
@@ -64,9 +62,9 @@ If you'd like to share your data with the good people of the internet, admins ca
 
 When deciding between the Embedded analytics SDK and Embedded analytics JS: if your app uses React, you should use the SDK. Otherwise, use the JS library. The JS library uses the SDK under the hood, but you can have more control with React and the SDK.
 
-## Switching from static to interactive embedding
+## Switching from static embedding to Embedded Analytics JS
 
-[Interactive embedding](./interactive-embedding.md) requires authentication via single sign-on (SSO), so you'll need to set that up both in your Metabase and in your application's server. Check out our [Interactive embedding quick start](../embedding/interactive-embedding-quick-start-guide.md).
+[Embedded Analytics JS](./embedded-analytics-js.md) requires authentication via single sign-on (SSO), so you'll need to set that up both in your Metabase and in your application's server. Check out our [Modular embedding authentication](../embedding/sdk/authentication.md).
 
 ## Further reading
 
