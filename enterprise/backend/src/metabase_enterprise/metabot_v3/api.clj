@@ -1,7 +1,6 @@
 (ns metabase-enterprise.metabot-v3.api
   "`/api/ee/metabot-v3/` routes"
   (:require
-
    [clj-http.client :as http]
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.api.document]
