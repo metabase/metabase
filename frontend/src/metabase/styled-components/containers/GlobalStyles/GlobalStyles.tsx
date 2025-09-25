@@ -6,7 +6,6 @@ import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
 import { getSitePath } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
-import { getIsDarkMode } from "metabase/selectors/app";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import { useMantineTheme } from "metabase/ui";
 import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
@@ -15,17 +14,13 @@ import { getFont, getFontFiles } from "../../selectors";
 
 export const GlobalStyles = (): JSX.Element => {
   const font = useSelector(getFont);
-  const isDarkMode = useSelector(getIsDarkMode);
   const fontFiles = useSelector(getFontFiles);
 
   const sitePath = getSitePath();
   const theme = useMantineTheme();
 
   // This can get expensive so we should memoize it separately
-  const cssVariables = useMemo(
-    () => getMetabaseCssVariables(theme, isDarkMode),
-    [theme, isDarkMode],
-  );
+  const cssVariables = useMemo(() => getMetabaseCssVariables(theme), [theme]);
 
   const styles = useMemo(() => {
     return css`
