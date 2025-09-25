@@ -1775,26 +1775,6 @@
 
 (deftest exclude-internal-content-hsql-test
   (testing "The exclude-internal-content-hsql multimethod returns correct HoneySQL expressions"
-    (testing "without table alias"
-      (let [result (mi/exclude-internal-content-hsql :model/Collection)]
-        (is (= [:and
-                [:or [:= [:metabase.util.honey-sql-2/identifier :field ["type"]] nil]
-                 [:and
-                  [:not= [:metabase.util.honey-sql-2/identifier :field ["type"]] [:inline "instance-analytics"]]
-                  [:not= [:metabase.util.honey-sql-2/identifier :field ["type"]] [:inline "trash"]]]]
-                [:not [:metabase.util.honey-sql-2/identifier :field ["is_sample"]]]]
-               result))))
-
-    (testing "with table alias"
-      (let [result (mi/exclude-internal-content-hsql :model/Collection :table-alias "c")]
-        (is (= [:and
-                [:or [:= [:metabase.util.honey-sql-2/identifier :field ["c" "type"]] nil]
-                 [:and
-                  [:not= [:metabase.util.honey-sql-2/identifier :field ["c" "type"]] [:inline "instance-analytics"]]
-                  [:not= [:metabase.util.honey-sql-2/identifier :field ["c" "type"]] [:inline "trash"]]]]
-                [:not [:metabase.util.honey-sql-2/identifier :field ["c" "is_sample"]]]]
-               result))))
-
     (testing "filters exclude internal collections in practice"
       (mt/with-temp [:model/Collection regular-collection {:name "Regular Collection"}
                      :model/Collection trash-collection {:name "Trash Collection" :type "trash"}

@@ -1427,6 +1427,8 @@
       [:and
        [:not= (maybe-alias :type) [:inline instance-analytics-collection-type]]
        [:not= (maybe-alias :type) [:inline trash-collection-type]]]]
+     [:or [:= (maybe-alias :namespace) nil]
+      [:not= (maybe-alias :namespace) [:inline "analytics"]]]
      [:not (maybe-alias :is_sample)]]))
 
 (defn- parent-identity-hash [coll]
