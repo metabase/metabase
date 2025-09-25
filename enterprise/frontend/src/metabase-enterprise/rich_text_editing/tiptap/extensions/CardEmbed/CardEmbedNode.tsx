@@ -44,6 +44,10 @@ import { getUrl } from "metabase-lib/v1/urls";
 import type { Card, CardDisplayType, Dataset } from "metabase-types/api";
 
 import { CommentsButton } from "../../components/CommentsButton";
+import {
+  cleanupFlexContainerNodes,
+  findNodeParentAndPos,
+} from "../HandleEditorDrop/utils";
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
 import CS from "../extensions.module.css";
 
@@ -336,9 +340,22 @@ export const CardEmbedComponent = memo(
     );
 
     const handleRemoveNode = useCallback(() => {
-      deleteNode();
+      const nodeParentResult = findNodeParentAndPos(editor.view, node);
+
+      if (
+        nodeParentResult &&
+        nodeParentResult.parent.type.name === "resizeNode"
+      ) {
+        const { parent, parentPos } = nodeParentResult;
+        editor.view.dispatch(
+          editor.state.tr.delete(parentPos, parentPos + parent.nodeSize),
+        );
+      } else {
+        deleteNode();
+      }
+      cleanupFlexContainerNodes(editor.view);
       editor.chain().focus();
-    }, [deleteNode, editor]);
+    }, [deleteNode, editor, node]);
 
     // Handle drill-through navigation
     const handleChangeCardAndRun = useCallback(
