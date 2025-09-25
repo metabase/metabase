@@ -7,6 +7,7 @@
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
+   [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.sync.core :as sync]
@@ -184,3 +185,21 @@
   (or (t2/exists? :model/DatabaseRouter :database_id (u/the-id db-or-id))
       (some->> (:router-database-id db-or-id)
                (t2/exists? :model/DatabaseRouter :database_id))))
+
+(defn- matching-timestamp?
+  [job field-path {:keys [start end]}]
+  (when-let [field-instant (->instant (get-in job field-path))]
+    (let [start-instant (some-> start u.date/parse ->instant)
+          end-instant (some-> end u.date/parse ->instant)]
+      (and (or (nil? start)
+               (not (.isBefore field-instant start-instant)))
+           (or (nil? end)
+               (.isAfter end-instant field-instant))))))
+
+(defn ->date-field-filter-xf
+  "Returns an xform for a date filter."
+  [field-path filter-value]
+  (let [range (some-> filter-value (params.dates/date-string->range {:inclusive-end? false}))]
+    (if range
+      (filter #(matching-timestamp? % field-path range))
+      identity)))

@@ -8,7 +8,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.jvm :as u.jvm]
@@ -143,23 +142,6 @@
     (assoc job :next_run {:start_time (str (transforms.util/->instant start-time))})
     job))
 
-(defn- matching-timestamp?
-  [job field-path {:keys [start end]}]
-  (when-let [field-instant (transforms.util/->instant (get-in job field-path))]
-    (let [start-instant (some-> start u.date/parse transforms.util/->instant)
-          end-instant (some-> end u.date/parse transforms.util/->instant)]
-      (and (or (nil? start)
-               (not (.isBefore field-instant start-instant)))
-           (or (nil? end)
-               (.isAfter end-instant field-instant))))))
-
-(defn- ->date-field-filter-xf
-  [field-path filter-value]
-  (let [range (some-> filter-value (params.dates/date-string->range {:inclusive-end? false}))]
-    (if range
-      (filter #(matching-timestamp? % field-path range))
-      identity)))
-
 (api.macros/defendpoint :get "/:job-id/transforms"
   "Get the transforms of job specified by the job's ID."
   [{:keys [job-id]} :- [:map
@@ -172,19 +154,24 @@
 (api.macros/defendpoint :get "/"
   "Get all transform jobs."
   [_route-params
-   {:keys [last_run_start_time next_run_start_time tag_ids]} :-
+   {:keys [last_run_start_time next_run_start_time last_run_statuses tag_ids]} :-
    [:map
     [:last_run_start_time {:optional true} [:maybe ms/NonBlankString]]
     [:next_run_start_time {:optional true} [:maybe ms/NonBlankString]]
+    [:last_run_statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
     [:tag_ids   {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (log/info "Getting all transform jobs")
   (api/check-superuser)
   (let [jobs (t2/select :model/TransformJob {:order-by [[:created_at :desc]]})
+        statuses (->> last_run_statuses (map keyword) set not-empty)
         tag-ids (-> tag_ids set not-empty)]
     (into []
           (comp (map add-next-run)
-                (->date-field-filter-xf [:last_run :start_time] last_run_start_time)
-                (->date-field-filter-xf [:next_run :start_time] next_run_start_time)
+                (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
+                (transforms.util/->date-field-filter-xf [:next_run :start_time] next_run_start_time)
+                (if statuses
+                  (filter #(statuses (get-in % [:last_run :status])))
+                  identity)
                 (if tag-ids
                   (filter #(some tag-ids (:tag_ids %)))
                   identity)
