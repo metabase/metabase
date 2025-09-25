@@ -1,6 +1,5 @@
 (ns metabase.parameters.schema
   (:require
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -11,21 +10,14 @@
   "Schema for the map of actual value -> human-readable value. Cannot be empty."
   [:map-of {:min 1} :any [:maybe :string]])
 
-(mr/def ::legacy-field-or-expression-reference
-  "Schema for a valid legacy `:field` or `:expression` reference (possibly not yet normalized)."
-  [:fn
-   (fn [k]
-     ((comp (mr/validator mbql.s/Field)
-            mbql.normalize/normalize-tokens) k))])
-
 (mr/def ::values-source-config
   "Schema for valid source_options within a Parameter"
   ;; TODO: This should be tighter
   [:map
    [:values      {:optional true} [:* :any]]
    [:card_id     {:optional true} ::lib.schema.id/card]
-   [:value_field {:optional true} ::legacy-field-or-expression-reference]
-   [:label_field {:optional true} ::legacy-field-or-expression-reference]])
+   [:value_field {:optional true} ::mbql.s/field-or-expression-ref]
+   [:label_field {:optional true} ::mbql.s/field-or-expression-ref]])
 
 #_(def ParameterSource
     (mc/schema

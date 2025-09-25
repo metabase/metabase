@@ -5,6 +5,8 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db :row-lock))
 
 ;;; --------------------------------------------- source=card ----------------------------------------------
@@ -313,7 +315,7 @@
                      :type                 "category"
                      :values_source_type   "card"
                      :values_source_config {:card_id     (:id card)
-                                            :value_field [:field 0 nil]}}
+                                            :value_field [:field Integer/MAX_VALUE nil]}}
                     nil
                     (constantly mock-default-result))))))))))
 

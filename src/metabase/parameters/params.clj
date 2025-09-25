@@ -14,6 +14,7 @@
    [medley.core :as m]
    [metabase.app-db.core :as app-db]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
@@ -82,9 +83,14 @@
    card   :- :metabase.queries.schema/card]
   (let [target (mbql.normalize/normalize target)]
     (when (mbql.u/is-clause? :dimension target)
+      ;; MBQL 5 `:parameters` still use legacy field refs (for now), while `:template-tags` use MBQL 5 field refs. So
+      ;; we have to handle either one depending on where the `:field` ref actually lives.
       (let [[_ dimension] target
-            field-ref    (if (mbql.u/is-clause? :template-tag dimension)
+            field-ref    (cond
+                           (mbql.u/is-clause? :template-tag dimension)
                            (template-tag->field-ref dimension card)
+
+                           (mbql.u/is-clause? :field dimension)
                            dimension)]
         (cond
           (not field-ref)
@@ -92,13 +98,13 @@
 
           ;; Being extra safe here since we've got many reports on this cause loading dashboard to fail
           ;; for unknown reasons. See #8917
-          (not (mr/validate :mbql.clause/field field-ref))
-          (log/errorf "Template tag :dimension is not a valid field ref, got %s" (pr-str field-ref))
+          (not (mr/validate [:or :mbql.clause/field ::mbql.s/field] field-ref))
+          (log/errorf "Template tag :dimension is not a valid MBQL 5 or legacy field ref, got %s" (pr-str field-ref))
 
           :else
-          (lib.util.match/match-lite field-ref
-            [:field _opts (id :guard pos-int?)]
-            id))))))
+          (lib.util.match/match-one field-ref
+            [:field _opts (id :guard pos-int?)] id
+            [:field (id :guard pos-int?) _opts] id))))))
 
 (defn- pk-fields
   "Return the `fields` that are PK Fields."
