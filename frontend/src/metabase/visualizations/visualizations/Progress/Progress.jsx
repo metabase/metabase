@@ -5,9 +5,9 @@ import { t } from "ttag";
 
 import IconBorder from "metabase/common/components/IconBorder";
 import CS from "metabase/css/core/index.css";
+import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
 import { Icon } from "metabase/ui";
-import { color } from "metabase/ui/utils/colors";
 import { ChartSettingGoalInput } from "metabase/visualizations/components/settings/ChartSettingGoalInput";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
