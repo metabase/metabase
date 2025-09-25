@@ -185,7 +185,9 @@ export default class FunnelNormal extends Component {
           </Head>
           <FunnelStart isNarrow={isNarrow}>
             <Title>{formatMetric(sortedRows[0][metricIndex])}</Title>
-            <Subtitle>{cols[metricIndex].display_name}</Subtitle>
+            <Subtitle>
+              <Ellipsified>{cols[metricIndex].display_name}</Ellipsified>
+            </Subtitle>
           </FunnelStart>
           {/* This part of code in used only to share height between .Start and .Graph columns. */}
           <Info isNarrow={isNarrow}>
