@@ -2,10 +2,10 @@ import cx from "classnames";
 import { type CSSProperties, forwardRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 
-import { Box, Button, type ButtonProps, rem } from "metabase/ui";
+import { ForwardRefLink } from "metabase/common/components/Link";
+import { Box, rem } from "metabase/ui";
 import type { CommentThread } from "metabase-enterprise/comments/types";
-
-import { useCommentsButtonProps } from "../hooks/useCommentsButtonProps";
+import { CommentsButton } from "metabase-enterprise/rich_text_editing/tiptap/components/CommentsButton";
 
 import S from "./CommentsMenu.module.css";
 
@@ -37,12 +37,6 @@ export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
       () => getUnresolvedComments(threads).length,
       [threads],
     );
-    const commentsButtonProps = useCommentsButtonProps({
-      active,
-      disabled,
-      href,
-      unresolvedCommentsCount,
-    });
     const hasUnresolvedComments = unresolvedCommentsCount > 0;
 
     return createPortal(
@@ -59,7 +53,18 @@ export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
         ref={ref}
         style={style}
       >
-        <Button {...(commentsButtonProps as ButtonProps)} />
+        <CommentsButton
+          disabled={disabled}
+          variant={active ? "filled" : "default"}
+          unresolvedCommentsCount={unresolvedCommentsCount}
+          {...(disabled
+            ? undefined
+            : {
+                component: ForwardRefLink,
+                // If no existing unresolved comments comments, add query param to auto-open new comment form
+                to: unresolvedCommentsCount > 0 ? href : `${href}?new=true`,
+              })}
+        />
       </Box>,
       document.body,
     );

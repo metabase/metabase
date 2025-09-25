@@ -16,16 +16,7 @@ import { QuestionPickerModal } from "metabase/common/components/Pickers/Question
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import {
-  Box,
-  Button,
-  Flex,
-  Icon,
-  Loader,
-  Menu,
-  Text,
-  TextInput,
-} from "metabase/ui";
+import { Box, Flex, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
@@ -36,7 +27,6 @@ import { navigateToCardFromDocument } from "metabase-enterprise/documents/action
 import { trackDocumentReplaceCard } from "metabase-enterprise/documents/analytics";
 import { getUnresolvedComments } from "metabase-enterprise/documents/components/Editor/CommentsMenu";
 import { EDITOR_STYLE_BOUNDARY_CLASS } from "metabase-enterprise/documents/components/Editor/constants";
-import { useCommentsButtonProps } from "metabase-enterprise/documents/components/Editor/hooks/useCommentsButtonProps";
 import {
   loadMetadataForDocumentCard,
   openVizSettingsSidebar,
@@ -53,6 +43,7 @@ import Question from "metabase-lib/v1/Question";
 import { getUrl } from "metabase-lib/v1/urls";
 import type { Card, CardDisplayType, Dataset } from "metabase-types/api";
 
+import { CommentsButton } from "../../components/CommentsButton";
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
 import CS from "../extensions.module.css";
 
@@ -214,17 +205,6 @@ export const CardEmbedComponent = memo(
     const commentsPath = document
       ? `/document/${document.id}/comments/${_id}`
       : "";
-    const {
-      component, // don't use Link component here since it messes with tiptap's link handling
-      to: commentsButtonTo,
-      ...commentsButtonProps
-    } = useCommentsButtonProps({
-      active: isOpen,
-      disabled: hasUnsavedChanges,
-      href: commentsPath,
-      unresolvedCommentsCount,
-    });
-
     const { id, name } = node.attrs;
     const dispatch = useDispatch();
     const canWrite = editor.options.editable;
@@ -621,10 +601,13 @@ export const CardEmbedComponent = memo(
                     document &&
                     unresolvedCommentsCount > 0 && (
                       <Box data-hide-on-print my="-sm" ml="auto">
-                        <Button
-                          {...commentsButtonProps}
+                        <CommentsButton
+                          // don't use Link component here since it messes with tiptap's link handling
+                          disabled={hasUnsavedChanges || !commentsPath}
+                          variant={isOpen ? "filled" : "default"}
+                          unresolvedCommentsCount={unresolvedCommentsCount}
                           onClick={() => {
-                            commentsPath && dispatch(push(commentsPath));
+                            dispatch(push(commentsPath));
                           }}
                         />
                       </Box>
@@ -651,8 +634,13 @@ export const CardEmbedComponent = memo(
                         <Menu.Item
                           leftSection={<Icon name="add_comment" size={14} />}
                           component={ForwardRefLink}
-                          to={commentsPath}
-                          disabled={!commentsButtonTo}
+                          to={
+                            // If no existing unresolved comments comments, add query param to auto-open new comment form
+                            unresolvedCommentsCount > 0
+                              ? commentsPath
+                              : `${commentsPath}?new=true`
+                          }
+                          disabled={!commentsPath}
                         >
                           {t`Comment`}
                         </Menu.Item>
