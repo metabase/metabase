@@ -265,19 +265,21 @@ export const Messages = ({
   const submitFeedback = async (metabotFeedback: MetabotFeedback) => {
     const { message_id, positive } = metabotFeedback.feedback;
 
-    const { data, error } = await submitMetabotFeedback(metabotFeedback);
+    const { error } = await submitMetabotFeedback(metabotFeedback);
 
-    console.log("METABOT FEEDBACK", data, error);
+    if (error) {
+      sendToast({ icon: "warning", message: "Failed to submit feedback" });
+    } else {
+      sendToast({ icon: "check", message: "Feedback submitted" });
 
-    sendToast({ icon: "check", message: "Feedback submitted" });
-
-    setFeedbackState((prevState) => ({
-      submitted: {
-        ...prevState.submitted,
-        [message_id]: positive ? "positive" : "negative",
-      },
-      modal: undefined,
-    }));
+      setFeedbackState((prevState) => ({
+        submitted: {
+          ...prevState.submitted,
+          [message_id]: positive ? "positive" : "negative",
+        },
+        modal: undefined,
+      }));
+    }
   };
 
   const onAgentMessageCopy = useCallback(
