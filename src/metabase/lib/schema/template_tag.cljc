@@ -1,10 +1,12 @@
 (ns metabase.lib.schema.template-tag
+  (:refer-clojure :exclude [every?])
   (:require
    [malli.core :as mc]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.id :as id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [every?]]))
 
 ;; Schema for valid values of `:widget-type` for a [[TemplateTag:FieldFilter]].
 (mr/def ::widget-type

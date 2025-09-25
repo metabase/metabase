@@ -5,7 +5,7 @@ import { Box, Group, Icon } from "metabase/ui";
 import { parseTimestampWithTimezone } from "metabase-enterprise/transforms/utils";
 import type { TransformRun } from "metabase-types/api";
 
-import { RunErrorInfo } from "../RunErrorInfo";
+import { RunInfo } from "../RunInfo";
 
 type RunStatusSectionProps = {
   run: TransformRun | null;
@@ -38,7 +38,8 @@ export function RunStatus({
 
   const errorInfo =
     message != null ? (
-      <RunErrorInfo
+      <RunInfo
+        status={status}
         message={message}
         endTime={endTime ? endTime.toDate() : null}
       />

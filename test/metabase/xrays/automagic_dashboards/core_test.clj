@@ -1598,7 +1598,7 @@
                            first)
             aggregate (get-in dashcard [:card :dataset_query :query :aggregation])]
         (testing "Fields requiring a join should have :source-field populated in the aggregate."
-          (is (= [["distinct" [:field (mt/id :products :id)
-                               ;; This should be present vs. nil (value before issue)
-                               {:source-field (mt/id :reviews :product_id)}]]]
+          (is (= [[:distinct [:field (mt/id :products :id)
+                              ;; This should be present vs. nil (value before issue)
+                              {:source-field (mt/id :reviews :product_id)}]]]
                  aggregate)))))))

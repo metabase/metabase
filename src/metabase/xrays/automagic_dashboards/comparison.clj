@@ -3,15 +3,13 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.xrays.automagic-dashboards.core
-    :refer [->related-entity
-            ->root
-            automagic-analysis
-            capitalize-first]]
+   [metabase.util.malli :as mu]
+   [metabase.xrays.automagic-dashboards.core :refer [->related-entity ->root automagic-analysis capitalize-first]]
    [metabase.xrays.automagic-dashboards.filters :as filters]
    [metabase.xrays.automagic-dashboards.names :as names]
    [metabase.xrays.automagic-dashboards.populate :as populate]
@@ -191,8 +189,11 @@
        distinct
        (map (partial magic.util/->field segment))))
 
-(defn- update-related
-  [related left right]
+(mu/defn- update-related
+  [related
+   left :- [:map
+            [:database ::lib.schema.id/database]]
+   right]
   (-> related
       (update :related (comp distinct conj) (-> right :entity ->related-entity))
       (assoc :compare (concat

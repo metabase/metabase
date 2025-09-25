@@ -28,14 +28,14 @@ describe("setDirection", () => {
     });
   });
 
-  describe("last", () => {
+  describe("past", () => {
     it("should convert a current value", () => {
       const value: RelativeDatePickerValue = {
         type: "relative",
         value: 0,
         unit: "week",
       };
-      expect(setDirection(value, "last")).toEqual({
+      expect(setDirection(value, "past")).toEqual({
         type: "relative",
         value: -30,
         unit: "week",
@@ -48,7 +48,7 @@ describe("setDirection", () => {
         value: 20,
         unit: "year",
       };
-      expect(setDirection(value, "last")).toEqual({
+      expect(setDirection(value, "past")).toEqual({
         type: "relative",
         value: -20,
         unit: "year",
@@ -64,7 +64,7 @@ describe("setDirection", () => {
         offsetValue: 10,
         offsetUnit: "month",
       };
-      expect(setDirection(value, "last")).toEqual({
+      expect(setDirection(value, "past")).toEqual({
         type: "relative",
         value: -20,
         unit: "day",
@@ -74,14 +74,14 @@ describe("setDirection", () => {
     });
   });
 
-  describe("next", () => {
+  describe("future", () => {
     it("should convert a current value", () => {
       const value: RelativeDatePickerValue = {
         type: "relative",
         value: 0,
         unit: "week",
       };
-      expect(setDirection(value, "next")).toEqual({
+      expect(setDirection(value, "future")).toEqual({
         type: "relative",
         value: 30,
         unit: "week",
@@ -94,7 +94,7 @@ describe("setDirection", () => {
         value: -20,
         unit: "year",
       };
-      expect(setDirection(value, "next")).toEqual({
+      expect(setDirection(value, "future")).toEqual({
         type: "relative",
         value: 20,
         unit: "year",
@@ -110,7 +110,7 @@ describe("setDirection", () => {
         offsetValue: -10,
         offsetUnit: "month",
       };
-      expect(setDirection(value, "next")).toEqual({
+      expect(setDirection(value, "future")).toEqual({
         type: "relative",
         value: 20,
         unit: "day",
@@ -133,11 +133,11 @@ describe("getDefaultValue", () => {
       expectedValue: { type: "relative", value: -30, unit: "day" },
     },
     {
-      availableDirections: ["last", "current", "next"],
+      availableDirections: ["past", "current", "future"],
       expectedValue: { type: "relative", value: -30, unit: "day" },
     },
     {
-      availableDirections: ["last", "current"],
+      availableDirections: ["past", "current"],
       expectedValue: { type: "relative", value: -30, unit: "day" },
     },
     {
@@ -167,32 +167,32 @@ describe("getAvailableTabs", () => {
     },
     {
       initialValue: undefined,
-      availableDirections: ["current", "next"],
+      availableDirections: ["current", "future"],
       expectedTabs: [CURRENT_TAB, NEXT_TAB],
     },
     {
       initialValue: undefined,
-      availableDirections: ["last", "current", "next"],
+      availableDirections: ["past", "current", "future"],
       expectedTabs: [LAST_TAB, CURRENT_TAB, NEXT_TAB],
     },
     {
       initialValue: { type: "relative", value: 0, unit: "day" },
-      availableDirections: ["current", "next"],
+      availableDirections: ["current", "future"],
       expectedTabs: [CURRENT_TAB, NEXT_TAB],
     },
     {
       initialValue: { type: "relative", value: 30, unit: "day" },
-      availableDirections: ["current", "next"],
+      availableDirections: ["current", "future"],
       expectedTabs: [CURRENT_TAB, NEXT_TAB],
     },
     {
       initialValue: { type: "relative", value: -30, unit: "day" },
-      availableDirections: ["current", "next"],
+      availableDirections: ["current", "future"],
       expectedTabs: [LAST_TAB, CURRENT_TAB, NEXT_TAB],
     },
     {
       initialValue: { type: "relative", value: -30, unit: "day" },
-      availableDirections: ["last", "current"],
+      availableDirections: ["past", "current"],
       expectedTabs: [LAST_TAB, CURRENT_TAB],
     },
   ])(
