@@ -119,7 +119,9 @@
                                           :dimensions         []}]}
               (-> (t2/hydrate dashboard :param_fields)
                   :param_fields
-                  mt/derecordize)))))
+                  mt/derecordize))))))
+
+(deftest hydrate-param-fields-for-dashboard-test-2
   (testing "should ignore invalid parameter mappings"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Dashboard    dashboard  {:parameters [{:id "p1" :type :number/=}
@@ -207,7 +209,9 @@
            (params/get-linked-field-ids
             [{:parameter_mappings
               [{:parameter_id "foo" :target [:dimension [:field 256 nil]]}
-               {:parameter_id "bar" :target [:dimension [:field 267 nil]]}]}]))))
+               {:parameter_id "bar" :target [:dimension [:field 267 nil]]}]}])))))
+
+(deftest ^:parallel get-linked-field-ids-test-2
   (testing "get-linked-field-ids multiple fields to one param test"
     (is (= {"foo" #{256 10}
             "bar" #{267}}
@@ -216,7 +220,9 @@
               [{:parameter_id "foo" :target [:dimension [:field 256 nil]]}
                {:parameter_id "bar" :target [:dimension [:field 267 nil]]}]}
              {:parameter_mappings
-              [{:parameter_id "foo" :target [:dimension [:field 10 nil]]}]}]))))
+              [{:parameter_id "foo" :target [:dimension [:field 10 nil]]}]}])))))
+
+(deftest ^:parallel get-linked-field-ids-test-3
   (testing "get-linked-field-ids-test misc fields"
     (is (= {"1" #{1} "2" #{2} "3" #{3} "4" #{4} "5" #{5}}
            (params/get-linked-field-ids
@@ -226,7 +232,9 @@
                {:parameter_id "wow" :target [:dimension [:field "wow" {:base-type :type/Integer}]]}
                {:parameter_id "3" :target [:dimension [:field 3 {:source-field 1}]]}
                {:parameter_id "4" :target [:dimension [:field 4 {:binning {:strategy :num-bins, :num-bins 1}}]]}
-               {:parameter_id "5" :target [:dimension [:field 5]]}]}]))))
+               {:parameter_id "5" :target [:dimension [:field 5 nil]]}]}])))))
+
+(deftest ^:parallel get-linked-field-ids-test-4
   (testing "get-linked-field-ids-test no fields"
     (is (= {}
            (params/get-linked-field-ids

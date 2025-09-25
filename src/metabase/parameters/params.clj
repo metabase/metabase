@@ -80,7 +80,9 @@
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
   [target :- ::lib.schema.parameter/target
-   card   :- :metabase.queries.schema/card]
+   ;; TODO (Cam 9/25/25) -- `card` should actually be required but I don't have all day to fix broken tests from
+   ;; before I schematized this.
+   card   :- [:maybe :metabase.queries.schema/card]]
   (let [target (mbql.normalize/normalize target)]
     (when (mbql.u/is-clause? :dimension target)
       ;; MBQL 5 `:parameters` still use legacy field refs (for now), while `:template-tags` use MBQL 5 field refs. So
@@ -88,7 +90,8 @@
       (let [[_ dimension] target
             field-ref    (cond
                            (mbql.u/is-clause? :template-tag dimension)
-                           (template-tag->field-ref dimension card)
+                           (when card
+                             (template-tag->field-ref dimension card))
 
                            (mbql.u/is-clause? :field dimension)
                            dimension)]
@@ -132,6 +135,12 @@
                               ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
                               ;; `:list` instead of `:auto-list`.)
                               (t2/hydrate :has_field_values)))))
+
+(methodical/defmethod t2/simple-hydrate [nil :name_field]
+  "Not really 100% sure why this is even needed but when we do recursive hydration of `[:target :name_field]` it tries
+  to hydrate for `nil`... I guess we have to explicitly tell it to do nothing."
+  [_model _k _nil]
+  nil)
 
 (methodical/defmethod t2/batched-hydrate [:model/Field :name_field]
   "For all `fields` that are `:type/PK` Fields, look for a `:type/Name` Field belonging to the same Table. For each
@@ -332,15 +341,16 @@
 (defn get-linked-field-ids
   "Retrieve a map relating paramater ids to field ids."
   [dashcards]
-  (letfn [(targets [params card]
+  (letfn [(targets [{params :parameter_mappings card :card, :as _dashcard}]
             (into {}
                   (for [param params
-                        :let  [id (param-target->field-clause-id (:target param)
-                                                                 card)]
+                        :let  [target (:target param)]
+                        :when target
+                        :let [id (param-target->field-clause-id target card)]
                         :when id]
                     [(:parameter_id param) #{id}])))]
     (->> dashcards
-         (mapv (fn [{params :parameter_mappings card :card}] (targets params card)))
+         (map targets)
          (apply merge-with into {}))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Dashboard :param_fields]
@@ -358,9 +368,9 @@
 ;;; |                                                 CARD-SPECIFIC                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn- card->template-tag-id->field-ids :- [:map-of
-                                               ::lib.schema.template-tag/id
-                                               [:set ::lib.schema.id/field]]
+(mu/defn- card->template-tag-id->field-ids :- [:maybe [:map-of
+                                                       ::lib.schema.template-tag/id
+                                                       [:set ::lib.schema.id/field]]]
   "Return a map of Param IDs to sets of Field IDs referenced by each template tag parameter in this `card`.
 
   Mostly used for determining Fields referenced by Cards for purposes other than processing queries. Filters out
