@@ -1,9 +1,7 @@
 import type { Extension } from "@uiw/react-codemirror";
-import cx from "classnames";
 
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 
-import S from "./CodeEditor.module.css";
 import type { CodeLanguage } from "./types";
 import { useExtensions } from "./utils";
 
@@ -16,6 +14,8 @@ type Props = {
   readOnly?: boolean;
   value: string;
   onChange?: (value: string) => void;
+  extensions?: Extension[];
+  "data-testid"?: string;
 };
 
 export function CodeEditor({
@@ -27,8 +27,13 @@ export function CodeEditor({
   readOnly,
   value,
   onChange,
+  extensions: externalExtensions,
+  ...rest
 }: Props) {
-  const extensions = useExtensions({ language });
+  const extensions = useExtensions({
+    language,
+    extensions: externalExtensions,
+  });
 
   return (
     <CodeMirror
@@ -38,13 +43,14 @@ export function CodeEditor({
         highlightActiveLine: false,
         highlightActiveLineGutter: false,
       }}
-      className={cx(S.codeEditor, className)}
+      className={className}
       extensions={extensions}
       id={id}
       readOnly={readOnly}
       value={value}
       onChange={onChange}
       highlightRanges={highlightRanges}
+      {...rest}
     />
   );
 }
