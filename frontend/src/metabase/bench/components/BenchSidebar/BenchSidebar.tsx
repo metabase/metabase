@@ -26,31 +26,26 @@ function BenchSidebarComponent({ location }: BenchSidebarProps) {
       label: t`Transforms`,
       icon: <Icon name="sql" size={16} />,
       path: "/bench",
-      description: t`SQL transform editor and management`,
     },
     {
       label: t`Table Metadata`,
       icon: <Icon name="database" size={16} />,
       path: "/bench/metadata",
-      description: t`Edit table and field metadata`,
     },
     {
       label: t`Segments`,
       icon: <Icon name="filter" size={16} />,
       path: "/bench/segments",
-      description: t`Manage data segments`,
     },
     {
       label: t`Metrics`,
       icon: <Icon name="metric" size={16} />,
       path: "/bench/metrics",
-      description: t`Create and manage metrics`,
     },
     {
       label: t`Models`,
       icon: <Icon name="model" size={16} />,
       path: "/bench/models",
-      description: t`Create and manage models`,
     },
   ];
 
@@ -85,6 +80,8 @@ function BenchSidebarComponent({ location }: BenchSidebarProps) {
             description={item.description}
             leftSection={item.icon}
             active={isActive(item.path)}
+            px="lg"
+            py="md"
           />
         ))}
       </Stack>
