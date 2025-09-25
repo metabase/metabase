@@ -1,4 +1,4 @@
-import { KBarPortal, VisualState, useKBar } from "kbar";
+import { KBarPortal, KBarSearch, VisualState, useKBar } from "kbar";
 import { type HTMLAttributes, forwardRef, useEffect, useRef } from "react";
 import { type PlainRoute, withRouter } from "react-router";
 import { t } from "ttag";
@@ -11,16 +11,17 @@ import {
   Box,
   Card,
   Center,
+  Icon,
   Overlay,
-  rem,
-  Stack,
   type OverlayProps,
+  Stack,
+  rem,
 } from "metabase/ui";
 
 import { useCommandPalette } from "../hooks/useCommandPalette";
 import { useCommandPaletteBasicActions } from "../hooks/useCommandPaletteBasicActions";
 
-import { PaletteInput } from "./Palette.styled";
+import S from "./Palette.module.css";
 import { PaletteResults } from "./PaletteResults";
 
 /**
@@ -70,12 +71,26 @@ const PaletteContainer = () => {
 
   return (
     <PaletteCard ref={ref}>
-      <Box w="100%" p="1.5rem" pb={0}>
-        <PaletteInput
-          defaultPlaceholder={t`Search for anything or jump somewhere…`}
-        />
-      </Box>
-      <PaletteResults align="stretch" pb="lg" pt={rem(12)} />
+      <Stack gap={rem(4)} pb="lg">
+        <Box pos="relative">
+          <KBarSearch
+            className={S.input}
+            defaultPlaceholder={t`Search for anything…`}
+          />
+
+          <Stack
+            className={S.iconContainer}
+            align="center"
+            left="var(--mantine-spacing-xl)"
+            pos="absolute"
+            bottom={10}
+          >
+            <Icon c="text-light" name="search" />
+          </Stack>
+        </Box>
+
+        <PaletteResults align="stretch" />
+      </Stack>
     </PaletteCard>
   );
 };
