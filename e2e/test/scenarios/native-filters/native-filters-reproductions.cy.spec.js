@@ -1,5 +1,9 @@
 const { H } = cy;
-import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  USER_GROUPS,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
@@ -1251,5 +1255,32 @@ describe("issue 49577", () => {
       cy.findByText("bar").should("be.visible");
       cy.findByText("baz").should("be.visible");
     });
+  });
+});
+
+describe("issue 63537", () => {
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: "many_data_types" });
+    cy.signInAsAdmin();
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "many_data_types" });
+  });
+
+  it("should allow to use postgres enums in field filters (metabase#63537)", () => {
+    H.startNewNativeQuestion({ database: WRITABLE_DB_ID });
+    H.NativeEditor.type("SELECT * FROM many_data_types WHERE {{f}}");
+    SQLFilter.openTypePickerFromDefaultFilterType();
+    SQLFilter.chooseType("Field Filter");
+    FieldFilter.mapTo({
+      table: "Many Data Types",
+      field: "Enum",
+    });
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText("beta").click();
+      cy.button("Add filter").click();
+    });
+    H.runNativeQuery();
+    H.assertQueryBuilderRowCount(2);
   });
 });
