@@ -130,7 +130,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
     it("should be able to use the data reference and snippets when writing a SQL transform", () => {
       H.createSnippet({
         name: "snippet1",
-        content: "1",
+        content: "'foo'",
       });
 
       visitTransformListPage();
@@ -178,6 +178,12 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
           .click();
 
         editorSidebar().should("not.exist");
+
+        cy.findByTestId("native-query-editor-action-buttons")
+          .findByLabelText("Preview the query")
+          .click();
+
+        H.modal().findByText("'foo'").should("be.visible");
       }
 
       testDataReference();

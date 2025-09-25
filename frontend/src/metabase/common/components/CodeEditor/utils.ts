@@ -2,6 +2,7 @@ import { html } from "@codemirror/lang-html";
 import { javascript } from "@codemirror/lang-javascript";
 import { json } from "@codemirror/lang-json";
 import { python } from "@codemirror/lang-python";
+import { sql } from "@codemirror/lang-sql";
 import { StreamLanguage, indentUnit } from "@codemirror/language";
 import { clojure } from "@codemirror/legacy-modes/mode/clojure";
 import { pug } from "@codemirror/legacy-modes/mode/pug";
@@ -16,7 +17,7 @@ export function useExtensions({
   language,
   extensions,
 }: {
-  language?: CodeLanguage;
+  language?: CodeLanguage | Extension;
   extensions?: Extension[];
 }) {
   return useMemo(
@@ -28,7 +29,11 @@ export function useExtensions({
   );
 }
 
-export function getLanguageExtension(language: CodeLanguage): Extension {
+export function getLanguageExtension(language: CodeLanguage | Extension) {
+  if (typeof language !== "string") {
+    return language;
+  }
+
   switch (language) {
     case "clojure":
       return StreamLanguage.define(clojure);
@@ -49,5 +54,7 @@ export function getLanguageExtension(language: CodeLanguage): Extension {
         jsx: true,
         typescript: language === "typescript",
       });
+    case "sql":
+      return sql();
   }
 }

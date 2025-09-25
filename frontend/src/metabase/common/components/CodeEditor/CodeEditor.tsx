@@ -9,7 +9,7 @@ type Props = {
   className?: string;
   highlightRanges?: { start: number; end: number }[];
   id?: string;
-  language?: CodeLanguage;
+  language?: CodeLanguage | Extension;
   lineNumbers?: boolean;
   readOnly?: boolean;
   value: string;
