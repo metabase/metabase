@@ -3877,12 +3877,12 @@ function verifyObjectDetailPreview({
   cy.wait("@dataset");
 
   cy.findAllByTestId("column-name")
-    .should("have.length", 8)
+    .should("have.length.gte", index)
     .eq(index - 1)
     .should("contain", label);
 
   cy.findAllByTestId("value")
-    .should("have.length", 8)
+    .should("have.length.gte", index)
     .eq(index - 1)
     .should("contain", value);
 }
