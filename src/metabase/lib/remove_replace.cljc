@@ -1,7 +1,7 @@
 (ns metabase.lib.remove-replace
+  (:refer-clojure :exclude [every? mapv run! some])
   (:require
    [clojure.set :as set]
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.equality :as lib.equality]
@@ -21,7 +21,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf :refer [every? mapv run! some]]))
 
 (defn- stage-paths
   [query stage-number]
@@ -333,8 +334,8 @@
   [stage target replacement]
   (->> (if (lib.util/expression-name target)
          (local-replace-expression stage target replacement)
-         (walk/postwalk #(if (= % target) replacement %) stage))
-       (walk/postwalk #(if (= % (lib.options/uuid target)) (lib.options/uuid replacement) %))))
+         (perf/postwalk #(if (= % target) replacement %) stage))
+       (perf/postwalk #(if (= % (lib.options/uuid target)) (lib.options/uuid replacement) %))))
 
 (defn- returned-columns-at-stage
   [query stage-number]

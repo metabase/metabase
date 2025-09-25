@@ -17,6 +17,7 @@ import type { JobListParams } from "metabase-enterprise/transforms/types";
 import type { TransformJob, TransformJobId } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
+import { RunStatusInfo } from "../../../components/RunStatusInfo";
 import { TagList } from "../../../components/TagList";
 import { getJobUrl } from "../../../urls";
 import { parseTimestampWithTimezone } from "../../../utils";
@@ -69,8 +70,11 @@ export function JobList({ params }: { params: JobListParams }) {
             <span className={S.nowrap}>{t`Last run at`}</span>{" "}
             <TimezoneIndicator />
           </Flex>,
+          <span key="last-run-status" className={S.nowrap}>
+            {t`Last run status`}
+          </span>,
           <Flex align="center" gap="xs" key="next-run">
-            <span className={S.nowrap}>{t`Next run`}</span>{" "}
+            <span className={S.nowrap}>{t`Next run at`}</span>{" "}
             <TimezoneIndicator />
           </Flex>,
           t`Transforms`,
@@ -91,6 +95,22 @@ export function JobList({ params }: { params: JobListParams }) {
                     systemTimezone,
                   ).format("lll")
                 : null}
+            </td>
+            <td className={S.nowrap}>
+              {job.last_run != null ? (
+                <RunStatusInfo
+                  status={job.last_run.status}
+                  message={job.last_run.message}
+                  endTime={
+                    job.last_run.end_time != null
+                      ? parseTimestampWithTimezone(
+                          job.last_run.end_time,
+                          systemTimezone,
+                        ).toDate()
+                      : null
+                  }
+                />
+              ) : null}
             </td>
             <td className={S.nowrap}>
               {job.next_run?.start_time

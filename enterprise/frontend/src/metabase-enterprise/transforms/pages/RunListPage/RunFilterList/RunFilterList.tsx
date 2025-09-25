@@ -23,7 +23,7 @@ import { RunMethodFilterWidget } from "./RunMethodFilterWidget";
 import { TransformFilterWidget } from "./TransformFilterWidget";
 
 const PAST_INTERVAL_DIRECTIONS: RelativeIntervalDirection[] = [
-  "last",
+  "past",
   "current",
 ];
 
