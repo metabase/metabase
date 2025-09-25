@@ -33,7 +33,7 @@ import {
 } from "metabase-enterprise/api";
 import type { Collection } from "metabase-types/api";
 
-import { PushChangesModal } from "./PushChangesModal";
+import { ChangesLists, PushChangesModal } from "./PushChangesModal";
 
 const SYNC_STATUS_DELAY = 3000;
 
@@ -154,11 +154,13 @@ export const SyncedCollectionsSidebarSection = ({
         opened={showConfirm}
         onClose={closeConfirm}
         title={t`Switch branches?`}
-        message={t`Switching branches will overwrite any unpushed local changes to synced collections.`}
+        message={t`Switching branches will discard these unsynced changes:`}
         // TODO: list unsynced changes
         confirmButtonText={t`Import from Git`}
         onConfirm={() => handleBranchChange(nextBranch)}
-      />
+      >
+        {showConfirm && <ChangesLists collections={syncedCollections} />}
+      </ConfirmModal>
       {showPush && (
         <PushChangesModal
           isOpen={showPush}

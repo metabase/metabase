@@ -130,7 +130,11 @@ const SyncStatusGroup = ({ syncStatus, entities }: SyncStatusGroupProps) => (
   </Box>
 );
 
-const ChangesLists = ({ collections }: { collections: Collection[] }) => {
+export const ChangesLists = ({
+  collections,
+}: {
+  collections: Collection[];
+}) => {
   const { data: dirtyData, isLoading: isLoadingChanges } =
     useGetChangedEntitiesQuery(undefined, {
       refetchOnMountOrArgChange: true,
