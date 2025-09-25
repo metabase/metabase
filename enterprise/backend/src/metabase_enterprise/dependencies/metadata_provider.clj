@@ -161,9 +161,10 @@
         output-cols    (delay
                          ;; Note that this will analyze the query with any upstream changes included!
                          (let [new-cols (get-returned-columns mp (:query source))
-                               by-name  (m/index-by :lib/desired-column-alias existing-cols)]
+                               name-fn  (some-fn :lib/desired-column-alias :name)
+                               by-name  (m/index-by name-fn existing-cols)]
                            (into [] (for [col new-cols
-                                          :let [old-col (by-name (:lib/desired-column-alias col))]]
+                                          :let [old-col (by-name (name-fn col))]]
                                       (merge (select-keys col [:name :display-name
                                                                :base-type :effective-type :semantic-type])
                                              {:lib/type :metadata/column
