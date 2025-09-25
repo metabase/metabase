@@ -1,4 +1,4 @@
-import { Box, useMantineTheme } from "metabase/ui";
+import { Box } from "metabase/ui";
 import { useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { BenchPanel } from "./components/Panel/Panel";
@@ -12,8 +12,6 @@ interface MetricsAppProps {
 }
 
 export function MetricsApp({ children }: MetricsAppProps) {
-  const theme = useMantineTheme();
-  const isDark = theme.colorScheme === "dark";
   const [selectedMetric, setSelectedMetric] = useState<Card | undefined>();
 
   const handleMetricClick = (metric: Card) => {
@@ -21,11 +19,7 @@ export function MetricsApp({ children }: MetricsAppProps) {
   };
 
   return (
-    <Box
-      h="100vh"
-      style={{ overflow: "hidden" }}
-      className={isDark ? styles.dark : styles.light}
-    >
+    <Box h="100vh" style={{ overflow: "hidden" }}>
       <PanelGroup direction="horizontal">
         {/* Left Panel - Metrics List */}
         <Panel defaultSize={20} minSize={15} maxSize={35}>
@@ -40,9 +34,6 @@ export function MetricsApp({ children }: MetricsAppProps) {
         <PanelResizeHandle
           style={{
             width: "4px",
-            backgroundColor: isDark
-              ? theme.colors.dark[4]
-              : theme.colors.gray[3],
             cursor: "col-resize",
             borderRadius: "2px",
             margin: "0 2px",
@@ -51,15 +42,7 @@ export function MetricsApp({ children }: MetricsAppProps) {
 
         {/* Main Panel - Metric Details and Results */}
         <Panel defaultSize={80} minSize={50}>
-          <Box
-            h="100%"
-            p="md"
-            style={{
-              backgroundColor: isDark
-                ? theme.colors.dark[7]
-                : theme.colors.gray[0],
-            }}
-          >
+          <Box h="100%" p="md">
             {children}
           </Box>
         </Panel>

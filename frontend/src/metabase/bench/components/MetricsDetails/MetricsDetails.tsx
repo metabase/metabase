@@ -1,4 +1,4 @@
-import { Box, Stack, Text, useMantineTheme, Loader } from "metabase/ui";
+import { Box, Stack, Text, Loader } from "metabase/ui";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { Table } from "@mantine/core";
 import { useGetCardQuery, useGetCardQueryQuery } from "metabase/api";
@@ -12,9 +12,6 @@ interface MetricsDetailsProps {
 }
 
 export function MetricsDetails({ params }: MetricsDetailsProps) {
-  const theme = useMantineTheme();
-  const isDark = theme.colorScheme === "dark";
-
   const metricId = parseInt(params.metricId, 10);
 
   // Load the metric definition
@@ -38,7 +35,6 @@ export function MetricsDetails({ params }: MetricsDetailsProps) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: isDark ? theme.colors.dark[7] : theme.colors.gray[0],
         }}
       >
         <Text size="lg" c="dimmed">
@@ -56,20 +52,11 @@ export function MetricsDetails({ params }: MetricsDetailsProps) {
           style={{
             flex: 1,
             minHeight: 0,
-            border: `1px solid ${isDark ? theme.colors.dark[4] : theme.colors.gray[3]}`,
             borderRadius: "8px",
             overflow: "hidden",
           }}
         >
-          <Box
-            p="md"
-            style={{
-              borderBottom: `1px solid ${isDark ? theme.colors.dark[4] : theme.colors.gray[3]}`,
-              backgroundColor: isDark
-                ? theme.colors.dark[6]
-                : theme.colors.gray[0],
-            }}
-          >
+          <Box p="md">
             <Text size="lg" fw="bold">
               {metricData?.name}
             </Text>
@@ -89,7 +76,6 @@ export function MetricsDetails({ params }: MetricsDetailsProps) {
                 readOnly: true,
                 mode: "application/json",
                 lineNumbers: true,
-                theme: isDark ? "material-darker" : "default",
               }}
             />
           </Box>
@@ -99,20 +85,11 @@ export function MetricsDetails({ params }: MetricsDetailsProps) {
         <Box
           style={{
             height: "300px",
-            border: `1px solid ${isDark ? theme.colors.dark[4] : theme.colors.gray[3]}`,
             borderRadius: "8px",
             overflow: "hidden",
           }}
         >
-          <Box
-            p="md"
-            style={{
-              borderBottom: `1px solid ${isDark ? theme.colors.dark[4] : theme.colors.gray[3]}`,
-              backgroundColor: isDark
-                ? theme.colors.dark[6]
-                : theme.colors.gray[0],
-            }}
-          >
+          <Box p="md">
             <Text size="lg" fw="bold">
               Query Results
             </Text>

@@ -1,4 +1,4 @@
-import { Box, Stack, Text, useMantineTheme, Loader } from "metabase/ui";
+import { Box, Stack, Text, Loader } from "metabase/ui";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { Table } from "@mantine/core";
 import { useGetCardQuery, useGetCardQueryQuery } from "metabase/api";
@@ -10,24 +10,22 @@ interface ModelsDetailsProps {
 }
 
 export function ModelsDetails({ model }: ModelsDetailsProps) {
-  const theme = useMantineTheme();
-  const isDark = theme.colorScheme === "dark";
-
   // Load the model definition
   const { data: modelData, isLoading: isLoadingModel } = useGetCardQuery(
-    model?.id ? { id: model.id } : skipToken
+    model?.id ? { id: model.id } : skipToken,
   );
 
   // Run the model query to get results
-  const { data: queryResults, isLoading: isLoadingResults } = useGetCardQueryQuery(
-    model?.id
-      ? {
-          cardId: model.id,
-          parameters: [],
-          ignore_cache: false,
-        }
-      : skipToken
-  );
+  const { data: queryResults, isLoading: isLoadingResults } =
+    useGetCardQueryQuery(
+      model?.id
+        ? {
+            cardId: model.id,
+            parameters: [],
+            ignore_cache: false,
+          }
+        : skipToken,
+    );
 
   if (!model) {
     return (
@@ -37,7 +35,6 @@ export function ModelsDetails({ model }: ModelsDetailsProps) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: isDark ? theme.colors.dark[7] : theme.colors.gray[0],
         }}
       >
         <Text size="lg" c="dimmed">
@@ -70,7 +67,7 @@ export function ModelsDetails({ model }: ModelsDetailsProps) {
           style={{
             flex: 1,
             minHeight: 0,
-            border: `1px solid ${isDark ? theme.colors.dark[4] : theme.colors.gray[3]}`,
+
             borderRadius: "8px",
             overflow: "hidden",
           }}
@@ -79,7 +76,9 @@ export function ModelsDetails({ model }: ModelsDetailsProps) {
             p="md"
             style={{
               borderBottom: `1px solid ${isDark ? theme.colors.dark[4] : theme.colors.gray[3]}`,
-              backgroundColor: isDark ? theme.colors.dark[6] : theme.colors.gray[0],
+              backgroundColor: isDark
+                ? theme.colors.dark[6]
+                : theme.colors.gray[0],
             }}
           >
             <Text size="lg" fw="bold">
@@ -92,7 +91,11 @@ export function ModelsDetails({ model }: ModelsDetailsProps) {
 
           <Box style={{ flex: 1, height: "400px" }}>
             <CodeMirror
-              value={modelData?.dataset_query ? JSON.stringify(modelData.dataset_query, null, 2) : "No query definition available"}
+              value={
+                modelData?.dataset_query
+                  ? JSON.stringify(modelData.dataset_query, null, 2)
+                  : "No query definition available"
+              }
               options={{
                 readOnly: true,
                 mode: "application/json",
@@ -116,7 +119,9 @@ export function ModelsDetails({ model }: ModelsDetailsProps) {
             p="md"
             style={{
               borderBottom: `1px solid ${isDark ? theme.colors.dark[4] : theme.colors.gray[3]}`,
-              backgroundColor: isDark ? theme.colors.dark[6] : theme.colors.gray[0],
+              backgroundColor: isDark
+                ? theme.colors.dark[6]
+                : theme.colors.gray[0],
             }}
           >
             <Text size="lg" fw="bold">
@@ -138,7 +143,8 @@ export function ModelsDetails({ model }: ModelsDetailsProps) {
                 <Text size="sm" c="dimmed" mb="sm">
                   {queryResults.data?.rows?.length || 0} rows returned
                 </Text>
-                {queryResults.data?.rows && queryResults.data.rows.length > 0 ? (
+                {queryResults.data?.rows &&
+                queryResults.data.rows.length > 0 ? (
                   <Table>
                     <Table.Thead>
                       <Table.Tr>
@@ -148,19 +154,23 @@ export function ModelsDetails({ model }: ModelsDetailsProps) {
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
-                      {queryResults.data.rows.slice(0, 100).map((row, rowIndex) => (
-                        <Table.Tr key={rowIndex}>
-                          {row.map((cell, cellIndex) => (
-                            <Table.Td key={cellIndex}>
-                              {cell === null ? (
-                                <Text c="dimmed" fs="italic">null</Text>
-                              ) : (
-                                String(cell)
-                              )}
-                            </Table.Td>
-                          ))}
-                        </Table.Tr>
-                      ))}
+                      {queryResults.data.rows
+                        .slice(0, 100)
+                        .map((row, rowIndex) => (
+                          <Table.Tr key={rowIndex}>
+                            {row.map((cell, cellIndex) => (
+                              <Table.Td key={cellIndex}>
+                                {cell === null ? (
+                                  <Text c="dimmed" fs="italic">
+                                    null
+                                  </Text>
+                                ) : (
+                                  String(cell)
+                                )}
+                              </Table.Td>
+                            ))}
+                          </Table.Tr>
+                        ))}
                     </Table.Tbody>
                   </Table>
                 ) : (

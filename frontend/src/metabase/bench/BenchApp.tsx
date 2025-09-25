@@ -1,4 +1,4 @@
-import { Box, Text, useMantineTheme, Tabs } from "metabase/ui";
+import { Box, Text, Tabs } from "metabase/ui";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { useState, useEffect, useRef } from "react";
 import { keymap } from "@codemirror/view";
@@ -27,8 +27,6 @@ interface BenchAppProps {
 }
 
 export function BenchApp({ params }: BenchAppProps) {
-  const theme = useMantineTheme();
-  const isDark = theme.colorScheme === "pants";
   const dispatch = useDispatch();
   const queryPreviewRef = useRef<{ runQuery: () => void }>(null);
   const transformId = params?.transformId
@@ -79,11 +77,7 @@ ORDER BY total_spent DESC;`);
   };
 
   return (
-    <Box
-      h="100vh"
-      style={{ overflow: "hidden" }}
-      className={isDark ? styles.dark : styles.light}
-    >
+    <Box h="100vh" style={{ overflow: "hidden" }}>
       <PanelGroup direction="horizontal">
         {/* Left Panel - Transform Entities */}
         <Panel defaultSize={20} minSize={15} maxSize={35}>
@@ -98,9 +92,6 @@ ORDER BY total_spent DESC;`);
         <PanelResizeHandle
           style={{
             width: "4px",
-            backgroundColor: isDark
-              ? theme.colors.dark[4]
-              : theme.colors.gray[3],
             cursor: "col-resize",
             borderRadius: "2px",
             margin: "0 2px",
@@ -116,15 +107,7 @@ ORDER BY total_spent DESC;`);
                 h="100%"
                 style={{ display: "flex", flexDirection: "column" }}
               >
-                <Box
-                  p="md"
-                  style={{
-                    borderBottom: `1px solid ${isDark ? theme.colors.dark[4] : theme.colors.gray[3]}`,
-                    backgroundColor: isDark
-                      ? theme.colors.dark[6]
-                      : theme.colors.gray[0],
-                  }}
-                >
+                <Box p="md">
                   <Text fw={500}>
                     {selectedTransform ? selectedTransform.name : "SQL Editor"}
                   </Text>
@@ -140,7 +123,7 @@ ORDER BY total_spent DESC;`);
                 </Box>
                 <Box
                   style={{ flex: 1, position: "relative" }}
-                  className={`${styles.benchEditor} ${isDark ? styles.dark : styles.light}`}
+                  className={styles.benchEditor}
                 >
                   <CodeMirror
                     value={code}
@@ -177,9 +160,6 @@ ORDER BY total_spent DESC;`);
             <PanelResizeHandle
               style={{
                 height: "4px",
-                backgroundColor: isDark
-                  ? theme.colors.dark[4]
-                  : theme.colors.gray[3],
                 cursor: "row-resize",
                 borderRadius: "2px",
                 margin: "2px 0",
@@ -191,7 +171,6 @@ ORDER BY total_spent DESC;`);
               <Box
                 h="100%"
                 style={{
-                  border: `1px solid ${isDark ? theme.colors.dark[4] : theme.colors.gray[3]}`,
                   borderRadius: "8px",
                   display: "flex",
                   flexDirection: "column",
@@ -210,9 +189,6 @@ ORDER BY total_spent DESC;`);
         <PanelResizeHandle
           style={{
             width: "4px",
-            backgroundColor: isDark
-              ? theme.colors.dark[4]
-              : theme.colors.gray[3],
             cursor: "col-resize",
             borderRadius: "2px",
             margin: "0 2px",
@@ -230,11 +206,7 @@ ORDER BY total_spent DESC;`);
                 flexDirection: "column",
               }}
             >
-              <Tabs.List
-                style={{
-                  borderBottom: `1px solid ${isDark ? theme.colors.dark[4] : theme.colors.gray[3]}`,
-                }}
-              >
+              <Tabs.List>
                 <Tabs.Tab value="properties">Properties</Tabs.Tab>
                 <Tabs.Tab value="metabot">Metabot</Tabs.Tab>
               </Tabs.List>
@@ -260,11 +232,7 @@ ORDER BY total_spent DESC;`);
                     <Box
                       p="sm"
                       style={{
-                        backgroundColor: isDark
-                          ? "var(--mantine-color-dark-6)"
-                          : "var(--mantine-color-gray-1)",
                         borderRadius: "4px",
-                        border: `1px solid ${isDark ? "var(--mantine-color-dark-4)" : "var(--mantine-color-gray-3)"}`,
                       }}
                     >
                       <Text size="xs">Lines: {code.split("\n").length}</Text>

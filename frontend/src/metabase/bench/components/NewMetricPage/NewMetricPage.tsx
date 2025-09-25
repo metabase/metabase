@@ -1,4 +1,4 @@
-import { Box, Stack, Text, useMantineTheme, Button, Group } from "metabase/ui";
+import { Box, Stack, Text, Button, Group } from "metabase/ui";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useSelector, useDispatch } from "metabase/lib/redux";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
@@ -10,8 +10,6 @@ import * as Lib from "metabase-lib";
 import type { DatasetQuery } from "metabase-types/api";
 
 export function NewMetricPage() {
-  const theme = useMantineTheme();
-  const isDark = theme.colorScheme === "dark";
   const metadata = useSelector(getMetadata);
   const reportTimezone = useSetting("report-timezone-long");
 
@@ -66,15 +64,7 @@ export function NewMetricPage() {
     <Box h="100%" style={{ overflow: "hidden" }}>
       <Stack h="100%" gap="md">
         {/* Header with title and actions */}
-        <Box
-          p="md"
-          style={{
-            borderBottom: `1px solid ${isDark ? theme.colors.dark[4] : theme.colors.gray[3]}`,
-            backgroundColor: isDark
-              ? theme.colors.dark[6]
-              : theme.colors.gray[0],
-          }}
-        >
+        <Box p="md">
           <Group position="apart">
             <Box>
               <Text size="xl" fw="bold">
@@ -106,20 +96,11 @@ export function NewMetricPage() {
           style={{
             flex: 1,
             minHeight: 0,
-            border: `1px solid ${isDark ? theme.colors.dark[4] : theme.colors.gray[3]}`,
             borderRadius: "8px",
             overflow: "hidden",
           }}
         >
-          <Box
-            p="md"
-            style={{
-              borderBottom: `1px solid ${isDark ? theme.colors.dark[4] : theme.colors.gray[3]}`,
-              backgroundColor: isDark
-                ? theme.colors.dark[6]
-                : theme.colors.gray[0],
-            }}
-          >
+          <Box p="md">
             <Text size="lg" fw="bold">
               Metric Definition
             </Text>

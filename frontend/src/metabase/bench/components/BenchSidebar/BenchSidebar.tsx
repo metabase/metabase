@@ -4,18 +4,19 @@ import { t } from "ttag";
 import { Link } from "react-router";
 
 interface BenchSidebarProps {
-  isDarkMode: boolean;
   location?: {
     pathname: string;
   };
 }
 
-function BenchSidebarComponent({ isDarkMode, location }: BenchSidebarProps) {
+function BenchSidebarComponent({ location }: BenchSidebarProps) {
   const currentPath = location?.pathname || "";
 
   const isActive = (path: string) => {
     if (path === "/bench") {
-      return currentPath === "/bench" || currentPath.startsWith("/bench/transform");
+      return (
+        currentPath === "/bench" || currentPath.startsWith("/bench/transform")
+      );
     }
     return currentPath.startsWith(path);
   };
@@ -58,15 +59,13 @@ function BenchSidebarComponent({ isDarkMode, location }: BenchSidebarProps) {
       style={{
         width: "280px",
         height: "100%",
-        backgroundColor: isDarkMode ? "#1A1B1E" : "#ffffff",
-        borderRight: `1px solid ${isDarkMode ? "#373A40" : "#e9ecef"}`,
         padding: "16px 0",
         display: "flex",
         flexDirection: "column",
       }}
     >
       <Box px="md" pb="lg">
-        <Text size="lg" fw="bold" c={isDarkMode ? "white" : "dark"}>
+        <Text size="lg" fw="bold">
           {t`Metabase Bench`}
         </Text>
         <Text size="sm" c="dimmed" mt={4}>
@@ -86,27 +85,6 @@ function BenchSidebarComponent({ isDarkMode, location }: BenchSidebarProps) {
             description={item.description}
             leftSection={item.icon}
             active={isActive(item.path)}
-            style={{
-              borderRadius: "8px",
-              padding: "12px 16px",
-              marginBottom: "4px",
-              backgroundColor: isActive(item.path)
-                ? isDarkMode
-                  ? "#373A40"
-                  : "#f8f9fa"
-                : "transparent",
-              color: isActive(item.path)
-                ? isDarkMode
-                  ? "white"
-                  : "dark"
-                : isDarkMode
-                ? "#C1C2C5"
-                : "#666666",
-              "&:hover": {
-                backgroundColor: isDarkMode ? "#373A40" : "#f8f9fa",
-                color: isDarkMode ? "white" : "dark",
-              },
-            }}
           />
         ))}
       </Stack>
