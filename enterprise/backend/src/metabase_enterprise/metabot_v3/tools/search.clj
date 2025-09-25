@@ -10,7 +10,7 @@
    [toucan2.core :as t2]))
 
 (def ^:private metabot-search-models
-  #{"table" "dataset" "card" "dashboard" "metric" "database"})
+  #{"table" "dataset" "card" "dashboard" "metric" "database" "transform"})
 
 (def ^:private search-model-mappings
   "Maps metabot entity types to search engine model types"

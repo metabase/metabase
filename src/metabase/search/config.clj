@@ -73,7 +73,7 @@
   "The order of this list influences the order of the results: items earlier in the
   list will be ranked higher."
   (cond-> ["dashboard" "metric" "segment" "indexed-entity" "card" "dataset" "collection" "table" "action"]
-    config/ee-available? (conj "document")
+    config/ee-available? (concat ["document" "transform"])
     :always (conj "database")))
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")

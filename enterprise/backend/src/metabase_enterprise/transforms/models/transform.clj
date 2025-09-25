@@ -5,6 +5,7 @@
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -15,6 +16,11 @@
 
 (doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
   (derive :model/Transform trait))
+
+;; Only superusers can access transforms
+(doto :model/Transform
+  (derive ::mi/read-policy.superuser)
+  (derive ::mi/write-policy.superuser))
 
 (t2/deftransforms :model/Transform
   {:source      mi/transform-json
@@ -152,3 +158,14 @@
 (defmethod serdes/storage-path "Transform" [transform _ctx]
   (let [{:keys [id label]} (-> transform serdes/path last)]
     ["transforms" (serdes/storage-leaf-file-name id label)]))
+
+;;; ------------------------------------------------- Search ---------------------------------------------------
+
+(search.spec/define-spec "transform"
+  {:model        :model/Transform
+   :attrs        {:archived      false
+                  :collection-id false
+                  :created-at    true
+                  :updated-at    true}
+   :search-terms [:name :description]
+   :render-terms {:description true}})
