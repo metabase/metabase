@@ -1,6 +1,7 @@
 import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
 import { useCallback, useState } from "react";
+import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import {
@@ -268,9 +269,9 @@ export const Messages = ({
     const { error } = await submitMetabotFeedback(metabotFeedback);
 
     if (error) {
-      sendToast({ icon: "warning", message: "Failed to submit feedback" });
+      sendToast({ icon: "warning", message: t`Failed to submit feedback` });
     } else {
-      sendToast({ icon: "check", message: "Feedback submitted" });
+      sendToast({ icon: "check", message: t`Feedback submitted` });
 
       setFeedbackState((prevState) => ({
         submitted: {
