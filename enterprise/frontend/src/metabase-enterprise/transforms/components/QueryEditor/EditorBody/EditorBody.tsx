@@ -7,6 +7,7 @@ import { useSetting } from "metabase/common/hooks";
 import NativeQueryEditor, {
   type SelectionRange,
 } from "metabase/query_builder/components/NativeQueryEditor";
+import type { QueryModalType } from "metabase/query_builder/constants";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { Box } from "metabase/ui";
 import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/utils";
@@ -52,6 +53,7 @@ type EditorBodyProps = {
   modalSnippet?: NativeQuerySnippet | null;
   onChangeModalSnippet: (snippet: NativeQuerySnippet | null) => void;
   onChangeNativeEditorSelection: (range: SelectionRange[]) => void;
+  onOpenModal: (type: QueryModalType) => void;
   nativeEditorSelectedText?: string | null;
 
   databases: ApiDatabase[];
@@ -78,6 +80,7 @@ export function EditorBody({
   onChangeModalSnippet,
   onChangeNativeEditorSelection,
   nativeEditorSelectedText,
+  onOpenModal,
   proposedQuestion,
   onRejectProposed,
   onAcceptProposed,
@@ -143,6 +146,7 @@ export function EditorBody({
       }}
       setNativeEditorSelectedRange={onChangeNativeEditorSelection}
       nativeEditorSelectedText={nativeEditorSelectedText}
+      onOpenModal={onOpenModal}
       proposedQuestion={proposedQuestion}
       onRejectProposed={onRejectProposed}
       onAcceptProposed={onAcceptProposed}

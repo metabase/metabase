@@ -9,6 +9,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import {
   useGetTransformQuery,
   useUpdateTransformMutation,
@@ -18,7 +19,11 @@ import {
   getMetabotSuggestedTransform,
   setSuggestedTransform,
 } from "metabase-enterprise/metabot/state";
-import type { DatasetQuery, Transform } from "metabase-types/api";
+import type {
+  QueryTransformSource,
+  Transform,
+  TransformSource,
+} from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
 import { getTransformUrl } from "../../urls";
@@ -63,21 +68,18 @@ export function TransformQueryPageBody({
 
   const metabot = useMetabotAgent();
 
-  const initialQuery = transform.source.query;
-  const [latestQuery, setLatestQuery] = useState<DatasetQuery>(initialQuery);
+  const initialSource = transform.source;
+  const [source, setSource] = useState(initialSource);
 
   const suggestedTransform = useSelector(
     (state) => getMetabotSuggestedTransform(state, transform.id) as any,
   ) as ReturnType<typeof getMetabotSuggestedTransform>;
-  const proposedQuery = suggestedTransform?.source.query;
+  const proposedSource = suggestedTransform?.source;
 
   useRegisterMetabotContextProvider(async () => {
-    const viewedTransform = suggestedTransform ?? {
-      ...transform,
-      source: { ...transform.source, query: latestQuery },
-    };
+    const viewedTransform = suggestedTransform ?? { ...transform, source };
     return { user_is_viewing: [{ type: "transform", ...viewedTransform }] };
-  }, [transform, latestQuery, suggestedTransform]);
+  }, [transform, source, suggestedTransform]);
 
   const onRejectProposed = () => {
     dispatch(setSuggestedTransform(undefined));
@@ -89,8 +91,8 @@ export function TransformQueryPageBody({
       userMessage: "❌ You rejected the change",
     });
   };
-  const onAcceptProposed = async (query: DatasetQuery) => {
-    await handleSave(query, { leaveEditor: false });
+  const onAcceptProposed = async (source: TransformSource) => {
+    await handleSourceSave(source, { leaveEditor: false });
     dispatch(setSuggestedTransform(undefined));
     metabot.submitInput({
       type: "action",
@@ -101,16 +103,13 @@ export function TransformQueryPageBody({
     });
   };
 
-  const handleSave = async (
-    query: DatasetQuery,
+  const handleSourceSave = async (
+    source: TransformSource,
     { leaveEditor } = { leaveEditor: true },
   ) => {
     const { error } = await updateTransform({
       id: transform.id,
-      source: {
-        type: "query",
-        query,
-      },
+      source,
     });
 
     if (error) {
@@ -127,17 +126,39 @@ export function TransformQueryPageBody({
     dispatch(push(getTransformUrl(transform.id)));
   };
 
+  if (transform.source.type === "python") {
+    return (
+      <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+        initialSource={transform.source}
+        isNew={false}
+        isSaving={isLoading}
+        onSave={handleSourceSave}
+        onCancel={handleCancel}
+      />
+    );
+  }
+
+  const proposedQuerySource: QueryTransformSource | undefined =
+    proposedSource?.type === "query" &&
+    proposedSource?.query.type === "native" &&
+    initialSource.type === "query" &&
+    initialSource.query.type === "native" &&
+    proposedSource.query.native.query === initialSource.query.native.query
+      ? undefined
+      : // TODO: fix type cast
+        (proposedSource as QueryTransformSource | undefined);
+
   return (
-    <AdminSettingsLayout fullWidthContent key={transform.id}>
+    <AdminSettingsLayout fullWidth key={transform.id}>
       <QueryEditor
-        initialQuery={initialQuery}
+        initialSource={transform.source}
         transform={transform}
         isNew={false}
         isSaving={isLoading}
-        onSave={handleSave}
-        onChange={setLatestQuery}
+        onSave={handleSourceSave}
+        onChange={setSource}
         onCancel={handleCancel}
-        proposedQuery={proposedQuery}
+        proposedSource={proposedQuerySource}
         onRejectProposed={onRejectProposed}
         onAcceptProposed={onAcceptProposed}
       />

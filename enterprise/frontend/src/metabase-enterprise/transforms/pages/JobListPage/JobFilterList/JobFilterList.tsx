@@ -17,13 +17,13 @@ type FilterListProps = {
 };
 
 const PAST_INTERVAL_DIRECTIONS: RelativeIntervalDirection[] = [
-  "last",
+  "past",
   "current",
 ];
 
 const FUTURE_INTERVAL_DIRECTIONS: RelativeIntervalDirection[] = [
   "current",
-  "next",
+  "future",
 ];
 
 export function JobFilterList({ params, tags }: FilterListProps) {

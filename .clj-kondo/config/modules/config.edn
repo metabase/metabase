@@ -894,6 +894,19 @@
            enterprise/advanced-permissions
            enterprise/sandbox}}
 
+  python-runner
+  {:team "Workflows"
+   :api  #{metabase.python-runner.api
+           metabase.python-runner.core
+           metabase.python-runner.init}
+   :uses #{api
+           driver
+           models
+           query-processor
+           request
+           util
+           enterprise/transforms}}
+
   queries
   {:team "Querying"
    :api  #{metabase.queries.api
@@ -939,6 +952,7 @@
    :uses #{api
            legacy-mbql
            lib
+           lib-be
            models
            permissions
            query-processor
@@ -1472,6 +1486,7 @@
            driver
            legacy-mbql
            lib
+           lib-be
            models
            queries
            query-permissions
@@ -1984,6 +1999,7 @@
    :api  #{metabase-enterprise.transforms.api
            metabase-enterprise.transforms.core
            metabase-enterprise.transforms.init
+           metabase-enterprise.transforms.instrumentation
            metabase-enterprise.transforms.util}
    :uses #{analytics
            api
@@ -2009,6 +2025,7 @@
   enterprise/transforms-python
   {:team "Querying"
    :api  #{metabase-enterprise.transforms-python.api
+           metabase-enterprise.transforms-python.execute
            metabase-enterprise.transforms-python.init
            metabase-enterprise.transforms-python.settings}
    :uses #{api

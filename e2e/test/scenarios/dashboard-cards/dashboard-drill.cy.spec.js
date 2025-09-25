@@ -553,7 +553,10 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.wait("@dataset").then((xhr) => {
       expect(xhr.response.body.error).not.to.exist;
     });
-    cy.findByTestId("object-detail").findByText("Fantastic Wool Shirt");
+    cy.findByTestId("object-detail")
+      .findAllByText("Fantastic Wool Shirt")
+      .should("have.length", 2)
+      .and("be.visible");
   });
 
   it("should apply correct date range on a graph drill-through (metabase#13785)", () => {

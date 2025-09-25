@@ -139,6 +139,12 @@ export const AgentSuggestionMessage = ({
   const newSource = getSourceCode(suggestedTransform);
 
   const parseTemplateTags = (source: TransformSource): TransformSource => {
+    // TODO: fix
+    if (source.type === "python") {
+      alert("TODO: sloan is on this 🫡... self distructing in 3... 2... 1");
+      throw new Error("blarf");
+    }
+
     // For unsaved native queries, ensure template tags (like #{{123-my-model}}) are parsed from query text
     const query = source.query;
     let question = Question.create({ dataset_query: query, metadata });
@@ -213,6 +219,12 @@ export const AgentSuggestionMessage = ({
     }
 
     if (suggestedTransform.id) {
+      // TODO: fix
+      if (suggestedTransform.source.type === "python") {
+        alert("TODO: sloan is on this 🫡... self distructing in 3... 2... 1");
+        throw new Error("blarf");
+      }
+
       await handleSave(suggestedTransform.source.query);
       metabot.submitInput({
         type: "action",

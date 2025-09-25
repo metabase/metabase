@@ -135,7 +135,9 @@
                             (maybe-add-limit local-bindings step))
         query          {:type     :query
                         :query    inner-query
-                        :database ((some-fn :db_id :database_id) source-entity)}]
+                        :database (or ((some-fn :db_id :database_id) source-entity)
+                                      (throw (ex-info "Source entity is missing Database ID"
+                                                      {:source-entity source-entity})))}]
     (assoc bindings name {:entity     (tf.materialize/make-card-for-step! step query)
                           :dimensions (infer-resulting-dimensions local-bindings step query)})))
 

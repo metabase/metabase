@@ -67,7 +67,7 @@ describe("DateShortcutPicker", () => {
   });
 
   it("should be able to filter shortcuts based on current and future interval directions", () => {
-    setup({ availableDirections: ["current", "next"] });
+    setup({ availableDirections: ["current", "future"] });
     expect(screen.getByText("Today")).toBeInTheDocument();
     expect(screen.queryByText("Yesterday")).not.toBeInTheDocument();
     expect(screen.queryByText("Previous week")).not.toBeInTheDocument();
@@ -75,7 +75,7 @@ describe("DateShortcutPicker", () => {
   });
 
   it("should be able to filter shortcuts based on past and current interval directions", () => {
-    setup({ availableDirections: ["last", "current"] });
+    setup({ availableDirections: ["past", "current"] });
     expect(screen.getByText("Today")).toBeInTheDocument();
     expect(screen.getByText("Yesterday")).toBeInTheDocument();
     expect(screen.getByText("Previous week")).toBeInTheDocument();
