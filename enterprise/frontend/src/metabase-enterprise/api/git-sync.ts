@@ -1,4 +1,4 @@
-import type { CollectionId, EnterpriseSettings } from "metabase-types/api";
+import type { EnterpriseSettings, UserId } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
 import { invalidateTags, tag } from "./tags";
@@ -38,6 +38,17 @@ export type ExportChangesResponse = {
   conflict?: boolean;
 };
 
+export type CurrentTaskResponse = {
+  id: number;
+  sync_task_type: "import" | "export" | null;
+  progress: number | null; // float between 0 and 1
+  started_at: string | null;
+  ended_at: string | null;
+  last_progress_report_at: string | null;
+  error_message: string | null;
+  initiated_by: UserId;
+};
+
 export type GitSyncSettings = Pick<
   EnterpriseSettings,
   | "remote-sync-enabled"
@@ -69,8 +80,9 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [
-          tag("collection-dirty"),
+          tag("collection-dirty-entities"),
           tag("collection-is-dirty"),
+          tag("remote-sync-current-task"),
         ]),
     }),
     importFromBranch: builder.mutation<void, { branch: string }>({
@@ -81,30 +93,35 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
           branch,
         },
       }),
-      invalidatesTags: () => ["collection-tree"],
-    }),
-    getCollectionDirtyEntities: builder.query<
-      CollectionDirtyResponse,
-      { collectionId: CollectionId }
-    >({
-      query: ({ collectionId }) => ({
-        url: `/api/ee/remote-sync/${collectionId}/dirty`,
-        method: "GET",
-      }),
-      providesTags: (_, __, { collectionId }) => [
-        tag("collection-dirty", collectionId),
+      invalidatesTags: () => [
+        tag("collection-tree"),
+        tag("remote-sync-current-task"),
+        tag("collection-dirty-entities"),
+        tag("collection-is-dirty"),
       ],
     }),
-    isCollectionDirty: builder.query<
-      CollectionIsDirtyResponse,
-      { collectionId: CollectionId }
+    getChangedEntities: builder.query<
+      CollectionDirtyResponse,
+      void
     >({
-      query: ({ collectionId }) => ({
-        url: `/api/ee/remote-sync/${collectionId}/is-dirty`,
+      query: () => ({
+        url: `/api/ee/remote-sync/dirty`,
         method: "GET",
       }),
-      providesTags: (_, __, { collectionId }) => [
-        tag("collection-is-dirty", collectionId),
+      providesTags: () => [
+        tag("collection-dirty-entities"),
+      ],
+    }),
+    hasChangedEntities: builder.query<
+      CollectionIsDirtyResponse,
+      void
+    >({
+      query: () => ({
+        url: `/api/ee/remote-sync/is-dirty`,
+        method: "GET",
+      }),
+      providesTags: () => [
+        tag("collection-is-dirty"),
       ],
     }),
     updateGitSyncSettings: builder.mutation<void, GitSyncSettings>({
@@ -123,14 +140,22 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: () => [tag("remote-sync-branches")],
     }),
+    getCurrentSyncTask: builder.query<CurrentTaskResponse, void>({
+      query: () => ({
+        method: "GET",
+        url: `/api/ee/remote-sync/current-task`,
+      }),
+      providesTags: () => [tag("remote-sync-current-task")],
+    }),
   }),
 });
 
 export const {
-  useGetCollectionDirtyEntitiesQuery,
-  useIsCollectionDirtyQuery,
+  useGetChangedEntitiesQuery,
+  useHasChangedEntitiesQuery,
   useUpdateGitSyncSettingsMutation,
   useExportChangesMutation,
   useGetBranchesQuery,
   useImportFromBranchMutation,
+  useGetCurrentSyncTaskQuery,
 } = gitSyncApi;

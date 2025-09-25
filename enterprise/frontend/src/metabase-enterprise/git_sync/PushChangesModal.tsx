@@ -29,7 +29,7 @@ import {
   type DirtyEntity,
   useExportChangesMutation,
   useGetBranchesQuery,
-  useGetCollectionDirtyEntitiesQuery,
+  useGetChangedEntitiesQuery,
 } from "../api/git-sync";
 
 import {
@@ -144,8 +144,8 @@ const ChangesLists = ({ collections }: { collections: Collection[] }) => {
 
 const ChangesList = ({ collection }: { collection: Collection }) => {
   const { data: dirtyData, isLoading: isLoadingChanges } =
-    useGetCollectionDirtyEntitiesQuery(
-      { collectionId: collection.id },
+    useGetChangedEntitiesQuery(
+      undefined,
       {
         refetchOnMountOrArgChange: true,
         refetchOnFocus: true,
@@ -321,6 +321,7 @@ export const PushChangesModal = ({
             value={branch ?? "main"}
             onChange={setBranch}
             label={t`Select branch`}
+            limit={5}
           />
           <CommitMessageSection
             value={commitMessage}

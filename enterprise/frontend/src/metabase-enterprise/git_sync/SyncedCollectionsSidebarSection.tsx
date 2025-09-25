@@ -1,26 +1,32 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useAdminSetting } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Tree } from "metabase/common/components/tree";
+import { useDispatch } from "metabase/lib/redux";
 import {
   SidebarHeading,
   SidebarSection,
 } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import type { CollectionTreeItem } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
-import { Box, Button, Flex, Icon, Menu, Text, Tooltip } from "metabase/ui";
+import { Autocomplete, Box, Button, Flex, Icon, Loader, Text, Tooltip } from "metabase/ui";
 import {
+  EnterpriseApi,
+  tag,
   useGetBranchesQuery,
+  useGetChangedEntitiesQuery,
+  useGetCurrentSyncTaskQuery,
   useImportFromBranchMutation,
-  useIsCollectionDirtyQuery,
 } from "metabase-enterprise/api";
 import type { Collection } from "metabase-types/api";
 
 import { PushChangesModal } from "./PushChangesModal";
+
+const SYNC_STATUS_DELAY = 3000;
 
 export const SyncedCollectionsSidebarSection = ({
   syncedCollections,
@@ -34,7 +40,7 @@ export const SyncedCollectionsSidebarSection = ({
   const { data } = useGetBranchesQuery();
   const { updateSetting, value: currentBranch } =
     useAdminSetting("remote-sync-branch");
-  const [importFromBranch, { isLoading }] = useImportFromBranchMutation();
+  const [importFromBranch, { isLoading: isImporting }] = useImportFromBranchMutation();
   const [showConfirm, { open: openConfirm, close: closeConfirm }] =
     useDisclosure(false);
   const [showPush, { open: openPush, close: closePush }] = useDisclosure(false);
@@ -43,6 +49,10 @@ export const SyncedCollectionsSidebarSection = ({
   const [nextBranch, setNextBranch] = useState(currentBranch);
 
   const isDirty = true; // TODO: check if any synced collection is dirty
+
+  const { status, progress } = useSyncStatus();
+
+  const isLoading = isImporting || status !== "idle";
 
   const handleBranchSelect = (branch: string) => {
     setNextBranch(branch);
@@ -54,7 +64,7 @@ export const SyncedCollectionsSidebarSection = ({
   };
 
   const handleBranchChange = async (branch: string) => {
-    await updateSetting({ key: "remote-sync-branch", value: branch });
+    await updateSetting({ key: "remote-sync-branch", value: branch, toast: false });
     closeConfirm();
     await importFromBranch({ branch });
     setNextBranch(null);
@@ -69,38 +79,33 @@ export const SyncedCollectionsSidebarSection = ({
           <Flex justify="space-between">
             <Box>
               <SidebarHeading>{t`Synced Collections`}</SidebarHeading>
-              <Menu position="bottom-start">
-                <Menu.Target>
-                  <Button
-                    variant="subtle"
-                    leftSection={<Icon name="schema" size={12} />}
-                    rightSection={<Icon name="chevrondown" size={12} />}
-                    size="sm"
-                    loading={isLoading}
-                  >
-                    {currentBranch}
-                  </Button>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  {branches.map((branch) => (
-                    <Menu.Item
-                      key={branch}
-                      leftSection={<Icon name="schema" size={12} />}
-                      onClick={() => handleBranchSelect(branch)}
-                    >
-                      {branch}
-                    </Menu.Item>
-                  ))}
-                </Menu.Dropdown>
-              </Menu>
+              <Autocomplete
+                leftSection={<Icon name="schema" c="brand" size={12} />}
+                rightSection={
+                  isLoading
+                    ? <Box p="lg"><Loader h={6} w={6}  /></Box>
+                    : <Icon name="chevrondown" size={12} />
+                }
+                data={branches}
+                styles={{ input: {
+                  border: "none", color: "var(--mb-color-brand)", fontWeight: "bold",
+                  cursor: isLoading ? "not-allowed" : "pointer"
+                } }}
+                value={nextBranch ?? "main"}
+                variant="unstyled"
+                onChange={setNextBranch}
+                placeholder={t`Select branch`}
+                disabled={isLoading}
+                onBlur={(e) => handleBranchSelect(e.target.value)}
+                limit={5}
+              />
             </Box>
             <Button
               variant="subtle"
-              size="sm"
               onClick={openPush}
               disabled={isLoading}
             >
-              <Icon name="upload" c="brand" />
+              <Icon name="upload" c="brand" size={20} />
             </Button>
           </Flex>
 
@@ -134,6 +139,7 @@ export const SyncedCollectionsSidebarSection = ({
         onClose={closeConfirm}
         title={t`Switch branches?`}
         message={t`Switching branches will overwrite any unpushed local changes to synced collections.`}
+        // TODO: list unsynced changes
         confirmButtonText={t`Import from Git`}
         onConfirm={() => handleBranchChange(nextBranch)}
       />
@@ -149,8 +155,15 @@ export const SyncedCollectionsSidebarSection = ({
 };
 
 const CollectionStatusBadge = ({ collection }: { collection: Collection }) => {
-  const { data } = useIsCollectionDirtyQuery({ collectionId: collection.id });
-  const isDirty = data?.is_dirty;
+  const { data } = useGetChangedEntitiesQuery();
+
+  const isDirty = false;
+
+  // toDo: scan through changes and put badges next to changed collections
+
+  if (!isDirty) {
+    return null;
+  }
 
   return (
     <Tooltip label={isDirty ? t`Unsynced changes` : t`All changes pushed`}>
@@ -158,3 +171,29 @@ const CollectionStatusBadge = ({ collection }: { collection: Collection }) => {
     </Tooltip>
   );
 };
+
+const useSyncStatus = () => {
+  const syncResponse = useGetCurrentSyncTaskQuery();
+  const dispatch = useDispatch();
+
+
+  useEffect(() => {
+    const isDone = syncResponse.data && syncResponse.data.ended_at !== null;
+    if (!isDone) {
+      const timeout = setTimeout(() => {
+        dispatch(EnterpriseApi.util.invalidateTags([
+          tag("remote-sync-current-task"),
+        ]));
+      }, SYNC_STATUS_DELAY);
+      return () => clearTimeout(timeout);
+    }
+  }, [syncResponse, dispatch]); // need whole object to retrigger on change
+
+  const isDone = syncResponse.data && syncResponse.data.ended_at !== null;
+
+  return {
+    status: isDone ? 'idle' : syncResponse.data?.sync_task_type,
+    progress: syncResponse.data?.progress ?? 0,
+    message: syncResponse.data?.error_message ?? "",
+  }
+}
