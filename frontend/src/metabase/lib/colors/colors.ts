@@ -529,7 +529,7 @@ export const colorConfig = {
 };
 
 // TODO: Use theme-aware colors instead of this export
-export const colors = {
+export const colors: Record<keyof typeof colorConfig, string> = {
   ...Object.fromEntries(
     Object.entries(colorConfig).map(([k, v]) => [k, v.light]),
   ),

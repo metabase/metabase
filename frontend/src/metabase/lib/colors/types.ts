@@ -1,6 +1,6 @@
-import type { colors } from "./colors";
+import type { colorConfig } from "./colors";
 
-export type ColorPalette = Partial<Record<keyof typeof colors, string>>;
+export type ColorPalette = Partial<Record<keyof typeof colorConfig, string>>;
 
 export type ColorName = keyof ColorPalette;
 
