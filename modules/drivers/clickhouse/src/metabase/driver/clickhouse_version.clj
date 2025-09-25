@@ -46,6 +46,9 @@
   [_driver db]
   (get-clickhouse-version db))
 
+(defn dbms-version [db]
+  ((some-fn :dbms-version :dbms_version) db))
+
 (defn is-at-least?
   "Is ClickHouse version at least `major.minor` (e.g., 24.4)?"
   ([major minor]
@@ -53,7 +56,7 @@
    (is-at-least? major minor (driver-api/database (driver-api/metadata-provider))))
   ([major minor db]
    ;; used from the Driver overrides; we have access to the DB object
-   (let [semantic (-> db :dbms_version :semantic-version)]
+   (let [semantic (-> db dbms-version :semantic-version)]
      (driver.u/semantic-version-gte [(:major semantic) (:minor semantic)] [major minor]))))
 
 (defn with-min

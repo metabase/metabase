@@ -124,8 +124,7 @@
         (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
-  ;; only cloud dbs support uploads
-  (boolean (-> db :dbms_version :cloud)))
+  (boolean (-> db clickhouse-version/dbms-version :cloud)))
 
 (defmethod driver/can-connect? :clickhouse
   [driver details]

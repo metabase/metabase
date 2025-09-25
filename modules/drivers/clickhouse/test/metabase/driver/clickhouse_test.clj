@@ -337,6 +337,7 @@
 (deftest ^:parallel uploads-supported-test
   (mt/test-driver :clickhouse
     (is (false? (driver/database-supports? driver/*driver* :uploads (mt/db))))
+    (is (true? (driver/database-supports? driver/*driver* :uploads (assoc-in (mt/db) [:dbms-version :cloud] true))))
     (is (true? (driver/database-supports? driver/*driver* :uploads (assoc-in (mt/db) [:dbms_version :cloud] true))))))
 
 (deftest ^:parallel type->database-type-test
