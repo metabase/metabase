@@ -4,7 +4,7 @@
    [metabase.util.log :as log])
   (:import
    (clojure.lang IDeref)
-   (java.io Closeable File ByteArrayInputStream)
+   (java.io Closeable File ByteArrayInputStream InputStream)
    (java.net URI)
    (java.time Duration)
    (software.amazon.awssdk.auth.credentials AwsBasicCredentials StaticCredentialsProvider)
@@ -205,7 +205,10 @@
   "Get back the contents of the given key as a string."
   ([s3-client bucket-name key] (read-to-string s3-client bucket-name key ::throw))
   ([^S3Client s3-client ^String bucket-name ^String key not-found]
-   (slurp (read-to-stream s3-client bucket-name key not-found))))
+   (let [ret (read-to-stream s3-client bucket-name key not-found)]
+     (if (instance? InputStream ret)
+       (slurp ret)
+       ret))))
 
 (defn delete
   ;; TODO better error handling
