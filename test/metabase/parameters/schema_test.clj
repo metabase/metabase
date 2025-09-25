@@ -4,16 +4,6 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.util.malli.registry :as mr]))
 
-(deftest ^:parallel legacy-field-or-expression-reference-test
-  (testing "Failures"
-    (are [v] (not (mr/validate ::parameters.schema/legacy-field-or-expression-reference v))
-      [:aggregation 0]
-      [:field "name" {}]))
-  (testing "Successes"
-    (are [v] (mr/validate ::parameters.schema/legacy-field-or-expression-reference v)
-      [:field 3 nil]
-      ["field" "name" {:base-type :type/Float}])))
-
 (deftest ^:parallel parameter-test
   (testing "Failures"
     (are [v] (not (mr/validate ::parameters.schema/parameter v))

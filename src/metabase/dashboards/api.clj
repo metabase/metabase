@@ -630,7 +630,7 @@
 
 (mu/defn- param-target->field-id :- [:maybe ::lib.schema.id/field]
   [target query]
-  (params/param-target->field-clause-id target {:dataset_query query}))
+  (params/param-target->field-id target {:dataset_query query}))
 
 ;; TODO -- should we only check *new* or *modified* mappings?
 (mu/defn- check-parameter-mapping-permissions

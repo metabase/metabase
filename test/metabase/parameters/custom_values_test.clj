@@ -176,7 +176,7 @@
                   :has_more_values true}
                  (custom-values/values-from-card
                   card
-                  [:field "Categories__NAME" {:base_type :type/Text}]
+                  [:field "Categories__NAME" {:base-type :type/Text}]
                   {:stage-number 1}))))))))
 
 (deftest ^:parallel with-mbql-card-test-6-expressions

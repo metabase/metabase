@@ -8,6 +8,7 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.metadata.jvm :as lib-be.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -97,7 +98,7 @@
    (values-from-card card value-field nil))
 
   ([card            :- (ms/InstanceOf :model/Card)
-    value-field-ref :- ::parameters.schema/legacy-field-or-expression-reference
+    value-field-ref :- ::mbql.s/field-or-expression-ref
     opts            :- [:maybe :map]]
    (let [mbql-query   (values-from-card-query card value-field-ref opts)
          result       (qp/process-query mbql-query)

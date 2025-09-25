@@ -29,7 +29,7 @@
 (mu/defn- param->field-id :- [:maybe ::lib.schema.id/field]
   [card  :- ::queries.schema/card
    param :- ::parameters.schema/parameter]
-  (params/param-target->field-clause-id (:target param) card))
+  (params/param-target->field-id (:target param) card))
 
 (mu/defn- mapping->field-values :- ms/FieldValuesResult
   "Get param values for the \"old style\" parameters. This mimic's the api/dashboard version except we don't have

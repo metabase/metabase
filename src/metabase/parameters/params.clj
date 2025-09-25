@@ -76,7 +76,7 @@
           (get (u/qualified-name tag))
           :dimension))
 
-(mu/defn param-target->field-clause-id :- [:maybe ::lib.schema.id/field]
+(mu/defn param-target->field-id :- [:maybe ::lib.schema.id/field]
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
   [target :- ::lib.schema.parameter/target
@@ -275,49 +275,48 @@
             merge (:card-id->filterable-columns ctx)))
    (:param-id->field-ids ctx))
   ([ctx {:keys [param-mapping param-target-field-id] :as param-dashcard-info}]
-   (if-not param-target-field-id
-     ctx
-     (let [card-id (:card_id param-mapping)
-           card (if card-id
-                  (m/find-first #(= (:id %) card-id)
-                                (cons (get-in param-dashcard-info [:dashcard :card])
-                                      (get-in param-dashcard-info [:dashcard :series])))
-                  (get-in param-dashcard-info [:dashcard :card]))
-           param-id (:parameter_id param-mapping)
-           stage-number (get-in param-mapping [:target 2 :stage-number] -1)]
-       ;; Get the field id from the field-clause if it contains it. This is the common case
-       ;; for mbql queries.
-       (if param-target-field-id
-         (update-in ctx [:param-id->field-ids param-id] (fnil conj #{}) param-target-field-id)
-         ;; In case the card doesn't have the same result_metadata columns as filterable columns (a question that
-         ;; aggregates a native query model with a field that was mapped to a db field), we need to load metadata in
-         ;; [[ensure-filterable-columns-for-card]] to find the originating field. (#42829)
-         (-> ctx
-             (ensure-filterable-columns-for-card card stage-number)
-             (field-id-from-dashcards-filterable-columns param-dashcard-info stage-number)))))))
+   (let [card-id (:card_id param-mapping)
+         card (if card-id
+                (m/find-first #(= (:id %) card-id)
+                              (cons (get-in param-dashcard-info [:dashcard :card])
+                                    (get-in param-dashcard-info [:dashcard :series])))
+                (get-in param-dashcard-info [:dashcard :card]))
+         param-id (:parameter_id param-mapping)
+         stage-number (get-in param-mapping [:target 2 :stage-number] -1)]
+     ;; Get the field id from the field-clause if it contains it. This is the common case
+     ;; for mbql queries.
+     (if param-target-field-id
+       (update-in ctx [:param-id->field-ids param-id] (fnil conj #{}) param-target-field-id)
+       ;; In case the card doesn't have the same result_metadata columns as filterable columns (a question that
+       ;; aggregates a native query model with a field that was mapped to a db field), we need to load metadata in
+       ;; [[ensure-filterable-columns-for-card]] to find the originating field. (#42829)
+       (-> ctx
+           (ensure-filterable-columns-for-card card stage-number)
+           (field-id-from-dashcards-filterable-columns param-dashcard-info stage-number))))))
 
-(mu/defn dashcards->param-id->field-ids* :- [:map-of ms/NonBlankString [:set ::lib.schema.id/field]]
+(mu/defn dashcards->param-id->field-ids* :- [:map-of ::lib.schema.parameter/id [:set ::lib.schema.id/field]]
   "Return map of parameter ids to mapped field ids."
   [dashcards]
   (letfn [(dashcard->param-dashcard-info [dashcard]
             (for [mapping (:parameter_mappings dashcard)]
               {:dashcard              dashcard
                :param-mapping         mapping
-               :param-target-field-id (param-target->field-clause-id (:target mapping) (:card dashcard))}))]
+               :param-target-field-id (param-target->field-id (:target mapping) (:card dashcard))}))]
     (transduce (mapcat dashcard->param-dashcard-info)
                field-id-into-context-rf
                dashcards)))
 
 (declare card->template-tag-id->field-ids)
 
-(mu/defn- dashcards->param-id->field-ids :- [:map-of ms/NonBlankString [:set ::lib.schema.id/field]]
+(mu/defn- dashcards->param-id->field-ids :- [:map-of ::lib.schema.parameter/id [:set ::lib.schema.id/field]]
   "Return a map of Parameter ID to the set of Field IDs referenced by parameters in the Cards on the given `dashcards`,
   or `nil` if none are referenced. `dashcards` must be hydrated with :card."
   [dashcards]
-  (transduce (map card->template-tag-id->field-ids)
-             (completing #(merge-with set/union %1 %2))
+  (transduce (comp (map :card)
+                   (map card->template-tag-id->field-ids))
+             (partial merge-with set/union)
              (dashcards->param-id->field-ids* dashcards)
-             (map :card dashcards)))
+             dashcards))
 
 (mu/defn dashcards->param-field-ids :- [:set ::lib.schema.id/field]
   "Return a set of Field IDs referenced by parameters in Cards in the given `dashcards`, or `nil` if
@@ -331,7 +330,7 @@
   (let [param-id->field-ids (transduce (map (fn [mapping]
                                               {:dashcard              (:dashcard mapping)
                                                :param-mapping         mapping
-                                               :param-target-field-id (param-target->field-clause-id
+                                               :param-target-field-id (param-target->field-id
                                                                        (:target mapping)
                                                                        (get-in mapping [:dashcard :card]))}))
                                        field-id-into-context-rf
@@ -346,7 +345,7 @@
                   (for [param params
                         :let  [target (:target param)]
                         :when target
-                        :let [id (param-target->field-clause-id target card)]
+                        :let [id (param-target->field-id target card)]
                         :when id]
                     [(:parameter_id param) #{id}])))]
     (->> dashcards
