@@ -5,6 +5,7 @@ import { useGetAdhocQueryQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import EmptyState from "metabase/common/components/EmptyState";
 import { Repeat, Skeleton, Stack } from "metabase/ui";
+import { extractRemappedColumns } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type {
   DatabaseId,
@@ -123,7 +124,7 @@ function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
         display: "object",
         visualization_settings: {},
       }),
-      data: data.data,
+      data: extractRemappedColumns(data.data),
     },
   ];
 
