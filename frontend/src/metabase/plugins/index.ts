@@ -853,11 +853,14 @@ export type PythonTransformsPlugin = {
       "source-database": DatabaseId | undefined;
       "source-tables": PythonTransformTableAliases;
     };
+    proposedSource?: PythonTransformSource;
     isNew?: boolean;
     isSaving?: boolean;
     isRunnable?: boolean;
     onSave: (newSource: PythonTransformSource) => void;
     onCancel: () => void;
+    onRejectProposed?: () => void;
+    onAcceptProposed?: (query: PythonTransformSource) => void;
   }>;
   getAdminRoutes: () => ReactNode;
   getTransformsNavLinks: () => ReactNode;

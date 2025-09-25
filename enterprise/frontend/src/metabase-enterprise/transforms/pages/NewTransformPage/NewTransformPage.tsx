@@ -176,14 +176,18 @@ function NewTransformEditorBody({
   onRejectProposed,
   onAcceptProposed,
 }: NewTransformEditorBody) {
-  // TODO: add python support
   if (initialSource.type === "python") {
     return (
       <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
         initialSource={initialSource}
+        proposedSource={
+          proposedSource?.type === "python" ? proposedSource : undefined
+        }
         isNew
         onSave={onSave}
         onCancel={onCancel}
+        onRejectProposed={onRejectProposed}
+        onAcceptProposed={onAcceptProposed}
       />
     );
   }

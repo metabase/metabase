@@ -32,8 +32,10 @@ import {
 } from "metabase-enterprise/metabot/state";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
-  DatasetQuery,
+  QueryTransformSource,
+  SuggestedTransform,
   Transform,
   TransformSource,
 } from "metabase-types/api";
@@ -96,6 +98,32 @@ const useGetOldTransform = ({
 // - latest transform no long matches base transform
 // - accepted / rejected via the editor
 
+const parseTemplateTags = (
+  source: QueryTransformSource,
+  metadata: Metadata,
+): QueryTransformSource => {
+  // For unsaved native queries, ensure template tags (like #{{123-my-model}}) are parsed from query text
+  const query = source.query;
+  let question = Question.create({ dataset_query: query, metadata });
+  const { isNative } = Lib.queryDisplayInfo(question.query());
+
+  if (isNative && !question.isSaved()) {
+    question = question.setQuery(
+      Lib.withNativeQuery(
+        question.query(),
+        Lib.rawNativeQuery(question.query()),
+      ),
+    );
+
+    return {
+      ...source,
+      query: question.datasetQuery(),
+    };
+  } else {
+    return source;
+  }
+};
+
 export const AgentSuggestionMessage = ({
   message,
 }: {
@@ -132,69 +160,54 @@ export const AgentSuggestionMessage = ({
         { source: { type: "query", query: { type: "native" } } },
         (t) => t.source.query.native.query,
       )
+      .with({ source: { type: "python" } }, (t) => t.source.body)
       .otherwise(() => "");
+  }
+
+  function processTransform(
+    transform: SuggestedTransform,
+    newSource?: TransformSource,
+  ) {
+    const source = newSource ?? transform.source;
+    const processedSource =
+      source.type === "query" ? parseTemplateTags(source, metadata) : source;
+    return {
+      ...transform,
+      source: processedSource,
+    };
   }
 
   const oldSource = originalTransform ? getSourceCode(originalTransform) : "";
   const newSource = getSourceCode(suggestedTransform);
 
-  const parseTemplateTags = (source: TransformSource): TransformSource => {
-    // TODO: fix
-    if (source.type === "python") {
-      alert("TODO: sloan is on this 🫡... self distructing in 3... 2... 1");
-      throw new Error("blarf");
-    }
+  const handleFocus = (config?: { skipToSave?: boolean }) => {
+    const transform = processTransform(suggestedTransform);
 
-    // For unsaved native queries, ensure template tags (like #{{123-my-model}}) are parsed from query text
-    const query = source.query;
-    let question = Question.create({ dataset_query: query, metadata });
-    const { isNative } = Lib.queryDisplayInfo(question.query());
-
-    if (isNative && !question.isSaved()) {
-      question = question.setQuery(
-        Lib.withNativeQuery(
-          question.query(),
-          Lib.rawNativeQuery(question.query()),
-        ),
-      );
-
-      return {
-        ...source,
-        query: question.datasetQuery(),
-      };
-    } else {
-      return source;
-    }
-  };
-
-  const handleFocus = (
-    config?: { skipToSave?: boolean },
-    transformToUse?: Transform,
-  ) => {
-    const transform = transformToUse || suggestedTransform;
-
-    const processedSource = parseTemplateTags(transform.source);
-    const processedTransform = {
-      ...transform,
-      source: processedSource,
-    };
-
-    const url = transform.id
-      ? `/admin/transforms/${transform.id}/query`
-      : `/admin/transforms/new/native${config?.skipToSave ? "?autoSave=true" : ""}`;
+    const url = match(transform)
+      .with({ id: P.number }, ({ id }) => `/admin/transforms/${id}/query`)
+      .with(
+        { source: { type: "python" } },
+        () => "/admin/transforms/new/python",
+      )
+      .with(
+        { source: { type: "query" } },
+        () =>
+          `/admin/transforms/new/native${config?.skipToSave ? "?autoSave=true" : ""}`,
+      )
+      .exhaustive();
     dispatch(push(url) as UnknownAction);
-    dispatch(setSuggestedTransform(processedTransform));
+    dispatch(setSuggestedTransform(transform));
   };
 
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
-  const handleSave = async (query: DatasetQuery) => {
+  const handleSave = async (source: TransformSource) => {
     if (suggestedTransform.id) {
       // Create a temporary source to process template tags
-      const tempSource = { ...suggestedTransform.source, query };
-      const processedSource = parseTemplateTags(tempSource);
+      const processedTransform = processTransform(suggestedTransform, source);
       const { error } = await updateTransform({
+        ...suggestedTransform,
+        ...processedTransform,
         id: suggestedTransform.id,
-        source: processedSource,
       });
 
       if (error) {
@@ -209,23 +222,13 @@ export const AgentSuggestionMessage = ({
 
   const handleAccept = async () => {
     if (!isViewing && !suggestedTransform.id) {
-      const processedSource = parseTemplateTags(suggestedTransform.source);
-      const processedTransform = {
-        ...suggestedTransform,
-        source: processedSource,
-      };
+      const processedTransform = processTransform(suggestedTransform);
       dispatch(setSuggestedTransform(processedTransform));
       handleFocus({ skipToSave: true });
     }
 
     if (suggestedTransform.id) {
-      // TODO: fix
-      if (suggestedTransform.source.type === "python") {
-        alert("TODO: sloan is on this 🫡... self distructing in 3... 2... 1");
-        throw new Error("blarf");
-      }
-
-      await handleSave(suggestedTransform.source.query);
+      await handleSave(suggestedTransform.source);
       metabot.submitInput({
         type: "action",
         message:
