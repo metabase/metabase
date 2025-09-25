@@ -23,7 +23,6 @@
    [metabase.queries.metadata :as queries.metadata]
    [metabase.queries.models.card :as card]
    [metabase.queries.models.card.metadata :as card.metadata]
-   [metabase.queries.models.query :as query]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
