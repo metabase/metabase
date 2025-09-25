@@ -46,19 +46,19 @@ export function EmbeddingSdkSettings() {
   const isEE = isEEBuild();
 
   const isReactSdkEnabled = useSetting("enable-embedding-sdk");
-  const isReactSdkFeatureEnabled = PLUGIN_EMBEDDING_SDK.isEnabled();
+  const isReactSdkFeatureAvailable = PLUGIN_EMBEDDING_SDK.isEnabled();
   const isLocalhostCorsDisabled = useSetting("disable-cors-on-localhost");
 
   const isSimpleEmbedEnabled = useSetting("enable-embedding-simple");
-  const isSimpleEmbedFeatureEnabled =
+  const isSimpleEmbedFeatureAvailable =
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isFeatureEnabled();
 
   const isEmbeddingAvailable =
-    isReactSdkFeatureEnabled || isSimpleEmbedFeatureEnabled;
+    isReactSdkFeatureAvailable || isSimpleEmbedFeatureAvailable;
 
   const canEditSdkOrigins =
-    (isReactSdkFeatureEnabled && isReactSdkEnabled) ||
-    (isSimpleEmbedFeatureEnabled && isSimpleEmbedEnabled);
+    (isReactSdkFeatureAvailable && isReactSdkEnabled) ||
+    (isSimpleEmbedFeatureAvailable && isSimpleEmbedEnabled);
 
   const isHosted = useSetting("is-hosted?");
 
@@ -145,9 +145,9 @@ export function EmbeddingSdkSettings() {
         title={t`Embedded Analytics JS`}
         description={t`An easy-to-use library that lets you embed Metabase entities like charts, dashboards, or even the query builder into your own application using customizable components.`}
         settingKey="enable-embedding-simple"
-        isFeatureEnabled={isSimpleEmbedFeatureEnabled}
+        isFeatureEnabled={isSimpleEmbedFeatureAvailable}
         links={[
-          ...(isSimpleEmbedFeatureEnabled
+          ...(isSimpleEmbedFeatureAvailable
             ? [
                 {
                   type: "button" as const,
@@ -164,7 +164,7 @@ export function EmbeddingSdkSettings() {
           },
         ]}
         rightSideContent={
-          !isSimpleEmbedFeatureEnabled ? (
+          !isSimpleEmbedFeatureAvailable ? (
             <UpsellEmbeddingButton
               url="https://www.metabase.com/product/embedded-analytics"
               campaign="embedded-analytics-js"
