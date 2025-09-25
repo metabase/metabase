@@ -12,9 +12,9 @@
 
 (def good-yamls ["test_resources/representations/v0/monthly-revenue.question.yml"
                  ;;"test_resources/representations/v0/pokemon-cards-limited.question.yml"
-                 "test_resources/representations/v0/pokemon-cards.question.yml"
-                 "test_resources/representations/v0/sales-data.question.yml"
-                 "test_resources/representations/v0/trainers.question.yml"])
+                 "test_resources/representations/v0/collection-8/pokemon-cards.question.yml"
+                 "test_resources/representations/v0/collection-8/sales-data.question.yml"
+                 "test_resources/representations/v0/collection-8/trainers.question.yml"])
 
 (deftest validate-example-yamls
   (testing "Testing valid examples"
