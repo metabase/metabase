@@ -234,14 +234,15 @@ const FlexContainerComponent: React.FC<NodeViewProps> = ({
       <Box h="100%" ref={containerRef}>
         <NodeViewContent
           className={styles.flexContent}
-          style={{
-            // @ts-expect-error - custom CSS variable needed for this component
-            "--mb-card-container-col-widths": columnWidths
-              .map(
-                (width: number) => `minmax(${COLUMN_MIN_WIDTH}px, ${width}%)`,
-              )
-              .join(" "),
-          }}
+          style={
+            {
+              "--mb-card-container-col-widths": columnWidths
+                .map(
+                  (width: number) => `minmax(${COLUMN_MIN_WIDTH}px, ${width}%)`,
+                )
+                .join(" "),
+            } as React.CSSProperties
+          }
         />
 
         {renderResizeHandles()}

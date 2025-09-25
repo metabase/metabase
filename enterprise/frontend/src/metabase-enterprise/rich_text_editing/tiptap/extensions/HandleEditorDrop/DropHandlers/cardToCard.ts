@@ -4,7 +4,11 @@ import {
   RESIZE_NODE_DEFAULT_HEIGHT,
   RESIZE_NODE_MIN_HEIGHT,
 } from "../../ResizeNode/ResizeNode";
-import { type DroppedCardEmbedNodeData, getCardEmbedDropSide } from "../utils";
+import {
+  type DroppedCardEmbedNodeData,
+  cleanupFlexContainerNodes,
+  getCardEmbedDropSide,
+} from "../utils";
 
 export const handleCardDropOnCard = (
   payload: DroppedCardEmbedNodeData,
@@ -83,10 +87,10 @@ export const handleCardDropOnCard = (
 
   tr.replaceWith(adjustedReplacePos, adjustedReplacePos + replaceSize, wrapper);
 
-  if (cameFromFlexContainer) {
-    // TODO: check if we need to clean up the original flexContainer if it had only 1 card left
-  }
-
   view.dispatch(tr);
+
+  if (cameFromFlexContainer) {
+    cleanupFlexContainerNodes(view);
+  }
   return true;
 };

@@ -10,6 +10,7 @@ import {
 import { handleCardDropOnDocument } from "./DropHandlers/cardToDocument";
 import {
   type DroppedCardEmbedNodeData,
+  cleanupFlexContainerNodes,
   extractCardEmbed,
   getDroppedCardEmbedNodeData,
 } from "./utils";
@@ -211,18 +212,4 @@ const moveNode = (
   tr.insert(adjustedToPos, possiblyWrappedNode);
 
   view.dispatch(tr);
-};
-
-// Traverses the document and unwraps any flexContainer nodes that only have 1 child
-const cleanupFlexContainerNodes = (view: EditorView) => {
-  view.state.doc.descendants((node, pos) => {
-    if (node.type.name === "flexContainer" && node.childCount === 1) {
-      const child = node.firstChild;
-      if (child) {
-        view.dispatch(
-          view.state.tr.replaceWith(pos, pos + node.nodeSize, child),
-        );
-      }
-    }
-  });
 };

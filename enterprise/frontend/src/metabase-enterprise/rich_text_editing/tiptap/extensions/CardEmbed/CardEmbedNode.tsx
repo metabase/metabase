@@ -640,7 +640,14 @@ export const CardEmbedComponent = memo(
                               ? commentsPath
                               : `${commentsPath}?new=true`
                           }
-                          disabled={!commentsPath}
+                          // actually stop the navigation from happening
+                          onClick={(e) => {
+                            if (!commentsPath || hasUnsavedChanges) {
+                              e.preventDefault();
+                            }
+                          }}
+                          // purely for presentation
+                          disabled={!commentsPath || hasUnsavedChanges}
                         >
                           {t`Comment`}
                         </Menu.Item>
