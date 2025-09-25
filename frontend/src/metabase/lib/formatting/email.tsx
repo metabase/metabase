@@ -5,9 +5,11 @@ import { renderLinkTextForClick } from "./link";
 import { removeNewLines } from "./strings";
 import type { OptionsType } from "./types";
 
-// https://github.com/angular/angular.js/blob/v1.6.3/src/ng/directive/input.js#L27
+// Enhanced email regex with Unicode support for international characters
+// Uses Unicode character classes to support international domains and names
+// Based on RFC 5322 with practical constraints for security and usability
 const EMAIL_ALLOW_LIST_REGEX =
-  /^(?=.{1,254}$)(?=.{1,64}@)[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+(\.[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+)*@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/;
+  /^(?=.{1,254}$)(?=.{1,64}@)[\p{L}\p{N}!#$%&'*+\/=?\^`{|}~_-]+(?:\.[\p{L}\p{N}!#$%&'*+\/=?\^`{|}~_-]+)*@[\p{L}\p{N}](?:[\p{L}\p{N}-]{0,61}[\p{L}\p{N}])?(?:\.[\p{L}\p{N}](?:[\p{L}\p{N}-]{0,61}[\p{L}\p{N}])?)*$/u;
 
 export function formatEmail(
   value: string,
