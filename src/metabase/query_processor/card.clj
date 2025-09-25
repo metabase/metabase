@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.cache.core :as cache]
+   [metabase.events.core :as events]
    ;; legacy usages -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
    ;; Lib soon
    ^{:clj-kondo/ignore [:discouraged-namespace]}
@@ -346,6 +347,14 @@
     (log/tracef "Running query for Card %d:\n%s" card-id
                 (u/pprint-to-str query))
     (binding [qp.perms/*card-id* card-id]
+      (events/publish-event! :event/card-read {:object-id card-id
+                                               :user-id   (:executed-by info)
+                                               :context   (case (:context info)
+                                                            :public-dashboard :dashboard
+                                                            :public-question :question
+                                                            :embedded-dashboard :dashboard
+                                                            :embedded-question :question
+                                                            (:context info))})
       (qp.store/with-metadata-provider (:database_id card)
         (qp.results-metadata/store-previous-result-metadata! card)
         (runner query info)))))
