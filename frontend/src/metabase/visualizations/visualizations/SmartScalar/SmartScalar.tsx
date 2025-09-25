@@ -3,9 +3,9 @@ import { useEffect, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { color } from "metabase/lib/colors";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { Box } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 import {
   ScalarValue,
   ScalarWrapper,

@@ -22,7 +22,6 @@ import SnippetCollectionName from "metabase/common/components/SnippetCollectionN
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import Collections from "metabase/entities/collections";
 import Dashboard from "metabase/entities/dashboards";
-import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { Button, Flex, Icon } from "metabase/ui";
 import type { CollectionId, DashboardId } from "metabase-types/api";
@@ -39,7 +38,7 @@ function ItemName({
   if (dashboardId) {
     return (
       <Flex align="center" gap="sm">
-        <Icon name="dashboard" color={color("brand")} />
+        <Icon name="dashboard" c="brand" />
         <Dashboard.Name id={dashboardId} />
       </Flex>
     );
@@ -47,7 +46,7 @@ function ItemName({
 
   return (
     <Flex align="center" gap="sm">
-      <Icon name="collection" color={color("brand")} />
+      <Icon name="collection" c="brand" />
       {type === "snippet-collections" ? (
         <SnippetCollectionName id={collectionId} />
       ) : (

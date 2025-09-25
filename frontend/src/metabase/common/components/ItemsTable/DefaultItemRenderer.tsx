@@ -4,7 +4,7 @@ import type { ActionMenuProps } from "metabase/collections/components/ActionMenu
 import type { OnToggleSelectedWithItem } from "metabase/collections/types";
 import type { BaseItemsTableProps } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import { Columns } from "metabase/common/components/ItemsTable/Columns";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
