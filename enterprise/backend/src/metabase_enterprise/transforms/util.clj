@@ -215,7 +215,7 @@
 (defn ->tag-filter-xf
   "Returns an xform for a transform tag filter."
   [field-path tag-ids]
-  (let [tag-ids (-> tag_ids set not-empty)]
+  (let [tag-ids (-> tag-ids set not-empty)]
     (if tag-ids
       (filter #(tag-ids (get-in % field-path)))
       identity)))
