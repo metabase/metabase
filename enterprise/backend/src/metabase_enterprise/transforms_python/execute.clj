@@ -18,7 +18,7 @@
   (:import
    (java.io Closeable InputStream)
    (java.net SocketException)
-   (java.nio.file Files CopyOption)
+   (java.nio.file Files CopyOption StandardCopyOption)
    (java.nio.file.attribute FileAttribute)
    (java.time Duration)))
 
@@ -275,7 +275,7 @@
                                :raw-body               body
                                :events                 events})))
             (try
-              (Files/copy ^InputStream output-stream temp-path (u/varargs CopyOption))
+              (Files/copy ^InputStream output-stream temp-path (u/varargs CopyOption [StandardCopyOption/REPLACE_EXISTING]))
               (let [file-size (.length temp-file)]
                 (transforms.instrumentation/with-stage-timing [run-id :file-to-dwh]
                   (transfer-file-to-db driver db transform output-manifest temp-file))
