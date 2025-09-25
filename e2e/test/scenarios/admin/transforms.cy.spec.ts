@@ -293,7 +293,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
           triggered_from: "transform-page",
         });
 
-        getPythonRunSection().should("contain", "Executing Python transform");
+        getRunSection().should("contain", "Executing Python transform");
 
         getTableLink().click();
         H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
@@ -2843,10 +2843,6 @@ function editorSidebar() {
   return cy.findByTestId("editor-sidebar");
 }
 
-function getPythonRunSection() {
-  return getTransformPage().findByTestId("run-section");
-}
-
 function getPythonDataPicker() {
   return cy.findByTestId("python-data-picker");
 }
@@ -2858,17 +2854,23 @@ function createPythonLibrary(path: string, source: string) {
 }
 
 function setPythonRunnerSettings() {
-  H.updateSetting("python-runner-url", "http://localhost:5001");
-  H.updateSetting("python-runner-api-token", "dev-token-12345");
-  H.updateSetting("python-storage-s-3-endpoint", "http://localhost:4566");
-  H.updateSetting("python-storage-s-3-region", "us-east-1");
-  H.updateSetting("python-storage-s-3-bucket", "metabase-python-runner");
-  H.updateSetting("python-storage-s-3-prefix", "test-prefix");
-  H.updateSetting("python-storage-s-3-access-key", "test");
-  H.updateSetting("python-storage-s-3-secret-key", "test");
-  H.updateSetting(
+  H.updateEnterpriseSetting("python-runner-url", "http://localhost:5001");
+  H.updateEnterpriseSetting("python-runner-api-token", "dev-token-12345");
+  H.updateEnterpriseSetting(
+    "python-storage-s-3-endpoint",
+    "http://localhost:4566",
+  );
+  H.updateEnterpriseSetting("python-storage-s-3-region", "us-east-1");
+  H.updateEnterpriseSetting(
+    "python-storage-s-3-bucket",
+    "metabase-python-runner",
+  );
+  H.updateEnterpriseSetting("python-storage-s-3-prefix", "test-prefix");
+  H.updateEnterpriseSetting("python-storage-s-3-access-key", "test");
+  H.updateEnterpriseSetting("python-storage-s-3-secret-key", "test");
+  H.updateEnterpriseSetting(
     "python-storage-s-3-container-endpoint",
     "http://localstack:4566",
   );
-  H.updateSetting("python-storage-s-3-path-style-access", true);
+  H.updateEnterpriseSetting("python-storage-s-3-path-style-access", true);
 }

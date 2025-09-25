@@ -11,7 +11,7 @@ export function PythonRunnerSettingsPage() {
     <SettingsPageWrapper title={t`Python Runner`}>
       <SettingsSection title={t`Service Configuration`}>
         <AdminSettingInput
-          name="python-execution-server-url"
+          name="python-runner-url"
           title={t`Python Execution Server URL`}
           description={t`URL for the Python execution server that runs transform functions.`}
           placeholder="http://localhost:5001"
