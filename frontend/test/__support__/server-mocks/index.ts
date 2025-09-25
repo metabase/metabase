@@ -14,6 +14,7 @@ export * from "./constants";
 export * from "./dashboard";
 export * from "./database";
 export * from "./dataset";
+export * from "./document";
 export * from "./email";
 export * from "./embed";
 export * from "./field";
