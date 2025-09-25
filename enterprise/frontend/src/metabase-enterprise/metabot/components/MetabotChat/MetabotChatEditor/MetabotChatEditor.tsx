@@ -3,7 +3,7 @@ import HardBreak from "@tiptap/extension-hard-break";
 import Paragraph from "@tiptap/extension-paragraph";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import Text from "@tiptap/extension-text";
-import { type Editor, EditorContent, useEditor } from "@tiptap/react";
+import { EditorContent, useEditor } from "@tiptap/react";
 import cx from "classnames";
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { t } from "ttag";
@@ -11,6 +11,7 @@ import { t } from "ttag";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Icon } from "metabase/ui";
+import type { MetabotPromptInputRef } from "metabase-enterprise/metabot/context";
 import { createMentionSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Mention/MentionSuggestion";
 import {
   MetabotMentionExtension,
@@ -34,7 +35,10 @@ interface Props {
   onSubmit: () => void;
 }
 
-export const MetabotChatEditor = forwardRef<Editor | null, Props>(
+export const MetabotChatEditor = forwardRef<
+  MetabotPromptInputRef | null,
+  Props
+>(
   (
     {
       value,

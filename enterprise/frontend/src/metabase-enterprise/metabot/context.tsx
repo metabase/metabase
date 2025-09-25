@@ -1,4 +1,3 @@
-import type { Editor } from "@tiptap/react";
 import dayjs from "dayjs";
 import type React from "react";
 import { createContext, useCallback, useRef, useState } from "react";
@@ -8,6 +7,7 @@ import { useLazyListDatabasesQuery } from "metabase/api";
 import { useStore } from "metabase/lib/redux";
 import type {
   ChatContextProviderFn,
+  MetabotChatInputRef,
   MetabotContext as MetabotCtx,
 } from "metabase/metabot";
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
@@ -34,7 +34,7 @@ export const MetabotProvider = ({
 }) => {
   /* Metabot input */
   const [prompt, setPrompt] = useState("");
-  const promptInputRef = useRef<Editor>(null);
+  const promptInputRef = useRef<MetabotChatInputRef>(null);
 
   /* Metabot context */
   const providerFnsRef = useRef<Set<ChatContextProviderFn>>(new Set());

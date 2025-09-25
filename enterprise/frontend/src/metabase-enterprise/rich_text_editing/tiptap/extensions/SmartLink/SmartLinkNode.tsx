@@ -233,10 +233,18 @@ export const SmartLink = Node.create<{
         find: new RegExp(METABSE_PROTOCOL_MD_LINK, "g"),
         type: this.type,
         getAttributes: (match) => {
-          const { id, model, name } = parseMetabaseProtocolMarkdownLink(
-            match[0] as any,
-          );
-          return { entityId: id, model, name, label: name };
+          const url = match[0];
+          const parsedEntity = parseMetabaseProtocolMarkdownLink(url);
+
+          if (parsedEntity) {
+            return {
+              entityId: parsedEntity.id,
+              model: parsedEntity.model,
+              label: parsedEntity.name,
+            };
+          }
+
+          return null; // Return null to prevent node creation
         },
       }),
     ];
