@@ -31,7 +31,7 @@
   (trim-old-token-data!))
 
 (defmethod task/init! ::SemanticSearchUsageTrimmer
-  []
+  [_]
   (when (premium-features/has-feature? :semantic-search)
     (let [job (jobs/build
                (jobs/of-type SemanticSearchUsageTrimmer)
