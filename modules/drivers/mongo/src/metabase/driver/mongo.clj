@@ -1,6 +1,6 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
-  (:refer-clojure :exclude [some])
+  (:refer-clojure :exclude [some mapv])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -21,7 +21,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.performance :refer [some]]
+   [metabase.util.performance :refer [some mapv]]
    [taoensso.nippy :as nippy])
   (:import
    (com.mongodb.client MongoClient MongoDatabase)

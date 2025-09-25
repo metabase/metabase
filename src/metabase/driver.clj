@@ -8,6 +8,7 @@
    these drivers define additional multimethods that child drivers should implement; see [[metabase.driver.sql]] and
    [[metabase.driver.sql-jdbc]] for more details."
   #_{:clj-kondo/ignore [:metabase/modules]}
+  (:refer-clojure :exclude [some mapv])
   (:require
    [clojure.java.io :as io]
    [clojure.set :as set]
@@ -21,6 +22,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv]]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
