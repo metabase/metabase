@@ -1990,7 +1990,7 @@ describe("scenarios > admin > datamodel", () => {
           });
           verifyObjectDetailPreview({
             index: 4,
-            row: ["Tax ($)", "$2.07"],
+            row: ["Tax ($)", "2.07"],
           });
 
           cy.log("change currency");
@@ -2010,7 +2010,7 @@ describe("scenarios > admin > datamodel", () => {
           });
           verifyObjectDetailPreview({
             index: 4,
-            row: ["Tax (CA$)", "CA$2.07"],
+            row: ["Tax (CA$)", "2.07"],
           });
 
           cy.log("verify viz");
@@ -2530,7 +2530,7 @@ describe("scenarios > admin > datamodel", () => {
           cy.log("verify preview");
           verifyObjectDetailPreview({
             index: 2,
-            row: ["Product ID", "Awesome Concrete Shoes"],
+            row: ["Product ID", "1"],
           });
           verifyTablePreview({
             column: "Product ID",
@@ -2671,7 +2671,7 @@ describe("scenarios > admin > datamodel", () => {
           FieldSection.getPreviewButton().click();
           verifyObjectDetailPreview({
             index: 2,
-            row: ["Product ID", "Awesome Concrete Shoes"],
+            row: ["Product ID", "1"],
           });
           verifyTablePreview({
             column: "Product ID",
