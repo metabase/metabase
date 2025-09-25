@@ -576,7 +576,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
   });
 
   describe("detail page links - questions", () => {
-    it("no primary keys", () => {
+    it("no primary keys (WRK-900)", () => {
       H.visitQuestionAdhoc({
         display: "table",
         dataset_query: {
@@ -598,6 +598,10 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       cy.findByTestId("object-detail").within(() => {
         cy.findByLabelText("Copy link to this record").should("not.exist");
         cy.findByLabelText("Open in full page").should("not.exist");
+
+        cy.log("should not show relationships when there is no PK (WRK-900)");
+        cy.findByText(/is connected to/).should("not.exist");
+        cy.findByRole("link", { name: /Orders/ }).should("not.exist");
       });
     });
 
@@ -675,7 +679,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
   });
 
   describe("detail page links - models", () => {
-    it("no primary keys", () => {
+    it("no primary keys (WRK-900)", () => {
       H.createQuestion(
         {
           type: "model",
@@ -696,6 +700,10 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       cy.findByTestId("object-detail").within(() => {
         cy.findByLabelText("Copy link to this record").should("not.exist");
         cy.findByLabelText("Open in full page").should("not.exist");
+
+        cy.log("should not show relationships when there is no PK (WRK-900)");
+        cy.findByText(/is connected to/).should("not.exist");
+        cy.findByRole("link", { name: /Orders/ }).should("not.exist");
       });
     });
 
