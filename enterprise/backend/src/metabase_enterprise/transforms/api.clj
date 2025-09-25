@@ -80,7 +80,7 @@
    [:map
     [:last_run_start_time {:optional true} [:maybe ms/NonBlankString]]
     [:last_run_statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
-    [:tag_ids   {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
+    [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (api/check-superuser)
   (let [transforms (t2/select :model/Transform)]
     (into []
