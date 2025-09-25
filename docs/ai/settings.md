@@ -1,9 +1,9 @@
 ---
-title: Metabot settings
+title: Metabot AI settings
 summary: Configure Metabot settings, including which collections Metabot can access, and learn tips for improving Metabot's performance through data modeling and metadata.
 ---
 
-# Metabot settings
+# Metabot AI settings
 
 {% include beta-blockquote.html
    message="For now, <a href='https://www.metabase.com/features/metabot-ai'>Metabot</a> is only available as an add-on for Pro and Enterprise plans on Metabase Cloud."
