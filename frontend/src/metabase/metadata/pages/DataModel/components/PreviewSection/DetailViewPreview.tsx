@@ -40,42 +40,12 @@ const DetailViewPreviewInner = ({
   table,
   tableId,
 }: Props) => {
-  const reference: FieldReference = ["field", fieldId, null];
-  const filter: FieldFilter = ["not-null", reference];
-
-  const datasetQuery: DatasetQuery = {
-    type: "query" as const,
-    database: databaseId,
-    query: {
-      "source-table": tableId,
-      filter,
-      limit: 1,
-    },
-  };
-
-  const {
-    data: queryResult,
-    error: queryError,
-    isLoading: isFetching,
-  } = useGetAdhocQueryQuery({
-    ...datasetQuery,
-    ignore_error: true,
-    _refetchDeps: field,
+  const { error, isFetching, data, rowData, columns } = useDataSample({
+    databaseId,
+    field,
+    fieldId,
+    tableId,
   });
-
-  const error = queryError ? getErrorMessage(queryError) : undefined;
-  const hasPermissionError = queryError && is403Error(queryError);
-  const hasDataError = queryResult?.status === "failed";
-
-  const data = queryResult?.data;
-  const finalError = hasPermissionError
-    ? t`Sorry, you don’t have permission to see that.`
-    : hasDataError
-      ? getDataErrorMessage(queryResult)
-      : error;
-
-  const rowData = data?.rows[0];
-  const columns = data?.cols || EMPTY_COLUMNS;
 
   const headerColumns = useMemo(() => getHeaderColumns(columns), [columns]);
 
@@ -89,8 +59,8 @@ const DetailViewPreviewInner = ({
     );
   }
 
-  if (finalError) {
-    return <Error message={finalError} />;
+  if (error) {
+    return <Error message={error} />;
   }
 
   if (!data || !rowData) {
@@ -129,5 +99,72 @@ const DetailViewPreviewInner = ({
     </Stack>
   );
 };
+
+function useDataSample({
+  databaseId,
+  field,
+  fieldId,
+  tableId,
+}: {
+  databaseId: DatabaseId;
+  field: Field;
+  fieldId: FieldId;
+  tableId: TableId;
+}) {
+  const reference: FieldReference = ["field", fieldId, null];
+  const filter: FieldFilter = ["not-null", reference];
+
+  const datasetQuery: DatasetQuery = {
+    type: "query" as const,
+    database: databaseId,
+    query: {
+      "source-table": tableId,
+      filter,
+      limit: 1,
+    },
+  };
+
+  const { data: queryResult, ...rest } = useGetAdhocQueryQuery({
+    ...datasetQuery,
+    ignore_error: true,
+    _refetchDeps: field,
+  });
+
+  const base = {
+    ...rest,
+    error: rest.error ? getErrorMessage(rest.error) : undefined,
+    data: undefined,
+    rowData: undefined,
+    columns: EMPTY_COLUMNS,
+  };
+
+  if (rest?.status === "rejected" && is403Error(rest.error)) {
+    return {
+      ...base,
+      isError: true,
+      error: t`Sorry, you don't have permission to see that.`,
+    };
+  }
+
+  if (queryResult?.status === "failed") {
+    return {
+      ...base,
+      isError: true,
+      error: getDataErrorMessage(queryResult),
+    };
+  }
+
+  const data = queryResult?.data;
+  const rowData = data?.rows[0];
+  const columns = data?.cols || EMPTY_COLUMNS;
+
+  return {
+    ...rest,
+    error: undefined,
+    data,
+    rowData,
+    columns,
+  };
+}
 
 export const DetailViewPreview = memo(DetailViewPreviewInner);
