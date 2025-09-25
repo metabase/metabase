@@ -2,6 +2,7 @@ import { memo } from "react";
 import { t } from "ttag";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
+import { useGetTableQueryMetadataQuery } from "metabase/api/table";
 import { getErrorMessage } from "metabase/api/utils";
 import EmptyState from "metabase/common/components/EmptyState";
 import { DetailsGroup } from "metabase/detail-view/components";
@@ -42,6 +43,7 @@ const ObjectDetailPreviewBase = ({
     tableId,
   });
 
+  const { data: table } = useGetTableQueryMetadataQuery({ id: tableId });
   const hasData = columns != null && row != null;
 
   if (isFetching) {
@@ -68,7 +70,7 @@ const ObjectDetailPreviewBase = ({
 
   return (
     <Stack p="lg">
-      <DetailsGroup columns={columns!} row={row!} table={undefined} />
+      <DetailsGroup columns={columns} row={row} table={table} responsive />
     </Stack>
   );
 };
