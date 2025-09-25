@@ -52,6 +52,8 @@ export const SyncedCollectionsSidebarSection = ({
 
   const { status, progress } = useSyncStatus();
 
+  console.log({ status })
+
   const isLoading = isImporting || status !== "idle";
 
   const handleBranchSelect = (branch: string) => {
@@ -67,7 +69,7 @@ export const SyncedCollectionsSidebarSection = ({
     await updateSetting({ key: "remote-sync-branch", value: branch, toast: false });
     closeConfirm();
     await importFromBranch({ branch });
-    setNextBranch(null);
+    setNextBranch(branch);
   };
 
   const hasSyncedCollections = syncedCollections.length > 0;
@@ -79,17 +81,13 @@ export const SyncedCollectionsSidebarSection = ({
           <Flex justify="space-between">
             <Box>
               <SidebarHeading>{t`Synced Collections`}</SidebarHeading>
-              <Autocomplete
-                leftSection={<Icon name="schema" c="brand" size={12} />}
-                rightSection={
-                  isLoading
-                    ? <Box p="lg"><Loader h={6} w={6}  /></Box>
-                    : <Icon name="chevrondown" size={12} />
-                }
+              {isLoading ? <Box pl="xl" py="sm"><Loader size="xs"  /></Box> : <Autocomplete
+                leftSection={<Icon name="schema" c="brand" size="sm" />}
+                rightSection={<Icon name="chevrondown" size={12} />}
                 data={branches}
                 styles={{ input: {
                   border: "none", color: "var(--mb-color-brand)", fontWeight: "bold",
-                  cursor: isLoading ? "not-allowed" : "pointer"
+                  cursor: "pointer"
                 } }}
                 value={nextBranch ?? "main"}
                 variant="unstyled"
@@ -98,7 +96,7 @@ export const SyncedCollectionsSidebarSection = ({
                 disabled={isLoading}
                 onBlur={(e) => handleBranchSelect(e.target.value)}
                 limit={5}
-              />
+              />}
             </Box>
             <Button
               variant="subtle"
@@ -189,7 +187,7 @@ const useSyncStatus = () => {
     }
   }, [syncResponse, dispatch]); // need whole object to retrigger on change
 
-  const isDone = syncResponse.data && syncResponse.data.ended_at !== null;
+  const isDone = !syncResponse.data || (syncResponse.data && syncResponse.data.ended_at !== null);
 
   return {
     status: isDone ? 'idle' : syncResponse.data?.sync_task_type,
