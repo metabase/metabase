@@ -361,11 +361,11 @@
   (let [sql [[(format "CREATE DATABASE IF NOT EXISTS `%s`;" schema)]]]
     (driver/execute-raw-queries! driver conn-spec sql)))
 
-(defmethod driver/compile-rename-table :clickhouse
-  [driver old-name new-name]
-  [(format "RENAME TABLE %s TO %s;"
-           (first (sql.qp/format-honeysql driver (keyword old-name)))
-           (first (sql.qp/format-honeysql driver (keyword (namespace old-name) new-name))))])
+#_(defmethod driver/compile-rename-table :clickhouse
+    [driver old-name new-name]
+    [(format "RENAME TABLE %s TO %s;"
+             (first (sql.qp/format-honeysql driver (keyword old-name)))
+             (first (sql.qp/format-honeysql driver (keyword (namespace old-name) new-name))))])
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/describe-table-fks :clickhouse

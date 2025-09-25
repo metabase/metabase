@@ -1152,17 +1152,17 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti compile-drop-table
-  "Compiles the sql for a drop table statement for a given table."
-  {:added "0.57.0", :arglists '([driver table])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
+#_(defmulti compile-drop-table
+    "Compiles the sql for a drop table statement for a given table."
+    {:added "0.57.0", :arglists '([driver table])}
+    dispatch-on-initialized-driver
+    :hierarchy #'hierarchy)
 
-(defmulti compile-rename-table
-  "Compiles the DDL to rename a table from `old-name` to `new-name`."
-  {:added "0.57.0", :arglists '([driver old-name new-name])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
+#_(defmulti compile-rename-table
+    "Compiles the DDL to rename a table from `old-name` to `new-name`."
+    {:added "0.57.0", :arglists '([driver old-name new-name])}
+    dispatch-on-initialized-driver
+    :hierarchy #'hierarchy)
 
 (defmulti execute-raw-queries!
   "Executes a series of 'raw' queries.  A raw query is a vector of a sql string and arguments, in the case of sql

@@ -131,18 +131,20 @@
 
 ;; TODO(rileythomp, 2025-09-09): This probably doesn't need to be a driver multi-method
 (defmethod driver/run-transform! [:sql :table]
-  [driver {:keys [db-id query target conn-spec]}]
+  [driver {:keys [db-id query target conn-spec] :as transform-details}]
   (let [db (driver-api/with-metadata-provider db-id (driver-api/database (driver-api/metadata-provider)))
         {schema :schema table-name :name} target
-        output-table (keyword schema table-name)
-        queries (if (driver/table-exists? driver db target)
-                  (let [tmp-name (get-tmp-transform-name table-name tmp-transform-suffix)
-                        tmp-table (keyword schema tmp-name)]
-                    [(driver/compile-transform driver query tmp-table)
-                     (driver/compile-drop-table driver output-table)
-                     (driver/compile-rename-table driver tmp-table table-name)])
-                  [(driver/compile-transform driver query output-table)])]
-    {:rows-affected (first (driver/execute-raw-queries! driver conn-spec queries))}))
+        output-table (keyword schema table-name)]
+    (if (driver/table-exists? driver db target)
+      (let [tmp-name (get-tmp-transform-name table-name tmp-transform-suffix)
+            tmp-table (keyword schema tmp-name)
+            create-tmp-table-query (driver/compile-transform driver tmp-table)
+            rows-affected (first (driver/execute-raw-queries! driver conn-spec [create-tmp-table-query]))]
+        (driver/drop-transform-target! driver db transform-details)
+        (driver/rename-table! driver db tmp-table output-table)
+        rows-affected)
+      (let [query [(driver/compile-transform driver query output-table)]]
+        {:rows-affected (first (driver/execute-raw-queries! driver conn-spec query))}))))
 
 (defmethod driver/drop-transform-target! [:sql :table]
   [driver database {:keys [schema name]}]

@@ -1008,10 +1008,10 @@
   (let [sql [[(format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA [%s];');" schema schema)]]]
     (driver/execute-raw-queries! driver conn-spec sql)))
 
-(defmethod driver/compile-rename-table :sqlserver
-  [driver old-name new-name]
-  [(format "EXEC sp_rename '%s', '%s';"
-           (first (sql.qp/format-honeysql driver (keyword old-name))) new-name)])
+#_(defmethod driver/compile-rename-table :sqlserver
+    [driver old-name new-name]
+    [(format "EXEC sp_rename '%s', '%s';"
+             (first (sql.qp/format-honeysql driver (keyword old-name))) new-name)])
 
 (defmethod driver/rename-table! :sqlserver
   [_driver db-id old-table-name new-table-name]
