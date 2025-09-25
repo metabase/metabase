@@ -13,13 +13,16 @@ export const SdkDashboardStyledWrapper = forwardRef(
   ) {
     return (
       <Flex
-        h="100%"
         bg="bg-dashboard"
         direction="column"
         justify="flex-start"
         align="stretch"
         className={cx(className, CS.overflowAuto)}
-        style={style}
+        style={{
+          // Gives a chance to override the height if needed
+          height: "100vh",
+          ...style,
+        }}
         ref={fullscreenRef}
       >
         {children}
