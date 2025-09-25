@@ -3,14 +3,14 @@
 import cx from "classnames";
 import { memo, useMemo } from "react";
 
-import Link from "metabase/common/components/Link/Link";
 import Markdown, {
   type MarkdownProps,
 } from "metabase/common/components/Markdown";
-
-import { MetabotSmartLinkComponent } from "../MetabotChat/MetabotChatEditor/MetabotSmartLink";
+import { parseMetabaseProtocolLink } from "metabase-enterprise/metabot/utils/links";
 
 import S from "./AIMarkdown.module.css";
+import { InternalLink } from "./components/InternalLink";
+import { MarkdownSmartLink } from "./components/MarkdownSmartLink";
 
 type AIMarkdownProps = MarkdownProps & {
   onInternalLinkClick?: (link: string) => void;
@@ -30,50 +30,22 @@ const getComponents = ({
     node?: any;
     [key: string]: any;
   }) => {
-    // TODO: type this properly
-    const isMetabaseProtocolLink = node?.properties?.href?.startsWith(
-      "metabase://",
-    ) as boolean;
-
-    if (isMetabaseProtocolLink) {
-      const link = node?.properties?.href.slice("metabase://".length);
-      // TODO: FIX - having some trouble with the utils parse this correctly
-      const [model, entityId] = link.split("/");
-
-      // A custom handler for internal links (use by Embedding SDK)
-      if (onInternalLinkClick) {
-        return (
-          <span className="smart-link">
-            <MetabotSmartLinkComponent
-              model={model}
-              entityId={entityId}
-              {...rest}
-            />
-          </span>
-        );
-      }
-
+    const parsed = parseMetabaseProtocolLink(node.properties.href);
+    if (parsed) {
       return (
-        <Link className="smart-link" to={link} variant="brand">
-          <MetabotSmartLinkComponent model={model} entityId={entityId} />
-        </Link>
+        <MarkdownSmartLink
+          onInternalLinkClick={onInternalLinkClick}
+          name={String(node.children?.[0]?.value ?? "")}
+          {...parsed}
+        />
       );
     }
 
-    if (href && href.startsWith("/")) {
-      // A custom handler for internal links (use by Embedding SDK)
-      if (onInternalLinkClick) {
-        return (
-          <a {...rest} onClick={() => onInternalLinkClick(href)}>
-            {children}
-          </a>
-        );
-      }
-
+    if (href?.startsWith("/")) {
       return (
-        <Link to={href} variant="brand">
+        <InternalLink onInternalLinkClick={onInternalLinkClick} href={href}>
           {children}
-        </Link>
+        </InternalLink>
       );
     }
 

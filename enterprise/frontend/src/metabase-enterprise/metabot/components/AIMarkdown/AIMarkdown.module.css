@@ -48,15 +48,24 @@
   margin-top: 0.5rem;
 }
 
-.aiMarkdown :global(.smart-link) {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0 0.25rem;
-  background: var(--mb-color-background-hover);
-  border-radius: 0.25rem;
+.smartLink {
   color: var(--mb-color-brand);
-  text-decoration: none;
-  font-weight: 500;
-  vertical-align: baseline;
+  font-weight: 700;
+  padding: 0.125rem;
+  border-radius: var(--mantine-radius-sm);
+  transition: 200ms background-color;
+  outline: none;
+
+  &:hover {
+    background-color: var(--mb-color-background-hover);
+  }
+}
+
+.smartLinkInner {
+  border-bottom: 1px solid var(--mb-color-brand-light);
+}
+
+.icon {
+  margin-bottom: -0.125rem;
+  margin-right: 0.25rem;
 }

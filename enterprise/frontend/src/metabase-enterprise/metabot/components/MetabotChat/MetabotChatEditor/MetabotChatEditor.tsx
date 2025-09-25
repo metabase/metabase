@@ -11,19 +11,19 @@ import { t } from "ttag";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Icon } from "metabase/ui";
-import { MetabotMentionSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/MetabotMention/MetabotSuggestion";
-
-import S from "./MetabotChatEditor.module.css";
+import { createMentionSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Mention/MentionSuggestion";
 import {
   MetabotMentionExtension,
   MetabotMentionPluginKey,
-} from "./MetabotMentionExtension";
-import { MetabotSmartLink } from "./MetabotSmartLink";
+} from "metabase-enterprise/rich_text_editing/tiptap/extensions/MetabotMention/MetabotMentionExtension";
+import { SmartLink } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
+import { createSuggestionRenderer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/suggestionRenderer";
+
+import S from "./MetabotChatEditor.module.css";
 import {
-  parseMetabotFormat,
-  serializeToMetabotFormat,
-} from "./metabotMessageSerializer";
-import { createMetabotSuggestionRenderer } from "./metabotSuggestionRenderer";
+  parseMetabotMessageToTiptapDoc,
+  serializeTiptapToMetabotMessage,
+} from "./utils";
 
 interface Props {
   value: string;
@@ -47,6 +47,7 @@ export const MetabotChatEditor = forwardRef<Editor | null, Props>(
     ref,
   ) => {
     const siteUrl = useSelector((state) => getSetting(state, "site-url"));
+    const serializedRef = useRef(value);
 
     // Use refs to avoid recreating the editor when callbacks change - not doing so prepends all characters
     const onChangeRef = useRef(onChange);
@@ -62,14 +63,17 @@ export const MetabotChatEditor = forwardRef<Editor | null, Props>(
       Text,
       Placeholder.configure({ placeholder }),
       HardBreak,
-
-      MetabotSmartLink.configure({
-        siteUrl,
+      SmartLink.configure({
         HTMLAttributes: { class: S.smartLink },
+        siteUrl,
       }),
       MetabotMentionExtension.configure({
         suggestion: {
-          render: createMetabotSuggestionRenderer(MetabotMentionSuggestion),
+          render: createSuggestionRenderer(
+            createMentionSuggestion({
+              searchModels: ["database", "table", "dataset"],
+            }),
+          ),
         },
       }),
     ];
@@ -79,14 +83,40 @@ export const MetabotChatEditor = forwardRef<Editor | null, Props>(
         extensions,
         content: value,
         autofocus: autoFocus,
-        editable: !disabled,
         immediatelyRender: false,
         onUpdate: ({ editor }) => {
           const jsonContent = editor.getJSON();
-          const serialized = serializeToMetabotFormat(jsonContent);
-          onChangeRef.current(serialized);
+          serializedRef.current = serializeTiptapToMetabotMessage(jsonContent);
+          onChangeRef.current(serializedRef.current);
         },
         editorProps: {
+          handleDOMEvents: {
+            copy(view, e) {
+              e.preventDefault();
+              const { from, to } = view.state.selection;
+              const slice = view.state.doc.slice(from, to);
+              const doc = view.state.schema.topNodeType.create(
+                null,
+                slice.content,
+              );
+              const serialized = serializeTiptapToMetabotMessage(doc.toJSON());
+              e.clipboardData?.setData("text/plain", serialized);
+              return true;
+            },
+            cut(view, e) {
+              e.preventDefault();
+              const { from, to } = view.state.selection;
+              const slice = view.state.doc.slice(from, to);
+              const doc = view.state.schema.topNodeType.create(
+                null,
+                slice.content,
+              );
+              const serialized = serializeTiptapToMetabotMessage(doc.toJSON());
+              e.clipboardData?.setData("text/plain", serialized);
+              view.dispatch(view.state.tr.deleteSelection());
+              return true;
+            },
+          },
           handleKeyDown: (view, event) => {
             if (event.key === "Enter") {
               // Defer enter handling to mention UI if open
@@ -111,16 +141,13 @@ export const MetabotChatEditor = forwardRef<Editor | null, Props>(
 
             return false;
           },
+          clipboardTextSerializer: (content) => {
+            return serializeTiptapToMetabotMessage(content.toJSON());
+          },
         },
       },
-      [disabled],
+      [],
     );
-
-    useEffect(() => {
-      if (editor && editor.getText() !== value) {
-        editor.commands.setContent(value);
-      }
-    }, [editor, value]);
 
     useImperativeHandle(ref, () => {
       if (!editor) {
@@ -135,21 +162,8 @@ export const MetabotChatEditor = forwardRef<Editor | null, Props>(
 
     // Sync external value changes to editor
     useEffect(() => {
-      if (!editor) {
-        return;
-      }
-
-      // Check if we need to update - compare serialized content
-      const currentSerialized = serializeToMetabotFormat(editor.getJSON());
-      if (value && value !== currentSerialized) {
-        // TODO: move includes check into parse function
-        // If value looks like it contains metabase:// links, parse it
-        const nextContent = value.includes("metabase://")
-          ? parseMetabotFormat(value)
-          : value;
-        editor.commands.setContent(nextContent);
-      } else if (!value && currentSerialized) {
-        editor.commands.clearContent();
+      if (value !== serializedRef.current) {
+        editor?.commands.setContent(parseMetabotMessageToTiptapDoc(value));
       }
     }, [editor, value]);
 
