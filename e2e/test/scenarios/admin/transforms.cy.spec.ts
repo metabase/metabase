@@ -637,6 +637,114 @@ LIMIT
     });
   });
 
+  describe("filtering", () => {
+    it("should be able to filter transforms", () => {
+      createMbqlTransform({ visitTransform: true });
+      runJobAndWaitForSuccess();
+
+      createSqlTransform({
+        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
+        targetTable: TARGET_TABLE_2,
+        visitTransform: true,
+      });
+      getTagsInput().click();
+      H.popover().findByText("hourly").click();
+      H.undoToast().findByText("Transform tags updated").should("be.visible");
+
+      visitTransformListPage();
+
+      function testLastRunDateFilter() {
+        cy.log("no filters");
+        getContentTable().within(() => {
+          cy.findByText("MBQL transform").should("be.visible");
+          cy.findByText("SQL transform").should("be.visible");
+        });
+
+        cy.log("last run at - add a filter");
+        getLastRunDateFilterWidget().click();
+        H.popover().within(() => {
+          cy.findByText("Relative date range…").click();
+          cy.findByText("Current").click();
+          cy.findByText("Week").click();
+        });
+
+        getLastRunDateFilterWidget().should("contain", "This week");
+        getContentTable().within(() => {
+          cy.findByText("MBQL transform").should("be.visible");
+          cy.findByText("SQL transform").should("not.exist");
+        });
+
+        cy.log("last run at filter - remove filter");
+        getLastRunDateFilterWidget().button("Remove filter").click();
+        getContentTable().within(() => {
+          cy.findByText("MBQL transform").should("be.visible");
+          cy.findByText("SQL transform").should("be.visible");
+        });
+      }
+
+      function testLastRunStatusFilter() {
+        cy.log("no filters");
+        getContentTable().within(() => {
+          cy.findByText("MBQL transform").should("be.visible");
+          cy.findByText("SQL transform").should("be.visible");
+        });
+
+        cy.log("last run status - add a filter");
+        getLastRunStatusFilterWidget().click();
+        H.popover().within(() => {
+          cy.findByText("Success").click();
+          cy.findByText("Add filter").click();
+        });
+
+        getLastRunStatusFilterWidget().should("contain", "Success");
+        getContentTable().within(() => {
+          cy.findByText("MBQL transform").should("be.visible");
+          cy.findByText("SQL transform").should("not.exist");
+        });
+
+        cy.log("last run status filter - remove filter");
+        getLastRunStatusFilterWidget().button("Remove filter").click();
+        getContentTable().within(() => {
+          cy.findByText("MBQL transform").should("be.visible");
+          cy.findByText("SQL transform").should("be.visible");
+        });
+      }
+
+      function testTagFilter() {
+        cy.log("no filters");
+        getContentTable().within(() => {
+          cy.findByText("MBQL transform").should("be.visible");
+          cy.findByText("SQL transform").should("be.visible");
+        });
+
+        cy.log("tags - add a filter");
+        getTagFilterWidget().click();
+        H.popover().within(() => {
+          cy.findByText("hourly").click();
+          cy.findByText("daily").click();
+          cy.button("Add filter").click();
+        });
+
+        getTagFilterWidget().should("contain", "2 tags");
+        getContentTable().within(() => {
+          cy.findByText("SQL transform").should("be.visible");
+          cy.findByText("MBQL transform").should("not.exist");
+        });
+
+        cy.log("last run status filter - remove filter");
+        getTagFilterWidget().button("Remove filter").click();
+        getContentTable().within(() => {
+          cy.findByText("MBQL transform").should("be.visible");
+          cy.findByText("SQL transform").should("be.visible");
+        });
+      }
+
+      testLastRunDateFilter();
+      testLastRunStatusFilter();
+      testTagFilter();
+    });
+  });
+
   describe("name and description", () => {
     it("should be able to edit the name and description after creation", () => {
       createMbqlTransform({ visitTransform: true });
@@ -2002,7 +2110,6 @@ describe("scenarios > admin > transforms > jobs", () => {
       visitJobListPage();
       getContentTable().findByText("Hourly job").click();
       runJobAndWaitForSuccess();
-
       visitJobListPage();
 
       function testLastRunDateFilter() {
