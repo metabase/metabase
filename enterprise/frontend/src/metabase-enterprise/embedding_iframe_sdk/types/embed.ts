@@ -159,7 +159,10 @@ export type SdkIframeEmbedTemplateSettings =
   | BrowserEmbedOptions;
 
 /** Settings used by the sdk embed route */
-export type SdkIframeEmbedSettings = SdkIframeEmbedBaseSettings &
+export type SdkIframeEmbedSettings = Omit<
+  SdkIframeEmbedBaseSettings,
+  "fetchRequestToken"
+> &
   SdkIframeEmbedTemplateSettings;
 
 export type SdkIframeEmbedElementSettings = SdkIframeEmbedBaseSettings &

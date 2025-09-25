@@ -412,15 +412,18 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
     data: Message["data"],
   ) {
     if (this._iframe?.contentWindow) {
-      const normalizedData = Object.fromEntries(
-        Object.entries(data).map(([key, value]) => {
-          // Function is replaced with a random identifier, because it cannot be converted to a string (without eval usage)
+      const normalizedData = Object.entries(data).reduce(
+        (acc, [key, value]) => {
+          // Functions are not serializable, so we ignore them.
           if (typeof value === "function") {
-            return [key, Math.random().toString()];
+            return acc;
           }
 
-          return [key, value];
-        }),
+          acc[key as keyof typeof acc] = value;
+
+          return acc;
+        },
+        {} as Message["data"],
       );
 
       this._iframe.contentWindow.postMessage(

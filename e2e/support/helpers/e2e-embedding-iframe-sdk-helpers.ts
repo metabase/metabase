@@ -267,7 +267,6 @@ export const getNewEmbedConfigurationScript = ({
   apiKey,
   useExistingUserSession,
   preferredAuthMethod,
-  fetchRequestToken,
   locale,
 }: BaseEmbedTestPageOptions["metabaseConfig"] = {}) => {
   const config = {
@@ -276,7 +275,6 @@ export const getNewEmbedConfigurationScript = ({
     useExistingUserSession,
     theme,
     preferredAuthMethod,
-    fetchRequestToken,
     locale,
   };
 
