@@ -1,25 +1,16 @@
-import { useCallback, useRef, useState } from "react";
-import { useUnmount } from "react-use";
 import { t } from "ttag";
 
 import { useGetNativeDatasetQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
+import { CopyButton } from "metabase/common/components/CopyButton";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { formatNativeQuery } from "metabase/lib/engine";
 import { useSelector } from "metabase/lib/redux";
 import { language } from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/language";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import {
-  ActionIcon,
-  Box,
-  Flex,
-  Icon,
-  Loader,
-  Stack,
-  Tooltip,
-} from "metabase/ui";
+import { Box, Flex, Icon, Loader, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { NativeDatasetResponse } from "metabase-types/api";
@@ -103,8 +94,6 @@ function NativeCodePanel({
   engine?: string | null;
   enableCopy?: boolean;
 }) {
-  const { copy, isCopied } = useCopyButton(value);
-
   return (
     <Box pos="relative" mt="sm">
       <CodeEditor
@@ -113,36 +102,7 @@ function NativeCodePanel({
         value={value}
         className={S.code}
       />
-      {enableCopy && (
-        <Tooltip label={t`Copied!`} opened={isCopied}>
-          <ActionIcon onClick={copy} pos="absolute" top="0" right="0" m="xs">
-            <Icon name="copy" />
-          </ActionIcon>
-        </Tooltip>
-      )}
+      {enableCopy && <CopyButton value={value} className={S.copyButton} />}
     </Box>
   );
-}
-
-function useCopyButton(value: string) {
-  const [isCopied, setIsCopied] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const copy = useCallback(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-
-    navigator.clipboard.writeText(value);
-    setIsCopied(true);
-    timeoutRef.current = setTimeout(() => setIsCopied(false), 2000);
-  }, [value]);
-
-  useUnmount(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-  });
-
-  return { isCopied, copy };
 }

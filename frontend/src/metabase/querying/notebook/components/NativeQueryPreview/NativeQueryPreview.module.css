@@ -16,3 +16,9 @@
   overflow: hidden;
   border: 1px solid var(--mb-color-border);
 }
+
+.copyButton {
+  position: absolute;
+  top: var(--mantine-spacing-sm);
+  right: var(--mantine-spacing-sm);
+}
