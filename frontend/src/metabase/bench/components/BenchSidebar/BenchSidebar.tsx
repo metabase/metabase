@@ -60,16 +60,11 @@ function BenchSidebarComponent({ location }: BenchSidebarProps) {
         borderRight: "1px solid var(--mb-color-border)",
       }}
     >
-      <Box px="md" pb="lg">
+      <Box p="lg">
         <Text size="lg" fw="bold">
-          {t`Metabase Bench`}
-        </Text>
-        <Text size="sm" mt={4}>
-          {t`Development & Data Management`}
+          {t`Workbench`}
         </Text>
       </Box>
-
-      <Divider mb="md" />
 
       <Stack gap={4} px="md" style={{ flex: 1 }}>
         {navItems.map((item) => (
