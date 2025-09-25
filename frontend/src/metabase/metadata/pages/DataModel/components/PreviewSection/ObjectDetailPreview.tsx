@@ -4,20 +4,20 @@ import { t } from "ttag";
 import { useGetAdhocQueryQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import EmptyState from "metabase/common/components/EmptyState";
+import { DetailsGroup } from "metabase/detail-view/components";
 import { Repeat, Skeleton, Stack } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/visualizations";
-import Visualization from "metabase/visualizations/components/Visualization";
 import type {
   DatabaseId,
+  DatasetColumn,
   DatasetQuery,
   Field,
   FieldFilter,
   FieldId,
   FieldReference,
-  RawSeries,
+  RowValues,
   TableId,
 } from "metabase-types/api";
-import { createMockCard } from "metabase-types/api/mocks";
 
 import { Error } from "./Error";
 import { getDataErrorMessage, is403Error } from "./utils";
@@ -35,15 +35,14 @@ const ObjectDetailPreviewBase = ({
   fieldId,
   tableId,
 }: Props) => {
-  const { error, isFetching, rawSeries } = useDataSample({
+  const { error, isFetching, columns, row } = useDataSample({
     databaseId,
     field,
     fieldId,
     tableId,
   });
 
-  const data = rawSeries?.[0]?.data;
-  const zoomedRow = data?.rows[0];
+  const hasData = columns != null && row != null;
 
   if (isFetching) {
     return (
@@ -59,7 +58,7 @@ const ObjectDetailPreviewBase = ({
     return <Error message={error} />;
   }
 
-  if (!data || !zoomedRow) {
+  if (!hasData) {
     return (
       <Stack h="100%" justify="center" p="md">
         <EmptyState title={t`No data to show`} />
@@ -67,7 +66,11 @@ const ObjectDetailPreviewBase = ({
     );
   }
 
-  return <Visualization rawSeries={rawSeries} />;
+  return (
+    <Stack p="lg">
+      <DetailsGroup columns={columns!} row={row!} table={undefined} />
+    </Stack>
+  );
 };
 
 function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
@@ -93,7 +96,8 @@ function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
   const base = {
     ...rest,
     error: rest.error ? getErrorMessage(rest.error) : undefined,
-    rawSeries: undefined,
+    columns: undefined as DatasetColumn[] | undefined,
+    row: undefined as RowValues | undefined,
   };
 
   if (rest?.status === "rejected" && is403Error(rest.error)) {
@@ -109,7 +113,8 @@ function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
       ...rest,
       error: getDataErrorMessage(data),
       isError: true,
-      rawSeries: undefined,
+      columns: undefined,
+      row: undefined,
     };
   }
 
@@ -117,21 +122,15 @@ function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
     return base;
   }
 
-  const rawSeries: RawSeries = [
-    {
-      card: createMockCard({
-        dataset_query: datasetQuery,
-        display: "object",
-        visualization_settings: {},
-      }),
-      data: extractRemappedColumns(data.data),
-    },
-  ];
+  const remapped = extractRemappedColumns(data.data);
+  const columns: DatasetColumn[] = remapped.cols;
+  const row: RowValues | undefined = remapped.rows?.[0];
 
   return {
     ...rest,
     error: undefined,
-    rawSeries,
+    columns,
+    row,
   };
 }
 
